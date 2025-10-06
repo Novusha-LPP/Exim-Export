@@ -1,0 +1,20 @@
+.jobs-list-header {
+  display: flex;
+  align-items: center;
+  padding: 20px 0;
+
+  h5 {
+    flex: 1;
+  }
+}
+
+@media screen and (max-width: 992px) {
+  .jobs-list-header {
+    flex-direction: column;
+
+    h5 {
+      margin-bottom: 10px;
+      text-align: center;
+    }
+  }
+}

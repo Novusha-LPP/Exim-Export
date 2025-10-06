@@ -1,0 +1,167 @@
+// .screen {
+//   display: grid;
+//   grid-template-rows: repeat(2, 1fr); // 2 rows
+//   grid-template-columns: repeat(3, 1fr); // 3 columns
+//   height: 90vh; // Full screen height
+//   width: 95vw; // Full screen width
+//   gap: 20px; // Space between boxes
+//   padding: 20px; // Optional padding around the grid
+//   box-sizing: border-box; // Ensures padding doesn't overflow
+//   background-color: #f0f0f0; // Light background
+
+// }
+
+// .box {
+//   display: flex;
+//   justify-content: center;
+//   align-items: center;
+//   background-color: #ffffff; // White background for boxes
+//   border-radius: 10px; // Rounded corners
+//   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2); // Subtle shadow
+//   position: relative; // Required for pseudo-element positioning
+//   transition: transform 0.3s ease-in-out;
+
+//   p {
+//     font-size: 40px; // Large font size for visibility
+//     font-weight: bold;
+//     text-align: center;
+//     color: #333; // High-contrast text color
+//   }
+
+//   &:hover {
+//     transform: scale(1.1); // Slight zoom on hover
+//   }
+
+//   // Add border effect using a pseudo-element
+//   &::before {
+//     content: "";
+//     position: absolute;
+//     top: 0;
+//     left: 0;
+//     width: 0;
+//     height: 0;
+//     border-left: 30px solid #bf3c3b;
+//     border-bottom: 30px solid #bf3c3b;
+//     border-top: 30px solid #bf3c3b;
+//     border-right: 30px solid transparent;
+//     opacity: 0; // Initially hidden
+//     transition: opacity 0.2s ease-in-out;
+//   }
+
+//   &:hover::before {
+//     opacity: 1; // Make pseudo-element visible on hover
+//   }
+// }
+// '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+.screen {
+  display: grid;
+  grid-template-rows: repeat(2, 1fr); /* Default: 2 rows */
+  grid-template-columns: repeat(3, 1fr); /* Default: 3 columns */
+  height: 90vh; /* Full screen height */
+  width: 90vw; /* Full screen width */
+  gap: 20px; /* Space between boxes */
+  padding: 20px; /* Padding around the grid */
+  box-sizing: border-box; /* Ensures padding doesn't overflow */
+  background-color: #f0f0f0; /* Light background */
+}
+
+.box {
+  display: flex;
+  flex-direction: column; /* Stack title and count vertically */
+  justify-content: center;
+  align-items: center;
+  background-color: #ffffff; /* White background for boxes */
+  border-radius: 10px; /* Rounded corners */
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+  position: relative; /* Required for pseudo-element positioning */
+  transition: transform 0.3s ease-in-out;
+}
+
+.box .title {
+  font-size: calc(3vw + 1vh); /* Dynamic font size for title */
+  font-weight: bold;
+  text-align: center;
+  color: #333; /* High-contrast text color */
+  margin-bottom: 10px; /* Space below the title */
+}
+
+.box .count {
+  font-size: calc(4vw + 1vh); /* Dynamic font size for count */
+  font-weight: bold;
+  text-align: center;
+  color: #bf3c3b; /* Red color for counts */
+}
+
+.box:hover {
+  transform: scale(1.05); /* Slight zoom on hover */
+}
+
+/* Responsive Design for Medium Screens (Tablets) */
+@media (max-width: 768px) {
+  .screen {
+    grid-template-rows: repeat(3, 1fr); /* Adjust to 3 rows */
+    grid-template-columns: repeat(2, 1fr); /* Adjust to 2 columns */
+    gap: 15px; /* Reduce gaps */
+    padding: 10px; /* Adjust padding */
+  }
+
+  .box .title {
+    font-size: calc(4vw); /* Adjust title size for better readability */
+  }
+
+  .box .count {
+    font-size: calc(5vw); /* Adjust count size */
+  }
+}
+
+/* Responsive Design for Small Screens (Phones) */
+@media (max-width: 480px) {
+  .screen {
+    grid-template-rows: repeat(3, 1fr); /* 3 rows */
+    grid-template-columns: repeat(2, 1fr); /* 2 columns */
+    gap: 10px; /* Minimize gaps */
+    padding: 5px; /* Minimal padding */
+  }
+
+  .box {
+    border-radius: 5px; /* Smaller corner radius for smaller boxes */
+  }
+
+  .box .title {
+    font-size: calc(6vw); /* Increase font size for readability */
+  }
+
+  .box .count {
+    font-size: calc(8vw); /* Larger font size for counts */
+  }
+}
+
+
+.screen-container {
+  display: flex;
+  flex-direction: column; /* Stack heading and screen */
+  align-items: center; /* Center-align heading */
+  height: 95vh; /* Reduced overall height */
+  // justify-content: space-between; /* Space between heading and grid */
+  background-color: #f0f0f0;
+  padding: 10px; /* Padding around the container */
+}
+
+.heading {
+  font-size: calc(2vw + 1vh); /* Dynamic font size for heading */
+  font-weight: bold;
+  text-align: center;
+  color: #333; /* High-contrast text color */
+  // margin-bottom: 5px; /* Space below the heading */
+}
+
+.screen {
+  display: grid;
+  grid-template-rows: repeat(2, 1fr); /* Default: 2 rows */
+  grid-template-columns: repeat(3, 1fr); /* Default: 3 columns */
+  height: 80vh; /* Slightly reduced height */
+  width: 90vw; /* Full screen width */
+  gap: 20px; /* Space between boxes */
+  box-sizing: border-box; /* Ensures padding doesn't overflow */
+  background-color: #f0f0f0; /* Light background */
+}

@@ -1,0 +1,190 @@
+.App {
+  font-family: "Poppins", sans-serif;
+  height: 100vh;
+}
+
+.flex-div {
+  display: flex;
+  align-items: center;
+}
+
+.input-hidden {
+  display: none;
+}
+
+.btn {
+  background-color: #111b21 !important;
+  color: #fff !important;
+  padding: 10px;
+  cursor: pointer;
+  box-shadow: 0 0 20px 1px rgba(0, 0, 0, 0.3);
+  margin-top: 10px;
+}
+.sticky-btn {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  z-index: 1000; /* Ensures it stays above other elements */
+  margin: 0;
+}
+
+.btn-danger {
+  background-color: #f70303 !important;
+  color: #fff !important;
+  padding: 10px;
+  cursor: pointer;
+  box-shadow: 0 0 20px 1px rgba(255, 0, 0, 0.3);
+  margin-top: 10px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+}
+
+.link {
+  color: blue;
+  cursor: pointer;
+}
+
+.btn:hover,
+.btn:active {
+  background-color: #111b21 !important;
+  color: #fff !important;
+}
+
+/* Table */
+.table {
+  background-color: #fff;
+  border: none;
+}
+
+/* DataGrid row min-height */
+.MuiDataGrid-row.MuiDataGrid-row--dynamicHeight {
+  min-height: 50px !important;
+}
+
+/* Disable cell border on cell click */
+.MuiDataGrid-cell:focus-within,
+.MuiDataGrid-columnHeader:focus-within {
+  outline: none !important;
+}
+
+.MuiDataGrid-iconSeparator {
+  display: none !important;
+}
+
+/* Reduce padding on icon button container */
+.MuiDataGrid-iconButtonContainer {
+  padding-right: 8px !important;
+}
+
+.css-19kzrtu {
+  padding: 10px !important;
+}
+
+/* Job List Row Colors */
+
+.MuiTableRow-root.custom-clearance-completed {
+  background-color: #ccffff !important;
+}
+.MuiTableRow-root.duty-payment-pending {
+  background-color: #e6ffff !important;
+}
+
+.MuiTableRow-root.clearance-pending {
+  background-color: #99ccff !important;
+}
+
+.MuiTableRow-root.arrival-pending {
+  background-color: #99ccff !important;
+}
+
+.MuiTableRow-root.sea-igm-filed {
+  background-color: #ffcc99 !important;
+}
+
+.MuiTableRow-root.discharge {
+  background-color: #ffcc99 !important;
+}
+
+.MuiTableRow-root.discharge:hover {
+  background-color: #ffcc99 !important;
+}
+
+.MuiTableRow-root.eta {
+  background-color: #ffff99 !important;
+}
+
+.MuiTableRow-root.custom-clearance-completed:hover {
+  background-color: #ccffff !important;
+}
+
+.MuiTableRow-root.clearance-pending:hover {
+  background-color: #99ccff !important;
+}
+
+.MuiTableRow-root.arrival-pending:hover {
+  background-color: #99ccff !important;
+}
+
+.MuiTableRow-root.sea-igm-filed:hover {
+  background-color: #ffcc99 !important;
+}
+
+.MuiTableRow-root.eta:hover {
+  background-color: #ffff99 !important;
+}
+
+.MuiTableRow-root.payment_made {
+  background-color: #ffc5c5 !important;
+}
+
+.MuiTableRow-root.payment_made:hover {
+  background-color: #ffc5c5 !important;
+}
+
+.MuiTableRow-root.MuiDataGrid-cell {
+  display: flex !important;
+  align-items: center !important;
+  text-align: center !important;
+  justify-content: center !important;
+}
+
+.Mui-TableBodyCell-DetailPanel {
+  background-color: #f9fafb !important;
+}
+
+.MuiTableCell-root {
+  flex-direction: column !important;
+  .MuiInputBase-root {
+    font-size: 0.8rem !important;
+  }
+}
+
+.Mui-TableHeadCell-Content-Wrapper,
+.MuiTableCell-root {
+  white-space: normal !important;
+}
+
+// genral css
+
+.MuiTableRow-root.bg-yellow {
+  background-color: #f9e781 !important; /* Example styling for bg-yellow */
+}
+
+.MuiTableRow-root.bg-orange {
+  background-color: #fbba5f !important; /* Example styling for bg-orange */
+}
+.MuiTableRow-root.bg-green {
+  background-color: #b0f8b0 !important; /* Example styling for bg-green */
+}
+
+.css-c8wlay {
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center !important;
+}
+
+.css-tmyf5d-MuiTableCell-root {
+  align-items: flex-start !important;
+  text-align: start !important;
+}

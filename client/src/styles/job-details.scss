@@ -1,0 +1,35 @@
+.job-details-container {
+  box-shadow: 0 0 20px 1px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 30px;
+}
+
+.job-detail-row {
+  padding: 10px 0 !important;
+}
+
+.job-detail-input-container {
+  display: flex !important;
+  align-items: center !important;
+  height: 100%;
+}
+
+.non-editable-text {
+  color: #676669;
+  font-weight: 500;
+}
+
+form {
+  margin-top: 30px;
+}
+
+.job-detail-heading-container {
+  display: flex;
+  align-items: baseline;
+  margin-top: 30px;
+
+  h4 {
+    margin: 0px 10px 0px 0px;
+  }
+}

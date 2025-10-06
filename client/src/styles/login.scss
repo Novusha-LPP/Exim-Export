@@ -1,0 +1,57 @@
+.login-row {
+  height: 100%;
+}
+
+.login-left-col {
+  background-image: url("../assets/images/login-bg.webp");
+  background-size: cover;
+}
+
+.login-right-col {
+  background-image: url("../assets/images/RightPage.webp");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.login-right-col-inner-container {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.login-input {
+  .MuiInputBase-root {
+    background-color: #fff !important;
+  }
+}
+
+.login-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 100%;
+}
+
+@media screen and (max-width: 992px) {
+  .login-left-col {
+    display: none;
+  }
+  .login-right-col-inner-container {
+    width: 90%;
+  }
+  .login-footer {
+    display: block;
+    img {
+      display: none;
+    }
+  }
+}

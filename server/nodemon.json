@@ -1,0 +1,8 @@
+{
+  "env": {
+    "NODE_ENV": "server"
+  },
+  "watch": ["app.js", "routes", "model", ".env"],
+  "ext": "js,json,mjs",
+  "exec": "node app.js"
+}
