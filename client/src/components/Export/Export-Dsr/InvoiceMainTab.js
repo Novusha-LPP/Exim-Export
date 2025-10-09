@@ -55,7 +55,7 @@ const InvoiceMainTab = ({ formik }) => {
                 onChange={(e, val) => handleFieldChange("currency", val || "")}
                 size="small"
                 renderInput={params => (
-                  <TextField {...params} label="Currency" sx={{ width: 100 }}/>
+                  <TextField {...params} label="Currency" sx={{ width: 150 }}/>
                 )}
               />
               <TextField

@@ -732,7 +732,7 @@ const exportJobSchema = new mongoose.Schema(
 
     // Reference & Regulatory Fields (Missing)
     ref_type: { type: String, trim: true },
-    sb_number_date: { type: String, trim: true },
+    sb_date: { type: String, trim: true },
     rbi_app_no: { type: String, trim: true },
     gr_waived: { type: Boolean, default: false },
     gr_no: { type: String, trim: true },

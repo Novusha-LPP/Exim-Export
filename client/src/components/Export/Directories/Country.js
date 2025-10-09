@@ -208,25 +208,34 @@ const CountryForm = ({ countryData, onSave, onCancel }) => {
 };
 
 // List Component
+// List Component
 const CountryList = ({ onEdit, onDelete, refresh }) => {
   const [countries, setCountries] = useState([]);
+  const [filteredCountries, setFilteredCountries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
   const [filters, setFilters] = useState({
     page: 1,
-    search: "",
     status: "",
   });
+  const [searchTerm, setSearchTerm] = useState("");
 
+  // Fetch all countries
   useEffect(() => {
     fetchCountries();
   }, [filters, refresh]);
+
+  // Filter countries whenever searchTerm or countries change
+  useEffect(() => {
+    filterCountries();
+  }, [searchTerm, countries]);
 
   const fetchCountries = async () => {
     try {
       setLoading(true);
       const response = await CountryService.getAll(filters);
-      setCountries(response.data || response);
+      const countriesData = response.data || response;
+      setCountries(countriesData);
       setPagination(response.pagination || {});
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -236,8 +245,36 @@ const CountryList = ({ onEdit, onDelete, refresh }) => {
     }
   };
 
+  const filterCountries = () => {
+    if (!searchTerm.trim()) {
+      setFilteredCountries(countries);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = countries.filter(
+      (country) =>
+        (country.countryCode &&
+          country.countryCode.toLowerCase().includes(searchLower)) ||
+        (country.countryName &&
+          country.countryName.toLowerCase().includes(searchLower)) ||
+        (country.status &&
+          country.status.toLowerCase().includes(searchLower)) ||
+        (country._id && country._id.toLowerCase().includes(searchLower))
+    );
+    setFilteredCountries(filtered);
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   if (loading) {
@@ -250,15 +287,21 @@ const CountryList = ({ onEdit, onDelete, refresh }) => {
 
   return (
     <div>
-      {/* Filters */}
+      {/* Filters - Enhanced with global search */}
       <Row className="mb-3">
         <Col md={6}>
           <Form.Control
             type="text"
-            placeholder="Search by country code or name..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange("search", e.target.value)}
+            placeholder="Search by country code, name, or status..."
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
+          {searchTerm && (
+            <Form.Text className="text-muted">
+              Showing {filteredCountries.length} of {countries.length} countries
+              {searchTerm && ` matching "${searchTerm}"`}
+            </Form.Text>
+          )}
         </Col>
         <Col md={3}>
           <Form.Select
@@ -269,6 +312,14 @@ const CountryList = ({ onEdit, onDelete, refresh }) => {
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
           </Form.Select>
+        </Col>
+        <Col md={3} className="text-center">
+          <div className="border rounded p-2 bg-light">
+            <div className="h6 mb-0 text-primary">
+              {filteredCountries.length}
+            </div>
+            <div className="text-muted small">Total Countries</div>
+          </div>
         </Col>
       </Row>
 
@@ -284,54 +335,73 @@ const CountryList = ({ onEdit, onDelete, refresh }) => {
             </tr>
           </thead>
           <tbody>
-            {countries.map((item) => (
-              <tr key={item._id}>
-                <td>
-                  <span className="font-monospace text-primary">
-                    <strong>{item.countryCode}</strong>
-                  </span>
-                </td>
-                <td>
-                  <strong>{item.countryName}</strong>
-                </td>
-                <td>
-                  <Badge
-                    bg={item.status === "Active" ? "success" : "secondary"}
-                  >
-                    {item.status}
-                  </Badge>
-                </td>
-                <td>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="me-2"
-                    onClick={() => onEdit(item)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => onDelete([item._id])}
-                  >
-                    Delete
-                  </Button>
+            {filteredCountries.length > 0 ? (
+              filteredCountries.map((item) => (
+                <tr key={item._id}>
+                  <td>
+                    <span className="font-monospace text-primary">
+                      <strong>{item.countryCode}</strong>
+                    </span>
+                  </td>
+                  <td>
+                    <strong>{item.countryName}</strong>
+                  </td>
+                  <td>
+                    <Badge
+                      bg={item.status === "Active" ? "success" : "secondary"}
+                    >
+                      {item.status}
+                    </Badge>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="me-2"
+                      onClick={() => onEdit(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => onDelete([item._id])}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" className="text-center py-4">
+                  <Alert variant="info" className="text-center">
+                    {searchTerm ? (
+                      <>
+                        No countries found matching "{searchTerm}".
+                        <br />
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="mt-2"
+                          onClick={clearSearch}
+                        >
+                          Clear Search
+                        </Button>
+                      </>
+                    ) : (
+                      "No countries found."
+                    )}
+                  </Alert>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </div>
 
-      {countries.length === 0 && (
-        <Alert variant="info" className="text-center">
-          No countries found.
-        </Alert>
-      )}
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
+      {/* Pagination - Only show if not searching */}
+      {!searchTerm && pagination.totalPages > 1 && (
         <nav>
           <ul className="pagination justify-content-center">
             <li
@@ -389,7 +459,6 @@ const CountryList = ({ onEdit, onDelete, refresh }) => {
     </div>
   );
 };
-
 // Main Component
 const Country = () => {
   const [showForm, setShowForm] = useState(false);

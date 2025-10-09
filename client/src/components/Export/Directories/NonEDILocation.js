@@ -268,24 +268,31 @@ const NonEDILocationForm = ({ nonEdiLocationData, onSave, onCancel }) => {
 // List Component
 const NonEDILocationList = ({ onEdit, onDelete, refresh }) => {
   const [nonEdiLocations, setNonEdiLocations] = useState([]);
+  const [filteredNonEdiLocations, setFilteredNonEdiLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
   const [availableCategories, setAvailableCategories] = useState([]);
   const [filters, setFilters] = useState({
     page: 1,
-    search: "",
     category: "",
   });
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchNonEDILocations();
   }, [filters, refresh]);
 
+  useEffect(() => {
+    filterNonEDILocations();
+  }, [searchTerm, nonEdiLocations]);
+
   const fetchNonEDILocations = async () => {
     try {
       setLoading(true);
       const response = await NonEDILocationService.getAll(filters);
-      setNonEdiLocations(response.data || response);
+      const nonEdiLocationsData = response.data || response;
+      setNonEdiLocations(nonEdiLocationsData);
+      setFilteredNonEdiLocations(nonEdiLocationsData);
       setPagination(response.pagination || {});
 
       // Extract unique categories for dynamic filtering
@@ -296,13 +303,42 @@ const NonEDILocationList = ({ onEdit, onDelete, refresh }) => {
     } catch (error) {
       console.error("Error fetching data:", error);
       setNonEdiLocations([]);
+      setFilteredNonEdiLocations([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const filterNonEDILocations = () => {
+    if (!searchTerm.trim()) {
+      setFilteredNonEdiLocations(nonEdiLocations);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = nonEdiLocations.filter(
+      (location) =>
+        (location.locationCode &&
+          location.locationCode.toLowerCase().includes(searchLower)) ||
+        (location.locationName &&
+          location.locationName.toLowerCase().includes(searchLower)) ||
+        (location.category &&
+          location.category.toLowerCase().includes(searchLower)) ||
+        (location._id && location._id.toLowerCase().includes(searchLower))
+    );
+    setFilteredNonEdiLocations(filtered);
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   const formatDate = (dateString) => {
@@ -328,10 +364,17 @@ const NonEDILocationList = ({ onEdit, onDelete, refresh }) => {
         <Col md={6}>
           <Form.Control
             type="text"
-            placeholder="Search by location code or name..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange("search", e.target.value)}
+            placeholder="Search by location code, name, or category..."
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
+          {searchTerm && (
+            <Form.Text className="text-muted">
+              Showing {filteredNonEdiLocations.length} of{" "}
+              {nonEdiLocations.length} locations
+              {searchTerm && ` matching "${searchTerm}"`}
+            </Form.Text>
+          )}
         </Col>
         <Col md={6}>
           <Form.Select
@@ -348,6 +391,18 @@ const NonEDILocationList = ({ onEdit, onDelete, refresh }) => {
         </Col>
       </Row>
 
+      {/* Results Counter */}
+      <Row className="mb-3">
+        <Col md={6}>
+          <div className="border rounded p-2 bg-light">
+            <div className="h6 mb-0 text-primary">
+              {filteredNonEdiLocations.length}
+            </div>
+            <div className="text-muted small">Total Non-EDI Locations</div>
+          </div>
+        </Col>
+      </Row>
+
       {/* Table */}
       <div className="table-responsive">
         <Table striped bordered hover>
@@ -361,55 +416,74 @@ const NonEDILocationList = ({ onEdit, onDelete, refresh }) => {
             </tr>
           </thead>
           <tbody>
-            {nonEdiLocations.map((item) => (
-              <tr key={item._id}>
-                <td>
-                  <span className="font-monospace text-primary">
-                    <strong>{item.locationCode}</strong>
-                  </span>
-                </td>
-                <td>
-                  <span className="badge bg-secondary">{item.category}</span>
-                </td>
-                <td>
-                  <strong>{item.locationName}</strong>
-                </td>
-                <td>
-                  <span className="font-monospace">
-                    {formatDate(item.endDate)}
-                  </span>
-                </td>
-                <td>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="me-2"
-                    onClick={() => onEdit(item)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => onDelete([item._id])}
-                  >
-                    Delete
-                  </Button>
+            {filteredNonEdiLocations.length > 0 ? (
+              filteredNonEdiLocations.map((item) => (
+                <tr key={item._id}>
+                  <td>
+                    <span className="font-monospace text-primary">
+                      <strong>{item.locationCode}</strong>
+                    </span>
+                  </td>
+                  <td>
+                    <span className="badge bg-secondary">{item.category}</span>
+                  </td>
+                  <td>
+                    <strong>{item.locationName}</strong>
+                  </td>
+                  <td>
+                    <span className="font-monospace">
+                      {formatDate(item.endDate)}
+                    </span>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="me-2"
+                      onClick={() => onEdit(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => onDelete([item._id])}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="text-center py-4">
+                  <Alert variant="info" className="text-center">
+                    {searchTerm ? (
+                      <>
+                        No non-EDI locations found matching "{searchTerm}".
+                        <br />
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="mt-2"
+                          onClick={clearSearch}
+                        >
+                          Clear Search
+                        </Button>
+                      </>
+                    ) : (
+                      "No non-EDI locations found."
+                    )}
+                  </Alert>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </div>
 
-      {nonEdiLocations.length === 0 && (
-        <Alert variant="info" className="text-center">
-          No non-EDI locations found.
-        </Alert>
-      )}
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
+      {/* Pagination - Only show if not searching */}
+      {!searchTerm && pagination.totalPages > 1 && (
         <nav>
           <ul className="pagination justify-content-center">
             <li
@@ -466,7 +540,7 @@ const NonEDILocationList = ({ onEdit, onDelete, refresh }) => {
       )}
     </div>
   );
-};
+}; 
 
 // Main Component
 const NonEDILocation = () => {

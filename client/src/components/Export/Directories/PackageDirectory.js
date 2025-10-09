@@ -198,33 +198,67 @@ const PackageForm = ({ packageData, onSave, onCancel }) => {
 // List Component
 const PackageList = ({ onEdit, onDelete, refresh }) => {
   const [packages, setPackages] = useState([]);
+  const [filteredPackages, setFilteredPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
   const [filters, setFilters] = useState({
     page: 1,
-    search: "",
   });
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchPackages();
   }, [filters, refresh]);
 
+  useEffect(() => {
+    filterPackages();
+  }, [searchTerm, packages]);
+
   const fetchPackages = async () => {
     try {
       setLoading(true);
       const response = await PackageService.getAll(filters);
-      setPackages(response.data || response);
+      const packagesData = response.data || response;
+      setPackages(packagesData);
+      setFilteredPackages(packagesData);
       setPagination(response.pagination || {});
     } catch (error) {
       console.error("Error fetching data:", error);
       setPackages([]);
+      setFilteredPackages([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const filterPackages = () => {
+    if (!searchTerm.trim()) {
+      setFilteredPackages(packages);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = packages.filter(
+      (pkg) =>
+        (pkg.packageCode &&
+          pkg.packageCode.toLowerCase().includes(searchLower)) ||
+        (pkg.description &&
+          pkg.description.toLowerCase().includes(searchLower)) ||
+        (pkg._id && pkg._id.toLowerCase().includes(searchLower))
+    );
+    setFilteredPackages(filtered);
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   const truncateDescription = (text, maxLength = 150) => {
@@ -249,9 +283,27 @@ const PackageList = ({ onEdit, onDelete, refresh }) => {
           <Form.Control
             type="text"
             placeholder="Search by package code or description..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange("search", e.target.value)}
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
+          {searchTerm && (
+            <Form.Text className="text-muted">
+              Showing {filteredPackages.length} of {packages.length} packages
+              {searchTerm && ` matching "${searchTerm}"`}
+            </Form.Text>
+          )}
+        </Col>
+      </Row>
+
+      {/* Results Counter */}
+      <Row className="mb-3">
+        <Col md={6}>
+          <div className="border rounded p-2 bg-light">
+            <div className="h6 mb-0 text-primary">
+              {filteredPackages.length}
+            </div>
+            <div className="text-muted small">Total Packages</div>
+          </div>
         </Col>
       </Row>
 
@@ -266,49 +318,68 @@ const PackageList = ({ onEdit, onDelete, refresh }) => {
             </tr>
           </thead>
           <tbody>
-            {packages.map((item) => (
-              <tr key={item._id}>
-                <td>
-                  <span className="font-monospace text-primary">
-                    <strong>{item.packageCode}</strong>
-                  </span>
-                </td>
-                <td>
-                  <div title={item.description}>
-                    {truncateDescription(item.description)}
-                  </div>
-                </td>
-                <td>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="me-2"
-                    onClick={() => onEdit(item)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => onDelete([item._id])}
-                  >
-                    Delete
-                  </Button>
+            {filteredPackages.length > 0 ? (
+              filteredPackages.map((item) => (
+                <tr key={item._id}>
+                  <td>
+                    <span className="font-monospace text-primary">
+                      <strong>{item.packageCode}</strong>
+                    </span>
+                  </td>
+                  <td>
+                    <div title={item.description}>
+                      {truncateDescription(item.description)}
+                    </div>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="me-2"
+                      onClick={() => onEdit(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => onDelete([item._id])}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="3" className="text-center py-4">
+                  <Alert variant="info" className="text-center">
+                    {searchTerm ? (
+                      <>
+                        No packages found matching "{searchTerm}".
+                        <br />
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="mt-2"
+                          onClick={clearSearch}
+                        >
+                          Clear Search
+                        </Button>
+                      </>
+                    ) : (
+                      "No packages found."
+                    )}
+                  </Alert>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </div>
 
-      {packages.length === 0 && (
-        <Alert variant="info" className="text-center">
-          No packages found.
-        </Alert>
-      )}
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
+      {/* Pagination - Only show if not searching */}
+      {!searchTerm && pagination.totalPages > 1 && (
         <nav>
           <ul className="pagination justify-content-center">
             <li

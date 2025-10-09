@@ -9,11 +9,12 @@ import {
   Form,
   Card,
   Spinner,
+  InputGroup,
 } from "react-bootstrap";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-// API Service
+// API Service (unchanged)
 const StateService = {
   baseURL: `${import.meta.env.VITE_API_STRING}/states`,
 
@@ -74,7 +75,7 @@ const StateService = {
   },
 };
 
-// --- FORM COMPONENT ---
+// --- FORM COMPONENT (unchanged) ---
 const StateForm = ({ stateData, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
     stateName: "",
@@ -214,122 +215,199 @@ const StateForm = ({ stateData, onSave, onCancel }) => {
   );
 };
 
-// --- LIST COMPONENT ---
+// --- LIST COMPONENT (Updated with enhanced search) ---
 const StateList = ({ onEdit, onDelete, refresh }) => {
   const [states, setStates] = useState([]);
+  const [filteredStates, setFilteredStates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    search: "",
-    stateName: "",
-  });
+  const [searchTerm, setSearchTerm] = useState("");
 
+  // Fetch all states on component mount and when refresh changes
   useEffect(() => {
     fetchStates();
-  }, [filters, refresh]);
+  }, [refresh]);
+
+  // Filter states whenever searchTerm or the original states array changes
+  useEffect(() => {
+    filterStates();
+  }, [searchTerm, states]);
 
   const fetchStates = async () => {
     try {
       setLoading(true);
       const allStates = await StateService.getAll();
-      let filtered = allStates;
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        filtered = filtered.filter(
-          (s) =>
-            (s.stateName && s.stateName.toLowerCase().includes(q)) ||
-            (s.tinNumber && s.tinNumber.toLowerCase().includes(q)) ||
-            (s.stateCode && s.stateCode.toLowerCase().includes(q))
-        );
-      }
-      if (filters.stateName) {
-        filtered = filtered.filter(
-          (s) =>
-            s.stateName &&
-            s.stateName.toLowerCase().includes(filters.stateName.toLowerCase())
-        );
-      }
-      setStates(filtered);
+      setStates(allStates);
     } catch (error) {
       setStates([]);
+      console.error("Error fetching states:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+  const filterStates = () => {
+    if (!searchTerm.trim()) {
+      setFilteredStates(states);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = states.filter(
+      (state) =>
+        (state.stateName &&
+          state.stateName.toLowerCase().includes(searchLower)) ||
+        (state.tinNumber &&
+          state.tinNumber.toLowerCase().includes(searchLower)) ||
+        (state.stateCode &&
+          state.stateCode.toLowerCase().includes(searchLower)) ||
+        // Additional search fields for comprehensive search
+        (state._id && state._id.toLowerCase().includes(searchLower))
+    );
+    setFilteredStates(filtered);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   if (loading) {
     return (
       <div className="text-center py-5">
-        <Spinner animation="border" />
+        <Spinner animation="border" variant="primary" />
+        <div className="mt-2">Loading states...</div>
       </div>
     );
   }
 
   return (
     <div>
-      <Row className="mb-3">
-        <Col md={6}>
+      {/* Enhanced Search Controls - Similar to Export Directory */}
+      <div
+        className="mb-4"
+        style={{
+          display: "grid",
+          width: "30%",
+          minWidth: "280px",
+        }}
+      >
+        <InputGroup>
           <Form.Control
             type="text"
-            placeholder="Search by state, TIN or code..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange("search", e.target.value)}
+            placeholder="Search states, TIN numbers, codes..."
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
-        </Col>
-      </Row>
+          {searchTerm && (
+            <Button
+              variant="outline-secondary"
+              onClick={clearSearch}
+              title="Clear search"
+              style={{
+                position: "relative",
+                zIndex: 2,
+                marginLeft: "-1px",
+              }}
+            >
+              <i className="fas fa-times"></i>
+            </Button>
+          )}
+        </InputGroup>
+      </div>
+
       <div className="table-responsive">
-        <Table striped bordered hover>
-          <thead>
+        <Table striped bordered hover className="mb-0">
+          <thead className="table-dark">
             <tr>
               <th>State Name</th>
               <th>TIN Number</th>
               <th>State Code</th>
-              <th>Actions</th>
+              <th width="150">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {states.map((item) => (
-              <tr key={item._id}>
-                <td>
-                  <strong>{item.stateName}</strong>
-                </td>
-                <td>{item.tinNumber}</td>
-                <td>{item.stateCode}</td>
-                <td>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="me-2"
-                    onClick={() => onEdit(item)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => onDelete([item._id])}
-                  >
-                    Delete
-                  </Button>
+            {filteredStates.length > 0 ? (
+              filteredStates.map((item) => (
+                <tr key={item._id}>
+                  <td>
+                    <strong>{item.stateName}</strong>
+                  </td>
+                  <td>
+                    <code>{item.tinNumber}</code>
+                  </td>
+                  <td>
+                    <span className="badge bg-primary">{item.stateCode}</span>
+                  </td>
+                  <td>
+                    <div className="d-flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline-primary"
+                        onClick={() => onEdit(item)}
+                        title="Edit State"
+                      >
+                        <i className="fas fa-edit"></i> Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline-danger"
+                        onClick={() => onDelete([item._id])}
+                        title="Delete State"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" className="text-center py-4">
+                  <div className="text-muted">
+                    <i className="fas fa-search fa-2x mb-3 d-block"></i>
+                    {searchTerm ? (
+                      <>
+                        <h5>No states found</h5>
+                        <p>Try adjusting your search terms</p>
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          onClick={clearSearch}
+                        >
+                          Clear Search
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <h5>No state records found</h5>
+                        <p>Get started by adding your first state</p>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </div>
-      {states.length === 0 && (
-        <Alert variant="info" className="text-center">
-          No state records found.
-        </Alert>
+
+      {/* Search Summary */}
+      {searchTerm && filteredStates.length > 0 && (
+        <div className="mt-3 text-center text-muted">
+          <small>
+            Showing {filteredStates.length} of {states.length} states matching "
+            {searchTerm}"
+          </small>
+        </div>
       )}
     </div>
   );
 };
 
-// --- MAIN COMPONENT ---
+// --- MAIN COMPONENT (unchanged) ---
 const StateDirectory = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingState, setEditingState] = useState(null);
@@ -402,7 +480,12 @@ const StateDirectory = () => {
           )}
 
           <div className="d-flex justify-content-between align-items-center mb-4">
-            <h1 className="mb-0">State Code Directory</h1>
+            <div>
+              <h1 className="mb-1">State Code Directory</h1>
+              <p className="text-muted mb-0">
+                Manage state codes and TIN numbers
+              </p>
+            </div>
             <div>
               {showForm && (
                 <Button
@@ -410,11 +493,11 @@ const StateDirectory = () => {
                   className="me-2"
                   onClick={handleCancel}
                 >
-                  Back to List
+                  <i className="fas fa-arrow-left me-1"></i> Back to List
                 </Button>
               )}
               <Button variant="success" onClick={handleAddNew}>
-                Add New State
+                <i className="fas fa-plus me-1"></i> Add New State
               </Button>
             </div>
           </div>

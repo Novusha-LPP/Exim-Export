@@ -194,33 +194,67 @@ const SchemeForm = ({ schemeData, onSave, onCancel }) => {
 // List Component
 const SchemeList = ({ onEdit, onDelete, refresh }) => {
   const [schemes, setSchemes] = useState([]);
+  const [filteredSchemes, setFilteredSchemes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
   const [filters, setFilters] = useState({
     page: 1,
-    search: "",
   });
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchSchemes();
   }, [filters, refresh]);
 
+  useEffect(() => {
+    filterSchemes();
+  }, [searchTerm, schemes]);
+
   const fetchSchemes = async () => {
     try {
       setLoading(true);
       const response = await SchemeService.getAll(filters);
-      setSchemes(response.data || response);
+      const schemesData = response.data || response;
+      setSchemes(schemesData);
+      setFilteredSchemes(schemesData); // Initialize filtered schemes
       setPagination(response.pagination || {});
     } catch (error) {
       console.error("Error fetching data:", error);
       setSchemes([]);
+      setFilteredSchemes([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const filterSchemes = () => {
+    if (!searchTerm.trim()) {
+      setFilteredSchemes(schemes);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = schemes.filter(
+      (scheme) =>
+        (scheme.schemeCode &&
+          scheme.schemeCode.toLowerCase().includes(searchLower)) ||
+        (scheme.schemeDescription &&
+          scheme.schemeDescription.toLowerCase().includes(searchLower)) ||
+        (scheme._id && scheme._id.toLowerCase().includes(searchLower))
+    );
+    setFilteredSchemes(filtered);
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   const truncateDescription = (text, maxLength = 150) => {
@@ -245,9 +279,24 @@ const SchemeList = ({ onEdit, onDelete, refresh }) => {
           <Form.Control
             type="text"
             placeholder="Search by scheme code or description..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange("search", e.target.value)}
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
+          {searchTerm && (
+            <Form.Text className="text-muted">
+              Showing {filteredSchemes.length} of {schemes.length} schemes
+              {searchTerm && ` matching "${searchTerm}"`}
+            </Form.Text>
+          )}
+        </Col>
+      </Row>
+
+      <Row className="mb-3">
+        <Col md={6}>
+          <div className="border rounded p-2 bg-light">
+            <div className="h6 mb-0 text-primary">{filteredSchemes.length}</div>
+            <div className="text-muted small">Total Schemes</div>
+          </div>
         </Col>
       </Row>
 
@@ -262,49 +311,68 @@ const SchemeList = ({ onEdit, onDelete, refresh }) => {
             </tr>
           </thead>
           <tbody>
-            {schemes.map((item) => (
-              <tr key={item._id}>
-                <td>
-                  <span className="font-monospace text-primary">
-                    <strong>{item.schemeCode}</strong>
-                  </span>
-                </td>
-                <td>
-                  <div title={item.schemeDescription}>
-                    {truncateDescription(item.schemeDescription)}
-                  </div>
-                </td>
-                <td>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="me-2"
-                    onClick={() => onEdit(item)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => onDelete([item._id])}
-                  >
-                    Delete
-                  </Button>
+            {filteredSchemes.length > 0 ? (
+              filteredSchemes.map((item) => (
+                <tr key={item._id}>
+                  <td>
+                    <span className="font-monospace text-primary">
+                      <strong>{item.schemeCode}</strong>
+                    </span>
+                  </td>
+                  <td>
+                    <div title={item.schemeDescription}>
+                      {truncateDescription(item.schemeDescription)}
+                    </div>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="me-2"
+                      onClick={() => onEdit(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => onDelete([item._id])}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="3" className="text-center py-4">
+                  <Alert variant="info" className="text-center">
+                    {searchTerm ? (
+                      <>
+                        No schemes found matching "{searchTerm}".
+                        <br />
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="mt-2"
+                          onClick={clearSearch}
+                        >
+                          Clear Search
+                        </Button>
+                      </>
+                    ) : (
+                      "No schemes found."
+                    )}
+                  </Alert>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </div>
 
-      {schemes.length === 0 && (
-        <Alert variant="info" className="text-center">
-          No schemes found.
-        </Alert>
-      )}
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
+      {/* Pagination - Only show if not searching */}
+      {!searchTerm && pagination.totalPages > 1 && (
         <nav>
           <ul className="pagination justify-content-center">
             <li

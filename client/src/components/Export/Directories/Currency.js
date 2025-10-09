@@ -262,25 +262,32 @@ const CurrencyForm = ({ currencyData, onSave, onCancel }) => {
 // List Component
 const CurrencyList = ({ onEdit, onDelete, refresh }) => {
   const [currencies, setCurrencies] = useState([]);
+  const [filteredCurrencies, setFilteredCurrencies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
   const [availableCountries, setAvailableCountries] = useState([]);
   const [filters, setFilters] = useState({
     page: 1,
-    search: "",
     countryCode: "",
     standardCurrency: "",
   });
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchCurrencies();
   }, [filters, refresh]);
 
+  useEffect(() => {
+    filterCurrencies();
+  }, [searchTerm, currencies]);
+
   const fetchCurrencies = async () => {
     try {
       setLoading(true);
       const response = await CurrencyService.getAll(filters);
-      setCurrencies(response.data || response);
+      const currenciesData = response.data || response;
+      setCurrencies(currenciesData);
+      setFilteredCurrencies(currenciesData);
       setPagination(response.pagination || {});
 
       // Extract unique countries for filtering
@@ -291,13 +298,44 @@ const CurrencyList = ({ onEdit, onDelete, refresh }) => {
     } catch (error) {
       console.error("Error fetching data:", error);
       setCurrencies([]);
+      setFilteredCurrencies([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const filterCurrencies = () => {
+    if (!searchTerm.trim()) {
+      setFilteredCurrencies(currencies);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = currencies.filter(
+      (currency) =>
+        (currency.currencyCode &&
+          currency.currencyCode.toLowerCase().includes(searchLower)) ||
+        (currency.currencyDescription &&
+          currency.currencyDescription.toLowerCase().includes(searchLower)) ||
+        (currency.countryCode &&
+          currency.countryCode.toLowerCase().includes(searchLower)) ||
+        (currency.schNo &&
+          currency.schNo.toLowerCase().includes(searchLower)) ||
+        (currency._id && currency._id.toLowerCase().includes(searchLower))
+    );
+    setFilteredCurrencies(filtered);
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   if (loading) {
@@ -315,10 +353,17 @@ const CurrencyList = ({ onEdit, onDelete, refresh }) => {
         <Col md={4}>
           <Form.Control
             type="text"
-            placeholder="Search by currency code or description..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange("search", e.target.value)}
+            placeholder="Search by currency code, description, or country..."
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
+          {searchTerm && (
+            <Form.Text className="text-muted">
+              Showing {filteredCurrencies.length} of {currencies.length}{" "}
+              currencies
+              {searchTerm && ` matching "${searchTerm}"`}
+            </Form.Text>
+          )}
         </Col>
         <Col md={4}>
           <Form.Select
@@ -347,6 +392,18 @@ const CurrencyList = ({ onEdit, onDelete, refresh }) => {
         </Col>
       </Row>
 
+      {/* Results Counter */}
+      <Row className="mb-3">
+        <Col md={4}>
+          <div className="border rounded p-2 bg-light">
+            <div className="h6 mb-0 text-primary">
+              {filteredCurrencies.length}
+            </div>
+            <div className="text-muted small">Total Currencies</div>
+          </div>
+        </Col>
+      </Row>
+
       {/* Table */}
       <div className="table-responsive">
         <Table striped bordered hover>
@@ -361,58 +418,77 @@ const CurrencyList = ({ onEdit, onDelete, refresh }) => {
             </tr>
           </thead>
           <tbody>
-            {currencies.map((item) => (
-              <tr key={item._id}>
-                <td>
-                  <span className="font-monospace text-primary">
-                    <strong>{item.currencyCode}</strong>
-                  </span>
-                </td>
-                <td>
-                  <strong>{item.currencyDescription}</strong>
-                </td>
-                <td>
-                  <span className="font-monospace">{item.countryCode}</span>
-                </td>
-                <td>
-                  <span className="text-muted">{item.schNo || "-"}</span>
-                </td>
-                <td>
-                  <Badge bg={item.standardCurrency ? "success" : "secondary"}>
-                    {item.standardCurrency ? "Yes" : "No"}
-                  </Badge>
-                </td>
-                <td>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="me-2"
-                    onClick={() => onEdit(item)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => onDelete([item._id])}
-                  >
-                    Delete
-                  </Button>
+            {filteredCurrencies.length > 0 ? (
+              filteredCurrencies.map((item) => (
+                <tr key={item._id}>
+                  <td>
+                    <span className="font-monospace text-primary">
+                      <strong>{item.currencyCode}</strong>
+                    </span>
+                  </td>
+                  <td>
+                    <strong>{item.currencyDescription}</strong>
+                  </td>
+                  <td>
+                    <span className="font-monospace">{item.countryCode}</span>
+                  </td>
+                  <td>
+                    <span className="text-muted">{item.schNo || "-"}</span>
+                  </td>
+                  <td>
+                    <Badge bg={item.standardCurrency ? "success" : "secondary"}>
+                      {item.standardCurrency ? "Yes" : "No"}
+                    </Badge>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="me-2"
+                      onClick={() => onEdit(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => onDelete([item._id])}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="text-center py-4">
+                  <Alert variant="info" className="text-center">
+                    {searchTerm ? (
+                      <>
+                        No currencies found matching "{searchTerm}".
+                        <br />
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="mt-2"
+                          onClick={clearSearch}
+                        >
+                          Clear Search
+                        </Button>
+                      </>
+                    ) : (
+                      "No currencies found."
+                    )}
+                  </Alert>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </div>
 
-      {currencies.length === 0 && (
-        <Alert variant="info" className="text-center">
-          No currencies found.
-        </Alert>
-      )}
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
+      {/* Pagination - Only show if not searching */}
+      {!searchTerm && pagination.totalPages > 1 && (
         <nav>
           <ul className="pagination justify-content-center">
             <li

@@ -194,29 +194,64 @@ const DocCodeForm = ({ docCodeData, onSave, onCancel }) => {
 // List Component
 const DocCodeList = ({ onEdit, onDelete, refresh }) => {
   const [docCodes, setDocCodes] = useState([]);
+  const [filteredDocCodes, setFilteredDocCodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
-  const [filters, setFilters] = useState({ page: 1, search: "" });
+  const [filters, setFilters] = useState({ page: 1 });
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchDocCodes();
   }, [filters, refresh]);
 
+  useEffect(() => {
+    filterDocCodes();
+  }, [searchTerm, docCodes]);
+
   const fetchDocCodes = async () => {
     try {
       setLoading(true);
       const response = await DocCodeService.getAll(filters);
-      setDocCodes(response.data || response);
+      const docCodesData = response.data || response;
+      setDocCodes(docCodesData);
+      setFilteredDocCodes(docCodesData);
       setPagination(response.pagination || {});
     } catch (error) {
       setDocCodes([]);
+      setFilteredDocCodes([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const filterDocCodes = () => {
+    if (!searchTerm.trim()) {
+      setFilteredDocCodes(docCodes);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = docCodes.filter(
+      (docCode) =>
+        (docCode.code && docCode.code.toLowerCase().includes(searchLower)) ||
+        (docCode.name && docCode.name.toLowerCase().includes(searchLower)) ||
+        (docCode.description &&
+          docCode.description.toLowerCase().includes(searchLower)) ||
+        (docCode._id && docCode._id.toLowerCase().includes(searchLower))
+    );
+    setFilteredDocCodes(filtered);
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   if (loading)
@@ -233,12 +268,32 @@ const DocCodeList = ({ onEdit, onDelete, refresh }) => {
         <Col md={6}>
           <Form.Control
             type="text"
-            placeholder="Search by code, name or description..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange("search", e.target.value)}
+            placeholder="Search by code, name, or description..."
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
+          {searchTerm && (
+            <Form.Text className="text-muted">
+              Showing {filteredDocCodes.length} of {docCodes.length} document
+              codes
+              {searchTerm && ` matching "${searchTerm}"`}
+            </Form.Text>
+          )}
         </Col>
       </Row>
+
+      {/* Results Counter */}
+      <Row className="mb-3">
+        <Col md={6}>
+          <div className="border rounded p-2 bg-light">
+            <div className="h6 mb-0 text-primary">
+              {filteredDocCodes.length}
+            </div>
+            <div className="text-muted small">Total Document Codes</div>
+          </div>
+        </Col>
+      </Row>
+
       {/* Table */}
       <div className="table-responsive">
         <Table striped bordered hover>
@@ -251,48 +306,69 @@ const DocCodeList = ({ onEdit, onDelete, refresh }) => {
             </tr>
           </thead>
           <tbody>
-            {docCodes.map((item) => (
-              <tr key={item._id}>
-                <td>
-                  <span className="font-monospace text-primary">
-                    <strong>{item.code}</strong>
-                  </span>
-                </td>
-                <td>{item.name}</td>
-                <td>
-                  <span title={item.description}>
-                    {item.description || "-"}
-                  </span>
-                </td>
-                <td>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="me-2"
-                    onClick={() => onEdit(item)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => onDelete([item._id])}
-                  >
-                    Delete
-                  </Button>
+            {filteredDocCodes.length > 0 ? (
+              filteredDocCodes.map((item) => (
+                <tr key={item._id}>
+                  <td>
+                    <span className="font-monospace text-primary">
+                      <strong>{item.code}</strong>
+                    </span>
+                  </td>
+                  <td>{item.name}</td>
+                  <td>
+                    <span title={item.description}>
+                      {item.description || "-"}
+                    </span>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="me-2"
+                      onClick={() => onEdit(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => onDelete([item._id])}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" className="text-center py-4">
+                  <Alert variant="info" className="text-center">
+                    {searchTerm ? (
+                      <>
+                        No document codes found matching "{searchTerm}".
+                        <br />
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="mt-2"
+                          onClick={clearSearch}
+                        >
+                          Clear Search
+                        </Button>
+                      </>
+                    ) : (
+                      "No document codes found."
+                    )}
+                  </Alert>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </div>
-      {docCodes.length === 0 && (
-        <Alert variant="info" className="text-center">
-          No codes found.
-        </Alert>
-      )}
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
+
+      {/* Pagination - Only show if not searching */}
+      {!searchTerm && pagination.totalPages > 1 && (
         <nav>
           <ul className="pagination justify-content-center">
             <li

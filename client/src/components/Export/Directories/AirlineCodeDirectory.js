@@ -249,23 +249,31 @@ const AirlineForm = ({ airlineData, onSave, onCancel }) => {
 // List Component
 const AirlineCodeList = ({ onEdit, onDelete, refresh }) => {
   const [airlines, setAirlines] = useState([]);
+  const [filteredAirlines, setFilteredAirlines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
   const [filters, setFilters] = useState({
     page: 1,
-    search: "",
     status: "",
   });
+  const [searchTerm, setSearchTerm] = useState("");
 
+  // Fetch all airlines
   useEffect(() => {
     fetchAirlines();
   }, [filters, refresh]);
+
+  // Filter airlines whenever searchTerm or airlines change
+  useEffect(() => {
+    filterAirlines();
+  }, [searchTerm, airlines]);
 
   const fetchAirlines = async () => {
     try {
       setLoading(true);
       const response = await AirlineService.getAll(filters);
-      setAirlines(response.data || response);
+      const airlinesData = response.data || response;
+      setAirlines(airlinesData);
       setPagination(response.pagination || {});
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -275,8 +283,38 @@ const AirlineCodeList = ({ onEdit, onDelete, refresh }) => {
     }
   };
 
+  const filterAirlines = () => {
+    if (!searchTerm.trim()) {
+      setFilteredAirlines(airlines);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = airlines.filter(
+      (airline) =>
+        (airline.alphanumericCode &&
+          airline.alphanumericCode.toLowerCase().includes(searchLower)) ||
+        (airline.numericCode &&
+          airline.numericCode.toLowerCase().includes(searchLower)) ||
+        (airline.airlineName &&
+          airline.airlineName.toLowerCase().includes(searchLower)) ||
+        (airline.status &&
+          airline.status.toLowerCase().includes(searchLower)) ||
+        (airline._id && airline._id.toLowerCase().includes(searchLower))
+    );
+    setFilteredAirlines(filtered);
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   if (loading) {
@@ -289,15 +327,21 @@ const AirlineCodeList = ({ onEdit, onDelete, refresh }) => {
 
   return (
     <div>
-      {/* Filters */}
+      {/* Filters - Enhanced with global search */}
       <Row className="mb-3">
         <Col md={6}>
           <Form.Control
             type="text"
-            placeholder="Search by code or airline name..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange("search", e.target.value)}
+            placeholder="Search by code, airline name, or status..."
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
+          {searchTerm && (
+            <Form.Text className="text-muted">
+              Showing {filteredAirlines.length} of {airlines.length} airlines
+              {searchTerm && ` matching "${searchTerm}"`}
+            </Form.Text>
+          )}
         </Col>
         <Col md={3}>
           <Form.Select
@@ -309,6 +353,14 @@ const AirlineCodeList = ({ onEdit, onDelete, refresh }) => {
             <option value="Inactive">Inactive</option>
             <option value="Suspended">Suspended</option>
           </Form.Select>
+        </Col>
+        <Col md={3} className="text-center">
+          <div className="border rounded p-2 bg-light">
+            <div className="h6 mb-0 text-primary">
+              {filteredAirlines.length}
+            </div>
+            <div className="text-muted small">Total Airlines</div>
+          </div>
         </Col>
       </Row>
 
@@ -325,63 +377,82 @@ const AirlineCodeList = ({ onEdit, onDelete, refresh }) => {
             </tr>
           </thead>
           <tbody>
-            {airlines.map((item) => (
-              <tr key={item._id}>
-                <td>
-                  <span className="font-monospace text-primary">
-                    <strong>{item.alphanumericCode}</strong>
-                  </span>
-                </td>
-                <td>
-                  <span className="font-monospace">{item.numericCode}</span>
-                </td>
-                <td>
-                  <strong>{item.airlineName}</strong>
-                </td>
-                <td>
-                  <Badge
-                    bg={
-                      item.status === "Active"
-                        ? "success"
-                        : item.status === "Suspended"
-                        ? "warning"
-                        : "secondary"
-                    }
-                  >
-                    {item.status}
-                  </Badge>
-                </td>
-                <td>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="me-2"
-                    onClick={() => onEdit(item)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => onDelete([item._id])}
-                  >
-                    Delete
-                  </Button>
+            {filteredAirlines.length > 0 ? (
+              filteredAirlines.map((item) => (
+                <tr key={item._id}>
+                  <td>
+                    <span className="font-monospace text-primary">
+                      <strong>{item.alphanumericCode}</strong>
+                    </span>
+                  </td>
+                  <td>
+                    <span className="font-monospace">{item.numericCode}</span>
+                  </td>
+                  <td>
+                    <strong>{item.airlineName}</strong>
+                  </td>
+                  <td>
+                    <Badge
+                      bg={
+                        item.status === "Active"
+                          ? "success"
+                          : item.status === "Suspended"
+                          ? "warning"
+                          : "secondary"
+                      }
+                    >
+                      {item.status}
+                    </Badge>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="me-2"
+                      onClick={() => onEdit(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => onDelete([item._id])}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="text-center py-4">
+                  <Alert variant="info" className="text-center">
+                    {searchTerm ? (
+                      <>
+                        No airline codes found matching "{searchTerm}".
+                        <br />
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="mt-2"
+                          onClick={clearSearch}
+                        >
+                          Clear Search
+                        </Button>
+                      </>
+                    ) : (
+                      "No airline codes found."
+                    )}
+                  </Alert>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </div>
 
-      {airlines.length === 0 && (
-        <Alert variant="info" className="text-center">
-          No airline codes found.
-        </Alert>
-      )}
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
+      {/* Pagination - Only show if not searching */}
+      {!searchTerm && pagination.totalPages > 1 && (
         <nav>
           <ul className="pagination justify-content-center">
             <li

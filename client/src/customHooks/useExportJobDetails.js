@@ -225,7 +225,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       ref_type: "",
       exporter_ref_no: "",
       exporter_type: "",
-      sb_number_date: "",
+      sb_date: "",
       shipping_bill_number: "", // Schema field
       shipping_bill_date: "", // Schema field
       rbi_app_no: "",
@@ -925,8 +925,8 @@ function useExportJobDetails(params, setFileSnackbar) {
         ref_type: safeValue(data.ref_type),
         exporter_ref_no: safeValue(data.exporter_ref_no),
         exporter_type: safeValue(data.exporter_type),
-        sb_number_date: safeValue(
-          data.sb_number_date ||
+        sb_date: safeValue(
+          data.sb_date ||
             `${data.shipping_bill_number} | ${data.shipping_bill_date}`
         ),
         shipping_bill_number: safeValue(

@@ -1,9 +1,7 @@
-// GeneralTab.jsx - Fixed version with proper field mapping
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef } from "react";
 import {
   Grid,
   Card,
-  CardContent,
   TextField,
   Typography,
   Autocomplete,
@@ -17,50 +15,58 @@ import {
   Divider,
   Checkbox,
   FormControlLabel,
+  Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
+import BusinessIcon from "@mui/icons-material/Business";
+import PersonIcon from "@mui/icons-material/Person";
+import DescriptionIcon from "@mui/icons-material/Description";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import GavelIcon from "@mui/icons-material/Gavel";
+import CloseIcon from "@mui/icons-material/Close";
 
-const GeneralTab = ({ formik, directories, params }) => {
-  const [snackbar, setSnackbar] = useState(false);
+const GeneralTab = ({ formik, directories }) => {
   const saveTimeoutRef = useRef(null);
-
 
   // Handle field changes with auto-save and proper formik integration
   const handleFieldChange = (field, value) => {
     console.log(`Updating field ${field} with value:`, value);
     formik.setFieldValue(field, value);
-    
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
-    
+
     // Auto-save after 2 seconds of inactivity
     saveTimeoutRef.current = setTimeout(() => {
       const updatedValues = {
         ...formik.values,
-        [field]: value
+        [field]: value,
       };
     }, 2000);
   };
 
   // Get options from directory - Enhanced
   const getExporterOptions = () => {
-    return directories?.exporters?.map(exp => ({
-      label: `${exp.organization} - EXPORT`,
-      value: exp.organization,
-      data: exp
-    })) || [];
+    return (
+      directories?.exporters?.map((exp) => ({
+        label: `${exp.organization} - EXPORT`,
+        value: exp.organization,
+        data: exp,
+      })) || []
+    );
   };
 
   const getBankOptions = () => {
     const banks = [];
-    directories?.exporters?.forEach(exp => {
-      exp.bankDetails?.forEach(bank => {
+    directories?.exporters?.forEach((exp) => {
+      exp.bankDetails?.forEach((bank) => {
         banks.push({
           label: `${bank.entityName} ${bank.branchLocation}`,
           value: `${bank.entityName} ${bank.branchLocation}`,
-          data: bank
+          data: bank,
         });
       });
     });
@@ -69,55 +75,58 @@ const GeneralTab = ({ formik, directories, params }) => {
 
   const getConsigneeOptions = () => [
     { label: "TO ORDER", value: "TO ORDER" },
-    { label: "DIRECT CONSIGNMENT", value: "DIRECT CONSIGNMENT" }
+    { label: "DIRECT CONSIGNMENT", value: "DIRECT CONSIGNMENT" },
   ];
 
   // Handle exporter selection and auto-populate related fields
   const handleExporterChange = (event, newValue) => {
     if (newValue?.data) {
       const exp = newValue.data;
-      
+
       // Update multiple fields at once
       const updates = {
         exporter_name: exp.organization,
         exporter: exp.organization, // Also update the main exporter field
         exporter_address: `${exp.address?.addressLine}, ${exp.address?.postalCode}`,
-        branch_sno: exp.branchInfo?.[0]?.branchCode || '0',
-        branchSrNo: exp.branchInfo?.[0]?.branchCode || '0', // Schema field
-        state: exp.branchInfo?.[0]?.state || 'Gujarat',
+        branch_sno: exp.branchInfo?.[0]?.branchCode || "0",
+        branchSrNo: exp.branchInfo?.[0]?.branchCode || "0", // Schema field
+        state: exp.branchInfo?.[0]?.state || "Gujarat",
         ie_code_no: exp.registrationDetails?.ieCode,
-        ie_code: exp.registrationDetails?.ieCode, // Schema field  
+        ie_code: exp.registrationDetails?.ieCode, // Schema field
         regn_no: exp.registrationDetails?.gstinMainBranch,
         exporter_gstin: exp.registrationDetails?.gstinMainBranch, // Schema field
       };
 
       // Apply all updates
-      Object.keys(updates).forEach(key => {
+      Object.keys(updates).forEach((key) => {
         if (updates[key]) {
           formik.setFieldValue(key, updates[key]);
         }
       });
-      
+
       // Auto-populate bank details if available
       if (exp.bankDetails?.[0]) {
         const bank = exp.bankDetails[0];
-        formik.setFieldValue('bank_dealer', `${bank.entityName} ${bank.branchLocation}`);
-        formik.setFieldValue('bank_name', bank.entityName); // Schema field
-        formik.setFieldValue('ac_number', bank.accountNumber);
-        formik.setFieldValue('bank_account_number', bank.accountNumber); // Schema field
-        formik.setFieldValue('ad_code', bank.adCode);
-        formik.setFieldValue('adCode', bank.adCode); // Schema field
+        formik.setFieldValue(
+          "bank_dealer",
+          `${bank.entityName} ${bank.branchLocation}`
+        );
+        formik.setFieldValue("bank_name", bank.entityName); // Schema field
+        formik.setFieldValue("ac_number", bank.accountNumber);
+        formik.setFieldValue("bank_account_number", bank.accountNumber); // Schema field
+        formik.setFieldValue("ad_code", bank.adCode);
+        formik.setFieldValue("adCode", bank.adCode); // Schema field
       }
 
       // Trigger auto-save with all updates
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      
+
       saveTimeoutRef.current = setTimeout(() => {
         const updatedValues = {
           ...formik.values,
-          ...updates
+          ...updates,
         };
       }, 1000);
     }
@@ -133,10 +142,10 @@ const GeneralTab = ({ formik, directories, params }) => {
         ac_number: bank.accountNumber,
         bank_account_number: bank.accountNumber,
         ad_code: bank.adCode,
-        adCode: bank.adCode
+        adCode: bank.adCode,
       };
 
-      Object.keys(updates).forEach(key => {
+      Object.keys(updates).forEach((key) => {
         formik.setFieldValue(key, updates[key]);
       });
     }
@@ -144,298 +153,272 @@ const GeneralTab = ({ formik, directories, params }) => {
 
   // Safe value getter
   const getValue = (field) => {
-    return formik.values[field] || '';
+    return formik.values[field] || "";
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h6" fontWeight="bold" gutterBottom>
-        General Information
-      </Typography>
-      <Divider sx={{ mb: 3 }} />
+    <div className="p-3 bg-gray-50">
+      {/* Compact Header */}
+      <div className="flex items-center justify-between mb-2">
+        <Typography
+          variant="subtitle1"
+          className="font-semibold text-gray-800 flex items-center gap-2"
+        >
+          <DescriptionIcon fontSize="small" className="text-blue-600" />
+          General Information
+        </Typography>
+        <div className="flex gap-1">
+          <Button
+            size="small"
+            startIcon={<ContentCopyIcon fontSize="small" />}
+            sx={{
+              textTransform: "none",
+              fontSize: "0.75rem",
+              py: 0.5,
+              px: 1.5,
+              minWidth: "auto",
+            }}
+          >
+            Copy Previous Job
+          </Button>
+          <Button
+            size="small"
+            startIcon={<UploadFileIcon fontSize="small" />}
+            sx={{
+              textTransform: "none",
+              fontSize: "0.75rem",
+              py: 0.5,
+              px: 1.5,
+              minWidth: "auto",
+            }}
+          >
+            Import From File
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<GavelIcon fontSize="small" />}
+            sx={{
+              textTransform: "none",
+              fontSize: "0.75rem",
+              py: 0.5,
+              px: 1.5,
+              minWidth: "auto",
+              boxShadow: 1,
+            }}
+          >
+            Declarations
+          </Button>
+          <Button
+            size="small"
+            color="error"
+            startIcon={<CloseIcon fontSize="small" />}
+            sx={{
+              textTransform: "none",
+              fontSize: "0.75rem",
+              py: 0.5,
+              px: 1.5,
+              minWidth: "auto",
+            }}
+          >
+            Close
+          </Button>
+        </div>
+      </div>
 
-      <Grid container spacing={3}>
-        {/* Left Column - Exporter Details */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ p: 2, height: "100%" }}>
-            <Box display="flex" alignItems="center" gap={1} mb={2}>
-              <Typography variant="subtitle1" fontWeight="bold">
+      <Grid container spacing={1.5}>
+        {/* Left Column - Exporter & Bank */}
+        <Grid item xs={12} lg={6}>
+          <Card
+            elevation={0}
+            className="border border-gray-200 h-full"
+            sx={{ p: 2 }}
+          >
+            {/* Exporter Section */}
+            <div className="flex items-center justify-between mb-2">
+              <Typography
+                variant="body2"
+                className="font-semibold text-gray-700 flex items-center gap-1"
+              >
+                <BusinessIcon fontSize="small" className="text-blue-600" />
                 Exporter
               </Typography>
-              <IconButton size="small" color="primary">
-                <AddIcon fontSize="small" />
-              </IconButton>
-              <Button size="small" variant="outlined" sx={{ ml: "auto", fontSize: "0.75rem" }}>
-                New
-              </Button>
-            </Box>
-            
-            <Grid container spacing={2}>
-              {/* Exporter Name with Autocomplete */}
+              <div className="flex gap-0.5">
+                <IconButton size="small" sx={{ width: 24, height: 24 }}>
+                  <AddIcon sx={{ fontSize: 16 }} className="text-blue-600" />
+                </IconButton>
+              </div>
+            </div>
+
+            <Grid container spacing={1}>
               <Grid item xs={12}>
                 <Autocomplete
                   size="small"
                   options={getExporterOptions()}
-                  value={getExporterOptions().find(option => 
-                    option.value === getValue('exporter_name') || 
-                    option.value === getValue('exporter')
-                  ) || null}
+                  value={
+                    getExporterOptions().find(
+                      (option) =>
+                        option.value === getValue("exporter_name") ||
+                        option.value === getValue("exporter")
+                    ) || null
+                  }
                   onChange={handleExporterChange}
                   getOptionLabel={(option) => option.label}
                   renderInput={(params) => (
                     <TextField
                       {...params}
                       label="Exporter"
-                      fullWidth
+                      sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                       InputProps={{
                         ...params.InputProps,
                         endAdornment: (
                           <>
                             {params.InputProps.endAdornment}
-                            <IconButton size="small">
-                              <EditIcon fontSize="small" />
+                            <IconButton size="small" sx={{ p: 0.5 }}>
+                              <EditIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                           </>
-                        )
+                        ),
                       }}
                     />
                   )}
                 />
               </Grid>
-              
-              {/* Address */}
+
               <Grid item xs={12}>
-                <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 0.5 }}>
-                  Address
-                </Typography>
                 <TextField
                   fullWidth
                   multiline
-                  rows={3}
+                  rows={1.5}
                   size="small"
-                  value={getValue('exporter_address')}
-                  onChange={(e) => handleFieldChange('exporter_address', e.target.value)}
+                  label="Address"
+                  value={getValue("exporter_address")}
+                  onChange={(e) =>
+                    handleFieldChange("exporter_address", e.target.value)
+                  }
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                   placeholder="PLOT NO.235, SARKHEJ BAVLA ROAD,NH-8A, VILLAGE SART, TAL.SANAND, Ahmedabad - 382220, Gujarat"
                 />
               </Grid>
-              
-              {/* Branch S/No and State */}
-              <Grid item xs={6}>
+
+              <Grid item xs={4}>
                 <TextField
                   fullWidth
                   label="Branch S/No"
                   size="small"
-                  value={getValue('branch_sno') || getValue('branchSrNo')}
+                  value={getValue("branch_sno") || getValue("branchSrNo")}
                   onChange={(e) => {
-                    handleFieldChange('branch_sno', e.target.value);
-                    handleFieldChange('branchSrNo', e.target.value); // Update both fields
+                    handleFieldChange("branch_sno", e.target.value);
+                    handleFieldChange("branchSrNo", e.target.value);
                   }}
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
-              
-              <Grid item xs={6}>
+              <Grid item xs={4}>
                 <TextField
                   fullWidth
                   label="State"
                   size="small"
-                  value={getValue('state') || getValue('exporter_state')}
+                  value={getValue("state") || getValue("exporter_state")}
                   onChange={(e) => {
-                    handleFieldChange('state', e.target.value);
-                    handleFieldChange('exporter_state', e.target.value); // Update both fields
+                    handleFieldChange("state", e.target.value);
+                    handleFieldChange("exporter_state", e.target.value);
                   }}
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875restore" } }}
                 />
               </Grid>
-              
-              {/* IE Code No and Regn. No */}
-              <Grid item xs={6}>
+              <Grid item xs={4}>
                 <TextField
                   fullWidth
                   label="IE Code No"
                   size="small"
-                  value={getValue('ie_code_no') || getValue('ie_code')}
+                  value={getValue("ie_code_no") || getValue("ie_code")}
                   onChange={(e) => {
-                    handleFieldChange('ie_code_no', e.target.value);
-                    handleFieldChange('ie_code', e.target.value); // Update both fields
+                    handleFieldChange("ie_code_no", e.target.value);
+                    handleFieldChange("ie_code", e.target.value);
                   }}
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
-              
+
               <Grid item xs={6}>
                 <FormControl fullWidth size="small">
-                  <InputLabel>Regn. No</InputLabel>
-                  <Select 
-                    value={getValue('regn_no') || getValue('exporter_gstin')}
+                  <InputLabel sx={{ fontSize: "0.875rem" }}>
+                    Regn. No
+                  </InputLabel>
+                  <Select
+                    value={getValue("regn_no") || getValue("exporter_gstin")}
                     onChange={(e) => {
-                      handleFieldChange('regn_no', e.target.value);
-                      handleFieldChange('exporter_gstin', e.target.value); // Update both fields
+                      handleFieldChange("regn_no", e.target.value);
+                      handleFieldChange("exporter_gstin", e.target.value);
                     }}
                     label="Regn. No"
+                    sx={{ fontSize: "0.875rem" }}
                   >
                     <MenuItem value="GSTIN of Norm">GSTIN of Norm</MenuItem>
                     <MenuItem value="24AAACL5064A1Z3">24AAACL5064A1Z3</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
-              
-              {/* DBK Bank */}
-              <Grid item xs={12}>
+
+              <Grid item xs={6}>
                 <TextField
                   fullWidth
                   label="DBK Bank"
                   size="small"
-                  value={getValue('dbk_bank')}
-                  onChange={(e) => handleFieldChange('dbk_bank', e.target.value)}
+                  value={getValue("dbk_bank")}
+                  onChange={(e) =>
+                    handleFieldChange("dbk_bank", e.target.value)
+                  }
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
 
-              {/* DBK A/c */}
-              <Grid item xs={12}>
+              <Grid item xs={6}>
                 <TextField
                   fullWidth
                   label="DBK A/c"
                   size="small"
-                  value={getValue('dbk_ac')}
-                  onChange={(e) => handleFieldChange('dbk_ac', e.target.value)}
+                  value={getValue("dbk_ac")}
+                  onChange={(e) => handleFieldChange("dbk_ac", e.target.value)}
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
 
-              {/* DBK EDI A/c */}
-              <Grid item xs={12}>
+              <Grid item xs={6}>
                 <TextField
                   fullWidth
                   label="DBK EDI A/c"
                   size="small"
-                  value={getValue('dbk_edi_ac')}
-                  onChange={(e) => handleFieldChange('dbk_edi_ac', e.target.value)}
-                />
-              </Grid>
-            </Grid>
-          </Card>
-        </Grid>
-
-        {/* Right Column - Additional Details */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ p: 2, height: "100%" }}>
-            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-              Reference Details
-            </Typography>
-            
-            <Grid container spacing={2}>
-              {/* Ref. Type */}
-              <Grid item xs={12}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Ref. Type</InputLabel>
-                  <Select 
-                    value={getValue('ref_type')}
-                    onChange={(e) => handleFieldChange('ref_type', e.target.value)}
-                    label="Ref. Type"
-                  >
-                    <MenuItem value="Job Order">Job Order</MenuItem>
-                    <MenuItem value="Contract">Contract</MenuItem>
-                    <MenuItem value="Purchase Order">Purchase Order</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              {/* Exporter Ref No./Date */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Exporter Ref No./Date"
-                  size="small"
-                  value={getValue('exporter_ref_no')}
-                  onChange={(e) => handleFieldChange('exporter_ref_no', e.target.value)}
-                  placeholder="F22526102243"
-                />
-              </Grid>
-
-              {/* Exporter Type */}
-              <Grid item xs={12}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Exporter Type</InputLabel>
-                  <Select 
-                    value={getValue('exporter_type')}
-                    onChange={(e) => handleFieldChange('exporter_type', e.target.value)}
-                    label="Exporter Type"
-                  >
-                    <MenuItem value="Manufacturer Exporter">Manufacturer Exporter</MenuItem>
-                    <MenuItem value="Merchant Exporter">Merchant Exporter</MenuItem>
-                    <MenuItem value="Service Exporter">Service Exporter</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              {/* SB Number/Date */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="SB Number/Date"
-                  size="small"
-                  value={getValue('sb_number_date') || getValue('sb_no')}
-                  onChange={(e) => {
-                    handleFieldChange('sb_number_date', e.target.value);
-                    handleFieldChange('sb_no', e.target.value); // Update both fields
-                  }}
-                  placeholder="5296776 | 15-Sep-2025"
-                />
-              </Grid>
-
-              {/* RBI App. No & Date */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="RBI App. No & Date"
-                  size="small"
-                  value={getValue('rbi_app_no')}
-                  onChange={(e) => handleFieldChange('rbi_app_no', e.target.value)}
-                />
-              </Grid>
-
-              {/* GR Waived */}
-              <Grid item xs={6}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={getValue('gr_waived') || false}
-                      onChange={(e) => handleFieldChange('gr_waived', e.target.checked)}
-                      size="small"
-                    />
+                  value={getValue("dbk_edi_ac")}
+                  onChange={(e) =>
+                    handleFieldChange("dbk_edi_ac", e.target.value)
                   }
-                  label="GR Waived"
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
 
-              {/* GR No */}
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="GR No"
-                  size="small"
-                  value={getValue('gr_no')}
-                  onChange={(e) => handleFieldChange('gr_no', e.target.value)}
-                />
-              </Grid>
-
-              {/* RBI Waiver No */}
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="RBI Waiver No"
-                  size="small"
-                  value={getValue('rbi_waiver_no')}
-                  onChange={(e) => handleFieldChange('rbi_waiver_no', e.target.value)}
-                />
+                <Divider sx={{ my: 1 }} />
+                <Typography
+                  variant="caption"
+                  className="text-gray-600 font-medium"
+                >
+                  Bank Details
+                </Typography>
               </Grid>
 
-              {/* Bank/Dealer with Autocomplete */}
               <Grid item xs={12}>
                 <Autocomplete
                   size="small"
                   options={getBankOptions()}
-                  value={getBankOptions().find(option => 
-                    option.value === getValue('bank_dealer') || 
-                    option.label === getValue('bank_dealer')
-                  ) || null}
+                  value={
+                    getBankOptions().find(
+                      (option) =>
+                        option.value === getValue("bank_dealer") ||
+                        option.label === getValue("bank_dealer")
+                    ) || null
+                  }
                   onChange={handleBankChange}
                   getOptionLabel={(option) => option.label}
                   renderInput={(params) => (
@@ -443,23 +426,26 @@ const GeneralTab = ({ formik, directories, params }) => {
                       {...params}
                       label="Bank/Dealer"
                       placeholder="INDIAN OVERSEAS BANK ASHRAM ROAD BRANCH AHMEDABAD"
+                      sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                     />
                   )}
                 />
               </Grid>
 
-              {/* A/C Number and AD Code */}
               <Grid item xs={6}>
                 <TextField
                   fullWidth
                   label="A/C Number"
                   size="small"
-                  value={getValue('ac_number') || getValue('bank_account_number')}
+                  value={
+                    getValue("ac_number") || getValue("bank_account_number")
+                  }
                   onChange={(e) => {
-                    handleFieldChange('ac_number', e.target.value);
-                    handleFieldChange('bank_account_number', e.target.value); // Update both fields
+                    handleFieldChange("ac_number", e.target.value);
+                    handleFieldChange("bank_account_number", e.target.value);
                   }}
                   placeholder="293302000129"
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
 
@@ -468,158 +454,347 @@ const GeneralTab = ({ formik, directories, params }) => {
                   fullWidth
                   label="AD Code"
                   size="small"
-                  value={getValue('ad_code') || getValue('adCode')}
+                  value={getValue("ad_code") || getValue("adCode")}
                   onChange={(e) => {
-                    handleFieldChange('ad_code', e.target.value);
-                    handleFieldChange('adCode', e.target.value); // Update both fields
+                    handleFieldChange("ad_code", e.target.value);
+                    handleFieldChange("adCode", e.target.value);
                   }}
                   placeholder="0270355"
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
+                />
+              </Grid>
+            </Grid>
+          </Card>
+        </Grid>
+
+        {/* Right Column - Reference Details */}
+        <Grid item xs={12} lg={6}>
+          <Card
+            elevation={0}
+            className="border border-gray-200 h-full"
+            sx={{ p: 2 }}
+          >
+            <Typography
+              variant="body2"
+              className="font-semibold text-gray-700 flex items-center gap-1 mb-2"
+            >
+              <DescriptionIcon fontSize="small" className="text-purple-600" />
+              Reference Details
+            </Typography>
+
+            <Grid container spacing={1}>
+              <Grid item xs={12}>
+                <FormControl fullWidth size="small">
+                  <InputLabel sx={{ fontSize: "0.875rem" }}>
+                    Ref. Type
+                  </InputLabel>
+                  <Select
+                    value={getValue("ref_type")}
+                    onChange={(e) =>
+                      handleFieldChange("ref_type", e.target.value)
+                    }
+                    label="Ref. Type"
+                    sx={{ fontSize: "0.875rem" }}
+                  >
+                    <MenuItem value="Job Order">Job Order</MenuItem>
+                    <MenuItem value="Contract">Contract</MenuItem>
+                    <MenuItem value="Purchase Order">Purchase Order</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Exporter Ref No./Date"
+                  size="small"
+                  value={getValue("exporter_ref_no")}
+                  onChange={(e) =>
+                    handleFieldChange("exporter_ref_no", e.target.value)
+                  }
+                  placeholder="F22526102243"
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
 
-              {/* EPZ Code */}
+              <Grid item xs={12}>
+                <FormControl fullWidth size="small">
+                  <InputLabel sx={{ fontSize: "0.875rem" }}>
+                    Exporter Type
+                  </InputLabel>
+                  <Select
+                    value={getValue("exporter_type")}
+                    onChange={(e) =>
+                      handleFieldChange("exporter_type", e.target.value)
+                    }
+                    label="Exporter Type"
+                    sx={{ fontSize: "0.875rem" }}
+                  >
+                    <MenuItem value="Manufacturer Exporter">
+                      Manufacturer Exporter
+                    </MenuItem>
+                    <MenuItem value="Merchant Exporter">
+                      Merchant Exporter
+                    </MenuItem>
+                    <MenuItem value="Service Exporter">
+                      Service Exporter
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="SB Number"
+                  size="small"
+                  value={getValue("sb_no")}
+                  onChange={(e) => handleFieldChange("sb_no", e.target.value)}
+                  placeholder="5296776"
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="SB Date"
+                  size="small"
+                  type="date"
+                  value={getValue("sb_date") || ""}
+                  onChange={(e) => handleFieldChange("sb_date", e.target.value)}
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                  InputProps={{
+                    sx: { fontSize: "0.875rem" },
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="RBI App. No & Date"
+                  size="small"
+                  value={getValue("rbi_app_no")}
+                  onChange={(e) =>
+                    handleFieldChange("rbi_app_no", e.target.value)
+                  }
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
+                />
+              </Grid>
+
+              <Grid item xs={6}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={getValue("gr_waived") || false}
+                      onChange={(e) =>
+                        handleFieldChange("gr_waived", e.target.checked)
+                      }
+                      sx={{ py: 0 }}
+                    />
+                  }
+                  label={<Typography variant="caption">GR Waived</Typography>}
+                  sx={{ m: 0 }}
+                />
+              </Grid>
+
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="GR No"
+                  size="small"
+                  value={getValue("gr_no")}
+                  onChange={(e) => handleFieldChange("gr_no", e.target.value)}
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="RBI Waiver No"
+                  size="small"
+                  value={getValue("rbi_waiver_no")}
+                  onChange={(e) =>
+                    handleFieldChange("rbi_waiver_no", e.target.value)
+                  }
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
+                />
+              </Grid>
+
               <Grid item xs={12}>
                 <TextField
                   fullWidth
                   label="EPZ Code"
                   size="small"
-                  value={getValue('epz_code')}
-                  onChange={(e) => handleFieldChange('epz_code', e.target.value)}
+                  value={getValue("epz_code")}
+                  onChange={(e) =>
+                    handleFieldChange("epz_code", e.target.value)
+                  }
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
 
-              {/* Notify */}
               <Grid item xs={12}>
                 <TextField
                   fullWidth
                   label="Notify"
                   size="small"
-                  value={getValue('notify')}
-                  onChange={(e) => handleFieldChange('notify', e.target.value)}
+                  value={getValue("notify")}
+                  onChange={(e) => handleFieldChange("notify", e.target.value)}
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
             </Grid>
           </Card>
         </Grid>
 
-        {/* Bottom Section - Consignee Details */}
+        {/* Bottom Section - Consignee */}
         <Grid item xs={12}>
-          <Card sx={{ p: 2 }}>
-            <Box display="flex" alignItems="center" gap={1} mb={2}>
-              <Typography variant="subtitle1" fontWeight="bold">
-                Consignee
+          <Card elevation={0} className="border border-gray-200" sx={{ p: 2 }}>
+            <div className="flex items-center justify-between mb-2">
+              <Typography
+                variant="body2"
+                className="font-semibold text-gray-700 flex items-center gap-1"
+              >
+                <PersonIcon fontSize="small" className="text-green-600" />
+                Consignee Details
               </Typography>
-              <IconButton size="small" color="primary">
-                <AddIcon fontSize="small" />
-              </IconButton>
-              <Button size="small" variant="outlined" sx={{ ml: "auto", fontSize: "0.75rem" }}>
-                New
-              </Button>
-            </Box>
-            
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={4}>
+              <div className="flex gap-0.5">
+                <IconButton size="small" sx={{ width: 24, height: 24 }}>
+                  <AddIcon sx={{ fontSize: 16 }} className="text-green-600" />
+                </IconButton>
+                <Button
+                  size="small"
+                  sx={{
+                    textTransform: "none",
+                    fontSize: "0.7rem",
+                    py: 0.25,
+                    px: 1,
+                    minHeight: 24,
+                  }}
+                >
+                  New
+                </Button>
+              </div>
+            </div>
+
+            <Grid container spacing={1}>
+              <Grid item xs={12} sm={6} md={4}>
                 <Autocomplete
                   size="small"
                   options={getConsigneeOptions()}
-                  value={getConsigneeOptions().find(option => 
-                    option.value === getValue('consignee_name')
-                  ) || null}
-                  onChange={(event, newValue) => handleFieldChange('consignee_name', newValue?.value || '')}
+                  value={
+                    getConsigneeOptions().find(
+                      (option) => option.value === getValue("consignee_name")
+                    ) || null
+                  }
+                  onChange={(event, newValue) => {
+                    handleFieldChange("consignee_name", newValue?.value || "");
+                  }}
                   getOptionLabel={(option) => option.label}
                   renderInput={(params) => (
                     <TextField
                       {...params}
                       label="Consignee"
+                      sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                       InputProps={{
                         ...params.InputProps,
                         endAdornment: (
                           <>
                             {params.InputProps.endAdornment}
-                            <IconButton size="small">
-                              <EditIcon fontSize="small" />
+                            <IconButton size="small" sx={{ p: 0.5 }}>
+                              <EditIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                           </>
-                        )
+                        ),
                       }}
                     />
                   )}
                 />
               </Grid>
-              
-              <Grid item xs={12} md={4}>
+
+              <Grid item xs={12} sm={6} md={4}>
                 <TextField
                   fullWidth
                   label="Address"
                   size="small"
-                  value={getValue('consignee_address')}
-                  onChange={(e) => handleFieldChange('consignee_address', e.target.value)}
+                  value={getValue("consignee_address")}
+                  onChange={(e) =>
+                    handleFieldChange("consignee_address", e.target.value)
+                  }
                   placeholder="KOREA"
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
-              
+
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   label="Cons Country"
                   size="small"
-                  value={getValue('consignee_country')}
-                  onChange={(e) => handleFieldChange('consignee_country', e.target.value)}
+                  value={getValue("consignee_country")}
+                  onChange={(e) =>
+                    handleFieldChange("consignee_country", e.target.value)
+                  }
                   placeholder="Korea, Republic of"
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
-            </Grid>
 
-            {/* Additional Fields Row */}
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
                   label="Sales Person"
                   size="small"
-                  value={getValue('sales_person')}
-                  onChange={(e) => handleFieldChange('sales_person', e.target.value)}
+                  value={getValue("sales_person")}
+                  onChange={(e) =>
+                    handleFieldChange("sales_person", e.target.value)
+                  }
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
-              
-              <Grid item xs={12} md={3}>
+
+              <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
                   label="Business Dimensions"
                   size="small"
-                  value={getValue('business_dimensions')}
-                  onChange={(e) => handleFieldChange('business_dimensions', e.target.value)}
+                  value={getValue("business_dimensions")}
+                  onChange={(e) =>
+                    handleFieldChange("business_dimensions", e.target.value)
+                  }
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
-              
-              <Grid item xs={12} md={6}>
+
+              <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
                   label="Quotation"
                   size="small"
-                  value={getValue('quotation')}
-                  onChange={(e) => handleFieldChange('quotation', e.target.value)}
+                  value={getValue("quotation")}
+                  onChange={(e) =>
+                    handleFieldChange("quotation", e.target.value)
+                  }
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
             </Grid>
-            
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, fontStyle: "italic" }}>
-              Note: Items in <em>italic</em> indicates the fields which are used for EDI file submission.
-            </Typography>
+
+            <div className="mt-2 p-1.5 bg-blue-50 border-l-4 border-blue-400 rounded">
+              <Typography variant="caption" className="text-blue-800">
+                ℹ️ Note: Items in <em>italic</em> indicates the fields which are
+                used for EDI file submission.
+              </Typography>
+            </div>
           </Card>
         </Grid>
-
-        {/* Action Buttons */}
-        <Grid item xs={12}>
-          <Box display="flex" gap={2} justifyContent="flex-end">
-            <Button variant="outlined" size="small">Copy Previous Job</Button>
-            <Button variant="outlined" size="small">Import From File</Button>
-            <Button variant="contained" size="small">Declarations</Button>
-            <Button variant="outlined" size="small" color="error">Close</Button>
-          </Box>
-        </Grid>
       </Grid>
-    </Box>
+    </div>
   );
 };
 

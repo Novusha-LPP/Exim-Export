@@ -267,26 +267,35 @@ const TariffHeadForm = ({ tariffHeadData, onSave, onCancel }) => {
 };
 
 // List Component
+// List Component
 const TariffHeadList = ({ onEdit, onDelete, refresh }) => {
   const [tariffHeads, setTariffHeads] = useState([]);
+  const [filteredTariffHeads, setFilteredTariffHeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
   const [filters, setFilters] = useState({
     page: 1,
-    search: "",
     uqc: "",
     status: "",
   });
+  const [searchTerm, setSearchTerm] = useState("");
 
+  // Fetch all tariff heads
   useEffect(() => {
     fetchTariffHeads();
   }, [filters, refresh]);
+
+  // Filter tariff heads whenever searchTerm or tariffHeads change
+  useEffect(() => {
+    filterTariffHeads();
+  }, [searchTerm, tariffHeads]);
 
   const fetchTariffHeads = async () => {
     try {
       setLoading(true);
       const response = await TariffHeadService.getAll(filters);
-      setTariffHeads(response.data || response);
+      const tariffHeadsData = response.data || response;
+      setTariffHeads(tariffHeadsData);
       setPagination(response.pagination || {});
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -296,8 +305,39 @@ const TariffHeadList = ({ onEdit, onDelete, refresh }) => {
     }
   };
 
+  const filterTariffHeads = () => {
+    if (!searchTerm.trim()) {
+      setFilteredTariffHeads(tariffHeads);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = tariffHeads.filter(
+      (tariffHead) =>
+        (tariffHead.tariffHead && 
+         tariffHead.tariffHead.toLowerCase().includes(searchLower)) ||
+        (tariffHead.description && 
+         tariffHead.description.toLowerCase().includes(searchLower)) ||
+        (tariffHead.uqc && 
+         tariffHead.uqc.toLowerCase().includes(searchLower)) ||
+        (tariffHead.status && 
+         tariffHead.status.toLowerCase().includes(searchLower)) ||
+        (tariffHead._id && 
+         tariffHead._id.toLowerCase().includes(searchLower))
+    );
+    setFilteredTariffHeads(filtered);
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   const truncateDescription = (text, maxLength = 100) => {
@@ -316,15 +356,21 @@ const TariffHeadList = ({ onEdit, onDelete, refresh }) => {
 
   return (
     <div>
-      {/* Filters */}
+      {/* Filters - Enhanced with global search */}
       <Row className="mb-3">
         <Col md={6}>
           <Form.Control
             type="text"
-            placeholder="Search by tariff head or description..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange("search", e.target.value)}
+            placeholder="Search by tariff head, description, UQC, or status..."
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
+          {searchTerm && (
+            <Form.Text className="text-muted">
+              Showing {filteredTariffHeads.length} of {tariffHeads.length} tariff heads
+              {searchTerm && ` matching "${searchTerm}"`}
+            </Form.Text>
+          )}
         </Col>
         <Col md={3}>
           <Form.Select
@@ -352,6 +398,16 @@ const TariffHeadList = ({ onEdit, onDelete, refresh }) => {
         </Col>
       </Row>
 
+      {/* Results Counter */}
+      <Row className="mb-3">
+        <Col md={6}>
+          <div className="border rounded p-2 bg-light">
+            <div className="h6 mb-0 text-primary">{filteredTariffHeads.length}</div>
+            <div className="text-muted small">Total Tariff Heads</div>
+          </div>
+        </Col>
+      </Row>
+
       {/* Table */}
       <div className="table-responsive">
         <Table striped bordered hover>
@@ -365,67 +421,86 @@ const TariffHeadList = ({ onEdit, onDelete, refresh }) => {
             </tr>
           </thead>
           <tbody>
-            {tariffHeads.map((item) => (
-              <tr key={item._id}>
-                <td>
-                  <span className="font-monospace text-primary">
-                    <strong>{item.tariffHead}</strong>
-                  </span>
-                </td>
-                <td>
-                  <div title={item.description}>
-                    {truncateDescription(item.description)}
-                  </div>
-                </td>
-                <td>
-                  <Badge bg="info" className="font-monospace">
-                    {item.uqc}
-                  </Badge>
-                </td>
-                <td>
-                  <Badge
-                    bg={
-                      item.status === "Active"
-                        ? "success"
-                        : item.status === "Obsolete"
-                        ? "danger"
-                        : "secondary"
-                    }
-                  >
-                    {item.status}
-                  </Badge>
-                </td>
-                <td>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="me-2"
-                    onClick={() => onEdit(item)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => onDelete([item._id])}
-                  >
-                    Delete
-                  </Button>
+            {filteredTariffHeads.length > 0 ? (
+              filteredTariffHeads.map((item) => (
+                <tr key={item._id}>
+                  <td>
+                    <span className="font-monospace text-primary">
+                      <strong>{item.tariffHead}</strong>
+                    </span>
+                  </td>
+                  <td>
+                    <div title={item.description}>
+                      {truncateDescription(item.description)}
+                    </div>
+                  </td>
+                  <td>
+                    <Badge bg="info" className="font-monospace">
+                      {item.uqc}
+                    </Badge>
+                  </td>
+                  <td>
+                    <Badge
+                      bg={
+                        item.status === "Active"
+                          ? "success"
+                          : item.status === "Obsolete"
+                          ? "danger"
+                          : "secondary"
+                      }
+                    >
+                      {item.status}
+                    </Badge>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="me-2"
+                      onClick={() => onEdit(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => onDelete([item._id])}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="text-center py-4">
+                  <Alert variant="info" className="text-center">
+                    {searchTerm ? (
+                      <>
+                        No tariff heads found matching "{searchTerm}".
+                        <br />
+                        <Button 
+                          variant="outline-primary" 
+                          size="sm" 
+                          className="mt-2"
+                          onClick={clearSearch}
+                        >
+                          Clear Search
+                        </Button>
+                      </>
+                    ) : (
+                      "No tariff heads found."
+                    )}
+                  </Alert>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </div>
 
-      {tariffHeads.length === 0 && (
-        <Alert variant="info" className="text-center">
-          No tariff heads found.
-        </Alert>
-      )}
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
+      {/* Pagination - Only show if not searching */}
+      {!searchTerm && pagination.totalPages > 1 && (
         <nav>
           <ul className="pagination justify-content-center">
             <li

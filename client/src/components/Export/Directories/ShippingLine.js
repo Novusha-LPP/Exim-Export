@@ -242,26 +242,35 @@ const ShippingLineForm = ({ shippingLineData, onSave, onCancel }) => {
 };
 
 // List Component
+// List Component
 const ShippingLineList = ({ onEdit, onDelete, refresh }) => {
   const [shippingLines, setShippingLines] = useState([]);
+  const [filteredShippingLines, setFilteredShippingLines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
   const [filters, setFilters] = useState({
     page: 1,
-    search: "",
     location: "",
     status: "",
   });
+  const [searchTerm, setSearchTerm] = useState("");
 
+  // Fetch all shipping lines
   useEffect(() => {
     fetchShippingLines();
   }, [filters, refresh]);
+
+  // Filter shipping lines whenever searchTerm or shippingLines change
+  useEffect(() => {
+    filterShippingLines();
+  }, [searchTerm, shippingLines]);
 
   const fetchShippingLines = async () => {
     try {
       setLoading(true);
       const response = await ShippingLineService.getAll(filters);
-      setShippingLines(response.data || response);
+      const shippingLinesData = response.data || response;
+      setShippingLines(shippingLinesData);
       setPagination(response.pagination || {});
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -271,8 +280,39 @@ const ShippingLineList = ({ onEdit, onDelete, refresh }) => {
     }
   };
 
+  const filterShippingLines = () => {
+    if (!searchTerm.trim()) {
+      setFilteredShippingLines(shippingLines);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = shippingLines.filter(
+      (shippingLine) =>
+        (shippingLine.shippingLineCode &&
+          shippingLine.shippingLineCode.toLowerCase().includes(searchLower)) ||
+        (shippingLine.shippingName &&
+          shippingLine.shippingName.toLowerCase().includes(searchLower)) ||
+        (shippingLine.location &&
+          shippingLine.location.toLowerCase().includes(searchLower)) ||
+        (shippingLine.status &&
+          shippingLine.status.toLowerCase().includes(searchLower)) ||
+        (shippingLine._id &&
+          shippingLine._id.toLowerCase().includes(searchLower))
+    );
+    setFilteredShippingLines(filtered);
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   if (loading) {
@@ -285,15 +325,22 @@ const ShippingLineList = ({ onEdit, onDelete, refresh }) => {
 
   return (
     <div>
-      {/* Filters */}
+      {/* Filters - Enhanced with global search */}
       <Row className="mb-3">
         <Col md={4}>
           <Form.Control
             type="text"
-            placeholder="Search by code, name, or location..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange("search", e.target.value)}
+            placeholder="Search by code, name, location, or status..."
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
+          {searchTerm && (
+            <Form.Text className="text-muted">
+              Showing {filteredShippingLines.length} of {shippingLines.length}{" "}
+              shipping lines
+              {searchTerm && ` matching "${searchTerm}"`}
+            </Form.Text>
+          )}
         </Col>
         <Col md={4}>
           <Form.Control
@@ -316,6 +363,18 @@ const ShippingLineList = ({ onEdit, onDelete, refresh }) => {
         </Col>
       </Row>
 
+      {/* Results Counter */}
+      <Row className="mb-3">
+        <Col md={4}>
+          <div className="border rounded p-2 bg-light">
+            <div className="h6 mb-0 text-primary">
+              {filteredShippingLines.length}
+            </div>
+            <div className="text-muted small">Total Shipping Lines</div>
+          </div>
+        </Col>
+      </Row>
+
       {/* Table */}
       <div className="table-responsive">
         <Table striped bordered hover>
@@ -329,61 +388,80 @@ const ShippingLineList = ({ onEdit, onDelete, refresh }) => {
             </tr>
           </thead>
           <tbody>
-            {shippingLines.map((item) => (
-              <tr key={item._id}>
-                <td>
-                  <span className="font-monospace text-primary">
-                    <strong>{item.shippingLineCode}</strong>
-                  </span>
-                </td>
-                <td>
-                  <strong>{item.shippingName}</strong>
-                </td>
-                <td>{item.location}</td>
-                <td>
-                  <Badge
-                    bg={
-                      item.status === "Active"
-                        ? "success"
-                        : item.status === "Suspended"
-                        ? "warning"
-                        : "secondary"
-                    }
-                  >
-                    {item.status}
-                  </Badge>
-                </td>
-                <td>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="me-2"
-                    onClick={() => onEdit(item)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => onDelete([item._id])}
-                  >
-                    Delete
-                  </Button>
+            {filteredShippingLines.length > 0 ? (
+              filteredShippingLines.map((item) => (
+                <tr key={item._id}>
+                  <td>
+                    <span className="font-monospace text-primary">
+                      <strong>{item.shippingLineCode}</strong>
+                    </span>
+                  </td>
+                  <td>
+                    <strong>{item.shippingName}</strong>
+                  </td>
+                  <td>{item.location}</td>
+                  <td>
+                    <Badge
+                      bg={
+                        item.status === "Active"
+                          ? "success"
+                          : item.status === "Suspended"
+                          ? "warning"
+                          : "secondary"
+                      }
+                    >
+                      {item.status}
+                    </Badge>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="me-2"
+                      onClick={() => onEdit(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => onDelete([item._id])}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="text-center py-4">
+                  <Alert variant="info" className="text-center">
+                    {searchTerm ? (
+                      <>
+                        No shipping lines found matching "{searchTerm}".
+                        <br />
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="mt-2"
+                          onClick={clearSearch}
+                        >
+                          Clear Search
+                        </Button>
+                      </>
+                    ) : (
+                      "No shipping lines found."
+                    )}
+                  </Alert>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </div>
 
-      {shippingLines.length === 0 && (
-        <Alert variant="info" className="text-center">
-          No shipping lines found.
-        </Alert>
-      )}
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
+      {/* Pagination - Only show if not searching */}
+      {!searchTerm && pagination.totalPages > 1 && (
         <nav>
           <ul className="pagination justify-content-center">
             <li

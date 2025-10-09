@@ -232,24 +232,31 @@ const PortForm = ({ portData, onSave, onCancel }) => {
 // List Component
 const PortList = ({ onEdit, onDelete, refresh }) => {
   const [ports, setPorts] = useState([]);
+  const [filteredPorts, setFilteredPorts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
   const [availableCountries, setAvailableCountries] = useState([]);
   const [filters, setFilters] = useState({
     page: 1,
-    search: "",
     country: "",
   });
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchPorts();
   }, [filters, refresh]);
 
+  useEffect(() => {
+    filterPorts();
+  }, [searchTerm, ports]);
+
   const fetchPorts = async () => {
     try {
       setLoading(true);
       const response = await PortService.getAll(filters);
-      setPorts(response.data || response);
+      const portsData = response.data || response;
+      setPorts(portsData);
+      setFilteredPorts(portsData);
       setPagination(response.pagination || {});
 
       // Extract unique countries for filtering
@@ -260,13 +267,41 @@ const PortList = ({ onEdit, onDelete, refresh }) => {
     } catch (error) {
       console.error("Error fetching data:", error);
       setPorts([]);
+      setFilteredPorts([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const filterPorts = () => {
+    if (!searchTerm.trim()) {
+      setFilteredPorts(ports);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = ports.filter(
+      (port) =>
+        (port.portCode && port.portCode.toLowerCase().includes(searchLower)) ||
+        (port.portName && port.portName.toLowerCase().includes(searchLower)) ||
+        (port.portDetails &&
+          port.portDetails.toLowerCase().includes(searchLower)) ||
+        (port.country && port.country.toLowerCase().includes(searchLower)) ||
+        (port._id && port._id.toLowerCase().includes(searchLower))
+    );
+    setFilteredPorts(filtered);
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   const truncateDetails = (text, maxLength = 100) => {
@@ -290,10 +325,16 @@ const PortList = ({ onEdit, onDelete, refresh }) => {
         <Col md={6}>
           <Form.Control
             type="text"
-            placeholder="Search by port code or name..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange("search", e.target.value)}
+            placeholder="Search by port code, name, details, or country..."
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
+          {searchTerm && (
+            <Form.Text className="text-muted">
+              Showing {filteredPorts.length} of {ports.length} ports
+              {searchTerm && ` matching "${searchTerm}"`}
+            </Form.Text>
+          )}
         </Col>
         <Col md={6}>
           <Form.Select
@@ -310,6 +351,16 @@ const PortList = ({ onEdit, onDelete, refresh }) => {
         </Col>
       </Row>
 
+      {/* Results Counter */}
+      <Row className="mb-3">
+        <Col md={6}>
+          <div className="border rounded p-2 bg-light">
+            <div className="h6 mb-0 text-primary">{filteredPorts.length}</div>
+            <div className="text-muted small">Total Ports</div>
+          </div>
+        </Col>
+      </Row>
+
       {/* Table */}
       <div className="table-responsive">
         <Table striped bordered hover>
@@ -323,55 +374,74 @@ const PortList = ({ onEdit, onDelete, refresh }) => {
             </tr>
           </thead>
           <tbody>
-            {ports.map((item) => (
-              <tr key={item._id}>
-                <td>
-                  <span className="font-monospace text-primary">
-                    <strong>{item.portCode}</strong>
-                  </span>
-                </td>
-                <td>
-                  <strong>{item.portName}</strong>
-                </td>
-                <td>
-                  <div title={item.portDetails}>
-                    {truncateDetails(item.portDetails) || "-"}
-                  </div>
-                </td>
-                <td>
-                  <span className="badge bg-info">{item.country}</span>
-                </td>
-                <td>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="me-2"
-                    onClick={() => onEdit(item)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => onDelete([item._id])}
-                  >
-                    Delete
-                  </Button>
+            {filteredPorts.length > 0 ? (
+              filteredPorts.map((item) => (
+                <tr key={item._id}>
+                  <td>
+                    <span className="font-monospace text-primary">
+                      <strong>{item.portCode}</strong>
+                    </span>
+                  </td>
+                  <td>
+                    <strong>{item.portName}</strong>
+                  </td>
+                  <td>
+                    <div title={item.portDetails}>
+                      {truncateDetails(item.portDetails) || "-"}
+                    </div>
+                  </td>
+                  <td>
+                    <span className="badge bg-info">{item.country}</span>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="me-2"
+                      onClick={() => onEdit(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => onDelete([item._id])}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="text-center py-4">
+                  <Alert variant="info" className="text-center">
+                    {searchTerm ? (
+                      <>
+                        No ports found matching "{searchTerm}".
+                        <br />
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="mt-2"
+                          onClick={clearSearch}
+                        >
+                          Clear Search
+                        </Button>
+                      </>
+                    ) : (
+                      "No ports found."
+                    )}
+                  </Alert>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </div>
 
-      {ports.length === 0 && (
-        <Alert variant="info" className="text-center">
-          No ports found.
-        </Alert>
-      )}
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
+      {/* Pagination - Only show if not searching */}
+      {!searchTerm && pagination.totalPages > 1 && (
         <nav>
           <ul className="pagination justify-content-center">
             <li

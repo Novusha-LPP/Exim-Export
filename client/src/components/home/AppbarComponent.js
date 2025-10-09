@@ -43,16 +43,33 @@ function AppbarComponent(props) {
         >
           <ArrowBackIcon sx={{ color: "#000" }} />
         </IconButton>
-
-        <div>
+        <Box
+          sx={{
+            height: 40,
+            width: "auto",
+            display: "flex",
+            alignItems: "center",
+            cursor: "pointer",
+            px: 1,
+            transition: "transform 0.2s",
+            "&:hover": {
+              transform: "scale(1.04)",
+              filter: "brightness(1.08)",
+            },
+          }}
+          onClick={() => navigate("/")}
+        >
           <img
             src={new URL("../../assets/images/logo.webp", import.meta.url).href}
             alt="logo"
-            height="50px"
-            onClick={() => navigate("/")}
-            style={{ cursor: "pointer" }}
+            style={{
+              height: 40,
+              width: "auto",
+              objectFit: "contain",
+              display: "block",
+            }}
           />
-        </div>
+        </Box>
 
         {/* Spacer to push the version text to the extreme right */}
         <Box sx={{ flexGrow: 1 }} />
@@ -65,8 +82,8 @@ function AppbarComponent(props) {
             Version: {import.meta.env.VITE_VERSION}
           </Typography>
           {/* <Typography variant="body2" sx={{ color: "#666", mt: 0.5 }}>
-            {import.meta.env.VITE_VERSION_DATE}
-          </Typography> */}
+              {import.meta.env.VITE_VERSION_DATE}
+            </Typography> */}
         </Box>
       </Toolbar>
     </AppBar>

@@ -118,7 +118,7 @@ const DirectoryDetailView = ({ directory }) => (
         <Paper
           sx={{
             bgcolor: "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
-            color: "white",
+
             p: 2,
           }}
         >
@@ -126,7 +126,7 @@ const DirectoryDetailView = ({ directory }) => (
             <Avatar
               sx={{ bgcolor: "rgba(255,255,255,0.2)", width: 56, height: 56 }}
             >
-              <BusinessIcon fontSize="large" />
+              <BusinessIcon fontSize="large" sx={{ color: "#1e3a6f" }} />
             </Avatar>
             <Box>
               <Typography variant="h5">{directory.organization}</Typography>
@@ -141,7 +141,7 @@ const DirectoryDetailView = ({ directory }) => (
                     directory.approvalStatus === "Approved"
                       ? "rgba(76, 175, 80, 0.16)"
                       : "rgba(255, 193, 7, 0.17)",
-                  color: "white",
+
                   border: "1px solid rgba(255,255,255,0.35)",
                 }}
               />
@@ -412,7 +412,7 @@ const ExportDirectory = () => {
   return (
     <ThemeProvider theme={logisticsTheme}>
       <Box sx={{ bgcolor: "background.default", minHeight: "100vh" }}>
-        <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Container maxWidth="xxl" sx={{ py: 4 }}>
           {/* Header */}
           <Paper
             sx={{

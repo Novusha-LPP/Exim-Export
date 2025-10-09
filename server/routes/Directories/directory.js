@@ -122,7 +122,7 @@ router.post("/api/directory/", async (req, res) => {
 });
 
 // PUT /api/directory/:id - Update directory
-router.put("/api/directory/:id", validateDirectory, async (req, res) => {
+router.put("/api/directory/:id", async (req, res) => {
   try {
     const directory = await Directory.findByIdAndUpdate(
       req.params.id,

@@ -78,26 +78,19 @@ const JobsListPage = () => {
                 <TableCell>Job Number</TableCell>
                 <TableCell>Exporter Name</TableCell>
                 <TableCell>Consignee Name</TableCell>
-                <TableCell align="center">Details</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {jobs.map((job) => (
-                <TableRow hover key={job._id} sx={{ cursor: "pointer" }}>
+                <TableRow
+                  hover
+                  key={job._id}
+                  sx={{ cursor: "pointer" }}
+                  onClick={() => handleRowClick(job.job_no)}
+                >
                   <TableCell>{job.job_no}</TableCell>
                   <TableCell>{job.exporter_name}</TableCell>
                   <TableCell>{job.consignee_name}</TableCell>
-                  <TableCell align="center">
-                    <Tooltip title="Open Booking Management">
-                      <IconButton
-                        onClick={() => handleRowClick(job.job_no)}
-                        size="small"
-                        color="primary"
-                      >
-                        <ChevronRight />
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
                 </TableRow>
               ))}
               {jobs.length === 0 && (

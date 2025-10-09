@@ -219,57 +219,74 @@ const UQCForm = ({ uqcData, onSave, onCancel }) => {
 };
 
 // List Component
-const UQCList = ({ onEdit, onDelete, refresh }) => {
-  const [uqcs, setUqcs] = useState([]);
+const AirPortList = ({ onEdit, onDelete, refresh }) => {
+  const [airPorts, setAirPorts] = useState([]);
+  const [filteredAirPorts, setFilteredAirPorts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
-  const [availableTypes, setAvailableTypes] = useState([]);
   const [filters, setFilters] = useState({
     page: 1,
-    search: "",
-    type: "",
   });
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    fetchUQCs();
+    fetchAirPorts();
   }, [filters, refresh]);
 
-  const fetchUQCs = async () => {
+  useEffect(() => {
+    filterAirPorts();
+  }, [searchTerm, airPorts]);
+
+  const fetchAirPorts = async () => {
     try {
       setLoading(true);
-      const response = await UQCService.getAll(filters);
-      setUqcs(response.data || response);
+      const response = await AirPortService.getAll(filters);
+      const airPortsData = response.data || response;
+      setAirPorts(airPortsData);
+      setFilteredAirPorts(airPortsData);
       setPagination(response.pagination || {});
-
-      // Extract unique types for filtering
-      const types = [
-        ...new Set((response.data || []).map((item) => item.type)),
-      ].sort();
-      setAvailableTypes(types);
     } catch (error) {
       console.error("Error fetching data:", error);
-      setUqcs([]);
+      setAirPorts([]);
+      setFilteredAirPorts([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const filterAirPorts = () => {
+    if (!searchTerm.trim()) {
+      setFilteredAirPorts(airPorts);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = airPorts.filter(
+      (airPort) =>
+        (airPort.portCode &&
+          airPort.portCode.toLowerCase().includes(searchLower)) ||
+        (airPort.portName &&
+          airPort.portName.toLowerCase().includes(searchLower)) ||
+        (airPort.portDetails &&
+          airPort.portDetails.toLowerCase().includes(searchLower)) ||
+        (airPort._id && airPort._id.toLowerCase().includes(searchLower))
+    );
+    setFilteredAirPorts(filtered);
   };
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
   };
 
-  const getTypeColor = (type) => {
-    const colors = {
-      Weight: "primary",
-      Length: "success",
-      Volume: "info",
-      Area: "warning",
-      Measure: "secondary",
-    };
-    return colors[type] || "secondary";
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
   };
 
-  const truncateDescription = (text, maxLength = 100) => {
+  const clearSearch = () => {
+    setSearchTerm("");
+  };
+
+  const truncateDetails = (text, maxLength = 150) => {
     return text && text.length > maxLength
       ? `${text.substring(0, maxLength)}...`
       : text;
@@ -285,28 +302,33 @@ const UQCList = ({ onEdit, onDelete, refresh }) => {
 
   return (
     <div>
-      {/* Filters */}
+      {/* Search */}
       <Row className="mb-3">
         <Col md={6}>
           <Form.Control
             type="text"
-            placeholder="Search by UQC code or description..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange("search", e.target.value)}
+            placeholder="Search by port code, name, or details..."
+            value={searchTerm}
+            onChange={handleSearchChange}
           />
+          {searchTerm && (
+            <Form.Text className="text-muted">
+              Showing {filteredAirPorts.length} of {airPorts.length} air ports
+              {searchTerm && ` matching "${searchTerm}"`}
+            </Form.Text>
+          )}
         </Col>
+      </Row>
+
+      {/* Results Counter */}
+      <Row className="mb-3">
         <Col md={6}>
-          <Form.Select
-            value={filters.type}
-            onChange={(e) => handleFilterChange("type", e.target.value)}
-          >
-            <option value="">All Types</option>
-            {availableTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </Form.Select>
+          <div className="border rounded p-2 bg-light">
+            <div className="h6 mb-0 text-primary">
+              {filteredAirPorts.length}
+            </div>
+            <div className="text-muted small">Total Air Ports</div>
+          </div>
         </Col>
       </Row>
 
@@ -315,59 +337,78 @@ const UQCList = ({ onEdit, onDelete, refresh }) => {
         <Table striped bordered hover>
           <thead>
             <tr>
-              <th style={{ width: "100px" }}>UQC Code</th>
-              <th>Description</th>
-              <th style={{ width: "150px" }}>UQC Type</th>
+              <th style={{ width: "120px" }}>Port Code</th>
+              <th style={{ width: "250px" }}>Port Name</th>
+              <th>Port Details</th>
               <th style={{ width: "150px" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {uqcs.map((item) => (
-              <tr key={item._id}>
-                <td>
-                  <span className="font-monospace text-primary">
-                    <strong>{item.uqc}</strong>
-                  </span>
-                </td>
-                <td>
-                  <div title={item.description}>
-                    {truncateDescription(item.description)}
-                  </div>
-                </td>
-                <td>
-                  <Badge bg={getTypeColor(item.type)}>{item.type}</Badge>
-                </td>
-                <td>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="me-2"
-                    onClick={() => onEdit(item)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => onDelete([item._id])}
-                  >
-                    Delete
-                  </Button>
+            {filteredAirPorts.length > 0 ? (
+              filteredAirPorts.map((item) => (
+                <tr key={item._id}>
+                  <td>
+                    <span className="font-monospace text-primary">
+                      <strong>{item.portCode}</strong>
+                    </span>
+                  </td>
+                  <td>
+                    <strong>{item.portName}</strong>
+                  </td>
+                  <td>
+                    <div title={item.portDetails}>
+                      {truncateDetails(item.portDetails) || "-"}
+                    </div>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="me-2"
+                      onClick={() => onEdit(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => onDelete([item._id])}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" className="text-center py-4">
+                  <Alert variant="info" className="text-center">
+                    {searchTerm ? (
+                      <>
+                        No air ports found matching "{searchTerm}".
+                        <br />
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="mt-2"
+                          onClick={clearSearch}
+                        >
+                          Clear Search
+                        </Button>
+                      </>
+                    ) : (
+                      "No air ports found."
+                    )}
+                  </Alert>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </div>
 
-      {uqcs.length === 0 && (
-        <Alert variant="info" className="text-center">
-          No UQCs found.
-        </Alert>
-      )}
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
+      {/* Pagination - Only show if not searching */}
+      {!searchTerm && pagination.totalPages > 1 && (
         <nav>
           <ul className="pagination justify-content-center">
             <li
