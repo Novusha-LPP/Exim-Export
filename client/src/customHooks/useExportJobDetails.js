@@ -45,17 +45,11 @@ function useExportJobDetails(params, setFileSnackbar) {
     async function getExportJobDetails() {
       try {
         setLoading(true);
-        console.log("Fetching export job details for:", params);
-
         const response = await axios.get(
           `${import.meta.env.VITE_API_STRING}/export-jobs/${params.year}/${
             params.job_no
           }`
         );
-
-        console.log("Full API Response:", response);
-        console.log("Response data:", response.data);
-
         let jobData = null;
 
         if (response.data) {
@@ -68,7 +62,6 @@ function useExportJobDetails(params, setFileSnackbar) {
           }
         }
 
-        console.log("Processed jobData:", jobData);
 
         if (jobData) {
           setData(jobData);
@@ -870,8 +863,6 @@ function useExportJobDetails(params, setFileSnackbar) {
   // Update formik initial values when data is fetched - COMPREHENSIVE MAPPING
   useEffect(() => {
     if (data) {
-      console.log("Setting formik values with data:", data);
-
       formik.setValues({
         // Basic job info - Map from API response
         job_no: safeValue(data.job_no),

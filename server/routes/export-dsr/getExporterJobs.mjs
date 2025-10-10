@@ -260,13 +260,15 @@ router.post('/api/test/seed-data', async (req, res) => {
   }
 });
 
+// OPTION 1: Search using regex pattern (Recommended)
 router.get("/api/export-jobs/:year/:jobNo", async (req, res) => {
   try {
     const { jobNo, year } = req.params;
 
+    // Search for job_no that contains the jobNo anywhere in the string
     const job = await ExportJobModel.findOne({
       year,
-      job_no: jobNo,
+      job_no: { $regex: jobNo, $options: 'i' }
     });
 
     if (!job) {

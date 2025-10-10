@@ -41,7 +41,7 @@ export const navigateToModule = (module, navigate) => {
       return navigate("/export-submission");
     case "Export - Documentation":
       return navigate("/documentation-jobs");
-    case "Export - Esanchit":
+    case "Export - ESanchit":
       return navigate("/esanchit-job-list");
     case "Handover":
       return navigate("/handover");

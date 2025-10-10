@@ -37,15 +37,15 @@ function DsrTabs() {
     setTabValue(newValue);
   };
 
-  React.useEffect(() => {
-    async function getLastJobsDate() {
-      const res = await axios(
-        `${import.meta.env.VITE_API_STRING}/get-last-jobs-date`
-      );
-      setLastJobsDate(res.data.lastJobsDate);
-    }
-    getLastJobsDate();
-  }, [alt]);
+  // React.useEffect(() => {
+  //   async function getLastJobsDate() {
+  //     const res = await axios(
+  //       `${import.meta.env.VITE_API_STRING}/get-last-jobs-date`
+  //     );
+  //     setLastJobsDate(res.data.lastJobsDate);
+  //   }
+  //   getLastJobsDate();
+  // }, [alt]);
 
   const { handleFileUpload, snackbar, loading, error, setError } =
     useFileUpload(inputRef, alt, setAlt);

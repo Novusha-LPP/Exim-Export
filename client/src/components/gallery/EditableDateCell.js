@@ -60,7 +60,7 @@ const EditableDateCell = memo(({ cell, onRowDataUpdate }) => {
   const [localStatus, setLocalStatus] = useState(detailed_status);
   const [containers, setContainers] = useState(() => [...container_nos]);
   const [editable, setEditable] = useState(null);
-  const [localFreeTime, setLocalFreeTime] = useState(free_time);
+  const [local, setLocalFreeTime] = useState(free_time);
   const [tempDateValue, setTempDateValue] = useState("");
   const [tempTimeValue, setTempTimeValue] = useState("");
   const [dateError, setDateError] = useState("");

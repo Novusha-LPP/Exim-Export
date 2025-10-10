@@ -1,43 +1,35 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  TablePagination,
-  TextField,
   Box,
   Typography,
-  Chip,
-  IconButton,
-  Tooltip,
+  Button,
+  TextField,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Grid,
-  Card,
-  CardContent,
-  Button,
   Tabs,
   Tab,
   Badge,
+  Chip,
+  Autocomplete,
+  IconButton,
 } from "@mui/material";
 import {
   Edit,
   Delete,
   Visibility,
-  Refresh,
-  Download,
   BuildCircle as ToolboxIcon,
+  Download as DownloadIcon,
 } from "@mui/icons-material";
-import { format, parseISO } from "date-fns";
-import { useNavigate } from "react-router-dom"; // Add this import
+import { format, parseISO, isValid } from "date-fns";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import PropTypes from "prop-types";
+import {
+  MaterialReactTable,
+  useMaterialReactTable,
+} from "material-react-table";
 
 // Custom Tab Panel Component
 function CustomTabPanel(props) {
@@ -55,20 +47,57 @@ function CustomTabPanel(props) {
   );
 }
 
+CustomTabPanel.propTypes = {
+  children: PropTypes.node,
+  index: PropTypes.number.isRequired,
+  value: PropTypes.number.isRequired,
+};
+
+// Safe date formatter function
+const safeDateFormatter = (value) => {
+  if (!value) return "-";
+
+  try {
+    const date = parseISO(value);
+    return isValid(date) ? format(date, "dd-MM-yyyy") : "-";
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return "-";
+  }
+};
+
+// Search Input Component
+const SearchInput = ({ searchQuery, setSearchQuery, fetchJobs }) => {
+  return (
+    <TextField
+      size="small"
+      variant="outlined"
+      placeholder="Search..."
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      onKeyPress={(e) => {
+        if (e.key === "Enter") {
+          fetchJobs();
+        }
+      }}
+      sx={{ width: "200px", marginRight: "20px" }}
+    />
+  );
+};
+
 // Export Jobs Table Component for each tab
 const ExportJobsTableContent = ({ status }) => {
-  const navigate = useNavigate(); // Add navigate hook
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
-  const [filters, setFilters] = useState({
-    search: "",
-    exporter: "",
-    country: "",
-    movement_type: "",
-  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedExporter, setSelectedExporter] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedMovementType, setSelectedMovementType] = useState("");
+  const [exporterNames, setExporterNames] = useState([]);
+  const [years, setYears] = useState([]);
+  const [selectedYear, setSelectedYear] = useState("all");
 
   const fetchJobs = async () => {
     try {
@@ -77,10 +106,12 @@ const ExportJobsTableContent = ({ status }) => {
         `${import.meta.env.VITE_API_STRING}/exports`,
         {
           params: {
-            page: page + 1,
-            limit: rowsPerPage,
-            status: status.toLowerCase(), // Add status filter
-            ...filters,
+            status: status.toLowerCase(),
+            search: searchQuery,
+            exporter: selectedExporter,
+            country: selectedCountry,
+            movement_type: selectedMovementType,
+            year: selectedYear === "all" ? "" : selectedYear,
           },
         }
       );
@@ -100,296 +131,371 @@ const ExportJobsTableContent = ({ status }) => {
 
   useEffect(() => {
     fetchJobs();
-  }, [page, rowsPerPage, filters, status]);
+  }, [status, selectedYear]);
 
-  // Handle row click navigation
-  const handleRowClick = (job, event) => {
-    // Prevent navigation if clicking on action buttons
-    if (event.target.closest(".MuiIconButton-root")) {
-      return;
+  useEffect(() => {
+    // Debounce search
+    const timeoutId = setTimeout(() => {
+      fetchJobs();
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, selectedExporter, selectedCountry, selectedMovementType]);
+
+  const handleViewClick = (job) => {
+    if (job) {
+      const jobNo = job.job_no?.split("/")[3];
+      const year = job.year;
+      if (jobNo && year) {
+        navigate(`/export-dsr/job/${year}/${jobNo}`, {
+          state: {
+            fromJobList: true,
+            searchQuery: searchQuery,
+            selectedExporter: selectedExporter,
+            selectedCountry: selectedCountry,
+            currentTab:
+              status === "Pending" ? 0 : status === "Completed" ? 1 : 2,
+          },
+        });
+      }
     }
-
-    const jobNo = job.job_no;
-    const year = job.year;
-
-    if (jobNo && year) {
-      navigate(`/export-dsr/job/${year}/${jobNo}`, {
-        state: {
-          fromJobList: true,
-          searchQuery: filters.search,
-          selectedExporter: filters.exporter,
-          selectedCountry: filters.country,
-          currentTab: status === "Pending" ? 0 : status === "Completed" ? 1 : 2,
-        },
-      });
-    }
   };
 
-  // Handle action button clicks
-  const handleViewClick = (job, event) => {
-    event.stopPropagation();
-    handleRowClick(job, event);
+  const handleEditClick = (job) => {
+    handleViewClick(job);
   };
 
-  const handleEditClick = (job, event) => {
-    event.stopPropagation();
-    handleRowClick(job, event);
-  };
-
-  const handleDeleteClick = (job, event) => {
-    event.stopPropagation();
-    // Add delete functionality here
+  const handleDeleteClick = (job) => {
     console.log("Delete job:", job);
+    // Add delete functionality here
   };
 
-  const columns = [
-    { id: "job_no", label: "Job Number", minWidth: 120 },
-    { id: "exporter_name", label: "Exporter", minWidth: 200 },
-    { id: "consignee_name", label: "Consignee Name", minWidth: 200 },
-    { id: "port_of_origin", label: "Port of Origin", minWidth: 150 },
-    { id: "port_of_discharge", label: "Port of Destination", minWidth: 150 },
-    { id: "country_of_final_destination", label: "Country", minWidth: 120 },
-    { id: "movement_type", label: "LCL/FCL/AIR", minWidth: 100 },
-    { id: "cntr_size", label: "CNTR 20/40", minWidth: 100 },
-    { id: "commercial_invoice_number", label: "Invoice No", minWidth: 120 },
-    { id: "commercial_invoice_date", label: "Invoice Date", minWidth: 120 },
-    { id: "commercial_invoice_value", label: "Invoice Value", minWidth: 120 },
-    { id: "shipping_bill_number", label: "SB Number", minWidth: 120 },
-    { id: "shipping_bill_date", label: "SB Date", minWidth: 120 },
-    { id: "total_packages", label: "No of Packages", minWidth: 120 },
-    { id: "net_weight_kg", label: "Net Weight Kgs", minWidth: 130 },
-    { id: "gross_weight_kg", label: "Gross Weight Kgs", minWidth: 140 },
-    {
-      id: "container_placement_date_factory",
-      label: "Container Placement",
-      minWidth: 160,
+  const columns = useMemo(
+    () => [
+      {
+        accessorKey: "job_no",
+        header: "Job Number",
+        size: 120,
+        enablePinning: true,
+      },
+      {
+        accessorKey: "exporter_name",
+        header: "Exporter",
+        size: 200,
+        enablePinning: true,
+      },
+      {
+        accessorKey: "consignee_name",
+        header: "Consignee Name",
+        size: 200,
+      },
+      {
+        accessorKey: "port_of_origin",
+        header: "Port of Origin",
+        size: 150,
+      },
+      {
+        accessorKey: "port_of_discharge",
+        header: "Port of Destination",
+        size: 150,
+      },
+      {
+        accessorKey: "country_of_final_destination",
+        header: "Country",
+        size: 120,
+      },
+      {
+        accessorKey: "movement_type",
+        header: "LCL/FCL/AIR",
+        size: 100,
+        Cell: ({ cell }) => (
+          <Chip
+            label={cell.getValue() || "N/A"}
+            size="small"
+            color="primary"
+            variant="outlined"
+          />
+        ),
+      },
+      {
+        accessorKey: "cntr_size",
+        header: "CNTR 20/40",
+        size: 100,
+      },
+      {
+        accessorKey: "commercial_invoice_number",
+        header: "Invoice No",
+        size: 120,
+      },
+      {
+        accessorKey: "commercial_invoice_date",
+        header: "Invoice Date",
+        size: 120,
+        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
+      },
+      {
+        accessorKey: "commercial_invoice_value",
+        header: "Invoice Value",
+        size: 120,
+      },
+      {
+        accessorKey: "shipping_bill_number",
+        header: "SB Number",
+        size: 120,
+      },
+      {
+        accessorKey: "shipping_bill_date",
+        header: "SB Date",
+        size: 120,
+        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
+      },
+      {
+        accessorKey: "total_packages",
+        header: "No of Packages",
+        size: 120,
+      },
+      {
+        accessorKey: "net_weight_kg",
+        header: "Net Weight Kgs",
+        size: 130,
+      },
+      {
+        accessorKey: "gross_weight_kg",
+        header: "Gross Weight Kgs",
+        size: 140,
+      },
+      {
+        accessorKey: "container_placement_date_factory",
+        header: "Container Placement",
+        size: 160,
+        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
+      },
+      {
+        accessorKey: "original_docs_received_date",
+        header: "Original Docs Received",
+        size: 180,
+        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
+      },
+      {
+        accessorKey: "gate_in_thar_khodiyar_date",
+        header: "Gate In Thar/Khodiyar",
+        size: 180,
+        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
+      },
+      {
+        accessorKey: "hand_over_date",
+        header: "Hand Over Date",
+        size: 140,
+        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
+      },
+      {
+        accessorKey: "rail_out_date_plan",
+        header: "Rail Out Plan",
+        size: 140,
+        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
+      },
+      {
+        accessorKey: "rail_out_date_actual",
+        header: "Rail Out Actual",
+        size: 150,
+        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
+      },
+      {
+        accessorKey: "port_gate_in_date",
+        header: "Port Gate In",
+        size: 140,
+        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
+      },
+      {
+        accessorKey: "tracking_remarks",
+        header: "Remarks",
+        size: 250,
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        size: 120,
+        enableColumnFilter: false,
+        enableSorting: false,
+        Cell: ({ row }) => (
+          <Box sx={{ display: "flex", gap: 0.5 }}>
+            <IconButton
+              size="small"
+              color="info"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewClick(row.original);
+              }}
+            >
+              <Visibility fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditClick(row.original);
+              }}
+            >
+              <Edit fontSize="small" />
+            </IconButton>
+            {status === "Pending" && (
+              <IconButton
+                size="small"
+                color="error"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteClick(row.original);
+                }}
+              >
+                <Delete fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
+        ),
+      },
+    ],
+    [status]
+  );
+
+  const table = useMaterialReactTable({
+    columns,
+    data: jobs,
+    enableColumnResizing: true,
+    enableColumnOrdering: true,
+    enablePagination: false,
+    enableBottomToolbar: false,
+    enableDensityToggle: false,
+    enableRowVirtualization: true,
+    rowVirtualizerOptions: { overscan: 8 },
+    initialState: {
+      density: "compact",
+      columnPinning: { left: ["job_no", "exporter_name"] },
     },
-    {
-      id: "original_docs_received_date",
-      label: "Original Docs Received",
-      minWidth: 180,
+    enableGlobalFilter: false,
+    enableGrouping: true,
+    enableColumnFilters: false,
+    enableColumnActions: false,
+    enableStickyHeader: true,
+    enablePinning: true,
+    muiTableContainerProps: {
+      sx: { maxHeight: "590px", overflowY: "auto" },
     },
-    {
-      id: "gate_in_thar_khodiyar_date",
-      label: "Gate In Thar/Khodiyar",
-      minWidth: 180,
+    muiTableBodyRowProps: ({ row }) => ({
+      onClick: (event) => {
+        // Don't trigger row click if clicking on action buttons
+        if (!event.target.closest(".MuiIconButton-root")) {
+          handleViewClick(row.original);
+        }
+      },
+      sx: {
+        cursor: "pointer",
+        "&:hover": {
+          backgroundColor: "#f5f5f5",
+        },
+      },
+    }),
+    muiTableHeadCellProps: {
+      sx: {
+        position: "sticky",
+        top: 0,
+        zIndex: 1,
+        backgroundColor: "#f5f5f5",
+        fontWeight: "bold",
+      },
     },
-    { id: "hand_over_date", label: "Hand Over Date", minWidth: 140 },
-    { id: "rail_out_date_plan", label: "Rail Out Plan", minWidth: 140 },
-    { id: "rail_out_date_actual", label: "Rail Out Actual", minWidth: 150 },
-    { id: "port_gate_in_date", label: "Port Gate In", minWidth: 140 },
-    { id: "tracking_remarks", label: "Remarks", minWidth: 250 },
-  ];
+    state: {
+      isLoading: loading,
+    },
+    renderTopToolbarCustomActions: () => (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          width: "100%",
+          padding: "16px",
+          flexWrap: "wrap",
+          gap: "16px",
+        }}
+      >
+        <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+          {status} Jobs: {totalCount}
+        </Typography>
+
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          {years.length > 0 && (
+            <TextField
+              select
+              size="small"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              sx={{ width: "120px" }}
+            >
+              <MenuItem value="all">All Years</MenuItem>
+              {years.map((year, index) => (
+                <MenuItem key={`year-${year}-${index}`} value={year}>
+                  {year}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
+
+          <Autocomplete
+            sx={{ width: "250px" }}
+            freeSolo
+            options={exporterNames.map((option) => option.label)}
+            value={selectedExporter}
+            onInputChange={(event, newValue) => setSelectedExporter(newValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                variant="outlined"
+                size="small"
+                fullWidth
+                label="Select Exporter"
+              />
+            )}
+          />
+
+          <FormControl size="small" sx={{ width: "150px" }}>
+            <InputLabel>Movement Type</InputLabel>
+            <Select
+              value={selectedMovementType}
+              label="Movement Type"
+              onChange={(e) => setSelectedMovementType(e.target.value)}
+            >
+              <MenuItem value="">All Types</MenuItem>
+              <MenuItem value="FCL">FCL</MenuItem>
+              <MenuItem value="LCL">LCL</MenuItem>
+              <MenuItem value="Break Bulk">Break Bulk</MenuItem>
+              <MenuItem value="Air Freight">Air Freight</MenuItem>
+            </Select>
+          </FormControl>
+
+          <SearchInput
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            fetchJobs={fetchJobs}
+          />
+
+          <IconButton onClick={() => console.log("Download clicked")}>
+            <DownloadIcon />
+          </IconButton>
+        </Box>
+      </Box>
+    ),
+  });
 
   return (
     <Box sx={{ width: "100%" }}>
-      {/* Filters Card */}
-      <Card sx={{ mb: 2 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Filters - {status} Jobs ({totalCount})
-          </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                label="Search (Job No, Exporter, Consignee)"
-                value={filters.search}
-                onChange={(e) =>
-                  setFilters({ ...filters, search: e.target.value })
-                }
-                size="small"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                label="Exporter"
-                value={filters.exporter}
-                onChange={(e) =>
-                  setFilters({ ...filters, exporter: e.target.value })
-                }
-                size="small"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                label="Country"
-                value={filters.country}
-                onChange={(e) =>
-                  setFilters({ ...filters, country: e.target.value })
-                }
-                size="small"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Movement Type</InputLabel>
-                <Select
-                  value={filters.movement_type}
-                  label="Movement Type"
-                  onChange={(e) =>
-                    setFilters({ ...filters, movement_type: e.target.value })
-                  }
-                >
-                  <MenuItem value="">All</MenuItem>
-                  <MenuItem value="FCL">FCL</MenuItem>
-                  <MenuItem value="LCL">LCL</MenuItem>
-                  <MenuItem value="Break Bulk">Break Bulk</MenuItem>
-                  <MenuItem value="Air Freight">Air Freight</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
-
-      {/* Jobs Table */}
-      <Paper sx={{ width: "100%", overflow: "hidden" }}>
-        <TableContainer sx={{ maxHeight: 600 }}>
-          <Table stickyHeader size="small">
-            <TableHead>
-              <TableRow>
-                {columns.map((column) => (
-                  <TableCell
-                    key={column.id}
-                    style={{
-                      minWidth: column.minWidth,
-                      fontWeight: "bold",
-                      backgroundColor: "#f5f5f5",
-                    }}
-                  >
-                    {column.label}
-                  </TableCell>
-                ))}
-                <TableCell
-                  style={{
-                    minWidth: 120,
-                    fontWeight: "bold",
-                    backgroundColor: "#f5f5f5",
-                  }}
-                >
-                  Actions
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={columns.length + 1} align="center">
-                    <Typography>Loading...</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : jobs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={columns.length + 1} align="center">
-                    <Typography>
-                      No {status.toLowerCase()} jobs found
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                jobs.map((job, index) => (
-                  <TableRow
-                    hover
-                    key={job._id || index}
-                    onClick={(event) => handleRowClick(job, event)}
-                    sx={{
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: "#f5f5f5",
-                      },
-                    }}
-                  >
-                    {columns.map((column) => {
-                      let value = job[column.id];
-
-                      if (column.id.includes("date") && value) {
-                        value = format(parseISO(value), "dd-MM-yyyy");
-                      } else if (column.id === "movement_type") {
-                        value = (
-                          <Chip
-                            label={value || "N/A"}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                          />
-                        );
-                      } else if (column.id === "status") {
-                        const colors = {
-                          pending: "warning",
-                          completed: "success",
-                          cancelled: "error",
-                        };
-                        value = (
-                          <Chip
-                            label={
-                              value?.charAt(0).toUpperCase() +
-                                value?.slice(1) || "N/A"
-                            }
-                            size="small"
-                            color={colors[value?.toLowerCase()] || "default"}
-                          />
-                        );
-                      } else if (!value) {
-                        value = "-";
-                      }
-
-                      return <TableCell key={column.id}>{value}</TableCell>;
-                    })}
-                    <TableCell>
-                      <Box sx={{ display: "flex", gap: 0.5 }}>
-                        <Tooltip title="View Details">
-                          <IconButton
-                            size="small"
-                            color="info"
-                            onClick={(event) => handleViewClick(job, event)}
-                          >
-                            <Visibility fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Edit Job">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={(event) => handleEditClick(job, event)}
-                          >
-                            <Edit fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        {status === "Pending" && (
-                          <Tooltip title="Cancel Job">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={(event) => handleDeleteClick(job, event)}
-                            >
-                              <Delete fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <TablePagination
-          component="div"
-          count={totalCount}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={(event, newPage) => setPage(newPage)}
-          onRowsPerPageChange={(event) => {
-            setRowsPerPage(parseInt(event.target.value, 10));
-            setPage(0);
-          }}
-          rowsPerPageOptions={[10, 25, 50, 100]}
-        />
-      </Paper>
+      <MaterialReactTable table={table} />
     </Box>
   );
 };
