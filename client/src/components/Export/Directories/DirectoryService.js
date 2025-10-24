@@ -1,8 +1,7 @@
 import axios from "axios";
 
 const API_URL =
-  `${import.meta.env.VITE_API_STRING}/directory` ||
-  "http://localhost:5000/api/directory";
+  `${import.meta.env.VITE_API_STRING}/directory`;
 
 const DirectoryService = {
   getAll: async (params = {}) => {
