@@ -81,6 +81,7 @@ app.use(
       "http://localhost:3000",
       "http://localhost:5173",
       "http://test-ssl-exim.s3-website.ap-south-1.amazonaws.com",
+      "http://exim-export.s3-website.ap-south-1.amazonaws.com"
     ],
     credentials: true,
     // Allow custom headers for audit trail
@@ -99,7 +100,7 @@ app.use(compression({ level: 9 }));
 
 // MongoDB connection
 const MONGODB_URI =
-  process.env.MONGO_URI || "mongodb://localhost:27017/exportDB";
+  process.env.MONGO_URI ;
 mongoose.set("strictQuery", true);
 
 mongoose

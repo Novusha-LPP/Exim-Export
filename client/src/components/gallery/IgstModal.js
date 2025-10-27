@@ -273,7 +273,7 @@ const IgstModal = ({
     if (rowData?.cth_no && rowData?.job_no) {
       try {
         const apiUrl =
-          import.meta.env.VITE_API_STRING || "http://localhost:9000";
+          import.meta.env.VITE_API_STRING ;
         const response = await fetch(
           `${apiUrl}/jobs/${rowData.job_no}/update-duty-from-cth`,
           {
