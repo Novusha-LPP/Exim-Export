@@ -164,6 +164,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
         branchLocation: "",
         accountNumber: "",
         adCode: "",
+        ifscCode: "",
         isDefault: false,
       },
     ],
@@ -209,7 +210,6 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
   return (
     <Formik
       initialValues={initialValues}
-      validationSchema={validationSchema}
       onSubmit={handleSubmit}
       enableReinitialize
     >
@@ -252,7 +252,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                     fullWidth
                     size="small"
                     name="organization"
-                    label="Company Name *"
+                    label="Manufacturer Exporter *"
                     value={values.organization}
                     onChange={(e) =>
                       handleOrganizationChange(e, handleChange, setFieldValue)
@@ -268,12 +268,12 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <FormControl fullWidth size="small" margin="dense">
-                    <InputLabel>Company Type *</InputLabel>
+                    <InputLabel>Merchant Exporter Type *</InputLabel>
                     <Select
                       name="generalInfo.entityType"
                       value={values.generalInfo.entityType}
                       onChange={handleChange}
-                      label="Company Type *"
+                      label="Merchant Exporter Type *"
                     >
                       <MenuItem value="Company">Company</MenuItem>
                       <MenuItem value="Partnership">Partnership</MenuItem>
@@ -281,23 +281,6 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                       <MenuItem value="Proprietorship">Proprietorship</MenuItem>
                     </Select>
                   </FormControl>
-                </Grid>
-                <Grid item xs={6} sm={3} md={2}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        name="generalInfo.msmeRegistered"
-                        checked={values.generalInfo.msmeRegistered}
-                        onChange={handleChange}
-                        size="small"
-                      />
-                    }
-                    label="MSME"
-                    sx={{
-                      mt: 1,
-                      "& .MuiFormControlLabel-label": { fontSize: "0.8rem" },
-                    }}
-                  />
                 </Grid>
                 <Grid item xs={6} sm={3} md={2}>
                   <FormControlLabel
@@ -335,6 +318,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
             </Box>
 
             {/* Branch Information - Dense Grid */}
+            
             <Box
               sx={{
                 mb: 2,
@@ -343,19 +327,58 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 borderRadius: 1,
               }}
             >
-              <Typography
-                variant="subtitle1"
+              <Box
                 sx={{
-                  mb: 1.5,
                   display: "flex",
+                  justifyContent: "space-between",
                   alignItems: "center",
-                  gap: 0.5,
-                  fontSize: "0.9rem",
+                  mb: 1.5,
                 }}
               >
-                <LocationIcon fontSize="small" color="primary" />
-                Branch Information
-              </Typography>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  <LocationIcon fontSize="small" color="primary" />
+                  Branch Information
+                </Typography>
+
+                {/* Add Branch button placed at top-right of the section.
+                    Uses Formik's setFieldValue (available in the render scope)
+                    to append a new branch to values.branchInfo. This avoids
+                    relying on FieldArray's `push` which isn't available here. */}
+                {!readOnly && (
+                  <Button
+                    startIcon={<AddIcon />}
+                    onClick={() =>
+                      setFieldValue("branchInfo", [
+                        ...values.branchInfo,
+                        {
+                          branchCode: "",
+                          branchName: "",
+                          address: "",
+                          city: "",
+                          state: "",
+                          postalCode: "",
+                          country: "India",
+                          mobile: "",
+                          email: "",
+                        },
+                      ])
+                    }
+                    variant="outlined"
+                    size="small"
+                    sx={{ mt: 0 }}
+                  >
+                    Add Branch
+                  </Button>
+                )}
+              </Box>
 
               <FieldArray name="branchInfo">
                 {({ push, remove }) => (
@@ -516,7 +539,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                             }}
                           >
                             <DocumentIcon fontSize="small" color="primary" />
-                            KYC Documents for Branch {index + 1}
+                            KYC Documents
                           </Typography>
 
                           <Grid container spacing={1}>
@@ -592,33 +615,28 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                               </Grid>
                             ))}
                           </Grid>
+                          <Grid item xs={6} sm={3} md={2}>
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  name="generalInfo.msmeRegistered"
+                                  checked={values.generalInfo.msmeRegistered}
+                                  onChange={handleChange}
+                                  size="small"
+                                />
+                              }
+                              label="MSME"
+                              sx={{
+                                mt: 1,
+                                "& .MuiFormControlLabel-label": {
+                                  fontSize: "0.8rem",
+                                },
+                              }}
+                            />
+                          </Grid>
                         </Box>
                       </Box>
                     ))}
-
-                    {!readOnly && (
-                      <Button
-                        startIcon={<AddIcon />}
-                        onClick={() =>
-                          push({
-                            branchCode: "",
-                            branchName: "",
-                            address: "",
-                            city: "",
-                            state: "",
-                            postalCode: "",
-                            country: "India",
-                            mobile: "",
-                            email: "",
-                          })
-                        }
-                        variant="outlined"
-                        size="small"
-                        sx={{ mt: 1 }}
-                      >
-                        Add Branch
-                      </Button>
-                    )}
                   </Box>
                 )}
               </FieldArray>
@@ -725,6 +743,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                               branchLocation: "",
                               accountNumber: "",
                               adCode: "",
+                              ifscCode: "",
                               isDefault: false,
                             })
                           }
@@ -775,18 +794,20 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                           )}
                         </Box>
                         <Grid container spacing={0.5}>
-                          <Grid item xs={12} sm={6}>
+                          {/* Three columns per row: xs=12 sm=4 */}
+                          <Grid item xs={12} sm={4}>
                             <TextField
                               fullWidth
                               size="small"
                               name={`bankDetails[${index}].entityName`}
-                              label="Entity *"
+                              label="Bank Name *"
                               value={bank.entityName}
                               onChange={handleChange}
                               margin="dense"
                             />
                           </Grid>
-                          <Grid item xs={12} sm={6}>
+
+                          <Grid item xs={12} sm={4}>
                             <TextField
                               fullWidth
                               size="small"
@@ -797,7 +818,8 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                               margin="dense"
                             />
                           </Grid>
-                          <Grid item xs={12} sm={6}>
+
+                          <Grid item xs={12} sm={4}>
                             <TextField
                               fullWidth
                               size="small"
@@ -808,18 +830,32 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                               margin="dense"
                             />
                           </Grid>
-                          <Grid item xs={12} sm={6}>
+
+                          <Grid item xs={12} sm={4}>
                             <TextField
                               fullWidth
                               size="small"
                               name={`bankDetails[${index}].adCode`}
-                              label="AD Code *"
+                              label="AD Code"
                               value={bank.adCode}
                               onChange={handleChange}
                               margin="dense"
                             />
                           </Grid>
-                          <Grid item xs={12}>
+
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`bankDetails[${index}].ifscCode`}
+                              label="IFSC Code"
+                              value={bank.ifscCode}
+                              onChange={handleChange}
+                              margin="dense"
+                            />
+                          </Grid>
+
+                          <Grid item xs={12} sm={4}>
                             <FormControlLabel
                               control={
                                 <Checkbox
@@ -844,262 +880,6 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                   </Box>
                 )}
               </FieldArray>
-            </Box>
-
-            {/* Billing & Credit Information */}
-            <Box
-              sx={{
-                mb: 2,
-                p: 1.5,
-                bgcolor: "rgba(0,0,0,0.02)",
-                borderRadius: 1,
-              }}
-            >
-              <Typography
-                variant="subtitle1"
-                sx={{
-                  mb: 1.5,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.5,
-                  fontSize: "0.9rem",
-                }}
-              >
-                <AssignmentIcon fontSize="small" color="primary" />
-                Billing & Credit Information
-              </Typography>
-
-              <Grid container spacing={1}>
-                <Grid item xs={12} sm={6} md={3}>
-                  <FormControl fullWidth size="small" margin="dense">
-                    <InputLabel>Currency</InputLabel>
-                    <Select
-                      name="billingCurrency.defaultCurrency"
-                      value={values.billingCurrency.defaultCurrency}
-                      onChange={handleChange}
-                      label="Currency"
-                    >
-                      <MenuItem value="INR">INR</MenuItem>
-                      <MenuItem value="USD">USD</MenuItem>
-                      <MenuItem value="EUR">EUR</MenuItem>
-                      <MenuItem value="GBP">GBP</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    name="accountCreditInfo.creditLimit"
-                    label="Credit Limit"
-                    type="number"
-                    value={values.accountCreditInfo.creditLimit}
-                    onChange={handleChange}
-                    margin="dense"
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    name="accountCreditInfo.creditPeriod"
-                    label="Credit Days"
-                    type="number"
-                    value={values.accountCreditInfo.creditPeriod}
-                    onChange={handleChange}
-                    margin="dense"
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        name="accountCreditInfo.unlimitedEnabled"
-                        checked={values.accountCreditInfo.unlimitedEnabled}
-                        onChange={handleChange}
-                        size="small"
-                      />
-                    }
-                    label="Unlimited Credit"
-                    sx={{
-                      mt: 1,
-                      "& .MuiFormControlLabel-label": {
-                        fontSize: "0.8rem",
-                      },
-                    }}
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-
-            {/* Authorized Signatory */}
-            <Box
-              sx={{
-                mb: 2,
-                p: 1.5,
-                bgcolor: "rgba(0,0,0,0.02)",
-                borderRadius: 1,
-              }}
-            >
-              <FieldArray name="authorizedSignatory">
-                {({ push, remove }) => (
-                  <Box>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        mb: 1.5,
-                      }}
-                    >
-                      <Typography
-                        variant="subtitle1"
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 0.5,
-                          fontSize: "0.9rem",
-                        }}
-                      >
-                        <AssignmentIcon fontSize="small" color="primary" />
-                        Authorized Signatories
-                      </Typography>
-                      {!readOnly && (
-                        <Button
-                          startIcon={<AddIcon />}
-                          onClick={() =>
-                            push({
-                              name: "",
-                              designation: "",
-                              mobile: "",
-                              email: "",
-                            })
-                          }
-                          variant="outlined"
-                          size="small"
-                          sx={{ minWidth: "auto", px: 1 }}
-                        >
-                          Add Signatory
-                        </Button>
-                      )}
-                    </Box>
-
-                    {values.authorizedSignatory.map((signatory, index) => (
-                      <Box
-                        key={index}
-                        sx={{
-                          mb: 1,
-                          p: 1,
-                          bgcolor: "white",
-                          borderRadius: 1,
-                          border: "1px solid",
-                          borderColor: "divider",
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            mb: 1,
-                          }}
-                        >
-                          <Typography
-                            variant="subtitle2"
-                            sx={{ fontSize: "0.8rem" }}
-                          >
-                            Signatory {index + 1}
-                          </Typography>
-                          {!readOnly && (
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => remove(index)}
-                              disabled={values.authorizedSignatory.length === 1}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          )}
-                        </Box>
-                        <Grid container spacing={0.5}>
-                          <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`authorizedSignatory[${index}].name`}
-                              label="Name"
-                              value={signatory.name}
-                              onChange={handleChange}
-                              margin="dense"
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`authorizedSignatory[${index}].designation`}
-                              label="Designation"
-                              value={signatory.designation}
-                              onChange={handleChange}
-                              margin="dense"
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`authorizedSignatory[${index}].mobile`}
-                              label="Mobile"
-                              value={signatory.mobile}
-                              onChange={handleChange}
-                              margin="dense"
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`authorizedSignatory[${index}].email`}
-                              label="Email"
-                              value={signatory.email}
-                              onChange={handleChange}
-                              margin="dense"
-                            />
-                          </Grid>
-                        </Grid>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </FieldArray>
-            </Box>
-
-            {/* Notes - Compact */}
-            <Box
-              sx={{
-                mb: 2,
-                p: 1.5,
-                bgcolor: "rgba(0,0,0,0.02)",
-                borderRadius: 1,
-              }}
-            >
-              <Typography
-                variant="subtitle1"
-                sx={{ mb: 1, fontSize: "0.9rem" }}
-              >
-                Notes
-              </Typography>
-              <TextField
-                fullWidth
-                multiline
-                rows={2}
-                size="small"
-                name="notes"
-                label="Additional Notes"
-                value={values.notes}
-                onChange={handleChange}
-                margin="dense"
-              />
             </Box>
           </Box>
 

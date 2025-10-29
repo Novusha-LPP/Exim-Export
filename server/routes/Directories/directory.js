@@ -1,6 +1,5 @@
 import express from "express";
 import Directory from "../../model/Directorties/Directory.js";
-import { validateDirectory } from "../../middleware/validation.js";
 
 const router = express.Router();
 
@@ -26,7 +25,6 @@ router.get("/api/directory", async (req, res) => {
         { organization: { $regex: search, $options: "i" } },
         { alias: { $regex: search, $options: "i" } },
         { "registrationDetails.ieCode": { $regex: search, $options: "i" } },
-        { "generalInfo.companyName": { $regex: search, $options: "i" } },
       ];
     }
 

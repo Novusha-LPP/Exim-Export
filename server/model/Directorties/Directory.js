@@ -4,7 +4,7 @@ const { Schema, model } = mongoose;
 
 // Schema for individual file objects
 const fileSchema = new Schema({
-  url: { type: String, required: true },
+  url: { type: String,   },
   name: String,
   size: Number,
   uploadedAt: Date
@@ -30,8 +30,8 @@ const kycDocumentsSchema = new Schema({
 
 // Other schemas remain the same...
 const addressSchema = new Schema({
-  addressLine: { type: String, required: true },
-  postalCode: { type: String, required: true },
+  addressLine: { type: String,   },
+  postalCode: { type: String,   },
   telephone: String,
   fax: String,
   email: String
@@ -40,29 +40,29 @@ const addressSchema = new Schema({
 const generalInfoSchema = new Schema({
   entityType: { 
     type: String, 
-    required: true,
+     
     enum: ['Company', 'Partnership', 'LLP', 'Proprietorship']
   },
-  companyName: { type: String, required: true },
   msmeRegistered: { type: Boolean, default: false }
 }, { _id: false });
 
 const registrationDetailsSchema = new Schema({
   binNo: String,
-  ieCode: { type: String, required: true },
-  panNo: { type: String, required: true },
+  ieCode: { type: String,   },
+  panNo: { type: String,   },
   gstinMainBranch: String,
   gstinBranchCodeFree: String,
   gstinBranchCode15: String
 }, { _id: false });
 
 const branchInfoSchema = new Schema({
-  branchCode: { type: String, required: true },
-  address: { type: String, required: true },
-  city: { type: String, required: true },
-  state: { type: String, required: true },
-  postalCode: { type: String, required: true },
-  country: { type: String, required: true, default: 'India' }
+  branchName: { type: String,   },
+  branchCode: { type: String,   },
+  address: { type: String,   },
+  city: { type: String,   },
+  state: { type: String,   },
+  postalCode: { type: String,   },
+  country: { type: String,   default: 'India' }
 });
 
 const aeoDetailsSchema = new Schema({
@@ -97,10 +97,11 @@ const accountCreditInfoSchema = new Schema({
 }, { _id: false });
 
 const bankDetailsSchema = new Schema({
-  entityName: { type: String, required: true },
-  branchLocation: { type: String, required: true },
-  accountNumber: { type: String, required: true },
-  adCode: { type: String, required: true },
+  entityName: { type: String   },
+  ifscCode: { type: String   },
+  branchLocation: { type: String  },
+  accountNumber: { type: String   },
+  adCode: { type: String   },
   isDefault: { type: Boolean, default: false }
 });
 
@@ -112,8 +113,8 @@ const affiliateBranchSchema = new Schema({
 // Main Directory Schema
 const directorySchema = new Schema({
   // Organization Information
-  organization: { type: String, required: true },
-  alias: { type: String, required: true },
+  organization: { type: String,   },
+  alias: { type: String,   },
   approvalStatus: { 
     type: String, 
     enum: ['Pending', 'Approved', 'Rejected'], 
@@ -121,16 +122,16 @@ const directorySchema = new Schema({
   },
   
   // General Information (KYC)
-  generalInfo: { type: generalInfoSchema, required: true },
+  generalInfo: { type: generalInfoSchema,   },
   
   // Address (Principal Place of Business)
-  address: { type: addressSchema, required: true },
+  address: { type: addressSchema,   },
   
   // Documents (KYC Uploads) - Updated to handle file objects
   kycDocuments: { type: kycDocumentsSchema, default: () => ({}) },
   
   // Registration Details
-  registrationDetails: { type: registrationDetailsSchema, required: true },
+  registrationDetails: { type: registrationDetailsSchema,   },
   
   // Branch Information (Array of branches)
   branchInfo: [branchInfoSchema],

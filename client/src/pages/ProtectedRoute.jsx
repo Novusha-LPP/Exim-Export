@@ -14,21 +14,26 @@ const ProtectedRoute = ({ children, requiredModule, fallbackPath = "/" }) => {
     const fetchUserModules = async () => {
       try {
         // Get current user info - adjust this based on how you store user info
-        const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
+        const user = JSON.parse(localStorage.getItem("exim_user") || "null");
 
-        if (!user) {
+        // If no user is stored, bail out and send to login
+        if (!user || Object.keys(user).length === 0) {
           setError(true);
           setLoading(false);
           return;
         }
 
         const response = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/get-user/${
-            user.username || user.id
-          }`
+          `${import.meta.env.VITE_API_STRING}/get-user/${user.username || user.id}`
         );
 
-        setUserModules(response.data.modules || []);
+        // The user document stores permissions under different keys in different
+        // contexts (e.g. `export_modules`). Prefer `export_modules`, but fall
+        // back to `modules` for compatibility.
+        const modulesFromApi =
+          response?.data?.export_modules || response?.data?.modules || [];
+
+        setUserModules(modulesFromApi);
       } catch (err) {
         console.error("Error fetching user modules:", err);
         setError(true);
