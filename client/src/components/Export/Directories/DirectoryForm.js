@@ -252,7 +252,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                     fullWidth
                     size="small"
                     name="organization"
-                    label="Manufacturer Exporter *"
+                    label="Company Name *"
                     value={values.organization}
                     onChange={(e) =>
                       handleOrganizationChange(e, handleChange, setFieldValue)
@@ -273,12 +273,10 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                       name="generalInfo.entityType"
                       value={values.generalInfo.entityType}
                       onChange={handleChange}
-                      label="Merchant Exporter Type *"
+                      label="Company Type *"
                     >
-                      <MenuItem value="Company">Company</MenuItem>
-                      <MenuItem value="Partnership">Partnership</MenuItem>
-                      <MenuItem value="LLP">LLP</MenuItem>
-                      <MenuItem value="Proprietorship">Proprietorship</MenuItem>
+                      <MenuItem value="Manufacturer Exporter">Manufacturer Exporter</MenuItem>
+                      <MenuItem value="Marchant Exporter">Marchant Exporter</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
@@ -380,7 +378,249 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 )}
               </Box>
 
-              <FieldArray name="branchInfo">
+            </Box>
+
+            {/* Registration & Financial - Compact Grid */}
+            <Box
+              sx={{
+                mb: 2,
+                p: 1.5,
+                bgcolor: "rgba(0,0,0,0.02)",
+                borderRadius: 1,
+              }}
+            >
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  mb: 1.5,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  fontSize: "0.9rem",
+                }}
+              >
+                <AssignmentIcon fontSize="small" color="primary" />
+                Registration & Financial
+              </Typography>
+
+              <Grid container spacing={1}>
+                <Grid item xs={12} sm={6} md={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    name="registrationDetails.ieCode"
+                    label="IE Code *"
+                    value={values.registrationDetails.ieCode}
+                    onChange={handleChange}
+                    margin="dense"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    name="registrationDetails.panNo"
+                    label="PAN No *"
+                    value={values.registrationDetails.panNo}
+                    onChange={handleChange}
+                    margin="dense"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    name="registrationDetails.gstinMainBranch"
+                    label="GSTIN Main"
+                    value={values.registrationDetails.gstinMainBranch}
+                    onChange={handleChange}
+                    margin="dense"
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Bank Details - Ultra Compact */}
+            <Box
+              sx={{
+                mb: 2,
+                p: 1.5,
+                bgcolor: "rgba(0,0,0,0.02)",
+                borderRadius: 1,
+              }}
+            >
+              <FieldArray name="bankDetails">
+                {({ push, remove }) => (
+                  <Box>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        mb: 1.5,
+                      }}
+                    >
+                      <Typography
+                        variant="subtitle1"
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                          fontSize: "0.9rem",
+                        }}
+                      >
+                        <BankIcon fontSize="small" color="primary" />
+                        Bank Details
+                      </Typography>
+                      {!readOnly && (
+                        <Button
+                          startIcon={<AddIcon />}
+                          onClick={() =>
+                            push({
+                              entityName: "",
+                              branchLocation: "",
+                              accountNumber: "",
+                              adCode: "",
+                              ifscCode: "",
+                              isDefault: false,
+                            })
+                          }
+                          variant="outlined"
+                          size="small"
+                          sx={{ minWidth: "auto", px: 1 }}
+                        >
+                          Add Bank
+                        </Button>
+                      )}
+                    </Box>
+
+                    {values.bankDetails.map((bank, index) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          mb: 1,
+                          p: 1,
+                          bgcolor: "white",
+                          borderRadius: 1,
+                          border: "1px solid",
+                          borderColor: "divider",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            mb: 1,
+                          }}
+                        >
+                          <Typography
+                            variant="subtitle2"
+                            sx={{ fontSize: "0.8rem" }}
+                          >
+                            Bank {index + 1}
+                          </Typography>
+                          {!readOnly && (
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => remove(index)}
+                              disabled={values.bankDetails.length === 1}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                        </Box>
+                        <Grid container spacing={0.5}>
+                          {/* Three columns per row: xs=12 sm=4 */}
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`bankDetails[${index}].entityName`}
+                              label="Bank Name *"
+                              value={bank.entityName}
+                              onChange={handleChange}
+                              margin="dense"
+                            />
+                          </Grid>
+
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`bankDetails[${index}].branchLocation`}
+                              label="Branch *"
+                              value={bank.branchLocation}
+                              onChange={handleChange}
+                              margin="dense"
+                            />
+                          </Grid>
+
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`bankDetails[${index}].accountNumber`}
+                              label="Account *"
+                              value={bank.accountNumber}
+                              onChange={handleChange}
+                              margin="dense"
+                            />
+                          </Grid>
+
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`bankDetails[${index}].adCode`}
+                              label="AD Code"
+                              value={bank.adCode}
+                              onChange={handleChange}
+                              margin="dense"
+                            />
+                          </Grid>
+
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`bankDetails[${index}].ifscCode`}
+                              label="IFSC Code"
+                              value={bank.ifscCode}
+                              onChange={handleChange}
+                              margin="dense"
+                            />
+                          </Grid>
+
+                          <Grid item xs={12} sm={4}>
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  name={`bankDetails[${index}].isDefault`}
+                                  checked={bank.isDefault}
+                                  onChange={handleChange}
+                                  size="small"
+                                />
+                              }
+                              label="Default Bank"
+                              sx={{
+                                mt: 0.5,
+                                "& .MuiFormControlLabel-label": {
+                                  fontSize: "0.8rem",
+                                },
+                              }}
+                            />
+                          </Grid>
+                        </Grid>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </FieldArray>
+            </Box>
+
+                          <FieldArray name="branchInfo">
                 {({ push, remove }) => (
                   <Box>
                     {values.branchInfo.map((branch, index) => (
@@ -640,247 +880,6 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                   </Box>
                 )}
               </FieldArray>
-            </Box>
-
-            {/* Registration & Financial - Compact Grid */}
-            <Box
-              sx={{
-                mb: 2,
-                p: 1.5,
-                bgcolor: "rgba(0,0,0,0.02)",
-                borderRadius: 1,
-              }}
-            >
-              <Typography
-                variant="subtitle1"
-                sx={{
-                  mb: 1.5,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.5,
-                  fontSize: "0.9rem",
-                }}
-              >
-                <AssignmentIcon fontSize="small" color="primary" />
-                Registration & Financial
-              </Typography>
-
-              <Grid container spacing={1}>
-                <Grid item xs={12} sm={6} md={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    name="registrationDetails.ieCode"
-                    label="IE Code *"
-                    value={values.registrationDetails.ieCode}
-                    onChange={handleChange}
-                    margin="dense"
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    name="registrationDetails.panNo"
-                    label="PAN No *"
-                    value={values.registrationDetails.panNo}
-                    onChange={handleChange}
-                    margin="dense"
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    name="registrationDetails.gstinMainBranch"
-                    label="GSTIN Main"
-                    value={values.registrationDetails.gstinMainBranch}
-                    onChange={handleChange}
-                    margin="dense"
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-
-            {/* Bank Details - Ultra Compact */}
-            <Box
-              sx={{
-                mb: 2,
-                p: 1.5,
-                bgcolor: "rgba(0,0,0,0.02)",
-                borderRadius: 1,
-              }}
-            >
-              <FieldArray name="bankDetails">
-                {({ push, remove }) => (
-                  <Box>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        mb: 1.5,
-                      }}
-                    >
-                      <Typography
-                        variant="subtitle1"
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 0.5,
-                          fontSize: "0.9rem",
-                        }}
-                      >
-                        <BankIcon fontSize="small" color="primary" />
-                        Bank Details
-                      </Typography>
-                      {!readOnly && (
-                        <Button
-                          startIcon={<AddIcon />}
-                          onClick={() =>
-                            push({
-                              entityName: "",
-                              branchLocation: "",
-                              accountNumber: "",
-                              adCode: "",
-                              ifscCode: "",
-                              isDefault: false,
-                            })
-                          }
-                          variant="outlined"
-                          size="small"
-                          sx={{ minWidth: "auto", px: 1 }}
-                        >
-                          Add Bank
-                        </Button>
-                      )}
-                    </Box>
-
-                    {values.bankDetails.map((bank, index) => (
-                      <Box
-                        key={index}
-                        sx={{
-                          mb: 1,
-                          p: 1,
-                          bgcolor: "white",
-                          borderRadius: 1,
-                          border: "1px solid",
-                          borderColor: "divider",
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            mb: 1,
-                          }}
-                        >
-                          <Typography
-                            variant="subtitle2"
-                            sx={{ fontSize: "0.8rem" }}
-                          >
-                            Bank {index + 1}
-                          </Typography>
-                          {!readOnly && (
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => remove(index)}
-                              disabled={values.bankDetails.length === 1}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          )}
-                        </Box>
-                        <Grid container spacing={0.5}>
-                          {/* Three columns per row: xs=12 sm=4 */}
-                          <Grid item xs={12} sm={4}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`bankDetails[${index}].entityName`}
-                              label="Bank Name *"
-                              value={bank.entityName}
-                              onChange={handleChange}
-                              margin="dense"
-                            />
-                          </Grid>
-
-                          <Grid item xs={12} sm={4}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`bankDetails[${index}].branchLocation`}
-                              label="Branch *"
-                              value={bank.branchLocation}
-                              onChange={handleChange}
-                              margin="dense"
-                            />
-                          </Grid>
-
-                          <Grid item xs={12} sm={4}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`bankDetails[${index}].accountNumber`}
-                              label="Account *"
-                              value={bank.accountNumber}
-                              onChange={handleChange}
-                              margin="dense"
-                            />
-                          </Grid>
-
-                          <Grid item xs={12} sm={4}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`bankDetails[${index}].adCode`}
-                              label="AD Code"
-                              value={bank.adCode}
-                              onChange={handleChange}
-                              margin="dense"
-                            />
-                          </Grid>
-
-                          <Grid item xs={12} sm={4}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`bankDetails[${index}].ifscCode`}
-                              label="IFSC Code"
-                              value={bank.ifscCode}
-                              onChange={handleChange}
-                              margin="dense"
-                            />
-                          </Grid>
-
-                          <Grid item xs={12} sm={4}>
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  name={`bankDetails[${index}].isDefault`}
-                                  checked={bank.isDefault}
-                                  onChange={handleChange}
-                                  size="small"
-                                />
-                              }
-                              label="Default Bank"
-                              sx={{
-                                mt: 0.5,
-                                "& .MuiFormControlLabel-label": {
-                                  fontSize: "0.8rem",
-                                },
-                              }}
-                            />
-                          </Grid>
-                        </Grid>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </FieldArray>
-            </Box>
           </Box>
 
           {!readOnly && (
