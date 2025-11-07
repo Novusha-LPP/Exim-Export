@@ -81,7 +81,8 @@ const ExportSubmission = () => {
   ];
 
   const handleRowClick = (jobNo) => {
-    navigate(`/submission-job-list/${jobNo}`);
+    const JobNumber = jobNo.split("/")[3];
+    navigate(`/submission-job-list/${JobNumber}`);
   };
 
   return (
@@ -185,7 +186,7 @@ const ExportSubmission = () => {
                   <TableRow
                     hover
                     key={job._id || idx}
-                    onClick={() => handleRowClick(job.job_no)}
+                    // onClick={() => handleRowClick(job.job_no)}
                     sx={{
                       cursor: "pointer",
                       "&:hover": { backgroundColor: "#f5f5f5" },

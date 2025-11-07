@@ -81,7 +81,8 @@ const EsanchitJobList = () => {
   ];
 
   const handleRowClick = (jobNo) => {
-    navigate(`/esanchit-job-list/${jobNo}`);
+     const JobNumber = jobNo.split("/")[3];
+    navigate(`/esanchit-job-list/${JobNumber}`);
   };
 
   return (
