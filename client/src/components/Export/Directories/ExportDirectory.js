@@ -77,14 +77,14 @@ const logisticsTheme = createTheme({
 
 // Directory Listing Table Columns (Compact, dense structure)
 const TABLE_COLUMNS = [
-  { key: "organization", label: "Organization", minWidth: 170 },
-  { key: "alias", label: "Alias", minWidth: 100 },
-  { key: "approvalStatus", label: "Status", minWidth: 80 },
+  { key: "organization", label: "Organization", minWidth: 200 },
+  { key: "approvalStatus", label: "Status", minWidth: 100 },
   { key: "entityType", label: "Entity Type", minWidth: 120 },
   { key: "ieCode", label: "IE Code", minWidth: 120 },
-  { key: "location", label: "Location", minWidth: 120 },
+  { key: "adCode", label: "AD Code", minWidth: 120 },
+  { key: "panNo", label: "PAN", minWidth: 110 },
   { key: "createdAt", label: "Created", minWidth: 100 },
-  { key: "actions", label: "Actions", minWidth: 100, align: "center" },
+  { key: "actions", label: "Actions", minWidth: 120, align: "center" },
 ];
 
 // Helper - Color for Approval Status
@@ -98,15 +98,25 @@ const getStatusColor = (status) =>
 // Helper - Entity Type Icon
 const getEntityIcon = (entityType) => {
   switch (entityType) {
-    case "Company":
+    case "Private Limited":
+    case "Public Limited":
       return <BusinessIcon sx={{ color: "#2c5aa0", fontSize: 20, mr: 0.5 }} />;
     case "Partnership":
+    case "Partner":
       return (
         <AssignmentIcon sx={{ color: "#ff6b35", fontSize: 20, mr: 0.5 }} />
       );
-    default:
+    case "Proprietor":
       return <DocumentIcon sx={{ color: "#5a7bc4", fontSize: 20, mr: 0.5 }} />;
+    default:
+      return <BusinessIcon sx={{ color: "#5a7bc4", fontSize: 20, mr: 0.5 }} />;
   }
+};
+
+// Get first bank's AD Code
+const getFirstAdCode = (bankDetails) => {
+  if (!bankDetails || bankDetails.length === 0) return "-";
+  return bankDetails[0]?.adCode || "-";
 };
 
 // Directory Detail View (Dialog)
@@ -117,21 +127,23 @@ const DirectoryDetailView = ({ directory }) => (
       <Grid item xs={12}>
         <Paper
           sx={{
-            bgcolor: "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
-
+            background: "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
             p: 2,
+            color: "white",
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Avatar
               sx={{ bgcolor: "rgba(255,255,255,0.2)", width: 56, height: 56 }}
             >
-              <BusinessIcon fontSize="large" sx={{ color: "#1e3a6f" }} />
+              <BusinessIcon fontSize="large" sx={{ color: "white" }} />
             </Avatar>
             <Box>
-              <Typography variant="h5">{directory.organization}</Typography>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                {directory.alias} • {directory.generalInfo?.entityType || "-"}
+              <Typography variant="h5" color="white">
+                {directory.organization}
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9, color: "white" }}>
+                {directory.generalInfo?.entityType || "-"}
               </Typography>
               <Chip
                 label={directory.approvalStatus}
@@ -139,10 +151,12 @@ const DirectoryDetailView = ({ directory }) => (
                   mt: 1,
                   bgcolor:
                     directory.approvalStatus === "Approved"
-                      ? "rgba(76, 175, 80, 0.16)"
-                      : "rgba(255, 193, 7, 0.17)",
-
-                  border: "1px solid rgba(255,255,255,0.35)",
+                      ? "rgba(76, 175, 80, 0.9)"
+                      : directory.approvalStatus === "Rejected"
+                      ? "rgba(244, 67, 54, 0.9)"
+                      : "rgba(255, 193, 7, 0.9)",
+                  color: "white",
+                  fontWeight: 600,
                 }}
               />
             </Box>
@@ -208,92 +222,136 @@ const DirectoryDetailView = ({ directory }) => (
               Company Information
             </Typography>
             <Divider sx={{ my: 1 }} />
-            <Typography variant="body2">
-              <strong>Company Name:</strong>{" "}
-              {directory.generalInfo?.companyName}
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              <strong>Organization:</strong> {directory.organization}
             </Typography>
-            <Typography variant="body2">
-              <strong>Entity Type:</strong> {directory.generalInfo?.entityType}
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              <strong>Company Type:</strong>{" "}
+              {directory.generalInfo?.entityType || "-"}
             </Typography>
-            <Typography variant="body2">
-              <strong>MSME Registered:</strong>{" "}
-              {directory.generalInfo?.msmeRegistered ? "Yes" : "No"}
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              <strong>Exporter Type:</strong>{" "}
+              {directory.generalInfo?.exporterType || "-"}
             </Typography>
-            <Typography variant="body2">
-              <strong>BIN No:</strong>{" "}
-              {directory.registrationDetails?.binNo || "-"}
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              <strong>Shipper/Consignee:</strong>{" "}
+              {directory.generalInfo?.shipperConsignee || "-"}
             </Typography>
-            <Typography variant="body2">
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              <strong>IE Code:</strong>{" "}
+              {directory.registrationDetails?.ieCode || "-"}
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              <strong>PAN No:</strong>{" "}
+              {directory.registrationDetails?.panNo || "-"}
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
               <strong>GSTIN:</strong>{" "}
               {directory.registrationDetails?.gstinMainBranch || "-"}
             </Typography>
           </Box>
         </Paper>
       </Grid>
-      {/* Detailed - Contact Info */}
+
+      {/* Detailed - Branch Info */}
       <Grid item xs={12} md={6}>
         <Paper sx={{ p: 2 }}>
           <Box sx={{ mb: 1 }}>
             <Typography variant="h6" color="primary">
-              Contact Information
+              Branch Information
             </Typography>
             <Divider sx={{ my: 1 }} />
-            <Typography variant="body2">
-              <strong>Address:</strong> {directory.address?.addressLine || "-"}
-            </Typography>
-            <Typography variant="body2">
-              <strong>City:</strong> {directory.address?.city || "-"}
-            </Typography>
-            <Typography variant="body2">
-              <strong>Postal Code:</strong>{" "}
-              {directory.address?.postalCode || "-"}
-            </Typography>
-            <Typography variant="body2">
-              <strong>Phone:</strong> {directory.address?.telephone || "-"}
-            </Typography>
-            <Typography variant="body2">
-              <strong>Email:</strong> {directory.address?.email || "-"}
-            </Typography>
+            {directory.branchInfo && directory.branchInfo.length > 0 ? (
+              directory.branchInfo.map((branch, idx) => (
+                <Box key={idx} sx={{ mb: 2 }}>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>Branch Name:</strong> {branch.branchName || "-"}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>Branch Code:</strong> {branch.branchCode || "-"}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>Address:</strong> {branch.address || "-"}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>City:</strong> {branch.city || "-"},{" "}
+                    <strong>State:</strong> {branch.state || "-"}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>Postal Code:</strong> {branch.postalCode || "-"}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>Mobile:</strong> {branch.mobile || "-"}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>Email:</strong> {branch.email || "-"}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>MSME Registered:</strong>{" "}
+                    {branch.msmeRegistered ? "Yes" : "No"}
+                  </Typography>
+                  {idx < directory.branchInfo.length - 1 && (
+                    <Divider sx={{ my: 1 }} />
+                  )}
+                </Box>
+              ))
+            ) : (
+              <Typography variant="body2" color="textSecondary">
+                No branch information available
+              </Typography>
+            )}
           </Box>
         </Paper>
       </Grid>
+
       {/* Detailed - Bank Info */}
       <Grid item xs={12}>
         <Paper sx={{ p: 2 }}>
           <Typography variant="h6" color="primary" sx={{ mb: 1 }}>
             Banking Information
           </Typography>
-          {directory.bankDetails?.map((bank, idx) => (
-            <Box key={idx} sx={{ mb: 2 }}>
-              <Divider sx={{ mb: 1 }} />
-              <Grid container spacing={2}>
-                <Grid item xs={4}>
-                  <Typography variant="body2">
-                    <strong>Bank:</strong> {bank.entityName}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Branch:</strong> {bank.branchLocation}
-                  </Typography>
+          {directory.bankDetails && directory.bankDetails.length > 0 ? (
+            directory.bankDetails.map((bank, idx) => (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <Divider sx={{ mb: 1 }} />
+                <Grid container spacing={2}>
+                  <Grid item xs={4}>
+                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      <strong>Bank:</strong> {bank.entityName || "-"}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      <strong>Branch:</strong> {bank.branchLocation || "-"}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      <strong>Account:</strong> {bank.accountNumber || "-"}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      <strong>IFSC Code:</strong> {bank.ifscCode || "-"}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      <strong>AD Code:</strong> {bank.adCode || "-"}
+                    </Typography>
+                    {bank.isDefault && (
+                      <Chip
+                        label="Default"
+                        color="primary"
+                        size="small"
+                        sx={{ mt: 1 }}
+                      />
+                    )}
+                  </Grid>
                 </Grid>
-                <Grid item xs={8}>
-                  <Typography variant="body2">
-                    <strong>Account:</strong> {bank.accountNumber}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>AD Code:</strong> {bank.adCode}
-                  </Typography>
-                  {bank.isDefault && (
-                    <Chip
-                      label="Default"
-                      color="primary"
-                      size="small"
-                      sx={{ mt: 1 }}
-                    />
-                  )}
-                </Grid>
-              </Grid>
-            </Box>
-          ))}
+              </Box>
+            ))
+          ) : (
+            <Typography variant="body2" color="textSecondary">
+              No banking information available
+            </Typography>
+          )}
         </Paper>
       </Grid>
     </Grid>
@@ -321,19 +379,26 @@ const ExportDirectory = () => {
   useEffect(() => {
     fetchDirectories();
   }, []);
+
   useEffect(() => {
     let filtered = directories;
     if (searchTerm) {
       filtered = filtered.filter(
         (dir) =>
           dir.organization?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          dir.alias?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           dir.registrationDetails?.ieCode
             ?.toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          dir.generalInfo?.companyName
+          dir.registrationDetails?.panNo
             ?.toLowerCase()
-            .includes(searchTerm.toLowerCase())
+            .includes(searchTerm.toLowerCase()) ||
+          dir.generalInfo?.entityType
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          // Search in bank details AD codes
+          dir.bankDetails?.some((bank) =>
+            bank.adCode?.toLowerCase().includes(searchTerm.toLowerCase())
+          )
       );
     }
     if (statusFilter) {
@@ -358,26 +423,32 @@ const ExportDirectory = () => {
   const showSnackbar = (message, severity = "success") => {
     setSnackbar({ open: true, message, severity });
   };
+
   const handleChangePage = (event, newPage) => setPage(newPage);
+
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
+
   const handleAdd = () => {
     setSelectedDirectory(null);
     setViewMode(false);
     setOpenDialog(true);
   };
+
   const handleEdit = (directory) => {
     setSelectedDirectory(directory);
     setViewMode(false);
     setOpenDialog(true);
   };
+
   const handleView = (directory) => {
     setSelectedDirectory(directory);
     setViewMode(true);
     setOpenDialog(true);
   };
+
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this directory?")) {
       try {
@@ -389,6 +460,7 @@ const ExportDirectory = () => {
       }
     }
   };
+
   const handleSave = async (formData) => {
     try {
       if (selectedDirectory) {
@@ -404,6 +476,7 @@ const ExportDirectory = () => {
       showSnackbar("Error saving directory", "error");
     }
   };
+
   const paginatedDirectories = filteredDirectories.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
@@ -443,6 +516,7 @@ const ExportDirectory = () => {
               </Button>
             </Toolbar>
           </Paper>
+
           {/* Search & Filter Controls */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Grid container spacing={2} alignItems="center">
@@ -450,7 +524,7 @@ const ExportDirectory = () => {
                 <TextField
                   size="small"
                   fullWidth
-                  placeholder="Search organizations, aliases, IE codes..."
+                  placeholder="Search organizations, IE codes, PAN, AD codes..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   InputProps={{
@@ -489,6 +563,7 @@ const ExportDirectory = () => {
               </Grid>
             </Grid>
           </Paper>
+
           {/* Directory Table - Compact, Professional, Dense */}
           <Paper>
             <TableContainer sx={{ maxHeight: "70vh" }}>
@@ -568,18 +643,10 @@ const ExportDirectory = () => {
                                 variant="caption"
                                 color="textSecondary"
                               >
-                                {directory.generalInfo?.companyName}
+                                {directory.generalInfo?.exporterType || "-"}
                               </Typography>
                             </Box>
                           </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={directory.alias}
-                            variant="outlined"
-                            size="small"
-                            color="primary"
-                          />
                         </TableCell>
                         <TableCell>
                           <Chip
@@ -599,8 +666,13 @@ const ExportDirectory = () => {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2">
-                            {directory.address?.city || "-"}
+                          <Typography variant="body2" fontFamily="monospace">
+                            {getFirstAdCode(directory.bankDetails)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontFamily="monospace">
+                            {directory.registrationDetails?.panNo || "-"}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -624,22 +696,25 @@ const ExportDirectory = () => {
                               onClick={() => handleView(directory)}
                               size="small"
                               title="View"
+                              color="primary"
                             >
-                              <ViewIcon />
+                              <ViewIcon fontSize="small" />
                             </IconButton>
                             <IconButton
                               onClick={() => handleEdit(directory)}
                               size="small"
                               title="Edit"
+                              color="info"
                             >
-                              <EditIcon />
+                              <EditIcon fontSize="small" />
                             </IconButton>
                             <IconButton
                               onClick={() => handleDelete(directory._id)}
                               size="small"
                               title="Delete"
+                              color="error"
                             >
-                              <DeleteIcon />
+                              <DeleteIcon fontSize="small" />
                             </IconButton>
                           </Box>
                         </TableCell>
@@ -660,6 +735,7 @@ const ExportDirectory = () => {
               sx={{ borderTop: 1, borderColor: "divider" }}
             />
           </Paper>
+
           {/* Directory Dialog */}
           <Dialog
             open={openDialog}
@@ -695,6 +771,7 @@ const ExportDirectory = () => {
               <Button onClick={() => setOpenDialog(false)}>Close</Button>
             </DialogActions>
           </Dialog>
+
           {/* Snackbar */}
           <Snackbar
             open={snackbar.open}
