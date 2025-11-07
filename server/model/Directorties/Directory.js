@@ -40,10 +40,13 @@ const addressSchema = new Schema({
 const generalInfoSchema = new Schema({
   entityType: { 
     type: String, 
-     
-    enum: ['Company', 'Partnership', 'LLP', 'Proprietorship']
   },
-  msmeRegistered: { type: Boolean, default: false }
+  exporterType : { 
+    type: String, 
+  },
+  shipperConsignee : { 
+    type: String, 
+  },
 }, { _id: false });
 
 const registrationDetailsSchema = new Schema({
@@ -62,7 +65,9 @@ const branchInfoSchema = new Schema({
   city: { type: String,   },
   state: { type: String,   },
   postalCode: { type: String,   },
-  country: { type: String,   default: 'India' }
+  country: { type: String,   default: 'India' },
+  msmeRegistered: { type: Boolean, default: false }
+
 });
 
 const aeoDetailsSchema = new Schema({

@@ -13,6 +13,8 @@ import {
   Button,
   Typography,
   Box,
+  FormLabel,
+  FormGroup,
   IconButton,
 } from "@mui/material";
 import {
@@ -35,14 +37,6 @@ const validationSchema = Yup.object({
   approvalStatus: Yup.string()
     .oneOf(["Pending", "Approved", "Rejected"])
     .required(),
-
-  generalInfo: Yup.object({
-    entityType: Yup.string()
-      .oneOf(["Company", "Partnership", "LLP", "Proprietorship"])
-      .required("Company Type is required"),
-    msmeRegistered: Yup.boolean(),
-    shipperConsignee: Yup.boolean(),
-  }),
 
   address: Yup.object({
     branchName: Yup.string().max(255).required("Branch Name is required"),
@@ -73,8 +67,8 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
     organization: directory?.organization || "",
     approvalStatus: directory?.approvalStatus || "Pending",
     generalInfo: {
+      exporterType: directory?.generalInfo?.exporterType || "",
       entityType: directory?.generalInfo?.entityType || "",
-      msmeRegistered: directory?.generalInfo?.msmeRegistered || false,
       shipperConsignee: directory?.generalInfo?.shipperConsignee || false,
     },
     address: {
@@ -139,6 +133,8 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
         state: "",
         postalCode: "",
         country: "India",
+        msmeRegistered: false,
+
       },
     ],
     billingCurrency: {
@@ -266,12 +262,28 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                     }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={12} sm={6} md={2}>
                   <FormControl fullWidth size="small" margin="dense">
-                    <InputLabel>Merchant Exporter Type *</InputLabel>
+                    <InputLabel>company Type *</InputLabel>
                     <Select
                       name="generalInfo.entityType"
                       value={values.generalInfo.entityType}
+                      onChange={handleChange}
+                      label="Company Type *"
+                    >
+                      <MenuItem value="Private Limited">Private Limited</MenuItem>
+                      <MenuItem value="Public Limited">Public Limited</MenuItem>
+                      <MenuItem value="Proprietor">Proprietor</MenuItem>
+                      <MenuItem value="Partner">Partner</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6} md={2}>
+                  <FormControl fullWidth size="small" margin="dense">
+                    <InputLabel>Merchant Exporter Type *</InputLabel>
+                    <Select
+                      name="generalInfo.exporterType"
+                      value={values.generalInfo.exporterType}
                       onChange={handleChange}
                       label="Company Type *"
                     >
@@ -280,24 +292,46 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={6} sm={3} md={2}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        name="generalInfo.shipperConsignee"
-                        checked={values.generalInfo.shipperConsignee}
-                        onChange={handleChange}
-                        size="small"
-                      />
-                    }
-                    label="Shipper/Consignee"
-                    sx={{
-                      mt: 1,
-                      "& .MuiFormControlLabel-label": { fontSize: "0.8rem" },
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={1}>
+<Grid item xs={6} sm={2} md={2}>
+  <FormGroup>
+    <FormControlLabel
+      control={
+        <Checkbox
+          checked={values.generalInfo.shipperConsignee === "shipper"}
+          onChange={(e) => {
+            const newValue = e.target.checked ? "shipper" : "";
+            setFieldValue("generalInfo.shipperConsignee", newValue);
+          }}
+          size="small"
+        />
+      }
+      label="Shipper"
+      sx={{
+        "& .MuiFormControlLabel-label": { fontSize: "0.8rem" },
+      }}
+    />
+
+    <FormControlLabel
+      control={
+        <Checkbox
+          checked={values.generalInfo.shipperConsignee === "consignee"}
+          onChange={(e) => {
+            const newValue = e.target.checked ? "consignee" : "";
+            setFieldValue("generalInfo.shipperConsignee", newValue);
+          }}
+          size="small"
+        />
+      }
+      label="Consignee"
+      sx={{
+        "& .MuiFormControlLabel-label": { fontSize: "0.8rem" },
+      }}
+    />
+  </FormGroup>
+</Grid>
+
+
+                <Grid item xs={12} sm={6} md={2}>
                   <FormControl fullWidth size="small" margin="dense">
                     <InputLabel>Status</InputLabel>
                     <Select
@@ -317,68 +351,6 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
 
             {/* Branch Information - Dense Grid */}
             
-            <Box
-              sx={{
-                mb: 2,
-                p: 1.5,
-                bgcolor: "rgba(0,0,0,0.02)",
-                borderRadius: 1,
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  mb: 1.5,
-                }}
-              >
-                <Typography
-                  variant="subtitle1"
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                    fontSize: "0.9rem",
-                  }}
-                >
-                  <LocationIcon fontSize="small" color="primary" />
-                  Branch Information
-                </Typography>
-
-                {/* Add Branch button placed at top-right of the section.
-                    Uses Formik's setFieldValue (available in the render scope)
-                    to append a new branch to values.branchInfo. This avoids
-                    relying on FieldArray's `push` which isn't available here. */}
-                {!readOnly && (
-                  <Button
-                    startIcon={<AddIcon />}
-                    onClick={() =>
-                      setFieldValue("branchInfo", [
-                        ...values.branchInfo,
-                        {
-                          branchCode: "",
-                          branchName: "",
-                          address: "",
-                          city: "",
-                          state: "",
-                          postalCode: "",
-                          country: "India",
-                          mobile: "",
-                          email: "",
-                        },
-                      ])
-                    }
-                    variant="outlined"
-                    size="small"
-                    sx={{ mt: 0 }}
-                  >
-                    Add Branch
-                  </Button>
-                )}
-              </Box>
-
-            </Box>
 
             {/* Registration & Financial - Compact Grid */}
             <Box
@@ -400,7 +372,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 }}
               >
                 <AssignmentIcon fontSize="small" color="primary" />
-                Registration & Financial
+                Registration
               </Typography>
 
               <Grid container spacing={1}>
@@ -619,6 +591,69 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 )}
               </FieldArray>
             </Box>
+                        <Box
+              sx={{
+                mb: 2,
+                p: 1.5,
+                bgcolor: "rgba(0,0,0,0.02)",
+                borderRadius: 1,
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 1.5,
+                }}
+              >
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  <LocationIcon fontSize="small" color="primary" />
+                  Branch Information
+                </Typography>
+
+                {/* Add Branch button placed at top-right of the section.
+                    Uses Formik's setFieldValue (available in the render scope)
+                    to append a new branch to values.branchInfo. This avoids
+                    relying on FieldArray's `push` which isn't available here. */}
+                {!readOnly && (
+                  <Button
+                    startIcon={<AddIcon />}
+                    onClick={() =>
+                      setFieldValue("branchInfo", [
+                        ...values.branchInfo,
+                        {
+                          branchCode: "",
+                          branchName: "",
+                          address: "",
+                          city: "",
+                          state: "",
+                          postalCode: "",
+                          country: "India",
+                          mobile: "",
+                          email: "",
+                        },
+                      ])
+                    }
+                    variant="outlined"
+                    size="small"
+                    sx={{ mt: 0 }}
+                  >
+                    Add Branch
+                  </Button>
+                )}
+              </Box>
+
+            </Box>
+
 
                           <FieldArray name="branchInfo">
                 {({ push, remove }) => (
@@ -647,7 +682,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                             variant="subtitle2"
                             sx={{ fontSize: "0.9rem", fontWeight: "bold" }}
                           >
-                            Branch {index + 1}
+                            Branch
                           </Typography>
                           {!readOnly && (
                             <IconButton
@@ -855,25 +890,32 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                               </Grid>
                             ))}
                           </Grid>
-                          <Grid item xs={6} sm={3} md={2}>
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  name="generalInfo.msmeRegistered"
-                                  checked={values.generalInfo.msmeRegistered}
-                                  onChange={handleChange}
-                                  size="small"
-                                />
-                              }
-                              label="MSME"
-                              sx={{
-                                mt: 1,
-                                "& .MuiFormControlLabel-label": {
-                                  fontSize: "0.8rem",
-                                },
-                              }}
-                            />
-                          </Grid>
+
+<Grid item xs={6} sm={3} md={2}>
+  <FormControlLabel
+    control={
+      <Checkbox
+        // use setFieldValue so Formik updates the correct array item
+        checked={Boolean(branch.msmeRegistered)}
+        onChange={() =>
+          setFieldValue(
+            `branchInfo[${index}].msmeRegistered`,
+            !branch.msmeRegistered
+          )
+        }
+        size="small"
+      />
+    }
+    label="MSME"
+    sx={{
+      mt: 1,
+      "& .MuiFormControlLabel-label": {
+        fontSize: "0.8rem",
+      },
+    }}
+  />
+</Grid>
+
                         </Box>
                       </Box>
                     ))}
