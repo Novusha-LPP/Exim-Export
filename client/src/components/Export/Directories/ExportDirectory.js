@@ -79,7 +79,7 @@ const logisticsTheme = createTheme({
 const TABLE_COLUMNS = [
   { key: "organization", label: "Organization", minWidth: 200 },
   { key: "approvalStatus", label: "Status", minWidth: 100 },
-  { key: "entityType", label: "Entity Type", minWidth: 120 },
+  { key: "entityType", label: "Company Type", minWidth: 120 },
   { key: "ieCode", label: "IE Code", minWidth: 120 },
   { key: "adCode", label: "AD Code", minWidth: 120 },
   { key: "panNo", label: "PAN", minWidth: 110 },

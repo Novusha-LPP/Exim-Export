@@ -536,7 +536,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                       fullWidth
                       size="small"
                       name="registrationDetails.gstinMainBranch"
-                      label="GSTIN Main"
+                      label="GSTIN"
                       value={values.registrationDetails.gstinMainBranch}
                       onChange={(e) => {
                         const uppercaseValue = e.target.value.toUpperCase();
