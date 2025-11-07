@@ -142,6 +142,7 @@ const ExportJobsTableContent = ({ status }) => {
   }, [searchQuery, selectedExporter, selectedCountry, selectedMovementType]);
 
   const handleViewClick = (job) => {
+
     if (job) {
       const jobNo = job.job_no?.split("/")[3];
       const year = job.year;

@@ -83,7 +83,9 @@ const ExportDocumentJobs = () => {
 
   // Navigate to documentation details page for selected job
   const handleRowClick = (jobNo) => {
-    navigate(`/documentation/${jobNo}`);
+    console.log("Navigating to job:", jobNo);
+    const JobNumber = jobNo.split("/")[3];
+    navigate(`/documentation/${JobNumber}`);
   };
 
   return (
