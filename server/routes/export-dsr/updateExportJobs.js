@@ -36,7 +36,8 @@ router.put("/:year/:job_no", auditMiddleware("Job"), async (req, res) => {
     updateData.updatedAt = new Date();
 
     const updatedExportJob = await ExJobModel.findOneAndUpdate(
-      { year: year, job_no: job_no },
+      { year: year,
+       job_no: { $regex: job_no, $options: "i" } },
       { $set: updateData },
       { new: true, runValidators: true }
     );
