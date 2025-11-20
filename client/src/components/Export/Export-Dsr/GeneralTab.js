@@ -9,7 +9,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Box,
   Button,
   IconButton,
   Divider,
@@ -22,17 +21,12 @@ import EditIcon from "@mui/icons-material/Edit";
 import BusinessIcon from "@mui/icons-material/Business";
 import PersonIcon from "@mui/icons-material/Person";
 import DescriptionIcon from "@mui/icons-material/Description";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-import GavelIcon from "@mui/icons-material/Gavel";
-import CloseIcon from "@mui/icons-material/Close";
 
 const GeneralTab = ({ formik, directories }) => {
   const saveTimeoutRef = useRef(null);
 
   // Handle field changes with auto-save and proper formik integration
   const handleFieldChange = (field, value) => {
-    console.log(`Updating field ${field} with value:`, value);
     formik.setFieldValue(field, value);
 
     if (saveTimeoutRef.current) {
@@ -79,58 +73,61 @@ const GeneralTab = ({ formik, directories }) => {
   ];
 
   // Handle exporter selection and auto-populate related fields
-  const handleExporterChange = (event, newValue) => {
-    if (newValue?.data) {
-      const exp = newValue.data;
+const handleExporterChange = (event, newValue) => {
+  if (newValue?.data) {
+    const exp = newValue.data;
+    const primaryBranch = exp.branchInfo?.[0];
 
-      // Update multiple fields at once
-      const updates = {
-        exporter_name: exp.organization,
-        exporter: exp.organization, // Also update the main exporter field
-        exporter_address: `${exp.address?.addressLine}, ${exp.address?.postalCode}`,
-        branch_sno: exp.branchInfo?.[0]?.branchCode || "0",
-        branchSrNo: exp.branchInfo?.[0]?.branchCode || "0", // Schema field
-        state: exp.branchInfo?.[0]?.state || "Gujarat",
-        ie_code_no: exp.registrationDetails?.ieCode,
-        ie_code: exp.registrationDetails?.ieCode, // Schema field
-        regn_no: exp.registrationDetails?.gstinMainBranch,
-        exporter_gstin: exp.registrationDetails?.gstinMainBranch, // Schema field
-      };
+    const updates = {
+      exporter_name: exp.organization,
+      exporter: exp.organization,
+      exporter_address: primaryBranch
+        ? `${primaryBranch.address || ""}${
+            primaryBranch.postalCode ? `, ${primaryBranch.postalCode}` : ""
+          }`
+        : "",
+      branch_sno: primaryBranch?.branchCode || "0",
+      branchSrNo: primaryBranch?.branchCode || "0",
+      state: primaryBranch?.state,
+      ie_code_no: exp.registrationDetails?.ieCode,
+      ie_code: exp.registrationDetails?.ieCode,
+      regn_no: exp.registrationDetails?.gstinMainBranch,
+      exporter_gstin: exp.registrationDetails?.gstinMainBranch,
+    };
 
-      // Apply all updates
-      Object.keys(updates).forEach((key) => {
-        if (updates[key]) {
-          formik.setFieldValue(key, updates[key]);
-        }
-      });
-
-      // Auto-populate bank details if available
-      if (exp.bankDetails?.[0]) {
-        const bank = exp.bankDetails[0];
-        formik.setFieldValue(
-          "bank_dealer",
-          `${bank.entityName} ${bank.branchLocation}`
-        );
-        formik.setFieldValue("bank_name", bank.entityName); // Schema field
-        formik.setFieldValue("ac_number", bank.accountNumber);
-        formik.setFieldValue("bank_account_number", bank.accountNumber); // Schema field
-        formik.setFieldValue("ad_code", bank.adCode);
-        formik.setFieldValue("adCode", bank.adCode); // Schema field
+    Object.keys(updates).forEach((key) => {
+      if (updates[key] !== undefined && updates[key] !== null && updates[key] !== "") {
+        formik.setFieldValue(key, updates[key]);
       }
+    });
 
-      // Trigger auto-save with all updates
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-
-      saveTimeoutRef.current = setTimeout(() => {
-        const updatedValues = {
-          ...formik.values,
-          ...updates,
-        };
-      }, 1000);
+    if (exp.bankDetails?.[0]) {
+      const bank = exp.bankDetails[0];
+      formik.setFieldValue(
+        "bank_dealer",
+        `${bank.entityName} ${bank.branchLocation}`
+      );
+      formik.setFieldValue("bank_name", bank.entityName);
+      formik.setFieldValue("ac_number", bank.accountNumber);
+      formik.setFieldValue("bank_account_number", bank.accountNumber);
+      formik.setFieldValue("ad_code", bank.adCode);
+      formik.setFieldValue("adCode", bank.adCode);
     }
-  };
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      const updatedValues = {
+        ...formik.values,
+        ...updates,
+      };
+      // call your autosave function here with updatedValues
+    }, 1000);
+  }
+};
+
 
   // Handle bank selection
   const handleBankChange = (event, newValue) => {
@@ -160,70 +157,7 @@ const GeneralTab = ({ formik, directories }) => {
     <div className="p-3 bg-gray-50">
       {/* Compact Header */}
       <div className="flex items-center justify-between mb-2">
-        <Typography
-          variant="subtitle1"
-          className="font-semibold text-gray-800 flex items-center gap-2"
-        >
-          <DescriptionIcon fontSize="small" className="text-blue-600" />
-          General Information
-        </Typography>
-        <div className="flex gap-1">
-          <Button
-            size="small"
-            startIcon={<ContentCopyIcon fontSize="small" />}
-            sx={{
-              textTransform: "none",
-              fontSize: "0.75rem",
-              py: 0.5,
-              px: 1.5,
-              minWidth: "auto",
-            }}
-          >
-            Copy Previous Job
-          </Button>
-          <Button
-            size="small"
-            startIcon={<UploadFileIcon fontSize="small" />}
-            sx={{
-              textTransform: "none",
-              fontSize: "0.75rem",
-              py: 0.5,
-              px: 1.5,
-              minWidth: "auto",
-            }}
-          >
-            Import From File
-          </Button>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<GavelIcon fontSize="small" />}
-            sx={{
-              textTransform: "none",
-              fontSize: "0.75rem",
-              py: 0.5,
-              px: 1.5,
-              minWidth: "auto",
-              boxShadow: 1,
-            }}
-          >
-            Declarations
-          </Button>
-          <Button
-            size="small"
-            color="error"
-            startIcon={<CloseIcon fontSize="small" />}
-            sx={{
-              textTransform: "none",
-              fontSize: "0.75rem",
-              py: 0.5,
-              px: 1.5,
-              minWidth: "auto",
-            }}
-          >
-            Close
-          </Button>
-        </div>
+
       </div>
 
       <Grid container spacing={1.5}>
@@ -243,11 +177,6 @@ const GeneralTab = ({ formik, directories }) => {
                 <BusinessIcon fontSize="small" className="text-blue-600" />
                 Exporter
               </Typography>
-              <div className="flex gap-0.5">
-                <IconButton size="small" sx={{ width: 24, height: 24 }}>
-                  <AddIcon sx={{ fontSize: 16 }} className="text-blue-600" />
-                </IconButton>
-              </div>
             </div>
 
             <Grid container spacing={1}>
@@ -297,7 +226,7 @@ const GeneralTab = ({ formik, directories }) => {
                     handleFieldChange("exporter_address", e.target.value)
                   }
                   sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
-                  placeholder="PLOT NO.235, SARKHEJ BAVLA ROAD,NH-8A, VILLAGE SART, TAL.SANAND, Ahmedabad - 382220, Gujarat"
+                  placeholder="Address"
                 />
               </Grid>
 
@@ -337,63 +266,6 @@ const GeneralTab = ({ formik, directories }) => {
                     handleFieldChange("ie_code_no", e.target.value);
                     handleFieldChange("ie_code", e.target.value);
                   }}
-                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
-                />
-              </Grid>
-
-              <Grid item xs={6}>
-                <FormControl fullWidth size="small">
-                  <InputLabel sx={{ fontSize: "0.875rem" }}>
-                    Regn. No
-                  </InputLabel>
-                  <Select
-                    value={getValue("regn_no") || getValue("exporter_gstin")}
-                    onChange={(e) => {
-                      handleFieldChange("regn_no", e.target.value);
-                      handleFieldChange("exporter_gstin", e.target.value);
-                    }}
-                    label="Regn. No"
-                    sx={{ fontSize: "0.875rem" }}
-                  >
-                    <MenuItem value="GSTIN of Norm">GSTIN of Norm</MenuItem>
-                    <MenuItem value="24AAACL5064A1Z3">24AAACL5064A1Z3</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="DBK Bank"
-                  size="small"
-                  value={getValue("dbk_bank")}
-                  onChange={(e) =>
-                    handleFieldChange("dbk_bank", e.target.value)
-                  }
-                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
-                />
-              </Grid>
-
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="DBK A/c"
-                  size="small"
-                  value={getValue("dbk_ac")}
-                  onChange={(e) => handleFieldChange("dbk_ac", e.target.value)}
-                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
-                />
-              </Grid>
-
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="DBK EDI A/c"
-                  size="small"
-                  value={getValue("dbk_edi_ac")}
-                  onChange={(e) =>
-                    handleFieldChange("dbk_edi_ac", e.target.value)
-                  }
                   sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
