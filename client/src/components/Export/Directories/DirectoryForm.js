@@ -32,8 +32,7 @@ import Snackbar from "@mui/material/Snackbar";
 const validationSchema = Yup.object({
   organization: Yup.string()
     .max(255, "Organization name must be at most 255 characters")
-    .required("Organization is required")
-    .matches(/^[A-Z\s]*$/, "Only capital letters allowed"),
+    .required("Organization is required"),
 
   approvalStatus: Yup.string()
     .oneOf(["Pending", "Approved", "Rejected"])

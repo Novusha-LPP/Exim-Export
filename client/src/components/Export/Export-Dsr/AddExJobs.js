@@ -739,21 +739,6 @@ const AddExJobs = () => {
                       <Grid item xs={12} md={3}>
                         <TextField
                           fullWidth
-                          label="Country of Final Destination"
-                          value={formData.country_of_final_destination}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "country_of_final_destination",
-                              e.target.value
-                            )
-                          }
-                          variant="outlined"
-                        />
-                      </Grid>
-
-                      <Grid item xs={12} md={3}>
-                        <TextField
-                          fullWidth
                           label="Port of Loading"
                           value={formData.port_of_loading}
                           onChange={(e) =>
@@ -771,6 +756,21 @@ const AddExJobs = () => {
                           onChange={(e) =>
                             handleInputChange(
                               "port_of_discharge",
+                              e.target.value
+                            )
+                          }
+                          variant="outlined"
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} md={3}>
+                        <TextField
+                          fullWidth
+                          label="Country of Final Destination"
+                          value={formData.country_of_final_destination}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "country_of_final_destination",
                               e.target.value
                             )
                           }
@@ -912,33 +912,6 @@ const AddExJobs = () => {
                         />
                       </Grid>
                     </Grid>
-                  </CardContent>
-                </Card>
-              </Fade>
-            </Grid>
-
-            {/* Status */}
-            <Grid item xs={12} md={4}>
-              <Fade in timeout={1700}>
-                <Card elevation={3}>
-                  <CardContent>
-                    <FormControl fullWidth>
-                      <InputLabel>Status</InputLabel>
-                      <Select
-                        value={formData.status}
-                        onChange={(e) =>
-                          handleInputChange("status", e.target.value)
-                        }
-                        label="Status"
-                      >
-                        {statusOptions.map((status) => (
-                          <MenuItem key={status} value={status}>
-                            {status.charAt(0).toUpperCase() +
-                              status.slice(1).replace("-", " ")}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
                   </CardContent>
                 </Card>
               </Fade>
