@@ -627,6 +627,7 @@ const exportContainerSchema = new mongoose.Schema({
 // Charges Schema for Export
 const exportChargesSchema = new mongoose.Schema({
   charge_type: { type: String, trim: true }, // freight, insurance, handling, etc.
+
   charge_description: { type: String, trim: true },
   amount: { type: String, trim: true },
   currency: { type: String, trim: true },

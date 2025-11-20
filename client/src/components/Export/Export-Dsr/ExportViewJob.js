@@ -43,6 +43,8 @@ import ExportChecklistGenerator from "./ExportChecklistGenerator.js";
 
 const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
   const [snackbar, setSnackbar] = useState(false);
+  const { user } = useContext(UserContext);
+  const isNewJob = !formik.values.job_no; // Check if job number exists
 
   const handleCopyText = (text) => {
     navigator.clipboard.writeText(text || "");
@@ -93,7 +95,6 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
           <Typography variant="subtitle1" fontWeight="bold" color="primary">
             Export Job
           </Typography>
-          {/* Right side kept for future actions if needed */}
         </Stack>
 
         <Divider sx={{ my: 1 }} />
@@ -106,20 +107,44 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
               Job Number
             </Typography>
             <Box display="flex" alignItems="center">
-              <TextField
-                size="small"
-                value={formik.values.job_no}
-                name="job_no"
-                onChange={handleFieldChange}
-                fullWidth
-                sx={{ mt: 0.5 }}
-              />
-              <IconButton
-                size="small"
-                onClick={() => handleCopyText(formik.values.job_no)}
-              >
-                <ContentCopyIcon fontSize="small" />
-              </IconButton>
+              {isNewJob ? (
+                // Editable for new jobs
+                <TextField
+                  size="small"
+                  value={formik.values.job_no}
+                  name="job_no"
+                  onChange={handleFieldChange}
+                  fullWidth
+                  sx={{ mt: 0.5 }}
+                  placeholder="Auto-generated if empty"
+                />
+              ) : (
+                // Read-only with copy option for existing jobs
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    border: "1px solid #e0e0e0",
+                    borderRadius: 1,
+                    padding: "8px 12px",
+                    backgroundColor: "#fafafa",
+                    mt: 0.5,
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {formik.values.job_no}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleCopyText(formik.values.job_no)}
+                    sx={{ ml: 1 }}
+                  >
+                    <ContentCopyIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              )}
             </Box>
           </Grid>
 
@@ -189,6 +214,7 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
           </Grid>
         </Grid>
 
+        {/* Rest of the component remains the same */}
         {/* Row 2 */}
         <Grid container spacing={2} sx={{ mt: 2 }} alignItems="center">
           {/* Shipper */}
@@ -324,9 +350,7 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
                 onChange={handleFieldChange}
                 name="sb_type"
               >
-                <MenuItem value="Green - Drawback">
-                  Green - Drawback
-                </MenuItem>
+                <MenuItem value="Green - Drawback">Green - Drawback</MenuItem>
                 <MenuItem value="Green - RODTEP">Green - RODTEP</MenuItem>
                 <MenuItem value="Yellow">Yellow</MenuItem>
                 <MenuItem value="Red">Red</MenuItem>
@@ -345,7 +369,6 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
     </Card>
   );
 };
-
 // Tab Panel Component
 function TabPanel(props) {
   const { children, value, index, ...other } = props;

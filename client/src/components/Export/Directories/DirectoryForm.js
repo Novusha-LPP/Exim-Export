@@ -34,7 +34,7 @@ const validationSchema = Yup.object({
     .max(255, "Organization name must be at most 255 characters")
     .required("Organization is required")
     .matches(/^[A-Z\s]*$/, "Only capital letters allowed"),
-  
+
   approvalStatus: Yup.string()
     .oneOf(["Pending", "Approved", "Rejected"])
     .required("Approval status is required"),
@@ -50,44 +50,35 @@ const validationSchema = Yup.object({
       .matches(/^\d{10}$/, "IE Code must be exactly 10 digits")
       .required("IE Code is required"),
     panNo: Yup.string()
-      .matches(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format (e.g., ABCDE1234F)")
+      .matches(
+        /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
+        "Invalid PAN format (e.g., ABCDE1234F)"
+      )
       .required("PAN No is required"),
-    gstinMainBranch: Yup.string()
-      .matches(/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/, "Invalid GSTIN format"),
+    gstinMainBranch: Yup.string().matches(
+      /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/,
+      "Invalid GSTIN format"
+    ),
   }),
 
-
-  branchInfo: Yup.array().of(
-    Yup.object({
-      branchCode: Yup.string()
-        .max(50)
-        .required("Branch code is required"),
-      branchName: Yup.string()
-        .max(255)
-        .required("Branch name is required"),
-      address: Yup.string()
-        .max(500)
-        .required("Address is required"),
-      city: Yup.string()
-        .max(100)
-        .required("City is required"),
-      state: Yup.string()
-        .max(100)
-        .required("State is required"),
-      postalCode: Yup.string()
-        .matches(/^\d{6}$/, "Postal code must be 6 digits")
-        .required("Postal code is required"),
-      country: Yup.string()
-        .max(100)
-        .required("Country is required"),
-      mobile: Yup.string()
-        .matches(/^\d{10}$/, "Mobile must be 10 digits"),
-      email: Yup.string()
-        .email("Invalid email format")
-        .max(255),
-      msmeRegistered: Yup.boolean(),
-    })
-  ).min(1, "At least one branch is required"),
+  branchInfo: Yup.array()
+    .of(
+      Yup.object({
+        branchCode: Yup.string().max(50).required("Branch code is required"),
+        branchName: Yup.string().max(255).required("Branch name is required"),
+        address: Yup.string().max(500).required("Address is required"),
+        city: Yup.string().max(100).required("City is required"),
+        state: Yup.string().max(100).required("State is required"),
+        postalCode: Yup.string()
+          .matches(/^\d{6}$/, "Postal code must be 6 digits")
+          .required("Postal code is required"),
+        country: Yup.string().max(100).required("Country is required"),
+        mobile: Yup.string().matches(/^\d{10}$/, "Mobile must be 10 digits"),
+        email: Yup.string().email("Invalid email format").max(255),
+        msmeRegistered: Yup.boolean(),
+      })
+    )
+    .min(1, "At least one branch is required"),
 
   kycDocuments: Yup.object({
     certificateOfIncorporation: Yup.object({
@@ -163,15 +154,19 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
     },
     kycDocuments: {
       certificateOfIncorporation: {
-        uploaded: directory?.kycDocuments?.certificateOfIncorporation?.uploaded || false,
+        uploaded:
+          directory?.kycDocuments?.certificateOfIncorporation?.uploaded ||
+          false,
         files: directory?.kycDocuments?.certificateOfIncorporation?.files || [],
       },
       memorandumOfAssociation: {
-        uploaded: directory?.kycDocuments?.memorandumOfAssociation?.uploaded || false,
+        uploaded:
+          directory?.kycDocuments?.memorandumOfAssociation?.uploaded || false,
         files: directory?.kycDocuments?.memorandumOfAssociation?.files || [],
       },
       articlesOfAssociation: {
-        uploaded: directory?.kycDocuments?.articlesOfAssociation?.uploaded || false,
+        uploaded:
+          directory?.kycDocuments?.articlesOfAssociation?.uploaded || false,
         files: directory?.kycDocuments?.articlesOfAssociation?.files || [],
       },
       powerOfAttorney: {
@@ -179,15 +174,18 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
         files: directory?.kycDocuments?.powerOfAttorney?.files || [],
       },
       copyOfPanAllotment: {
-        uploaded: directory?.kycDocuments?.copyOfPanAllotment?.uploaded || false,
+        uploaded:
+          directory?.kycDocuments?.copyOfPanAllotment?.uploaded || false,
         files: directory?.kycDocuments?.copyOfPanAllotment?.files || [],
       },
       copyOfTelephoneBill: {
-        uploaded: directory?.kycDocuments?.copyOfTelephoneBill?.uploaded || false,
+        uploaded:
+          directory?.kycDocuments?.copyOfTelephoneBill?.uploaded || false,
         files: directory?.kycDocuments?.copyOfTelephoneBill?.files || [],
       },
       gstRegistrationCopy: {
-        uploaded: directory?.kycDocuments?.gstRegistrationCopy?.uploaded || false,
+        uploaded:
+          directory?.kycDocuments?.gstRegistrationCopy?.uploaded || false,
         files: directory?.kycDocuments?.gstRegistrationCopy?.files || [],
       },
       balanceSheet: {
@@ -332,7 +330,9 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         setFieldValue("organization", uppercaseValue);
                       }}
                       onBlur={handleBlur}
-                      error={touched.organization && Boolean(errors.organization)}
+                      error={
+                        touched.organization && Boolean(errors.organization)
+                      }
                       helperText={touched.organization && errors.organization}
                       margin="dense"
                       inputProps={{
@@ -342,11 +342,14 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                   </Grid>
 
                   <Grid item xs={12} sm={6} md={2}>
-                    <FormControl 
-                      fullWidth 
-                      size="small" 
+                    <FormControl
+                      fullWidth
+                      size="small"
                       margin="dense"
-                      error={touched.generalInfo?.entityType && Boolean(errors.generalInfo?.entityType)}
+                      error={
+                        touched.generalInfo?.entityType &&
+                        Boolean(errors.generalInfo?.entityType)
+                      }
                     >
                       <InputLabel>Company Type *</InputLabel>
                       <Select
@@ -356,38 +359,55 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         onBlur={handleBlur}
                         label="Company Type *"
                       >
-                        <MenuItem value="Private Limited">Private Limited</MenuItem>
-                        <MenuItem value="Public Limited">Public Limited</MenuItem>
+                        <MenuItem value="Private Limited">
+                          Private Limited
+                        </MenuItem>
+                        <MenuItem value="Public Limited">
+                          Public Limited
+                        </MenuItem>
                         <MenuItem value="Proprietor">Proprietor</MenuItem>
                         <MenuItem value="Partner">Partner</MenuItem>
                       </Select>
-                      {touched.generalInfo?.entityType && errors.generalInfo?.entityType && (
-                        <FormHelperText>{errors.generalInfo.entityType}</FormHelperText>
-                      )}
+                      {touched.generalInfo?.entityType &&
+                        errors.generalInfo?.entityType && (
+                          <FormHelperText>
+                            {errors.generalInfo.entityType}
+                          </FormHelperText>
+                        )}
                     </FormControl>
                   </Grid>
 
                   <Grid item xs={12} sm={6} md={2}>
-                    <FormControl 
-                      fullWidth 
-                      size="small" 
+                    <FormControl
+                      fullWidth
+                      size="small"
                       margin="dense"
-                      error={touched.generalInfo?.exporterType && Boolean(errors.generalInfo?.exporterType)}
+                      error={
+                        touched.generalInfo?.exporterType &&
+                        Boolean(errors.generalInfo?.exporterType)
+                      }
                     >
-                      <InputLabel>Merchant Exporter Type *</InputLabel>
+                      <InputLabel>Exporter Type *</InputLabel>
                       <Select
                         name="generalInfo.exporterType"
                         value={values.generalInfo.exporterType}
                         onChange={handleChange}
                         onBlur={handleBlur}
-                        label="Merchant Exporter Type *"
+                        label="Exporter Type *"
                       >
-                        <MenuItem value="Manufacturer Exporter">Manufacturer Exporter</MenuItem>
-                        <MenuItem value="Marchant Exporter">Marchant Exporter</MenuItem>
+                        <MenuItem value="Manufacturer Exporter">
+                          Manufacturer Exporter
+                        </MenuItem>
+                        <MenuItem value="Marchant Exporter">
+                          Marchant Exporter
+                        </MenuItem>
                       </Select>
-                      {touched.generalInfo?.exporterType && errors.generalInfo?.exporterType && (
-                        <FormHelperText>{errors.generalInfo.exporterType}</FormHelperText>
-                      )}
+                      {touched.generalInfo?.exporterType &&
+                        errors.generalInfo?.exporterType && (
+                          <FormHelperText>
+                            {errors.generalInfo.exporterType}
+                          </FormHelperText>
+                        )}
                     </FormControl>
                   </Grid>
 
@@ -396,45 +416,66 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                       <FormControlLabel
                         control={
                           <Checkbox
-                            checked={values.generalInfo.shipperConsignee === "shipper"}
+                            checked={
+                              values.generalInfo.shipperConsignee === "shipper"
+                            }
                             onChange={(e) => {
-                              const newValue = e.target.checked ? "shipper" : "";
-                              setFieldValue("generalInfo.shipperConsignee", newValue);
+                              const newValue = e.target.checked
+                                ? "shipper"
+                                : "";
+                              setFieldValue(
+                                "generalInfo.shipperConsignee",
+                                newValue
+                              );
                             }}
                             size="small"
                           />
                         }
                         label="Shipper"
                         sx={{
-                          "& .MuiFormControlLabel-label": { fontSize: "0.8rem" },
+                          "& .MuiFormControlLabel-label": {
+                            fontSize: "0.8rem",
+                          },
                         }}
                       />
 
                       <FormControlLabel
                         control={
                           <Checkbox
-                            checked={values.generalInfo.shipperConsignee === "consignee"}
+                            checked={
+                              values.generalInfo.shipperConsignee ===
+                              "consignee"
+                            }
                             onChange={(e) => {
-                              const newValue = e.target.checked ? "consignee" : "";
-                              setFieldValue("generalInfo.shipperConsignee", newValue);
+                              const newValue = e.target.checked
+                                ? "consignee"
+                                : "";
+                              setFieldValue(
+                                "generalInfo.shipperConsignee",
+                                newValue
+                              );
                             }}
                             size="small"
                           />
                         }
                         label="Consignee"
                         sx={{
-                          "& .MuiFormControlLabel-label": { fontSize: "0.8rem" },
+                          "& .MuiFormControlLabel-label": {
+                            fontSize: "0.8rem",
+                          },
                         }}
                       />
                     </FormGroup>
                   </Grid>
 
                   <Grid item xs={12} sm={6} md={2}>
-                    <FormControl 
-                      fullWidth 
-                      size="small" 
+                    <FormControl
+                      fullWidth
+                      size="small"
                       margin="dense"
-                      error={touched.approvalStatus && Boolean(errors.approvalStatus)}
+                      error={
+                        touched.approvalStatus && Boolean(errors.approvalStatus)
+                      }
                     >
                       <InputLabel>Status *</InputLabel>
                       <Select
@@ -489,16 +530,18 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                       value={values.registrationDetails.ieCode}
                       onChange={(e) => {
                         // Only allow numbers and max 10 digits
-                        const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        const value = e.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, 10);
                         setFieldValue("registrationDetails.ieCode", value);
                       }}
                       onBlur={handleBlur}
                       error={
-                        touched.registrationDetails?.ieCode && 
+                        touched.registrationDetails?.ieCode &&
                         Boolean(errors.registrationDetails?.ieCode)
                       }
                       helperText={
-                        touched.registrationDetails?.ieCode && 
+                        touched.registrationDetails?.ieCode &&
                         errors.registrationDetails?.ieCode
                       }
                       margin="dense"
@@ -513,15 +556,18 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                       value={values.registrationDetails.panNo}
                       onChange={(e) => {
                         const uppercaseValue = e.target.value.toUpperCase();
-                        setFieldValue("registrationDetails.panNo", uppercaseValue);
+                        setFieldValue(
+                          "registrationDetails.panNo",
+                          uppercaseValue
+                        );
                       }}
                       onBlur={handleBlur}
                       error={
-                        touched.registrationDetails?.panNo && 
+                        touched.registrationDetails?.panNo &&
                         Boolean(errors.registrationDetails?.panNo)
                       }
                       helperText={
-                        touched.registrationDetails?.panNo && 
+                        touched.registrationDetails?.panNo &&
                         errors.registrationDetails?.panNo
                       }
                       margin="dense"
@@ -540,15 +586,18 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                       value={values.registrationDetails.gstinMainBranch}
                       onChange={(e) => {
                         const uppercaseValue = e.target.value.toUpperCase();
-                        setFieldValue("registrationDetails.gstinMainBranch", uppercaseValue);
+                        setFieldValue(
+                          "registrationDetails.gstinMainBranch",
+                          uppercaseValue
+                        );
                       }}
                       onBlur={handleBlur}
                       error={
-                        touched.registrationDetails?.gstinMainBranch && 
+                        touched.registrationDetails?.gstinMainBranch &&
                         Boolean(errors.registrationDetails?.gstinMainBranch)
                       }
                       helperText={
-                        touched.registrationDetails?.gstinMainBranch && 
+                        touched.registrationDetails?.gstinMainBranch &&
                         errors.registrationDetails?.gstinMainBranch
                       }
                       margin="dense"
@@ -664,7 +713,9 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                 onBlur={handleBlur}
                                 error={
                                   touched.bankDetails?.[index]?.entityName &&
-                                  Boolean(errors.bankDetails?.[index]?.entityName)
+                                  Boolean(
+                                    errors.bankDetails?.[index]?.entityName
+                                  )
                                 }
                                 helperText={
                                   touched.bankDetails?.[index]?.entityName &&
@@ -684,11 +735,15 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                 onChange={handleChange}
                                 onBlur={handleBlur}
                                 error={
-                                  touched.bankDetails?.[index]?.branchLocation &&
-                                  Boolean(errors.bankDetails?.[index]?.branchLocation)
+                                  touched.bankDetails?.[index]
+                                    ?.branchLocation &&
+                                  Boolean(
+                                    errors.bankDetails?.[index]?.branchLocation
+                                  )
                                 }
                                 helperText={
-                                  touched.bankDetails?.[index]?.branchLocation &&
+                                  touched.bankDetails?.[index]
+                                    ?.branchLocation &&
                                   errors.bankDetails?.[index]?.branchLocation
                                 }
                                 margin="dense"
@@ -706,7 +761,9 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                 onBlur={handleBlur}
                                 error={
                                   touched.bankDetails?.[index]?.accountNumber &&
-                                  Boolean(errors.bankDetails?.[index]?.accountNumber)
+                                  Boolean(
+                                    errors.bankDetails?.[index]?.accountNumber
+                                  )
                                 }
                                 helperText={
                                   touched.bankDetails?.[index]?.accountNumber &&
@@ -745,8 +802,12 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                 label="IFSC Code"
                                 value={bank.ifscCode}
                                 onChange={(e) => {
-                                  const uppercaseValue = e.target.value.toUpperCase();
-                                  setFieldValue(`bankDetails[${index}].ifscCode`, uppercaseValue);
+                                  const uppercaseValue =
+                                    e.target.value.toUpperCase();
+                                  setFieldValue(
+                                    `bankDetails[${index}].ifscCode`,
+                                    uppercaseValue
+                                  );
                                 }}
                                 onBlur={handleBlur}
                                 error={
@@ -1005,8 +1066,13 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                               label="Postal Code *"
                               value={branch.postalCode}
                               onChange={(e) => {
-                                const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-                                setFieldValue(`branchInfo[${index}].postalCode`, value);
+                                const value = e.target.value
+                                  .replace(/\D/g, "")
+                                  .slice(0, 6);
+                                setFieldValue(
+                                  `branchInfo[${index}].postalCode`,
+                                  value
+                                );
                               }}
                               onBlur={handleBlur}
                               error={
@@ -1048,8 +1114,13 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                               label="Mobile"
                               value={branch.mobile}
                               onChange={(e) => {
-                                const value = e.target.value.replace(/\D/g, '').slice(0, 10);
-                                setFieldValue(`branchInfo[${index}].mobile`, value);
+                                const value = e.target.value
+                                  .replace(/\D/g, "")
+                                  .slice(0, 10);
+                                setFieldValue(
+                                  `branchInfo[${index}].mobile`,
+                                  value
+                                );
                               }}
                               onBlur={handleBlur}
                               error={
@@ -1164,11 +1235,15 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                   <FileUpload
                                     label={`Upload`}
                                     onFilesUploaded={(files) =>
-                                      handleFileUpload(doc.key, files, setFieldValue)
+                                      handleFileUpload(
+                                        doc.key,
+                                        files,
+                                        setFieldValue
+                                      )
                                     }
-                                    bucketPath={`kyc-documents/${doc.key}-branch-${
-                                      index + 1
-                                    }`}
+                                    bucketPath={`kyc-documents/${
+                                      doc.key
+                                    }-branch-${index + 1}`}
                                     multiple={false}
                                     acceptedFileTypes={[
                                       ".pdf",
@@ -1177,7 +1252,9 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                       ".png",
                                     ]}
                                     readOnly={readOnly}
-                                    existingFiles={values.kycDocuments[doc.key].files}
+                                    existingFiles={
+                                      values.kycDocuments[doc.key].files
+                                    }
                                     onFileDeleted={(fileIndex) =>
                                       handleFileDelete(
                                         doc.key,
@@ -1215,9 +1292,9 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 <Button variant="outlined" onClick={onCancel} size="small">
                   Cancel
                 </Button>
-                <Button 
-                  variant="contained" 
-                  type="submit" 
+                <Button
+                  variant="contained"
+                  type="submit"
                   size="small"
                   disabled={isSubmitting}
                 >

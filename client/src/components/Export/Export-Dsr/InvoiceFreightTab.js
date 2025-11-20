@@ -1,5 +1,12 @@
 import React, { useRef, useCallback } from "react";
-import { Box, Card, Typography, TextField, Autocomplete, Grid } from "@mui/material";
+import {
+  Box,
+  Card,
+  Typography,
+  TextField,
+  Autocomplete,
+  Grid,
+} from "@mui/material";
 
 const chargeTypes = [
   { key: "Freight", label: "Freight" },
@@ -7,7 +14,7 @@ const chargeTypes = [
   { key: "Discount", label: "Discount" },
   { key: "Other Deduction", label: "Other Deduction" },
   { key: "Commission", label: "Commission" },
-  { key: "FOB Value", label: "FOB Value" }
+  { key: "FOB Value", label: "FOB Value" },
 ];
 
 const currencyOptions = ["USD", "INR", "EUR", "GBP"];
@@ -16,8 +23,11 @@ const InvoiceFreightTab = ({ formik }) => {
   const saveTimeoutRef = useRef(null);
 
   // Initialize export charges if empty
-  if (!formik.values.export_charges || formik.values.export_charges.length === 0) {
-    const initialCharges = chargeTypes.map(charge => ({
+  if (
+    !formik.values.export_charges ||
+    formik.values.export_charges.length === 0
+  ) {
+    const initialCharges = chargeTypes.map((charge) => ({
       charge_type: charge.key,
       charge_description: charge.label,
       amount: "",
@@ -27,7 +37,7 @@ const InvoiceFreightTab = ({ formik }) => {
       invoice_date: "",
       payment_status: "",
       payment_date: "",
-      document_urls: []
+      document_urls: [],
     }));
     formik.setFieldValue("export_charges", initialCharges);
   }
@@ -36,7 +46,7 @@ const InvoiceFreightTab = ({ formik }) => {
     const charges = [...(formik.values.export_charges || [])];
     charges[index] = {
       ...charges[index],
-      [field]: value
+      [field]: value,
     };
     formik.setFieldValue("export_charges", charges);
 
@@ -50,13 +60,24 @@ const InvoiceFreightTab = ({ formik }) => {
           Freight, Insurance & Other Charges
         </Typography>
 
-        <Grid container spacing={1} sx={{ fontSize: "0.85rem", fontWeight: "bold" }}>
-          <Grid item xs={2}>Charge Type</Grid>
-          <Grid item xs={2}>Currency</Grid>
-          <Grid item xs={2}>Invoice Number</Grid>
-          <Grid item xs={2}>Invoice Date</Grid>
-          <Grid item xs={2}>Amount</Grid>
-          <Grid item xs={2}>Payment Terms</Grid>
+        <Grid
+          container
+          spacing={1}
+          sx={{ fontSize: "0.85rem", fontWeight: "bold" }}
+        >
+          <Grid item xs={2}>
+            Charge Type
+          </Grid>
+          <Grid item xs={2}>
+            Currency
+          </Grid>
+
+          <Grid item xs={2}>
+            Amount
+          </Grid>
+          <Grid item xs={2}>
+            Payment Terms
+          </Grid>
         </Grid>
 
         {(formik.values.export_charges || []).map((charge, idx) => (
@@ -74,11 +95,13 @@ const InvoiceFreightTab = ({ formik }) => {
                 options={currencyOptions}
                 size="small"
                 value={charge.currency || ""}
-                onChange={(e, val) => handleChargeChange(idx, "currency", val || "")}
-                renderInput={params => <TextField {...params} size="small" />}
+                onChange={(e, val) =>
+                  handleChargeChange(idx, "currency", val || "")
+                }
+                renderInput={(params) => <TextField {...params} size="small" />}
               />
             </Grid>
-            <Grid item xs={2}>
+            {/* <Grid item xs={2}>
               <TextField
                 size="small"
                 value={charge.invoice_number || ""}
@@ -95,13 +118,15 @@ const InvoiceFreightTab = ({ formik }) => {
                 fullWidth
                 InputLabelProps={{ shrink: true }}
               />
-            </Grid>
+            </Grid> */}
             <Grid item xs={2}>
               <TextField
                 size="small"
                 type="number"
                 value={charge.amount || ""}
-                onChange={(e) => handleChargeChange(idx, "amount", e.target.value)}
+                onChange={(e) =>
+                  handleChargeChange(idx, "amount", e.target.value)
+                }
                 fullWidth
               />
             </Grid>
@@ -109,7 +134,9 @@ const InvoiceFreightTab = ({ formik }) => {
               <TextField
                 size="small"
                 value={charge.payment_terms || ""}
-                onChange={(e) => handleChargeChange(idx, "payment_terms", e.target.value)}
+                onChange={(e) =>
+                  handleChargeChange(idx, "payment_terms", e.target.value)
+                }
                 fullWidth
               />
             </Grid>

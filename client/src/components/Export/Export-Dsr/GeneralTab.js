@@ -67,67 +67,67 @@ const GeneralTab = ({ formik, directories }) => {
     return banks;
   };
 
-  const getConsigneeOptions = () => [
-    { label: "TO ORDER", value: "TO ORDER" },
-    { label: "DIRECT CONSIGNMENT", value: "DIRECT CONSIGNMENT" },
-  ];
+
 
   // Handle exporter selection and auto-populate related fields
-const handleExporterChange = (event, newValue) => {
-  if (newValue?.data) {
-    const exp = newValue.data;
-    const primaryBranch = exp.branchInfo?.[0];
+  const handleExporterChange = (event, newValue) => {
+    if (newValue?.data) {
+      const exp = newValue.data;
+      const primaryBranch = exp.branchInfo?.[0];
 
-    const updates = {
-      exporter_name: exp.organization,
-      exporter: exp.organization,
-      exporter_address: primaryBranch
-        ? `${primaryBranch.address || ""}${
-            primaryBranch.postalCode ? `, ${primaryBranch.postalCode}` : ""
-          }`
-        : "",
-      branch_sno: primaryBranch?.branchCode || "0",
-      branchSrNo: primaryBranch?.branchCode || "0",
-      state: primaryBranch?.state,
-      ie_code_no: exp.registrationDetails?.ieCode,
-      ie_code: exp.registrationDetails?.ieCode,
-      regn_no: exp.registrationDetails?.gstinMainBranch,
-      exporter_gstin: exp.registrationDetails?.gstinMainBranch,
-    };
-
-    Object.keys(updates).forEach((key) => {
-      if (updates[key] !== undefined && updates[key] !== null && updates[key] !== "") {
-        formik.setFieldValue(key, updates[key]);
-      }
-    });
-
-    if (exp.bankDetails?.[0]) {
-      const bank = exp.bankDetails[0];
-      formik.setFieldValue(
-        "bank_dealer",
-        `${bank.entityName} ${bank.branchLocation}`
-      );
-      formik.setFieldValue("bank_name", bank.entityName);
-      formik.setFieldValue("ac_number", bank.accountNumber);
-      formik.setFieldValue("bank_account_number", bank.accountNumber);
-      formik.setFieldValue("ad_code", bank.adCode);
-      formik.setFieldValue("adCode", bank.adCode);
-    }
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    saveTimeoutRef.current = setTimeout(() => {
-      const updatedValues = {
-        ...formik.values,
-        ...updates,
+      const updates = {
+        exporter_name: exp.organization,
+        exporter: exp.organization,
+        exporter_address: primaryBranch
+          ? `${primaryBranch.address || ""}${
+              primaryBranch.postalCode ? `, ${primaryBranch.postalCode}` : ""
+            }`
+          : "",
+        branch_sno: primaryBranch?.branchCode || "0",
+        branchSrNo: primaryBranch?.branchCode || "0",
+        state: primaryBranch?.state,
+        ie_code_no: exp.registrationDetails?.ieCode,
+        ie_code: exp.registrationDetails?.ieCode,
+        regn_no: exp.registrationDetails?.gstinMainBranch,
+        exporter_gstin: exp.registrationDetails?.gstinMainBranch,
       };
-      // call your autosave function here with updatedValues
-    }, 1000);
-  }
-};
 
+      Object.keys(updates).forEach((key) => {
+        if (
+          updates[key] !== undefined &&
+          updates[key] !== null &&
+          updates[key] !== ""
+        ) {
+          formik.setFieldValue(key, updates[key]);
+        }
+      });
+
+      if (exp.bankDetails?.[0]) {
+        const bank = exp.bankDetails[0];
+        formik.setFieldValue(
+          "bank_dealer",
+          `${bank.entityName} ${bank.branchLocation}`
+        );
+        formik.setFieldValue("bank_name", bank.entityName);
+        formik.setFieldValue("ac_number", bank.accountNumber);
+        formik.setFieldValue("bank_account_number", bank.accountNumber);
+        formik.setFieldValue("ad_code", bank.adCode);
+        formik.setFieldValue("adCode", bank.adCode);
+      }
+
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      saveTimeoutRef.current = setTimeout(() => {
+        const updatedValues = {
+          ...formik.values,
+          ...updates,
+        };
+        // call your autosave function here with updatedValues
+      }, 1000);
+    }
+  };
 
   // Handle bank selection
   const handleBankChange = (event, newValue) => {
@@ -155,11 +155,6 @@ const handleExporterChange = (event, newValue) => {
 
   return (
     <div className="p-3 bg-gray-50">
-      {/* Compact Header */}
-      <div className="flex items-center justify-between mb-2">
-
-      </div>
-
       <Grid container spacing={1.5}>
         {/* Left Column - Exporter & Bank */}
         <Grid item xs={12} lg={6}>
@@ -253,7 +248,7 @@ const handleExporterChange = (event, newValue) => {
                     handleFieldChange("state", e.target.value);
                     handleFieldChange("exporter_state", e.target.value);
                   }}
-                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875restore" } }}
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>
               <Grid item xs={4}>
@@ -356,23 +351,17 @@ const handleExporterChange = (event, newValue) => {
 
             <Grid container spacing={1}>
               <Grid item xs={12}>
-                <FormControl fullWidth size="small">
-                  <InputLabel sx={{ fontSize: "0.875rem" }}>
-                    Ref. Type
-                  </InputLabel>
-                  <Select
-                    value={getValue("ref_type")}
-                    onChange={(e) =>
-                      handleFieldChange("ref_type", e.target.value)
-                    }
-                    label="Ref. Type"
-                    sx={{ fontSize: "0.875rem" }}
-                  >
-                    <MenuItem value="Job Order">Job Order</MenuItem>
-                    <MenuItem value="Contract">Contract</MenuItem>
-                    <MenuItem value="Purchase Order">Purchase Order</MenuItem>
-                  </Select>
-                </FormControl>
+                <TextField
+                  fullWidth
+                  label="Ref. Type"
+                  size="small"
+                  value={getValue("ref_type")}
+                  onChange={(e) =>
+                    handleFieldChange("ref_type", e.target.value)
+                  }
+                  placeholder="Enter reference type"
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
+                />
               </Grid>
 
               <Grid item xs={12}>
@@ -556,36 +545,23 @@ const handleExporterChange = (event, newValue) => {
 
             <Grid container spacing={1}>
               <Grid item xs={12} sm={6} md={4}>
-                <Autocomplete
+                <TextField
+                  fullWidth
+                  label="Consignee Name"
                   size="small"
-                  options={getConsigneeOptions()}
-                  value={
-                    getConsigneeOptions().find(
-                      (option) => option.value === getValue("consignee_name")
-                    ) || null
+                  value={getValue("consignee_name")}
+                  onChange={(e) =>
+                    handleFieldChange("consignee_name", e.target.value)
                   }
-                  onChange={(event, newValue) => {
-                    handleFieldChange("consignee_name", newValue?.value || "");
+                  placeholder="Enter consignee name"
+                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
+                  InputProps={{
+                    endAdornment: (
+                      <IconButton size="small" sx={{ p: 0.5 }}>
+                        <EditIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    ),
                   }}
-                  getOptionLabel={(option) => option.label}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Consignee"
-                      sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
-                      InputProps={{
-                        ...params.InputProps,
-                        endAdornment: (
-                          <>
-                            {params.InputProps.endAdornment}
-                            <IconButton size="small" sx={{ p: 0.5 }}>
-                              <EditIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                          </>
-                        ),
-                      }}
-                    />
-                  )}
                 />
               </Grid>
 
@@ -606,52 +582,13 @@ const handleExporterChange = (event, newValue) => {
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
-                  label="Cons Country"
+                  label="Consignee Country"
                   size="small"
                   value={getValue("consignee_country")}
                   onChange={(e) =>
                     handleFieldChange("consignee_country", e.target.value)
                   }
                   placeholder="Korea, Republic of"
-                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  label="Sales Person"
-                  size="small"
-                  value={getValue("sales_person")}
-                  onChange={(e) =>
-                    handleFieldChange("sales_person", e.target.value)
-                  }
-                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  label="Business Dimensions"
-                  size="small"
-                  value={getValue("business_dimensions")}
-                  onChange={(e) =>
-                    handleFieldChange("business_dimensions", e.target.value)
-                  }
-                  sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  label="Quotation"
-                  size="small"
-                  value={getValue("quotation")}
-                  onChange={(e) =>
-                    handleFieldChange("quotation", e.target.value)
-                  }
                   sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
                 />
               </Grid>

@@ -1,16 +1,9 @@
-// ShipmentMainTab.jsx - Complete Main tab with ALL fields from Logisys screenshot
 import React, { useState, useRef, useCallback } from "react";
 import {
   Grid,
   Card,
-  CardContent,
   TextField,
   Typography,
-  Autocomplete,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Box,
   Button,
   Checkbox,
@@ -21,7 +14,6 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
   const [snackbar, setSnackbar] = useState(false);
   const saveTimeoutRef = useRef(null);
 
-  // Auto-save function
   const autoSave = useCallback(
     async (values) => {
       try {
@@ -35,58 +27,17 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
     [onUpdate]
   );
 
-  // Handle field changes with auto-save
   const handleFieldChange = (field, value) => {
     formik.setFieldValue(field, value);
-    
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
-    
+
     saveTimeoutRef.current = setTimeout(() => {
       autoSave(formik.values);
     }, 1500);
   };
-
-  // Dropdown options
-  const getPortOptions = () => [
-    { label: "Busan(Korea) (KRBUS)", value: "Busan(Korea) (KRBUS)" },
-    { label: "ICD SACHANA", value: "ICD SACHANA" },
-    { label: "JNPT", value: "JNPT" },
-    { label: "Chennai Port", value: "Chennai Port" },
-    { label: "Cochin Port", value: "Cochin Port" }
-  ];
-
-  const getCountryOptions = () => [
-    { label: "Korea, Republic of", value: "Korea, Republic of" },
-    { label: "India", value: "India" },
-    { label: "China", value: "China" },
-    { label: "USA", value: "USA" },
-    { label: "Germany", value: "Germany" }
-  ];
-
-  const getShippingLineOptions = () => [
-    { label: "MAERSK LINE", value: "MAERSK LINE" },
-    { label: "MSC", value: "MSC" },
-    { label: "CMA CGM", value: "CMA CGM" },
-    { label: "HAPAG LLOYD", value: "HAPAG LLOYD" },
-    { label: "EVERGREEN", value: "EVERGREEN" }
-  ];
-
-  const getNatureOfCargoOptions = () => [
-    { label: "C - Containerised", value: "C - Containerised" },
-    { label: "B - Break Bulk", value: "B - Break Bulk" },
-    { label: "L - Liquid Bulk", value: "L - Liquid Bulk" },
-    { label: "D - Dry Bulk", value: "D - Dry Bulk" }
-  ];
-
-  const getStateOptions = () => [
-    { label: "GUJARAT", value: "GUJARAT" },
-    { label: "MAHARASHTRA", value: "MAHARASHTRA" },
-    { label: "TAMIL NADU", value: "TAMIL NADU" },
-    { label: "KARNATAKA", value: "KARNATAKA" },
-    { label: "WEST BENGAL", value: "WEST BENGAL" }
-  ];
 
   return (
     <Box>
@@ -97,94 +48,77 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
               Port & Location Details
             </Typography>
-            
+
             <Grid container spacing={2}>
               {/* Discharge Port */}
               <Grid item xs={12}>
-                <Autocomplete
+                <TextField
+                  fullWidth
                   size="small"
-                  options={getPortOptions()}
-                  value={getPortOptions().find(option => option.value === formik.values.discharge_port) || null}
-                  onChange={(event, newValue) => handleFieldChange('discharge_port', newValue?.value || '')}
-                  getOptionLabel={(option) => option.label}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Discharge Port"
-                      placeholder="Busan(Korea) (KRBUS)"
-                    />
-                  )}
+                  label="Discharge Port"
+                  value={formik.values.port_of_discharge || ""}
+                  onChange={(e) =>
+                    handleFieldChange("port_of_discharge", e.target.value)
+                  }
+                  placeholder="Busan(Korea) (KRBUS)"
                 />
               </Grid>
 
               {/* Discharge Country */}
               <Grid item xs={12}>
-                <Autocomplete
+                <TextField
+                  fullWidth
                   size="small"
-                  options={getCountryOptions()}
-                  value={getCountryOptions().find(option => option.value === formik.values.discharge_country) || null}
-                  onChange={(event, newValue) => handleFieldChange('discharge_country', newValue?.value || '')}
-                  getOptionLabel={(option) => option.label}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Discharge Country"
-                      placeholder="Korea, Republic of"
-                    />
-                  )}
+                  label="Discharge Country"
+                  value={formik.values.discharge_country || ""}
+                  onChange={(e) =>
+                    handleFieldChange("discharge_country", e.target.value)
+                  }
+                  placeholder="Korea, Republic of"
                 />
               </Grid>
 
               {/* Destination Port */}
               <Grid item xs={12}>
-                <Autocomplete
+                <TextField
+                  fullWidth
                   size="small"
-                  options={getPortOptions()}
-                  value={getPortOptions().find(option => option.value === formik.values.destination_port) || null}
-                  onChange={(event, newValue) => handleFieldChange('destination_port', newValue?.value || '')}
-                  getOptionLabel={(option) => option.label}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Destination Port"
-                      placeholder="Busan(Korea) (KRBUS)"
-                    />
-                  )}
+                  label="Destination Port"
+                  value={formik.values.destination_port || ""}
+                  onChange={(e) =>
+                    handleFieldChange("destination_port", e.target.value)
+                  }
+                  placeholder="Busan(Korea) (KRBUS)"
                 />
               </Grid>
 
               {/* Destination Country */}
               <Grid item xs={12}>
-                <Autocomplete
+                <TextField
+                  fullWidth
                   size="small"
-                  options={getCountryOptions()}
-                  value={getCountryOptions().find(option => option.value === formik.values.destination_country) || null}
-                  onChange={(event, newValue) => handleFieldChange('destination_country', newValue?.value || '')}
-                  getOptionLabel={(option) => option.label}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Destination Country"
-                      placeholder="Korea, Republic of"
-                    />
-                  )}
+                  label="Destination Country"
+                  value={formik.values.country_of_final_destination || ""}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      "country_of_final_destination",
+                      e.target.value
+                    )
+                  }
+                  placeholder="Enter destination country"
                 />
               </Grid>
 
               {/* Shipping Line */}
               <Grid item xs={12}>
-                <Autocomplete
+                <TextField
+                  fullWidth
                   size="small"
-                  options={getShippingLineOptions()}
-                  value={getShippingLineOptions().find(option => option.value === formik.values.shipping_line) || null}
-                  onChange={(event, newValue) => handleFieldChange('shipping_line', newValue?.value || '')}
-                  getOptionLabel={(option) => option.label}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Shipping Line"
-                    />
-                  )}
+                  label="Shipping Line"
+                  value={formik.values.shipping_line || ""}
+                  onChange={(e) =>
+                    handleFieldChange("shipping_line", e.target.value)
+                  }
                 />
               </Grid>
 
@@ -195,8 +129,10 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   label="Vessel/Sailing Date"
                   type="date"
                   size="small"
-                  value={formik.values.vessel_sailing_date || ''}
-                  onChange={(e) => handleFieldChange('vessel_sailing_date', e.target.value)}
+                  value={formik.values.vessel_sailing_date || ""}
+                  onChange={(e) =>
+                    handleFieldChange("vessel_sailing_date", e.target.value)
+                  }
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
@@ -207,8 +143,10 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   fullWidth
                   label="Voyage No"
                   size="small"
-                  value={formik.values.voyage_no || ''}
-                  onChange={(e) => handleFieldChange('voyage_no', e.target.value)}
+                  value={formik.values.voyage_no || ""}
+                  onChange={(e) =>
+                    handleFieldChange("voyage_no", e.target.value)
+                  }
                 />
               </Grid>
 
@@ -218,8 +156,8 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   fullWidth
                   label="EGM No/Date"
                   size="small"
-                  value={formik.values.egm_no || ''}
-                  onChange={(e) => handleFieldChange('egm_no', e.target.value)}
+                  value={formik.values.egm_no || ""}
+                  onChange={(e) => handleFieldChange("egm_no", e.target.value)}
                 />
               </Grid>
 
@@ -228,8 +166,10 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   fullWidth
                   type="date"
                   size="small"
-                  value={formik.values.egm_date || ''}
-                  onChange={(e) => handleFieldChange('egm_date', e.target.value)}
+                  value={formik.values.egm_date || ""}
+                  onChange={(e) =>
+                    handleFieldChange("egm_date", e.target.value)
+                  }
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
@@ -240,8 +180,8 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   fullWidth
                   label="MBL No/Date"
                   size="small"
-                  value={formik.values.mbl_no || ''}
-                  onChange={(e) => handleFieldChange('mbl_no', e.target.value)}
+                  value={formik.values.mbl_no || ""}
+                  onChange={(e) => handleFieldChange("mbl_no", e.target.value)}
                 />
               </Grid>
 
@@ -250,8 +190,10 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   fullWidth
                   type="date"
                   size="small"
-                  value={formik.values.mbl_date || ''}
-                  onChange={(e) => handleFieldChange('mbl_date', e.target.value)}
+                  value={formik.values.mbl_date || ""}
+                  onChange={(e) =>
+                    handleFieldChange("mbl_date", e.target.value)
+                  }
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
@@ -262,8 +204,8 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   fullWidth
                   label="HBL No/Date"
                   size="small"
-                  value={formik.values.hbl_no || ''}
-                  onChange={(e) => handleFieldChange('hbl_no', e.target.value)}
+                  value={formik.values.hbl_no || ""}
+                  onChange={(e) => handleFieldChange("hbl_no", e.target.value)}
                 />
               </Grid>
 
@@ -272,8 +214,10 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   fullWidth
                   type="date"
                   size="small"
-                  value={formik.values.hbl_date || ''}
-                  onChange={(e) => handleFieldChange('hbl_date', e.target.value)}
+                  value={formik.values.hbl_date || ""}
+                  onChange={(e) =>
+                    handleFieldChange("hbl_date", e.target.value)
+                  }
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
@@ -284,8 +228,10 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   fullWidth
                   label="Pre-Carriage by"
                   size="small"
-                  value={formik.values.pre_carriage_by || ''}
-                  onChange={(e) => handleFieldChange('pre_carriage_by', e.target.value)}
+                  value={formik.values.pre_carriage_by || ""}
+                  onChange={(e) =>
+                    handleFieldChange("pre_carriage_by", e.target.value)
+                  }
                 />
               </Grid>
 
@@ -295,8 +241,10 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   fullWidth
                   label="Place of Receipt"
                   size="small"
-                  value={formik.values.place_of_receipt || ''}
-                  onChange={(e) => handleFieldChange('place_of_receipt', e.target.value)}
+                  value={formik.values.place_of_receipt || ""}
+                  onChange={(e) =>
+                    handleFieldChange("place_of_receipt", e.target.value)
+                  }
                 />
               </Grid>
 
@@ -306,44 +254,38 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   fullWidth
                   label="Transhipper Code"
                   size="small"
-                  value={formik.values.transhipper_code || ''}
-                  onChange={(e) => handleFieldChange('transhipper_code', e.target.value)}
+                  value={formik.values.transhipper_code || ""}
+                  onChange={(e) =>
+                    handleFieldChange("transhipper_code", e.target.value)
+                  }
                 />
               </Grid>
 
               {/* Gateway Port */}
               <Grid item xs={12}>
-                <Autocomplete
+                <TextField
+                  fullWidth
                   size="small"
-                  options={getPortOptions()}
-                  value={getPortOptions().find(option => option.value === formik.values.gateway_port) || null}
-                  onChange={(event, newValue) => handleFieldChange('gateway_port', newValue?.value || '')}
-                  getOptionLabel={(option) => option.label}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Gateway Port"
-                      placeholder="ICD SACHANA"
-                    />
-                  )}
+                  label="Gateway Port"
+                  value={formik.values.gateway_port || ""}
+                  onChange={(e) =>
+                    handleFieldChange("gateway_port", e.target.value)
+                  }
+                  placeholder="ICD SACHANA"
                 />
               </Grid>
 
               {/* State Of Origin */}
               <Grid item xs={12}>
-                <Autocomplete
+                <TextField
+                  fullWidth
                   size="small"
-                  options={getStateOptions()}
-                  value={getStateOptions().find(option => option.value === formik.values.state_of_origin) || null}
-                  onChange={(event, newValue) => handleFieldChange('state_of_origin', newValue?.value || '')}
-                  getOptionLabel={(option) => option.label}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="State Of Origin"
-                      placeholder="GUJARAT"
-                    />
-                  )}
+                  label="State Of Origin"
+                  value={formik.values.state_of_origin || ""}
+                  onChange={(e) =>
+                    handleFieldChange("state_of_origin", e.target.value)
+                  }
+                  placeholder="GUJARAT"
                 />
               </Grid>
 
@@ -353,7 +295,12 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   control={
                     <Checkbox
                       checked={formik.values.annexure_c_details || false}
-                      onChange={(e) => handleFieldChange('annexure_c_details', e.target.checked)}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          "annexure_c_details",
+                          e.target.checked
+                        )
+                      }
                       size="small"
                     />
                   }
@@ -371,23 +318,19 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
               Cargo & Weight Details
             </Typography>
-            
+
             <Grid container spacing={2}>
               {/* Nature of Cargo */}
               <Grid item xs={12}>
-                <Autocomplete
+                <TextField
+                  fullWidth
                   size="small"
-                  options={getNatureOfCargoOptions()}
-                  value={getNatureOfCargoOptions().find(option => option.value === formik.values.nature_of_cargo) || null}
-                  onChange={(event, newValue) => handleFieldChange('nature_of_cargo', newValue?.value || '')}
-                  getOptionLabel={(option) => option.label}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Nature of Cargo"
-                      placeholder="C - Containerised"
-                    />
-                  )}
+                  label="Nature of Cargo"
+                  value={formik.values.nature_of_cargo || ""}
+                  onChange={(e) =>
+                    handleFieldChange("nature_of_cargo", e.target.value)
+                  }
+                  placeholder="C - Containerised"
                 />
               </Grid>
 
@@ -398,8 +341,10 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   label="Total No. of Pkgs"
                   size="small"
                   type="number"
-                  value={formik.values.total_no_of_pkgs || ''}
-                  onChange={(e) => handleFieldChange('total_no_of_pkgs', e.target.value)}
+                  value={formik.values.total_no_of_pkgs || ""}
+                  onChange={(e) =>
+                    handleFieldChange("total_no_of_pkgs", e.target.value)
+                  }
                   placeholder="31"
                 />
               </Grid>
@@ -432,8 +377,10 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   label="Loose Pkgs"
                   size="small"
                   type="number"
-                  value={formik.values.loose_pkgs || ''}
-                  onChange={(e) => handleFieldChange('loose_pkgs', e.target.value)}
+                  value={formik.values.loose_pkgs || ""}
+                  onChange={(e) =>
+                    handleFieldChange("loose_pkgs", e.target.value)
+                  }
                   placeholder="0"
                 />
               </Grid>
@@ -445,8 +392,10 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   label="No of Containers"
                   size="small"
                   type="number"
-                  value={formik.values.no_of_containers || ''}
-                  onChange={(e) => handleFieldChange('no_of_containers', e.target.value)}
+                  value={formik.values.no_of_containers || ""}
+                  onChange={(e) =>
+                    handleFieldChange("no_of_containers", e.target.value)
+                  }
                 />
               </Grid>
 
@@ -458,8 +407,10 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   size="small"
                   type="number"
                   step="0.001"
-                  value={formik.values.gross_weight || ''}
-                  onChange={(e) => handleFieldChange('gross_weight', e.target.value)}
+                  value={formik.values.gross_weight || ""}
+                  onChange={(e) =>
+                    handleFieldChange("gross_weight", e.target.value)
+                  }
                   placeholder="22827.000"
                 />
               </Grid>
@@ -482,8 +433,10 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   size="small"
                   type="number"
                   step="0.001"
-                  value={formik.values.net_weight || ''}
-                  onChange={(e) => handleFieldChange('net_weight', e.target.value)}
+                  value={formik.values.net_weight || ""}
+                  onChange={(e) =>
+                    handleFieldChange("net_weight", e.target.value)
+                  }
                   placeholder="22669.000"
                 />
               </Grid>
@@ -506,8 +459,8 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   size="small"
                   type="number"
                   step="0.001"
-                  value={formik.values.volume || ''}
-                  onChange={(e) => handleFieldChange('volume', e.target.value)}
+                  value={formik.values.volume || ""}
+                  onChange={(e) => handleFieldChange("volume", e.target.value)}
                   placeholder="0.000"
                 />
               </Grid>
@@ -530,8 +483,10 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   size="small"
                   type="number"
                   step="0.001"
-                  value={formik.values.chargeable_weight || ''}
-                  onChange={(e) => handleFieldChange('chargeable_weight', e.target.value)}
+                  value={formik.values.chargeable_weight || ""}
+                  onChange={(e) =>
+                    handleFieldChange("chargeable_weight", e.target.value)
+                  }
                   placeholder="0.000"
                 />
               </Grid>
@@ -548,7 +503,12 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
 
               {/* Marks & Nos - Large Text Area */}
               <Grid item xs={12}>
-                <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 0.5 }}>
+                <Typography
+                  variant="caption"
+                  display="block"
+                  color="text.secondary"
+                  sx={{ mb: 0.5 }}
+                >
                   Marks & Nos
                 </Typography>
                 <TextField
@@ -556,17 +516,23 @@ const ShipmentMainTab = ({ formik, directories, params, onUpdate }) => {
                   multiline
                   rows={6}
                   size="small"
-                  value={formik.values.marks_nos || ''}
-                  onChange={(e) => handleFieldChange('marks_nos', e.target.value)}
+                  value={formik.values.marks_nos || ""}
+                  onChange={(e) =>
+                    handleFieldChange("marks_nos", e.target.value)
+                  }
                   placeholder="WE INTEND TO CLAIM RODTEP SCHEME,Invoice No: 90004319 Invoice,Date: 14 September 2025"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: "0.75rem",
-                      lineHeight: 1.4
-                    }
+                      lineHeight: 1.4,
+                    },
                   }}
                 />
-                <Typography variant="caption" color="primary" sx={{ mt: 0.5, display: "block" }}>
+                <Typography
+                  variant="caption"
+                  color="primary"
+                  sx={{ mt: 0.5, display: "block" }}
+                >
                   [85 chars]
                 </Typography>
               </Grid>

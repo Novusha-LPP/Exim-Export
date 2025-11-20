@@ -62,9 +62,9 @@ function useExportJobDetails(params, setFileSnackbar) {
           }
         }
 
-
         if (jobData) {
           setData(jobData);
+         
         } else {
           console.error("No valid job data found in response");
           setData(null);
