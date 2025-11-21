@@ -28,6 +28,7 @@ router.get("/:year/:job_no", async (req, res) => {
 
 // Update export job
 router.put("/:year/:job_no", auditMiddleware("Job"), async (req, res) => {
+  
   try {
     const { year, job_no } = req.params;
     const updateData = req.body;
@@ -41,7 +42,7 @@ router.put("/:year/:job_no", auditMiddleware("Job"), async (req, res) => {
       { $set: updateData },
       { new: true, runValidators: true }
     );
-
+console.log("Updated Export Job:", updatedExportJob);
     if (!updatedExportJob) {
       return res.status(404).json({ message: "Export job not found" });
     }
