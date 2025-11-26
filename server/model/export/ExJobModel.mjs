@@ -726,10 +726,6 @@ const exportJobSchema = new mongoose.Schema(
     gstin: { type: String, trim: true },
     state: { type: String, trim: true },
 
-    // DBK Fields (Missing)
-    dbk_bank: { type: String, trim: true },
-    dbk_ac: { type: String, trim: true },
-    dbk_edi_ac: { type: String, trim: true },
 
     // Reference & Regulatory Fields (Missing)
     ref_type: { type: String, trim: true },
@@ -741,10 +737,6 @@ const exportJobSchema = new mongoose.Schema(
     epz_code: { type: String, trim: true },
     notify: { type: String, trim: true },
 
-    // Business Fields (Missing)
-    sales_person: { type: String, trim: true },
-    business_dimensions: { type: String, trim: true },
-    quotation: { type: String, trim: true },
 
     // Additional Banking Fields (Missing)
     bank_branch: { type: String, trim: true },
@@ -862,22 +854,13 @@ const exportJobSchema = new mongoose.Schema(
     bank_swift_code: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Consignee/Importer Information
+consignees: [
+  {
     consignee_name: { type: String, trim: true },
     consignee_address: { type: String, trim: true },
-    consignee_city: { type: String, trim: true },
-    consignee_state: { type: String, trim: true },
-    consignee_country: { type: String, trim: true },
-    consignee_postal_code: { type: String, trim: true },
-    consignee_phone: { type: String, trim: true },
-    consignee_email: { type: String, trim: true },
-    consignee_fax: { type: String, trim: true },
-    consignee_tax_id: { type: String, trim: true },
-
-    // Notify Party Information
-    notify_party_name: { type: String, trim: true },
-    notify_party_address: { type: String, trim: true },
-    notify_party_phone: { type: String, trim: true },
-    notify_party_email: { type: String, trim: true },
+    consignee_country: { type: String, trim: true }
+  }
+],
 
     ////////////////////////////////////////////////// Shipment Details
     port_of_loading: { type: String, trim: true },
@@ -907,7 +890,6 @@ const exportJobSchema = new mongoose.Schema(
     ////////////////////////////////////////////////// Cargo Information
     commodity_description: { type: String, trim: true },
     hs_code: { type: String, trim: true },
-    total_packages: { type: String, trim: true },
     package_type: { type: String, trim: true },
     gross_weight_kg: { type: String, trim: true },
     net_weight_kg: { type: String, trim: true },
@@ -1279,7 +1261,6 @@ const exportJobSchema = new mongoose.Schema(
       unique: true,
       uppercase: true,
     },
-    jobReceivedOn: { type: Date, default: Date.now },
     sbNo: String, // Shipping Bill Number
 
     // Filing Information
@@ -1655,14 +1636,6 @@ exportJobSchema.virtual("isCompleted").get(function () {
   return this.jobStatus === "Completed";
 });
 
-// Pre-save middleware
-exportJobSchema.pre("save", function (next) {
-  if (this.isNew) {
-    this.jobReceivedOn = this.jobReceivedOn || new Date();
-  }
-  this.updatedBy = this.modifiedPaths().length > 0 ? "system" : this.updatedBy;
-  next();
-});
 
 // Methods
 exportJobSchema.methods.addMilestone = function (

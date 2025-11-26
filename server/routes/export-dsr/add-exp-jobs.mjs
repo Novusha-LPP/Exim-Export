@@ -25,7 +25,7 @@ router.post(
       } = req.body;
 
       // Validate required fields
-      if (!exporter_name || !consignee_name || !ie_code) {
+      if (!exporter_name || !ie_code) {
         return res.status(400).json({ message: "Missing required fields." });
       }
 

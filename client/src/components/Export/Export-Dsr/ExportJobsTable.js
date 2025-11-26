@@ -1,632 +1,400 @@
-import React, { useState, useEffect, useMemo } from "react";
-import {
-  Box,
-  Typography,
-  Button,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Tabs,
-  Tab,
-  Badge,
-  Chip,
-  Autocomplete,
-  IconButton,
-} from "@mui/material";
-import {
-  Edit,
-  Delete,
-  Visibility,
-  BuildCircle as ToolboxIcon,
-  Download as DownloadIcon,
-} from "@mui/icons-material";
-import { format, parseISO, isValid } from "date-fns";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import PropTypes from "prop-types";
-import {
-  MaterialReactTable,
-  useMaterialReactTable,
-} from "material-react-table";
+import { format, parseISO, isValid } from "date-fns";
 
-// Custom Tab Panel Component
-function CustomTabPanel(props) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`export-tabpanel-${index}`}
-      aria-labelledby={`export-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 0 }}>{children}</Box>}
-    </div>
-  );
-}
+// --- Clean Enterprise Styles ---
+const s = {
+  wrapper: {
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+    backgroundColor: "#ffffff",
+    padding: "10px 20px 20px 20px",
+    minHeight: "100vh",
+    color: "#333",
+    fontSize: "12px",
+  },
+  container: {
+    width: "100%",
+    margin: "0 auto",
+  },
+  headerRow: {
+    marginBottom: "10px",
+    paddingBottom: "0",
+  },
+  pageTitle: {
+    fontSize: "20px",
+    fontWeight: "700",
+    color: "#111",
+    margin: "0",
+  },
+  
+  // Tabs
+  tabContainer: {
+    display: "flex",
+    borderBottom: "1px solid #e5e7eb",
+    marginBottom: "15px",
+  },
+  tab: {
+    padding: "8px 20px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: "600",
+    color: "#6b7280",
+    borderBottom: "3px solid transparent",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    backgroundColor: "transparent",
+    border: "none",
+    outline: "none",
+    marginBottom: "-1px",
+  },
+  activeTab: {
+    color: "#2563eb",
+    borderBottom: "3px solid #2563eb",
+  },
+  badge: {
+    padding: "1px 6px",
+    borderRadius: "10px",
+    fontSize: "10px",
+    fontWeight: "700",
+    backgroundColor: "#f3f4f6",
+    color: "#4b5563",
+  },
+  activeBadge: {
+    backgroundColor: "#eff6ff",
+    color: "#2563eb",
+  },
 
-CustomTabPanel.propTypes = {
-  children: PropTypes.node,
-  index: PropTypes.number.isRequired,
-  value: PropTypes.number.isRequired,
+  // Toolbar
+  toolbar: {
+    display: "flex",
+    gap: "10px",
+    alignItems: "center",
+    marginBottom: "10px",
+  },
+  input: {
+    height: "30px",
+    padding: "0 8px",
+    fontSize: "12px",
+    border: "1px solid #d1d5db",
+    borderRadius: "3px",
+    outline: "none",
+    color: "#333",
+    minWidth: "200px",
+  },
+  select: {
+    height: "30px",
+    padding: "0 24px 0 8px",
+    fontSize: "12px",
+    border: "1px solid #d1d5db",
+    borderRadius: "3px",
+    backgroundColor: "#fff",
+    color: "#333",
+    cursor: "pointer",
+  },
+  
+  // Table
+  tableContainer: {
+    overflowX: "auto",
+    border: "1px solid #e5e7eb",
+    borderRadius: "3px",
+    maxHeight: "600px",
+    overflowY: "auto",
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    fontSize: "12px",
+    whiteSpace: "nowrap",
+  },
+  th: {
+    backgroundColor: "#f9fafb",
+    color: "#374151",
+    fontWeight: "700",
+    padding: "10px 12px",
+    textAlign: "left",
+    borderBottom: "1px solid #e5e7eb",
+    borderRight: "1px solid #f3f4f6",
+    position: "sticky",
+    top: 0,
+    zIndex: 10,
+  },
+  td: {
+    padding: "8px 12px",
+    borderBottom: "1px solid #f3f4f6",
+    borderRight: "1px solid #f9fafb",
+    color: "#1f2937",
+  },
+  rowHover: {
+    cursor: "pointer",
+    transition: "background 0.1s",
+  },
+  
+  // Chips
+  chip: {
+    padding: "2px 6px",
+    borderRadius: "3px",
+    fontSize: "10px",
+    fontWeight: "600",
+    border: "1px solid #e5e7eb",
+    backgroundColor: "#fff",
+    display: "inline-block",
+  },
+  
+  // Pagination Footer
+  footer: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "10px 0",
+    borderTop: "1px solid #e5e7eb",
+    marginTop: "10px",
+    color: "#6b7280",
+    fontSize: "12px",
+  },
+  btnPage: {
+    padding: "5px 12px",
+    border: "1px solid #d1d5db",
+    backgroundColor: "#fff",
+    borderRadius: "3px",
+    cursor: "pointer",
+    fontSize: "12px",
+    color: "#374151",
+    marginLeft: "5px",
+  },
+  btnDisabled: {
+    opacity: 0.5,
+    cursor: "not-allowed",
+    backgroundColor: "#f9fafb",
+  },
+  
+  // Loading
+  message: { padding: "40px", textAlign: "center", color: "#9ca3af", fontStyle: "italic" }
 };
 
-// Safe date formatter function
-const safeDateFormatter = (value) => {
-  if (!value) return "-";
-
+// Helper
+const safeDate = (val) => {
+  if (!val) return "";
   try {
-    const date = parseISO(value);
-    return isValid(date) ? format(date, "dd-MM-yyyy") : "-";
-  } catch (error) {
-    console.error("Error formatting date:", error);
-    return "-";
-  }
+    const date = parseISO(val);
+    return isValid(date) ? format(date, "dd/MM/yyyy") : "";
+  } catch (e) { return ""; }
 };
 
-// Search Input Component
-const SearchInput = ({ searchQuery, setSearchQuery, fetchJobs }) => {
-  return (
-    <TextField
-      size="small"
-      variant="outlined"
-      placeholder="Search..."
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-      onKeyPress={(e) => {
-        if (e.key === "Enter") {
-          fetchJobs();
-        }
-      }}
-      sx={{ width: "200px", marginRight: "20px" }}
-    />
-  );
-};
-
-// Export Jobs Table Component for each tab
-const ExportJobsTableContent = ({ status }) => {
+const ExportJobsTable = () => {
   const navigate = useNavigate();
+  
+  // State
+  const [activeTab, setActiveTab] = useState("pending");
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const LIMIT = 20; // Fixed limit per request
+
+  // Filters
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedExporter, setSelectedExporter] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState("");
-  const [selectedMovementType, setSelectedMovementType] = useState("");
-  const [exporterNames, setExporterNames] = useState([]);
-  const [years, setYears] = useState([]);
-  const [selectedYear, setSelectedYear] = useState("all");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedType, setSelectedMovementType] = useState("");
 
-  const fetchJobs = async () => {
-    try {
+
+
+  // --- Fetch Jobs ---
+  useEffect(() => {
+    const fetchJobs = async () => {
       setLoading(true);
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_STRING}/exports`,
-        {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/exports`, {
           params: {
-            status: status.toLowerCase(),
+            status: activeTab,
             search: searchQuery,
-            exporter: selectedExporter,
-            country: selectedCountry,
-            movement_type: selectedMovementType,
             year: selectedYear === "all" ? "" : selectedYear,
-          },
-        }
-      );
-
-      if (response.data.success) {
-        setJobs(response.data.data.jobs || []);
-        setTotalCount(response.data.data.pagination?.totalCount || 0);
-      }
-    } catch (err) {
-      console.error("Error fetching export jobs:", err);
-      setJobs([]);
-      setTotalCount(0);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchJobs();
-  }, [status, selectedYear]);
-
-  useEffect(() => {
-    // Debounce search
-    const timeoutId = setTimeout(() => {
-      fetchJobs();
-    }, 500);
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, selectedExporter, selectedCountry, selectedMovementType]);
-
-  const handleViewClick = (job) => {
-    if (job) {
-      const jobNo = job.job_no?.split("/")[3];
-      const year = job.year;
-      if (jobNo && year) {
-        navigate(`/export-dsr/job/${year}/${jobNo}`, {
-          state: {
-            fromJobList: true,
-            searchQuery: searchQuery,
-            selectedExporter: selectedExporter,
-            selectedCountry: selectedCountry,
-            currentTab:
-              status === "Pending" ? 0 : status === "Completed" ? 1 : 2,
+            movement_type: selectedType,
+            page: page,      // Current Page
+            limit: LIMIT,    // 30 records
           },
         });
-      }
-    }
-  };
-
-  const handleEditClick = (job) => {
-    handleViewClick(job);
-  };
-
-  const handleDeleteClick = (job) => {
-    console.log("Delete job:", job);
-    // Add delete functionality here
-  };
-
-  const columns = useMemo(
-    () => [
-      {
-        accessorKey: "job_no",
-        header: "Job Number",
-        size: 120,
-        enablePinning: true,
-      },
-      {
-        accessorKey: "exporter_name",
-        header: "Exporter",
-        size: 200,
-        enablePinning: true,
-      },
-      {
-        accessorKey: "consignee_name",
-        header: "Consignee Name",
-        size: 200,
-      },
-      {
-        accessorKey: "port_of_origin",
-        header: "Port of Origin",
-        size: 150,
-      },
-      {
-        accessorKey: "port_of_discharge",
-        header: "Port of Destination",
-        size: 150,
-      },
-      {
-        accessorKey: "country_of_final_destination",
-        header: "Country",
-        size: 120,
-      },
-      {
-        accessorKey: "movement_type",
-        header: "LCL/FCL/AIR",
-        size: 100,
-        Cell: ({ cell }) => (
-          <Chip
-            label={cell.getValue() || "N/A"}
-            size="small"
-            color="primary"
-            variant="outlined"
-          />
-        ),
-      },
-      {
-        accessorKey: "cntr_size",
-        header: "CNTR 20/40",
-        size: 100,
-      },
-      {
-        accessorKey: "commercial_invoice_number",
-        header: "Invoice No",
-        size: 120,
-      },
-      {
-        accessorKey: "commercial_invoice_date",
-        header: "Invoice Date",
-        size: 120,
-        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
-      },
-      {
-        accessorKey: "commercial_invoice_value",
-        header: "Invoice Value",
-        size: 120,
-      },
-      {
-        accessorKey: "shipping_bill_number",
-        header: "SB Number",
-        size: 120,
-      },
-      {
-        accessorKey: "shipping_bill_date",
-        header: "SB Date",
-        size: 120,
-        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
-      },
-      {
-        accessorKey: "total_packages",
-        header: "No of Packages",
-        size: 120,
-      },
-      {
-        accessorKey: "net_weight_kg",
-        header: "Net Weight Kgs",
-        size: 130,
-      },
-      {
-        accessorKey: "gross_weight_kg",
-        header: "Gross Weight Kgs",
-        size: 140,
-      },
-      {
-        accessorKey: "container_placement_date_factory",
-        header: "Container Placement",
-        size: 160,
-        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
-      },
-      {
-        accessorKey: "original_docs_received_date",
-        header: "Original Docs Received",
-        size: 180,
-        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
-      },
-      {
-        accessorKey: "gate_in_thar_khodiyar_date",
-        header: "Gate In Thar/Khodiyar",
-        size: 180,
-        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
-      },
-      {
-        accessorKey: "hand_over_date",
-        header: "Hand Over Date",
-        size: 140,
-        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
-      },
-      {
-        accessorKey: "rail_out_date_plan",
-        header: "Rail Out Plan",
-        size: 140,
-        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
-      },
-      {
-        accessorKey: "rail_out_date_actual",
-        header: "Rail Out Actual",
-        size: 150,
-        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
-      },
-      {
-        accessorKey: "port_gate_in_date",
-        header: "Port Gate In",
-        size: 140,
-        Cell: ({ cell }) => safeDateFormatter(cell.getValue()),
-      },
-      {
-        accessorKey: "tracking_remarks",
-        header: "Remarks",
-        size: 250,
-      },
-      {
-        id: "actions",
-        header: "Actions",
-        size: 120,
-        enableColumnFilter: false,
-        enableSorting: false,
-        Cell: ({ row }) => (
-          <Box sx={{ display: "flex", gap: 0.5 }}>
-            <IconButton
-              size="small"
-              color="info"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleViewClick(row.original);
-              }}
-            >
-              <Visibility fontSize="small" />
-            </IconButton>
-            <IconButton
-              size="small"
-              color="primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEditClick(row.original);
-              }}
-            >
-              <Edit fontSize="small" />
-            </IconButton>
-            {status === "Pending" && (
-              <IconButton
-                size="small"
-                color="error"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteClick(row.original);
-                }}
-              >
-                <Delete fontSize="small" />
-              </IconButton>
-            )}
-          </Box>
-        ),
-      },
-    ],
-    [status]
-  );
-
-  const table = useMaterialReactTable({
-    columns,
-    data: jobs,
-    enableColumnResizing: true,
-    enableColumnOrdering: true,
-    enablePagination: false,
-    enableBottomToolbar: false,
-    enableDensityToggle: false,
-    enableRowVirtualization: true,
-    rowVirtualizerOptions: { overscan: 8 },
-    initialState: {
-      density: "compact",
-      columnPinning: { left: ["job_no", "exporter_name"] },
-    },
-    enableGlobalFilter: false,
-    enableGrouping: true,
-    enableColumnFilters: false,
-    enableColumnActions: false,
-    enableStickyHeader: true,
-    enablePinning: true,
-    muiTableContainerProps: {
-      sx: { maxHeight: "590px", overflowY: "auto" },
-    },
-    muiTableBodyRowProps: ({ row }) => ({
-      onClick: (event) => {
-        // Don't trigger row click if clicking on action buttons
-        if (!event.target.closest(".MuiIconButton-root")) {
-          handleViewClick(row.original);
+        if (response.data.success) {
+          setJobs(response.data.data.jobs || []);
+          // Assuming API returns total count for pagination calculation
+          setTotalRecords(response.data.data.total || response.data.data.pagination?.totalCount || 0);
         }
-      },
-      sx: {
-        cursor: "pointer",
-        "&:hover": {
-          backgroundColor: "#f5f5f5",
-        },
-      },
-    }),
-    muiTableHeadCellProps: {
-      sx: {
-        position: "sticky",
-        top: 0,
-        zIndex: 1,
-        backgroundColor: "#f5f5f5",
-        fontWeight: "bold",
-      },
-    },
-    state: {
-      isLoading: loading,
-    },
-    renderTopToolbarCustomActions: () => (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          width: "100%",
-          padding: "16px",
-          flexWrap: "wrap",
-          gap: "16px",
-        }}
-      >
-        <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-          {status} Jobs: {totalCount}
-        </Typography>
-
-        <Box
-          sx={{
-            display: "flex",
-            gap: 2,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          {years.length > 0 && (
-            <TextField
-              select
-              size="small"
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              sx={{ width: "120px" }}
-            >
-              <MenuItem value="all">All Years</MenuItem>
-              {years.map((year, index) => (
-                <MenuItem key={`year-${year}-${index}`} value={year}>
-                  {year}
-                </MenuItem>
-              ))}
-            </TextField>
-          )}
-
-          <Autocomplete
-            sx={{ width: "250px" }}
-            freeSolo
-            options={exporterNames.map((option) => option.label)}
-            value={selectedExporter}
-            onInputChange={(event, newValue) => setSelectedExporter(newValue)}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                variant="outlined"
-                size="small"
-                fullWidth
-                label="Select Exporter"
-              />
-            )}
-          />
-
-          <FormControl size="small" sx={{ width: "150px" }}>
-            <InputLabel>Movement Type</InputLabel>
-            <Select
-              value={selectedMovementType}
-              label="Movement Type"
-              onChange={(e) => setSelectedMovementType(e.target.value)}
-            >
-              <MenuItem value="">All Types</MenuItem>
-              <MenuItem value="FCL">FCL</MenuItem>
-              <MenuItem value="LCL">LCL</MenuItem>
-              <MenuItem value="Break Bulk">Break Bulk</MenuItem>
-              <MenuItem value="Air Freight">Air Freight</MenuItem>
-            </Select>
-          </FormControl>
-
-          <SearchInput
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            fetchJobs={fetchJobs}
-          />
-
-          <IconButton onClick={() => console.log("Download clicked")}>
-            <DownloadIcon />
-          </IconButton>
-        </Box>
-      </Box>
-    ),
-  });
-
-  return (
-    <Box sx={{ width: "100%" }}>
-      <MaterialReactTable table={table} />
-    </Box>
-  );
-};
-
-// Main Export Jobs Table Component with Tabs
-const ExportJobsTable = () => {
-  const [value, setValue] = useState(0);
-  const [statusCounts, setStatusCounts] = useState({
-    pending: 0,
-    completed: 0,
-    cancelled: 0,
-  });
-
-  const handleChange = (event, newValue) => {
-    setValue(newValue);
-  };
-
-  // Fetch status counts for badges
-  useEffect(() => {
-    const fetchStatusCounts = async () => {
-      try {
-        const statuses = ["pending", "completed", "cancelled"];
-        const promises = statuses.map((status) =>
-          axios
-            .get(`${import.meta.env.VITE_API_STRING}/exports/count`, {
-              params: { status },
-            })
-            .catch(() => ({ data: { count: 0 } }))
-        );
-
-        const results = await Promise.all(promises);
-        const counts = {
-          pending: results[0].data.count || 0,
-          completed: results[1].data.count || 0,
-          cancelled: results[2].data.count || 0,
-        };
-
-        setStatusCounts(counts);
-      } catch (error) {
-        console.error("Error fetching status counts:", error);
+      } catch (err) {
+        console.error(err);
+        setJobs([]);
+        setTotalRecords(0);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchStatusCounts();
-  }, []);
+    const timer = setTimeout(fetchJobs, 300);
+    return () => clearTimeout(timer);
+  }, [activeTab, searchQuery, selectedYear, selectedType, page]); // Refetch when page changes
+
+  // Reset page when tab/filters change
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, searchQuery, selectedYear, selectedType]);
+
+  const handleView = (job) => {
+    const jobNo = job.job_no?.split("/")[3];
+    const year = job.year;
+    if (jobNo && year) {
+      navigate(`/export-dsr/job/${year}/${jobNo}`, { state: { fromJobList: true } });
+    }
+  };
+
+  const totalPages = Math.ceil(totalRecords / LIMIT);
 
   return (
-    <Box sx={{ width: "100%", p: 2 }}>
-      {/* Header */}
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={3}
-      >
-        <Typography variant="h4" sx={{ fontWeight: 600, color: "#1976d2" }}>
-          Export Jobs Management
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<ToolboxIcon />}
-          sx={{
-            borderRadius: 3,
-            textTransform: "none",
-            fontWeight: 500,
-            background: "linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)",
-            boxShadow: "0 4px 12px rgba(25, 118, 210, 0.3)",
-            "&:hover": {
-              background: "linear-gradient(135deg, #1565c0 0%, #1976d2 100%)",
-              boxShadow: "0 6px 16px rgba(25, 118, 210, 0.4)",
-              transform: "translateY(-1px)",
-            },
-          }}
-        >
-          Export Utility Tool
-        </Button>
-      </Box>
+    <div style={s.wrapper}>
+      <div style={s.container}>
+        
+        {/* Title */}
+        <div style={s.headerRow}>
+          <h1 style={s.pageTitle}>Export Jobs</h1>
+        </div>
 
-      {/* Tabs */}
-      <Box sx={{ width: "100%" }}>
-        <Box
-          sx={{
-            borderBottom: 1,
-            borderColor: "divider",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 2,
-          }}
-        >
-          <Tabs
-            value={value}
-            onChange={handleChange}
-            aria-label="export jobs tabs"
+        {/* Tabs */}
+        <div style={s.tabContainer}>
+          <button 
+            style={activeTab === 'pending' ? {...s.tab, ...s.activeTab} : s.tab}
+            onClick={() => setActiveTab('pending')}
           >
-            <Tab
-              label={
-                <Badge badgeContent={statusCounts.pending} color="warning">
-                  Pending
-                </Badge>
-              }
-            />
-            <Tab
-              label={
-                <Badge badgeContent={statusCounts.completed} color="success">
-                  Completed
-                </Badge>
-              }
-            />
-            <Tab
-              label={
-                <Badge badgeContent={statusCounts.cancelled} color="error">
-                  Cancelled
-                </Badge>
-              }
-            />
-          </Tabs>
-        </Box>
+            Pending <span style={activeTab === 'pending' ? {...s.badge, ...s.activeBadge} : s.badge}></span>
+          </button>
+          <button 
+            style={activeTab === 'completed' ? {...s.tab, ...s.activeTab} : s.tab}
+            onClick={() => setActiveTab('completed')}
+          >
+            Completed <span style={activeTab === 'completed' ? {...s.badge, ...s.activeBadge} : s.badge}></span>
+          </button>
+          <button 
+            style={activeTab === 'cancelled' ? {...s.tab, ...s.activeTab} : s.tab}
+            onClick={() => setActiveTab('cancelled')}
+          >
+            Cancelled <span style={activeTab === 'cancelled' ? {...s.badge, ...s.activeBadge} : s.badge}></span>
+          </button>
+        </div>
 
-        {/* Tab Panels */}
-        <CustomTabPanel value={value} index={0}>
-          <ExportJobsTableContent status="Pending" />
-        </CustomTabPanel>
-        <CustomTabPanel value={value} index={1}>
-          <ExportJobsTableContent status="Completed" />
-        </CustomTabPanel>
-        <CustomTabPanel value={value} index={2}>
-          <ExportJobsTableContent status="Cancelled" />
-        </CustomTabPanel>
-      </Box>
-    </Box>
+        {/* Filters */}
+        <div style={s.toolbar}>
+          <select style={s.select} value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
+            <option value="">All Years</option>
+            <option value="25-26">25-26</option>
+            <option value="26-27">26-27</option>
+          </select>
+
+          <select style={s.select} value={selectedType} onChange={e => setSelectedMovementType(e.target.value)}>
+            <option value="">All Movement</option>
+            <option value="FCL">FCL</option>
+            <option value="LCL">LCL</option>
+            <option value="AIR">Air Freight</option>
+          </select>
+
+          <input 
+            style={s.input}
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        {/* Table */}
+        <div style={s.tableContainer}>
+          <table style={s.table}>
+            <thead>
+              <tr>
+                <th style={{...s.th, width: '40px', textAlign: 'center'}}>#</th>
+                <th style={{...s.th, width: '130px', position: 'sticky', left: 0, zIndex: 20}}>Job Number</th>
+                <th style={s.th}>Exporter</th>
+                <th style={s.th}>Consignee</th>
+                <th style={{...s.th, width: '60px'}}>Type</th>
+                <th style={s.th}>Invoice No</th>
+                <th style={s.th}>Date</th>
+                <th style={s.th}>POL</th>
+                <th style={s.th}>POD</th>
+                <th style={s.th}>Country</th>
+                <th style={s.th}>SB No</th>
+                <th style={s.th}>SB Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="12" style={s.message}>Loading data...</td></tr>
+              ) : jobs.length === 0 ? (
+                <tr><td colSpan="12" style={s.message}>No jobs found.</td></tr>
+              ) : (
+                jobs.map((job, idx) => (
+                  <tr 
+                    key={job._id || idx} 
+                    style={s.rowHover}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0f7ff"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                    onClick={() => handleView(job)}
+                  >
+                    <td style={{...s.td, textAlign: 'center', color: '#9ca3af'}}>{(page - 1) * LIMIT + idx + 1}</td>
+                    
+                    {/* Sticky 1st Col */}
+                    <td style={{...s.td, fontWeight: '600', color: '#2563eb', position: 'sticky', left: 0, backgroundColor: 'inherit', zIndex: 5}}>
+                      {job.job_no}
+                    </td>
+                    
+                    <td style={{...s.td, maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis'}} title={job.exporter_name}>
+                      {job.exporter_name}
+                    </td>
+                    <td style={{...s.td, maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis'}} title={job.consignee_name}>
+                      {job.consignee_name || '-'}
+                    </td>
+                    <td style={s.td}>
+                      <span style={s.chip}>{job.movement_type || '-'}</span>
+                    </td>
+                    <td style={s.td}>{job.commercial_invoice_number || '-'}</td>
+                    <td style={s.td}>{safeDate(job.job_date)}</td>
+                    <td style={s.td}>{job.port_of_origin || '-'}</td>
+                    <td style={s.td}>{job.port_of_discharge || '-'}</td>
+                    <td style={s.td}>{job.country_of_final_destination || '-'}</td>
+                    <td style={s.td}>{job.shipping_bill_number || '-'}</td>
+                    <td style={s.td}>{safeDate(job.shipping_bill_date)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Footer */}
+        <div style={s.footer}>
+          <div>
+            Showing {jobs.length} of {totalRecords} Records
+          </div>
+          <div>
+            <button 
+              style={page === 1 ? {...s.btnPage, ...s.btnDisabled} : s.btnPage}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              Prev
+            </button>
+            <span style={{margin: "0 10px"}}>
+              Page {page} of {totalPages || 1}
+            </span>
+            <button 
+              style={page >= totalPages ? {...s.btnPage, ...s.btnDisabled} : s.btnPage}
+              onClick={() => setPage(p => p + 1)}
+              disabled={page >= totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
   );
 };
 

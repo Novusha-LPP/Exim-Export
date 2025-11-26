@@ -1,6 +1,5 @@
 import express from "express";
 import UserModel from "../../model/userModel.mjs";
-import ImporterModel from "../../model/importerSchemaModel.mjs";
 const router = express.Router();
 
 router.post("/api/assign-role", async (req, res) => {

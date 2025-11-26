@@ -1,44 +1,19 @@
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { useFormik } from "formik";
-import { convertDateFormatForUI } from "../utils/convertDateFormatForUI";
-import { useNavigate } from "react-router-dom";
-import AWS from "aws-sdk";
-
-const handleSingleFileUpload = async (file, folderName, setFileSnackbar) => {
-  try {
-    const key = `${folderName}/${file.name}`;
-
-    const s3 = new AWS.S3({
-      accessKeyId: import.meta.env.VITE_ACCESS_KEY,
-      secretAccessKey: import.meta.env.VITE_SECRET_ACCESS_KEY,
-      region: "ap-south-1",
-    });
-
-    const params = {
-      Bucket: import.meta.env.VITE_S3_BUCKET,
-      Key: key,
-      Body: file,
-    };
-
-    const data = await s3.upload(params).promise();
-    const photoUrl = data.Location;
-
-    setFileSnackbar(true);
-    setTimeout(() => {
-      setFileSnackbar(false);
-    }, 3000);
-
-    return photoUrl;
-  } catch (err) {
-    console.error("Error uploading file:", err);
-  }
-};
 
 function useExportJobDetails(params, setFileSnackbar) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+
+  
+const emptyConsignee = {
+  consignee_name: "",
+  consignee_address: "",
+  consignee_country: ""
+};
+
+const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
 
   // Fetch export job data
   useEffect(() => {
@@ -85,6 +60,8 @@ function useExportJobDetails(params, setFileSnackbar) {
     }
   }, [params.job_no, params.year]);
 
+  
+
   const safeValue = (value, defaultVal = "") =>
     value === undefined || value === null ? defaultVal : value;
 
@@ -96,7 +73,6 @@ function useExportJobDetails(params, setFileSnackbar) {
       filing_mode: "",
       shipper: "",
       job_date: "",
-      jobReceivedOn: "",
       transportMode: "",
       sb_type: "",
       custom_house: "",
@@ -121,14 +97,6 @@ function useExportJobDetails(params, setFileSnackbar) {
       exporter_gstin: "", // Schema field
       gstin: "",
       exporter_pan: "",
-
-      // Consignee details - EMPTY DEFAULTS
-      consignee_name: "",
-      consignee_address: "",
-      consignee_city: "",
-      consignee_state: "",
-      consignee_country: "",
-      buyer_other_than_consignee: false,
 
       // Invoice details - EMPTY DEFAULTS
       invoice_number: "",
@@ -179,7 +147,7 @@ function useExportJobDetails(params, setFileSnackbar) {
 
       otherInfo: {
         exportContractNoDate: "",
-        natureOfPayment: "Letter Of Credit",
+        natureOfPayment: "",
         paymentPeriod: 0,
         aeoCode: "",
         aeoCountry: "",
@@ -198,7 +166,6 @@ function useExportJobDetails(params, setFileSnackbar) {
       voyage_no: "",
       nature_of_cargo: "",
       total_no_of_pkgs: "",
-      total_packages: "", // Schema field
       loose_pkgs: "",
       no_of_containers: "",
       gross_weight: "",
@@ -238,6 +205,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       business_dimensions: "",
       quotation: "",
 
+  consignees: [{ consignee_name: "", consignee_address: "", consignee_country: "" }],
       // Banking fields
       bank_branch: "",
       bank_ifsc_code: "",
@@ -256,7 +224,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       final_destination: "",
       place_of_receipt: "",
       place_of_delivery: "",
-      country_of_origin: "India",
+      country_of_origin: "",
       country_of_final_destination: "",
 
       // Vessel/Flight information
@@ -867,10 +835,8 @@ function useExportJobDetails(params, setFileSnackbar) {
         // Basic job info - Map from API response
         job_no: safeValue(data.job_no),
         year: safeValue(data.year),
-        filing_mode: safeValue(data.filing_mode),
         shipper: safeValue(data.shipper || data.exporter_name || data.exporter),
         job_date: safeValue(data.job_date),
-        jobReceivedOn: safeValue(data.jobReceivedOn),
         sb_no: safeValue(data.sb_no || data.shipping_bill_number),
         sb_type: safeValue(data.sb_type),
         transportMode: safeValue(data.transportMode),
@@ -910,9 +876,6 @@ function useExportJobDetails(params, setFileSnackbar) {
         bank_swift_code: safeValue(data.bank_swift_code),
 
         // General tab specific fields
-        dbk_bank: safeValue(data.dbk_bank),
-        dbk_ac: safeValue(data.dbk_ac),
-        dbk_edi_ac: safeValue(data.dbk_edi_ac),
         ref_type: safeValue(data.ref_type),
         exporter_ref_no: safeValue(data.exporter_ref_no),
         exporter_type: safeValue(data.exporter_type),
@@ -935,16 +898,13 @@ function useExportJobDetails(params, setFileSnackbar) {
         business_dimensions: safeValue(data.business_dimensions),
         quotation: safeValue(data.quotation),
 
-        // Consignee details - Map all variants
-        consignee_name: safeValue(data.consignee_name),
-        consignee_address: safeValue(data.consignee_address),
-        consignee_city: safeValue(data.consignee_city),
-        consignee_state: safeValue(data.consignee_state),
-        consignee_country: safeValue(data.consignee_country),
-        buyer_other_than_consignee: safeValue(
-          data.buyer_other_than_consignee,
-          false
-        ),
+ consignees: data.consignees ?? [
+      {
+        consignee_name: safeValue(data.consigneename),
+        consignee_address: safeValue(data.consigneeaddress),
+        consignee_country: safeValue(data.consigneecountry),
+      }
+    ],
 
         // Invoice details - Multiple mappings
         invoice_number: safeValue(
@@ -1008,7 +968,7 @@ function useExportJobDetails(params, setFileSnackbar) {
 
         otherInfo: safeValue(data.otherInfo, {
           exportContractNoDate: "",
-          natureOfPayment: "Letter Of Credit",
+          natureOfPayment: "",
           paymentPeriod: 0,
           aeoCode: "",
           aeoCountry: "",
@@ -1042,9 +1002,8 @@ function useExportJobDetails(params, setFileSnackbar) {
         voyage_no: safeValue(data.voyage_no),
         nature_of_cargo: safeValue(data.nature_of_cargo),
         total_no_of_pkgs: safeValue(
-          data.total_no_of_pkgs || data.total_packages
+          data.total_no_of_pkgs
         ),
-        total_packages: safeValue(data.total_packages || data.total_no_of_pkgs),
         loose_pkgs: safeValue(data.loose_pkgs),
         no_of_containers: safeValue(data.no_of_containers),
         gross_weight: safeValue(data.gross_weight || data.gross_weight_kg),

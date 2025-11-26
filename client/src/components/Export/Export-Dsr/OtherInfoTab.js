@@ -44,7 +44,7 @@ const OtherInfoTab = ({ formik }) => {
               select
               fullWidth
               size="small"
-              value={otherInfo.natureOfPayment || "Letter Of Credit"}
+              value={otherInfo.natureOfPayment}
               onChange={e => handleFieldChange("natureOfPayment", e.target.value)}
             >
               {natureOfPaymentOptions.map(opt => (

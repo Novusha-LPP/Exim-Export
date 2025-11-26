@@ -41,10 +41,39 @@ import ChargesTab from "./ChargesTab.js";
 import ESanchitTab from "./EsanchitTab.js";
 import ExportChecklistGenerator from "./ExportChecklistGenerator.js";
 
+function SimpleSelect({ name, value, options, onChange }) {
+  return (
+    <select
+      name={name}
+      value={value}
+      onChange={onChange}
+      style={{ height: 28, width: "98%", borderRadius: 4, border: "1px solid #d6dae2", fontSize: 13, background: "#fff", padding: "2px 7px" }}
+    >
+      {options.map(opt => (
+        <option value={opt.value} key={opt.value}>{opt.label}</option>
+      ))}
+    </select>
+  );
+}
+
+function SimpleAutocomplete({ name, value, options, onChange }) {
+  return (
+    <input
+      type="text"
+      name={name}
+      list={`datalist-${name}`}
+      value={value}
+      onChange={onChange}
+      style={{ height: 26, width: "97%", borderRadius: 4, border: "1px solid #d6dae2", fontSize: 13, padding: "2px 7px", background: "#fff" }}
+      autoComplete="off"
+    />
+  );
+}
+
 const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
   const [snackbar, setSnackbar] = useState(false);
   const { user } = useContext(UserContext);
-  const isNewJob = !formik.values.job_no; // Check if job number exists
+  const isNewJob = !formik.values.job_no;
 
   const handleCopyText = (text) => {
     navigator.clipboard.writeText(text || "");
@@ -52,21 +81,12 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
     setTimeout(() => setSnackbar(false), 2000);
   };
 
-  const handleFieldChange = (event) => {
-    formik.handleChange(event);
-  };
-
-  const getShipperOptions = () => {
-    return (
-      directories?.exporters?.map((exp) => ({
-        label: `${exp.organization} (${exp.registrationDetails?.ieCode})`,
-        value: exp.organization,
-        data: exp,
-      })) || []
-    );
-  };
-
-  const getCustomHouseOptions = () => [
+  // Prepare options in plain JS
+  const shipperOpts = (directories?.exporters || []).map((exp) => ({
+    label: `${exp.organization} (${exp.registrationDetails?.ieCode || ""})`,
+    value: exp.organization,
+  }));
+  const customHouseOpts = [
     { value: "ICD SACHANA", label: "ICD SACHANA" },
     { value: "JNPT", label: "JNPT" },
     { value: "Chennai Port", label: "Chennai Port" },
@@ -74,299 +94,189 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
   ];
 
   return (
-    <Card
-      sx={{
-        mb: 3,
-        background: "linear-gradient(90deg,#f7fafc 85%, #e3f2fd 100%)",
-        border: "1.5px solid #e3e7ee",
-        borderRadius: 2,
-        boxShadow: "0 2px 6px 0 rgba(60,72,100,0.10)",
-        px: 3,
+    <div
+      style={{
+        marginBottom: 20,
+        background: "linear-gradient(90deg, #f7fafc 85%, #e3f2fd 100%)",
+        border: "1px solid #e3e7ee",
+        borderRadius: 8,
+        boxShadow: "0 2px 6px 0 rgba(60,72,100,0.08)",
+        padding: "17px 23px"
       }}
     >
-      <CardContent sx={{ pb: 0 }}>
-        <Stack
-          direction="row"
-          alignItems="center"
-          justifyContent="space-between"
-          spacing={2}
-          sx={{ mb: 2 }}
-        >
-          <Typography variant="subtitle1" fontWeight="bold" color="primary">
-            Export Job
-          </Typography>
-        </Stack>
-
-        <Divider sx={{ my: 1 }} />
-
-        {/* Row 1 */}
-        <Grid container spacing={2} sx={{ mt: 1 }} alignItems="center">
-          {/* Job Number */}
-          <Grid item xs={12} sm={4} md={2.2}>
-            <Typography variant="caption" color="text.secondary">
-              Job Number
-            </Typography>
-            <Box display="flex" alignItems="center">
-              {isNewJob ? (
-                // Editable for new jobs
-                <TextField
-                  size="small"
-                  value={formik.values.job_no}
-                  name="job_no"
-                  onChange={handleFieldChange}
-                  fullWidth
-                  sx={{ mt: 0.5 }}
-                  placeholder="Auto-generated if empty"
-                />
-              ) : (
-                // Read-only with copy option for existing jobs
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    width: "100%",
-                    border: "1px solid #e0e0e0",
-                    borderRadius: 1,
-                    padding: "8px 12px",
-                    backgroundColor: "#fafafa",
-                    mt: 0.5,
-                  }}
-                >
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {formik.values.job_no}
-                  </Typography>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleCopyText(formik.values.job_no)}
-                    sx={{ ml: 1 }}
-                  >
-                    <ContentCopyIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-              )}
-            </Box>
-          </Grid>
-
-          {/* Job Date */}
-          <Grid item xs={6} sm={3} md={1.7}>
-            <Typography variant="caption" color="text.secondary">
-              Job Date
-            </Typography>
-            <TextField
-              type="date"
-              size="small"
-              fullWidth
-              value={formik.values.job_date}
-              onChange={handleFieldChange}
-              name="job_date"
-              sx={{ mt: 0.5 }}
-              InputLabelProps={{ shrink: true }}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 2 }}>
+        <div style={{ fontWeight: 700, color: "#1565c0", fontSize: 15 }}>Export Job</div>      </div>
+      <div style={{ borderBottom: "1px solid #e9ecef", margin: "8px 0 12px" }} />
+      
+      {/* ROWS */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 18px", alignItems: "flex-end" }}>
+        {/* Job Number */}
+        <div style={{ flex: "1 1 210px", minWidth: 120 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>Job Number</div>
+          {isNewJob ? (
+            <input
+              style={{ width: "97%", padding: "3px 6px", border: "1px solid #d6dae2", borderRadius: 4, fontSize: 12, background: "#7c5050ff" }}
+              name="job_no"
+              value={formik.values.job_no}
+              onChange={formik.handleChange}
+              placeholder="Auto-generated if empty"
             />
-          </Grid>
-
-          {/* SB No */}
-          <Grid item xs={6} sm={3} md={1.5}>
-            <Typography variant="caption" color="text.secondary">
-              SB No
-            </Typography>
-            <TextField
-              size="small"
-              fullWidth
-              value={formik.values.sb_no}
-              onChange={handleFieldChange}
-              name="sb_no"
-              sx={{ mt: 0.5 }}
-            />
-          </Grid>
-
-          {/* Job Owner */}
-          <Grid item xs={6} sm={4} md={2}>
-            <Typography variant="caption" color="text.secondary">
-              Job Owner
-            </Typography>
-            <TextField
-              size="small"
-              fullWidth
-              value={formik.values.job_owner}
-              onChange={handleFieldChange}
-              name="job_owner"
-              sx={{ mt: 0.5 }}
-            />
-          </Grid>
-
-          {/* Right side button placeholder */}
-          <Grid item xs={12} sm={12} md={3}>
-            <Box
-              display="flex"
-              alignItems="center"
-              justifyContent={{ xs: "flex-start", md: "flex-end" }}
-              gap={2}
-            >
-              <Button
-                variant="outlined"
-                size="small"
-                sx={{ fontSize: "0.75rem" }}
-              >
-                Standard Documents
-              </Button>
-            </Box>
-          </Grid>
-        </Grid>
-
-        {/* Rest of the component remains the same */}
-        {/* Row 2 */}
-        <Grid container spacing={2} sx={{ mt: 2 }} alignItems="center">
-          {/* Shipper */}
-          <Grid item xs={6} sm={3} md={5}>
-            <Typography variant="caption" color="text.secondary">
-              Shipper
-            </Typography>
-            <Autocomplete
-              size="small"
-              options={getShipperOptions()}
-              value={
-                getShipperOptions().find(
-                  (opt) => opt.value === formik.values.shipper
-                ) || null
-              }
-              onChange={(event, newValue) => {
-                formik.setFieldValue("shipper", newValue?.value || "");
-                if (newValue?.data) {
-                  formik.setFieldValue(
-                    "exporter_name",
-                    newValue.data.organization
-                  );
-                  formik.setFieldValue(
-                    "ie_code_no",
-                    newValue.data.registrationDetails?.ieCode
-                  );
-                  formik.setFieldValue(
-                    "exporter_address",
-                    newValue.data.address?.addressLine
-                  );
-                }
-              }}
-              fullWidth
-              renderInput={(params) => (
-                <TextField {...params} name="shipper" sx={{ mt: 0.5 }} />
-              )}
-            />
-          </Grid>
-
-          {/* Transport Mode */}
-          <Grid item xs={6} sm={3} md={1.7}>
-            <Typography variant="caption" color="text.secondary">
-              Transport Mode
-            </Typography>
-            <FormControl size="small" fullWidth sx={{ mt: 0.5 }}>
-              <Select
-                value={formik.values.transportMode}
-                onChange={handleFieldChange}
-                name="transportMode"
-              >
-                <MenuItem value="Sea">Sea</MenuItem>
-                <MenuItem value="Air">Air</MenuItem>
-                <MenuItem value="Land">Land</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-
-          {/* Custom House */}
-          <Grid item xs={12} sm={6} md={2.3}>
-            <Typography variant="caption" color="text.secondary">
-              Custom House
-            </Typography>
-            <Autocomplete
-              size="small"
-              options={getCustomHouseOptions()}
-              value={
-                getCustomHouseOptions().find(
-                  (opt) => opt.value === formik.values.custom_house
-                ) || null
-              }
-              onChange={(event, newValue) => {
-                formik.setFieldValue("custom_house", newValue?.value || "");
-              }}
-              fullWidth
-              renderInput={(params) => (
-                <TextField {...params} name="custom_house" sx={{ mt: 0.5 }} />
-              )}
-            />
-          </Grid>
-
-          {/* Consignment Type */}
-          <Grid item xs={6} sm={3} md={1.7}>
-            <Typography variant="caption" color="text.secondary">
-              Consignment Type
-            </Typography>
-            <FormControl size="small" fullWidth sx={{ mt: 0.5 }}>
-              <Select
-                value={formik.values.consignment_type}
-                onChange={handleFieldChange}
-                name="consignment_type"
-              >
-                <MenuItem value="FCL">FCL</MenuItem>
-                <MenuItem value="LCL">LCL</MenuItem>
-                <MenuItem value="Break Bulk">Break Bulk</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-
-        {/* Row 3 */}
-        <Grid container spacing={2} sx={{ mt: 2 }} alignItems="center">
-          {/* Loading Port */}
-          <Grid item xs={12} sm={6} md={2.2}>
-            <Typography variant="caption" color="text.secondary">
-              Loading Port
-            </Typography>
-            <Autocomplete
-              size="small"
-              options={getCustomHouseOptions()}
-              value={
-                getCustomHouseOptions().find(
-                  (opt) => opt.value === formik.values.loading_port
-                ) || null
-              }
-              onChange={(event, newValue) => {
-                formik.setFieldValue("loading_port", newValue?.value || "");
-              }}
-              fullWidth
-              renderInput={(params) => (
-                <TextField {...params} name="loading_port" sx={{ mt: 0.5 }} />
-              )}
-            />
-          </Grid>
-
-          {/* SB Type */}
-          <Grid item xs={12} sm={6} md={2.3}>
-            <Typography variant="caption" color="text.secondary">
-              SB Type
-            </Typography>
-            <FormControl size="small" fullWidth sx={{ mt: 0.5 }}>
-              <Select
-                value={formik.values.sb_type}
-                onChange={handleFieldChange}
-                name="sb_type"
-              >
-                <MenuItem value="Green - Drawback">Green - Drawback</MenuItem>
-                <MenuItem value="Green - RODTEP">Green - RODTEP</MenuItem>
-                <MenuItem value="Yellow">Yellow</MenuItem>
-                <MenuItem value="Red">Red</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-
-        <Snackbar
-          open={snackbar}
-          message="Copied to clipboard"
-          autoHideDuration={2000}
-          onClose={() => setSnackbar(false)}
-        />
-      </CardContent>
-    </Card>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", background: "#eef4fa", border: "1px solid #e0e0e0", borderRadius: 4, padding: "2px 9px", fontSize: 12 }}>
+              <span>{formik.values.job_no}</span>
+              <button title="Copy" onClick={() => handleCopyText(formik.values.job_no)}
+                style={{
+                  background: "none", border: "none", marginLeft: 8, cursor: "pointer", fontSize: 15, color: "#666"
+                }}>📋</button>
+            </div>
+          )}
+        </div>
+        {/* Job Date */}
+        <div style={{ flex: "1 1 110px", minWidth: 100 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>Job Date</div>
+          <input
+            name="job_date"
+            type="date"
+            value={formik.values.job_date}
+            onChange={formik.handleChange}
+            style={{ width: "98%", padding: "3px 6px", border: "1px solid #d6dae2", borderRadius: 4, background: "#fff", fontSize: 13 }}
+          />
+        </div>
+        {/* SB No */}
+        <div style={{ flex: "1 1 90px", minWidth: 80 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>SB No</div>
+          <input
+            name="sb_no"
+            value={formik.values.sb_no}
+            onChange={formik.handleChange}
+            style={{ width: "97%", padding: "3px 6px", border: "1px solid #d6dae2", borderRadius: 4, fontSize: 13, background: "#fff" }}
+          />
+        </div>
+        {/* SB Date */}
+        <div style={{ flex: "1 1 150px", minWidth: 120 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>SB Date</div>
+          <input
+            name="sb_date"
+            type="datetime-local"
+            value={formik.values.sb_date}
+            onChange={formik.handleChange}
+            style={{ width: "97%", padding: "3px 6px", border: "1px solid #d6dae2", borderRadius: 4, fontSize: 13, background: "#fff" }}
+          />
+        </div>
+        {/* Job Owner */}
+        <div style={{ flex: "1 1 110px", minWidth: 90 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>Job Owner</div>
+          <input
+            name="job_owner"
+            value={formik.values.job_owner}
+            onChange={formik.handleChange}
+            style={{ width: "96%", padding: "3px 6px", border: "1px solid #d6dae2", borderRadius: 4, background: "#fff", fontSize: 13 }}
+          />
+        </div>
+        {/* Shipper */}
+        <div style={{ flex: "1 1 170px", minWidth: 130 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>Shipper</div>
+          <input
+            name="shipper"
+            list="shipper-list"
+            value={formik.values.shipper}
+            onChange={formik.handleChange}
+            style={{ width: "98%", padding: "3px 6px", border: "1px solid #d6dae2", borderRadius: 4, fontSize: 13, background: "#fff" }}
+          />
+          <datalist id="shipper-list">
+            {shipperOpts.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </datalist>
+        </div>
+        {/* Transport Mode */}
+        <div style={{ flex: "1 1 100px", minWidth: 80 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>Transport Mode</div>
+          <SimpleSelect
+            name="transportMode"
+            value={formik.values.transportMode}
+            options={[
+              { value: "Sea", label: "Sea" },
+              { value: "Air", label: "Air" },
+              { value: "Land", label: "Land" },
+            ]}
+            onChange={formik.handleChange}
+          />
+        </div>
+        {/* Custom House */}
+        <div style={{ flex: "1 1 120px", minWidth: 110 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>Custom House</div>
+          <SimpleSelect
+            name="custom_house"
+            value={formik.values.custom_house}
+            options={customHouseOpts}
+            onChange={formik.handleChange}
+          />
+        </div>
+        {/* Consignment Type */}
+        <div style={{ flex: "1 1 120px", minWidth: 100 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>Consignment Type</div>
+          <SimpleSelect
+            name="consignment_type"
+            value={formik.values.consignment_type}
+            options={[
+              { value: "FCL", label: "FCL" },
+              { value: "LCL", label: "LCL" },
+              { value: "Break Bulk", label: "Break Bulk" }
+            ]}
+            onChange={formik.handleChange}
+          />
+        </div>
+        {/* SB Type */}
+        <div style={{ flex: "1 1 120px", minWidth: 100 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>SB Type</div>
+          <SimpleSelect
+            name="sb_type"
+            value={formik.values.sb_type}
+            options={[
+              { value: "Green - Drawback", label: "Green - Drawback" },
+              { value: "Green - RODTEP", label: "Green - RODTEP" },
+              { value: "Yellow", label: "Yellow" },
+              { value: "Red", label: "Red" }
+            ]}
+            onChange={formik.handleChange}
+          />
+        </div>
+        {/* Standard Documents Button */}
+        <div style={{ flex: "1 1 105px", display: "flex", alignItems: "flex-end", justifyContent: "flex-end", minWidth: 25 }}>
+          <button
+            style={{
+              background: "#fff",
+              border: "1.2px solid #1976d2",
+              color: "#1976d2",
+              marginLeft: 7,
+              padding: "3px 12px",
+              borderRadius: 4,
+              fontWeight: 500,
+              fontSize: 12,
+              cursor: "pointer"
+            }}
+            type="button"
+          >
+            Standard Documents
+          </button>
+        </div>
+      </div>
+      {snackbar && (
+        <div style={{
+          background: "#1976d2",
+          color: "#fff",
+          padding: "3px 16px",
+          fontSize: 13,
+          position: "fixed",
+          right: 20,
+          top: 76,
+          borderRadius: 4
+        }}>
+          Copied to clipboard
+        </div>
+      )}
+    </div>
   );
 };
 // Tab Panel Component
@@ -475,77 +385,67 @@ function LogisysExportViewJob() {
         }}
       >
         <Box sx={{ borderBottom: 1, borderColor: "divider", px: 2, pt: 1 }}>
-          <Tabs
-            value={activeTab}
-            onChange={handleTabChange}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{
-              "& .MuiTab-root": {
-                minWidth: 80,
-                fontSize: "0.87rem",
-                fontWeight: 500,
-                padding: "6px 14px",
-                borderRadius: 2,
-                textTransform: "none",
-              },
-            }}
-          >
-            <Tab label="General" />
-            <Tab label="Invoice" />
-            <Tab label="Shipment" />
-            <Tab label="Container" />
-            <Tab label="Exch. Rate" />
-            <Tab label="Products" />
-            <Tab label="Charges" />
-            <Tab label="Financial" />
-            <Tab label="Tracking Completed" />
-            <Tab label="ESanchit" />
-          </Tabs>
+<Tabs
+  value={activeTab}
+  onChange={handleTabChange}
+  variant="scrollable"
+  scrollButtons="auto"
+  sx={{
+    "& .MuiTab-root": {
+      minWidth: 80,
+      fontSize: "0.85rem",
+      fontWeight: 500,
+      padding: "4px 10px",
+      borderRadius: 2,
+      textTransform: "none",
+    },
+    mb: 0
+  }}
+>
+  <Tab label="General" />
+  <Tab label="Shipment" />
+  <Tab label="Container" />
+  <Tab label="Invoice" />
+  <Tab label="Product" />
+  <Tab label="Exch. Rate" />
+  <Tab label="ESanchit" />
+  <Tab label="Charges" />
+  <Tab label="Financial" />
+  <Tab label="Tracking Completed" />
+</Tabs>
+
         </Box>
 
-        <TabPanel value={activeTab} index={0}>
-          <GeneralTab
-            formik={formik}
-            directories={directories}
-            params={params}
-          />
-        </TabPanel>
-        <TabPanel value={activeTab} index={1}>
-          <InvoiceTab
-            formik={formik}
-            directories={directories}
-            params={params}
-          />
-        </TabPanel>
-        <TabPanel value={activeTab} index={2}>
-          <ShipmentTab
-            formik={formik}
-            directories={directories}
-            params={params}
-          />
-        </TabPanel>
-        <TabPanel value={activeTab} index={3}>
-          <ContainerTab formik={formik} />
-        </TabPanel>
-        <TabPanel value={activeTab} index={4}>
-          <ExchangeRateTab formik={formik} />
-        </TabPanel>
-        <TabPanel value={activeTab} index={5}>
-          <ProductTab formik={formik} />
-        </TabPanel>
-        <TabPanel value={activeTab} index={6}>
-          <ChargesTab formik={formik} />
-        </TabPanel>
-        <TabPanel value={activeTab} index={7}>
-          <FinancialTab formik={formik} />
-        </TabPanel>
-        <TabPanel value={activeTab} index={8}>
-          <TrackingCompletedTab formik={formik} />
-        </TabPanel>
-        <TabPanel value={activeTab} index={9}>
-          <ESanchitTab formik={formik} />
-        </TabPanel>
+     <TabPanel value={activeTab} index={0}>
+  <GeneralTab formik={formik} directories={directories} params={params} />
+</TabPanel>
+<TabPanel value={activeTab} index={1}>
+  <ShipmentTab formik={formik} directories={directories} params={params} />
+</TabPanel>
+<TabPanel value={activeTab} index={2}>
+  <ContainerTab formik={formik} />
+</TabPanel>
+<TabPanel value={activeTab} index={3}>
+  <InvoiceTab formik={formik} directories={directories} params={params} />
+</TabPanel>
+<TabPanel value={activeTab} index={4}>
+  <ProductTab formik={formik} />
+</TabPanel>
+<TabPanel value={activeTab} index={5}>
+  <ExchangeRateTab formik={formik} />
+</TabPanel>
+<TabPanel value={activeTab} index={6}>
+  <ESanchitTab formik={formik} />
+</TabPanel>
+<TabPanel value={activeTab} index={7}>
+  <ChargesTab formik={formik} />
+</TabPanel>
+<TabPanel value={activeTab} index={8}>
+  <FinancialTab formik={formik} />
+</TabPanel>
+<TabPanel value={activeTab} index={9}>
+  <TrackingCompletedTab formik={formik} />
+</TabPanel>
 
         <Divider sx={{ my: 2 }} />
 

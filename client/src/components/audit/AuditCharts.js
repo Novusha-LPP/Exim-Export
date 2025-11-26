@@ -88,13 +88,6 @@ const AuditCharts = ({
     );
     params.append("fromDate", fromDate.toISOString().slice(0, 10));
     params.append("toDate", today.toISOString().slice(0, 10));
-    console.log(
-      "Activity timeline API:",
-      `${
-        import.meta.env.VITE_API_STRING
-      }/audit-trail/activity-timeline?${params}`
-    );
-    console.log("userFilter:", userFilter);
     loadData();
   }, [userFilter]);
 

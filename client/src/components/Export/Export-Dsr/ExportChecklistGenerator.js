@@ -1372,7 +1372,7 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
 
         // Payment & Buyer Details
         natureOfPayment: exportJob.natureOfPayment || "",
-        periodOfPayment: exportJob.periodOfPayment || "0 days",
+        periodOfPayment: exportJob.periodOfPayment || "",
         buyerName:
           exportJob.buyerName ||
           "FARRAG PACKAGING\n3 SHELDON AVENUE\nVICARS CROSS\nCHESTER CH3 5LF UNITED KINGDOM",

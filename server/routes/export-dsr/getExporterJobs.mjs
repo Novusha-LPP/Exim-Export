@@ -123,92 +123,6 @@ router.get('/api/exports/:status?', async (req, res) => {
   }
 });
 
-// Add status count endpoint for badges
-router.get('/api/exports/count/:status?', async (req, res) => {
-  try {
-    const { status = 'all' } = req.params;
-    
-    let filter = {};
-    
-    if (status && status.toLowerCase() !== 'all') {
-      const statusLower = status.toLowerCase();
-      
-      if (statusLower === 'pending') {
-        filter = {
-          $or: [
-            { status: { $regex: '^pending$', $options: 'i' } },
-            { status: { $exists: false } },
-            { status: null },
-            { status: '' }
-          ]
-        };
-      } else if (statusLower === 'completed') {
-        filter = { status: { $regex: '^completed$', $options: 'i' } };
-      } else if (statusLower === 'cancelled') {
-        filter = { status: { $regex: '^cancelled$', $options: 'i' } };
-      } else {
-        filter = { status: { $regex: `^${status}$`, $options: 'i' } };
-      }
-    }
-
-    const count = await ExportJobModel.countDocuments(filter);
-    
-    res.json({
-      success: true,
-      count,
-      status
-    });
-
-  } catch (error) {
-    console.error('Error fetching export jobs count:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching count', 
-      error: error.message 
-    });
-  }
-});
-
-// Alternative: Get all status counts in one request
-router.get('/api/exports/counts/all', async (req, res) => {
-  try {
-    const [pendingCount, completedCount, cancelledCount] = await Promise.all([
-      ExportJobModel.countDocuments({
-        $or: [
-          { status: { $regex: '^pending$', $options: 'i' } },
-          { status: { $exists: false } },
-          { status: null },
-          { status: '' }
-        ]
-      }),
-      ExportJobModel.countDocuments({
-        status: { $regex: '^completed$', $options: 'i' }
-      }),
-      ExportJobModel.countDocuments({
-        status: { $regex: '^cancelled$', $options: 'i' }
-      })
-    ]);
-
-    res.json({
-      success: true,
-      counts: {
-        pending: pendingCount,
-        completed: completedCount,
-        cancelled: cancelledCount,
-        total: pendingCount + completedCount + cancelledCount
-      }
-    });
-
-  } catch (error) {
-    console.error('Error fetching all export jobs counts:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching counts', 
-      error: error.message 
-    });
-  }
-});
-
 // POST /api/exports - Create new export job
 router.post('/exports', async (req, res) => {
   try {
@@ -235,7 +149,6 @@ router.post('/api/test/seed-data', async (req, res) => {
     "invoice_currency": "USD",
     "port_of_loading": "JNPT",
     "port_of_discharge": "NEW YORK",
-    "total_packages": "10",
     "gross_weight_kg": "5000",
     "net_weight_kg": "4500",
     "status": "pending"
