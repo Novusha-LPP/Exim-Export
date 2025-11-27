@@ -160,29 +160,29 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
       discharge_country: "",
       destination_port: "",
       destination_country: "",
-      shipping_line: "",
+      shipping_line_airline: "",
       vessel_sailing_date: "",
-      vessel_departure_date: "", // Schema field
       voyage_no: "",
       nature_of_cargo: "",
       total_no_of_pkgs: "",
       loose_pkgs: "",
       no_of_containers: "",
-      gross_weight: "",
+      package_unit: "", // Schema field for compatibility
       gross_weight_kg: "", // Schema field
       net_weight: "",
       net_weight_kg: "", // Schema field
       volume: "",
       volume_cbm: "", // Schema field
       chargeable_weight: "",
+            package_unit: "",
+      gross_weight_unit: "",
+      net_weight_unit: "",
+      volume_unit: "",
+      chargeable_weight_unit: "",
       marks_nos: "",
       marks_and_numbers: "", // Schema field
 
       // Additional General Tab fields - EMPTY DEFAULTS
-      dbk_bank: "",
-      dbk_ac: "",
-      dbk_edi_ac: "",
-      ref_type: "",
       exporter_ref_no: "",
       exporter_type: "",
       sb_date: "",
@@ -248,8 +248,6 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
       description: "", // Schema field for compatibility
       hs_code: "",
       cth_no: "", // Schema field for compatibility
-      package_type: "",
-      unit: "", // Schema field for compatibility
       dimensions_length: "",
       dimensions_width: "",
       dimensions_height: "",
@@ -524,10 +522,6 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
       gateway_port: "",
       state_of_origin: "",
       annexure_c_details: false,
-      package_unit: "BDL",
-      gross_weight_unit: "KGS",
-      net_weight_unit: "KGS",
-      volume_unit: "CBM",
 
       // Add these Stuffing Details fields to your hook initialValues:
       goods_stuffed_at: "",
@@ -876,7 +870,6 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
         bank_swift_code: safeValue(data.bank_swift_code),
 
         // General tab specific fields
-        ref_type: safeValue(data.ref_type),
         exporter_ref_no: safeValue(data.exporter_ref_no),
         exporter_type: safeValue(data.exporter_type),
         sb_date: safeValue(
@@ -976,6 +969,17 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
         }),
 
         // Shipping details - Comprehensive mapping
+        vessel_sailing_date: safeValue(data.vessel_sailing_date),
+        egm_no: safeValue(data.egm_no),
+        egm_date: safeValue(data.egm_date),
+        mbl_date: safeValue(data.mbl_date),
+        hbl_date: safeValue(data.hbl_date),
+        mbl_no: safeValue(data.mbl_no),
+        hbl_no: safeValue(data.hbl_no),
+        transhipper_code: safeValue(data.transhipper_code),
+        pre_carriage_by: safeValue(data.pre_carriage_by),
+        state_of_origin: safeValue(data.state_of_origin),
+        gateway_port: safeValue(data.gateway_port),
         discharge_port: safeValue(
           data.discharge_port || data.port_of_discharge
         ),
@@ -987,17 +991,9 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
         ),
         destination_port: safeValue(data.destination_port),
         destination_country: safeValue(data.destination_country),
-        shipping_line: safeValue(
-          data.shipping_line || data.shipping_line_airline
-        ),
+
         shipping_line_airline: safeValue(
-          data.shipping_line_airline || data.shipping_line
-        ),
-        vessel_sailing_date: safeValue(
-          data.vessel_sailing_date || data.vessel_departure_date
-        ),
-        vessel_departure_date: safeValue(
-          data.vessel_departure_date || data.vessel_sailing_date
+          data.shipping_line_airline 
         ),
         voyage_no: safeValue(data.voyage_no),
         nature_of_cargo: safeValue(data.nature_of_cargo),
@@ -1006,13 +1002,14 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
         ),
         loose_pkgs: safeValue(data.loose_pkgs),
         no_of_containers: safeValue(data.no_of_containers),
-        gross_weight: safeValue(data.gross_weight || data.gross_weight_kg),
-        gross_weight_kg: safeValue(data.gross_weight_kg || data.gross_weight),
-        net_weight: safeValue(data.net_weight || data.net_weight_kg),
-        net_weight_kg: safeValue(data.net_weight_kg || data.net_weight),
-        volume: safeValue(data.volume || data.volume_cbm),
-        volume_cbm: safeValue(data.volume_cbm || data.volume),
+        gross_weight_kg: safeValue(data.gross_weight_kg ),
+        gross_weight_unit: safeValue(data.gross_weight_unit),
+        net_weight_kg: safeValue(data.net_weight_kg ),
+        net_weight_unit: safeValue(data.net_weight_unit),
+        volume_cbm: safeValue(data.volume_cbm ),
+        volume_unit: safeValue( data.volume_unit),
         chargeable_weight: safeValue(data.chargeable_weight),
+        chargeable_weight_unit: safeValue(data.chargeable_weight_unit),
         marks_nos: safeValue(data.marks_nos || data.marks_and_numbers),
         marks_and_numbers: safeValue(data.marks_and_numbers || data.marks_nos),
 
@@ -1043,19 +1040,6 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
         actual_departure_date: safeValue(data.actual_departure_date),
         actual_arrival_date: safeValue(data.actual_arrival_date),
 
-        // Carrier Information
-        master_bl_awb_number: safeValue(
-          data.master_bl_awb_number || data.awb_bl_no
-        ),
-        master_bl_awb_date: safeValue(
-          data.master_bl_awb_date || data.awb_bl_date
-        ),
-        house_bl_awb_number: safeValue(
-          data.house_bl_awb_number || data.hawb_hbl_no
-        ),
-        house_bl_awb_date: safeValue(
-          data.house_bl_awb_date || data.hawb_hbl_date
-        ),
         booking_number: safeValue(data.booking_number),
         booking_date: safeValue(data.booking_date),
 
@@ -1066,8 +1050,7 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
         description: safeValue(data.description || data.commodity_description),
         hs_code: safeValue(data.hs_code || data.cth_no),
         cth_no: safeValue(data.cth_no || data.hs_code),
-        package_type: safeValue(data.package_type || data.unit),
-        unit: safeValue(data.unit || data.package_type),
+        package_unit: safeValue(data.package_unit),
         dimensions_length: safeValue(data.dimensions_length),
         dimensions_width: safeValue(data.dimensions_width),
         dimensions_height: safeValue(data.dimensions_height),

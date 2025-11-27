@@ -134,45 +134,6 @@ router.post('/exports', async (req, res) => {
   }
 });
 
-router.post('/api/test/seed-data', async (req, res) => {
-  try {
-    const sampleJobs = [
-      {
-      "exporter_name": "SAMPLE EXPORTER LTD",
-    "consignee_name": "SAMPLE CONSIGNEE LTD",
-    "ie_code": "1234567890",
-    "job_no": "AMD/EXP/SEA/00015/25-26",
-    "movement_type": "FCL",
-    "country_of_final_destination": "USA",
-    "commodity_description": "Industrial Equipment",
-    "commercial_invoice_value": "25000.00",
-    "invoice_currency": "USD",
-    "port_of_loading": "JNPT",
-    "port_of_discharge": "NEW YORK",
-    "gross_weight_kg": "5000",
-    "net_weight_kg": "4500",
-    "status": "pending"
-      },
-      // Add more sample jobs...
-    ];
-
-    const insertedJobs = await ExportJobModel.insertMany(sampleJobs);
-    
-    res.status(201).json({
-      success: true,
-      message: `Successfully inserted ${insertedJobs.length} sample export jobs`,
-      data: { count: insertedJobs.length, jobs: insertedJobs }
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error inserting sample data',
-      error: error.message
-    });
-  }
-});
-
 // OPTION 1: Search using regex pattern (Recommended)
 router.get("/api/export-jobs/:year/:jobNo", async (req, res) => {
   try {

@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 const ShippingLineSchema = new mongoose.Schema({
   shippingLineCode: {
     type: String,
-    required: true,
     unique: true,
     uppercase: true,
     trim: true,
@@ -17,13 +16,11 @@ const ShippingLineSchema = new mongoose.Schema({
   },
   shippingName: {
     type: String,
-    required: true,
     trim: true,
     maxlength: 200
   },
   location: {
     type: String,
-    required: true,
     trim: true,
     maxlength: 100
   },
@@ -34,10 +31,5 @@ const ShippingLineSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Indexes for better query performance
-ShippingLineSchema.index({ shippingLineCode: 1 }, { unique: true });
-ShippingLineSchema.index({ shippingName: 'text', location: 'text' });
-ShippingLineSchema.index({ location: 1 });
-ShippingLineSchema.index({ status: 1 });
 
 export default mongoose.model('ShippingLine', ShippingLineSchema);

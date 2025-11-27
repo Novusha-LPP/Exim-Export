@@ -10,7 +10,6 @@ import { SelectedYearContext } from "../../../contexts/SelectedYearContext";
 // import JobTabs from "./JobTabs";
 // import ViewDSR from "./ViewDSR";
 // import ImportCreateJob from "./ImportCreateJob";
-import useFileUpload from "../../../customHooks/useFileUpload";
 import CircularProgress from "@mui/material/CircularProgress";
 import InfoIcon from "@mui/icons-material/Info";
 import IconButton from "@mui/material/IconButton";
@@ -46,9 +45,6 @@ function DsrTabs() {
   //   }
   //   getLastJobsDate();
   // }, [alt]);
-
-  const { handleFileUpload, snackbar, loading, error, setError } =
-    useFileUpload(inputRef, alt, setAlt);
 
   return (
     <SelectedYearContext.Provider value={{ selectedYear, setSelectedYear }}>
@@ -129,11 +125,6 @@ function DsrTabs() {
           <AddExJobs />
         </CustomTabPanel>
       </Box>
-      <Snackbar
-        open={snackbar}
-        message="Jobs added successfully!"
-        sx={{ left: "auto !important", right: "24px !important" }}
-      />
     </SelectedYearContext.Provider>
   );
 }
