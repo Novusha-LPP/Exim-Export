@@ -57,7 +57,7 @@ const ShipmentTab = ({ formik, directories, params, onUpdate }) => {
         >
           <Tab label="Main" />
           <Tab label="Stuffing Details" />
-          <Tab label="Shipping Bill Printing" />
+          {/* <Tab label="Shipping Bill Printing" /> */}
           <Tab label="Annex C1 Details" />
         </Tabs>
       </Box>
@@ -80,15 +80,15 @@ const ShipmentTab = ({ formik, directories, params, onUpdate }) => {
       </ShipmentTabPanel>
 
 
-      <ShipmentTabPanel value={activeSubTab} index={2}>
+      {/* <ShipmentTabPanel value={activeSubTab} index={2}>
         <ShippingBillPrintingTab 
           formik={formik} 
           directories={directories} 
           params={params}
         />
       </ShipmentTabPanel>
-      
-     <ShipmentTabPanel value={activeSubTab} index={3}>
+       */}
+     <ShipmentTabPanel value={activeSubTab} index={2}>
   <AnnexC1DetailsTab 
     formik={formik} 
     directories={directories} 

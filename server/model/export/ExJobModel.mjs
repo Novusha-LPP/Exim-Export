@@ -764,16 +764,19 @@ const exportJobSchema = new mongoose.Schema(
     loose_pkgs: { type: String, trim: true },
     no_of_containers: { type: String, trim: true },
     marks_nos: { type: String, trim: true },
+    goods_stuffed_at: { type: String, trim: true },
+    sample_accompanied: { type: Boolean, default: false },
+    factory_address: { type: String, trim: true },
+    warehouse_code: { type: String, trim: true },
+    stuffing_seal_type: { type: String, trim: true },
+    stuffing_seal_no: { type: String, trim: true },
+    stuffing_agency_name: { type: String, trim: true },
 
     // Job Management Fields (Missing)
     movement_type: { type: String, trim: true },
     // Port & Delivery Fields (Missing)
     place_of_delivery: { type: String, trim: true },
     country_of_final_destination: { type: String, trim: true },
-
-    // Vessel/Flight Timing Fields (Missing)
-    etd_port_of_loading: { type: String, trim: true },
-    eta_port_of_discharge: { type: String, trim: true },
 
     // Cargo Dimension Fields (Missing)
     dimensions_length: { type: String, trim: true },
@@ -998,15 +1001,10 @@ consignees: [
     // Note: exportContainerSchema needs to be defined separately
     containers: [exportContainerSchema],
     // Removed duplicate container_count
-    stuffing_location: { type: String, trim: true },
     stuffing_date: { type: String, trim: true },
-    stuffing_time: { type: String, trim: true },
-
-    // CFS/Terminal Information
-    cfs_terminal_name: { type: String, trim: true },
-    cfs_gate_in_date: { type: String, trim: true },
-    cfs_gate_out_date: { type: String, trim: true },
-    terminal_handling_charges: { type: String, trim: true },
+    stuffing_supervisor: { type: String, trim: true },
+    stuffing_remarks: { type: String, trim: true }, 
+    cfs: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Documentation Module
     // Note: These schemas need to be defined separately

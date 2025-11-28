@@ -1,6 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import {states} from "../../../utils/masterList";
-import {GatewayPort} from "../../../utils/masterList";
 import {natureOfCargo} from "../../../utils/masterList";
 import {unitCodes} from "../../../utils/masterList";
 
@@ -128,75 +127,146 @@ function CountryField({ label, fieldName, placeholder, formik }) {
   );
 }
 
-function GatewayPortDropdownField({ label, fieldName, formik, gatewayPorts, placeholder }) {
+function useGatewayPortDropdown(fieldName, formik) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(formik.values[fieldName] || "");
+  const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
   const wrapperRef = useRef();
+  const apiBase = import.meta.env.VITE_API_STRING;
+  const keepOpen = useRef(false);
 
-  // Search/filter
-  const filtered = (gatewayPorts || [])
-    .filter(port =>
-      toUpper(typeof port === "string" ? port : port.name).includes(query.toUpperCase())
-    )
-    .slice(0, 10); // Limit for dropdown height
-
-  useEffect(() => { setQuery(formik.values[fieldName] || ""); }, [formik.values[fieldName]]);
   useEffect(() => {
-    const close = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", close); return () => document.removeEventListener("mousedown", close);
+    setQuery(formik.values[fieldName] || "");
+  }, [formik.values[fieldName]]);
+
+  useEffect(() => {
+    if (!open) { setOpts([]); return; }
+
+    const searchVal = (query || "").trim();
+    const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(searchVal)}`;
+
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        setOpts(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
+      } catch {
+        setOpts([]);
+      }
+    }, 220);
+
+    return () => clearTimeout(t);
+  }, [open, query, apiBase]);
+
+  useEffect(() => {
+    function close(e) {
+      if (!keepOpen.current && wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  function handleSelect(i) {
-    const val = typeof filtered[i] === "string" ? filtered[i] : filtered[i].name;
-    setQuery(toUpper(val));
-    formik.setFieldValue(fieldName, toUpper(val));
+  function select(i) {
+    const item = opts[i];
+    if (!item) return;
+
+    // save as UNECE_CODE + " - " + NAME (or just name if you prefer)
+    const value = `${(item.unece_code || "").toUpperCase()} - ${(item.name || "").toUpperCase()}`.trim();
+    setQuery(value);
+    formik.setFieldValue(fieldName, value);
     setOpen(false);
     setActive(-1);
   }
 
+  return {
+    wrapperRef,
+    open,
+    setOpen,
+    query,
+    setQuery,
+    opts,
+    active,
+    setActive,
+    handle: (val) => {
+      const v = val.toUpperCase();
+      setQuery(v);
+      formik.setFieldValue(fieldName, v);
+      setOpen(true);
+    },
+    select,
+    onInputFocus: () => {
+      setOpen(true);
+      setActive(-1);
+      keepOpen.current = true;
+    },
+    onInputBlur: () => {
+      setTimeout(() => { keepOpen.current = false; }, 100);
+    },
+  };
+}
+
+function GatewayPortDropdownField({ label, fieldName, formik, placeholder = "ENTER GATEWAY PORT" }) {
+  const d = useGatewayPortDropdown(fieldName, formik);
+
+  const filtered = d.opts.filter(p => {
+    const code = p.unece_code || "";
+    const name = p.name || "";
+    const haystack = `${code} ${name}`.toUpperCase();
+    const needle = (d.query || "").toUpperCase();
+    return !needle || haystack.includes(needle);
+  });
+
   return (
-    <div style={styles.field} ref={wrapperRef}>
+    <div style={styles.field} ref={d.wrapperRef}>
       <div style={styles.label}>{label}</div>
       <div style={styles.acWrap}>
         <input
           style={styles.input}
           placeholder={placeholder}
           autoComplete="off"
-          value={toUpper(query)}
-          onChange={e => {
-            setQuery(e.target.value.toUpperCase());
-            formik.setFieldValue(fieldName, e.target.value.toUpperCase());
-            setOpen(true);
-          }}
-          onFocus={() => { setOpen(true); setActive(-1); }}
+          value={toUpper(d.query)}
+          onChange={e => d.handle(e.target.value)}
+          onFocus={d.onInputFocus}
+          onBlur={d.onInputBlur}
           onKeyDown={e => {
-            if (!open) return;
-            if (e.key === "ArrowDown") setActive(a => Math.min(filtered.length - 1, a < 0 ? 0 : a + 1));
-            else if (e.key === "ArrowUp") setActive(a => Math.max(0, a - 1));
-            else if (e.key === "Enter" && active >= 0) { e.preventDefault(); handleSelect(active); }
-            else if (e.key === "Escape") setOpen(false);
+            if (!d.open) return;
+            if (e.key === "ArrowDown") d.setActive(a => Math.min(filtered.length - 1, a < 0 ? 0 : a + 1));
+            else if (e.key === "ArrowUp") d.setActive(a => Math.max(0, a - 1));
+            else if (e.key === "Enter" && d.active >= 0) {
+              e.preventDefault();
+              d.select(d.active);
+            } else if (e.key === "Escape") d.setOpen(false);
           }}
         />
         <span style={styles.acIcon}>▼</span>
-        {open && filtered.length > 0 && (
+        {d.open && filtered.length > 0 && (
           <div style={styles.acMenu}>
-            {filtered.map((val, i) =>
+            {filtered.map((port, i) => (
               <div
-                key={typeof val === "string" ? val : val.name}
-                style={styles.acItem(active === i)}
-                onMouseDown={() => handleSelect(i)}
-                onMouseEnter={() => setActive(i)}
+                key={port._id || port.unece_code || port.name || i}
+                style={styles.acItem(d.active === i)}
+                onMouseDown={() => d.select(i)}
+                onMouseEnter={() => d.setActive(i)}
               >
-                {toUpper(typeof val === "string" ? val : val.name)}
+                {(port.unece_code || "").toUpperCase()} - {(port.name || "").toUpperCase()}
+                {port.port_type && (
+                  <span style={{ marginLeft: 6, color: "#667", fontWeight: 400 }}>
+                    ({port.port_type.toUpperCase()})
+                  </span>
+                )}
               </div>
-            )}
+            ))}
           </div>
         )}
       </div>
     </div>
   );
 }
+
+
 
 function NatureOfCargoDropdownField({ label, fieldName, formik, natureOptions, placeholder = "C - CONTAINERISED" }) {
   const [open, setOpen] = useState(false);
@@ -813,13 +883,13 @@ function ShipmentMainTab({ formik, onUpdate }) {
                     onChange={e => handleFieldChange("place_of_receipt", e.target.value.toUpperCase())}
                   />
                 </div>
-               <GatewayPortDropdownField
+<GatewayPortDropdownField
   label="GATEWAY PORT"
   fieldName="gateway_port"
   formik={formik}
-  gatewayPorts={GatewayPort}
   placeholder="ENTER GATEWAY PORT"
 />
+
               </div>
             </div>
           </div>

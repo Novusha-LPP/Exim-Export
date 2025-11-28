@@ -13,6 +13,7 @@ import Uqcs from "./Uqcs.js";
 import Currency from "./Currency.js";
 import Package from "./PackageDirectory.js";
 import SupportingDocument from "./SupportingDocument.js";
+import GatewayPortDirectory from "./GatwayPort.js";
 function DirectoryComponent({ directoryType }) {
   console.log("Selected Directory Type:", directoryType); // Debugging log
 
@@ -46,6 +47,8 @@ function DirectoryComponent({ directoryType }) {
         return <Package />;
       case "Supporting Document Codes":
         return <SupportingDocument />;
+      case "Gateway Port":
+        return <GatewayPortDirectory />;
       default:
         console.log("No matching directory found for:", directoryType);
         return null;

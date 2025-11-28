@@ -234,10 +234,17 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
             name="sb_type"
             value={formik.values.sb_type}
             options={[
-              { value: "Green - Drawback", label: "Green - Drawback" },
-              { value: "Green - RODTEP", label: "Green - RODTEP" },
-              { value: "Yellow", label: "Yellow" },
-              { value: "Red", label: "Red" }
+            { value: "", label: "All" },
+  { value: "White - Free/DEEC", label: "White - Free/DEEC" },
+  { value: "Green - Drawback", label: "Green - Drawback" },
+  { value: "Green - RODTEP", label: "Green - RODTEP" },
+  { value: "Blue - DEPB", label: "Blue - DEPB" },
+  { value: "Yellow - Dutiable", label: "Yellow - Dutiable" },
+  { value: "Pink - ExBond", label: "Pink - ExBond" },
+  { value: "SEZ - Regular", label: "SEZ - Regular" },
+  { value: "SEZ - ExBond", label: "SEZ - ExBond" },
+  { value: "SEZ - DTA Procurement", label: "SEZ - DTA Procurement" },
+  { value: "Red", label: "Red" } // keep original red if you still use it
             ]}
             onChange={formik.handleChange}
           />

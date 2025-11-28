@@ -37,7 +37,7 @@ export const states = [
   "West Bengal",
 ];
 
-export const GatewayPort = [
+export const cfs = [
   "Golden Horn Containers Service",
   "ICD AHMEDABAD",
   "ICD SACHANA",

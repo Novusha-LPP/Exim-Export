@@ -37,6 +37,7 @@ import Currency from "./routes/Directories/currencies.js";
 import Packages from "./routes/Directories/packages.js";
 import SupportingDocuments from "./routes/Directories/supportingdocumentcodes.js";
 import genrateExportChecklist from "./routes/export-dsr/generateExportChecklist.mjs";
+import gatwayPort from "./routes/Directories/gatwayPort.js"; //gatwatPort
 
 //============== EXPORT DSR =========================
 import getExJobsOverview from "./routes/export-dsr/getExJobsOverview.mjs";
@@ -140,6 +141,7 @@ app.use("/api/packages", Packages);
 app.use("/api/supportingDocumentCodes", SupportingDocuments);
 app.use(genrateExportChecklist);
 app.use(getExpJob);
+app.use("/api/gateway-ports", gatwayPort);
 // app.set("trust proxy", 1); // Trust first proxy (NGINX, AWS ELB, etc.)
 
 //============== EXPORT DSR =========================

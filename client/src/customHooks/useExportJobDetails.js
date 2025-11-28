@@ -532,9 +532,9 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
       stuffing_seal_no: "",
       stuffing_agency_name: "",
       stuffing_date: "",
-      stuffing_time: "",
       stuffing_supervisor: "",
       stuffing_remarks: "",
+      csf: "",
       // Add these Shipping Bill Printing fields to your hook initialValues:
       oi_cert_details: "",
       type_of_shipment: "",
@@ -1089,9 +1089,9 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
         stuffing_seal_no: safeValue(data.stuffing_seal_no),
         stuffing_agency_name: safeValue(data.stuffing_agency_name),
         stuffing_date: safeValue(data.stuffing_date),
-        stuffing_time: safeValue(data.stuffing_time),
         stuffing_supervisor: safeValue(data.stuffing_supervisor),
         stuffing_remarks: safeValue(data.stuffing_remarks),
+        cfs: safeValue(data.cfs),
 
         // Add these to your formik.setValues mapping:
         oi_cert_details: safeValue(data.oi_cert_details),

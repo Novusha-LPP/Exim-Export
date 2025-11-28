@@ -34,6 +34,7 @@ export const viewMasterList = [
   "Currency",
   "Package",
   "Supporting Document Codes",
+  "Gateway Port"
 ];
 
 export const directoryFields = {

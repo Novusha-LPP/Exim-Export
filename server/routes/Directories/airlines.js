@@ -1,5 +1,5 @@
 import express from 'express';
-import AirlineCode from "../../model/AirlineCode.js"
+import AirlineCode from "../../model/Directorties/AirlineCode.js"
 
 const router = express.Router();
 
