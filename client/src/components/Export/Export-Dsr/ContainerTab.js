@@ -1,69 +1,172 @@
-// ContainerTab.jsx
-import React, { useState } from "react";
-import {
-  Box,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Button,
-  TextField,
-  MenuItem,
-  Grid,
-  Typography,
-  IconButton,
-} from "@mui/material";
-import {
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon,
-  Save as SaveIcon,
-  Cancel as CancelIcon,
-} from "@mui/icons-material";
+import React, { useState, useRef, useCallback } from "react";
+
+const styles = {
+  page: { fontFamily: "'Segoe UI', Roboto, Arial, sans-serif", fontSize: 13, color: "#1e2e38" }, 
+  sectionTitleMain: {
+    fontWeight: 700, color: "#16408f", fontSize: 13, marginBottom: 10,
+    letterSpacing: 1.2, textTransform: "uppercase"
+  },
+  card: {
+    background: "#fff", border: "1.5px solid #e2e8f0",
+    borderRadius: 7, padding: 10, marginBottom: 18
+  },
+  tableWrap: {
+    border: "1px solid #e2e8f0",
+    borderRadius: 5,
+    overflow: "hidden",
+    fontSize: 12
+  },
+  headRow: {
+    background: "#f7fafc",
+    borderBottom: "1px solid #e2e8f0"
+  },
+  headCell: {
+    padding: "6px 6px",
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#263046",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    borderRight: "1px solid #e2e8f0",
+    whiteSpace: "nowrap"
+  },
+  bodyRow: {
+    borderBottom: "1px solid #edf2f7",
+    background: "#fff"
+  },
+  cell: {
+    padding: "3px 4px",
+    borderRight: "1px solid #edf2f7",
+    verticalAlign: "middle"
+  },
+  srCell: {
+    padding: "3px 6px",
+    borderRight: "1px solid #edf2f7",
+    fontSize: 12,
+    fontWeight: 600,
+    textAlign: "center"
+  },
+  label: {
+    fontSize: 11, fontWeight: 700, color: "#263046",
+    letterSpacing: 1, textTransform: "uppercase", marginBottom: 2
+  },
+  input: {
+    width: "100%", fontSize: 12, padding: "3px 8px",
+    border: "1px solid #bdc7d1", borderRadius: 3, height: 26,
+    background: "#f7fafc", outline: "none", boxSizing: "border-box",
+    textTransform: "uppercase", fontWeight: 600
+  },
+  inputNumeric: {
+    width: "100%", fontSize: 12, padding: "3px 8px",
+    border: "1px solid #bdc7d1", borderRadius: 3, height: 26,
+    background: "#f7fafc", outline: "none", boxSizing: "border-box",
+    textAlign: "right", fontWeight: 600
+  },
+  inputDate: {
+    width: "100%", fontSize: 12, padding: "3px 8px",
+    border: "1px solid #bdc7d1", borderRadius: 3, height: 26,
+    background: "#f7fafc", outline: "none", boxSizing: "border-box",
+    textTransform: "none", fontWeight: 500
+  },
+  select: {
+    width: "100%", fontSize: 12, padding: "3px 6px",
+    border: "1px solid #bdc7d1", borderRadius: 3, height: 26,
+    background: "#f7fafc", outline: "none", boxSizing: "border-box",
+    textTransform: "uppercase", fontWeight: 600
+  },
+  textReadonly: {
+    fontSize: 12, fontWeight: 600, color: "#1f2933"
+  },
+  topBar: {
+    display: "flex", justifyContent: "flex-end", marginBottom: 8
+  },
+  newBtn: {
+    fontSize: 11, padding: "4px 12px", borderRadius: 3,
+    border: "1px solid #2563eb", background: "#2563eb",
+    color: "#fff", textTransform: "uppercase", letterSpacing: 0.8,
+    fontWeight: 600, cursor: "pointer"
+  },
+  actionBtn: (variant) => {
+    const base = {
+      fontSize: 11, padding: "3px 8px", borderRadius: 3,
+      border: "1px solid", cursor: "pointer",
+      textTransform: "uppercase", fontWeight: 600
+    };
+    if (variant === "save") {
+      return { ...base, borderColor: "#16a34a", background: "#e8f7ee", color: "#166534" };
+    }
+    if (variant === "cancel") {
+      return { ...base, borderColor: "#f59e0b", background: "#fff7e6", color: "#b45309" };
+    }
+    if (variant === "delete") {
+      return { ...base, borderColor: "#dc2626", background: "#fee2e2", color: "#b91c1c" };
+    }
+    return { ...base, borderColor: "#0ea5e9", background: "#e0f2fe", color: "#0369a1" };
+  },
+  actionsCellInner: {
+    display: "flex", gap: 4, justifyContent: "center"
+  },
+  emptyRow: {
+    padding: "10px 8px", fontSize: 12, color: "#6b7280"
+  }
+};
 
 const containerTypes = [
-  "20 Standard Dry",
-  "20 Flat Rack",
-  "20 Collapsible Flat Rack ",
-  "20 Reefer",
-  "20 Tank",
-  "20 Open Top",
-  "20 Hard Top",
-  "20 Platform",
-  "40 Standard Dry",
-  "40 Flat Rack",
-  "40 Collapsible Flat Rack ",
-  "40 Reefer",
-  "40 Tank",
-  "40 Open Top",
-  "40 Hard Top",
-  "40 High Cube",
-  "40 Reefer High Cube",
-  "40 Platform",
+  "20 STANDARD DRY",
+  "20 FLAT RACK",
+  "20 COLLAPSIBLE FLAT RACK",
+  "20 REEFER",
+  "20 TANK",
+  "20 OPEN TOP",
+  "20 HARD TOP",
+  "20 PLATFORM",
+  "40 STANDARD DRY",
+  "40 FLAT RACK",
+  "40 COLLAPSIBLE FLAT RACK",
+  "40 REEFER",
+  "40 TANK",
+  "40 OPEN TOP",
+  "40 HARD TOP",
+  "40 HIGH CUBE",
+  "40 REEFER HIGH CUBE",
+  "40 PLATFORM"
 ];
+
 const sealTypes = [
-  "BTSL - Bottle",
-  "ES - Electronic Seal",
-  "RFID - Radio Frequency Identifier",
+  "BTSL - BOTTLE",
+  "ES - ELECTRONIC SEAL",
+  "RFID - RADIO FREQUENCY IDENTIFIER"
 ];
 
-const ContainerTab = ({ formik }) => {
+function ContainerTab({ formik, onUpdate }) {
   const [editingIndex, setEditingIndex] = useState(null);
+  const saveTimeoutRef = useRef(null);
 
-  // Handle inline field change
-  const handleFieldChange = (index, field, value) => {
-    const containers = [...formik.values.containers];
-    containers[index][field] = value;
-    formik.setFieldValue("containers", containers);
+  const autoSave = useCallback(
+    async (values) => {
+      if (onUpdate) await onUpdate(values); 
+    },
+    [onUpdate]
+  );
+
+  const debouncedSave = () => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      autoSave(formik.values);
+    }, 900);
   };
 
-  // Add new container
+  const handleFieldChange = (idx, field, value) => {
+    const list = [...(formik.values.containers || [])];
+    list[idx][field] = value;
+    formik.setFieldValue("containers", list);
+    debouncedSave();
+  };
+
   const handleAdd = () => {
-    const newContainer = {
-      serialNumber: (formik.values.containers?.length || 0) + 1,
+    const list = [...(formik.values.containers || [])];
+    list.push({
+      serialNumber: list.length + 1,
       containerNo: "",
       sealNo: "",
       sealDate: "",
@@ -71,358 +174,231 @@ const ContainerTab = ({ formik }) => {
       pkgsStuffed: 0,
       grossWeight: 0,
       sealType: "",
-      grWtPlusTrWt: 0,
       sealDeviceId: "",
-      rfid: "",
-    };
-
-    const containers = [...(formik.values.containers || []), newContainer];
-    formik.setFieldValue("containers", containers);
-
-    // Set the new row to edit mode
-    setEditingIndex(containers.length - 1);
+      grWtPlusTrWt: 0,
+      rfid: ""
+    });
+    formik.setFieldValue("containers", list);
+    setEditingIndex(list.length - 1);
+    debouncedSave();
   };
 
-  // Delete container
   const handleDelete = (idx) => {
-    const containers = formik.values.containers.filter((_, i) => i !== idx);
-    formik.setFieldValue("containers", containers);
-    if (editingIndex === idx) {
-      setEditingIndex(null);
-    } else if (editingIndex > idx) {
-      setEditingIndex(editingIndex - 1);
-    }
+    const list = (formik.values.containers || []).filter((_, i) => i !== idx);
+    list.forEach((c, i) => { c.serialNumber = i + 1; });
+    formik.setFieldValue("containers", list);
+    if (editingIndex === idx) setEditingIndex(null);
+    else if (editingIndex > idx) setEditingIndex(editingIndex - 1);
+    debouncedSave();
   };
 
-  // Edit container
-  const handleEdit = (idx) => {
-    setEditingIndex(idx);
-  };
+  const handleSave = () => setEditingIndex(null);
+  const handleCancel = () => setEditingIndex(null);
+  const isEditing = (idx) => editingIndex === idx;
 
-  // Save container changes
-  const handleSave = (idx) => {
-    setEditingIndex(null);
-    // You can add validation or API call here if needed
-  };
-
-  // Cancel editing
-  const handleCancel = (idx) => {
-    setEditingIndex(null);
-    // If you want to revert changes, you might need to maintain a backup state
-  };
-
-  // Check if a field is editable
-  const isEditable = (index) => {
-    return editingIndex === index;
-  };
+  const rows = formik.values.containers || [];
 
   return (
-    <Box>
-      {/* Add New Button */}
-      <Box sx={{ mb: 2, display: "flex", justifyContent: "flex-end" }}>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleAdd}
-          sx={{ minWidth: 120 }}
-        >
-          New Container
-        </Button>
-      </Box>
+    <div style={styles.page}>
+      <div style={styles.sectionTitleMain}>CONTAINER DETAILS</div>
 
-      {/* Scrollable Table */}
-      <TableContainer
-        component={Paper}
-        sx={{
-          mb: 2,
-          maxHeight: 600,
-          overflow: "auto",
-          "& .MuiTable-root": {
-            minWidth: 1000,
-          },
-        }}
-      >
-        <Table size="small" stickyHeader>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-              <TableCell
-                sx={{
-                  fontWeight: "bold",
-                  width: "60px",
-                  position: "sticky",
-                  left: 0,
+      <div style={styles.card}>
+        <div style={styles.topBar}>
+          <button type="button" style={styles.newBtn} onClick={handleAdd}>
+            + NEW CONTAINER
+          </button>
+        </div>
 
-                  zIndex: 2,
-                }}
-              >
-                Sr No
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", width: "120px" }}>
-                Container No
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", width: "120px" }}>
-                Seal No
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", width: "100px" }}>
-                Seal Date
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", width: "120px" }}>
-                Type
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", width: "100px" }}>
-                Pkgs Stuffed
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", width: "100px" }}>
-                Gross Weight
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", width: "100px" }}>
-                Seal Type
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", width: "100px" }}>
-                Seal Device ID
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", width: "100px" }}>
-                Gr-Wt + Tr-wt
-              </TableCell>
-              <TableCell
-                sx={{
-                  fontWeight: "bold",
-                  width: "150px",
-                  position: "sticky",
-                  right: 0,
-                  // backgroundColor: "#f5f5f5",
-                  zIndex: 2,
-                }}
-              >
-                Actions
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {(formik.values.containers || []).map((row, idx) => (
-              <TableRow key={idx} hover>
-                {/* Serial Number - Always Readonly */}
-                <TableCell
-                  sx={{
-                    position: "sticky",
-                    left: 0,
-                    backgroundColor: "white",
-                    zIndex: 1,
-                  }}
-                >
-                  {row.serialNumber}
-                </TableCell>
+        <div style={styles.tableWrap}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={styles.headRow}>
+                <th style={{ ...styles.headCell, width: 55 }}>SR NO</th>
+                <th style={{ ...styles.headCell, width: 130 }}>CONTAINER NO</th>
+                <th style={{ ...styles.headCell, width: 110 }}>SEAL NO</th>
+                <th style={{ ...styles.headCell, width: 110 }}>SEAL DATE</th>
+                <th style={{ ...styles.headCell, width: 150 }}>TYPE</th>
+                <th style={{ ...styles.headCell, width: 110 }}>PKGS STUFFED</th>
+                <th style={{ ...styles.headCell, width: 130 }}>GROSS WEIGHT</th>
+                <th style={{ ...styles.headCell, width: 150 }}>SEAL TYPE</th>
+                <th style={{ ...styles.headCell, width: 130 }}>SEAL DEVICE ID</th>
+                <th style={{ ...styles.headCell, width: 130 }}>GR-WT + TR-W</th>
+                <th style={{ ...styles.headCell, width: 160, textAlign: "center" }}>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={11} style={styles.emptyRow}>
+                    NO CONTAINERS ADDED. CLICK "NEW CONTAINER" TO ADD.
+                  </td>
+                </tr>
+              )}
 
-                {/* Container No */}
-                <TableCell>
-                  <TextField
-                    value={row.containerNo}
-                    onChange={(e) =>
-                      handleFieldChange(idx, "containerNo", e.target.value)
-                    }
-                    size="small"
-                    fullWidth
-                    variant="outlined"
-                    disabled={!isEditable(idx)}
-                  />
-                </TableCell>
+              {rows.map((row, idx) => {
+                const edit = isEditing(idx);
+                return (
+                  <tr key={idx} style={styles.bodyRow}>
+                    <td style={styles.srCell}>{row.serialNumber}</td>
 
-                {/* Seal No */}
-                <TableCell>
-                  <TextField
-                    value={row.sealNo || ""}
-                    onChange={(e) =>
-                      handleFieldChange(idx, "sealNo", e.target.value)
-                    }
-                    size="small"
-                    fullWidth
-                    variant="outlined"
-                    disabled={!isEditable(idx)}
-                  />
-                </TableCell>
+                    {/* CONTAINER NO */}
+                    <td style={styles.cell}>
+                      <input
+                        style={styles.input}
+                        value={row.containerNo || ""}
+                        onChange={(e) =>
+                          handleFieldChange(idx, "containerNo", e.target.value.toUpperCase())
+                        }
+                      />
+                    </td>
 
-                {/* Seal Date */}
-                <TableCell>
-                  <TextField
-                    type="date"
-                    value={row.sealDate ? row.sealDate.substr(0, 10) : ""}
-                    onChange={(e) =>
-                      handleFieldChange(idx, "sealDate", e.target.value)
-                    }
-                    size="small"
-                    fullWidth
-                    variant="outlined"
-                    InputLabelProps={{ shrink: true }}
-                    disabled={!isEditable(idx)}
-                  />
-                </TableCell>
+                    {/* SEAL NO */}
+                    <td style={styles.cell}>
+                      <input
+                        style={styles.input}
+                        value={row.sealNo || ""}
+                        onChange={(e) =>
+                          handleFieldChange(idx, "sealNo", e.target.value.toUpperCase())
+                        }
+                      />
+                    </td>
 
-                {/* Type */}
-                <TableCell>
-                  <TextField
-                    select
-                    value={row.type}
-                    onChange={(e) =>
-                      handleFieldChange(idx, "type", e.target.value)
-                    }
-                    size="small"
-                    fullWidth
-                    variant="outlined"
-                    disabled={!isEditable(idx)}
-                  >
-                    {containerTypes.map((opt) => (
-                      <MenuItem key={opt} value={opt}>
-                        {opt}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </TableCell>
+                    {/* SEAL DATE */}
+                    <td style={styles.cell}>
+                      <input
+                        type="date"
+                        style={styles.inputDate}
+                        value={row.sealDate ? row.sealDate.substr(0, 10) : ""}
+                        onChange={(e) => handleFieldChange(idx, "sealDate", e.target.value)}
+                      />
+                    </td>
 
-                {/* Pkgs Stuffed */}
-                <TableCell>
-                  <TextField
-                    type="number"
-                    value={row.pkgsStuffed}
-                    onChange={(e) =>
-                      handleFieldChange(idx, "pkgsStuffed", e.target.value)
-                    }
-                    size="small"
-                    fullWidth
-                    variant="outlined"
-                    disabled={!isEditable(idx)}
-                  />
-                </TableCell>
-
-                {/* Gross Weight */}
-                <TableCell>
-                  <TextField
-                    type="number"
-                    value={row.grossWeight}
-                    onChange={(e) =>
-                      handleFieldChange(idx, "grossWeight", e.target.value)
-                    }
-                    size="small"
-                    fullWidth
-                    variant="outlined"
-                    disabled={!isEditable(idx)}
-                  />
-                </TableCell>
-
-                {/* Seal Type */}
-                <TableCell>
-                  <TextField
-                    select
-                    value={row.sealType}
-                    onChange={(e) =>
-                      handleFieldChange(idx, "sealType", e.target.value)
-                    }
-                    size="small"
-                    fullWidth
-                    variant="outlined"
-                    disabled={!isEditable(idx)}
-                  >
-                    {sealTypes.map((opt) => (
-                      <MenuItem key={opt} value={opt}>
-                        {opt}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </TableCell>
-
-                {/* Seal Device ID */}
-                <TableCell>
-                  <TextField
-                    value={row.sealDeviceId || ""}
-                    onChange={(e) =>
-                      handleFieldChange(idx, "sealDeviceId", e.target.value)
-                    }
-                    size="small"
-                    fullWidth
-                    variant="outlined"
-                    disabled={!isEditable(idx)}
-                  />
-                </TableCell>
-
-                {/* Gr-Wt + Tr-wt */}
-                <TableCell>
-                  <TextField
-                    type="number"
-                    value={row.grWtPlusTrWt}
-                    onChange={(e) =>
-                      handleFieldChange(idx, "grWtPlusTrWt", e.target.value)
-                    }
-                    size="small"
-                    fullWidth
-                    variant="outlined"
-                    disabled={!isEditable(idx)}
-                  />
-                </TableCell>
-
-                {/* Actions - Sticky on right */}
-                <TableCell
-                  sx={{
-                    position: "sticky",
-                    right: 0,
-                    backgroundColor: "white",
-                    zIndex: 1,
-                  }}
-                >
-                  <Box sx={{ display: "flex", gap: 0.5, flexWrap: "nowrap" }}>
-                    {isEditable(idx) ? (
-                      <>
-                        <IconButton
-                          color="primary"
-                          size="small"
-                          onClick={() => handleSave(idx)}
-                          title="Save"
-                        >
-                          <SaveIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          color="secondary"
-                          size="small"
-                          onClick={() => handleCancel(idx)}
-                          title="Cancel"
-                        >
-                          <CancelIcon fontSize="small" />
-                        </IconButton>
-                      </>
-                    ) : (
-                      <IconButton
-                        color="primary"
-                        size="small"
-                        onClick={() => handleEdit(idx)}
-                        title="Edit"
+                    {/* TYPE */}
+                    <td style={styles.cell}>
+                      <select
+                        style={styles.select}
+                        value={row.type || ""}
+                        onChange={(e) => handleFieldChange(idx, "type", e.target.value)}
                       >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                    <IconButton
-                      color="error"
-                      size="small"
-                      onClick={() => handleDelete(idx)}
-                      title="Delete"
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                        <option value="">SELECT</option>
+                        {containerTypes.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
 
-      {/* Empty State */}
-      {(!formik.values.containers || formik.values.containers.length === 0) && (
-        <Box sx={{ textAlign: "center", py: 4 }}>
-          <Typography variant="body1" color="textSecondary">
-            No containers added yet. Click "New Container" to add one.
-          </Typography>
-        </Box>
-      )}
-    </Box>
+                    {/* PKGS STUFFED */}
+                    <td style={styles.cell}>
+                      <input
+                        type="number"
+                        style={styles.inputNumeric}
+                        value={row.pkgsStuffed || 0}
+                        onChange={(e) =>
+                          handleFieldChange(idx, "pkgsStuffed", Number(e.target.value || 0))
+                        }
+                      />
+                    </td>
+
+                    {/* GROSS WEIGHT */}
+                    <td style={styles.cell}>
+                      <input
+                        type="number"
+                        style={styles.inputNumeric}
+                        value={row.grossWeight || 0}
+                        onChange={(e) =>
+                          handleFieldChange(idx, "grossWeight", Number(e.target.value || 0))
+                        }
+                      />
+                    </td>
+
+                    {/* SEAL TYPE */}
+                    <td style={styles.cell}>
+                      <select
+                        style={styles.select}
+                        value={row.sealType || ""}
+                        onChange={(e) => handleFieldChange(idx, "sealType", e.target.value)}
+                      >
+                        <option value="">SELECT</option>
+                        {sealTypes.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
+                    {/* SEAL DEVICE ID */}
+                    <td style={styles.cell}>
+                      <input
+                        style={styles.input}
+                        value={row.sealDeviceId || ""}
+                        onChange={(e) =>
+                          handleFieldChange(idx, "sealDeviceId", e.target.value.toUpperCase())
+                        }
+                      />
+                    </td>
+
+                    {/* GR-WT + TR-W */}
+                    <td style={styles.cell}>
+                      <input
+                        type="number"
+                        style={styles.inputNumeric}
+                        value={row.grWtPlusTrWt || 0}
+                        onChange={(e) =>
+                          handleFieldChange(idx, "grWtPlusTrWt", Number(e.target.value || 0))
+                        }
+                      />
+                    </td>
+
+                    {/* ACTIONS */}
+                    <td style={styles.cell}>
+                      <div style={styles.actionsCellInner}>
+                        {edit ? (
+                          <>
+                            <button
+                              type="button"
+                              style={styles.actionBtn("save")}
+                              onClick={handleSave}
+                            >
+                              SAVE
+                            </button>
+                            <button
+                              type="button"
+                              style={styles.actionBtn("cancel")}
+                              onClick={handleCancel}
+                            >
+                              CANCEL
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            style={styles.actionBtn("edit")}
+                            onClick={() => setEditingIndex(idx)}
+                          >
+                            EDIT
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          style={styles.actionBtn("delete")}
+                          onClick={() => handleDelete(idx)}
+                        >
+                          DELETE
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
-};
+}
 
 export default ContainerTab;

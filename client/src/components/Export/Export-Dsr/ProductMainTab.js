@@ -192,4 +192,4 @@ const ProductMainTab = ({ formik }) => {
     </Box>
   );
 };
-export default ProductMain
+export default ProductMainTab;

@@ -60,3 +60,235 @@ export const unitCodes = [
   "PAI", "PRS", "PLT", "PCS", "PNT", "PND", "QDS", "QTL", "REL", "ROL", "SET", "SKD", "SLB", "SQF", "SQM", "SQY",
   "BLO", "BUL", "ENV", "TBL", "TNK", "TGM", "TIN", "TRK", "UNT", "UGS", "CSK", "YDS"
 ];
+
+
+export const PTA_FTA_CODES = [
+  {
+    code: "DCA100",
+    description: "For Veterinary Medical Use as a Non-Food Product under Controlled Distribution (Trading)"
+  },
+  {
+    code: "DCH100",
+    description: "For Human Medical Use as a Non-Food Product under Controlled Distribution (Trading)"
+  },
+  {
+    code: "DCH300",
+    description: "For Human Medical Use as a Transplanted Organ, Tissue, or Fluid"
+  },
+  {
+    code: "DCH400",
+    description: "For Human Medical Use as a Non-Food Product under Controlled Distribution"
+  },
+  {
+    code: "DCH800",
+    description: "For Research use a human medicine"
+  },
+  {
+    code: "DCX200",
+    description: "For manufacture/processing as a human or veterinary medicine (Manufacture/Actual Use)"
+  },
+  {
+    code: "DCX900",
+    description: "Drugs & Cosmetics -For personal consumption"
+  },
+  {
+    code: "FSA100",
+    description: "For Animal Food or Feed (Trading/ commercial distribution)"
+  },
+  {
+    code: "FSA200",
+    description: "For manufacture/processing as a Animal Food/Feed (Manufacture/Actual Use)"
+  },
+  {
+    code: "FSA800",
+    description: "For use research use as animal Food"
+  },
+  {
+    code: "FSA900",
+    description: "Foods & Supplements -For Personal use"
+  },
+  {
+    code: "FSH100",
+    description: "Food - For Consumer use under commercial distribution (Trading)- Retail or wholesale"
+  },
+  {
+    code: "FSH200",
+    description: "Food - For manufacture/ commercial Processing (Manufacture/Actual Use)"
+  },
+  {
+    code: "FSH700",
+    description: "Food -For Internal use in Hotels-Restaurant"
+  },
+  {
+    code: "FSH710",
+    description: "Food -For Public Display or Exhibition"
+  },
+  {
+    code: "FSH750",
+    description: "Food -For use in International Sports Events"
+  },
+  {
+    code: "FSH800",
+    description: "Food -For Research Use"
+  },
+  {
+    code: "FSH900",
+    description: "Food - For personal consumption"
+  },
+  {
+    code: "FSH910",
+    description: "Food - For distribution in a natural disaster (if received gratis)"
+  },
+  {
+    code: "FSH920",
+    description: "Food -For Charitable Use"
+  },
+  {
+    code: "FSH930",
+    description: "Food -For use in a Diplomatic Establishment"
+  },
+  {
+    code: "FSH931",
+    description: "Re-Import Purpose - Re-Process/Packaging/Labelling for Re-Export"
+  },
+  {
+    code: "FSH932",
+    description: "Re-Import Purpose - Re-Process/ Packaging /Labelling for Domestic Market"
+  },
+  {
+    code: "GNX100",
+    description: "Generic -For Consumer use under commercial distribution (for Trading - wholesale or retail)"
+  },
+  {
+    code: "GNX200",
+    description: "Generic -For Commercial Assembly or processing (For Manufacture/Actual use)"
+  },
+  {
+    code: "GNX300",
+    description: "Generic -For use as Fertilizers or soil promoters"
+  },
+  {
+    code: "GNX600",
+    description: "Generic -For Repair or Refurbishing as defective or second hand goods"
+  },
+  {
+    code: "GNX650",
+    description: "Generic-For Recycling or Recovery"
+  },
+  {
+    code: "GNX680",
+    description: "Generic -For Disposal as waste"
+  },
+  {
+    code: "GNX700",
+    description: "Generic -For Public Display or Exhibition"
+  },
+  {
+    code: "GNX810",
+    description: "Generic -For Research & Development (note: other than Biomedical Research)"
+  },
+  {
+    code: "GNX815",
+    description: "Generic -For Medical Or Biomedical Research"
+  },
+  {
+    code: "GNX915",
+    description: "Generic -For display as a Trophy (hunting or other trophy)"
+  },
+  {
+    code: "LVA100",
+    description: "Live Animal -For Breeding in Captivity or Artificial Propagation"
+  },
+  {
+    code: "LVA200",
+    description: "Live Animal -For Grow-Out or Increase"
+  },
+  {
+    code: "LVA300",
+    description: "Live Animal -For re-introduction into the wild"
+  },
+  {
+    code: "LVA400",
+    description: "Live Animal -For Immediate Slaughter"
+  },
+  {
+    code: "LVA500",
+    description: "Live Animal -For use as Fertilizers or soil promoters"
+  },
+  {
+    code: "LVA710",
+    description: "Live Animal -For display in Zoo"
+  },
+  {
+    code: "LVA760",
+    description: "live Animal -For Circus or Travelling Exhibition or games or show"
+  },
+  {
+    code: "LVA800",
+    description: "Live Animal -For Research Purposes"
+  },
+  {
+    code: "LVA900",
+    description: "Live Animal -For Personal use"
+  },
+  {
+    code: "LVA950",
+    description: "Live Animal -For Re Export"
+  },
+  {
+    code: "LVP011",
+    description: "Shipment Type - Trial for Inhouse"
+  },
+  {
+    code: "LVP012",
+    description: "Shipment Type - Trial for Multilocation"
+  },
+  {
+    code: "LVP013",
+    description: "Shipment Type - Trial for both (Inhouse and Multilocation)"
+  },
+  {
+    code: "LVP014",
+    description: "Shipment Type - Bulk"
+  },
+  {
+    code: "LVP015",
+    description: "Live Plants - For Consumption"
+  },
+  {
+    code: "LVP016",
+    description: "Live Plants - For Sowing"
+  },
+  {
+    code: "LVP017",
+    description: "Live Plants - For Planting"
+  },
+  {
+    code: "LVP018",
+    description: "Live Plants - For Processing"
+  },
+  {
+    code: "LVP019",
+    description: "Live Plants - For Research"
+  },
+  {
+    code: "LVP020",
+    description: "Live Plants - For Research/Experiment"
+  },
+  {
+    code: "LVP100",
+    description: "Live Plants -For Propagation"
+  },
+  {
+    code: "LVP400",
+    description: "live Plants -For Germplasm"
+  },
+  {
+    code: "LVP500",
+    description: "Live Plants -For use as Fertilizers or soil promoters"
+  },
+  {
+    code: "LVP730",
+    description: "Live Plants -For a display in a Botanical Garden"
+  }
+]

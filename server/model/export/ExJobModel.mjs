@@ -312,20 +312,13 @@ const containerDetailsSchema = new Schema(
     sealDate: Date,
     type: {
       type: String,
-      enum: [
-        "20 Standard Dry",
-        "40 Standard Dry",
-        "40 High Cube",
-        "20 Reefer",
-        "40 Reefer",
-      ],
+     
     },
     pkgsStuffed: { type: Number, default: 0 }, // 'Pkgs Stuffed'
     grossWeight: { type: Number, default: 0 },
     sealType: {
       type: String,
-      enum: ["BTSL - Bottle", "WIRE", "PLASTIC", "METAL"],
-      default: "BTSL - Bottle",
+
     },
     grWtPlusTrWt: { type: Number, default: 0 },
     sealDeviceId: String,
