@@ -358,8 +358,8 @@ const ExportJobsTable = () => {
                     <td style={s.td}>{job.port_of_origin || '-'}</td>
                     <td style={s.td}>{job.port_of_discharge || '-'}</td>
                     <td style={s.td}>{job.country_of_final_destination || '-'}</td>
-                    <td style={s.td}>{job.shipping_bill_number || '-'}</td>
-                    <td style={s.td}>{safeDate(job.shipping_bill_date)}</td>
+                    <td style={s.td}>{job.sb_no || '-'}</td>
+                    <td style={s.td}>{safeDate(job.sb_no)}</td>
                   </tr>
                 ))
               )}

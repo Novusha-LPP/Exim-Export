@@ -186,8 +186,6 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
       exporter_ref_no: "",
       exporter_type: "",
       sb_date: "",
-      shipping_bill_number: "", // Schema field
-      shipping_bill_date: "", // Schema field
       rbi_app_no: "",
       gr_waived: false,
       gr_no: "",
@@ -226,6 +224,35 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
       place_of_delivery: "",
       country_of_origin: "",
       country_of_final_destination: "",
+
+      annexC1Details: {
+  ieCodeOfEOU: "",
+  branchSerialNo: 0,
+  examinationDate: "",
+  examiningOfficer: "",
+  supervisingOfficer: "",
+  commissionerate: "",
+  verifiedByExaminingOfficer: false,
+  sealNumber: "", // This will reference stuffing_seal_no
+  documents: [],
+  designation: "",
+  division: "",
+  range: "",
+  sampleForwarded: false,
+},
+ie_code_of_eou: "",
+branch_sr_no: 0,
+examination_date: "",
+examining_officer: "",
+supervising_officer: "",
+commissionerate: "",
+verified_by_examining_officer: false,
+annex_seal_number: "",
+annex_designation: "",
+annex_division: "",
+annex_range: "",
+sample_forwarded: false,
+annex_c1_documents: [], // For the documents table
 
       // Vessel/Flight information
       vessel_flight_name: "",
@@ -270,22 +297,11 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
       cif_value: "",
       cif_amount: "", // Schema field for compatibility
 
-      // Payment Terms
-      payment_terms: "",
-      payment_method: "",
 
-      // Letter of Credit
-      lc_number: "",
-      lc_date: "",
-      lc_amount: "",
-      lc_expiry_date: "",
-      lc_issuing_bank: "",
-      lc_advising_bank: "",
 
       // Regulatory fields
       export_license_required: false,
       export_license_number: "",
-      export_license_date: "",
       export_license_validity: "",
 
       // Container details - EMPTY ARRAYS
@@ -507,9 +523,6 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
 
       // Other fields
       remarks: "",
-      internal_notes: "",
-      customer_instructions: "",
-      special_requirements: "",
       // Shipment Main Tab Fields - Add to useExportJobDetails.js initialValues
       egm_no: "",
       egm_date: "",
@@ -549,22 +562,8 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
       sb_reference_number: "",
       sb_additional_notes: "",
 
-      // Add these Annex C1 Details fields to your hook initialValues:
-      ie_code_of_eou: "",
-      branch_sr_no: "",
-      examination_date: "",
-      examining_officer: "",
-      supervising_officer: "",
-      commissionerate: "",
-      verified_by_examining_officer: false,
-      annex_seal_number: "",
-      annex_designation: "",
-      annex_designation_2: "",
-      annex_division: "",
-      annex_range: "",
-      sample_forwarded: false,
-      annex_additional_notes: "",
-      annex_c1_documents: [],
+ annexC1Details:{
+ },
 
       // Add these Exchange Rate fields to your hook initialValues:
       exchange_rates: [
@@ -779,47 +778,64 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
       },
     ],
 
-    enableReinitialize: true,
-    onSubmit: async (values) => {
-      try {
-        const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
-        const headers = {
-          "Content-Type": "application/json",
-          "user-id": user.username || "unknown",
-          username: user.username || "unknown",
-          "user-role": user.role || "unknown",
-        };
+enableReinitialize: true,
+onSubmit: async (values) => {
+  try {
+    const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
+    const headers = {
+      "Content-Type": "application/json",
+      "user-id": user.username || "unknown",
+      username: user.username || "unknown",
+      "user-role": user.role || "unknown",
+    };
 
-        const updatePayload = {
-          ...values,
-          updatedAt: new Date(),
-        };
+    // Sync annexC1Details with individual fields before submission
+    const syncedValues = {
+      ...values,
+      // Ensure annexC1Details is properly populated
+      annexC1Details: {
+        ieCodeOfEOU: values.ie_code_of_eou || values.annexC1Details?.ieCodeOfEOU,
+        branchSerialNo: values.branch_sr_no || values.annexC1Details?.branchSerialNo || 0,
+        examinationDate: values.examination_date || values.annexC1Details?.examinationDate,
+        examiningOfficer: values.examining_officer || values.annexC1Details?.examiningOfficer,
+        supervisingOfficer: values.supervising_officer || values.annexC1Details?.supervisingOfficer,
+        commissionerate: values.commissionerate || values.annexC1Details?.commissionerate,
+        verifiedByExaminingOfficer: values.verified_by_examining_officer || values.annexC1Details?.verifiedByExaminingOfficer || false,
+        sealNumber: values.stuffing_seal_no || values.annex_seal_number || values.annexC1Details?.sealNumber, // Always sync from main seal
+        documents: values.annex_c1_documents || values.annexC1Details?.documents || [],
+        designation: values.annex_designation || values.annexC1Details?.designation,
+        division: values.annex_division || values.annexC1Details?.division,
+        range: values.annex_range || values.annexC1Details?.range,
+        sampleForwarded: values.sample_forwarded || values.annexC1Details?.sampleForwarded || false,
+      },
+      updatedAt: new Date(),
+    };
 
-        console.log("Submitting update payload:", updatePayload);
+    console.log("Submitting update payload with annexC1Details:", syncedValues.annexC1Details);
 
-        const response = await axios.put(
-          `${import.meta.env.VITE_API_STRING}/export-jobs/${params.year}/${
-            params.job_no
-          }`,
-          updatePayload,
-          { headers }
-        );
+    const response = await axios.put(
+      `${import.meta.env.VITE_API_STRING}/export-jobs/${params.year}/${
+        params.job_no
+      }`,
+      syncedValues,
+      { headers }
+    );
 
-        console.log("Update response:", response.data);
+    console.log("Update response:", response.data);
 
-        if (setFileSnackbar) {
-          setFileSnackbar(true);
-          setTimeout(() => setFileSnackbar(false), 3000);
-        }
+    if (setFileSnackbar) {
+      setFileSnackbar(true);
+      setTimeout(() => setFileSnackbar(false), 3000);
+    }
 
-        setTimeout(() => {
-          window.close();
-        }, 500);
-      } catch (error) {
-        console.error("Error updating export job:", error);
-        throw error;
-      }
-    },
+    setTimeout(() => {
+      window.close();
+    }, 500);
+  } catch (error) {
+    console.error("Error updating export job:", error);
+    throw error;
+  }
+},
   });
 
   // Update formik initial values when data is fetched - COMPREHENSIVE MAPPING
@@ -831,7 +847,7 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
         year: safeValue(data.year),
         shipper: safeValue(data.shipper || data.exporter_name || data.exporter),
         job_date: safeValue(data.job_date),
-        sb_no: safeValue(data.sb_no || data.shipping_bill_number),
+        sb_no: safeValue(data.sb_no ),
         sb_type: safeValue(data.sb_type),
         transportMode: safeValue(data.transportMode),
         custom_house: safeValue(data.custom_house || data.customs_house),
@@ -873,13 +889,9 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
         exporter_ref_no: safeValue(data.exporter_ref_no),
         exporter_type: safeValue(data.exporter_type),
         sb_date: safeValue(
-          data.sb_date ||
-            `${data.shipping_bill_number} | ${data.shipping_bill_date}`
+          data.sb_date 
         ),
-        shipping_bill_number: safeValue(
-          data.shipping_bill_number || data.sb_no
-        ),
-        shipping_bill_date: safeValue(data.shipping_bill_date),
+
         rbi_app_no: safeValue(data.rbi_app_no),
         gr_waived: safeValue(data.gr_waived, false),
         gr_no: safeValue(data.gr_no),
@@ -1077,9 +1089,6 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
 
         // Other fields
         remarks: safeValue(data.remarks),
-        internal_notes: safeValue(data.internal_notes),
-        customer_instructions: safeValue(data.customer_instructions),
-        special_requirements: safeValue(data.special_requirements),
         // Add these to your formik.setValues mapping:
         goods_stuffed_at: safeValue(data.goods_stuffed_at),
         sample_accompanied: safeValue(data.sample_accompanied, false),
@@ -1107,26 +1116,39 @@ const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
         sb_reference_number: safeValue(data.sb_reference_number),
         sb_additional_notes: safeValue(data.sb_additional_notes),
 
-        // Add these to your formik.setValues mapping:
-        ie_code_of_eou: safeValue(data.ie_code_of_eou),
-        branch_sr_no: safeValue(data.branch_sr_no),
-        examination_date: safeValue(data.examination_date),
-        examining_officer: safeValue(data.examining_officer),
-        supervising_officer: safeValue(data.supervising_officer),
-        commissionerate: safeValue(data.commissionerate),
-        verified_by_examining_officer: safeValue(
-          data.verified_by_examining_officer,
-          false
-        ),
-        annex_seal_number: safeValue(data.annex_seal_number),
-        annex_designation: safeValue(data.annex_designation),
-        annex_designation_2: safeValue(data.annex_designation_2),
-        annex_division: safeValue(data.annex_division),
-        annex_range: safeValue(data.annex_range),
-        sample_forwarded: safeValue(data.sample_forwarded, false),
-        annex_additional_notes: safeValue(data.annex_additional_notes),
-        annex_c1_documents: safeValue(data.annex_c1_documents, []),
+// In the formik.setValues section, add these mappings:
+// Individual fields for form handling
+ie_code_of_eou: safeValue(data.ie_code_of_eou || data.annexC1Details?.ieCodeOfEOU),
+branch_sr_no: safeValue(data.branch_sr_no || data.annexC1Details?.branchSerialNo, 0),
+examination_date: safeValue(data.examination_date || data.annexC1Details?.examinationDate),
+examining_officer: safeValue(data.examining_officer || data.annexC1Details?.examiningOfficer),
+supervising_officer: safeValue(data.supervising_officer || data.annexC1Details?.supervisingOfficer),
+commissionerate: safeValue(data.commissionerate || data.annexC1Details?.commissionerate),
+verified_by_examining_officer: safeValue(data.verified_by_examining_officer || data.annexC1Details?.verifiedByExaminingOfficer, false),
+annex_seal_number: safeValue(data.annex_seal_number || data.annexC1Details?.sealNumber || data.stuffing_seal_no), // Reference stuffing_seal_no
+annex_designation: safeValue(data.annex_designation || data.annexC1Details?.designation),
+annex_division: safeValue(data.annex_division || data.annexC1Details?.division),
+annex_range: safeValue(data.annex_range || data.annexC1Details?.range),
+sample_forwarded: safeValue(data.sample_forwarded || data.annexC1Details?.sampleForwarded, false),
+annex_additional_notes: safeValue(data.annex_additional_notes),
+annex_c1_documents: safeValue(data.annex_c1_documents || data.annexC1Details?.documents, []),
 
+// Structured annexC1Details object
+annexC1Details: safeValue(data.annexC1Details, {
+  ieCodeOfEOU: safeValue(data.ie_code_of_eou || data.annexC1Details?.ieCodeOfEOU),
+  branchSerialNo: safeValue(data.branch_sr_no || data.annexC1Details?.branchSerialNo, 0),
+  examinationDate: safeValue(data.examination_date || data.annexC1Details?.examinationDate),
+  examiningOfficer: safeValue(data.examining_officer || data.annexC1Details?.examiningOfficer),
+  supervisingOfficer: safeValue(data.supervising_officer || data.annexC1Details?.supervisingOfficer),
+  commissionerate: safeValue(data.commissionerate || data.annexC1Details?.commissionerate),
+  verifiedByExaminingOfficer: safeValue(data.verified_by_examining_officer || data.annexC1Details?.verifiedByExaminingOfficer, false),
+  sealNumber: safeValue(data.stuffing_seal_no || data.annex_seal_number || data.annexC1Details?.sealNumber), // Sync from main seal number
+  documents: safeValue(data.annex_c1_documents || data.annexC1Details?.documents, []),
+  designation: safeValue(data.annex_designation || data.annexC1Details?.designation),
+  division: safeValue(data.annex_division || data.annexC1Details?.division),
+  range: safeValue(data.annex_range || data.annexC1Details?.range),
+  sampleForwarded: safeValue(data.sample_forwarded || data.annexC1Details?.sampleForwarded, false),
+}),
         // Add these to your formik.setValues mapping:
         exchange_rates: safeValue(data.exchange_rates, [
           {

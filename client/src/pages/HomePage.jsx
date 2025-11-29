@@ -16,14 +16,8 @@ import DsrTabs from "../components/Export/Export-Dsr/DsrTabs.js";
 import Handover from "../components/Export/Handover.js";
 import JobsListPage from "../components/Export/BookingManagement/JobListPage.js";
 import ExportViewJob from "../components/Export/Export-Dsr/ExportViewJob.js";
-import ExportDocumentJobs from "../components/Export/ExportDocumentJobs.js";
-import DocumentViewJob from "../components/Export/DocumentVIewJob.js";
-import EsanchitJobList from "../components/Export/EsanchitJobList.js";
-import EsanchitViewJob from "../components/Export/EsanchitViewJob.js";
-import ExportSubmission from "../components/Export/ExportSubmission.js";
 
 // import auditrail
-import AuditTrailViewer from "../components/audit/AuditTrailViewer.js";
 import AllUsersPage from "./AllUsersPage.js";
 
 import AppbarComponent from "../components/home/AppbarComponent.js";
@@ -74,14 +68,6 @@ function HomePage() {
 
               {/* Accounts */}
 
-              <Route
-                path="/audit-trail"
-                element={
-                  <ProtectedRoute requiredModule="Audit Trail">
-                    <AuditTrailViewer />
-                  </ProtectedRoute>
-                }
-              />
               <Route
                 path="/all-users"
                 element={
@@ -137,41 +123,6 @@ function HomePage() {
                 }
               />
 
-              <Route
-                path="/documentation-jobs"
-                element={
-                  <ProtectedRoute requiredModule="Export - Documentation">
-                    <ExportDocumentJobs />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/documentation/:job_no"
-                element={<DocumentViewJob />}
-              />
-
-              <Route
-                path="/esanchit-job-list"
-                element={
-                  <ProtectedRoute requiredModule="Export - ESanchit">
-                    <EsanchitJobList />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/esanchit-job-list/:job_no"
-                element={<EsanchitViewJob />}
-              />
-
-              <Route
-                path="/export-submission"
-                element={
-                  <ProtectedRoute requiredModule="Export - Submission">
-                    <ExportSubmission />
-                  </ProtectedRoute>
-                }
-              />
             </Routes>
           </Box>
         </Box>

@@ -1,366 +1,333 @@
-// AnnexC1DetailsTab.jsx - Annex C1 Details tab component
-import React, { useState, useRef, useCallback } from "react";
-import {
-  Grid,
-  Card,
-  TextField,
-  Typography,
-  Box,
-  Checkbox,
-  FormControlLabel,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-} from "@mui/material";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 
-const AnnexC1DetailsTab = ({ formik, directories, params, onUpdate }) => {
-  const [snackbar, setSnackbar] = useState(false);
+const styles = {
+  page: { fontFamily: "'Segoe UI', Roboto, Arial, sans-serif", fontSize: 13, color: "#1e2e38" }, 
+  row: { display: "flex", gap: 20, alignItems: "stretch" },
+  col: { flex: 1, minWidth: 0 },
+  card: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 7, padding: 13, marginBottom: 18 },
+  sectionTitleMain: { fontWeight: 700, color: "#16408f", fontSize: 13, marginBottom: 10, letterSpacing: 1.2, textTransform: "uppercase" },
+  sectionTitle: { fontWeight: 700, color: "#1e2e38", fontSize: 12, marginBottom: 8 },
+  field: { marginBottom: 8 },
+  label: { fontSize: 11, fontWeight: 700, color: "#263046", letterSpacing: 1, textTransform: "uppercase", marginBottom: 3 },
+  input: {
+    width: "100%", fontSize: 12, padding: "3px 8px", border: "1px solid #bdc7d1",
+    borderRadius: 3, height: 26, background: "#f7fafc", outline: "none", boxSizing: "border-box",
+    textTransform: "uppercase", fontWeight: 600
+  },
+  textarea: {
+    width: "100%", fontSize: 12, padding: "4px 8px", border: "1.5px solid #ccd6dd", borderRadius: 4,
+    minHeight: 60, background: "#f7fafc", resize: "vertical", textTransform: "uppercase", fontWeight: 600
+  },
+  split: { display: "flex", gap: 10 },
+  half: { flex: 1, minWidth: 0 },
+  checkboxRow: { display: "flex", alignItems: "center", gap: 6, marginTop: 4 },
+  checkboxLabel: { fontSize: 11, color: "#34495e", textTransform: "uppercase", letterSpacing: 0.5 },
+  tableWrap: { marginTop: 8, border: "1px solid #d3dde8", borderRadius: 5, overflow: "hidden" },
+  table: { width: "100%", borderCollapse: "collapse", fontSize: 12 },
+  th: { background: "#f1f5f9", padding: "4px 6px", textAlign: "left", borderBottom: "1px solid #d3dde8", fontWeight: 700, fontSize: 11 },
+  td: { padding: "3px 6px", borderBottom: "1px solid #edf2f7", verticalAlign: "middle" },
+  smallButton: {
+    fontSize: 11, padding: "3px 8px", borderRadius: 3, border: "1px solid #d32f2f",
+    background: "#fff5f5", color: "#b71c1c", cursor: "pointer"
+  },
+  addButton: {
+    fontSize: 11, padding: "4px 10px", borderRadius: 3, border: "1px solid #2563eb",
+    background: "#eff6ff", color: "#1d4ed8", cursor: "pointer", marginTop: 8
+  }
+};
+
+function toUpper(v) {
+  return (typeof v === "string" ? v : "")?.toUpperCase() || "";
+}
+
+function AnnexC1DetailsTab({ formik, onUpdate }) {
   const saveTimeoutRef = useRef(null);
 
-  // Auto-save function
   const autoSave = useCallback(
     async (values) => {
-      try {
-        if (onUpdate) {
-          await onUpdate(values);
-        }
-      } catch (error) {
-        console.error("Auto-save failed:", error);
-      }
+      if (onUpdate) await onUpdate(values); 
     },
     [onUpdate]
   );
 
-  // Handle field changes with auto-save
+  const debouncedSave = () => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      autoSave(formik.values);
+    }, 1100);
+  };
+
   const handleFieldChange = (field, value) => {
     formik.setFieldValue(field, value);
-    
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
+    // special: keep Annex C1 seal number in sync with stuffing seal
+    if (field === "stuffing_seal_no") {
+      formik.setFieldValue("annex_seal_number", value);
     }
-    
-    saveTimeoutRef.current = setTimeout(() => {
-      autoSave(formik.values);
-    }, 1500);
+    debouncedSave();
   };
 
-  // Handle document list changes
-  const handleDocumentChange = (index, field, value) => {
-    const documents = [...(formik.values.annex_c1_documents || [])];
-    documents[index] = { ...documents[index], [field]: value };
-    formik.setFieldValue('annex_c1_documents', documents);
-    
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
+  const handleDocChange = (index, field, value) => {
+    const docs = [...(formik.values.annex_c1_documents || [])];
+    docs[index] = {
+      ...docs[index],
+      [field]: value,
+      serialNo: field === "serialNo"
+        ? (parseInt(value) || index + 1)
+        : (docs[index].serialNo || index + 1)
+    };
+    formik.setFieldValue("annex_c1_documents", docs);
+    debouncedSave();
+  };
+
+  const addDoc = () => {
+    const docs = [...(formik.values.annex_c1_documents || [])];
+    const nextSn =
+      docs.length > 0 ? Math.max(...docs.map(d => d.serialNo || 0)) + 1 : 1;
+    docs.push({ serialNo: nextSn, documentName: "" });
+    formik.setFieldValue("annex_c1_documents", docs);
+  };
+
+  const deleteDoc = (index) => {
+    const docs = [...(formik.values.annex_c1_documents || [])];
+    docs.splice(index, 1);
+    docs.forEach((d, i) => { d.serialNo = i + 1; });
+    formik.setFieldValue("annex_c1_documents", docs);
+    debouncedSave();
+  };
+
+  // initial sync of annex_seal_number from stuffing_seal_no
+  useEffect(() => {
+    if (formik.values.stuffing_seal_no && !formik.values.annex_seal_number) {
+      formik.setFieldValue("annex_seal_number", formik.values.stuffing_seal_no);
     }
-    
-    saveTimeoutRef.current = setTimeout(() => {
-      autoSave(formik.values);
-    }, 1500);
-  };
-
-  const addNewDocument = () => {
-    const documents = [...(formik.values.annex_c1_documents || [])];
-    documents.push({
-      sr_no: documents.length + 1,
-      document_name: ""
-    });
-    formik.setFieldValue('annex_c1_documents', documents);
-  };
-
-  const deleteDocument = (index) => {
-    const documents = [...(formik.values.annex_c1_documents || [])];
-    documents.splice(index, 1);
-    // Re-number the remaining documents
-    documents.forEach((doc, idx) => {
-      doc.sr_no = idx + 1;
-    });
-    formik.setFieldValue('annex_c1_documents', documents);
-  };
+  }, [formik.values.stuffing_seal_no, formik.values.annex_seal_number, formik.setFieldValue]); 
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h6" fontWeight="bold" gutterBottom>
-        Annex C1 Details
-      </Typography>
-      
-      <Grid container spacing={3}>
-        {/* Left Column - Export/Import Details */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ p: 2, height: "100%" }}>
-            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-              Export/Import Information
-            </Typography>
-            
-            <Grid container spacing={2}>
-              {/* IE Code Of EOU */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="IE Code Of EOU"
-                  size="small"
-                  value={formik.values.ie_code_of_eou || ''}
-                  onChange={(e) => handleFieldChange('ie_code_of_eou', e.target.value)}
-                  placeholder="Enter IE Code of EOU"
-                />
-              </Grid>
+    <div style={styles.page}>
+      <div style={styles.sectionTitleMain}>ANNEX C1 DETAILS</div>
 
-              {/* Branch Sr No */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Branch Sr No"
-                  size="small"
-                  value={formik.values.branch_sr_no || ''}
-                  onChange={(e) => handleFieldChange('branch_sr_no', e.target.value)}
-                  placeholder="0"
-                />
-              </Grid>
+      <div style={styles.row}>
+        {/* LEFT COLUMN – CORE C1 INFO */}
+        <div style={styles.col}>
+          <div style={styles.card}>
+            <div style={styles.sectionTitle}>EXPORT / EXAMINATION INFORMATION</div>
 
-              {/* Examination Date */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Examination Date"
-                  type="date"
-                  size="small"
-                  value={formik.values.examination_date || ''}
-                  onChange={(e) => handleFieldChange('examination_date', e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
+            <div style={styles.field}>
+              <div style={styles.label}>IE CODE OF EOU</div>
+              <input
+                style={styles.input}
+                value={toUpper(formik.values.ie_code_of_eou || "")}
+                onChange={e => handleFieldChange("ie_code_of_eou", e.target.value.toUpperCase())}
+                placeholder="ENTER IE CODE OF EOU"
+              />
+            </div>
 
-              {/* Examining Officer */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Examining Officer"
-                  size="small"
-                  value={formik.values.examining_officer || ''}
-                  onChange={(e) => handleFieldChange('examining_officer', e.target.value)}
-                  placeholder="Enter examining officer name"
-                />
-              </Grid>
+            <div style={styles.field}>
+              <div style={styles.label}>BRANCH SR NO</div>
+              <input
+                style={{ ...styles.input, textTransform: "none", fontWeight: 500 }}
+                type="number"
+                value={formik.values.branch_sr_no || 0}
+                onChange={e =>
+                  handleFieldChange("branch_sr_no", parseInt(e.target.value) || 0)
+                }
+                placeholder="0"
+              />
+            </div>
 
-              {/* Supervising Officer */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Supervising Officer"
-                  size="small"
-                  value={formik.values.supervising_officer || ''}
-                  onChange={(e) => handleFieldChange('supervising_officer', e.target.value)}
-                  placeholder="Enter supervising officer name"
-                />
-              </Grid>
+            <div style={styles.field}>
+              <div style={styles.label}>EXAMINATION DATE</div>
+              <input
+                style={{ ...styles.input, textTransform: "none", fontWeight: 500 }}
+                type="date"
+                value={formik.values.examination_date || ""}
+                onChange={e => handleFieldChange("examination_date", e.target.value)}
+              />
+            </div>
 
-              {/* Commissionerate */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Commissionerate"
-                  size="small"
-                  value={formik.values.commissionerate || ''}
-                  onChange={(e) => handleFieldChange('commissionerate', e.target.value)}
-                  placeholder="Enter commissionerate"
-                />
-              </Grid>
+            <div style={styles.field}>
+              <div style={styles.label}>EXAMINING OFFICER</div>
+              <input
+                style={styles.input}
+                value={toUpper(formik.values.examining_officer || "")}
+                onChange={e => handleFieldChange("examining_officer", e.target.value.toUpperCase())}
+                placeholder="ENTER EXAMINING OFFICER NAME"
+              />
+            </div>
 
-              {/* Verified by Examining Officer Checkbox */}
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={formik.values.verified_by_examining_officer || false}
-                      onChange={(e) => handleFieldChange('verified_by_examining_officer', e.target.checked)}
-                      size="small"
+            <div style={styles.field}>
+              <div style={styles.label}>SUPERVISING OFFICER</div>
+              <input
+                style={styles.input}
+                value={toUpper(formik.values.supervising_officer || "")}
+                onChange={e => handleFieldChange("supervising_officer", e.target.value.toUpperCase())}
+                placeholder="ENTER SUPERVISING OFFICER NAME"
+              />
+            </div>
+
+            <div style={styles.field}>
+              <div style={styles.label}>COMMISSIONERATE</div>
+              <input
+                style={styles.input}
+                value={toUpper(formik.values.commissionerate || "")}
+                onChange={e => handleFieldChange("commissionerate", e.target.value.toUpperCase())}
+                placeholder="ENTER COMMISSIONERATE"
+              />
+            </div>
+
+            <div style={styles.checkboxRow}>
+              <input
+                type="checkbox"
+                checked={formik.values.verified_by_examining_officer || false}
+                onChange={e =>
+                  handleFieldChange("verified_by_examining_officer", e.target.checked)
+                }
+                style={{ width: 14, height: 14 }}
+              />
+              <span style={styles.checkboxLabel}>VERIFIED BY EXAMINING OFFICER</span>
+            </div>
+
+            <div style={{ ...styles.field, marginTop: 8 }}>
+              <div style={styles.label}>SEAL NUMBER (ANNEX C1)</div>
+              <input
+                style={{ ...styles.input, background: "#edf2f7", cursor: "not-allowed" }}
+                value={toUpper(formik.values.annex_seal_number || "")}
+                onChange={e => handleFieldChange("annex_seal_number", e.target.value.toUpperCase())}
+                placeholder="AUTO-FILLED FROM STUFFING SEAL NO"
+                readOnly
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN – ADMIN / RANGE / NOTES */}
+        <div style={styles.col}>
+          <div style={styles.card}>
+            <div style={styles.sectionTitle}>ADMIN / RANGE DETAILS</div>
+
+            <div style={styles.field}>
+              <div style={styles.label}>DESIGNATION</div>
+              <input
+                style={styles.input}
+                value={toUpper(formik.values.annex_designation || "")}
+                onChange={e => handleFieldChange("annex_designation", e.target.value.toUpperCase())}
+                placeholder="ENTER DESIGNATION"
+              />
+            </div>
+
+            <div style={styles.split}>
+              <div style={styles.half}>
+                <div style={styles.label}>DIVISION</div>
+                <input
+                  style={styles.input}
+                  value={toUpper(formik.values.annex_division || "")}
+                  onChange={e => handleFieldChange("annex_division", e.target.value.toUpperCase())}
+                  placeholder="ENTER DIVISION"
+                />
+              </div>
+              <div style={styles.half}>
+                <div style={styles.label}>RANGE</div>
+                <input
+                  style={styles.input}
+                  value={toUpper(formik.values.annex_range || "")}
+                  onChange={e => handleFieldChange("annex_range", e.target.value.toUpperCase())}
+                  placeholder="ENTER RANGE"
+                />
+              </div>
+            </div>
+
+            <div style={styles.checkboxRow}>
+              <input
+                type="checkbox"
+                checked={formik.values.sample_forwarded || false}
+                onChange={e =>
+                  handleFieldChange("sample_forwarded", e.target.checked)
+                }
+                style={{ width: 14, height: 14 }}
+              />
+              <span style={styles.checkboxLabel}>SAMPLE FORWARDED TO PORT</span>
+            </div>
+
+            <div style={{ ...styles.field, marginTop: 10 }}>
+              <div style={styles.label}>ADDITIONAL NOTES</div>
+              <textarea
+                style={styles.textarea}
+                rows={4}
+                value={formik.values.annex_additional_notes || ""}
+                onChange={e =>
+                  handleFieldChange("annex_additional_notes", e.target.value.toUpperCase())
+                }
+                placeholder="ENTER ANY ADDITIONAL NOTES..."
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* DOCUMENTS GRID */}
+      <div style={styles.card}>
+        <div style={styles.sectionTitle}>ANNEX C1 DOCUMENTS</div>
+        <div style={styles.tableWrap}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>SR NO</th>
+                <th style={styles.th}>DOCUMENT NAME</th>
+                <th style={{ ...styles.th, width: 80 }}>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(formik.values.annex_c1_documents || []).map((doc, index) => (
+                <tr key={index}>
+                  <td style={styles.td}>
+                    <input
+                      type="number"
+                      style={{ ...styles.input, height: 24, textTransform: "none", fontWeight: 500 }}
+                      value={doc.serialNo || index + 1}
+                      onChange={e =>
+                        handleDocChange(index, "serialNo", e.target.value)
+                      }
                     />
-                  }
-                  label="Verified by Examining Officer"
-                  sx={{ 
-                    fontSize: "0.875rem",
-                    "& .MuiFormControlLabel-label": { fontSize: "0.875rem" }
-                  }}
-                />
-              </Grid>
-
-              {/* Seal Number */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Seal Number"
-                  size="small"
-                  value={formik.values.annex_seal_number || ''}
-                  onChange={(e) => handleFieldChange('annex_seal_number', e.target.value)}
-                  placeholder="Enter seal number"
-                />
-              </Grid>
-            </Grid>
-          </Card>
-        </Grid>
-
-        {/* Right Column - Additional Details */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ p: 2, height: "100%" }}>
-            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-              Additional Information
-            </Typography>
-            
-            <Grid container spacing={2}>
-              {/* Designation */}
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Designation"
-                  size="small"
-                  value={formik.values.annex_designation || ''}
-                  onChange={(e) => handleFieldChange('annex_designation', e.target.value)}
-                  placeholder="Enter designation"
-                />
-              </Grid>
-
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Designation"
-                  size="small"
-                  value={formik.values.annex_designation_2 || ''}
-                  onChange={(e) => handleFieldChange('annex_designation_2', e.target.value)}
-                  placeholder="Enter designation"
-                />
-              </Grid>
-
-              {/* Division */}
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Division"
-                  size="small"
-                  value={formik.values.annex_division || ''}
-                  onChange={(e) => handleFieldChange('annex_division', e.target.value)}
-                  placeholder="Enter division"
-                />
-              </Grid>
-
-              {/* Range */}
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Range"
-                  size="small"
-                  value={formik.values.annex_range || ''}
-                  onChange={(e) => handleFieldChange('annex_range', e.target.value)}
-                  placeholder="Enter range"
-                />
-              </Grid>
-
-              {/* Sample Forwarded Checkbox */}
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={formik.values.sample_forwarded || false}
-                      onChange={(e) => handleFieldChange('sample_forwarded', e.target.checked)}
-                      size="small"
+                  </td>
+                  <td style={styles.td}>
+                    <input
+                      style={{ ...styles.input, height: 24 }}
+                      value={toUpper(doc.documentName || "")}
+                      onChange={e =>
+                        handleDocChange(index, "documentName", e.target.value.toUpperCase())
+                      }
+                      placeholder="ENTER DOCUMENT NAME"
                     />
-                  }
-                  label="Sample Forwarded"
-                  sx={{ 
-                    fontSize: "0.875rem",
-                    "& .MuiFormControlLabel-label": { fontSize: "0.875rem" }
-                  }}
-                />
-              </Grid>
+                  </td>
+                  <td style={styles.td}>
+                    <button
+                      type="button"
+                      style={styles.smallButton}
+                      onClick={() => deleteDoc(index)}
+                    >
+                      DELETE
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {(!formik.values.annex_c1_documents ||
+                formik.values.annex_c1_documents.length === 0) && (
+                <tr>
+                  <td style={{ ...styles.td, fontSize: 11, color: "#718096" }} colSpan={3}>
+                    NO DOCUMENTS ADDED.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
 
-              {/* Additional Notes */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Additional Notes"
-                  multiline
-                  rows={4}
-                  size="small"
-                  value={formik.values.annex_additional_notes || ''}
-                  onChange={(e) => handleFieldChange('annex_additional_notes', e.target.value)}
-                  placeholder="Enter any additional notes..."
-                />
-              </Grid>
-            </Grid>
-          </Card>
-        </Grid>
-
-        {/* Documents Section - Full Width */}
-        <Grid item xs={12}>
-          <Card sx={{ p: 2 }}>
-            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-              Documents
-            </Typography>
-            
-            <TableContainer component={Paper} sx={{ mt: 2 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell><strong>Sr No</strong></TableCell>
-                    <TableCell><strong>Document Name</strong></TableCell>
-                    <TableCell><strong>Actions</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(formik.values.annex_c1_documents || []).map((doc, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{doc.sr_no}</TableCell>
-                      <TableCell>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          value={doc.document_name || ''}
-                          onChange={(e) => handleDocumentChange(index, 'document_name', e.target.value)}
-                          placeholder="Enter document name"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Button 
-                          size="small" 
-                          color="error"
-                          onClick={() => deleteDocument(index)}
-                        >
-                          Delete
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            {/* Action Buttons */}
-            <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-              <Button variant="outlined" size="small" onClick={addNewDocument}>
-                New
-              </Button>
-              <Button variant="outlined" size="small">
-                Edit
-              </Button>
-              <Button variant="outlined" size="small">
-                Update
-              </Button>
-              <Button variant="outlined" size="small">
-                Update & New
-              </Button>
-              <Button variant="outlined" size="small" color="error">
-                Delete
-              </Button>
-            </Box>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
+        <button type="button" style={styles.addButton} onClick={addDoc}>
+          ADD DOCUMENT
+        </button>
+      </div>
+    </div>
   );
-};
+}
 
 export default AnnexC1DetailsTab;

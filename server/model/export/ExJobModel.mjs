@@ -933,69 +933,7 @@ consignees: [
     insurance_charges: { type: String, trim: true },
     cif_value: { type: String, trim: true },
 
-    // Payment Terms
-    payment_terms: { type: String, trim: true },
-    payment_method: {
-      type: String,
-      trim: true,
-      enum: ["LC", "TT", "DA", "DP", "Advance", "CAD", "Open_Account"],
-    },
 
-    // Letter of Credit Information
-    lc_number: { type: String, trim: true },
-    lc_date: { type: String, trim: true },
-    lc_amount: { type: String, trim: true },
-    lc_expiry_date: { type: String, trim: true },
-    lc_issuing_bank: { type: String, trim: true },
-    lc_advising_bank: { type: String, trim: true },
-    lc_confirming_bank: { type: String, trim: true },
-
-    // Bill of Exchange
-    bill_of_exchange_number: { type: String, trim: true },
-    bill_of_exchange_date: { type: String, trim: true },
-    bill_of_exchange_amount: { type: String, trim: true },
-    bill_of_exchange_tenor: { type: String, trim: true },
-
-    ////////////////////////////////////////////////// Shipping Bill Information
-    shipping_bill_number: { type: String, trim: true },
-    shipping_bill_date: { type: String, trim: true },
-    shipping_bill_type: {
-      type: String,
-      trim: true,
-      enum: ["duty_free", "dutiable", "drawback", "coastal", "ex_bond"],
-    },
-    customs_house: { type: String, trim: true },
-    customs_officer_name: { type: String, trim: true },
-
-    // LEO (Let Export Order)
-    leo_number: { type: String, trim: true },
-    leo_date: { type: String, trim: true },
-    leo_validity_date: { type: String, trim: true },
-    leo_copy: [{ type: String, trim: true }],
-    assessed_copy: [{ type: String, trim: true }],
-    gate_pass_copy: [{ type: String, trim: true }],
-
-    // Gate Pass Information
-    gate_pass_number: { type: String, trim: true },
-    gate_pass_date: { type: String, trim: true },
-    gate_pass_validity: { type: String, trim: true },
-    cartage_date: { type: String, trim: true },
-
-    ////////////////////////////////////////////////// Export Incentives & Schemes
-    export_promotion_scheme: { type: String, trim: true }, // MEIS, SEIS, etc.
-    scheme_code: { type: String, trim: true },
-    scrip_value: { type: String, trim: true },
-    duty_drawback_rate: { type: String, trim: true },
-    duty_drawback_amount: { type: String, trim: true },
-    duty_drawback_claimed: { type: Boolean, default: false },
-    duty_drawback_received_date: { type: String, trim: true },
-
-    // Export Finance
-    export_finance_required: { type: Boolean, default: false },
-    packing_credit_limit: { type: String, trim: true },
-    packing_credit_utilized: { type: String, trim: true },
-    export_bill_negotiated_date: { type: String, trim: true },
-    export_proceeds_realization_date: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Containers Information
     // Note: exportContainerSchema needs to be defined separately
@@ -1006,261 +944,24 @@ consignees: [
     stuffing_remarks: { type: String, trim: true }, 
     cfs: { type: String, trim: true },
 
+    // Annex C1 Details
+
     ////////////////////////////////////////////////// Documentation Module
     // Note: These schemas need to be defined separately
     export_documents: [exportDocumentSchema],
-    shipping_bill_documents: [shippingBillDocumentSchema],
-    all_documents: [{ type: String, trim: true }],
-
-    // Certificate Requirements
-    certificate_of_origin_required: { type: Boolean, default: false },
-    certificate_of_origin_number: { type: String, trim: true },
-    certificate_of_origin_date: { type: String, trim: true },
-    certificate_of_origin_issuing_authority: { type: String, trim: true },
-
-    phytosanitary_certificate_required: { type: Boolean, default: false },
-    phytosanitary_certificate_number: { type: String, trim: true },
-    phytosanitary_certificate_date: { type: String, trim: true },
-
-    quality_inspection_certificate: { type: String, trim: true },
-    quality_inspection_date: { type: String, trim: true },
-    quality_inspection_agency: { type: String, trim: true },
-
-    fumigation_certificate_number: { type: String, trim: true },
-    fumigation_certificate_date: { type: String, trim: true },
-    fumigation_validity_date: { type: String, trim: true },
-
-    insurance_policy_number: { type: String, trim: true },
-    insurance_policy_date: { type: String, trim: true },
-    insurance_company: { type: String, trim: true },
-    insurance_amount: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Regulatory Compliance
-    // Export License Information
-    export_license_required: { type: Boolean, default: false },
-    export_license_number: { type: String, trim: true },
-    export_license_date: { type: String, trim: true },
-    export_license_validity: { type: String, trim: true },
-    export_license_authority: { type: String, trim: true },
 
-    // FSSAI (for food products)
-    fssai_license_number: { type: String, trim: true },
-    fssai_license_validity: { type: String, trim: true },
-
-    // Drug License (for pharmaceutical products)
-    drug_license_number: { type: String, trim: true },
-    drug_license_validity: { type: String, trim: true },
-
-    // Textile Committee Registration
-    textile_committee_registration: { type: String, trim: true },
-
-    // BIS Certification
-    bis_license_number: { type: String, trim: true },
-    bis_license_validity: { type: String, trim: true },
-
-    ////////////////////////////////////////////////// Milestone Tracking
-    booking_confirmation_date: { type: String, trim: true },
-    documentation_start_date: { type: String, trim: true },
-    documentation_completion_date: { type: String, trim: true },
-    pre_shipment_inspection_date: { type: String, trim: true },
-    customs_clearance_date: { type: String, trim: true },
-    cargo_pickup_date: { type: String, trim: true },
-    port_terminal_arrival_date: { type: String, trim: true },
-    loading_completion_date: { type: String, trim: true },
-    vessel_departure_date: { type: String, trim: true },
-    in_transit_milestone_dates: [
-      {
-        location: { type: String },
-        date: { type: String },
-        remarks: { type: String },
-      },
-    ],
-    destination_arrival_date: { type: String, trim: true },
-    destination_customs_clearance_date: { type: String, trim: true },
-    final_delivery_date: { type: String, trim: true },
-
+   
     ////////////////////////////////////////////////// Charges and Financial
     // Note: exportChargesSchema needs to be defined separately
     export_charges: [exportChargesSchema],
 
-    // Freight Charges
-    ocean_freight: { type: String, trim: true },
-    air_freight: { type: String, trim: true },
-    inland_transportation: { type: String, trim: true },
-
-    // Handling Charges
-    origin_handling_charges: { type: String, trim: true },
-    destination_handling_charges: { type: String, trim: true },
-    documentation_charges: { type: String, trim: true },
-    customs_clearance_charges: { type: String, trim: true },
-
-    // Other Charges
-    warehouse_charges: { type: String, trim: true },
-    stuffing_charges: { type: String, trim: true },
-    weighment_charges: { type: String, trim: true },
-    survey_charges: { type: String, trim: true },
-    fumigation_charges: { type: String, trim: true },
-
-    // Total Calculations
-    total_freight_charges: { type: String, trim: true },
-    total_other_charges: { type: String, trim: true },
-    total_charges: { type: String, trim: true },
-
-    ////////////////////////////////////////////////// Agent Information
-    freight_forwarder_name: { type: String, trim: true },
-    freight_forwarder_code: { type: String, trim: true },
-    freight_forwarder_contact_person: { type: String, trim: true },
-    freight_forwarder_phone: { type: String, trim: true },
-    freight_forwarder_email: { type: String, trim: true },
-
-    customs_broker_name: { type: String, trim: true },
-    customs_broker_license: { type: String, trim: true },
-    customs_broker_contact_person: { type: String, trim: true },
-    customs_broker_phone: { type: String, trim: true },
-    customs_broker_email: { type: String, trim: true },
-
-    origin_agent_name: { type: String, trim: true },
-    origin_agent_contact_person: { type: String, trim: true },
-    origin_agent_phone: { type: String, trim: true },
-    origin_agent_email: { type: String, trim: true },
-
-    destination_agent_name: { type: String, trim: true },
-    destination_agent_contact_person: { type: String, trim: true },
-    destination_agent_phone: { type: String, trim: true },
-    destination_agent_email: { type: String, trim: true },
-
-    ////////////////////////////////////////////////// Quality Control
-    pre_shipment_inspection_required: { type: Boolean, default: false },
-    inspection_agency: { type: String, trim: true },
-    inspection_date: { type: String, trim: true },
-    inspection_certificate_number: { type: String, trim: true },
-    inspection_report: [{ type: String, trim: true }],
-
-    quality_control_passed: { type: Boolean, default: false },
-    quality_control_date: { type: String, trim: true },
-    quality_control_remarks: { type: String, trim: true },
-
-    quantity_verification_done: { type: Boolean, default: false },
-    quantity_verification_date: { type: String, trim: true },
-    weight_verification_done: { type: Boolean, default: false },
-    weight_verification_date: { type: String, trim: true },
-
-    ////////////////////////////////////////////////// Communication & Queries
-    export_queries: [
-      {
-        query: { type: String },
-        module: { type: String },
-        raised_by: { type: String },
-        assigned_to: { type: String },
-        reply: { type: String },
-        replied_by: { type: String },
-        priority: {
-          type: String,
-          enum: ["High", "Medium", "Low"],
-          default: "Medium",
-        },
-        status: {
-          type: String,
-          enum: ["Open", "In Progress", "Resolved", "Closed"],
-          default: "Open",
-        },
-        created_date: { type: String },
-        resolved_date: { type: String },
-        resolved: { type: Boolean, default: false },
-      },
-    ],
-
-    documentation_queries: [
-      {
-        query: { type: String },
-        reply: { type: String },
-        resolved: { type: Boolean, default: false },
-        raised_by: { type: String },
-        resolved_by: { type: String },
-        created_date: { type: String },
-        resolved_date: { type: String },
-      },
-    ],
-
-    customs_queries: [
-      {
-        query: { type: String },
-        customs_officer: { type: String },
-        reply: { type: String },
-        resolved: { type: Boolean, default: false },
-        query_date: { type: String },
-        resolved_date: { type: String },
-      },
-    ],
-
-    ////////////////////////////////////////////////// Special Requirements
-    // Temperature Controlled
-    temperature_controlled: { type: Boolean, default: false },
-    temperature_range_min: { type: String, trim: true },
-    temperature_range_max: { type: String, trim: true },
-    temperature_unit: {
-      type: String,
-      trim: true,
-      enum: ["Celsius", "Fahrenheit"],
-    },
-
-    // Hazardous Materials
-    hazardous_material: { type: Boolean, default: false },
-    hazmat_class: { type: String, trim: true },
-    hazmat_packing_group: { type: String, trim: true },
-    hazmat_flash_point: { type: String, trim: true },
-
-    // High Value Cargo
-    high_value_cargo: { type: Boolean, default: false },
-    declared_value_for_carriage: { type: String, trim: true },
-    declared_value_for_customs: { type: String, trim: true },
-
-    // Oversized Cargo
-    oversized_cargo: { type: Boolean, default: false },
-    special_equipment_required: { type: String, trim: true },
-    special_handling_instructions: { type: String, trim: true },
-
-    ////////////////////////////////////////////////// Compliance Checklist
-    export_compliance_checklist: [
-      {
-        item: { type: String },
-        required: { type: Boolean, default: true },
-        completed: { type: Boolean, default: false },
-        completion_date: { type: String },
-        completed_by: { type: String },
-        remarks: { type: String },
-      },
-    ],
-
-    document_checklist_verified: { type: Boolean, default: false },
-    document_checklist_verified_date: { type: String, trim: true },
-    document_checklist_verified_by: { type: String, trim: true },
-
-    ready_for_shipment: { type: Boolean, default: false },
-    ready_for_shipment_date: { type: String, trim: true },
-    ready_for_shipment_approved_by: { type: String, trim: true },
-
     ////////////////////////////////////////////////// Additional Information
     remarks: { type: String, trim: true },
-    internal_notes: { type: String, trim: true },
-    customer_instructions: { type: String, trim: true },
-    special_requirements: { type: String, trim: true },
 
     // Job Assignment
     job_owner: { type: String, trim: true },
-    assigned_documentation_executive: { type: String, trim: true },
-    assigned_operations_executive: { type: String, trim: true },
-    assigned_accounts_executive: { type: String, trim: true },
-
-    // Completion Status
-    documentation_completed: { type: Boolean, default: false },
-    documentation_completed_date: { type: String, trim: true },
-    operations_completed: { type: Boolean, default: false },
-    operations_completed_date: { type: String, trim: true },
-    accounts_completed: { type: Boolean, default: false },
-    accounts_completed_date: { type: String, trim: true },
-    job_completed: { type: Boolean, default: false },
-    job_completed_date: { type: String, trim: true },
 
     job_no: {
       type: String,
@@ -1444,31 +1145,72 @@ consignees: [
       rodtepAmountINR: { type: Number, default: 0.0 },
     },
 
-    // Annex C1 Details (for EOU/SEZ units)
-    annexC1Details: {
-      ieCodeOfEOU: String,
-      branchSerialNo: { type: Number, default: 0 },
-      examinationDate: Date,
-      examiningOfficer: String,
-      supervisingOfficer: String,
-      commissionerate: String,
-      verifiedByExaminingOfficer: { type: Boolean, default: false },
-      sealNumber: String,
-
-      // Documents for Annex C1
-      documents: [
-        {
-          serialNo: Number,
-          documentName: String,
-        },
-      ],
-
-      // Additional C1 fields
-      designation: String,
-      division: String,
-      range: String,
-      sampleForwarded: { type: Boolean, default: false },
+  annexC1Details: {
+    ieCodeOfEOU: {
+      type: String,
+      trim: true
     },
+    branchSerialNo: { 
+      type: Number, 
+      default: 0 
+    },
+    examinationDate: Date,
+    examiningOfficer: {
+      type: String,
+      trim: true
+    },
+    supervisingOfficer: {
+      type: String,
+      trim: true
+    },
+    commissionerate: {
+      type: String,
+      trim: true
+    },
+    verifiedByExaminingOfficer: { 
+      type: Boolean, 
+      default: false 
+    },
+    
+    // This will reference the main stuffing_seal_no
+    sealNumber: {
+      type: String,
+      ref: 'stuffing_seal_no' // Indicates this references another field
+    },
+
+    // Documents for Annex C1
+    documents: [
+      {
+        serialNo: {
+          type: Number,
+          required: true
+        },
+        documentName: {
+          type: String,
+          required: true,
+          trim: true
+        },
+      },
+    ],
+
+    // Additional C1 fields
+    designation: {
+      type: String,
+      trim: true
+    },
+    division: {
+      type: String,
+      trim: true
+    },
+    range: {
+      type: String,
+      trim: true
+    },
+    sampleForwarded: { 
+      type: Boolean, 
+      default: false 
+    },
+  },
 
     // Freight, Insurance & Other Charges
     freightInsuranceCharges: {
@@ -1692,6 +1434,33 @@ exportJobSchema.statics.findByStatus = function (status) {
   return this.find({ jobStatus: status });
 };
 
+// Virtual population for sealNumber
+exportJobSchema.virtual('annexC1Details.virtualSealNumber').get(function() {
+  return this.stuffing_seal_no;
+});
+
+exportJobSchema.virtual('annexC1Details.virtualSealType').get(function() {
+  return this.stuffing_seal_type;
+});
+
+// Pre-save to keep them in sync
+exportJobSchema.pre('save', function(next) {
+  // Always sync the seal number from main to annex C1
+  if (this.stuffing_seal_no) {
+    this.annexC1Details.sealNumber = this.stuffing_seal_no;
+  }
+  next();
+});
+
+// Static method to find by seal number
+exportJobSchema.statics.findBySealNumber = function(sealNo) {
+  return this.findOne({ 
+    $or: [
+      { 'stuffing_seal_no': sealNo },
+      { 'annexC1Details.sealNumber': sealNo }
+    ]
+  });
+};
 // Create and export the model
 const ExJobModel = mongoose.model("ExportJob", exportJobSchema);
 export default ExJobModel;
