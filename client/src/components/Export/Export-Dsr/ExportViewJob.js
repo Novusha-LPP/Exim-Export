@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams  } from "react-router-dom";
 import {
   IconButton,
   TextField,
@@ -56,19 +56,7 @@ function SimpleSelect({ name, value, options, onChange }) {
   );
 }
 
-function SimpleAutocomplete({ name, value, options, onChange }) {
-  return (
-    <input
-      type="text"
-      name={name}
-      list={`datalist-${name}`}
-      value={value}
-      onChange={onChange}
-      style={{ height: 26, width: "97%", borderRadius: 4, border: "1px solid #d6dae2", fontSize: 13, padding: "2px 7px", background: "#fff" }}
-      autoComplete="off"
-    />
-  );
-}
+
 
 const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
   const [snackbar, setSnackbar] = useState(false);
@@ -307,15 +295,20 @@ function LogisysExportViewJob() {
   const params = useParams();
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
+   const [searchParams, setSearchParams] = useSearchParams();
   const [fileSnackbar, setFileSnackbar] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
+
   const [directories, setDirectories] = useState({});
 
   const { data, loading, formik, setData } = useExportJobDetails(
     params,
     setFileSnackbar
   );
-
+  const getInitialTab = () => {
+    const tabFromUrl = searchParams.get('tab');
+    return tabFromUrl ? parseInt(tabFromUrl) : 0;
+  };
+  const [activeTab, setActiveTab] = useState(getInitialTab());
   useEffect(() => {
     const fetchDirectories = async () => {
       try {
@@ -337,6 +330,7 @@ function LogisysExportViewJob() {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+     setSearchParams({ tab: newValue.toString() });
   };
 
   if (loading) {

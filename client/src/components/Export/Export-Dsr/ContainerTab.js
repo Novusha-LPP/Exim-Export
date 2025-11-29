@@ -1,5 +1,5 @@
 // ContainerTab.jsx
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Table,
@@ -14,18 +14,45 @@ import {
   MenuItem,
   Grid,
   Typography,
+  IconButton,
 } from "@mui/material";
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Add as AddIcon,
+  Save as SaveIcon,
+  Cancel as CancelIcon,
+} from "@mui/icons-material";
 
 const containerTypes = [
   "20 Standard Dry",
-  "40 Standard Dry",
-  "40 High Cube",
+  "20 Flat Rack",
+  "20 Collapsible Flat Rack ",
   "20 Reefer",
+  "20 Tank",
+  "20 Open Top",
+  "20 Hard Top",
+  "20 Platform",
+  "40 Standard Dry",
+  "40 Flat Rack",
+  "40 Collapsible Flat Rack ",
   "40 Reefer",
+  "40 Tank",
+  "40 Open Top",
+  "40 Hard Top",
+  "40 High Cube",
+  "40 Reefer High Cube",
+  "40 Platform",
 ];
-const sealTypes = ["BTSL - Bottle", "WIRE", "PLASTIC", "METAL", "RFID"];
+const sealTypes = [
+  "BTSL - Bottle",
+  "ES - Electronic Seal",
+  "RFID - Radio Frequency Identifier",
+];
 
 const ContainerTab = ({ formik }) => {
+  const [editingIndex, setEditingIndex] = useState(null);
+
   // Handle inline field change
   const handleFieldChange = (index, field, value) => {
     const containers = [...formik.values.containers];
@@ -33,52 +60,101 @@ const ContainerTab = ({ formik }) => {
     formik.setFieldValue("containers", containers);
   };
 
-  // Add/Remove functions
+  // Add new container
   const handleAdd = () => {
-    const containers = [
-      ...formik.values.containers,
-      {
-        serialNumber: (formik.values.containers.length || 0) + 1,
-        containerNo: "",
-        sealNo: "",
-        sealDate: "",
-        type: "",
-        pkgsStuffed: 0,
-        grossWeight: 0,
-        sealType: "",
-        moveDocType: "",
-        location: "",
-        grWtPlusTrWt: 0,
-        sealDeviceId: "",
-        rfid: "",
-      },
-    ];
+    const newContainer = {
+      serialNumber: (formik.values.containers?.length || 0) + 1,
+      containerNo: "",
+      sealNo: "",
+      sealDate: "",
+      type: "",
+      pkgsStuffed: 0,
+      grossWeight: 0,
+      sealType: "",
+      grWtPlusTrWt: 0,
+      sealDeviceId: "",
+      rfid: "",
+    };
+
+    const containers = [...(formik.values.containers || []), newContainer];
     formik.setFieldValue("containers", containers);
+
+    // Set the new row to edit mode
+    setEditingIndex(containers.length - 1);
   };
 
+  // Delete container
   const handleDelete = (idx) => {
     const containers = formik.values.containers.filter((_, i) => i !== idx);
     formik.setFieldValue("containers", containers);
+    if (editingIndex === idx) {
+      setEditingIndex(null);
+    } else if (editingIndex > idx) {
+      setEditingIndex(editingIndex - 1);
+    }
   };
 
+  // Edit container
   const handleEdit = (idx) => {
-    // Implement edit logic if needed
-    console.log("Edit container:", idx);
+    setEditingIndex(idx);
   };
 
-  const handleUpdate = (idx) => {
-    // Implement update logic if needed
-    console.log("Update container:", idx);
+  // Save container changes
+  const handleSave = (idx) => {
+    setEditingIndex(null);
+    // You can add validation or API call here if needed
+  };
+
+  // Cancel editing
+  const handleCancel = (idx) => {
+    setEditingIndex(null);
+    // If you want to revert changes, you might need to maintain a backup state
+  };
+
+  // Check if a field is editable
+  const isEditable = (index) => {
+    return editingIndex === index;
   };
 
   return (
     <Box>
-      {/* Main Table */}
-      <TableContainer component={Paper} sx={{ mb: 2 }}>
-        <Table size="small" sx={{ minWidth: 800 }}>
+      {/* Add New Button */}
+      <Box sx={{ mb: 2, display: "flex", justifyContent: "flex-end" }}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleAdd}
+          sx={{ minWidth: 120 }}
+        >
+          New Container
+        </Button>
+      </Box>
+
+      {/* Scrollable Table */}
+      <TableContainer
+        component={Paper}
+        sx={{
+          mb: 2,
+          maxHeight: 600,
+          overflow: "auto",
+          "& .MuiTable-root": {
+            minWidth: 1000,
+          },
+        }}
+      >
+        <Table size="small" stickyHeader>
           <TableHead>
             <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-              <TableCell sx={{ fontWeight: "bold", width: "60px" }}>
+              <TableCell
+                sx={{
+                  fontWeight: "bold",
+                  width: "60px",
+                  position: "sticky",
+                  left: 0,
+
+                  zIndex: 2,
+                }}
+              >
                 Sr No
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", width: "120px" }}>
@@ -102,7 +178,22 @@ const ContainerTab = ({ formik }) => {
               <TableCell sx={{ fontWeight: "bold", width: "100px" }}>
                 Seal Type
               </TableCell>
-              <TableCell sx={{ fontWeight: "bold", width: "80px" }}>
+              <TableCell sx={{ fontWeight: "bold", width: "100px" }}>
+                Seal Device ID
+              </TableCell>
+              <TableCell sx={{ fontWeight: "bold", width: "100px" }}>
+                Gr-Wt + Tr-wt
+              </TableCell>
+              <TableCell
+                sx={{
+                  fontWeight: "bold",
+                  width: "150px",
+                  position: "sticky",
+                  right: 0,
+                  // backgroundColor: "#f5f5f5",
+                  zIndex: 2,
+                }}
+              >
                 Actions
               </TableCell>
             </TableRow>
@@ -110,7 +201,19 @@ const ContainerTab = ({ formik }) => {
           <TableBody>
             {(formik.values.containers || []).map((row, idx) => (
               <TableRow key={idx} hover>
-                <TableCell>{row.serialNumber}</TableCell>
+                {/* Serial Number - Always Readonly */}
+                <TableCell
+                  sx={{
+                    position: "sticky",
+                    left: 0,
+                    backgroundColor: "white",
+                    zIndex: 1,
+                  }}
+                >
+                  {row.serialNumber}
+                </TableCell>
+
+                {/* Container No */}
                 <TableCell>
                   <TextField
                     value={row.containerNo}
@@ -120,8 +223,11 @@ const ContainerTab = ({ formik }) => {
                     size="small"
                     fullWidth
                     variant="outlined"
+                    disabled={!isEditable(idx)}
                   />
                 </TableCell>
+
+                {/* Seal No */}
                 <TableCell>
                   <TextField
                     value={row.sealNo || ""}
@@ -131,8 +237,11 @@ const ContainerTab = ({ formik }) => {
                     size="small"
                     fullWidth
                     variant="outlined"
+                    disabled={!isEditable(idx)}
                   />
                 </TableCell>
+
+                {/* Seal Date */}
                 <TableCell>
                   <TextField
                     type="date"
@@ -144,8 +253,11 @@ const ContainerTab = ({ formik }) => {
                     fullWidth
                     variant="outlined"
                     InputLabelProps={{ shrink: true }}
+                    disabled={!isEditable(idx)}
                   />
                 </TableCell>
+
+                {/* Type */}
                 <TableCell>
                   <TextField
                     select
@@ -156,6 +268,7 @@ const ContainerTab = ({ formik }) => {
                     size="small"
                     fullWidth
                     variant="outlined"
+                    disabled={!isEditable(idx)}
                   >
                     {containerTypes.map((opt) => (
                       <MenuItem key={opt} value={opt}>
@@ -164,6 +277,8 @@ const ContainerTab = ({ formik }) => {
                     ))}
                   </TextField>
                 </TableCell>
+
+                {/* Pkgs Stuffed */}
                 <TableCell>
                   <TextField
                     type="number"
@@ -174,8 +289,11 @@ const ContainerTab = ({ formik }) => {
                     size="small"
                     fullWidth
                     variant="outlined"
+                    disabled={!isEditable(idx)}
                   />
                 </TableCell>
+
+                {/* Gross Weight */}
                 <TableCell>
                   <TextField
                     type="number"
@@ -186,8 +304,11 @@ const ContainerTab = ({ formik }) => {
                     size="small"
                     fullWidth
                     variant="outlined"
+                    disabled={!isEditable(idx)}
                   />
                 </TableCell>
+
+                {/* Seal Type */}
                 <TableCell>
                   <TextField
                     select
@@ -198,6 +319,7 @@ const ContainerTab = ({ formik }) => {
                     size="small"
                     fullWidth
                     variant="outlined"
+                    disabled={!isEditable(idx)}
                   >
                     {sealTypes.map((opt) => (
                       <MenuItem key={opt} value={opt}>
@@ -206,15 +328,84 @@ const ContainerTab = ({ formik }) => {
                     ))}
                   </TextField>
                 </TableCell>
+
+                {/* Seal Device ID */}
                 <TableCell>
-                  <Button
-                    color="error"
+                  <TextField
+                    value={row.sealDeviceId || ""}
+                    onChange={(e) =>
+                      handleFieldChange(idx, "sealDeviceId", e.target.value)
+                    }
                     size="small"
-                    onClick={() => handleDelete(idx)}
+                    fullWidth
                     variant="outlined"
-                  >
-                    Delete
-                  </Button>
+                    disabled={!isEditable(idx)}
+                  />
+                </TableCell>
+
+                {/* Gr-Wt + Tr-wt */}
+                <TableCell>
+                  <TextField
+                    type="number"
+                    value={row.grWtPlusTrWt}
+                    onChange={(e) =>
+                      handleFieldChange(idx, "grWtPlusTrWt", e.target.value)
+                    }
+                    size="small"
+                    fullWidth
+                    variant="outlined"
+                    disabled={!isEditable(idx)}
+                  />
+                </TableCell>
+
+                {/* Actions - Sticky on right */}
+                <TableCell
+                  sx={{
+                    position: "sticky",
+                    right: 0,
+                    backgroundColor: "white",
+                    zIndex: 1,
+                  }}
+                >
+                  <Box sx={{ display: "flex", gap: 0.5, flexWrap: "nowrap" }}>
+                    {isEditable(idx) ? (
+                      <>
+                        <IconButton
+                          color="primary"
+                          size="small"
+                          onClick={() => handleSave(idx)}
+                          title="Save"
+                        >
+                          <SaveIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          color="secondary"
+                          size="small"
+                          onClick={() => handleCancel(idx)}
+                          title="Cancel"
+                        >
+                          <CancelIcon fontSize="small" />
+                        </IconButton>
+                      </>
+                    ) : (
+                      <IconButton
+                        color="primary"
+                        size="small"
+                        onClick={() => handleEdit(idx)}
+                        title="Edit"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                    <IconButton
+                      color="error"
+                      size="small"
+                      onClick={() => handleDelete(idx)}
+                      title="Delete"
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}
@@ -222,195 +413,14 @@ const ContainerTab = ({ formik }) => {
         </Table>
       </TableContainer>
 
-      {/* Additional Fields Section */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="subtitle2" gutterBottom>
-              Container No
-            </Typography>
-            <TextField
-              size="small"
-              fullWidth
-              variant="outlined"
-              placeholder="Container No"
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="subtitle2" gutterBottom>
-              Seal No
-            </Typography>
-            <TextField
-              size="small"
-              fullWidth
-              variant="outlined"
-              placeholder="Seal No"
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="subtitle2" gutterBottom>
-              Move Doc. Type
-            </Typography>
-            <TextField
-              size="small"
-              fullWidth
-              variant="outlined"
-              placeholder="Move Doc. Type"
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="subtitle2" gutterBottom>
-              Type
-            </Typography>
-            <TextField
-              select
-              size="small"
-              fullWidth
-              variant="outlined"
-              defaultValue="20 Standard Dry"
-            >
-              {containerTypes.map((opt) => (
-                <MenuItem key={opt} value={opt}>
-                  {opt}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="subtitle2" gutterBottom>
-              Seal Date
-            </Typography>
-            <TextField
-              type="date"
-              size="small"
-              fullWidth
-              variant="outlined"
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="subtitle2" gutterBottom>
-              Pkgs Stuffed
-            </Typography>
-            <TextField
-              type="number"
-              size="small"
-              fullWidth
-              variant="outlined"
-              defaultValue={0}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="subtitle2" gutterBottom>
-              Seal Type
-            </Typography>
-            <TextField select size="small" fullWidth variant="outlined">
-              {sealTypes.map((opt) => (
-                <MenuItem key={opt} value={opt}>
-                  {opt}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="subtitle2" gutterBottom>
-              Location
-            </Typography>
-            <TextField
-              size="small"
-              fullWidth
-              variant="outlined"
-              placeholder="Location"
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="subtitle2" gutterBottom>
-              Gross Weight
-            </Typography>
-            <TextField
-              type="number"
-              size="small"
-              fullWidth
-              variant="outlined"
-              defaultValue={0.0}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="subtitle2" gutterBottom>
-              Seal Device ID
-            </Typography>
-            <TextField
-              size="small"
-              fullWidth
-              variant="outlined"
-              placeholder="Seal Device ID"
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="subtitle2" gutterBottom>
-              Gr-Wt + Tr-wt
-            </Typography>
-            <TextField
-              type="number"
-              size="small"
-              fullWidth
-              variant="outlined"
-              defaultValue={0.0}
-            />
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {/* Action Buttons */}
-      <Grid container spacing={1} sx={{ mt: 1 }}>
-        <Grid item>
-          <Button variant="outlined" size="small" onClick={handleAdd}>
-            New
-          </Button>
-        </Grid>
-        <Grid item>
-          <Button variant="outlined" size="small" onClick={() => handleEdit(0)}>
-            Edit
-          </Button>
-        </Grid>
-        <Grid item>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => handleUpdate(0)}
-          >
-            Update
-          </Button>
-        </Grid>
-        <Grid item>
-          <Button variant="outlined" size="small" onClick={handleAdd}>
-            New Delete
-          </Button>
-        </Grid>
-        <Grid item>
-          <Button variant="outlined" size="small">
-            VGM / Form13 Info
-          </Button>
-        </Grid>
-      </Grid>
-
-      {/* Packing Details Section */}
-      <Box sx={{ mt: 2 }}>
-        <Typography variant="h6" gutterBottom>
-          Packing Details
-        </Typography>
-        {/* Add packing details component here */}
-      </Box>
+      {/* Empty State */}
+      {(!formik.values.containers || formik.values.containers.length === 0) && (
+        <Box sx={{ textAlign: "center", py: 4 }}>
+          <Typography variant="body1" color="textSecondary">
+            No containers added yet. Click "New Container" to add one.
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 };

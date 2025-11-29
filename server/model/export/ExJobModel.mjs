@@ -327,9 +327,6 @@ const containerDetailsSchema = new Schema(
       enum: ["BTSL - Bottle", "WIRE", "PLASTIC", "METAL"],
       default: "BTSL - Bottle",
     },
-    moveDocType: String,
-    moveDocNo: String,
-    location: String,
     grWtPlusTrWt: { type: Number, default: 0 },
     sealDeviceId: String,
     rfid: String, // If needed for RFID field
