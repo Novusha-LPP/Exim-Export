@@ -1,629 +1,1557 @@
-import React from "react";
-import {
-  Box,
-  Grid,
-  TextField,
-  Typography,
-  Divider,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Chip
-} from "@mui/material";
-import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from "@mui/icons-material";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { eximCodes, states, PTA_FTA_CODES } from "../../../utils/masterList";
 
-const ProductGeneralTab = ({ formik }) => {
-  const handleProductChange = (index, field, value) => {
-    const updatedProducts = [...formik.values.products];
-    
-    // Handle nested object updates
-    if (field.includes('.')) {
-      const [parent, child] = field.split('.');
-      updatedProducts[index][parent] = {
-        ...updatedProducts[index][parent],
-        [child]: value
-      };
-    } else {
-      updatedProducts[index][field] = value;
-    }
-    
-    formik.setFieldValue('products', updatedProducts);
+const apiBase = import.meta.env.VITE_API_STRING;
+
+const styles = {
+  page: {
+    fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
+    fontSize: 13,
+    color: "#1e2e38",
+    padding: 16,
+  },
+  sectionTitle: {
+    fontWeight: 700,
+    color: "#16408f",
+    fontSize: 12,
+    marginBottom: 10,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
+  },
+  subSectionTitle: {
+    fontWeight: 700,
+    color: "#16408f",
+    fontSize: 11,
+    marginTop: 12,
+    marginBottom: 8,
+    borderBottom: "1px solid #e2e8f0",
+    paddingBottom: 4,
+  },
+  tableContainer: {
+    background: "#fff",
+    border: "1.5px solid #e2e8f0",
+    borderRadius: 7,
+    marginBottom: 18,
+    maxHeight: 400,
+    overflow: "auto",
+  },
+  table: { width: "100%", borderCollapse: "collapse" },
+  th: {
+    background: "#16408f",
+    color: "white",
+    fontWeight: 700,
+    fontSize: 11,
+    padding: "8px 12px",
+    textAlign: "left",
+    position: "sticky",
+    top: 0,
+    zIndex: 10,
+  },
+  td: { padding: "8px 12px", borderBottom: "1px solid #e2e8f0" },
+  input: {
+    width: "100%",
+    textTransform: "uppercase",
+    fontWeight: 600,
+    fontSize: 12,
+    padding: "4px 8px",
+    border: "1px solid #bdc7d1",
+    borderRadius: 3,
+    height: 28,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+  },
+  checkbox: {
+    cursor: "pointer",
+    marginRight: 6,
+  },
+  select: {
+    width: "100%",
+    textTransform: "uppercase",
+    fontWeight: 600,
+    fontSize: 12,
+    padding: "4px 8px",
+    border: "1px solid #bdc7d1",
+    borderRadius: 3,
+    height: 28,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+    cursor: "pointer",
+  },
+  textarea: {
+    width: "100%",
+    fontSize: 12,
+    padding: "5px 8px",
+    border: "1.5px solid #ccd6dd",
+    borderRadius: 4,
+    minHeight: 45,
+    background: "#f7fafc",
+    resize: "vertical",
+    textTransform: "uppercase",
+    fontWeight: 600,
+    boxSizing: "border-box",
+  },
+  acWrap: { position: "relative", display: "inline-block", width: "100%" },
+  acIcon: {
+    position: "absolute",
+    right: 8,
+    top: 8,
+    fontSize: 11,
+    color: "#bbbbbb",
+    pointerEvents: "none",
+  },
+  acMenu: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: "100%",
+    background: "#fff",
+    border: "1.5px solid #d3e3ea",
+    borderRadius: 4,
+    zIndex: 1300,
+    maxHeight: 154,
+    overflow: "auto",
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  acItem: (active) => ({
+    padding: "6px 9px",
+    cursor: "pointer",
+    textTransform: "uppercase",
+    background: active ? "#eaf2fe" : "#fff",
+    color: active ? "#18427c" : "#1b2b38",
+    fontWeight: active ? 700 : 600,
+  }),
+  card: {
+    background: "#fff",
+    border: "1.5px solid #e2e8f0",
+    borderRadius: 7,
+    padding: 16,
+    marginBottom: 18,
+  },
+  cardTitle: {
+    fontWeight: 700,
+    color: "#16408f",
+    fontSize: 14,
+    marginBottom: 12,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  chip: {
+    background: "#e2e8f0",
+    color: "#1e2e38",
+    fontSize: 10,
+    fontWeight: 600,
+    padding: "2px 8px",
+    borderRadius: 12,
+    height: 20,
+  },
+  // Grid specifically tuned for 3 columns to match the screenshot density
+  grid3: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 16,
+    marginBottom: 8,
+    alignItems: "end", // Aligns labels and inputs nicely
+  },
+  grid4: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 16,
+    marginBottom: 8,
+    alignItems: "end",
+  },
+  field: { marginBottom: 8 },
+  label: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#263046",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+    display: "block",
+  },
+  addBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "8px 16px",
+    background: "#16408f",
+    color: "white",
+    border: "none",
+    borderRadius: 4,
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: 12,
+  },
+  flexRow: {
+    display: "flex",
+    gap: 12,
+    alignItems: "center",
+  },
+  inlineCheckbox: {
+    display: "flex",
+    alignItems: "center",
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#263046",
+    textTransform: "uppercase",
+  },
+};
+
+function toUpper(v) {
+  return (typeof v === "string" ? v : "")?.toUpperCase() || "";
+}
+
+// ------------------------------------------------------------------
+// HOOKS
+// ------------------------------------------------------------------
+
+function useEximCodeDropdown(
+  fieldName,
+  productIndex,
+  formik,
+  handleProductChange
+) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [active, setActive] = useState(-1);
+  const wrapperRef = useRef();
+  const keepOpenOnInput = useRef(false);
+
+  useEffect(() => {
+    setQuery(formik.values.products[productIndex]?.[fieldName] || "");
+  }, [formik.values.products, productIndex, fieldName]);
+
+  useEffect(() => {
+    const close = (e) => {
+      if (
+        !keepOpenOnInput.current &&
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  const filtered = eximCodes
+    .filter((opt) => {
+      const code = toUpper(typeof opt === "string" ? opt : opt.code || "");
+      const desc = toUpper(
+        typeof opt === "string" ? "" : opt.description || ""
+      );
+      return code.includes(toUpper(query)) || desc.includes(toUpper(query));
+    })
+    .slice(0, 15);
+
+  const handle = (val) => {
+    const v = val.toUpperCase();
+    setQuery(v);
+    handleProductChange(productIndex, fieldName, v);
+    setOpen(true);
   };
 
-  const addNewProduct = () => {
+  const select = (i) => {
+    const item = filtered[i];
+    if (item) {
+      const code = item.code || item;
+      const desc = item.description || "";
+      const formattedValue = desc ? `${code} - ${desc}` : code;
+      setQuery(toUpper(formattedValue));
+      handleProductChange(productIndex, fieldName, toUpper(formattedValue));
+      setOpen(false);
+      setActive(-1);
+    }
+  };
+
+  return {
+    wrapperRef,
+    open,
+    setOpen,
+    query,
+    handle,
+    select,
+    active,
+    setActive,
+    filtered,
+    onInputFocus: () => {
+      setOpen(true);
+      setActive(-1);
+      keepOpenOnInput.current = true;
+    },
+    onInputBlur: () => {
+      setTimeout(() => {
+        keepOpenOnInput.current = false;
+      }, 100);
+    },
+  };
+}
+
+function useStateDropdown(
+  fieldName,
+  productIndex,
+  formik,
+  handleProductChange
+) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [active, setActive] = useState(-1);
+  const wrapperRef = useRef();
+
+  useEffect(() => {
+    setQuery(formik.values.products[productIndex]?.[fieldName] || "");
+  }, [formik.values.products, productIndex, fieldName]);
+
+  useEffect(() => {
+    const close = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  const filteredStates = states
+    .filter((s) =>
+      toUpper(typeof s === "string" ? s : s.name || "").includes(toUpper(query))
+    )
+    .slice(0, 10);
+
+  const handleSelect = (i) => {
+    const stateName = toUpper(
+      typeof filteredStates[i] === "string"
+        ? filteredStates[i]
+        : filteredStates[i].name
+    );
+    setQuery(stateName);
+    handleProductChange(productIndex, fieldName, stateName);
+    setOpen(false);
+    setActive(-1);
+  };
+
+  const handleInput = (e) => {
+    const v = e.target.value.toUpperCase();
+    setQuery(v);
+    handleProductChange(productIndex, fieldName, v);
+    setOpen(true);
+  };
+
+  return {
+    wrapperRef,
+    open,
+    setOpen,
+    query,
+    filteredStates,
+    active,
+    setActive,
+    handleInput,
+    handleSelect,
+  };
+}
+
+function useDistrictApiDropdown(
+  fieldName,
+  productIndex,
+  formik,
+  handleProductChange
+) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [opts, setOpts] = useState([]);
+  const [active, setActive] = useState(-1);
+  const wrapperRef = useRef();
+  const keepOpenOnInput = useRef(false);
+
+  useEffect(() => {
+    setQuery(formik.values.products[productIndex]?.[fieldName] || "");
+  }, [formik.values.products, productIndex, fieldName]);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `${apiBase}/districts/?status=Active&search=${encodeURIComponent(
+            query.trim()
+          )}`
+        );
+        const data = await res.json();
+        setOpts(
+          Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data)
+            ? data
+            : []
+        );
+      } catch {
+        setOpts([]);
+      }
+    }, 220);
+    return () => clearTimeout(t);
+  }, [open, query]);
+
+  useEffect(() => {
+    const close = (e) => {
+      if (
+        !keepOpenOnInput.current &&
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  const handle = (val) => {
+    const v = val.toUpperCase();
+    setQuery(v);
+    handleProductChange(productIndex, fieldName, v);
+    setOpen(true);
+  };
+
+  const select = (i) => {
+    const item = opts[i];
+    if (item) {
+      const districtValue = `${item.districtCode} - ${toUpper(
+        item.districtName
+      )}`;
+      setQuery(districtValue);
+      handleProductChange(productIndex, fieldName, districtValue);
+
+      if (item.stateName) {
+        handleProductChange(
+          productIndex,
+          "originState",
+          toUpper(item.stateName)
+        );
+      } else if (item.stateCode) {
+        const matchedState = states.find(
+          (s) =>
+            (s.code && s.code == item.stateCode) ||
+            (s.stateCode && s.stateCode == item.stateCode)
+        );
+        if (matchedState)
+          handleProductChange(
+            productIndex,
+            "originState",
+            toUpper(matchedState.name || matchedState)
+          );
+      }
+      setOpen(false);
+      setActive(-1);
+    }
+  };
+
+  return {
+    wrapperRef,
+    open,
+    setOpen,
+    query,
+    handle,
+    select,
+    active,
+    setActive,
+    opts,
+    onInputFocus: () => {
+      setOpen(true);
+      setActive(-1);
+      keepOpenOnInput.current = true;
+    },
+    onInputBlur: () => {
+      setTimeout(() => {
+        keepOpenOnInput.current = false;
+      }, 100);
+    },
+  };
+}
+
+function usePtaFtaDropdown(
+  fieldName,
+  productIndex,
+  formik,
+  handleProductChange
+) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [active, setActive] = useState(-1);
+  const wrapperRef = useRef();
+  const keepOpenOnInput = useRef(false);
+
+  useEffect(() => {
+    setQuery(formik.values.products[productIndex]?.[fieldName] || "");
+  }, [formik.values.products, productIndex, fieldName]);
+
+  useEffect(() => {
+    const close = (e) => {
+      if (
+        !keepOpenOnInput.current &&
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  const filtered = PTA_FTA_CODES.filter((opt) => {
+    const code = toUpper(opt.code || "");
+    const desc = toUpper(opt.description || "");
+    const q = toUpper(query);
+    return code.includes(q) || desc.includes(q);
+  }).slice(0, 15);
+
+  const handle = (val) => {
+    const v = val.toUpperCase();
+    setQuery(v);
+    handleProductChange(productIndex, fieldName, v);
+    setOpen(true);
+  };
+
+  const select = (i) => {
+    const item = filtered[i];
+    if (item) {
+      // Format: CODE - DESCRIPTION
+      const formattedValue = `${item.code} - ${item.description}`;
+      setQuery(toUpper(formattedValue));
+      handleProductChange(productIndex, fieldName, toUpper(formattedValue));
+      setOpen(false);
+      setActive(-1);
+    }
+  };
+
+  return {
+    wrapperRef,
+    open,
+    setOpen,
+    query,
+    handle,
+    select,
+    active,
+    setActive,
+    filtered,
+    onInputFocus: () => {
+      setOpen(true);
+      setActive(-1);
+      keepOpenOnInput.current = true;
+    },
+    onInputBlur: () => {
+      setTimeout(() => {
+        keepOpenOnInput.current = false;
+      }, 100);
+    },
+  };
+}
+
+// ------------------------------------------------------------------
+// COMPONENTS
+// ------------------------------------------------------------------
+
+const EximCodeField = ({
+  label,
+  fieldName,
+  productIndex,
+  placeholder,
+  formik,
+  handleProductChange,
+}) => {
+  const d = useEximCodeDropdown(
+    fieldName,
+    productIndex,
+    formik,
+    handleProductChange
+  );
+  return (
+    <div style={styles.field} ref={d.wrapperRef}>
+      <div style={styles.label}>{label}</div>
+      <div style={styles.acWrap}>
+        <input
+          style={styles.input}
+          placeholder={placeholder}
+          autoComplete="off"
+          value={toUpper(d.query)}
+          onChange={(e) => d.handle(e.target.value)}
+          onFocus={d.onInputFocus}
+          onBlur={d.onInputBlur}
+          onKeyDown={(e) => {
+            if (!d.open) return;
+            if (e.key === "ArrowDown")
+              d.setActive((a) =>
+                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1)
+              );
+            else if (e.key === "ArrowUp")
+              d.setActive((a) => Math.max(0, a - 1));
+            else if (e.key === "Enter" && d.active >= 0) {
+              e.preventDefault();
+              d.select(d.active);
+            } else if (e.key === "Escape") d.setOpen(false);
+          }}
+        />
+        <span style={styles.acIcon}>▼</span>
+        {d.open && d.filtered.length > 0 && (
+          <div style={styles.acMenu}>
+            {d.filtered.map((opt, i) => (
+              <div
+                key={i}
+                style={styles.acItem(d.active === i)}
+                onMouseDown={() => d.select(i)}
+                onMouseEnter={() => d.setActive(i)}
+              >
+                {toUpper(typeof opt === "string" ? opt : opt.code || "")}
+                {typeof opt !== "string" && opt.description && (
+                  <span
+                    style={{ marginLeft: 8, color: "#668", fontWeight: 400 }}
+                  >
+                    ({opt.description})
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const DistrictApiField = ({
+  label,
+  fieldName,
+  productIndex,
+  placeholder,
+  formik,
+  handleProductChange,
+}) => {
+  const d = useDistrictApiDropdown(
+    fieldName,
+    productIndex,
+    formik,
+    handleProductChange
+  );
+  return (
+    <div style={styles.field} ref={d.wrapperRef}>
+      <div style={styles.label}>{label}</div>
+      <div style={styles.acWrap}>
+        <input
+          style={styles.input}
+          placeholder={placeholder}
+          autoComplete="off"
+          value={toUpper(d.query)}
+          onChange={(e) => d.handle(e.target.value)}
+          onFocus={d.onInputFocus}
+          onBlur={d.onInputBlur}
+          onKeyDown={(e) => {
+            if (!d.open) return;
+            if (e.key === "ArrowDown")
+              d.setActive((a) =>
+                Math.min(d.opts.length - 1, a < 0 ? 0 : a + 1)
+              );
+            else if (e.key === "ArrowUp")
+              d.setActive((a) => Math.max(0, a - 1));
+            else if (e.key === "Enter" && d.active >= 0) {
+              e.preventDefault();
+              d.select(d.active);
+            } else if (e.key === "Escape") d.setOpen(false);
+          }}
+        />
+        <span style={styles.acIcon}>▼</span>
+        {d.open && d.opts.length > 0 && (
+          <div style={styles.acMenu}>
+            {d.opts.map((opt, i) => (
+              <div
+                key={opt._id || i}
+                style={styles.acItem(d.active === i)}
+                onMouseDown={() => d.select(i)}
+                onMouseEnter={() => d.setActive(i)}
+              >
+                {opt.districtCode} - {toUpper(opt.districtName)}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+const PtaFtaField = ({
+  label,
+  fieldName,
+  productIndex,
+  placeholder,
+  formik,
+  handleProductChange,
+}) => {
+  const d = usePtaFtaDropdown(
+    fieldName,
+    productIndex,
+    formik,
+    handleProductChange
+  );
+  return (
+    <div style={styles.field} ref={d.wrapperRef}>
+      <div style={styles.label}>{label}</div>
+      <div style={styles.acWrap}>
+        <input
+          style={styles.input}
+          placeholder={placeholder}
+          autoComplete="off"
+          value={toUpper(d.query)}
+          onChange={(e) => d.handle(e.target.value)}
+          onFocus={d.onInputFocus}
+          onBlur={d.onInputBlur}
+          onKeyDown={(e) => {
+            if (!d.open) return;
+            if (e.key === "ArrowDown")
+              d.setActive((a) =>
+                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1)
+              );
+            else if (e.key === "ArrowUp")
+              d.setActive((a) => Math.max(0, a - 1));
+            else if (e.key === "Enter" && d.active >= 0) {
+              e.preventDefault();
+              d.select(d.active);
+            } else if (e.key === "Escape") d.setOpen(false);
+          }}
+        />
+        <span style={styles.acIcon}>▼</span>
+        {d.open && d.filtered.length > 0 && (
+          <div style={styles.acMenu}>
+            {d.filtered.map((opt, i) => (
+              <div
+                key={i}
+                style={styles.acItem(d.active === i)}
+                onMouseDown={() => d.select(i)}
+                onMouseEnter={() => d.setActive(i)}
+              >
+                {opt.code} -{" "}
+                <span style={{ fontWeight: 400, fontSize: 11, color: "#555" }}>
+                  {opt.description}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+// ------------------------------------------------------------------
+// MAIN COMPONENT
+// ------------------------------------------------------------------
+
+const ProductGeneralTab = ({ formik }) => {
+  const handleProductChange = useCallback(
+    (index, field, value) => {
+      const updatedProducts = [...formik.values.products];
+      if (field.includes(".")) {
+        const [parent, child] = field.split(".");
+        updatedProducts[index][parent] = {
+          ...updatedProducts[index][parent],
+          [child]: value,
+        };
+      } else {
+        updatedProducts[index][field] = value;
+      }
+      formik.setFieldValue("products", updatedProducts);
+    },
+    [formik]
+  );
+
+  const addNewProduct = useCallback(() => {
     const newProduct = {
       serialNumber: formik.values.products.length + 1,
+      // Main Table
       description: "",
       ritc: "",
       quantity: 0,
-      socQuantity: 0,
       unitPrice: 0,
       per: "",
       amount: 0,
+      // General Tab - Top Section
       eximCode: "",
       nfeiCategory: "",
-      endUse: "",
-      ptaFtaInfo: "",
-      rewardItem: "",
+      rewardItem: false,
       strCode: "",
+      endUse: "",
       originDistrict: "",
       originState: "",
+      ptaFtaInfo: "",
       alternateQty: 0,
       materialCode: "",
       medicinalPlant: "",
       formulation: "",
       surfaceMaterialInContact: "",
       labGrownDiamond: "",
-      currency: "INR",
-      calculationMethod: "",
-      percentage: 0,
-      pmvPerUnit: 0,
-      totalPMV: 0,
-      igstPaymentStatus: "",
-      taxableValueINR: 0,
-      igstRate: 0,
-      igstAmountINR: 0,
-      compensationCessAmountINR: 0,
-      rodtepClaim: "",
+      // PMV Info
+      pmvCurrency: "INR",
+      pmvCalcMethod: "percentage", // or 'value'
+      pmvPercentage: 110.0,
+      pmvUnitValue: 0,
+      totalPmv: 0,
+      // IGST & Cess
+      igstStatus: "Export Against Payment",
+      taxableValue: 0,
+      igstRate: 18.0,
+      igstAmount: 0,
+      compensationCessRate: 0,
+      compensationCessAmount: 0,
+      // RODTEP Info
+      claimRodtep: "Yes",
       rodtepQuantity: 0,
+      rodtepRate: 0.9, // as per image
       rodtepCapValue: 0,
-      rodtepCapValuePerUnits: 0,
-      rodtepUnit: "",
-      rodtepRatePercent: 0,
-      rodtepAmountINR: 0,
-      // New fields
-      sbTypeDetails: "",
-      dbkType: "",
-      cessExciseDuty: 0,
-      compensationCess: 0,
-      pmvInfo: {
-        currency: "INR",
-        calculationMethod: "",
-        pmvPerUnit: 0,
-        totalPMV: 0
-      },
-      igstCompensationCess: {
-        igstPaymentStatus: "",
-        taxableValueINR: 0,
-        igstRate: 0,
-        igstAmountINR: 0,
-        compensationCessAmountINR: 0
-      },
-      rodtepInfo: {
-        claim: "",
-        quantity: 0,
-        capValue: 0,
-        capValuePerUnits: 0,
-        unit: "",
-        ratePercent: 0,
-        amountINR: 0
-      }
+      rodtepCapPerUnit: 0,
+      rodtepAmount: 0,
     };
-    
-    formik.setFieldValue('products', [...formik.values.products, newProduct]);
-  };
+    formik.setFieldValue("products", [...formik.values.products, newProduct]);
+  }, [formik]);
 
-  const removeProduct = (index) => {
-    const updatedProducts = formik.values.products.filter((_, i) => i !== index);
-    formik.setFieldValue('products', updatedProducts);
-  };
+  const removeProduct = useCallback(
+    (index) => {
+      if (formik.values.products.length > 1) {
+        formik.setFieldValue(
+          "products",
+          formik.values.products.filter((_, i) => i !== index)
+        );
+      }
+    },
+    [formik]
+  );
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h6" fontWeight="bold" gutterBottom>
-        Product General Information
-      </Typography>
-      <Divider sx={{ mb: 2 }} />
+    <div style={styles.page}>
+      <div style={styles.sectionTitle}>Product General Information</div>
 
       {/* Product Table */}
-      <TableContainer component={Paper} sx={{ mb: 3, maxHeight: 600, overflow: 'auto' }}>
-        <Table stickyHeader size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' }}>
-                S.No
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' }}>
-                Description
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' }}>
-                RITC/Tariff Head
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' }}>
-                Quantity
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' }}>
-                Unit Price
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' }}>
-                Per (UQC)
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' }}>
-                Amount
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' }}>
-                Actions
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+      <div style={styles.tableContainer}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              {[
+                "S.No",
+                "Description",
+                "RITC/Tariff",
+                "Qty",
+                "Unit Price",
+                "Per(UQC)",
+                "Amount",
+                "Actions",
+              ].map((h) => (
+                <th key={h} style={styles.th}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
             {formik.values.products?.map((product, index) => (
-              <TableRow key={index}>
-                <TableCell>{product.serialNumber}</TableCell>
-                <TableCell>
-                  <TextField
-                    size="small"
-                    value={product.description || ''}
-                    onChange={(e) => handleProductChange(index, 'description', e.target.value)}
-                    multiline
-                    minRows={2}
-                    sx={{ minWidth: 200 }}
+              <tr key={index}>
+                <td style={styles.td}>{product.serialNumber}</td>
+                <td style={styles.td}>
+                  <textarea
+                    style={styles.textarea}
+                    value={product.description || ""}
+                    onChange={(e) =>
+                      handleProductChange(index, "description", e.target.value)
+                    }
+                    rows={2}
                   />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    size="small"
-                    value={product.ritc || ''}
-                    onChange={(e) => handleProductChange(index, 'ritc', e.target.value)}
-                    sx={{ minWidth: 120 }}
+                </td>
+                <td style={styles.td}>
+                  <input
+                    style={styles.input}
+                    value={product.ritc || ""}
+                    onChange={(e) =>
+                      handleProductChange(index, "ritc", e.target.value)
+                    }
                   />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    size="small"
+                </td>
+                <td style={styles.td}>
+                  <input
+                    style={styles.input}
                     type="number"
                     value={product.quantity || 0}
-                    onChange={(e) => handleProductChange(index, 'quantity', parseFloat(e.target.value) || 0)}
-                    sx={{ minWidth: 100 }}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "quantity",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                   />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    size="small"
+                </td>
+                <td style={styles.td}>
+                  <input
+                    style={styles.input}
                     type="number"
                     value={product.unitPrice || 0}
-                    onChange={(e) => handleProductChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                    sx={{ minWidth: 100 }}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "unitPrice",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                   />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    size="small"
-                    value={product.per || ''}
-                    onChange={(e) => handleProductChange(index, 'per', e.target.value)}
-                    sx={{ minWidth: 80 }}
+                </td>
+                <td style={styles.td}>
+                  <input
+                    style={styles.input}
+                    value={product.per || ""}
+                    onChange={(e) =>
+                      handleProductChange(index, "per", e.target.value)
+                    }
                   />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    size="small"
+                </td>
+                <td style={styles.td}>
+                  <input
+                    style={styles.input}
                     type="number"
                     value={product.amount || 0}
-                    onChange={(e) => handleProductChange(index, 'amount', parseFloat(e.target.value) || 0)}
-                    sx={{ minWidth: 100 }}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "amount",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                   />
-                </TableCell>
-                <TableCell>
-                  <IconButton
-                    size="small"
-                    color="error"
+                </td>
+                <td style={styles.td}>
+                  <button
                     onClick={() => removeProduct(index)}
                     disabled={formik.values.products.length <= 1}
+                    style={{
+                      padding: "4px 8px",
+                      background: "#ef4444",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 3,
+                      cursor:
+                        formik.values.products.length <= 1
+                          ? "not-allowed"
+                          : "pointer",
+                    }}
                   >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
+                    ✕
+                  </button>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          </tbody>
+        </table>
+      </div>
 
-      {/* Add Product Button */}
-      <Box sx={{ mb: 3 }}>
-        <IconButton
-          onClick={addNewProduct}
-          color="primary"
-          sx={{ border: 1, borderStyle: 'dashed' }}
-        >
-          <AddIcon />
-        </IconButton>
-        <Typography variant="body2" sx={{ ml: 1, display: 'inline' }}>
-          Add New Product
-        </Typography>
-      </Box>
+      <button style={styles.addBtn} onClick={addNewProduct}>
+        ➕ Add New Product
+      </button>
 
-      {/* Product Details Section */}
-      {formik.values.products?.map((product, index) => (
-        <Box key={index} sx={{ mb: 4, p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
-          <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-            Product {index + 1} - Additional Details
-            <Chip label={`S.No: ${product.serialNumber}`} size="small" sx={{ ml: 1 }} />
-          </Typography>
+      {/* Product Details Cards */}
+      {formik.values.products?.map((product, index) => {
+        const stateData = useStateDropdown(
+          "originState",
+          index,
+          formik,
+          handleProductChange
+        );
 
-          <Grid container spacing={2}>
-            {/* EXIM Code */}
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="EXIM Code"
-                value={product.eximCode || ''}
-                onChange={(e) => handleProductChange(index, 'eximCode', e.target.value)}
+        return (
+          <div key={index} style={styles.card}>
+            <div style={styles.cardTitle}>
+              Product {index + 1} - General Details
+              <span style={styles.chip}>S.No: {product.serialNumber}</span>
+            </div>
+
+            {/* 1. TOP SECTION (Grid based on image) */}
+            <div style={styles.grid3}>
+              {/* Row 1 */}
+              <EximCodeField
+                label="Exim Code"
+                fieldName="eximCode"
+                productIndex={index}
+                placeholder="Select Exim Code"
+                formik={formik}
+                handleProductChange={handleProductChange}
               />
-            </Grid>
+              <div style={styles.field}>
+                <label style={styles.label}>NFEI Category</label>
+                <input
+                  style={styles.input}
+                  value={product.nfeiCategory || ""}
+                  onChange={(e) =>
+                    handleProductChange(index, "nfeiCategory", e.target.value)
+                  }
+                />
+              </div>
+              <div
+                style={{
+                  ...styles.field,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    alignItems: "center",
+                    marginBottom: 4,
+                  }}
+                >
+                  <label style={styles.inlineCheckbox}>
+                    <input
+                      type="checkbox"
+                      style={styles.checkbox}
+                      checked={product.rewardItem || false}
+                      onChange={(e) =>
+                        handleProductChange(
+                          index,
+                          "rewardItem",
+                          e.target.checked
+                        )
+                      }
+                    />
+                    Reward Item
+                  </label>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <label
+                    style={{
+                      ...styles.label,
+                      marginBottom: 0,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    STR Code
+                  </label>
+                  <input
+                    style={styles.input}
+                    value={product.strCode || ""}
+                    onChange={(e) =>
+                      handleProductChange(index, "strCode", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
 
-            {/* NFEI Category */}
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="NFEI Category"
-                value={product.nfeiCategory || ''}
-                onChange={(e) => handleProductChange(index, 'nfeiCategory', e.target.value)}
-              />
-            </Grid>
-
-            {/* End Use */}
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="End Use"
-                value={product.endUse || ''}
-                onChange={(e) => handleProductChange(index, 'endUse', e.target.value)}
-              />
-            </Grid>
-
-            {/* PTA/FTA Info */}
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="PTA/FTA Info"
-                value={product.ptaFtaInfo || ''}
-                onChange={(e) => handleProductChange(index, 'ptaFtaInfo', e.target.value)}
-              />
-            </Grid>
-
-            {/* Reward Item */}
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Reward Item"
-                value={product.rewardItem || ''}
-                onChange={(e) => handleProductChange(index, 'rewardItem', e.target.value)}
-              />
-            </Grid>
-
-            {/* STR Code */}
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="STR Code"
-                value={product.strCode || ''}
-                onChange={(e) => handleProductChange(index, 'strCode', e.target.value)}
-              />
-            </Grid>
-
-            {/* Origin District */}
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
+              {/* Row 2 */}
+              <div style={styles.field}>
+                <label style={styles.label}>End Use</label>
+                <input
+                  style={styles.input}
+                  value={product.endUse || ""}
+                  onChange={(e) =>
+                    handleProductChange(index, "endUse", e.target.value)
+                  }
+                />
+              </div>
+              <DistrictApiField
                 label="Origin District"
-                value={product.originDistrict || ''}
-                onChange={(e) => handleProductChange(index, 'originDistrict', e.target.value)}
+                fieldName="originDistrict"
+                productIndex={index}
+                placeholder="Type Code/Name"
+                formik={formik}
+                handleProductChange={handleProductChange}
               />
-            </Grid>
+              <div style={styles.field} ref={stateData.wrapperRef}>
+                <div style={styles.label}>Origin State</div>
+                <div style={styles.acWrap}>
+                  <input
+                    style={styles.input}
+                    placeholder="State"
+                    autoComplete="off"
+                    value={toUpper(stateData.query)}
+                    onChange={stateData.handleInput}
+                    onFocus={() => {
+                      stateData.setOpen(true);
+                      stateData.setActive(-1);
+                    }}
+                    onKeyDown={(e) => {
+                      if (!stateData.open) return;
+                      if (e.key === "ArrowDown")
+                        stateData.setActive((a) =>
+                          Math.min(
+                            stateData.filteredStates.length - 1,
+                            a < 0 ? 0 : a + 1
+                          )
+                        );
+                      else if (e.key === "ArrowUp")
+                        stateData.setActive((a) => Math.max(0, a - 1));
+                      else if (e.key === "Enter" && stateData.active >= 0) {
+                        e.preventDefault();
+                        stateData.handleSelect(stateData.active);
+                      } else if (e.key === "Escape") stateData.setOpen(false);
+                    }}
+                  />
+                  {stateData.open && stateData.filteredStates.length > 0 && (
+                    <div style={styles.acMenu}>
+                      {stateData.filteredStates.map((state, i) => (
+                        <div
+                          key={i}
+                          style={styles.acItem(stateData.active === i)}
+                          onMouseDown={() => stateData.handleSelect(i)}
+                          onMouseEnter={() => stateData.setActive(i)}
+                        >
+                          {toUpper(
+                            typeof state === "string" ? state : state.name || ""
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-            {/* Origin State */}
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Origin State"
-                value={product.originState || ''}
-                onChange={(e) => handleProductChange(index, 'originState', e.target.value)}
+              {/* Row 3 */}
+              <PtaFtaField
+                label="PTA/FTA Info"
+                fieldName="ptaFtaInfo"
+                productIndex={index}
+                placeholder="Select PTA/FTA"
+                formik={formik}
+                handleProductChange={handleProductChange}
               />
-            </Grid>
+              <div style={styles.field}>
+                <label style={styles.label}>Alternate Qty</label>
+                <input
+                  style={styles.input}
+                  type="number"
+                  value={product.alternateQty || 0}
+                  onChange={(e) =>
+                    handleProductChange(
+                      index,
+                      "alternateQty",
+                      parseFloat(e.target.value) || 0
+                    )
+                  }
+                />
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>Material Code</label>
+                <input
+                  style={styles.input}
+                  value={product.materialCode || ""}
+                  onChange={(e) =>
+                    handleProductChange(index, "materialCode", e.target.value)
+                  }
+                />
+              </div>
 
-            {/* Alternate Quantity */}
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="Alternate Qty"
-                value={product.alternateQty || 0}
-                onChange={(e) => handleProductChange(index, 'alternateQty', parseFloat(e.target.value) || 0)}
-              />
-            </Grid>
+              {/* Row 4 */}
+              <div style={styles.field}>
+                <label style={styles.label}>Medicinal Plant</label>
+                <input
+                  style={styles.input}
+                  value={product.medicinalPlant || ""}
+                  onChange={(e) =>
+                    handleProductChange(index, "medicinalPlant", e.target.value)
+                  }
+                />
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>Formulation</label>
+                <input
+                  style={styles.input}
+                  value={product.formulation || ""}
+                  onChange={(e) =>
+                    handleProductChange(index, "formulation", e.target.value)
+                  }
+                />
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>Surface Material in Contact</label>
+                <input
+                  style={styles.input}
+                  value={product.surfaceMaterialInContact || ""}
+                  onChange={(e) =>
+                    handleProductChange(
+                      index,
+                      "surfaceMaterialInContact",
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
 
-            {/* Material Code */}
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Material Code"
-                value={product.materialCode || ''}
-                onChange={(e) => handleProductChange(index, 'materialCode', e.target.value)}
-              />
-            </Grid>
-
-            {/* Medicinal Plant */}
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Medicinal Plant"
-                value={product.medicinalPlant || ''}
-                onChange={(e) => handleProductChange(index, 'medicinalPlant', e.target.value)}
-              />
-            </Grid>
-
-            {/* Formulation */}
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Formulation"
-                value={product.formulation || ''}
-                onChange={(e) => handleProductChange(index, 'formulation', e.target.value)}
-              />
-            </Grid>
-
-            {/* Surface Material in Contact */}
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Surface Material in Contact"
-                value={product.surfaceMaterialInContact || ''}
-                onChange={(e) => handleProductChange(index, 'surfaceMaterialInContact', e.target.value)}
-              />
-            </Grid>
-
-            {/* Lab Grown Diamond */}
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Lab Grown Diamond"
-                value={product.labGrownDiamond || ''}
-                onChange={(e) => handleProductChange(index, 'labGrownDiamond', e.target.value)}
-              />
-            </Grid>
-          </Grid>
-
-          <Divider sx={{ my: 2 }} />
-
-          {/* PMV Info Section */}
-          <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-            PMV Info
-          </Typography>
-          <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Currency</InputLabel>
-                <Select
-                  value={product.currency || 'INR'}
-                  label="Currency"
-                  onChange={(e) => handleProductChange(index, 'currency', e.target.value)}
+              {/* Row 5 */}
+              <div style={styles.field}>
+                <label style={styles.label}>Lab Grown Diamond</label>
+                <select
+                  style={styles.select}
+                  value={product.labGrownDiamond || ""}
+                  onChange={(e) =>
+                    handleProductChange(
+                      index,
+                      "labGrownDiamond",
+                      e.target.value
+                    )
+                  }
                 >
-                  <MenuItem value="INR">INR</MenuItem>
-                  <MenuItem value="USD">USD</MenuItem>
-                  <MenuItem value="EUR">EUR</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+                  <option value="">Select</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+            </div>
 
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Calc. Method"
-                value={product.calculationMethod || ''}
-                onChange={(e) => handleProductChange(index, 'calculationMethod', e.target.value)}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="% age"
-                value={product.percentage || 0}
-                onChange={(e) => handleProductChange(index, 'percentage', parseFloat(e.target.value) || 0)}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="PMV/Unit"
-                value={product.pmvPerUnit || 0}
-                onChange={(e) => handleProductChange(index, 'pmvPerUnit', parseFloat(e.target.value) || 0)}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="Total PMV"
-                value={product.totalPMV || 0}
-                onChange={(e) => handleProductChange(index, 'totalPMV', parseFloat(e.target.value) || 0)}
-              />
-            </Grid>
-          </Grid>
-
-          {/* IGST & Compensation Cess Section */}
-          <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-            IGST & Compensation Cess Info
-          </Typography>
-          <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>IGST Pymt Status</InputLabel>
-                <Select
-                  value={product.igstPaymentStatus || ''}
-                  label="IGST Pymt Status"
-                  onChange={(e) => handleProductChange(index, 'igstPaymentStatus', e.target.value)}
+            {/* 2. PMV INFO */}
+            <div style={styles.subSectionTitle}>PMV Info</div>
+            <div style={styles.grid4}>
+              <div style={styles.field}>
+                <label style={styles.label}>Currency</label>
+                <select
+                  style={styles.select}
+                  value={product.pmvCurrency || "INR"}
+                  onChange={(e) =>
+                    handleProductChange(index, "pmvCurrency", e.target.value)
+                  }
                 >
-                  <MenuItem value="Export Against Pay">Export Against Pay</MenuItem>
-                  <MenuItem value="Not Applicable">Not Applicable</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+                  <option value="INR">INR</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>Calc. Method</label>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <select
+                    style={{ ...styles.select, width: "60%" }}
+                    value={product.pmvCalcMethod || "percentage"}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "pmvCalcMethod",
+                        e.target.value
+                      )
+                    }
+                  >
+                    <option value="percentage">%age</option>
+                    <option value="value">Value</option>
+                  </select>
+                  <input
+                    style={{ ...styles.input, width: "40%" }}
+                    type="number"
+                    value={product.pmvPercentage || 110.0}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "pmvPercentage",
+                        parseFloat(e.target.value)
+                      )
+                    }
+                  />
+                </div>
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>PMV/Unit</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    style={{ ...styles.input, paddingRight: 35 }}
+                    type="number"
+                    value={product.pmvUnitValue || 0}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "pmvUnitValue",
+                        parseFloat(e.target.value)
+                      )
+                    }
+                  />
+                  <span
+                    style={{
+                      position: "absolute",
+                      right: 5,
+                      top: 5,
+                      fontSize: 10,
+                      color: "#666",
+                    }}
+                  >
+                    INR
+                  </span>
+                </div>
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>Total PMV</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    style={{ ...styles.input, paddingRight: 35 }}
+                    type="number"
+                    value={product.totalPmv || 0}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "totalPmv",
+                        parseFloat(e.target.value)
+                      )
+                    }
+                  />
+                  <span
+                    style={{
+                      position: "absolute",
+                      right: 5,
+                      top: 5,
+                      fontSize: 10,
+                      color: "#666",
+                    }}
+                  >
+                    INR
+                  </span>
+                </div>
+              </div>
+            </div>
 
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="Taxable Value (INR)"
-                value={product.taxableValueINR || 0}
-                onChange={(e) => handleProductChange(index, 'taxableValueINR', parseFloat(e.target.value) || 0)}
-              />
-            </Grid>
+            {/* 3. IGST INFO */}
+            <div style={styles.subSectionTitle}>
+              IGST & Compensation Cess Info
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: 16,
+                marginBottom: 8,
+              }}
+            >
+              {/* Col 1 */}
+              <div style={{ display: "grid", gap: 8 }}>
+                <div style={styles.field}>
+                  <label style={styles.label}>IGST Pymt Status</label>
+                  <select
+                    style={styles.select}
+                    value={product.igstStatus || "LUT"}
+                    onChange={(e) =>
+                      handleProductChange(index, "igstStatus", e.target.value)
+                    }
+                  >
+                    <option value="LUT">LUT (BOND)</option>
+                    <option value="Export Against Payment">
+                      Export Against Payment
+                    </option>
+                  </select>
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label}>IGST Rate (%)</label>
+                  <input
+                    style={styles.input}
+                    type="number"
+                    value={product.igstRate || 0}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "igstRate",
+                        parseFloat(e.target.value)
+                      )
+                    }
+                  />
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label}>Comp. Cess(%)</label>
+                  <input
+                    style={styles.input}
+                    type="number"
+                    value={product.compensationCessRate || 0}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "compensationCessRate",
+                        parseFloat(e.target.value)
+                      )
+                    }
+                  />
+                </div>
+              </div>
+              {/* Col 2 */}
+              <div style={{ display: "grid", gap: 8 }}>
+                <div style={styles.field}>
+                  <label style={styles.label}>Taxable Value (INR)</label>
+                  <input
+                    style={styles.input}
+                    type="number"
+                    value={product.taxableValue || 0}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "taxableValue",
+                        parseFloat(e.target.value)
+                      )
+                    }
+                  />
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label}>IGST Amt (INR)</label>
+                  <input
+                    style={styles.input}
+                    type="number"
+                    value={product.igstAmount || 0}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "igstAmount",
+                        parseFloat(e.target.value)
+                      )
+                    }
+                  />
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label}>Comp. Cess Amt(INR)</label>
+                  <input
+                    style={styles.input}
+                    type="number"
+                    value={product.compensationCessAmount || 0}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "compensationCessAmount",
+                        parseFloat(e.target.value)
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            </div>
 
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="IGST Rate (%)"
-                value={product.igstRate || 0}
-                onChange={(e) => handleProductChange(index, 'igstRate', parseFloat(e.target.value) || 0)}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="IGST Amt (INR)"
-                value={product.igstAmountINR || 0}
-                onChange={(e) => handleProductChange(index, 'igstAmountINR', parseFloat(e.target.value) || 0)}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="Comp. Cess Amt (INR)"
-                value={product.compensationCessAmountINR || 0}
-                onChange={(e) => handleProductChange(index, 'compensationCessAmountINR', parseFloat(e.target.value) || 0)}
-              />
-            </Grid>
-          </Grid>
-
-          {/* RODTEP Info Section */}
-          <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-            RODTEP Info
-          </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>RODTEP Claim</InputLabel>
-                <Select
-                  value={product.rodtepClaim || ''}
-                  label="RODTEP Claim"
-                  onChange={(e) => handleProductChange(index, 'rodtepClaim', e.target.value)}
+            {/* 4. RODTEP INFO */}
+            <div style={styles.subSectionTitle}>RODTEP Info</div>
+            <div style={styles.grid3}>
+              <div style={styles.field}>
+                <label style={styles.label}>RODTEP Claim</label>
+                <select
+                  style={styles.select}
+                  value={product.claimRodtep || "Yes"}
+                  onChange={(e) =>
+                    handleProductChange(index, "claimRodtep", e.target.value)
+                  }
                 >
-                  <MenuItem value="Not Applicable">Not Applicable</MenuItem>
-                  <MenuItem value="Applicable">Applicable</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>Quantity</label>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <input
+                    style={{ ...styles.input, width: "65%" }}
+                    type="number"
+                    value={product.rodtepQuantity || 0}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "rodtepQuantity",
+                        parseFloat(e.target.value)
+                      )
+                    }
+                  />
+                  <span
+                    style={{
+                      ...styles.input,
+                      width: "35%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "#e2e8f0",
+                    }}
+                  >
+                    KGS
+                  </span>
+                </div>
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>Rate (in %)</label>
+                <input
+                  style={styles.input}
+                  type="number"
+                  value={product.rodtepRate || 0}
+                  onChange={(e) =>
+                    handleProductChange(
+                      index,
+                      "rodtepRate",
+                      parseFloat(e.target.value)
+                    )
+                  }
+                />
+              </div>
 
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="Quantity"
-                value={product.rodtepQuantity || 0}
-                onChange={(e) => handleProductChange(index, 'rodtepQuantity', parseFloat(e.target.value) || 0)}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={1.5}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="Cap Value"
-                value={product.rodtepCapValue || 0}
-                onChange={(e) => handleProductChange(index, 'rodtepCapValue', parseFloat(e.target.value) || 0)}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={1.5}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="Cap value per units"
-                value={product.rodtepCapValuePerUnits || 0}
-                onChange={(e) => handleProductChange(index, 'rodtepCapValuePerUnits', parseFloat(e.target.value) || 0)}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={1}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Unit"
-                value={product.rodtepUnit || ''}
-                onChange={(e) => handleProductChange(index, 'rodtepUnit', e.target.value)}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="Rate (in %)"
-                value={product.rodtepRatePercent || 0}
-                onChange={(e) => handleProductChange(index, 'rodtepRatePercent', parseFloat(e.target.value) || 0)}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="RODTEP Amount (INR)"
-                value={product.rodtepAmountINR || 0}
-                onChange={(e) => handleProductChange(index, 'rodtepAmountINR', parseFloat(e.target.value) || 0)}
-              />
-            </Grid>
-          </Grid>
-        </Box>
-      ))}
-    </Box>
+              <div style={styles.field}>
+                <label style={styles.label}>Cap Value</label>
+                <input
+                  style={styles.input}
+                  type="number"
+                  value={product.rodtepCapValue || 0}
+                  onChange={(e) =>
+                    handleProductChange(
+                      index,
+                      "rodtepCapValue",
+                      parseFloat(e.target.value)
+                    )
+                  }
+                />
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>Cap value per units</label>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <input
+                    style={{ ...styles.input, width: "65%" }}
+                    type="number"
+                    value={product.rodtepCapPerUnit || 0}
+                    onChange={(e) =>
+                      handleProductChange(
+                        index,
+                        "rodtepCapPerUnit",
+                        parseFloat(e.target.value)
+                      )
+                    }
+                  />
+                  <span
+                    style={{
+                      ...styles.input,
+                      width: "35%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "#e2e8f0",
+                    }}
+                  >
+                    KGS
+                  </span>
+                </div>
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>RODTEP Amount(INR)</label>
+                <input
+                  style={styles.input}
+                  type="number"
+                  value={product.rodtepAmount || 0}
+                  onChange={(e) =>
+                    handleProductChange(
+                      index,
+                      "rodtepAmount",
+                      parseFloat(e.target.value)
+                    )
+                  }
+                />
+              </div>
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#4a5568",
+                fontStyle: "italic",
+                marginTop: -8,
+              }}
+            >
+              RODTEP Amt is Calculated on FOB value
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 };
 

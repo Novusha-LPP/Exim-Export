@@ -20,6 +20,70 @@ const areDetailsSchema = new Schema(
   },
   { _id: true }
 );
+const deecSchema = new Schema(
+  {
+    isDeecItem: { type: Boolean, default: false },
+    ediRegnNo: { type: String, trim: true },
+    date: { type: Date },
+    itemSnoPartE: { type: String, trim: true },
+    exportQtyUnderLicence: { type: Number, default: 0 },
+
+    // DEEC Items table
+    deecItems: [
+      {
+        serialNumber: { type: Number },
+        itemSnoPartC: { type: String, trim: true },
+        description: { type: String, trim: true },
+        quantity: { type: Number, default: 0 },
+        unit: { type: String, trim: true },
+        itemType: {
+          type: String,
+          enum: ["Indigenous", "Imported"],
+          default: "Indigenous",
+        },
+      },
+    ],
+
+    // Reference information
+    licRefNo: { type: String, trim: true },
+    regnNo: { type: String, trim: true },
+    licDate: { type: Date },
+  },
+  { _id: true }
+);
+
+// EPCG Schema
+const epcgSchema = new Schema(
+  {
+    isEpcgItem: { type: Boolean, default: false },
+    ediRegnNo: { type: String, trim: true },
+    date: { type: Date },
+    itemSnoPartE: { type: String, trim: true },
+    exportQtyUnderLicence: { type: Number, default: 0 },
+
+    // EPCG Items table
+    epcgItems: [
+      {
+        serialNumber: { type: Number },
+        itemSnoPartC: { type: String, trim: true },
+        description: { type: String, trim: true },
+        quantity: { type: Number, default: 0 },
+        unit: { type: String, trim: true },
+        itemType: {
+          type: String,
+          enum: ["Indigenous", "Imported"],
+          default: "Indigenous",
+        },
+      },
+    ],
+
+    // Reference information
+    licRefNo: { type: String, trim: true },
+    regnNo: { type: String, trim: true },
+    licDate: { type: Date },
+  },
+  { _id: true }
+);
 
 // Product/Item Details Schema (for multiple products per invoice)
 const productDetailsSchema = new Schema(
@@ -99,7 +163,8 @@ const productDetailsSchema = new Schema(
         transitCountry: { type: String, trim: true },
       },
     },
-
+    deecDetails: deecSchema,
+    epcgDetails: epcgSchema,
     eximCode: { type: String, trim: true },
     nfeiCategory: { type: String, trim: true },
     endUse: { type: String, trim: true },
@@ -312,13 +377,11 @@ const containerDetailsSchema = new Schema(
     sealDate: Date,
     type: {
       type: String,
-     
     },
     pkgsStuffed: { type: Number, default: 0 }, // 'Pkgs Stuffed'
     grossWeight: { type: Number, default: 0 },
     sealType: {
       type: String,
-
     },
     grWtPlusTrWt: { type: Number, default: 0 },
     sealDeviceId: String,
@@ -710,7 +773,6 @@ const exportJobSchema = new mongoose.Schema(
     gstin: { type: String, trim: true },
     state: { type: String, trim: true },
 
-
     // Reference & Regulatory Fields (Missing)
     sb_date: { type: String, trim: true },
     rbi_app_no: { type: String, trim: true },
@@ -719,7 +781,6 @@ const exportJobSchema = new mongoose.Schema(
     rbi_waiver_no: { type: String, trim: true },
     epz_code: { type: String, trim: true },
     notify: { type: String, trim: true },
-
 
     // Additional Banking Fields (Missing)
     bank_branch: { type: String, trim: true },
@@ -849,13 +910,13 @@ const exportJobSchema = new mongoose.Schema(
     bank_swift_code: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Consignee/Importer Information
-consignees: [
-  {
-    consignee_name: { type: String, trim: true },
-    consignee_address: { type: String, trim: true },
-    consignee_country: { type: String, trim: true }
-  }
-],
+    consignees: [
+      {
+        consignee_name: { type: String, trim: true },
+        consignee_address: { type: String, trim: true },
+        consignee_country: { type: String, trim: true },
+      },
+    ],
 
     ////////////////////////////////////////////////// Shipment Details
     port_of_loading: { type: String, trim: true },
@@ -894,7 +955,7 @@ consignees: [
     volume_unit: { type: String, trim: true },
     chargeable_weight: { type: String, trim: true },
     chargeable_weight_unit: { type: String, trim: true },
-    
+
     dimensions_length: { type: String, trim: true },
     dimensions_width: { type: String, trim: true },
     dimensions_height: { type: String, trim: true },
@@ -923,15 +984,13 @@ consignees: [
     insurance_charges: { type: String, trim: true },
     cif_value: { type: String, trim: true },
 
-
-
     ////////////////////////////////////////////////// Containers Information
     // Note: exportContainerSchema needs to be defined separately
     containers: [exportContainerSchema],
     // Removed duplicate container_count
     stuffing_date: { type: String, trim: true },
     stuffing_supervisor: { type: String, trim: true },
-    stuffing_remarks: { type: String, trim: true }, 
+    stuffing_remarks: { type: String, trim: true },
     cfs: { type: String, trim: true },
 
     // Annex C1 Details
@@ -942,7 +1001,6 @@ consignees: [
 
     ////////////////////////////////////////////////// Regulatory Compliance
 
-   
     ////////////////////////////////////////////////// Charges and Financial
     // Note: exportChargesSchema needs to be defined separately
     export_charges: [exportChargesSchema],
@@ -1135,72 +1193,72 @@ consignees: [
       rodtepAmountINR: { type: Number, default: 0.0 },
     },
 
-  annexC1Details: {
-    ieCodeOfEOU: {
-      type: String,
-      trim: true
-    },
-    branchSerialNo: { 
-      type: Number, 
-      default: 0 
-    },
-    examinationDate: Date,
-    examiningOfficer: {
-      type: String,
-      trim: true
-    },
-    supervisingOfficer: {
-      type: String,
-      trim: true
-    },
-    commissionerate: {
-      type: String,
-      trim: true
-    },
-    verifiedByExaminingOfficer: { 
-      type: Boolean, 
-      default: false 
-    },
-    
-    // This will reference the main stuffing_seal_no
-    sealNumber: {
-      type: String,
-      ref: 'stuffing_seal_no' // Indicates this references another field
-    },
-
-    // Documents for Annex C1
-    documents: [
-      {
-        serialNo: {
-          type: Number,
-          required: true
-        },
-        documentName: {
-          type: String,
-          required: true,
-          trim: true
-        },
+    annexC1Details: {
+      ieCodeOfEOU: {
+        type: String,
+        trim: true,
       },
-    ],
+      branchSerialNo: {
+        type: Number,
+        default: 0,
+      },
+      examinationDate: Date,
+      examiningOfficer: {
+        type: String,
+        trim: true,
+      },
+      supervisingOfficer: {
+        type: String,
+        trim: true,
+      },
+      commissionerate: {
+        type: String,
+        trim: true,
+      },
+      verifiedByExaminingOfficer: {
+        type: Boolean,
+        default: false,
+      },
 
-    // Additional C1 fields
-    designation: {
-      type: String,
-      trim: true
+      // This will reference the main stuffing_seal_no
+      sealNumber: {
+        type: String,
+        ref: "stuffing_seal_no", // Indicates this references another field
+      },
+
+      // Documents for Annex C1
+      documents: [
+        {
+          serialNo: {
+            type: Number,
+            required: true,
+          },
+          documentName: {
+            type: String,
+            required: true,
+            trim: true,
+          },
+        },
+      ],
+
+      // Additional C1 fields
+      designation: {
+        type: String,
+        trim: true,
+      },
+      division: {
+        type: String,
+        trim: true,
+      },
+      range: {
+        type: String,
+        trim: true,
+      },
+      sampleForwarded: {
+        type: Boolean,
+        default: false,
+      },
     },
-    division: {
-      type: String,
-      trim: true
-    },
-    range: {
-      type: String,
-      trim: true
-    },
-    sampleForwarded: { 
-      type: Boolean, 
-      default: false 
-    },
-  },
 
     // Freight, Insurance & Other Charges
     freightInsuranceCharges: {
@@ -1374,7 +1432,6 @@ exportJobSchema.virtual("isCompleted").get(function () {
   return this.jobStatus === "Completed";
 });
 
-
 // Methods
 exportJobSchema.methods.addMilestone = function (
   milestoneName,
@@ -1425,16 +1482,16 @@ exportJobSchema.statics.findByStatus = function (status) {
 };
 
 // Virtual population for sealNumber
-exportJobSchema.virtual('annexC1Details.virtualSealNumber').get(function() {
+exportJobSchema.virtual("annexC1Details.virtualSealNumber").get(function () {
   return this.stuffing_seal_no;
 });
 
-exportJobSchema.virtual('annexC1Details.virtualSealType').get(function() {
+exportJobSchema.virtual("annexC1Details.virtualSealType").get(function () {
   return this.stuffing_seal_type;
 });
 
 // Pre-save to keep them in sync
-exportJobSchema.pre('save', function(next) {
+exportJobSchema.pre("save", function (next) {
   // Always sync the seal number from main to annex C1
   if (this.stuffing_seal_no) {
     this.annexC1Details.sealNumber = this.stuffing_seal_no;
@@ -1443,12 +1500,12 @@ exportJobSchema.pre('save', function(next) {
 });
 
 // Static method to find by seal number
-exportJobSchema.statics.findBySealNumber = function(sealNo) {
-  return this.findOne({ 
+exportJobSchema.statics.findBySealNumber = function (sealNo) {
+  return this.findOne({
     $or: [
-      { 'stuffing_seal_no': sealNo },
-      { 'annexC1Details.sealNumber': sealNo }
-    ]
+      { stuffing_seal_no: sealNo },
+      { "annexC1Details.sealNumber": sealNo },
+    ],
   });
 };
 // Create and export the model
