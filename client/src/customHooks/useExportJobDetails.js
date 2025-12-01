@@ -333,109 +333,47 @@ function useExportJobDetails(params, setFileSnackbar) {
           unitPrice: 0,
           per: "",
           amount: 0,
+
+          // General
           eximCode: "",
           nfeiCategory: "",
-          endUse: "",
-          ptaFtaInfo: "",
-          rewardItem: "",
+          rewardItem: false,
           strCode: "",
+          endUse: "",
           originDistrict: "",
           originState: "",
+          ptaFtaInfo: "",
           alternateQty: 0,
           materialCode: "",
           medicinalPlant: "",
           formulation: "",
           surfaceMaterialInContact: "",
           labGrownDiamond: "",
-          currency: "INR",
-          calculationMethod: "",
-          percentage: "",
-          pmvPerUnit: "",
-          totalPMV: "",
-          igstPaymentStatus: "",
-          taxableValueINR: "",
-          igstRate: "",
-          igstAmountINR: "",
-          compensationCessAmountINR: "",
-          rodtepClaim: "",
-          rodtepQuantity: "",
-          rodtepCapValue: "",
-          rodtepCapValuePerUnits: "",
-          rodtepUnit: "",
-          rodtepRatePercent: "",
-          rodtepAmountINR: "",
-          sbTypeDetails: "",
-          dbkType: "",
-          cessExciseDuty: 0,
-          compensationCess: 0,
-          deecDetails: {
-            isDeecItem: false,
-            ediRegnNo: "",
-            date: "",
-            itemSnoPartE: "",
-            exportQtyUnderLicence: 0,
-            deecItems: [
-              {
-                serialNumber: 1,
-                itemSnoPartC: "",
-                description: "",
-                quantity: 0,
-                unit: "",
-                itemType: "Indigenous",
-              },
-            ],
-            licRefNo: "",
-            regnNo: "",
-            licDate: "",
-          },
 
-          epcgDetails: {
-            isEpcgItem: false,
-            ediRegnNo: "",
-            date: "",
-            itemSnoPartE: "",
-            exportQtyUnderLicence: 0,
-            epcgItems: [
-              {
-                serialNumber: 1,
-                itemSnoPartC: "",
-                description: "",
-                quantity: 0,
-                unit: "",
-                itemType: "Indigenous",
-              },
-            ],
-            licRefNo: "",
-            regnNo: "",
-            licDate: "",
-          },
-
-          // PMV Info structured
+          // Grouped Data Structures
           pmvInfo: {
             currency: "INR",
-            calculationMethod: "",
+            calculationMethod: "percentage",
+            percentage: 110.0,
             pmvPerUnit: 0,
             totalPMV: 0,
           },
-
-          // IGST & Compensation Cess structured
           igstCompensationCess: {
-            igstPaymentStatus: "",
+            igstPaymentStatus: "LUT",
             taxableValueINR: 0,
-            igstRate: 0,
+            igstRate: 18.0,
             igstAmountINR: 0,
+            compensationCessRate: 0,
             compensationCessAmountINR: 0,
           },
-
-          // RODTEP structured
           rodtepInfo: {
-            claim: "",
+            claim: "Yes",
             quantity: 0,
+            ratePercent: 0.9,
             capValue: 0,
             capValuePerUnits: 0,
-            unit: "",
-            ratePercent: 0,
             amountINR: 0,
+            unit: "KGS",
           },
           areDetails: [
             {
@@ -880,8 +818,6 @@ function useExportJobDetails(params, setFileSnackbar) {
           syncedValues,
           { headers }
         );
-
-        console.log("Update response:", response.data);
 
         if (setFileSnackbar) {
           setFileSnackbar(true);

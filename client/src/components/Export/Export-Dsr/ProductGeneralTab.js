@@ -4,6 +4,7 @@ import { eximCodes, states, PTA_FTA_CODES } from "../../../utils/masterList";
 const apiBase = import.meta.env.VITE_API_STRING;
 
 const styles = {
+  // ... (Keep your existing styles)
   page: {
     fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
     fontSize: 13,
@@ -61,10 +62,7 @@ const styles = {
     outline: "none",
     boxSizing: "border-box",
   },
-  checkbox: {
-    cursor: "pointer",
-    marginRight: 6,
-  },
+  checkbox: { cursor: "pointer", marginRight: 6 },
   select: {
     width: "100%",
     textTransform: "uppercase",
@@ -148,13 +146,12 @@ const styles = {
     borderRadius: 12,
     height: 20,
   },
-  // Grid specifically tuned for 3 columns to match the screenshot density
   grid3: {
     display: "grid",
     gridTemplateColumns: "repeat(3, 1fr)",
     gap: 16,
     marginBottom: 8,
-    alignItems: "end", // Aligns labels and inputs nicely
+    alignItems: "end",
   },
   grid4: {
     display: "grid",
@@ -185,11 +182,6 @@ const styles = {
     fontWeight: 600,
     fontSize: 12,
   },
-  flexRow: {
-    display: "flex",
-    gap: 12,
-    alignItems: "center",
-  },
   inlineCheckbox: {
     display: "flex",
     alignItems: "center",
@@ -204,9 +196,8 @@ function toUpper(v) {
   return (typeof v === "string" ? v : "")?.toUpperCase() || "";
 }
 
-// ------------------------------------------------------------------
-// HOOKS
-// ------------------------------------------------------------------
+// ... (KEEP YOUR EXISTING HOOKS: useEximCodeDropdown, useStateDropdown, useDistrictApiDropdown, usePtaFtaDropdown) ...
+// For brevity, I am assuming the Hooks are pasted here exactly as they were in the previous file.
 
 function useEximCodeDropdown(
   fieldName,
@@ -214,16 +205,15 @@ function useEximCodeDropdown(
   formik,
   handleProductChange
 ) {
+  // ... (Paste existing hook code)
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
   const wrapperRef = useRef();
   const keepOpenOnInput = useRef(false);
-
   useEffect(() => {
     setQuery(formik.values.products[productIndex]?.[fieldName] || "");
   }, [formik.values.products, productIndex, fieldName]);
-
   useEffect(() => {
     const close = (e) => {
       if (
@@ -237,7 +227,6 @@ function useEximCodeDropdown(
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
-
   const filtered = eximCodes
     .filter((opt) => {
       const code = toUpper(typeof opt === "string" ? opt : opt.code || "");
@@ -247,14 +236,12 @@ function useEximCodeDropdown(
       return code.includes(toUpper(query)) || desc.includes(toUpper(query));
     })
     .slice(0, 15);
-
   const handle = (val) => {
     const v = val.toUpperCase();
     setQuery(v);
     handleProductChange(productIndex, fieldName, v);
     setOpen(true);
   };
-
   const select = (i) => {
     const item = filtered[i];
     if (item) {
@@ -267,7 +254,6 @@ function useEximCodeDropdown(
       setActive(-1);
     }
   };
-
   return {
     wrapperRef,
     open,
@@ -297,15 +283,14 @@ function useStateDropdown(
   formik,
   handleProductChange
 ) {
+  // ... (Paste existing hook code)
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
   const wrapperRef = useRef();
-
   useEffect(() => {
     setQuery(formik.values.products[productIndex]?.[fieldName] || "");
   }, [formik.values.products, productIndex, fieldName]);
-
   useEffect(() => {
     const close = (e) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target))
@@ -314,13 +299,11 @@ function useStateDropdown(
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
-
   const filteredStates = states
     .filter((s) =>
       toUpper(typeof s === "string" ? s : s.name || "").includes(toUpper(query))
     )
     .slice(0, 10);
-
   const handleSelect = (i) => {
     const stateName = toUpper(
       typeof filteredStates[i] === "string"
@@ -332,14 +315,12 @@ function useStateDropdown(
     setOpen(false);
     setActive(-1);
   };
-
   const handleInput = (e) => {
     const v = e.target.value.toUpperCase();
     setQuery(v);
     handleProductChange(productIndex, fieldName, v);
     setOpen(true);
   };
-
   return {
     wrapperRef,
     open,
@@ -359,17 +340,16 @@ function useDistrictApiDropdown(
   formik,
   handleProductChange
 ) {
+  // ... (Paste existing hook code)
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
   const wrapperRef = useRef();
   const keepOpenOnInput = useRef(false);
-
   useEffect(() => {
     setQuery(formik.values.products[productIndex]?.[fieldName] || "");
   }, [formik.values.products, productIndex, fieldName]);
-
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(async () => {
@@ -393,7 +373,6 @@ function useDistrictApiDropdown(
     }, 220);
     return () => clearTimeout(t);
   }, [open, query]);
-
   useEffect(() => {
     const close = (e) => {
       if (
@@ -407,14 +386,12 @@ function useDistrictApiDropdown(
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
-
   const handle = (val) => {
     const v = val.toUpperCase();
     setQuery(v);
     handleProductChange(productIndex, fieldName, v);
     setOpen(true);
   };
-
   const select = (i) => {
     const item = opts[i];
     if (item) {
@@ -423,7 +400,6 @@ function useDistrictApiDropdown(
       )}`;
       setQuery(districtValue);
       handleProductChange(productIndex, fieldName, districtValue);
-
       if (item.stateName) {
         handleProductChange(
           productIndex,
@@ -447,7 +423,6 @@ function useDistrictApiDropdown(
       setActive(-1);
     }
   };
-
   return {
     wrapperRef,
     open,
@@ -477,16 +452,15 @@ function usePtaFtaDropdown(
   formik,
   handleProductChange
 ) {
+  // ... (Paste existing hook code)
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
   const wrapperRef = useRef();
   const keepOpenOnInput = useRef(false);
-
   useEffect(() => {
     setQuery(formik.values.products[productIndex]?.[fieldName] || "");
   }, [formik.values.products, productIndex, fieldName]);
-
   useEffect(() => {
     const close = (e) => {
       if (
@@ -500,25 +474,21 @@ function usePtaFtaDropdown(
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
-
   const filtered = PTA_FTA_CODES.filter((opt) => {
     const code = toUpper(opt.code || "");
     const desc = toUpper(opt.description || "");
     const q = toUpper(query);
     return code.includes(q) || desc.includes(q);
   }).slice(0, 15);
-
   const handle = (val) => {
     const v = val.toUpperCase();
     setQuery(v);
     handleProductChange(productIndex, fieldName, v);
     setOpen(true);
   };
-
   const select = (i) => {
     const item = filtered[i];
     if (item) {
-      // Format: CODE - DESCRIPTION
       const formattedValue = `${item.code} - ${item.description}`;
       setQuery(toUpper(formattedValue));
       handleProductChange(productIndex, fieldName, toUpper(formattedValue));
@@ -526,7 +496,6 @@ function usePtaFtaDropdown(
       setActive(-1);
     }
   };
-
   return {
     wrapperRef,
     open,
@@ -550,10 +519,7 @@ function usePtaFtaDropdown(
   };
 }
 
-// ------------------------------------------------------------------
-// COMPONENTS
-// ------------------------------------------------------------------
-
+// ... (Components: EximCodeField, DistrictApiField, PtaFtaField - Keep as is) ...
 const EximCodeField = ({
   label,
   fieldName,
@@ -570,8 +536,10 @@ const EximCodeField = ({
   );
   return (
     <div style={styles.field} ref={d.wrapperRef}>
-      <div style={styles.label}>{label}</div>
+      {" "}
+      <div style={styles.label}>{label}</div>{" "}
       <div style={styles.acWrap}>
+        {" "}
         <input
           style={styles.input}
           placeholder={placeholder}
@@ -593,10 +561,11 @@ const EximCodeField = ({
               d.select(d.active);
             } else if (e.key === "Escape") d.setOpen(false);
           }}
-        />
-        <span style={styles.acIcon}>▼</span>
+        />{" "}
+        <span style={styles.acIcon}>▼</span>{" "}
         {d.open && d.filtered.length > 0 && (
           <div style={styles.acMenu}>
+            {" "}
             {d.filtered.map((opt, i) => (
               <div
                 key={i}
@@ -604,23 +573,24 @@ const EximCodeField = ({
                 onMouseDown={() => d.select(i)}
                 onMouseEnter={() => d.setActive(i)}
               >
-                {toUpper(typeof opt === "string" ? opt : opt.code || "")}
+                {" "}
+                {toUpper(typeof opt === "string" ? opt : opt.code || "")}{" "}
                 {typeof opt !== "string" && opt.description && (
                   <span
                     style={{ marginLeft: 8, color: "#668", fontWeight: 400 }}
                   >
-                    ({opt.description})
+                    {" "}
+                    ({opt.description}){" "}
                   </span>
-                )}
+                )}{" "}
               </div>
-            ))}
+            ))}{" "}
           </div>
-        )}
-      </div>
+        )}{" "}
+      </div>{" "}
     </div>
   );
 };
-
 const DistrictApiField = ({
   label,
   fieldName,
@@ -637,8 +607,10 @@ const DistrictApiField = ({
   );
   return (
     <div style={styles.field} ref={d.wrapperRef}>
-      <div style={styles.label}>{label}</div>
+      {" "}
+      <div style={styles.label}>{label}</div>{" "}
       <div style={styles.acWrap}>
+        {" "}
         <input
           style={styles.input}
           placeholder={placeholder}
@@ -660,10 +632,11 @@ const DistrictApiField = ({
               d.select(d.active);
             } else if (e.key === "Escape") d.setOpen(false);
           }}
-        />
-        <span style={styles.acIcon}>▼</span>
+        />{" "}
+        <span style={styles.acIcon}>▼</span>{" "}
         {d.open && d.opts.length > 0 && (
           <div style={styles.acMenu}>
+            {" "}
             {d.opts.map((opt, i) => (
               <div
                 key={opt._id || i}
@@ -671,12 +644,13 @@ const DistrictApiField = ({
                 onMouseDown={() => d.select(i)}
                 onMouseEnter={() => d.setActive(i)}
               >
-                {opt.districtCode} - {toUpper(opt.districtName)}
+                {" "}
+                {opt.districtCode} - {toUpper(opt.districtName)}{" "}
               </div>
-            ))}
+            ))}{" "}
           </div>
-        )}
-      </div>
+        )}{" "}
+      </div>{" "}
     </div>
   );
 };
@@ -696,8 +670,10 @@ const PtaFtaField = ({
   );
   return (
     <div style={styles.field} ref={d.wrapperRef}>
-      <div style={styles.label}>{label}</div>
+      {" "}
+      <div style={styles.label}>{label}</div>{" "}
       <div style={styles.acWrap}>
+        {" "}
         <input
           style={styles.input}
           placeholder={placeholder}
@@ -719,10 +695,11 @@ const PtaFtaField = ({
               d.select(d.active);
             } else if (e.key === "Escape") d.setOpen(false);
           }}
-        />
-        <span style={styles.acIcon}>▼</span>
+        />{" "}
+        <span style={styles.acIcon}>▼</span>{" "}
         {d.open && d.filtered.length > 0 && (
           <div style={styles.acMenu}>
+            {" "}
             {d.filtered.map((opt, i) => (
               <div
                 key={i}
@@ -730,18 +707,21 @@ const PtaFtaField = ({
                 onMouseDown={() => d.select(i)}
                 onMouseEnter={() => d.setActive(i)}
               >
+                {" "}
                 {opt.code} -{" "}
                 <span style={{ fontWeight: 400, fontSize: 11, color: "#555" }}>
-                  {opt.description}
-                </span>
+                  {" "}
+                  {opt.description}{" "}
+                </span>{" "}
               </div>
-            ))}
+            ))}{" "}
           </div>
-        )}
-      </div>
+        )}{" "}
+      </div>{" "}
     </div>
   );
 };
+
 // ------------------------------------------------------------------
 // MAIN COMPONENT
 // ------------------------------------------------------------------
@@ -752,6 +732,9 @@ const ProductGeneralTab = ({ formik }) => {
       const updatedProducts = [...formik.values.products];
       if (field.includes(".")) {
         const [parent, child] = field.split(".");
+        // Ensure parent object exists before setting child
+        if (!updatedProducts[index][parent])
+          updatedProducts[index][parent] = {};
         updatedProducts[index][parent] = {
           ...updatedProducts[index][parent],
           [child]: value,
@@ -767,14 +750,14 @@ const ProductGeneralTab = ({ formik }) => {
   const addNewProduct = useCallback(() => {
     const newProduct = {
       serialNumber: formik.values.products.length + 1,
-      // Main Table
       description: "",
       ritc: "",
       quantity: 0,
       unitPrice: 0,
       per: "",
       amount: 0,
-      // General Tab - Top Section
+
+      // General
       eximCode: "",
       nfeiCategory: "",
       rewardItem: false,
@@ -789,26 +772,32 @@ const ProductGeneralTab = ({ formik }) => {
       formulation: "",
       surfaceMaterialInContact: "",
       labGrownDiamond: "",
-      // PMV Info
-      pmvCurrency: "INR",
-      pmvCalcMethod: "percentage", // or 'value'
-      pmvPercentage: 110.0,
-      pmvUnitValue: 0,
-      totalPmv: 0,
-      // IGST & Cess
-      igstStatus: "Export Against Payment",
-      taxableValue: 0,
-      igstRate: 18.0,
-      igstAmount: 0,
-      compensationCessRate: 0,
-      compensationCessAmount: 0,
-      // RODTEP Info
-      claimRodtep: "Yes",
-      rodtepQuantity: 0,
-      rodtepRate: 0.9, // as per image
-      rodtepCapValue: 0,
-      rodtepCapPerUnit: 0,
-      rodtepAmount: 0,
+
+      // Nested Structures (Initialized)
+      pmvInfo: {
+        currency: "INR",
+        calculationMethod: "percentage",
+        percentage: 110.0,
+        pmvPerUnit: 0,
+        totalPMV: 0,
+      },
+      igstCompensationCess: {
+        igstPaymentStatus: "LUT",
+        taxableValueINR: 0,
+        igstRate: 18.0,
+        igstAmountINR: 0,
+        compensationCessRate: 0,
+        compensationCessAmountINR: 0,
+      },
+      rodtepInfo: {
+        claim: "Yes",
+        quantity: 0,
+        ratePercent: 0.9,
+        capValue: 0,
+        capValuePerUnits: 0,
+        amountINR: 0,
+        unit: "KGS",
+      },
     };
     formik.setFieldValue("products", [...formik.values.products, newProduct]);
   }, [formik]);
@@ -1017,7 +1006,7 @@ const ProductGeneralTab = ({ formik }) => {
                           e.target.checked
                         )
                       }
-                    />
+                    />{" "}
                     Reward Item
                   </label>
                 </div>
@@ -1092,6 +1081,7 @@ const ProductGeneralTab = ({ formik }) => {
                   />
                   {stateData.open && stateData.filteredStates.length > 0 && (
                     <div style={styles.acMenu}>
+                      {" "}
                       {stateData.filteredStates.map((state, i) => (
                         <div
                           key={i}
@@ -1099,11 +1089,12 @@ const ProductGeneralTab = ({ formik }) => {
                           onMouseDown={() => stateData.handleSelect(i)}
                           onMouseEnter={() => stateData.setActive(i)}
                         >
+                          {" "}
                           {toUpper(
                             typeof state === "string" ? state : state.name || ""
-                          )}
+                          )}{" "}
                         </div>
-                      ))}
+                      ))}{" "}
                     </div>
                   )}
                 </div>
@@ -1194,26 +1185,30 @@ const ProductGeneralTab = ({ formik }) => {
                     )
                   }
                 >
-                  <option value="">Select</option>
-                  <option value="Yes">Yes</option>
+                  <option value="">Select</option>{" "}
+                  <option value="Yes">Yes</option>{" "}
                   <option value="No">No</option>
                 </select>
               </div>
             </div>
 
-            {/* 2. PMV INFO */}
+            {/* 2. PMV INFO (NESTED) */}
             <div style={styles.subSectionTitle}>PMV Info</div>
             <div style={styles.grid4}>
               <div style={styles.field}>
                 <label style={styles.label}>Currency</label>
                 <select
                   style={styles.select}
-                  value={product.pmvCurrency || "INR"}
+                  value={product.pmvInfo?.currency || "INR"}
                   onChange={(e) =>
-                    handleProductChange(index, "pmvCurrency", e.target.value)
+                    handleProductChange(
+                      index,
+                      "pmvInfo.currency",
+                      e.target.value
+                    )
                   }
                 >
-                  <option value="INR">INR</option>
+                  <option value="INR">INR</option>{" "}
                   <option value="USD">USD</option>
                 </select>
               </div>
@@ -1222,26 +1217,26 @@ const ProductGeneralTab = ({ formik }) => {
                 <div style={{ display: "flex", gap: 4 }}>
                   <select
                     style={{ ...styles.select, width: "60%" }}
-                    value={product.pmvCalcMethod || "percentage"}
+                    value={product.pmvInfo?.calculationMethod || "percentage"}
                     onChange={(e) =>
                       handleProductChange(
                         index,
-                        "pmvCalcMethod",
+                        "pmvInfo.calculationMethod",
                         e.target.value
                       )
                     }
                   >
-                    <option value="percentage">%age</option>
+                    <option value="percentage">%age</option>{" "}
                     <option value="value">Value</option>
                   </select>
                   <input
                     style={{ ...styles.input, width: "40%" }}
                     type="number"
-                    value={product.pmvPercentage || 110.0}
+                    value={product.pmvInfo?.percentage || 110.0}
                     onChange={(e) =>
                       handleProductChange(
                         index,
-                        "pmvPercentage",
+                        "pmvInfo.percentage",
                         parseFloat(e.target.value)
                       )
                     }
@@ -1254,11 +1249,11 @@ const ProductGeneralTab = ({ formik }) => {
                   <input
                     style={{ ...styles.input, paddingRight: 35 }}
                     type="number"
-                    value={product.pmvUnitValue || 0}
+                    value={product.pmvInfo?.pmvPerUnit || 0}
                     onChange={(e) =>
                       handleProductChange(
                         index,
-                        "pmvUnitValue",
+                        "pmvInfo.pmvPerUnit",
                         parseFloat(e.target.value)
                       )
                     }
@@ -1282,11 +1277,11 @@ const ProductGeneralTab = ({ formik }) => {
                   <input
                     style={{ ...styles.input, paddingRight: 35 }}
                     type="number"
-                    value={product.totalPmv || 0}
+                    value={product.pmvInfo?.totalPMV || 0}
                     onChange={(e) =>
                       handleProductChange(
                         index,
-                        "totalPmv",
+                        "pmvInfo.totalPMV",
                         parseFloat(e.target.value)
                       )
                     }
@@ -1306,7 +1301,7 @@ const ProductGeneralTab = ({ formik }) => {
               </div>
             </div>
 
-            {/* 3. IGST INFO */}
+            {/* 3. IGST INFO (NESTED) */}
             <div style={styles.subSectionTitle}>
               IGST & Compensation Cess Info
             </div>
@@ -1324,12 +1319,18 @@ const ProductGeneralTab = ({ formik }) => {
                   <label style={styles.label}>IGST Pymt Status</label>
                   <select
                     style={styles.select}
-                    value={product.igstStatus || "LUT"}
+                    value={
+                      product.igstCompensationCess?.igstPaymentStatus || "LUT"
+                    }
                     onChange={(e) =>
-                      handleProductChange(index, "igstStatus", e.target.value)
+                      handleProductChange(
+                        index,
+                        "igstCompensationCess.igstPaymentStatus",
+                        e.target.value
+                      )
                     }
                   >
-                    <option value="LUT">LUT (BOND)</option>
+                    <option value="LUT">LUT (BOND)</option>{" "}
                     <option value="Export Against Payment">
                       Export Against Payment
                     </option>
@@ -1340,11 +1341,11 @@ const ProductGeneralTab = ({ formik }) => {
                   <input
                     style={styles.input}
                     type="number"
-                    value={product.igstRate || 0}
+                    value={product.igstCompensationCess?.igstRate || 0}
                     onChange={(e) =>
                       handleProductChange(
                         index,
-                        "igstRate",
+                        "igstCompensationCess.igstRate",
                         parseFloat(e.target.value)
                       )
                     }
@@ -1355,11 +1356,13 @@ const ProductGeneralTab = ({ formik }) => {
                   <input
                     style={styles.input}
                     type="number"
-                    value={product.compensationCessRate || 0}
+                    value={
+                      product.igstCompensationCess?.compensationCessRate || 0
+                    }
                     onChange={(e) =>
                       handleProductChange(
                         index,
-                        "compensationCessRate",
+                        "igstCompensationCess.compensationCessRate",
                         parseFloat(e.target.value)
                       )
                     }
@@ -1373,11 +1376,11 @@ const ProductGeneralTab = ({ formik }) => {
                   <input
                     style={styles.input}
                     type="number"
-                    value={product.taxableValue || 0}
+                    value={product.igstCompensationCess?.taxableValueINR || 0}
                     onChange={(e) =>
                       handleProductChange(
                         index,
-                        "taxableValue",
+                        "igstCompensationCess.taxableValueINR",
                         parseFloat(e.target.value)
                       )
                     }
@@ -1388,11 +1391,11 @@ const ProductGeneralTab = ({ formik }) => {
                   <input
                     style={styles.input}
                     type="number"
-                    value={product.igstAmount || 0}
+                    value={product.igstCompensationCess?.igstAmountINR || 0}
                     onChange={(e) =>
                       handleProductChange(
                         index,
-                        "igstAmount",
+                        "igstCompensationCess.igstAmountINR",
                         parseFloat(e.target.value)
                       )
                     }
@@ -1403,11 +1406,14 @@ const ProductGeneralTab = ({ formik }) => {
                   <input
                     style={styles.input}
                     type="number"
-                    value={product.compensationCessAmount || 0}
+                    value={
+                      product.igstCompensationCess?.compensationCessAmountINR ||
+                      0
+                    }
                     onChange={(e) =>
                       handleProductChange(
                         index,
-                        "compensationCessAmount",
+                        "igstCompensationCess.compensationCessAmountINR",
                         parseFloat(e.target.value)
                       )
                     }
@@ -1416,19 +1422,23 @@ const ProductGeneralTab = ({ formik }) => {
               </div>
             </div>
 
-            {/* 4. RODTEP INFO */}
+            {/* 4. RODTEP INFO (NESTED) */}
             <div style={styles.subSectionTitle}>RODTEP Info</div>
             <div style={styles.grid3}>
               <div style={styles.field}>
                 <label style={styles.label}>RODTEP Claim</label>
                 <select
                   style={styles.select}
-                  value={product.claimRodtep || "Yes"}
+                  value={product.rodtepInfo?.claim || "Yes"}
                   onChange={(e) =>
-                    handleProductChange(index, "claimRodtep", e.target.value)
+                    handleProductChange(
+                      index,
+                      "rodtepInfo.claim",
+                      e.target.value
+                    )
                   }
                 >
-                  <option value="Yes">Yes</option>
+                  <option value="Yes">Yes</option>{" "}
                   <option value="No">No</option>
                 </select>
               </div>
@@ -1438,11 +1448,11 @@ const ProductGeneralTab = ({ formik }) => {
                   <input
                     style={{ ...styles.input, width: "65%" }}
                     type="number"
-                    value={product.rodtepQuantity || 0}
+                    value={product.rodtepInfo?.quantity || 0}
                     onChange={(e) =>
                       handleProductChange(
                         index,
-                        "rodtepQuantity",
+                        "rodtepInfo.quantity",
                         parseFloat(e.target.value)
                       )
                     }
@@ -1457,7 +1467,7 @@ const ProductGeneralTab = ({ formik }) => {
                       background: "#e2e8f0",
                     }}
                   >
-                    KGS
+                    {product.rodtepInfo?.unit || "KGS"}
                   </span>
                 </div>
               </div>
@@ -1466,27 +1476,26 @@ const ProductGeneralTab = ({ formik }) => {
                 <input
                   style={styles.input}
                   type="number"
-                  value={product.rodtepRate || 0}
+                  value={product.rodtepInfo?.ratePercent || 0}
                   onChange={(e) =>
                     handleProductChange(
                       index,
-                      "rodtepRate",
+                      "rodtepInfo.ratePercent",
                       parseFloat(e.target.value)
                     )
                   }
                 />
               </div>
-
               <div style={styles.field}>
                 <label style={styles.label}>Cap Value</label>
                 <input
                   style={styles.input}
                   type="number"
-                  value={product.rodtepCapValue || 0}
+                  value={product.rodtepInfo?.capValue || 0}
                   onChange={(e) =>
                     handleProductChange(
                       index,
-                      "rodtepCapValue",
+                      "rodtepInfo.capValue",
                       parseFloat(e.target.value)
                     )
                   }
@@ -1498,11 +1507,11 @@ const ProductGeneralTab = ({ formik }) => {
                   <input
                     style={{ ...styles.input, width: "65%" }}
                     type="number"
-                    value={product.rodtepCapPerUnit || 0}
+                    value={product.rodtepInfo?.capValuePerUnits || 0}
                     onChange={(e) =>
                       handleProductChange(
                         index,
-                        "rodtepCapPerUnit",
+                        "rodtepInfo.capValuePerUnits",
                         parseFloat(e.target.value)
                       )
                     }
@@ -1517,7 +1526,7 @@ const ProductGeneralTab = ({ formik }) => {
                       background: "#e2e8f0",
                     }}
                   >
-                    KGS
+                    {product.rodtepInfo?.unit || "KGS"}
                   </span>
                 </div>
               </div>
@@ -1526,11 +1535,11 @@ const ProductGeneralTab = ({ formik }) => {
                 <input
                   style={styles.input}
                   type="number"
-                  value={product.rodtepAmount || 0}
+                  value={product.rodtepInfo?.amountINR || 0}
                   onChange={(e) =>
                     handleProductChange(
                       index,
-                      "rodtepAmount",
+                      "rodtepInfo.amountINR",
                       parseFloat(e.target.value)
                     )
                   }

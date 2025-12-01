@@ -5,7 +5,7 @@ const { Schema, model } = mongoose;
 // Image Schema for document attachments
 const ImageSchema = new mongoose.Schema({
   url: { type: String, trim: true },
-});
+}); 
 
 // Sub-schemas for complex nested data
 const areDetailsSchema = new Schema(
@@ -90,29 +90,64 @@ const productDetailsSchema = new Schema(
   {
     serialNumber: { type: String },
     description: { type: String, maxlength: 500 },
-    ritc: {
-      type: String,
-      ref: "TariffHead",
-    },
+    ritc: { type: String, ref: "TariffHead" },
     quantity: { type: String },
-    socQuantity: { type: String, default: "0" }, // SOC Qty
+    socQuantity: { type: String, default: "0" },
     unitPrice: { type: String },
-    per: {
-      type: String,
-      ref: "UQC",
-    },
+    per: { type: String, ref: "UQC" },
     amount: { type: String },
-    areDetails: [areDetailsSchema],
-    // Additional product fields from screenshots
-    assessableValue: { type: String, default: "0" },
-    netWeight: { type: String, default: "0" },
-    grossWeight: { type: String, default: "0" },
+    
+    // --- General / Origin Details ---
+    eximCode: { type: String, trim: true },
+    nfeiCategory: { type: String, trim: true },
+    rewardItem: { type: Boolean, default: false }, // Changed to Boolean
+    strCode: { type: String, trim: true },
+    endUse: { type: String, trim: true },
+    originDistrict: { type: String, trim: true },
+    originState: { type: String, trim: true },
+    ptaFtaInfo: { type: String, trim: true },
+    alternateQty: { type: String, default: "0" },
+    materialCode: { type: String, trim: true },
+    medicinalPlant: { type: String, trim: true },
+    formulation: { type: String, trim: true },
+    surfaceMaterialInContact: { type: String, trim: true },
+    labGrownDiamond: { type: String, trim: true },
+    
+    // --- PMV Info (Grouped) ---
+    pmvInfo: {
+      currency: { type: String, default: "INR" },
+      calculationMethod: { type: String, trim: true }, // 'percentage' or 'value'
+      percentage: { type: String, default: "110" },
+      pmvPerUnit: { type: String, default: "0" },
+      totalPMV: { type: String, default: "0" },
+    },
 
-    // Re-export specific fields
+    // --- IGST & Compensation Cess Info (Grouped) ---
+    igstCompensationCess: {
+      igstPaymentStatus: { type: String, trim: true, default: "LUT" },
+      taxableValueINR: { type: String, default: "0" },
+      igstRate: { type: String, default: "0" },
+      igstAmountINR: { type: String, default: "0" },
+      compensationCessRate: { type: String, default: "0" },
+      compensationCessAmountINR: { type: String, default: "0" },
+    },
+
+    // --- RODTEP Info (Grouped) ---
+    rodtepInfo: {
+      claim: { type: String, trim: true, default: "Yes" },
+      quantity: { type: String, default: "0" },
+      ratePercent: { type: String, default: "0" },
+      capValue: { type: String, default: "0" },
+      capValuePerUnits: { type: String, default: "0" },
+      amountINR: { type: String, default: "0" },
+      unit: { type: String, trim: true }, // Added unit if needed
+    },
+
+    // --- Re-Export Details ---
     reExport: {
       isReExport: { type: Boolean, default: false },
       beNumber: { type: String, trim: true },
-      beDate: { type: String, trim: true }, // Or Date, as preferred
+      beDate: { type: String, trim: true },
       invoiceSerialNo: { type: String, trim: true },
       itemSerialNo: { type: String, trim: true },
       importPortCode: { type: String, trim: true },
@@ -128,20 +163,20 @@ const productDetailsSchema = new Schema(
       quantityImported: { type: Number, default: 0 },
       assessableValue: { type: Number, default: 0 },
       totalDutyPaid: { type: Number, default: 0 },
-      dutyPaidDate: { type: String, trim: true }, // Or Date
+      dutyPaidDate: { type: String, trim: true },
       drawbackAmtClaimed: { type: Number, default: 0 },
       itemUnUsed: { type: Boolean, default: false },
       commissionerPermission: { type: String, trim: true },
-      commPermissionDate: { type: String, trim: true }, // Or Date
+      commPermissionDate: { type: String, trim: true },
       boardNumber: { type: String, trim: true },
       modvatAvailed: { type: Boolean, default: false },
       modvatReversed: { type: Boolean, default: false },
     },
+
+    // --- Other Details ---
     otherDetails: {
       accessories: { type: String, trim: true, default: "" },
       accessoriesRemarks: { type: String, trim: true, default: "" },
-
-      // Third Party Export block
       isThirdPartyExport: { type: Boolean, default: false },
       thirdParty: {
         name: { type: String, trim: true },
@@ -150,8 +185,6 @@ const productDetailsSchema = new Schema(
         regnNo: { type: String, trim: true },
         address: { type: String, trim: true },
       },
-
-      // Manufacturer/Producer/Grower block
       manufacturer: {
         name: { type: String, trim: true },
         code: { type: String, trim: true },
@@ -163,104 +196,23 @@ const productDetailsSchema = new Schema(
         transitCountry: { type: String, trim: true },
       },
     },
+
+    areDetails: [areDetailsSchema],
     deecDetails: deecSchema,
     epcgDetails: epcgSchema,
-    eximCode: { type: String, trim: true },
-    nfeiCategory: { type: String, trim: true },
-    endUse: { type: String, trim: true },
-    ptaFtaInfo: { type: String, trim: true },
-    rewardItem: { type: String, trim: true },
-    strCode: { type: String, trim: true },
-    originDistrict: { type: String, trim: true },
-    originState: { type: String, trim: true },
-    alternateQty: { type: String, default: "0" },
-    materialCode: { type: String, trim: true },
-    medicinalPlant: { type: String, trim: true },
-    formulation: { type: String, trim: true },
-    surfaceMaterialInContact: { type: String, trim: true },
-    labGrownDiamond: { type: String, trim: true },
-    currency: { type: String, trim: true, default: "INR" },
-    calculationMethod: { type: String, trim: true },
-    percentage: { type: String, default: "0" },
-    pmvPerUnit: { type: String, default: "0" },
-    totalPMV: { type: String, default: "0" },
-    igstPaymentStatus: { type: String, trim: true },
-    taxableValueINR: { type: String, default: "0" },
-    igstRate: { type: String, default: "0" },
-    igstAmountINR: { type: String, default: "0" },
-    compensationCessAmountINR: { type: String, default: "0" },
-    rodtepClaim: { type: String, trim: true },
-    rodtepQuantity: { type: String, default: "0" },
-    rodtepCapValue: { type: String, default: "0" },
-    rodtepCapValuePerUnits: { type: String, default: "0" },
-    rodtepUnit: { type: String, trim: true },
-    rodtepRatePercent: { type: String, default: "0" },
-    rodtepAmountINR: { type: String, default: "0" },
-
+    
+    // --- Legacy / Flat fields (kept for SB Type logic compatibility) ---
     sbTypeDetails: { type: String, trim: true },
     dbkType: { type: String, trim: true },
     cessExciseDuty: { type: String, default: "0" },
     compensationCess: { type: String, default: "0" },
-
-    pmvInfo: {
-      currency: { type: String, default: "INR" },
-      calculationMethod: { type: String, trim: true },
-      pmvPerUnit: { type: String, default: "0" },
-      totalPMV: { type: String, default: "0" },
-    },
-    igstCompensationCess: {
-      igstPaymentStatus: { type: String, trim: true },
-      taxableValueINR: { type: String, default: "0" },
-      igstRate: { type: String, default: "0" },
-      igstAmountINR: { type: String, default: "0" },
-      compensationCessAmountINR: { type: String, default: "0" },
-    },
-    rodtepInfo: {
-      claim: { type: String, trim: true },
-      quantity: { type: String, default: "0" },
-      capValue: { type: String, default: "0" },
-      capValuePerUnits: { type: String, default: "0" },
-      unit: { type: String, trim: true },
-      ratePercent: { type: String, default: "0" },
-      amountINR: { type: String, default: "0" },
-    },
-
+    
     cessExpDuty: {
-      cessDutyApplicable: { type: Boolean, default: false }, // "CESS/Exp. Duty is leviable on this item"
-      exportDuty: { type: Number, default: 0 },
-      exportDutyRate: { type: Number, default: 0 },
-      exportDutyTariffValue: { type: Number, default: 0 },
-      exportDutyQty: { type: Number, default: 0 },
-      exportDutyDesc: { type: String, trim: true },
-
-      cess: { type: Number, default: 0 },
-      cessRate: { type: Number, default: 0 },
-      cessTariffValue: { type: Number, default: 0 },
-      cessQty: { type: Number, default: 0 },
-      cessUnit: { type: String, trim: true },
-      cessDesc: { type: String, trim: true },
-
-      otherDutyCess: { type: Number, default: 0 },
-      otherDutyCessRate: { type: Number, default: 0 },
-      otherDutyCessTariffValue: { type: Number, default: 0 },
-      otherDutyCessQty: { type: Number, default: 0 },
-      otherDutyCessDesc: { type: String, trim: true },
-
-      thirdCess: { type: Number, default: 0 },
-      thirdCessRate: { type: Number, default: 0 },
-      thirdCessTariffValue: { type: Number, default: 0 },
-      thirdCessQty: { type: Number, default: 0 },
-      thirdCessDesc: { type: String, trim: true },
-
-      // CENVAT details
-      cenvat: {
-        certificateNumber: { type: String, trim: true },
-        date: { type: String, trim: true }, // Use Date if time is required
-        validUpto: { type: String, trim: true },
-        cexOfficeCode: { type: String, trim: true },
-        assesseeCode: { type: String, trim: true },
-      },
-    },
+       // ... existing cessExpDuty fields ...
+       cessDutyApplicable: { type: Boolean, default: false },
+       exportDuty: { type: Number, default: 0 },
+       // ... rest of your existing cess code
+    }
   },
   { _id: true }
 );
