@@ -5,7 +5,7 @@ const { Schema, model } = mongoose;
 // Image Schema for document attachments
 const ImageSchema = new mongoose.Schema({
   url: { type: String, trim: true },
-}); 
+});
 
 // Sub-schemas for complex nested data
 const areDetailsSchema = new Schema(
@@ -23,8 +23,6 @@ const areDetailsSchema = new Schema(
 const deecSchema = new Schema(
   {
     isDeecItem: { type: Boolean, default: false },
-    ediRegnNo: { type: String, trim: true },
-    date: { type: Date },
     itemSnoPartE: { type: String, trim: true },
     exportQtyUnderLicence: { type: Number, default: 0 },
 
@@ -45,9 +43,13 @@ const deecSchema = new Schema(
     ],
 
     // Reference information
-    licRefNo: { type: String, trim: true },
-    regnNo: { type: String, trim: true },
-    licDate: { type: Date },
+    deec_reg_obj: [
+      {
+        licRefNo: { type: String, trim: true },
+        regnNo: { type: String, trim: true },
+        licDate: { type: Date },
+      },
+    ],
   },
   { _id: true }
 );
@@ -56,8 +58,6 @@ const deecSchema = new Schema(
 const epcgSchema = new Schema(
   {
     isEpcgItem: { type: Boolean, default: false },
-    ediRegnNo: { type: String, trim: true },
-    date: { type: Date },
     itemSnoPartE: { type: String, trim: true },
     exportQtyUnderLicence: { type: Number, default: 0 },
 
@@ -78,9 +78,13 @@ const epcgSchema = new Schema(
     ],
 
     // Reference information
-    licRefNo: { type: String, trim: true },
-    regnNo: { type: String, trim: true },
-    licDate: { type: Date },
+    epcg_reg_obj: [
+      {
+        licRefNo: { type: String, trim: true },
+        regnNo: { type: String, trim: true },
+        licDate: { type: Date },
+      },
+    ],
   },
   { _id: true }
 );
@@ -96,7 +100,7 @@ const productDetailsSchema = new Schema(
     unitPrice: { type: String },
     per: { type: String, ref: "UQC" },
     amount: { type: String },
-    
+
     // --- General / Origin Details ---
     eximCode: { type: String, trim: true },
     nfeiCategory: { type: String, trim: true },
@@ -112,7 +116,7 @@ const productDetailsSchema = new Schema(
     formulation: { type: String, trim: true },
     surfaceMaterialInContact: { type: String, trim: true },
     labGrownDiamond: { type: String, trim: true },
-    
+
     // --- PMV Info (Grouped) ---
     pmvInfo: {
       currency: { type: String, default: "INR" },
@@ -141,6 +145,7 @@ const productDetailsSchema = new Schema(
       capValuePerUnits: { type: String, default: "0" },
       amountINR: { type: String, default: "0" },
       unit: { type: String, trim: true }, // Added unit if needed
+      capUnit: { type: String, trim: true }, // Added capUnit if needed
     },
 
     // --- Re-Export Details ---
@@ -200,19 +205,19 @@ const productDetailsSchema = new Schema(
     areDetails: [areDetailsSchema],
     deecDetails: deecSchema,
     epcgDetails: epcgSchema,
-    
+
     // --- Legacy / Flat fields (kept for SB Type logic compatibility) ---
     sbTypeDetails: { type: String, trim: true },
     dbkType: { type: String, trim: true },
     cessExciseDuty: { type: String, default: "0" },
     compensationCess: { type: String, default: "0" },
-    
+
     cessExpDuty: {
-       // ... existing cessExpDuty fields ...
-       cessDutyApplicable: { type: Boolean, default: false },
-       exportDuty: { type: Number, default: 0 },
-       // ... rest of your existing cess code
-    }
+      // ... existing cessExpDuty fields ...
+      cessDutyApplicable: { type: Boolean, default: false },
+      exportDuty: { type: Number, default: 0 },
+      // ... rest of your existing cess code
+    },
   },
   { _id: true }
 );
