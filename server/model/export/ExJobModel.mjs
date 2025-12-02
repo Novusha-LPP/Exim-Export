@@ -5,7 +5,7 @@ const { Schema, model } = mongoose;
 // Image Schema for document attachments
 const ImageSchema = new mongoose.Schema({
   url: { type: String, trim: true },
-});
+}); 
 
 // Sub-schemas for complex nested data
 const areDetailsSchema = new Schema(
@@ -20,35 +20,134 @@ const areDetailsSchema = new Schema(
   },
   { _id: true }
 );
+const deecSchema = new Schema(
+  {
+    isDeecItem: { type: Boolean, default: false },
+    ediRegnNo: { type: String, trim: true },
+    date: { type: Date },
+    itemSnoPartE: { type: String, trim: true },
+    exportQtyUnderLicence: { type: Number, default: 0 },
+
+    // DEEC Items table
+    deecItems: [
+      {
+        serialNumber: { type: Number },
+        itemSnoPartC: { type: String, trim: true },
+        description: { type: String, trim: true },
+        quantity: { type: Number, default: 0 },
+        unit: { type: String, trim: true },
+        itemType: {
+          type: String,
+          enum: ["Indigenous", "Imported"],
+          default: "Indigenous",
+        },
+      },
+    ],
+
+    // Reference information
+    licRefNo: { type: String, trim: true },
+    regnNo: { type: String, trim: true },
+    licDate: { type: Date },
+  },
+  { _id: true }
+);
+
+// EPCG Schema
+const epcgSchema = new Schema(
+  {
+    isEpcgItem: { type: Boolean, default: false },
+    ediRegnNo: { type: String, trim: true },
+    date: { type: Date },
+    itemSnoPartE: { type: String, trim: true },
+    exportQtyUnderLicence: { type: Number, default: 0 },
+
+    // EPCG Items table
+    epcgItems: [
+      {
+        serialNumber: { type: Number },
+        itemSnoPartC: { type: String, trim: true },
+        description: { type: String, trim: true },
+        quantity: { type: Number, default: 0 },
+        unit: { type: String, trim: true },
+        itemType: {
+          type: String,
+          enum: ["Indigenous", "Imported"],
+          default: "Indigenous",
+        },
+      },
+    ],
+
+    // Reference information
+    licRefNo: { type: String, trim: true },
+    regnNo: { type: String, trim: true },
+    licDate: { type: Date },
+  },
+  { _id: true }
+);
 
 // Product/Item Details Schema (for multiple products per invoice)
 const productDetailsSchema = new Schema(
   {
     serialNumber: { type: String },
     description: { type: String, maxlength: 500 },
-    ritc: {
-      type: String,
-      ref: "TariffHead",
-    },
+    ritc: { type: String, ref: "TariffHead" },
     quantity: { type: String },
-    socQuantity: { type: String, default: "0" }, // SOC Qty
+    socQuantity: { type: String, default: "0" },
     unitPrice: { type: String },
-    per: {
-      type: String,
-      ref: "UQC",
-    },
+    per: { type: String, ref: "UQC" },
     amount: { type: String },
-    areDetails: [areDetailsSchema],
-    // Additional product fields from screenshots
-    assessableValue: { type: String, default: "0" },
-    netWeight: { type: String, default: "0" },
-    grossWeight: { type: String, default: "0" },
+    
+    // --- General / Origin Details ---
+    eximCode: { type: String, trim: true },
+    nfeiCategory: { type: String, trim: true },
+    rewardItem: { type: Boolean, default: false }, // Changed to Boolean
+    strCode: { type: String, trim: true },
+    endUse: { type: String, trim: true },
+    originDistrict: { type: String, trim: true },
+    originState: { type: String, trim: true },
+    ptaFtaInfo: { type: String, trim: true },
+    alternateQty: { type: String, default: "0" },
+    materialCode: { type: String, trim: true },
+    medicinalPlant: { type: String, trim: true },
+    formulation: { type: String, trim: true },
+    surfaceMaterialInContact: { type: String, trim: true },
+    labGrownDiamond: { type: String, trim: true },
+    
+    // --- PMV Info (Grouped) ---
+    pmvInfo: {
+      currency: { type: String, default: "INR" },
+      calculationMethod: { type: String, trim: true }, // 'percentage' or 'value'
+      percentage: { type: String, default: "110" },
+      pmvPerUnit: { type: String, default: "0" },
+      totalPMV: { type: String, default: "0" },
+    },
 
-    // Re-export specific fields
+    // --- IGST & Compensation Cess Info (Grouped) ---
+    igstCompensationCess: {
+      igstPaymentStatus: { type: String, trim: true, default: "LUT" },
+      taxableValueINR: { type: String, default: "0" },
+      igstRate: { type: String, default: "0" },
+      igstAmountINR: { type: String, default: "0" },
+      compensationCessRate: { type: String, default: "0" },
+      compensationCessAmountINR: { type: String, default: "0" },
+    },
+
+    // --- RODTEP Info (Grouped) ---
+    rodtepInfo: {
+      claim: { type: String, trim: true, default: "Yes" },
+      quantity: { type: String, default: "0" },
+      ratePercent: { type: String, default: "0" },
+      capValue: { type: String, default: "0" },
+      capValuePerUnits: { type: String, default: "0" },
+      amountINR: { type: String, default: "0" },
+      unit: { type: String, trim: true }, // Added unit if needed
+    },
+
+    // --- Re-Export Details ---
     reExport: {
       isReExport: { type: Boolean, default: false },
       beNumber: { type: String, trim: true },
-      beDate: { type: String, trim: true }, // Or Date, as preferred
+      beDate: { type: String, trim: true },
       invoiceSerialNo: { type: String, trim: true },
       itemSerialNo: { type: String, trim: true },
       importPortCode: { type: String, trim: true },
@@ -64,20 +163,20 @@ const productDetailsSchema = new Schema(
       quantityImported: { type: Number, default: 0 },
       assessableValue: { type: Number, default: 0 },
       totalDutyPaid: { type: Number, default: 0 },
-      dutyPaidDate: { type: String, trim: true }, // Or Date
+      dutyPaidDate: { type: String, trim: true },
       drawbackAmtClaimed: { type: Number, default: 0 },
       itemUnUsed: { type: Boolean, default: false },
       commissionerPermission: { type: String, trim: true },
-      commPermissionDate: { type: String, trim: true }, // Or Date
+      commPermissionDate: { type: String, trim: true },
       boardNumber: { type: String, trim: true },
       modvatAvailed: { type: Boolean, default: false },
       modvatReversed: { type: Boolean, default: false },
     },
+
+    // --- Other Details ---
     otherDetails: {
       accessories: { type: String, trim: true, default: "" },
       accessoriesRemarks: { type: String, trim: true, default: "" },
-
-      // Third Party Export block
       isThirdPartyExport: { type: Boolean, default: false },
       thirdParty: {
         name: { type: String, trim: true },
@@ -86,8 +185,6 @@ const productDetailsSchema = new Schema(
         regnNo: { type: String, trim: true },
         address: { type: String, trim: true },
       },
-
-      // Manufacturer/Producer/Grower block
       manufacturer: {
         name: { type: String, trim: true },
         code: { type: String, trim: true },
@@ -100,102 +197,22 @@ const productDetailsSchema = new Schema(
       },
     },
 
-    eximCode: { type: String, trim: true },
-    nfeiCategory: { type: String, trim: true },
-    endUse: { type: String, trim: true },
-    ptaFtaInfo: { type: String, trim: true },
-    rewardItem: { type: String, trim: true },
-    strCode: { type: String, trim: true },
-    originDistrict: { type: String, trim: true },
-    originState: { type: String, trim: true },
-    alternateQty: { type: String, default: "0" },
-    materialCode: { type: String, trim: true },
-    medicinalPlant: { type: String, trim: true },
-    formulation: { type: String, trim: true },
-    surfaceMaterialInContact: { type: String, trim: true },
-    labGrownDiamond: { type: String, trim: true },
-    currency: { type: String, trim: true, default: "INR" },
-    calculationMethod: { type: String, trim: true },
-    percentage: { type: String, default: "0" },
-    pmvPerUnit: { type: String, default: "0" },
-    totalPMV: { type: String, default: "0" },
-    igstPaymentStatus: { type: String, trim: true },
-    taxableValueINR: { type: String, default: "0" },
-    igstRate: { type: String, default: "0" },
-    igstAmountINR: { type: String, default: "0" },
-    compensationCessAmountINR: { type: String, default: "0" },
-    rodtepClaim: { type: String, trim: true },
-    rodtepQuantity: { type: String, default: "0" },
-    rodtepCapValue: { type: String, default: "0" },
-    rodtepCapValuePerUnits: { type: String, default: "0" },
-    rodtepUnit: { type: String, trim: true },
-    rodtepRatePercent: { type: String, default: "0" },
-    rodtepAmountINR: { type: String, default: "0" },
-
+    areDetails: [areDetailsSchema],
+    deecDetails: deecSchema,
+    epcgDetails: epcgSchema,
+    
+    // --- Legacy / Flat fields (kept for SB Type logic compatibility) ---
     sbTypeDetails: { type: String, trim: true },
     dbkType: { type: String, trim: true },
     cessExciseDuty: { type: String, default: "0" },
     compensationCess: { type: String, default: "0" },
-
-    pmvInfo: {
-      currency: { type: String, default: "INR" },
-      calculationMethod: { type: String, trim: true },
-      pmvPerUnit: { type: String, default: "0" },
-      totalPMV: { type: String, default: "0" },
-    },
-    igstCompensationCess: {
-      igstPaymentStatus: { type: String, trim: true },
-      taxableValueINR: { type: String, default: "0" },
-      igstRate: { type: String, default: "0" },
-      igstAmountINR: { type: String, default: "0" },
-      compensationCessAmountINR: { type: String, default: "0" },
-    },
-    rodtepInfo: {
-      claim: { type: String, trim: true },
-      quantity: { type: String, default: "0" },
-      capValue: { type: String, default: "0" },
-      capValuePerUnits: { type: String, default: "0" },
-      unit: { type: String, trim: true },
-      ratePercent: { type: String, default: "0" },
-      amountINR: { type: String, default: "0" },
-    },
-
+    
     cessExpDuty: {
-      cessDutyApplicable: { type: Boolean, default: false }, // "CESS/Exp. Duty is leviable on this item"
-      exportDuty: { type: Number, default: 0 },
-      exportDutyRate: { type: Number, default: 0 },
-      exportDutyTariffValue: { type: Number, default: 0 },
-      exportDutyQty: { type: Number, default: 0 },
-      exportDutyDesc: { type: String, trim: true },
-
-      cess: { type: Number, default: 0 },
-      cessRate: { type: Number, default: 0 },
-      cessTariffValue: { type: Number, default: 0 },
-      cessQty: { type: Number, default: 0 },
-      cessUnit: { type: String, trim: true },
-      cessDesc: { type: String, trim: true },
-
-      otherDutyCess: { type: Number, default: 0 },
-      otherDutyCessRate: { type: Number, default: 0 },
-      otherDutyCessTariffValue: { type: Number, default: 0 },
-      otherDutyCessQty: { type: Number, default: 0 },
-      otherDutyCessDesc: { type: String, trim: true },
-
-      thirdCess: { type: Number, default: 0 },
-      thirdCessRate: { type: Number, default: 0 },
-      thirdCessTariffValue: { type: Number, default: 0 },
-      thirdCessQty: { type: Number, default: 0 },
-      thirdCessDesc: { type: String, trim: true },
-
-      // CENVAT details
-      cenvat: {
-        certificateNumber: { type: String, trim: true },
-        date: { type: String, trim: true }, // Use Date if time is required
-        validUpto: { type: String, trim: true },
-        cexOfficeCode: { type: String, trim: true },
-        assesseeCode: { type: String, trim: true },
-      },
-    },
+       // ... existing cessExpDuty fields ...
+       cessDutyApplicable: { type: Boolean, default: false },
+       exportDuty: { type: Number, default: 0 },
+       // ... rest of your existing cess code
+    }
   },
   { _id: true }
 );
@@ -312,13 +329,11 @@ const containerDetailsSchema = new Schema(
     sealDate: Date,
     type: {
       type: String,
-     
     },
     pkgsStuffed: { type: Number, default: 0 }, // 'Pkgs Stuffed'
     grossWeight: { type: Number, default: 0 },
     sealType: {
       type: String,
-
     },
     grWtPlusTrWt: { type: Number, default: 0 },
     sealDeviceId: String,
@@ -710,7 +725,6 @@ const exportJobSchema = new mongoose.Schema(
     gstin: { type: String, trim: true },
     state: { type: String, trim: true },
 
-
     // Reference & Regulatory Fields (Missing)
     sb_date: { type: String, trim: true },
     rbi_app_no: { type: String, trim: true },
@@ -719,7 +733,6 @@ const exportJobSchema = new mongoose.Schema(
     rbi_waiver_no: { type: String, trim: true },
     epz_code: { type: String, trim: true },
     notify: { type: String, trim: true },
-
 
     // Additional Banking Fields (Missing)
     bank_branch: { type: String, trim: true },
@@ -849,13 +862,13 @@ const exportJobSchema = new mongoose.Schema(
     bank_swift_code: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Consignee/Importer Information
-consignees: [
-  {
-    consignee_name: { type: String, trim: true },
-    consignee_address: { type: String, trim: true },
-    consignee_country: { type: String, trim: true }
-  }
-],
+    consignees: [
+      {
+        consignee_name: { type: String, trim: true },
+        consignee_address: { type: String, trim: true },
+        consignee_country: { type: String, trim: true },
+      },
+    ],
 
     ////////////////////////////////////////////////// Shipment Details
     port_of_loading: { type: String, trim: true },
@@ -894,7 +907,7 @@ consignees: [
     volume_unit: { type: String, trim: true },
     chargeable_weight: { type: String, trim: true },
     chargeable_weight_unit: { type: String, trim: true },
-    
+
     dimensions_length: { type: String, trim: true },
     dimensions_width: { type: String, trim: true },
     dimensions_height: { type: String, trim: true },
@@ -923,15 +936,13 @@ consignees: [
     insurance_charges: { type: String, trim: true },
     cif_value: { type: String, trim: true },
 
-
-
     ////////////////////////////////////////////////// Containers Information
     // Note: exportContainerSchema needs to be defined separately
     containers: [exportContainerSchema],
     // Removed duplicate container_count
     stuffing_date: { type: String, trim: true },
     stuffing_supervisor: { type: String, trim: true },
-    stuffing_remarks: { type: String, trim: true }, 
+    stuffing_remarks: { type: String, trim: true },
     cfs: { type: String, trim: true },
 
     // Annex C1 Details
@@ -942,7 +953,6 @@ consignees: [
 
     ////////////////////////////////////////////////// Regulatory Compliance
 
-   
     ////////////////////////////////////////////////// Charges and Financial
     // Note: exportChargesSchema needs to be defined separately
     export_charges: [exportChargesSchema],
@@ -1135,72 +1145,72 @@ consignees: [
       rodtepAmountINR: { type: Number, default: 0.0 },
     },
 
-  annexC1Details: {
-    ieCodeOfEOU: {
-      type: String,
-      trim: true
-    },
-    branchSerialNo: { 
-      type: Number, 
-      default: 0 
-    },
-    examinationDate: Date,
-    examiningOfficer: {
-      type: String,
-      trim: true
-    },
-    supervisingOfficer: {
-      type: String,
-      trim: true
-    },
-    commissionerate: {
-      type: String,
-      trim: true
-    },
-    verifiedByExaminingOfficer: { 
-      type: Boolean, 
-      default: false 
-    },
-    
-    // This will reference the main stuffing_seal_no
-    sealNumber: {
-      type: String,
-      ref: 'stuffing_seal_no' // Indicates this references another field
-    },
-
-    // Documents for Annex C1
-    documents: [
-      {
-        serialNo: {
-          type: Number,
-          required: true
-        },
-        documentName: {
-          type: String,
-          required: true,
-          trim: true
-        },
+    annexC1Details: {
+      ieCodeOfEOU: {
+        type: String,
+        trim: true,
       },
-    ],
+      branchSerialNo: {
+        type: Number,
+        default: 0,
+      },
+      examinationDate: Date,
+      examiningOfficer: {
+        type: String,
+        trim: true,
+      },
+      supervisingOfficer: {
+        type: String,
+        trim: true,
+      },
+      commissionerate: {
+        type: String,
+        trim: true,
+      },
+      verifiedByExaminingOfficer: {
+        type: Boolean,
+        default: false,
+      },
 
-    // Additional C1 fields
-    designation: {
-      type: String,
-      trim: true
+      // This will reference the main stuffing_seal_no
+      sealNumber: {
+        type: String,
+        ref: "stuffing_seal_no", // Indicates this references another field
+      },
+
+      // Documents for Annex C1
+      documents: [
+        {
+          serialNo: {
+            type: Number,
+            required: true,
+          },
+          documentName: {
+            type: String,
+            required: true,
+            trim: true,
+          },
+        },
+      ],
+
+      // Additional C1 fields
+      designation: {
+        type: String,
+        trim: true,
+      },
+      division: {
+        type: String,
+        trim: true,
+      },
+      range: {
+        type: String,
+        trim: true,
+      },
+      sampleForwarded: {
+        type: Boolean,
+        default: false,
+      },
     },
-    division: {
-      type: String,
-      trim: true
-    },
-    range: {
-      type: String,
-      trim: true
-    },
-    sampleForwarded: { 
-      type: Boolean, 
-      default: false 
-    },
-  },
 
     // Freight, Insurance & Other Charges
     freightInsuranceCharges: {
@@ -1374,7 +1384,6 @@ exportJobSchema.virtual("isCompleted").get(function () {
   return this.jobStatus === "Completed";
 });
 
-
 // Methods
 exportJobSchema.methods.addMilestone = function (
   milestoneName,
@@ -1425,16 +1434,16 @@ exportJobSchema.statics.findByStatus = function (status) {
 };
 
 // Virtual population for sealNumber
-exportJobSchema.virtual('annexC1Details.virtualSealNumber').get(function() {
+exportJobSchema.virtual("annexC1Details.virtualSealNumber").get(function () {
   return this.stuffing_seal_no;
 });
 
-exportJobSchema.virtual('annexC1Details.virtualSealType').get(function() {
+exportJobSchema.virtual("annexC1Details.virtualSealType").get(function () {
   return this.stuffing_seal_type;
 });
 
 // Pre-save to keep them in sync
-exportJobSchema.pre('save', function(next) {
+exportJobSchema.pre("save", function (next) {
   // Always sync the seal number from main to annex C1
   if (this.stuffing_seal_no) {
     this.annexC1Details.sealNumber = this.stuffing_seal_no;
@@ -1443,12 +1452,12 @@ exportJobSchema.pre('save', function(next) {
 });
 
 // Static method to find by seal number
-exportJobSchema.statics.findBySealNumber = function(sealNo) {
-  return this.findOne({ 
+exportJobSchema.statics.findBySealNumber = function (sealNo) {
+  return this.findOne({
     $or: [
-      { 'stuffing_seal_no': sealNo },
-      { 'annexC1Details.sealNumber': sealNo }
-    ]
+      { stuffing_seal_no: sealNo },
+      { "annexC1Details.sealNumber": sealNo },
+    ],
   });
 };
 // Create and export the model

@@ -14,6 +14,7 @@ import Currency from "./Currency.js";
 import Package from "./PackageDirectory.js";
 import SupportingDocument from "./SupportingDocument.js";
 import GatewayPortDirectory from "./GatwayPort.js";
+import DistrictDirectory from "./DistrictCodeDirectory.js";
 function DirectoryComponent({ directoryType }) {
   console.log("Selected Directory Type:", directoryType); // Debugging log
 
@@ -49,6 +50,8 @@ function DirectoryComponent({ directoryType }) {
         return <SupportingDocument />;
       case "Gateway Port":
         return <GatewayPortDirectory />;
+      case "District Code":
+        return <DistrictDirectory />;
       default:
         console.log("No matching directory found for:", directoryType);
         return null;

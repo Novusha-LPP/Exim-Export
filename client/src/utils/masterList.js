@@ -42,253 +42,358 @@ export const cfs = [
   "ICD AHMEDABAD",
   "ICD SACHANA",
   "ICD SANAND",
-  "QUEST CONTIANER DEPOT"
-]
+  "QUEST CONTIANER DEPOT",
+];
 
 export const natureOfCargo = [
   "C - containerized",
   "C - non containerized packaged",
   "LB - liquid bulk",
   "DB - dry bulk",
-  "CP - containerized and packaged"
-]
-
-export const unitCodes = [
-  "BAG", "BGS", "BLS", "BRL", "BTL", "BOX", "BLK", "CAN", "CAR", "CRY", "CTN", "CMS", "CHI", "COL", "CON", "CRI",
-  "CCM", "CFT", "CBI", "CBM", "CYL", "DOZ", "DRM", "FLK", "FOT", "FUT", "GMS", "GRS", "FBK", "INC", "NGT", "JTA", "JAL",
-  "KEG", "KLT", "KGS", "KME", "KIT", "LTR", "LOG", "TON", "MTR", "MTS", "MGS", "MOU", "NOS", "NHM", "THD", "PKG", "PAC",
-  "PAI", "PRS", "PLT", "PCS", "PNT", "PND", "QDS", "QTL", "REL", "ROL", "SET", "SKD", "SLB", "SQF", "SQM", "SQY",
-  "BLO", "BUL", "ENV", "TBL", "TNK", "TGM", "TIN", "TRK", "UNT", "UGS", "CSK", "YDS"
+  "CP - containerized and packaged",
 ];
 
+export const unitCodes = [
+  "BAG",
+  "BGS",
+  "BLS",
+  "BRL",
+  "BTL",
+  "BOX",
+  "BLK",
+  "CAN",
+  "CAR",
+  "CRY",
+  "CTN",
+  "CMS",
+  "CHI",
+  "COL",
+  "CON",
+  "CRI",
+  "CCM",
+  "CFT",
+  "CBI",
+  "CBM",
+  "CYL",
+  "DOZ",
+  "DRM",
+  "FLK",
+  "FOT",
+  "FUT",
+  "GMS",
+  "GRS",
+  "FBK",
+  "INC",
+  "NGT",
+  "JTA",
+  "JAL",
+  "KEG",
+  "KLT",
+  "KGS",
+  "KME",
+  "KIT",
+  "LTR",
+  "LOG",
+  "TON",
+  "MTR",
+  "MTS",
+  "MGS",
+  "MOU",
+  "NOS",
+  "NHM",
+  "THD",
+  "PKG",
+  "PAC",
+  "PAI",
+  "PRS",
+  "PLT",
+  "PCS",
+  "PNT",
+  "PND",
+  "QDS",
+  "QTL",
+  "REL",
+  "ROL",
+  "SET",
+  "SKD",
+  "SLB",
+  "SQF",
+  "SQM",
+  "SQY",
+  "BLO",
+  "BUL",
+  "ENV",
+  "TBL",
+  "TNK",
+  "TGM",
+  "TIN",
+  "TRK",
+  "UNT",
+  "UGS",
+  "CSK",
+  "YDS",
+];
 
 export const PTA_FTA_CODES = [
   {
     code: "DCA100",
-    description: "For Veterinary Medical Use as a Non-Food Product under Controlled Distribution (Trading)"
+    description:
+      "For Veterinary Medical Use as a Non-Food Product under Controlled Distribution (Trading)",
   },
   {
     code: "DCH100",
-    description: "For Human Medical Use as a Non-Food Product under Controlled Distribution (Trading)"
+    description:
+      "For Human Medical Use as a Non-Food Product under Controlled Distribution (Trading)",
   },
   {
     code: "DCH300",
-    description: "For Human Medical Use as a Transplanted Organ, Tissue, or Fluid"
+    description:
+      "For Human Medical Use as a Transplanted Organ, Tissue, or Fluid",
   },
   {
     code: "DCH400",
-    description: "For Human Medical Use as a Non-Food Product under Controlled Distribution"
+    description:
+      "For Human Medical Use as a Non-Food Product under Controlled Distribution",
   },
   {
     code: "DCH800",
-    description: "For Research use a human medicine"
+    description: "For Research use a human medicine",
   },
   {
     code: "DCX200",
-    description: "For manufacture/processing as a human or veterinary medicine (Manufacture/Actual Use)"
+    description:
+      "For manufacture/processing as a human or veterinary medicine (Manufacture/Actual Use)",
   },
   {
     code: "DCX900",
-    description: "Drugs & Cosmetics -For personal consumption"
+    description: "Drugs & Cosmetics -For personal consumption",
   },
   {
     code: "FSA100",
-    description: "For Animal Food or Feed (Trading/ commercial distribution)"
+    description: "For Animal Food or Feed (Trading/ commercial distribution)",
   },
   {
     code: "FSA200",
-    description: "For manufacture/processing as a Animal Food/Feed (Manufacture/Actual Use)"
+    description:
+      "For manufacture/processing as a Animal Food/Feed (Manufacture/Actual Use)",
   },
   {
     code: "FSA800",
-    description: "For use research use as animal Food"
+    description: "For use research use as animal Food",
   },
   {
     code: "FSA900",
-    description: "Foods & Supplements -For Personal use"
+    description: "Foods & Supplements -For Personal use",
   },
   {
     code: "FSH100",
-    description: "Food - For Consumer use under commercial distribution (Trading)- Retail or wholesale"
+    description:
+      "Food - For Consumer use under commercial distribution (Trading)- Retail or wholesale",
   },
   {
     code: "FSH200",
-    description: "Food - For manufacture/ commercial Processing (Manufacture/Actual Use)"
+    description:
+      "Food - For manufacture/ commercial Processing (Manufacture/Actual Use)",
   },
   {
     code: "FSH700",
-    description: "Food -For Internal use in Hotels-Restaurant"
+    description: "Food -For Internal use in Hotels-Restaurant",
   },
   {
     code: "FSH710",
-    description: "Food -For Public Display or Exhibition"
+    description: "Food -For Public Display or Exhibition",
   },
   {
     code: "FSH750",
-    description: "Food -For use in International Sports Events"
+    description: "Food -For use in International Sports Events",
   },
   {
     code: "FSH800",
-    description: "Food -For Research Use"
+    description: "Food -For Research Use",
   },
   {
     code: "FSH900",
-    description: "Food - For personal consumption"
+    description: "Food - For personal consumption",
   },
   {
     code: "FSH910",
-    description: "Food - For distribution in a natural disaster (if received gratis)"
+    description:
+      "Food - For distribution in a natural disaster (if received gratis)",
   },
   {
     code: "FSH920",
-    description: "Food -For Charitable Use"
+    description: "Food -For Charitable Use",
   },
   {
     code: "FSH930",
-    description: "Food -For use in a Diplomatic Establishment"
+    description: "Food -For use in a Diplomatic Establishment",
   },
   {
     code: "FSH931",
-    description: "Re-Import Purpose - Re-Process/Packaging/Labelling for Re-Export"
+    description:
+      "Re-Import Purpose - Re-Process/Packaging/Labelling for Re-Export",
   },
   {
     code: "FSH932",
-    description: "Re-Import Purpose - Re-Process/ Packaging /Labelling for Domestic Market"
+    description:
+      "Re-Import Purpose - Re-Process/ Packaging /Labelling for Domestic Market",
   },
   {
     code: "GNX100",
-    description: "Generic -For Consumer use under commercial distribution (for Trading - wholesale or retail)"
+    description:
+      "Generic -For Consumer use under commercial distribution (for Trading - wholesale or retail)",
   },
   {
     code: "GNX200",
-    description: "Generic -For Commercial Assembly or processing (For Manufacture/Actual use)"
+    description:
+      "Generic -For Commercial Assembly or processing (For Manufacture/Actual use)",
   },
   {
     code: "GNX300",
-    description: "Generic -For use as Fertilizers or soil promoters"
+    description: "Generic -For use as Fertilizers or soil promoters",
   },
   {
     code: "GNX600",
-    description: "Generic -For Repair or Refurbishing as defective or second hand goods"
+    description:
+      "Generic -For Repair or Refurbishing as defective or second hand goods",
   },
   {
     code: "GNX650",
-    description: "Generic-For Recycling or Recovery"
+    description: "Generic-For Recycling or Recovery",
   },
   {
     code: "GNX680",
-    description: "Generic -For Disposal as waste"
+    description: "Generic -For Disposal as waste",
   },
   {
     code: "GNX700",
-    description: "Generic -For Public Display or Exhibition"
+    description: "Generic -For Public Display or Exhibition",
   },
   {
     code: "GNX810",
-    description: "Generic -For Research & Development (note: other than Biomedical Research)"
+    description:
+      "Generic -For Research & Development (note: other than Biomedical Research)",
   },
   {
     code: "GNX815",
-    description: "Generic -For Medical Or Biomedical Research"
+    description: "Generic -For Medical Or Biomedical Research",
   },
   {
     code: "GNX915",
-    description: "Generic -For display as a Trophy (hunting or other trophy)"
+    description: "Generic -For display as a Trophy (hunting or other trophy)",
   },
   {
     code: "LVA100",
-    description: "Live Animal -For Breeding in Captivity or Artificial Propagation"
+    description:
+      "Live Animal -For Breeding in Captivity or Artificial Propagation",
   },
   {
     code: "LVA200",
-    description: "Live Animal -For Grow-Out or Increase"
+    description: "Live Animal -For Grow-Out or Increase",
   },
   {
     code: "LVA300",
-    description: "Live Animal -For re-introduction into the wild"
+    description: "Live Animal -For re-introduction into the wild",
   },
   {
     code: "LVA400",
-    description: "Live Animal -For Immediate Slaughter"
+    description: "Live Animal -For Immediate Slaughter",
   },
   {
     code: "LVA500",
-    description: "Live Animal -For use as Fertilizers or soil promoters"
+    description: "Live Animal -For use as Fertilizers or soil promoters",
   },
   {
     code: "LVA710",
-    description: "Live Animal -For display in Zoo"
+    description: "Live Animal -For display in Zoo",
   },
   {
     code: "LVA760",
-    description: "live Animal -For Circus or Travelling Exhibition or games or show"
+    description:
+      "live Animal -For Circus or Travelling Exhibition or games or show",
   },
   {
     code: "LVA800",
-    description: "Live Animal -For Research Purposes"
+    description: "Live Animal -For Research Purposes",
   },
   {
     code: "LVA900",
-    description: "Live Animal -For Personal use"
+    description: "Live Animal -For Personal use",
   },
   {
     code: "LVA950",
-    description: "Live Animal -For Re Export"
+    description: "Live Animal -For Re Export",
   },
   {
     code: "LVP011",
-    description: "Shipment Type - Trial for Inhouse"
+    description: "Shipment Type - Trial for Inhouse",
   },
   {
     code: "LVP012",
-    description: "Shipment Type - Trial for Multilocation"
+    description: "Shipment Type - Trial for Multilocation",
   },
   {
     code: "LVP013",
-    description: "Shipment Type - Trial for both (Inhouse and Multilocation)"
+    description: "Shipment Type - Trial for both (Inhouse and Multilocation)",
   },
   {
     code: "LVP014",
-    description: "Shipment Type - Bulk"
+    description: "Shipment Type - Bulk",
   },
   {
     code: "LVP015",
-    description: "Live Plants - For Consumption"
+    description: "Live Plants - For Consumption",
   },
   {
     code: "LVP016",
-    description: "Live Plants - For Sowing"
+    description: "Live Plants - For Sowing",
   },
   {
     code: "LVP017",
-    description: "Live Plants - For Planting"
+    description: "Live Plants - For Planting",
   },
   {
     code: "LVP018",
-    description: "Live Plants - For Processing"
+    description: "Live Plants - For Processing",
   },
   {
     code: "LVP019",
-    description: "Live Plants - For Research"
+    description: "Live Plants - For Research",
   },
   {
     code: "LVP020",
-    description: "Live Plants - For Research/Experiment"
+    description: "Live Plants - For Research/Experiment",
   },
   {
     code: "LVP100",
-    description: "Live Plants -For Propagation"
+    description: "Live Plants -For Propagation",
   },
   {
     code: "LVP400",
-    description: "live Plants -For Germplasm"
+    description: "live Plants -For Germplasm",
   },
   {
     code: "LVP500",
-    description: "Live Plants -For use as Fertilizers or soil promoters"
+    description: "Live Plants -For use as Fertilizers or soil promoters",
   },
   {
     code: "LVP730",
-    description: "Live Plants -For a display in a Botanical Garden"
-  }
-]
+    description: "Live Plants -For a display in a Botanical Garden",
+  },
+];
+
+// Add this to your masterList.js file
+export const eximCodes = [
+  {
+    code: "00",
+    description: "Free Shipping bill involving remittance of Foreign exchange",
+  },
+  { code: "03", description: "Advance licence" },
+  { code: "19", description: "Drawback (DBK)" },
+  { code: "21", description: "EQU/EPZ/SEZ/EHTP/STP" },
+  { code: "43", description: "Drawback and zero duty PECG" },
+  { code: "50", description: "EPCG and Advance license" },
+  { code: "60", description: "DRAWBACK AND ROSCTL" },
+  { code: "61", description: "EPCG, DRAWBACK AND ROSCTL" },
+  { code: "99", description: "NFEI" },
+];

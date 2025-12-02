@@ -1,0 +1,5850 @@
+[
+  {
+    "sno": "1",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "1",
+    "districtName": "ANANTNAG",
+    "status": "Active"
+  },
+  {
+    "sno": "2",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "2",
+    "districtName": "Budgam",
+    "status": "Active"
+  },
+  {
+    "sno": "3",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "3",
+    "districtName": "BARAMULLA",
+    "status": "Active"
+  },
+  {
+    "sno": "4",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "4",
+    "districtName": "DODA",
+    "status": "Active"
+  },
+  {
+    "sno": "5",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "5",
+    "districtName": "JAMMU",
+    "status": "Active"
+  },
+  {
+    "sno": "6",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "7",
+    "districtName": "KATHUA",
+    "status": "Active"
+  },
+  {
+    "sno": "7",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "8",
+    "districtName": "KUPWARA",
+    "status": "Active"
+  },
+  {
+    "sno": "8",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "10",
+    "districtName": "POONCH",
+    "status": "Active"
+  },
+  {
+    "sno": "9",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "11",
+    "districtName": "PULWAMA",
+    "status": "Active"
+  },
+  {
+    "sno": "10",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "12",
+    "districtName": "RAJOURI",
+    "status": "Active"
+  },
+  {
+    "sno": "11",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "13",
+    "districtName": "SRINAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "12",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "14",
+    "districtName": "UDHAMPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "13",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "620",
+    "districtName": "KISHTWAR",
+    "status": "Active"
+  },
+  {
+    "sno": "14",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "621",
+    "districtName": "RAMBAN",
+    "status": "Active"
+  },
+  {
+    "sno": "15",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "622",
+    "districtName": "KULGAM",
+    "status": "Active"
+  },
+  {
+    "sno": "16",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "623",
+    "districtName": "BANDIPORA",
+    "status": "Active"
+  },
+  {
+    "sno": "17",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "624",
+    "districtName": "SAMBA",
+    "status": "Active"
+  },
+  {
+    "sno": "18",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "625",
+    "districtName": "SHOPIAN",
+    "status": "Active"
+  },
+  {
+    "sno": "19",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "626",
+    "districtName": "GANDERBAL",
+    "status": "Active"
+  },
+  {
+    "sno": "20",
+    "stateCode": "1",
+    "stateName": "JAMMU AND KASHMIR",
+    "districtCode": "627",
+    "districtName": "REASI",
+    "status": "Active"
+  },
+  {
+    "sno": "21",
+    "stateCode": "2",
+    "stateName": "HIMACHAL PRADESH",
+    "districtCode": "15",
+    "districtName": "BILASPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "22",
+    "stateCode": "2",
+    "stateName": "HIMACHAL PRADESH",
+    "districtCode": "16",
+    "districtName": "CHAMBA",
+    "status": "Active"
+  },
+  {
+    "sno": "23",
+    "stateCode": "2",
+    "stateName": "HIMACHAL PRADESH",
+    "districtCode": "17",
+    "districtName": "HAMIRPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "24",
+    "stateCode": "2",
+    "stateName": "HIMACHAL PRADESH",
+    "districtCode": "18",
+    "districtName": "KANGRA",
+    "status": "Active"
+  },
+  {
+    "sno": "25",
+    "stateCode": "2",
+    "stateName": "HIMACHAL PRADESH",
+    "districtCode": "19",
+    "districtName": "KINNAUR",
+    "status": "Active"
+  },
+  {
+    "sno": "26",
+    "stateCode": "2",
+    "stateName": "HIMACHAL PRADESH",
+    "districtCode": "20",
+    "districtName": "KULLU",
+    "status": "Active"
+  },
+  {
+    "sno": "27",
+    "stateCode": "2",
+    "stateName": "HIMACHAL PRADESH",
+    "districtCode": "21",
+    "districtName": "LAHUL AND SPITI",
+    "status": "Active"
+  },
+  {
+    "sno": "28",
+    "stateCode": "2",
+    "stateName": "HIMACHAL PRADESH",
+    "districtCode": "22",
+    "districtName": "MANDI",
+    "status": "Active"
+  },
+  {
+    "sno": "29",
+    "stateCode": "2",
+    "stateName": "HIMACHAL PRADESH",
+    "districtCode": "23",
+    "districtName": "SHIMLA",
+    "status": "Active"
+  },
+  {
+    "sno": "30",
+    "stateCode": "2",
+    "stateName": "HIMACHAL PRADESH",
+    "districtCode": "24",
+    "districtName": "SIRMAUR",
+    "status": "Active"
+  },
+  {
+    "sno": "31",
+    "stateCode": "2",
+    "stateName": "HIMACHAL PRADESH",
+    "districtCode": "25",
+    "districtName": "SOLAN",
+    "status": "Active"
+  },
+  {
+    "sno": "32",
+    "stateCode": "2",
+    "stateName": "HIMACHAL PRADESH",
+    "districtCode": "26",
+    "districtName": "UNA",
+    "status": "Active"
+  },
+  {
+    "sno": "33",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "27",
+    "districtName": "AMRITSAR",
+    "status": "Active"
+  },
+  {
+    "sno": "34",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "28",
+    "districtName": "BATHINDA",
+    "status": "Active"
+  },
+  {
+    "sno": "35",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "29",
+    "districtName": "FARIDKOT",
+    "status": "Active"
+  },
+  {
+    "sno": "36",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "30",
+    "districtName": "FATEHGARH SAHIB",
+    "status": "Active"
+  },
+  {
+    "sno": "37",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "31",
+    "districtName": "FIROZEPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "38",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "32",
+    "districtName": "GURDASPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "39",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "33",
+    "districtName": "HOSHIARPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "40",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "34",
+    "districtName": "JALANDHAR",
+    "status": "Active"
+  },
+  {
+    "sno": "41",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "35",
+    "districtName": "KAPURTHALA",
+    "status": "Active"
+  },
+  {
+    "sno": "42",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "36",
+    "districtName": "LUDHIANA",
+    "status": "Active"
+  },
+  {
+    "sno": "43",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "37",
+    "districtName": "MANSA",
+    "status": "Active"
+  },
+  {
+    "sno": "44",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "38",
+    "districtName": "MOGA",
+    "status": "Active"
+  },
+  {
+    "sno": "45",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "39",
+    "districtName": "SRI MUKTSAR SAHIB",
+    "status": "Active"
+  },
+  {
+    "sno": "46",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "40",
+    "districtName": "Shahid Bhagat Singh Nagar",
+    "status": "Active"
+  },
+  {
+    "sno": "47",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "41",
+    "districtName": "PATIALA",
+    "status": "Active"
+  },
+  {
+    "sno": "48",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "42",
+    "districtName": "RUPNAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "49",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "43",
+    "districtName": "SANGRUR",
+    "status": "Active"
+  },
+  {
+    "sno": "50",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "605",
+    "districtName": "BARNALA",
+    "status": "Active"
+  },
+  {
+    "sno": "51",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "608",
+    "districtName": "S.A.S Nagar",
+    "status": "Active"
+  },
+  {
+    "sno": "52",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "609",
+    "districtName": "Tarn Taran",
+    "status": "Active"
+  },
+  {
+    "sno": "53",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "651",
+    "districtName": "FAZILKA",
+    "status": "Active"
+  },
+  {
+    "sno": "54",
+    "stateCode": "3",
+    "stateName": "PUNJAB",
+    "districtCode": "662",
+    "districtName": "PATHANKOT",
+    "status": "Active"
+  },
+  {
+    "sno": "55",
+    "stateCode": "4",
+    "stateName": "CHANDIGARH",
+    "districtCode": "44",
+    "districtName": "CHANDIGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "56",
+    "stateCode": "5",
+    "stateName": "UTTARAKHAND",
+    "districtCode": "45",
+    "districtName": "ALMORA",
+    "status": "Active"
+  },
+  {
+    "sno": "57",
+    "stateCode": "5",
+    "stateName": "UTTARAKHAND",
+    "districtCode": "46",
+    "districtName": "BAGESHWAR",
+    "status": "Active"
+  },
+  {
+    "sno": "58",
+    "stateCode": "5",
+    "stateName": "UTTARAKHAND",
+    "districtCode": "47",
+    "districtName": "CHAMOLI",
+    "status": "Active"
+  },
+  {
+    "sno": "59",
+    "stateCode": "5",
+    "stateName": "UTTARAKHAND",
+    "districtCode": "48",
+    "districtName": "CHAMPAWAT",
+    "status": "Active"
+  },
+  {
+    "sno": "60",
+    "stateCode": "5",
+    "stateName": "UTTARAKHAND",
+    "districtCode": "49",
+    "districtName": "DEHRADUN",
+    "status": "Active"
+  },
+  {
+    "sno": "61",
+    "stateCode": "5",
+    "stateName": "UTTARAKHAND",
+    "districtCode": "50",
+    "districtName": "HARIDWAR",
+    "status": "Active"
+  },
+  {
+    "sno": "62",
+    "stateCode": "5",
+    "stateName": "UTTARAKHAND",
+    "districtCode": "51",
+    "districtName": "NAINITAL",
+    "status": "Active"
+  },
+  {
+    "sno": "63",
+    "stateCode": "5",
+    "stateName": "UTTARAKHAND",
+    "districtCode": "52",
+    "districtName": "PAURI GARHWAL",
+    "status": "Active"
+  },
+  {
+    "sno": "64",
+    "stateCode": "5",
+    "stateName": "UTTARAKHAND",
+    "districtCode": "53",
+    "districtName": "PITHORAGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "65",
+    "stateCode": "5",
+    "stateName": "UTTARAKHAND",
+    "districtCode": "54",
+    "districtName": "RUDRA PRAYAG",
+    "status": "Active"
+  },
+  {
+    "sno": "66",
+    "stateCode": "5",
+    "stateName": "UTTARAKHAND",
+    "districtCode": "55",
+    "districtName": "TEHRI GARHWAL",
+    "status": "Active"
+  },
+  {
+    "sno": "67",
+    "stateCode": "5",
+    "stateName": "UTTARAKHAND",
+    "districtCode": "56",
+    "districtName": "UDAM SINGH NAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "68",
+    "stateCode": "5",
+    "stateName": "UTTARAKHAND",
+    "districtCode": "57",
+    "districtName": "UTTAR KASHI",
+    "status": "Active"
+  },
+  {
+    "sno": "69",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "58",
+    "districtName": "AMBALA",
+    "status": "Active"
+  },
+  {
+    "sno": "70",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "59",
+    "districtName": "BHIWANI",
+    "status": "Active"
+  },
+  {
+    "sno": "71",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "60",
+    "districtName": "FARIDABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "72",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "61",
+    "districtName": "FATEHABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "73",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "62",
+    "districtName": "GURUGRAM",
+    "status": "Active"
+  },
+  {
+    "sno": "74",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "63",
+    "districtName": "HISAR",
+    "status": "Active"
+  },
+  {
+    "sno": "75",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "64",
+    "districtName": "JHAJJAR",
+    "status": "Active"
+  },
+  {
+    "sno": "76",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "65",
+    "districtName": "JIND",
+    "status": "Active"
+  },
+  {
+    "sno": "77",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "66",
+    "districtName": "KAITHAL",
+    "status": "Active"
+  },
+  {
+    "sno": "78",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "67",
+    "districtName": "KARNAL",
+    "status": "Active"
+  },
+  {
+    "sno": "79",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "68",
+    "districtName": "KURUKSHETRA",
+    "status": "Active"
+  },
+  {
+    "sno": "80",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "69",
+    "districtName": "MAHENDRAGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "81",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "70",
+    "districtName": "PANCHKULA",
+    "status": "Active"
+  },
+  {
+    "sno": "82",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "71",
+    "districtName": "PANIPAT",
+    "status": "Active"
+  },
+  {
+    "sno": "83",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "72",
+    "districtName": "REWARI",
+    "status": "Active"
+  },
+  {
+    "sno": "84",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "73",
+    "districtName": "ROHTAK",
+    "status": "Active"
+  },
+  {
+    "sno": "85",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "74",
+    "districtName": "SIRSA",
+    "status": "Active"
+  },
+  {
+    "sno": "86",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "75",
+    "districtName": "SONIPAT",
+    "status": "Active"
+  },
+  {
+    "sno": "87",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "76",
+    "districtName": "YAMUNANAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "88",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "604",
+    "districtName": "NUH",
+    "status": "Active"
+  },
+  {
+    "sno": "89",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "619",
+    "districtName": "PALWAL",
+    "status": "Active"
+  },
+  {
+    "sno": "90",
+    "stateCode": "6",
+    "stateName": "HARYANA",
+    "districtCode": "701",
+    "districtName": "CHARKI DADRI",
+    "status": "Active"
+  },
+  {
+    "sno": "91",
+    "stateCode": "7",
+    "stateName": "DELHI",
+    "districtCode": "77",
+    "districtName": "CENTRAL",
+    "status": "Active"
+  },
+  {
+    "sno": "92",
+    "stateCode": "7",
+    "stateName": "DELHI",
+    "districtCode": "78",
+    "districtName": "EAST",
+    "status": "Active"
+  },
+  {
+    "sno": "93",
+    "stateCode": "7",
+    "stateName": "DELHI",
+    "districtCode": "79",
+    "districtName": "NEW DELHI",
+    "status": "Active"
+  },
+  {
+    "sno": "94",
+    "stateCode": "7",
+    "stateName": "DELHI",
+    "districtCode": "80",
+    "districtName": "NORTH",
+    "status": "Active"
+  },
+  {
+    "sno": "95",
+    "stateCode": "7",
+    "stateName": "DELHI",
+    "districtCode": "81",
+    "districtName": "NORTH EAST",
+    "status": "Active"
+  },
+  {
+    "sno": "96",
+    "stateCode": "7",
+    "stateName": "DELHI",
+    "districtCode": "82",
+    "districtName": "NORTH WEST",
+    "status": "Active"
+  },
+  {
+    "sno": "97",
+    "stateCode": "7",
+    "stateName": "DELHI",
+    "districtCode": "83",
+    "districtName": "SOUTH",
+    "status": "Active"
+  },
+  {
+    "sno": "98",
+    "stateCode": "7",
+    "stateName": "DELHI",
+    "districtCode": "84",
+    "districtName": "SOUTH WEST",
+    "status": "Active"
+  },
+  {
+    "sno": "99",
+    "stateCode": "7",
+    "stateName": "DELHI",
+    "districtCode": "85",
+    "districtName": "WEST",
+    "status": "Active"
+  },
+  {
+    "sno": "100",
+    "stateCode": "7",
+    "stateName": "DELHI",
+    "districtCode": "670",
+    "districtName": "South East",
+    "status": "Active"
+  },
+  {
+    "sno": "101",
+    "stateCode": "7",
+    "stateName": "DELHI",
+    "districtCode": "671",
+    "districtName": "SHAHDARA",
+    "status": "Active"
+  },
+  {
+    "sno": "102",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "86",
+    "districtName": "AJMER",
+    "status": "Active"
+  },
+  {
+    "sno": "103",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "87",
+    "districtName": "ALWAR",
+    "status": "Active"
+  },
+  {
+    "sno": "104",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "88",
+    "districtName": "BANSWARA",
+    "status": "Active"
+  },
+  {
+    "sno": "105",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "89",
+    "districtName": "BARAN",
+    "status": "Active"
+  },
+  {
+    "sno": "106",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "90",
+    "districtName": "BARMER",
+    "status": "Active"
+  },
+  {
+    "sno": "107",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "91",
+    "districtName": "BHARATPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "108",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "92",
+    "districtName": "BHILWARA",
+    "status": "Active"
+  },
+  {
+    "sno": "109",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "93",
+    "districtName": "BIKANER",
+    "status": "Active"
+  },
+  {
+    "sno": "110",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "94",
+    "districtName": "BUNDI",
+    "status": "Active"
+  },
+  {
+    "sno": "111",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "95",
+    "districtName": "CHITTORGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "112",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "96",
+    "districtName": "CHURU",
+    "status": "Active"
+  },
+  {
+    "sno": "113",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "97",
+    "districtName": "DAUSA",
+    "status": "Active"
+  },
+  {
+    "sno": "114",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "98",
+    "districtName": "DHOLPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "115",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "99",
+    "districtName": "DUNGARPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "116",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "100",
+    "districtName": "GANGANAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "117",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "101",
+    "districtName": "HANUMANGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "118",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "102",
+    "districtName": "JAIPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "119",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "103",
+    "districtName": "JAISALMER",
+    "status": "Active"
+  },
+  {
+    "sno": "120",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "104",
+    "districtName": "JALORE",
+    "status": "Active"
+  },
+  {
+    "sno": "121",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "105",
+    "districtName": "JHALAWAR",
+    "status": "Active"
+  },
+  {
+    "sno": "122",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "106",
+    "districtName": "JHUNJHUNU",
+    "status": "Active"
+  },
+  {
+    "sno": "123",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "107",
+    "districtName": "JODHPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "124",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "108",
+    "districtName": "KARAULI",
+    "status": "Active"
+  },
+  {
+    "sno": "125",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "109",
+    "districtName": "KOTA",
+    "status": "Active"
+  },
+  {
+    "sno": "126",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "110",
+    "districtName": "NAGAUR",
+    "status": "Active"
+  },
+  {
+    "sno": "127",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "111",
+    "districtName": "PALI",
+    "status": "Active"
+  },
+  {
+    "sno": "128",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "112",
+    "districtName": "RAJSAMAND",
+    "status": "Active"
+  },
+  {
+    "sno": "129",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "113",
+    "districtName": "SAWAI MADHOPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "130",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "114",
+    "districtName": "SIKAR",
+    "status": "Active"
+  },
+  {
+    "sno": "131",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "115",
+    "districtName": "SIROHI",
+    "status": "Active"
+  },
+  {
+    "sno": "132",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "116",
+    "districtName": "TONK",
+    "status": "Active"
+  },
+  {
+    "sno": "133",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "117",
+    "districtName": "UDAIPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "134",
+    "stateCode": "8",
+    "stateName": "RAJASTHAN",
+    "districtCode": "629",
+    "districtName": "PRATAPGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "135",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "118",
+    "districtName": "AGRA",
+    "status": "Active"
+  },
+  {
+    "sno": "136",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "119",
+    "districtName": "ALIGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "137",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "120",
+    "districtName": "PRAYAGRAJ",
+    "status": "Active"
+  },
+  {
+    "sno": "138",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "121",
+    "districtName": "AMBEDKAR NAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "139",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "122",
+    "districtName": "AURAIYA",
+    "status": "Active"
+  },
+  {
+    "sno": "140",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "123",
+    "districtName": "AZAMGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "141",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "124",
+    "districtName": "BAGHPAT",
+    "status": "Active"
+  },
+  {
+    "sno": "142",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "125",
+    "districtName": "BAHRAICH",
+    "status": "Active"
+  },
+  {
+    "sno": "143",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "126",
+    "districtName": "BALLIA",
+    "status": "Active"
+  },
+  {
+    "sno": "144",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "127",
+    "districtName": "BALRAMPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "145",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "128",
+    "districtName": "BANDA",
+    "status": "Active"
+  },
+  {
+    "sno": "146",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "129",
+    "districtName": "BARABANKI",
+    "status": "Active"
+  },
+  {
+    "sno": "147",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "130",
+    "districtName": "BAREILLY",
+    "status": "Active"
+  },
+  {
+    "sno": "148",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "131",
+    "districtName": "BASTI",
+    "status": "Active"
+  },
+  {
+    "sno": "149",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "132",
+    "districtName": "BIJNOR",
+    "status": "Active"
+  },
+  {
+    "sno": "150",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "133",
+    "districtName": "BUDAUN",
+    "status": "Active"
+  },
+  {
+    "sno": "151",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "134",
+    "districtName": "BULANDSHAHR",
+    "status": "Active"
+  },
+  {
+    "sno": "152",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "135",
+    "districtName": "CHANDAULI",
+    "status": "Active"
+  },
+  {
+    "sno": "153",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "136",
+    "districtName": "CHITRAKOOT",
+    "status": "Active"
+  },
+  {
+    "sno": "154",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "137",
+    "districtName": "DEORIA",
+    "status": "Active"
+  },
+  {
+    "sno": "155",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "138",
+    "districtName": "ETAH",
+    "status": "Active"
+  },
+  {
+    "sno": "156",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "139",
+    "districtName": "ETAWAH",
+    "status": "Active"
+  },
+  {
+    "sno": "157",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "140",
+    "districtName": "AYODHYA",
+    "status": "Active"
+  },
+  {
+    "sno": "158",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "141",
+    "districtName": "FARRUKHABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "159",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "142",
+    "districtName": "FATEHPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "160",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "143",
+    "districtName": "FIROZABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "161",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "144",
+    "districtName": "GAUTAM BUDDHA NAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "162",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "145",
+    "districtName": "GHAZIABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "163",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "146",
+    "districtName": "GHAZIPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "164",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "147",
+    "districtName": "GONDA",
+    "status": "Active"
+  },
+  {
+    "sno": "165",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "148",
+    "districtName": "GORAKHPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "166",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "149",
+    "districtName": "HAMIRPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "167",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "150",
+    "districtName": "HARDOI",
+    "status": "Active"
+  },
+  {
+    "sno": "168",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "151",
+    "districtName": "JALAUN",
+    "status": "Active"
+  },
+  {
+    "sno": "169",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "152",
+    "districtName": "JAUNPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "170",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "153",
+    "districtName": "JHANSI",
+    "status": "Active"
+  },
+  {
+    "sno": "171",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "154",
+    "districtName": "AMROHA",
+    "status": "Active"
+  },
+  {
+    "sno": "172",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "155",
+    "districtName": "KANNAUJ",
+    "status": "Active"
+  },
+  {
+    "sno": "173",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "156",
+    "districtName": "KANPUR DEHAT",
+    "status": "Active"
+  },
+  {
+    "sno": "174",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "157",
+    "districtName": "KANPUR NAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "175",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "158",
+    "districtName": "KAUSHAMBI",
+    "status": "Active"
+  },
+  {
+    "sno": "176",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "159",
+    "districtName": "KHERI",
+    "status": "Active"
+  },
+  {
+    "sno": "177",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "160",
+    "districtName": "KUSHI NAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "178",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "161",
+    "districtName": "LALITPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "179",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "162",
+    "districtName": "LUCKNOW",
+    "status": "Active"
+  },
+  {
+    "sno": "180",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "163",
+    "districtName": "HATHRAS",
+    "status": "Active"
+  },
+  {
+    "sno": "181",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "164",
+    "districtName": "MAHARAJGANJ",
+    "status": "Active"
+  },
+  {
+    "sno": "182",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "165",
+    "districtName": "MAHOBA",
+    "status": "Active"
+  },
+  {
+    "sno": "183",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "166",
+    "districtName": "MAINPURI",
+    "status": "Active"
+  },
+  {
+    "sno": "184",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "167",
+    "districtName": "MATHURA",
+    "status": "Active"
+  },
+  {
+    "sno": "185",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "168",
+    "districtName": "MAU",
+    "status": "Active"
+  },
+  {
+    "sno": "186",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "169",
+    "districtName": "MEERUT",
+    "status": "Active"
+  },
+  {
+    "sno": "187",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "170",
+    "districtName": "MIRZAPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "188",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "171",
+    "districtName": "MORADABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "189",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "172",
+    "districtName": "MUZAFFARNAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "190",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "173",
+    "districtName": "PILIBHIT",
+    "status": "Active"
+  },
+  {
+    "sno": "191",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "174",
+    "districtName": "PRATAPGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "192",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "175",
+    "districtName": "RAE BARELI",
+    "status": "Active"
+  },
+  {
+    "sno": "193",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "176",
+    "districtName": "RAMPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "194",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "177",
+    "districtName": "SAHARANPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "195",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "178",
+    "districtName": "SANT KABEER NAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "196",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "179",
+    "districtName": "BHADOHI",
+    "status": "Active"
+  },
+  {
+    "sno": "197",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "180",
+    "districtName": "SHAHJAHANPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "198",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "181",
+    "districtName": "SHRAVASTI",
+    "status": "Active"
+  },
+  {
+    "sno": "199",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "182",
+    "districtName": "SIDDHARTH NAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "200",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "183",
+    "districtName": "SITAPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "201",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "184",
+    "districtName": "SONBHADRA",
+    "status": "Active"
+  },
+  {
+    "sno": "202",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "185",
+    "districtName": "SULTANPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "203",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "186",
+    "districtName": "UNNAO",
+    "status": "Active"
+  },
+  {
+    "sno": "204",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "187",
+    "districtName": "VARANASI",
+    "status": "Active"
+  },
+  {
+    "sno": "205",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "633",
+    "districtName": "Kasganj",
+    "status": "Active"
+  },
+  {
+    "sno": "206",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "640",
+    "districtName": "Amethi",
+    "status": "Active"
+  },
+  {
+    "sno": "207",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "659",
+    "districtName": "SAMBHAL",
+    "status": "Active"
+  },
+  {
+    "sno": "208",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "660",
+    "districtName": "SHAMLI",
+    "status": "Active"
+  },
+  {
+    "sno": "209",
+    "stateCode": "9",
+    "stateName": "UTTAR PRADESH",
+    "districtCode": "661",
+    "districtName": "HAPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "210",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "188",
+    "districtName": "ARARIA",
+    "status": "Active"
+  },
+  {
+    "sno": "211",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "189",
+    "districtName": "AURANGABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "212",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "190",
+    "districtName": "BANKA",
+    "status": "Active"
+  },
+  {
+    "sno": "213",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "191",
+    "districtName": "BEGUSARAI",
+    "status": "Active"
+  },
+  {
+    "sno": "214",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "192",
+    "districtName": "BHAGALPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "215",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "193",
+    "districtName": "BHOJPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "216",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "194",
+    "districtName": "BUXAR",
+    "status": "Active"
+  },
+  {
+    "sno": "217",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "195",
+    "districtName": "DARBHANGA",
+    "status": "Active"
+  },
+  {
+    "sno": "218",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "196",
+    "districtName": "GAYA",
+    "status": "Active"
+  },
+  {
+    "sno": "219",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "197",
+    "districtName": "GOPALGANJ",
+    "status": "Active"
+  },
+  {
+    "sno": "220",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "198",
+    "districtName": "JAMUI",
+    "status": "Active"
+  },
+  {
+    "sno": "221",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "199",
+    "districtName": "JEHANABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "222",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "200",
+    "districtName": "KAIMUR (BHABUA)",
+    "status": "Active"
+  },
+  {
+    "sno": "223",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "201",
+    "districtName": "KATIHAR",
+    "status": "Active"
+  },
+  {
+    "sno": "224",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "202",
+    "districtName": "KHAGARIA",
+    "status": "Active"
+  },
+  {
+    "sno": "225",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "203",
+    "districtName": "KISHANGANJ",
+    "status": "Active"
+  },
+  {
+    "sno": "226",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "204",
+    "districtName": "LAKHISARAI",
+    "status": "Active"
+  },
+  {
+    "sno": "227",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "205",
+    "districtName": "MADHEPURA",
+    "status": "Active"
+  },
+  {
+    "sno": "228",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "206",
+    "districtName": "MADHUBANI",
+    "status": "Active"
+  },
+  {
+    "sno": "229",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "207",
+    "districtName": "MUNGER",
+    "status": "Active"
+  },
+  {
+    "sno": "230",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "208",
+    "districtName": "MUZAFFARPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "231",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "209",
+    "districtName": "NALANDA",
+    "status": "Active"
+  },
+  {
+    "sno": "232",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "210",
+    "districtName": "NAWADA",
+    "status": "Active"
+  },
+  {
+    "sno": "233",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "211",
+    "districtName": "PASHCHIM CHAMPARAN",
+    "status": "Active"
+  },
+  {
+    "sno": "234",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "212",
+    "districtName": "PATNA",
+    "status": "Active"
+  },
+  {
+    "sno": "235",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "213",
+    "districtName": "PURBI CHAMPARAN",
+    "status": "Active"
+  },
+  {
+    "sno": "236",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "214",
+    "districtName": "PURNIA",
+    "status": "Active"
+  },
+  {
+    "sno": "237",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "215",
+    "districtName": "ROHTAS",
+    "status": "Active"
+  },
+  {
+    "sno": "238",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "216",
+    "districtName": "SAHARSA",
+    "status": "Active"
+  },
+  {
+    "sno": "239",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "217",
+    "districtName": "SAMASTIPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "240",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "218",
+    "districtName": "SARAN",
+    "status": "Active"
+  },
+  {
+    "sno": "241",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "219",
+    "districtName": "SHEIKHPURA",
+    "status": "Active"
+  },
+  {
+    "sno": "242",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "220",
+    "districtName": "SHEOHAR",
+    "status": "Active"
+  },
+  {
+    "sno": "243",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "221",
+    "districtName": "SITAMARHI",
+    "status": "Active"
+  },
+  {
+    "sno": "244",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "222",
+    "districtName": "SIWAN",
+    "status": "Active"
+  },
+  {
+    "sno": "245",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "223",
+    "districtName": "SUPAUL",
+    "status": "Active"
+  },
+  {
+    "sno": "246",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "224",
+    "districtName": "VAISHALI",
+    "status": "Active"
+  },
+  {
+    "sno": "247",
+    "stateCode": "10",
+    "stateName": "BIHAR",
+    "districtCode": "611",
+    "districtName": "ARWAL",
+    "status": "Active"
+  },
+  {
+    "sno": "248",
+    "stateCode": "11",
+    "stateName": "SIKKIM",
+    "districtCode": "225",
+    "districtName": "EAST DISTRICT",
+    "status": "Active"
+  },
+  {
+    "sno": "249",
+    "stateCode": "11",
+    "stateName": "SIKKIM",
+    "districtCode": "226",
+    "districtName": "NORTH DISTRICT",
+    "status": "Active"
+  },
+  {
+    "sno": "250",
+    "stateCode": "11",
+    "stateName": "SIKKIM",
+    "districtCode": "227",
+    "districtName": "SOUTH DISTRICT",
+    "status": "Active"
+  },
+  {
+    "sno": "251",
+    "stateCode": "11",
+    "stateName": "SIKKIM",
+    "districtCode": "228",
+    "districtName": "WEST DISTRICT",
+    "status": "Active"
+  },
+  {
+    "sno": "252",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "229",
+    "districtName": "CHANGLANG",
+    "status": "Active"
+  },
+  {
+    "sno": "253",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "230",
+    "districtName": "DIBANG VALLEY",
+    "status": "Active"
+  },
+  {
+    "sno": "254",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "231",
+    "districtName": "EAST KAMENG",
+    "status": "Active"
+  },
+  {
+    "sno": "255",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "232",
+    "districtName": "EAST SIANG",
+    "status": "Active"
+  },
+  {
+    "sno": "256",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "233",
+    "districtName": "KURUNG KUMEY",
+    "status": "Active"
+  },
+  {
+    "sno": "257",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "234",
+    "districtName": "LOHIT",
+    "status": "Active"
+  },
+  {
+    "sno": "258",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "235",
+    "districtName": "LOWER DIBANG VALLEY",
+    "status": "Active"
+  },
+  {
+    "sno": "259",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "236",
+    "districtName": "LOWER SUBANSIRI",
+    "status": "Active"
+  },
+  {
+    "sno": "260",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "237",
+    "districtName": "PAPUM PARE",
+    "status": "Active"
+  },
+  {
+    "sno": "261",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "238",
+    "districtName": "TAWANG",
+    "status": "Active"
+  },
+  {
+    "sno": "262",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "239",
+    "districtName": "TIRAP",
+    "status": "Active"
+  },
+  {
+    "sno": "263",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "240",
+    "districtName": "UPPER SIANG",
+    "status": "Active"
+  },
+  {
+    "sno": "264",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "241",
+    "districtName": "UPPER SUBANSIRI",
+    "status": "Active"
+  },
+  {
+    "sno": "265",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "242",
+    "districtName": "WEST KAMENG",
+    "status": "Active"
+  },
+  {
+    "sno": "266",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "243",
+    "districtName": "WEST SIANG",
+    "status": "Active"
+  },
+  {
+    "sno": "267",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "628",
+    "districtName": "ANJAW",
+    "status": "Active"
+  },
+  {
+    "sno": "268",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "666",
+    "districtName": "LONGDING",
+    "status": "Active"
+  },
+  {
+    "sno": "269",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "677",
+    "districtName": "KRA",
+    "status": "Active"
+  },
+  {
+    "sno": "270",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "678",
+    "districtName": "NAMSAI",
+    "status": "Active"
+  },
+  {
+    "sno": "271",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "679",
+    "districtName": "SIANG",
+    "status": "Active"
+  },
+  {
+    "sno": "272",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "718",
+    "districtName": "KAMLE",
+    "status": "Active"
+  },
+  {
+    "sno": "273",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "719",
+    "districtName": "LOWER SIANG",
+    "status": "Active"
+  },
+  {
+    "sno": "274",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "723",
+    "districtName": "PAKKE KESSANG",
+    "status": "Active"
+  },
+  {
+    "sno": "275",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "724",
+    "districtName": "LEPARADA",
+    "status": "Active"
+  },
+  {
+    "sno": "276",
+    "stateCode": "12",
+    "stateName": "ARUNACHAL PRADESH",
+    "districtCode": "725",
+    "districtName": "SHI YOMI",
+    "status": "Active"
+  },
+  {
+    "sno": "277",
+    "stateCode": "13",
+    "stateName": "NAGALAND",
+    "districtCode": "244",
+    "districtName": "DIMAPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "278",
+    "stateCode": "13",
+    "stateName": "NAGALAND",
+    "districtCode": "245",
+    "districtName": "KOHIMA",
+    "status": "Active"
+  },
+  {
+    "sno": "279",
+    "stateCode": "13",
+    "stateName": "NAGALAND",
+    "districtCode": "246",
+    "districtName": "MOKOKCHUNG",
+    "status": "Active"
+  },
+  {
+    "sno": "280",
+    "stateCode": "13",
+    "stateName": "NAGALAND",
+    "districtCode": "247",
+    "districtName": "MON",
+    "status": "Active"
+  },
+  {
+    "sno": "281",
+    "stateCode": "13",
+    "stateName": "NAGALAND",
+    "districtCode": "248",
+    "districtName": "PHEK",
+    "status": "Active"
+  },
+  {
+    "sno": "282",
+    "stateCode": "13",
+    "stateName": "NAGALAND",
+    "districtCode": "249",
+    "districtName": "TUENSANG",
+    "status": "Active"
+  },
+  {
+    "sno": "283",
+    "stateCode": "13",
+    "stateName": "NAGALAND",
+    "districtCode": "250",
+    "districtName": "WOKHA",
+    "status": "Active"
+  },
+  {
+    "sno": "284",
+    "stateCode": "13",
+    "stateName": "NAGALAND",
+    "districtCode": "251",
+    "districtName": "ZUNHEBOTO",
+    "status": "Active"
+  },
+  {
+    "sno": "285",
+    "stateCode": "13",
+    "stateName": "NAGALAND",
+    "districtCode": "613",
+    "districtName": "PEREN",
+    "status": "Active"
+  },
+  {
+    "sno": "286",
+    "stateCode": "13",
+    "stateName": "NAGALAND",
+    "districtCode": "614",
+    "districtName": "KIPHIRE",
+    "status": "Active"
+  },
+  {
+    "sno": "287",
+    "stateCode": "13",
+    "stateName": "NAGALAND",
+    "districtCode": "615",
+    "districtName": "LONGLENG",
+    "status": "Active"
+  },
+  {
+    "sno": "288",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "252",
+    "districtName": "BISHNUPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "289",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "253",
+    "districtName": "CHANDEL",
+    "status": "Active"
+  },
+  {
+    "sno": "290",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "254",
+    "districtName": "CHURACHANDPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "291",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "255",
+    "districtName": "IMPHAL EAST",
+    "status": "Active"
+  },
+  {
+    "sno": "292",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "256",
+    "districtName": "IMPHAL WEST",
+    "status": "Active"
+  },
+  {
+    "sno": "293",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "257",
+    "districtName": "SENAPATI",
+    "status": "Active"
+  },
+  {
+    "sno": "294",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "258",
+    "districtName": "TAMENGLONG",
+    "status": "Active"
+  },
+  {
+    "sno": "295",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "259",
+    "districtName": "THOUBAL",
+    "status": "Active"
+  },
+  {
+    "sno": "296",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "260",
+    "districtName": "UKHRUL",
+    "status": "Active"
+  },
+  {
+    "sno": "297",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "711",
+    "districtName": "KAKCHING",
+    "status": "Active"
+  },
+  {
+    "sno": "298",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "712",
+    "districtName": "KANGPOKPI",
+    "status": "Active"
+  },
+  {
+    "sno": "299",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "713",
+    "districtName": "JIRIBAM",
+    "status": "Active"
+  },
+  {
+    "sno": "300",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "714",
+    "districtName": "NONEY",
+    "status": "Active"
+  },
+  {
+    "sno": "301",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "715",
+    "districtName": "PHERZAWL",
+    "status": "Active"
+  },
+  {
+    "sno": "302",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "716",
+    "districtName": "TENGNOUPAL",
+    "status": "Active"
+  },
+  {
+    "sno": "303",
+    "stateCode": "14",
+    "stateName": "MANIPUR",
+    "districtCode": "717",
+    "districtName": "KAMJONG",
+    "status": "Active"
+  },
+  {
+    "sno": "304",
+    "stateCode": "15",
+    "stateName": "MIZORAM",
+    "districtCode": "261",
+    "districtName": "AIZAWL",
+    "status": "Active"
+  },
+  {
+    "sno": "305",
+    "stateCode": "15",
+    "stateName": "MIZORAM",
+    "districtCode": "262",
+    "districtName": "CHAMPHAI",
+    "status": "Active"
+  },
+  {
+    "sno": "306",
+    "stateCode": "15",
+    "stateName": "MIZORAM",
+    "districtCode": "263",
+    "districtName": "KOLASIB",
+    "status": "Active"
+  },
+  {
+    "sno": "307",
+    "stateCode": "15",
+    "stateName": "MIZORAM",
+    "districtCode": "264",
+    "districtName": "LAWNGTLAI",
+    "status": "Active"
+  },
+  {
+    "sno": "308",
+    "stateCode": "15",
+    "stateName": "MIZORAM",
+    "districtCode": "265",
+    "districtName": "LUNGLEI",
+    "status": "Active"
+  },
+  {
+    "sno": "309",
+    "stateCode": "15",
+    "stateName": "MIZORAM",
+    "districtCode": "266",
+    "districtName": "MAMIT",
+    "status": "Active"
+  },
+  {
+    "sno": "310",
+    "stateCode": "15",
+    "stateName": "MIZORAM",
+    "districtCode": "267",
+    "districtName": "SAIHA",
+    "status": "Active"
+  },
+  {
+    "sno": "311",
+    "stateCode": "15",
+    "stateName": "MIZORAM",
+    "districtCode": "268",
+    "districtName": "SERCHHIP",
+    "status": "Active"
+  },
+  {
+    "sno": "312",
+    "stateCode": "16",
+    "stateName": "TRIPURA",
+    "districtCode": "269",
+    "districtName": "Dhalai",
+    "status": "Active"
+  },
+  {
+    "sno": "313",
+    "stateCode": "16",
+    "stateName": "TRIPURA",
+    "districtCode": "270",
+    "districtName": "North Tripura",
+    "status": "Active"
+  },
+  {
+    "sno": "314",
+    "stateCode": "16",
+    "stateName": "TRIPURA",
+    "districtCode": "271",
+    "districtName": "South Tripura",
+    "status": "Active"
+  },
+  {
+    "sno": "315",
+    "stateCode": "16",
+    "stateName": "TRIPURA",
+    "districtCode": "272",
+    "districtName": "West Tripura",
+    "status": "Active"
+  },
+  {
+    "sno": "316",
+    "stateCode": "16",
+    "stateName": "TRIPURA",
+    "districtCode": "652",
+    "districtName": "Khowai",
+    "status": "Active"
+  },
+  {
+    "sno": "317",
+    "stateCode": "16",
+    "stateName": "TRIPURA",
+    "districtCode": "653",
+    "districtName": "Sepahijala",
+    "status": "Active"
+  },
+  {
+    "sno": "318",
+    "stateCode": "16",
+    "stateName": "TRIPURA",
+    "districtCode": "654",
+    "districtName": "Gomati",
+    "status": "Active"
+  },
+  {
+    "sno": "319",
+    "stateCode": "16",
+    "stateName": "TRIPURA",
+    "districtCode": "655",
+    "districtName": "Unakoti",
+    "status": "Active"
+  },
+  {
+    "sno": "320",
+    "stateCode": "17",
+    "stateName": "MEGHALAYA",
+    "districtCode": "273",
+    "districtName": "EAST GARO HILLS",
+    "status": "Active"
+  },
+  {
+    "sno": "321",
+    "stateCode": "17",
+    "stateName": "MEGHALAYA",
+    "districtCode": "274",
+    "districtName": "EAST KHASI HILLS",
+    "status": "Active"
+  },
+  {
+    "sno": "322",
+    "stateCode": "17",
+    "stateName": "MEGHALAYA",
+    "districtCode": "275",
+    "districtName": "WEST JAINTIA HILLS",
+    "status": "Active"
+  },
+  {
+    "sno": "323",
+    "stateCode": "17",
+    "stateName": "MEGHALAYA",
+    "districtCode": "276",
+    "districtName": "RI BHOI",
+    "status": "Active"
+  },
+  {
+    "sno": "324",
+    "stateCode": "17",
+    "stateName": "MEGHALAYA",
+    "districtCode": "277",
+    "districtName": "SOUTH GARO HILLS",
+    "status": "Active"
+  },
+  {
+    "sno": "325",
+    "stateCode": "17",
+    "stateName": "MEGHALAYA",
+    "districtCode": "278",
+    "districtName": "WEST GARO HILLS",
+    "status": "Active"
+  },
+  {
+    "sno": "326",
+    "stateCode": "17",
+    "stateName": "MEGHALAYA",
+    "districtCode": "279",
+    "districtName": "WEST KHASI HILLS",
+    "status": "Active"
+  },
+  {
+    "sno": "327",
+    "stateCode": "17",
+    "stateName": "MEGHALAYA",
+    "districtCode": "656",
+    "districtName": "NORTH GARO HILLS",
+    "status": "Active"
+  },
+  {
+    "sno": "328",
+    "stateCode": "17",
+    "stateName": "MEGHALAYA",
+    "districtCode": "657",
+    "districtName": "EAST JAINTIA HILLS",
+    "status": "Active"
+  },
+  {
+    "sno": "329",
+    "stateCode": "17",
+    "stateName": "MEGHALAYA",
+    "districtCode": "658",
+    "districtName": "SOUTH WEST KHASI HILLS",
+    "status": "Active"
+  },
+  {
+    "sno": "330",
+    "stateCode": "17",
+    "stateName": "MEGHALAYA",
+    "districtCode": "663",
+    "districtName": "SOUTH WEST GARO HILLS",
+    "status": "Active"
+  },
+  {
+    "sno": "331",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "280",
+    "districtName": "BARPETA",
+    "status": "Active"
+  },
+  {
+    "sno": "332",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "281",
+    "districtName": "BONGAIGAON",
+    "status": "Active"
+  },
+  {
+    "sno": "333",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "282",
+    "districtName": "CACHAR",
+    "status": "Active"
+  },
+  {
+    "sno": "334",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "283",
+    "districtName": "DARRANG",
+    "status": "Active"
+  },
+  {
+    "sno": "335",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "284",
+    "districtName": "DHEMAJI",
+    "status": "Active"
+  },
+  {
+    "sno": "336",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "285",
+    "districtName": "DHUBRI",
+    "status": "Active"
+  },
+  {
+    "sno": "337",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "286",
+    "districtName": "DIBRUGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "338",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "287",
+    "districtName": "GOALPARA",
+    "status": "Active"
+  },
+  {
+    "sno": "339",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "288",
+    "districtName": "GOLAGHAT",
+    "status": "Active"
+  },
+  {
+    "sno": "340",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "289",
+    "districtName": "HAILAKANDI",
+    "status": "Active"
+  },
+  {
+    "sno": "341",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "290",
+    "districtName": "JORHAT",
+    "status": "Active"
+  },
+  {
+    "sno": "342",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "291",
+    "districtName": "KAMRUP",
+    "status": "Active"
+  },
+  {
+    "sno": "343",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "292",
+    "districtName": "KARBI ANGLONG",
+    "status": "Active"
+  },
+  {
+    "sno": "344",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "293",
+    "districtName": "KARIMGANJ",
+    "status": "Active"
+  },
+  {
+    "sno": "345",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "294",
+    "districtName": "KOKRAJHAR",
+    "status": "Active"
+  },
+  {
+    "sno": "346",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "295",
+    "districtName": "LAKHIMPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "347",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "296",
+    "districtName": "MARIGAON",
+    "status": "Active"
+  },
+  {
+    "sno": "348",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "297",
+    "districtName": "NAGAON",
+    "status": "Active"
+  },
+  {
+    "sno": "349",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "298",
+    "districtName": "NALBARI",
+    "status": "Active"
+  },
+  {
+    "sno": "350",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "299",
+    "districtName": "DIMA HASAO",
+    "status": "Active"
+  },
+  {
+    "sno": "351",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "300",
+    "districtName": "SIVASAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "352",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "301",
+    "districtName": "SONITPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "353",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "302",
+    "districtName": "TINSUKIA",
+    "status": "Active"
+  },
+  {
+    "sno": "354",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "612",
+    "districtName": "CHIRANG",
+    "status": "Active"
+  },
+  {
+    "sno": "355",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "616",
+    "districtName": "BAKSA",
+    "status": "Active"
+  },
+  {
+    "sno": "356",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "617",
+    "districtName": "UDALGURI",
+    "status": "Active"
+  },
+  {
+    "sno": "357",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "618",
+    "districtName": "KAMRUP METRO",
+    "status": "Active"
+  },
+  {
+    "sno": "358",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "705",
+    "districtName": "Biswanath",
+    "status": "Active"
+  },
+  {
+    "sno": "359",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "706",
+    "districtName": "MAJULI",
+    "status": "Active"
+  },
+  {
+    "sno": "360",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "707",
+    "districtName": "SOUTH SALMARA MANCACHAR",
+    "status": "Active"
+  },
+  {
+    "sno": "361",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "708",
+    "districtName": "CHARAIDEO",
+    "status": "Active"
+  },
+  {
+    "sno": "362",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "709",
+    "districtName": "HOJAI",
+    "status": "Active"
+  },
+  {
+    "sno": "363",
+    "stateCode": "18",
+    "stateName": "ASSAM",
+    "districtCode": "710",
+    "districtName": "WEST KARBI ANGLONG",
+    "status": "Active"
+  },
+  {
+    "sno": "364",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "303",
+    "districtName": "24 PARAGANAS NORTH",
+    "status": "Active"
+  },
+  {
+    "sno": "365",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "304",
+    "districtName": "24 PARAGANAS SOUTH",
+    "status": "Active"
+  },
+  {
+    "sno": "366",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "305",
+    "districtName": "BANKURA",
+    "status": "Active"
+  },
+  {
+    "sno": "367",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "306",
+    "districtName": "PURBA BARDHAMAN",
+    "status": "Active"
+  },
+  {
+    "sno": "368",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "307",
+    "districtName": "BIRBHUM",
+    "status": "Active"
+  },
+  {
+    "sno": "369",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "308",
+    "districtName": "COOCHBEHAR",
+    "status": "Active"
+  },
+  {
+    "sno": "370",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "309",
+    "districtName": "DARJEELING",
+    "status": "Active"
+  },
+  {
+    "sno": "371",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "310",
+    "districtName": "DINAJPUR DAKSHIN",
+    "status": "Active"
+  },
+  {
+    "sno": "372",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "311",
+    "districtName": "DINAJPUR UTTAR",
+    "status": "Active"
+  },
+  {
+    "sno": "373",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "312",
+    "districtName": "HOOGHLY",
+    "status": "Active"
+  },
+  {
+    "sno": "374",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "313",
+    "districtName": "HOWRAH",
+    "status": "Active"
+  },
+  {
+    "sno": "375",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "314",
+    "districtName": "JALPAIGURI",
+    "status": "Active"
+  },
+  {
+    "sno": "376",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "315",
+    "districtName": "KOLKATA",
+    "status": "Active"
+  },
+  {
+    "sno": "377",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "316",
+    "districtName": "MALDAH",
+    "status": "Active"
+  },
+  {
+    "sno": "378",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "317",
+    "districtName": "MEDINIPUR EAST",
+    "status": "Active"
+  },
+  {
+    "sno": "379",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "318",
+    "districtName": "MEDINIPUR WEST",
+    "status": "Active"
+  },
+  {
+    "sno": "380",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "319",
+    "districtName": "MURSHIDABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "381",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "320",
+    "districtName": "NADIA",
+    "status": "Active"
+  },
+  {
+    "sno": "382",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "321",
+    "districtName": "PURULIA",
+    "status": "Active"
+  },
+  {
+    "sno": "383",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "664",
+    "districtName": "Alipurduar",
+    "status": "Active"
+  },
+  {
+    "sno": "384",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "702",
+    "districtName": "KALIMPONG",
+    "status": "Active"
+  },
+  {
+    "sno": "385",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "703",
+    "districtName": "Jhargram",
+    "status": "Active"
+  },
+  {
+    "sno": "386",
+    "stateCode": "19",
+    "stateName": "WEST BENGAL",
+    "districtCode": "704",
+    "districtName": "PASCHIM BARDHAMAN",
+    "status": "Active"
+  },
+  {
+    "sno": "387",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "322",
+    "districtName": "BOKARO",
+    "status": "Active"
+  },
+  {
+    "sno": "388",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "323",
+    "districtName": "CHATRA",
+    "status": "Active"
+  },
+  {
+    "sno": "389",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "324",
+    "districtName": "DEOGHAR",
+    "status": "Active"
+  },
+  {
+    "sno": "390",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "325",
+    "districtName": "DHANBAD",
+    "status": "Active"
+  },
+  {
+    "sno": "391",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "326",
+    "districtName": "DUMKA",
+    "status": "Active"
+  },
+  {
+    "sno": "392",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "327",
+    "districtName": "EAST SINGHBUM",
+    "status": "Active"
+  },
+  {
+    "sno": "393",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "328",
+    "districtName": "GARHWA",
+    "status": "Active"
+  },
+  {
+    "sno": "394",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "329",
+    "districtName": "GIRIDIH",
+    "status": "Active"
+  },
+  {
+    "sno": "395",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "330",
+    "districtName": "GODDA",
+    "status": "Active"
+  },
+  {
+    "sno": "396",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "331",
+    "districtName": "GUMLA",
+    "status": "Active"
+  },
+  {
+    "sno": "397",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "332",
+    "districtName": "HAZARIBAGH",
+    "status": "Active"
+  },
+  {
+    "sno": "398",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "333",
+    "districtName": "JAMTARA",
+    "status": "Active"
+  },
+  {
+    "sno": "399",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "334",
+    "districtName": "KODERMA",
+    "status": "Active"
+  },
+  {
+    "sno": "400",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "335",
+    "districtName": "LATEHAR",
+    "status": "Active"
+  },
+  {
+    "sno": "401",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "336",
+    "districtName": "LOHARDAGA",
+    "status": "Active"
+  },
+  {
+    "sno": "402",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "337",
+    "districtName": "PAKUR",
+    "status": "Active"
+  },
+  {
+    "sno": "403",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "338",
+    "districtName": "PALAMU",
+    "status": "Active"
+  },
+  {
+    "sno": "404",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "339",
+    "districtName": "RANCHI",
+    "status": "Active"
+  },
+  {
+    "sno": "405",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "340",
+    "districtName": "SAHEBGANJ",
+    "status": "Active"
+  },
+  {
+    "sno": "406",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "341",
+    "districtName": "SARAIKELA KHARSAWAN",
+    "status": "Active"
+  },
+  {
+    "sno": "407",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "342",
+    "districtName": "SIMDEGA",
+    "status": "Active"
+  },
+  {
+    "sno": "408",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "343",
+    "districtName": "WEST SINGHBHUM",
+    "status": "Active"
+  },
+  {
+    "sno": "409",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "606",
+    "districtName": "KHUNTI",
+    "status": "Active"
+  },
+  {
+    "sno": "410",
+    "stateCode": "20",
+    "stateName": "JHARKHAND",
+    "districtCode": "607",
+    "districtName": "RAMGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "411",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "344",
+    "districtName": "ANUGUL",
+    "status": "Active"
+  },
+  {
+    "sno": "412",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "345",
+    "districtName": "BALANGIR",
+    "status": "Active"
+  },
+  {
+    "sno": "413",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "346",
+    "districtName": "BALESHWAR",
+    "status": "Active"
+  },
+  {
+    "sno": "414",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "347",
+    "districtName": "BARGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "415",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "348",
+    "districtName": "BHADRAK",
+    "status": "Active"
+  },
+  {
+    "sno": "416",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "349",
+    "districtName": "BOUDH",
+    "status": "Active"
+  },
+  {
+    "sno": "417",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "350",
+    "districtName": "CUTTACK",
+    "status": "Active"
+  },
+  {
+    "sno": "418",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "351",
+    "districtName": "DEOGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "419",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "352",
+    "districtName": "DHENKANAL",
+    "status": "Active"
+  },
+  {
+    "sno": "420",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "353",
+    "districtName": "GAJAPATI",
+    "status": "Active"
+  },
+  {
+    "sno": "421",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "354",
+    "districtName": "GANJAM",
+    "status": "Active"
+  },
+  {
+    "sno": "422",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "355",
+    "districtName": "JAGATSINGHAPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "423",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "356",
+    "districtName": "JAJAPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "424",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "357",
+    "districtName": "JHARSUGUDA",
+    "status": "Active"
+  },
+  {
+    "sno": "425",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "358",
+    "districtName": "KALAHANDI",
+    "status": "Active"
+  },
+  {
+    "sno": "426",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "359",
+    "districtName": "KANDHAMAL",
+    "status": "Active"
+  },
+  {
+    "sno": "427",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "360",
+    "districtName": "KENDRAPARA",
+    "status": "Active"
+  },
+  {
+    "sno": "428",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "361",
+    "districtName": "KENDUJHAR",
+    "status": "Active"
+  },
+  {
+    "sno": "429",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "362",
+    "districtName": "KHORDHA",
+    "status": "Active"
+  },
+  {
+    "sno": "430",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "363",
+    "districtName": "KORAPUT",
+    "status": "Active"
+  },
+  {
+    "sno": "431",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "364",
+    "districtName": "MALKANGIRI",
+    "status": "Active"
+  },
+  {
+    "sno": "432",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "365",
+    "districtName": "MAYURBHANJ",
+    "status": "Active"
+  },
+  {
+    "sno": "433",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "366",
+    "districtName": "NABARANGPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "434",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "367",
+    "districtName": "NAYAGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "435",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "368",
+    "districtName": "NUAPADA",
+    "status": "Active"
+  },
+  {
+    "sno": "436",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "369",
+    "districtName": "PURI",
+    "status": "Active"
+  },
+  {
+    "sno": "437",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "370",
+    "districtName": "RAYAGADA",
+    "status": "Active"
+  },
+  {
+    "sno": "438",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "371",
+    "districtName": "SAMBALPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "439",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "372",
+    "districtName": "SONEPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "440",
+    "stateCode": "21",
+    "stateName": "ODISHA",
+    "districtCode": "373",
+    "districtName": "SUNDARGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "441",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "374",
+    "districtName": "BASTAR",
+    "status": "Active"
+  },
+  {
+    "sno": "442",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "375",
+    "districtName": "BILASPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "443",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "376",
+    "districtName": "DANTEWADA",
+    "status": "Active"
+  },
+  {
+    "sno": "444",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "377",
+    "districtName": "DHAMTARI",
+    "status": "Active"
+  },
+  {
+    "sno": "445",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "378",
+    "districtName": "DURG",
+    "status": "Active"
+  },
+  {
+    "sno": "446",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "379",
+    "districtName": "JANJGIR-CHAMPA",
+    "status": "Active"
+  },
+  {
+    "sno": "447",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "380",
+    "districtName": "JASHPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "448",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "381",
+    "districtName": "KANKER",
+    "status": "Active"
+  },
+  {
+    "sno": "449",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "382",
+    "districtName": "KABIRDHAM",
+    "status": "Active"
+  },
+  {
+    "sno": "450",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "383",
+    "districtName": "KORBA",
+    "status": "Active"
+  },
+  {
+    "sno": "451",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "384",
+    "districtName": "KOREA",
+    "status": "Active"
+  },
+  {
+    "sno": "452",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "385",
+    "districtName": "MAHASAMUND",
+    "status": "Active"
+  },
+  {
+    "sno": "453",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "386",
+    "districtName": "RAIGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "454",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "387",
+    "districtName": "RAIPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "455",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "388",
+    "districtName": "RAJNANDGAON",
+    "status": "Active"
+  },
+  {
+    "sno": "456",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "389",
+    "districtName": "SURGUJA",
+    "status": "Active"
+  },
+  {
+    "sno": "457",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "636",
+    "districtName": "BIJAPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "458",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "637",
+    "districtName": "NARAYANPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "459",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "642",
+    "districtName": "SUKMA",
+    "status": "Active"
+  },
+  {
+    "sno": "460",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "643",
+    "districtName": "KONDAGAON",
+    "status": "Active"
+  },
+  {
+    "sno": "461",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "644",
+    "districtName": "BALODA BAZAR",
+    "status": "Active"
+  },
+  {
+    "sno": "462",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "645",
+    "districtName": "GARIYABAND",
+    "status": "Active"
+  },
+  {
+    "sno": "463",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "646",
+    "districtName": "BALOD",
+    "status": "Active"
+  },
+  {
+    "sno": "464",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "647",
+    "districtName": "MUNGELI",
+    "status": "Active"
+  },
+  {
+    "sno": "465",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "648",
+    "districtName": "SURAJPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "466",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "649",
+    "districtName": "BALRAMPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "467",
+    "stateCode": "22",
+    "stateName": "CHHATTISGARH",
+    "districtCode": "650",
+    "districtName": "BEMETARA",
+    "status": "Active"
+  },
+  {
+    "sno": "468",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "390",
+    "districtName": "ANUPPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "469",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "391",
+    "districtName": "ASHOKNAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "470",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "392",
+    "districtName": "BALAGHAT",
+    "status": "Active"
+  },
+  {
+    "sno": "471",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "393",
+    "districtName": "BARWANI",
+    "status": "Active"
+  },
+  {
+    "sno": "472",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "394",
+    "districtName": "BETUL",
+    "status": "Active"
+  },
+  {
+    "sno": "473",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "395",
+    "districtName": "BHIND",
+    "status": "Active"
+  },
+  {
+    "sno": "474",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "396",
+    "districtName": "BHOPAL",
+    "status": "Active"
+  },
+  {
+    "sno": "475",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "397",
+    "districtName": "BURHANPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "476",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "398",
+    "districtName": "CHHATARPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "477",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "399",
+    "districtName": "CHHINDWARA",
+    "status": "Active"
+  },
+  {
+    "sno": "478",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "400",
+    "districtName": "DAMOH",
+    "status": "Active"
+  },
+  {
+    "sno": "479",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "401",
+    "districtName": "DATIA",
+    "status": "Active"
+  },
+  {
+    "sno": "480",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "402",
+    "districtName": "DEWAS",
+    "status": "Active"
+  },
+  {
+    "sno": "481",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "403",
+    "districtName": "DHAR",
+    "status": "Active"
+  },
+  {
+    "sno": "482",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "404",
+    "districtName": "DINDORI",
+    "status": "Active"
+  },
+  {
+    "sno": "483",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "405",
+    "districtName": "EAST NIMAR",
+    "status": "Active"
+  },
+  {
+    "sno": "484",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "406",
+    "districtName": "GUNA",
+    "status": "Active"
+  },
+  {
+    "sno": "485",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "407",
+    "districtName": "GWALIOR",
+    "status": "Active"
+  },
+  {
+    "sno": "486",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "408",
+    "districtName": "HARDA",
+    "status": "Active"
+  },
+  {
+    "sno": "487",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "409",
+    "districtName": "HOSHANGABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "488",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "410",
+    "districtName": "INDORE",
+    "status": "Active"
+  },
+  {
+    "sno": "489",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "411",
+    "districtName": "JABALPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "490",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "412",
+    "districtName": "JHABUA",
+    "status": "Active"
+  },
+  {
+    "sno": "491",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "413",
+    "districtName": "KATNI",
+    "status": "Active"
+  },
+  {
+    "sno": "492",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "414",
+    "districtName": "KHARGONE",
+    "status": "Active"
+  },
+  {
+    "sno": "493",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "415",
+    "districtName": "MANDLA",
+    "status": "Active"
+  },
+  {
+    "sno": "494",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "416",
+    "districtName": "MANDSAUR",
+    "status": "Active"
+  },
+  {
+    "sno": "495",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "417",
+    "districtName": "MORENA",
+    "status": "Active"
+  },
+  {
+    "sno": "496",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "418",
+    "districtName": "NARSINGHPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "497",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "419",
+    "districtName": "NEEMUCH",
+    "status": "Active"
+  },
+  {
+    "sno": "498",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "420",
+    "districtName": "PANNA",
+    "status": "Active"
+  },
+  {
+    "sno": "499",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "421",
+    "districtName": "RAISEN",
+    "status": "Active"
+  },
+  {
+    "sno": "500",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "422",
+    "districtName": "RAJGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "501",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "423",
+    "districtName": "RATLAM",
+    "status": "Active"
+  },
+  {
+    "sno": "502",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "424",
+    "districtName": "REWA",
+    "status": "Active"
+  },
+  {
+    "sno": "503",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "425",
+    "districtName": "SAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "504",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "426",
+    "districtName": "SATNA",
+    "status": "Active"
+  },
+  {
+    "sno": "505",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "427",
+    "districtName": "SEHORE",
+    "status": "Active"
+  },
+  {
+    "sno": "506",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "428",
+    "districtName": "SEONI",
+    "status": "Active"
+  },
+  {
+    "sno": "507",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "429",
+    "districtName": "SHAHDOL",
+    "status": "Active"
+  },
+  {
+    "sno": "508",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "430",
+    "districtName": "SHAJAPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "509",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "431",
+    "districtName": "SHEOPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "510",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "432",
+    "districtName": "SHIVPURI",
+    "status": "Active"
+  },
+  {
+    "sno": "511",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "433",
+    "districtName": "SIDHI",
+    "status": "Active"
+  },
+  {
+    "sno": "512",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "434",
+    "districtName": "TIKAMGARH",
+    "status": "Active"
+  },
+  {
+    "sno": "513",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "435",
+    "districtName": "UJJAIN",
+    "status": "Active"
+  },
+  {
+    "sno": "514",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "436",
+    "districtName": "UMARIA",
+    "status": "Active"
+  },
+  {
+    "sno": "515",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "437",
+    "districtName": "VIDISHA",
+    "status": "Active"
+  },
+  {
+    "sno": "516",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "638",
+    "districtName": "SINGRAULI",
+    "status": "Active"
+  },
+  {
+    "sno": "517",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "639",
+    "districtName": "ALIRAJPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "518",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "667",
+    "districtName": "AGAR MALWA",
+    "status": "Active"
+  },
+  {
+    "sno": "519",
+    "stateCode": "23",
+    "stateName": "MADHYA PRADESH",
+    "districtCode": "722",
+    "districtName": "Niwari",
+    "status": "Active"
+  },
+  {
+    "sno": "520",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "438",
+    "districtName": "AHMADABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "521",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "439",
+    "districtName": "AMRELI",
+    "status": "Active"
+  },
+  {
+    "sno": "522",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "440",
+    "districtName": "ANAND",
+    "status": "Active"
+  },
+  {
+    "sno": "523",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "441",
+    "districtName": "BANAS KANTHA",
+    "status": "Active"
+  },
+  {
+    "sno": "524",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "442",
+    "districtName": "BHARUCH",
+    "status": "Active"
+  },
+  {
+    "sno": "525",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "443",
+    "districtName": "BHAVNAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "526",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "444",
+    "districtName": "DANG",
+    "status": "Active"
+  },
+  {
+    "sno": "527",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "445",
+    "districtName": "DOHAD",
+    "status": "Active"
+  },
+  {
+    "sno": "528",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "446",
+    "districtName": "GANDHINAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "529",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "447",
+    "districtName": "JAMNAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "530",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "448",
+    "districtName": "JUNAGADH",
+    "status": "Active"
+  },
+  {
+    "sno": "531",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "449",
+    "districtName": "KACHCHH",
+    "status": "Active"
+  },
+  {
+    "sno": "532",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "450",
+    "districtName": "KHEDA",
+    "status": "Active"
+  },
+  {
+    "sno": "533",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "451",
+    "districtName": "MAHESANA",
+    "status": "Active"
+  },
+  {
+    "sno": "534",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "452",
+    "districtName": "NARMADA",
+    "status": "Active"
+  },
+  {
+    "sno": "535",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "453",
+    "districtName": "NAVSARI",
+    "status": "Active"
+  },
+  {
+    "sno": "536",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "454",
+    "districtName": "PANCH MAHALS",
+    "status": "Active"
+  },
+  {
+    "sno": "537",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "455",
+    "districtName": "PATAN",
+    "status": "Active"
+  },
+  {
+    "sno": "538",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "456",
+    "districtName": "PORBANDAR",
+    "status": "Active"
+  },
+  {
+    "sno": "539",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "457",
+    "districtName": "RAJKOT",
+    "status": "Active"
+  },
+  {
+    "sno": "540",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "458",
+    "districtName": "SABAR KANTHA",
+    "status": "Active"
+  },
+  {
+    "sno": "541",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "459",
+    "districtName": "SURAT",
+    "status": "Active"
+  },
+  {
+    "sno": "542",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "460",
+    "districtName": "SURENDRANAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "543",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "461",
+    "districtName": "VADODARA",
+    "status": "Active"
+  },
+  {
+    "sno": "544",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "462",
+    "districtName": "VALSAD",
+    "status": "Active"
+  },
+  {
+    "sno": "545",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "641",
+    "districtName": "TAPI",
+    "status": "Active"
+  },
+  {
+    "sno": "546",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "668",
+    "districtName": "CHHOTAUDEPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "547",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "669",
+    "districtName": "Mahisagar",
+    "status": "Active"
+  },
+  {
+    "sno": "548",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "672",
+    "districtName": "ARVALLI",
+    "status": "Active"
+  },
+  {
+    "sno": "549",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "673",
+    "districtName": "MORBI",
+    "status": "Active"
+  },
+  {
+    "sno": "550",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "674",
+    "districtName": "DEVBHUMI DWARKA",
+    "status": "Active"
+  },
+  {
+    "sno": "551",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "675",
+    "districtName": "GIR SOMNATH",
+    "status": "Active"
+  },
+  {
+    "sno": "552",
+    "stateCode": "24",
+    "stateName": "GUJARAT",
+    "districtCode": "676",
+    "districtName": "BOTAD",
+    "status": "Active"
+  },
+  {
+    "sno": "553",
+    "stateCode": "25",
+    "stateName": "DAMAN AND DIU",
+    "districtCode": "463",
+    "districtName": "DAMAN",
+    "status": "Active"
+  },
+  {
+    "sno": "554",
+    "stateCode": "25",
+    "stateName": "DAMAN AND DIU",
+    "districtCode": "464",
+    "districtName": "DIU",
+    "status": "Active"
+  },
+  {
+    "sno": "555",
+    "stateCode": "26",
+    "stateName": "DADRA AND NAGAR HAVELI",
+    "districtCode": "465",
+    "districtName": "DADRA AND NAGAR HAVELI",
+    "status": "Active"
+  },
+  {
+    "sno": "556",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "466",
+    "districtName": "AHMEDNAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "557",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "467",
+    "districtName": "AKOLA",
+    "status": "Active"
+  },
+  {
+    "sno": "558",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "468",
+    "districtName": "AMRAVATI",
+    "status": "Active"
+  },
+  {
+    "sno": "559",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "469",
+    "districtName": "AURANGABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "560",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "470",
+    "districtName": "BEED",
+    "status": "Active"
+  },
+  {
+    "sno": "561",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "471",
+    "districtName": "BHANDARA",
+    "status": "Active"
+  },
+  {
+    "sno": "562",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "472",
+    "districtName": "BULDHANA",
+    "status": "Active"
+  },
+  {
+    "sno": "563",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "473",
+    "districtName": "CHANDRAPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "564",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "474",
+    "districtName": "DHULE",
+    "status": "Active"
+  },
+  {
+    "sno": "565",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "475",
+    "districtName": "GADCHIROLI",
+    "status": "Active"
+  },
+  {
+    "sno": "566",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "476",
+    "districtName": "GONDIA",
+    "status": "Active"
+  },
+  {
+    "sno": "567",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "477",
+    "districtName": "HINGOLI",
+    "status": "Active"
+  },
+  {
+    "sno": "568",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "478",
+    "districtName": "JALGAON",
+    "status": "Active"
+  },
+  {
+    "sno": "569",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "479",
+    "districtName": "JALNA",
+    "status": "Active"
+  },
+  {
+    "sno": "570",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "480",
+    "districtName": "KOLHAPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "571",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "481",
+    "districtName": "LATUR",
+    "status": "Active"
+  },
+  {
+    "sno": "572",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "482",
+    "districtName": "MUMBAI",
+    "status": "Active"
+  },
+  {
+    "sno": "573",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "483",
+    "districtName": "MUMBAI SUBURBAN",
+    "status": "Active"
+  },
+  {
+    "sno": "574",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "484",
+    "districtName": "NAGPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "575",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "485",
+    "districtName": "NANDED",
+    "status": "Active"
+  },
+  {
+    "sno": "576",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "486",
+    "districtName": "NANDURBAR",
+    "status": "Active"
+  },
+  {
+    "sno": "577",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "487",
+    "districtName": "NASHIK",
+    "status": "Active"
+  },
+  {
+    "sno": "578",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "488",
+    "districtName": "OSMANABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "579",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "489",
+    "districtName": "PARBHANI",
+    "status": "Active"
+  },
+  {
+    "sno": "580",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "490",
+    "districtName": "PUNE",
+    "status": "Active"
+  },
+  {
+    "sno": "581",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "491",
+    "districtName": "RAIGAD",
+    "status": "Active"
+  },
+  {
+    "sno": "582",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "492",
+    "districtName": "RATNAGIRI",
+    "status": "Active"
+  },
+  {
+    "sno": "583",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "493",
+    "districtName": "SANGLI",
+    "status": "Active"
+  },
+  {
+    "sno": "584",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "494",
+    "districtName": "SATARA",
+    "status": "Active"
+  },
+  {
+    "sno": "585",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "495",
+    "districtName": "SINDHUDURG",
+    "status": "Active"
+  },
+  {
+    "sno": "586",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "496",
+    "districtName": "SOLAPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "587",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "497",
+    "districtName": "THANE",
+    "status": "Active"
+  },
+  {
+    "sno": "588",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "498",
+    "districtName": "WARDHA",
+    "status": "Active"
+  },
+  {
+    "sno": "589",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "499",
+    "districtName": "WASHIM",
+    "status": "Active"
+  },
+  {
+    "sno": "590",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "500",
+    "districtName": "YAVATMAL",
+    "status": "Active"
+  },
+  {
+    "sno": "591",
+    "stateCode": "27",
+    "stateName": "MAHARASHTRA",
+    "districtCode": "665",
+    "districtName": "PALGHAR",
+    "status": "Active"
+  },
+  {
+    "sno": "592",
+    "stateCode": "37",
+    "stateName": "ANDHRA PRADESH",
+    "districtCode": "502",
+    "districtName": "ANANTAPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "593",
+    "stateCode": "37",
+    "stateName": "ANDHRA PRADESH",
+    "districtCode": "503",
+    "districtName": "CHITTOOR",
+    "status": "Active"
+  },
+  {
+    "sno": "594",
+    "stateCode": "37",
+    "stateName": "ANDHRA PRADESH",
+    "districtCode": "504",
+    "districtName": "Y.S.R.",
+    "status": "Active"
+  },
+  {
+    "sno": "595",
+    "stateCode": "37",
+    "stateName": "ANDHRA PRADESH",
+    "districtCode": "505",
+    "districtName": "EAST GODAVARI",
+    "status": "Active"
+  },
+  {
+    "sno": "596",
+    "stateCode": "37",
+    "stateName": "ANDHRA PRADESH",
+    "districtCode": "506",
+    "districtName": "GUNTUR",
+    "status": "Active"
+  },
+  {
+    "sno": "597",
+    "stateCode": "37",
+    "stateName": "ANDHRA PRADESH",
+    "districtCode": "510",
+    "districtName": "KRISHNA",
+    "status": "Active"
+  },
+  {
+    "sno": "598",
+    "stateCode": "37",
+    "stateName": "ANDHRA PRADESH",
+    "districtCode": "511",
+    "districtName": "KURNOOL",
+    "status": "Active"
+  },
+  {
+    "sno": "599",
+    "stateCode": "37",
+    "stateName": "ANDHRA PRADESH",
+    "districtCode": "515",
+    "districtName": "SPSR NELLORE",
+    "status": "Active"
+  },
+  {
+    "sno": "600",
+    "stateCode": "37",
+    "stateName": "ANDHRA PRADESH",
+    "districtCode": "517",
+    "districtName": "PRAKASAM",
+    "status": "Active"
+  },
+  {
+    "sno": "601",
+    "stateCode": "37",
+    "stateName": "ANDHRA PRADESH",
+    "districtCode": "519",
+    "districtName": "SRIKAKULAM",
+    "status": "Active"
+  },
+  {
+    "sno": "602",
+    "stateCode": "37",
+    "stateName": "ANDHRA PRADESH",
+    "districtCode": "520",
+    "districtName": "VISAKHAPATANAM",
+    "status": "Active"
+  },
+  {
+    "sno": "603",
+    "stateCode": "37",
+    "stateName": "ANDHRA PRADESH",
+    "districtCode": "521",
+    "districtName": "VIZIANAGARAM",
+    "status": "Active"
+  },
+  {
+    "sno": "604",
+    "stateCode": "37",
+    "stateName": "ANDHRA PRADESH",
+    "districtCode": "523",
+    "districtName": "WEST GODAVARI",
+    "status": "Active"
+  },
+  {
+    "sno": "605",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "524",
+    "districtName": "BAGALKOTE",
+    "status": "Active"
+  },
+  {
+    "sno": "606",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "525",
+    "districtName": "BENGALURU URBAN",
+    "status": "Active"
+  },
+  {
+    "sno": "607",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "526",
+    "districtName": "BENGALURU RURAL",
+    "status": "Active"
+  },
+  {
+    "sno": "608",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "527",
+    "districtName": "BELAGAVI",
+    "status": "Active"
+  },
+  {
+    "sno": "609",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "528",
+    "districtName": "BALLARI",
+    "status": "Active"
+  },
+  {
+    "sno": "610",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "529",
+    "districtName": "BIDAR",
+    "status": "Active"
+  },
+  {
+    "sno": "611",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "530",
+    "districtName": "VIJAYAPURA",
+    "status": "Active"
+  },
+  {
+    "sno": "612",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "531",
+    "districtName": "CHAMARAJANAGARA",
+    "status": "Active"
+  },
+  {
+    "sno": "613",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "532",
+    "districtName": "CHIKKAMAGALURU",
+    "status": "Active"
+  },
+  {
+    "sno": "614",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "533",
+    "districtName": "CHITRADURGA",
+    "status": "Active"
+  },
+  {
+    "sno": "615",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "534",
+    "districtName": "DAKSHINA KANNADA",
+    "status": "Active"
+  },
+  {
+    "sno": "616",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "535",
+    "districtName": "DAVANGERE",
+    "status": "Active"
+  },
+  {
+    "sno": "617",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "536",
+    "districtName": "DHARWAD",
+    "status": "Active"
+  },
+  {
+    "sno": "618",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "537",
+    "districtName": "GADAG",
+    "status": "Active"
+  },
+  {
+    "sno": "619",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "538",
+    "districtName": "KALABURAGI",
+    "status": "Active"
+  },
+  {
+    "sno": "620",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "539",
+    "districtName": "HASSAN",
+    "status": "Active"
+  },
+  {
+    "sno": "621",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "540",
+    "districtName": "HAVERI",
+    "status": "Active"
+  },
+  {
+    "sno": "622",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "541",
+    "districtName": "KODAGU",
+    "status": "Active"
+  },
+  {
+    "sno": "623",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "542",
+    "districtName": "KOLAR",
+    "status": "Active"
+  },
+  {
+    "sno": "624",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "543",
+    "districtName": "KOPPAL",
+    "status": "Active"
+  },
+  {
+    "sno": "625",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "544",
+    "districtName": "MANDYA",
+    "status": "Active"
+  },
+  {
+    "sno": "626",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "545",
+    "districtName": "MYSURU",
+    "status": "Active"
+  },
+  {
+    "sno": "627",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "546",
+    "districtName": "RAICHUR",
+    "status": "Active"
+  },
+  {
+    "sno": "628",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "547",
+    "districtName": "SHIVAMOGGA",
+    "status": "Active"
+  },
+  {
+    "sno": "629",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "548",
+    "districtName": "TUMAKURU",
+    "status": "Active"
+  },
+  {
+    "sno": "630",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "549",
+    "districtName": "UDUPI",
+    "status": "Active"
+  },
+  {
+    "sno": "631",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "550",
+    "districtName": "UTTARA KANNADA",
+    "status": "Active"
+  },
+  {
+    "sno": "632",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "630",
+    "districtName": "CHIKKABALLAPURA",
+    "status": "Active"
+  },
+  {
+    "sno": "633",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "631",
+    "districtName": "RAMANAGARA",
+    "status": "Active"
+  },
+  {
+    "sno": "634",
+    "stateCode": "29",
+    "stateName": "KARNATAKA",
+    "districtCode": "635",
+    "districtName": "YADGIR",
+    "status": "Active"
+  },
+  {
+    "sno": "635",
+    "stateCode": "30",
+    "stateName": "GOA",
+    "districtCode": "551",
+    "districtName": "NORTH GOA",
+    "status": "Active"
+  },
+  {
+    "sno": "636",
+    "stateCode": "30",
+    "stateName": "GOA",
+    "districtCode": "552",
+    "districtName": "SOUTH GOA",
+    "status": "Active"
+  },
+  {
+    "sno": "637",
+    "stateCode": "31",
+    "stateName": "LAKSHADWEEP",
+    "districtCode": "553",
+    "districtName": "LAKSHADWEEP DISTRICT",
+    "status": "Active"
+  },
+  {
+    "sno": "638",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "554",
+    "districtName": "ALAPPUZHA",
+    "status": "Active"
+  },
+  {
+    "sno": "639",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "555",
+    "districtName": "ERNAKULAM",
+    "status": "Active"
+  },
+  {
+    "sno": "640",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "556",
+    "districtName": "IDUKKI",
+    "status": "Active"
+  },
+  {
+    "sno": "641",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "557",
+    "districtName": "KANNUR",
+    "status": "Active"
+  },
+  {
+    "sno": "642",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "558",
+    "districtName": "KASARAGOD",
+    "status": "Active"
+  },
+  {
+    "sno": "643",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "559",
+    "districtName": "KOLLAM",
+    "status": "Active"
+  },
+  {
+    "sno": "644",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "560",
+    "districtName": "KOTTAYAM",
+    "status": "Active"
+  },
+  {
+    "sno": "645",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "561",
+    "districtName": "KOZHIKODE",
+    "status": "Active"
+  },
+  {
+    "sno": "646",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "562",
+    "districtName": "MALAPPURAM",
+    "status": "Active"
+  },
+  {
+    "sno": "647",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "563",
+    "districtName": "PALAKKAD",
+    "status": "Active"
+  },
+  {
+    "sno": "648",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "564",
+    "districtName": "PATHANAMTHITTA",
+    "status": "Active"
+  },
+  {
+    "sno": "649",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "565",
+    "districtName": "THIRUVANANTHAPURAM",
+    "status": "Active"
+  },
+  {
+    "sno": "650",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "566",
+    "districtName": "THRISSUR",
+    "status": "Active"
+  },
+  {
+    "sno": "651",
+    "stateCode": "32",
+    "stateName": "KERALA",
+    "districtCode": "567",
+    "districtName": "WAYANAD",
+    "status": "Active"
+  },
+  {
+    "sno": "652",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "568",
+    "districtName": "CHENNAI",
+    "status": "Active"
+  },
+  {
+    "sno": "653",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "569",
+    "districtName": "COIMBATORE",
+    "status": "Active"
+  },
+  {
+    "sno": "654",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "570",
+    "districtName": "CUDDALORE",
+    "status": "Active"
+  },
+  {
+    "sno": "655",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "571",
+    "districtName": "DHARMAPURI",
+    "status": "Active"
+  },
+  {
+    "sno": "656",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "572",
+    "districtName": "DINDIGUL",
+    "status": "Active"
+  },
+  {
+    "sno": "657",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "573",
+    "districtName": "ERODE",
+    "status": "Active"
+  },
+  {
+    "sno": "658",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "574",
+    "districtName": "KANCHIPURAM",
+    "status": "Active"
+  },
+  {
+    "sno": "659",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "575",
+    "districtName": "KANNIYAKUMARI",
+    "status": "Active"
+  },
+  {
+    "sno": "660",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "576",
+    "districtName": "KARUR",
+    "status": "Active"
+  },
+  {
+    "sno": "661",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "577",
+    "districtName": "KRISHNAGIRI",
+    "status": "Active"
+  },
+  {
+    "sno": "662",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "578",
+    "districtName": "MADURAI",
+    "status": "Active"
+  },
+  {
+    "sno": "663",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "579",
+    "districtName": "NAGAPATTINAM",
+    "status": "Active"
+  },
+  {
+    "sno": "664",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "580",
+    "districtName": "NAMAKKAL",
+    "status": "Active"
+  },
+  {
+    "sno": "665",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "581",
+    "districtName": "PERAMBALUR",
+    "status": "Active"
+  },
+  {
+    "sno": "666",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "582",
+    "districtName": "PUDUKKOTTAI",
+    "status": "Active"
+  },
+  {
+    "sno": "667",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "583",
+    "districtName": "RAMANATHAPURAM",
+    "status": "Active"
+  },
+  {
+    "sno": "668",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "584",
+    "districtName": "SALEM",
+    "status": "Active"
+  },
+  {
+    "sno": "669",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "585",
+    "districtName": "SIVAGANGA",
+    "status": "Active"
+  },
+  {
+    "sno": "670",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "586",
+    "districtName": "THANJAVUR",
+    "status": "Active"
+  },
+  {
+    "sno": "671",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "587",
+    "districtName": "THE NILGIRIS",
+    "status": "Active"
+  },
+  {
+    "sno": "672",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "588",
+    "districtName": "THENI",
+    "status": "Active"
+  },
+  {
+    "sno": "673",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "589",
+    "districtName": "THIRUVALLUR",
+    "status": "Active"
+  },
+  {
+    "sno": "674",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "590",
+    "districtName": "THIRUVARUR",
+    "status": "Active"
+  },
+  {
+    "sno": "675",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "591",
+    "districtName": "TIRUCHIRAPPALLI",
+    "status": "Active"
+  },
+  {
+    "sno": "676",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "592",
+    "districtName": "TIRUNELVELI",
+    "status": "Active"
+  },
+  {
+    "sno": "677",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "593",
+    "districtName": "TIRUVANNAMALAI",
+    "status": "Active"
+  },
+  {
+    "sno": "678",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "594",
+    "districtName": "TUTICORIN",
+    "status": "Active"
+  },
+  {
+    "sno": "679",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "595",
+    "districtName": "VELLORE",
+    "status": "Active"
+  },
+  {
+    "sno": "680",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "596",
+    "districtName": "VILLUPURAM",
+    "status": "Active"
+  },
+  {
+    "sno": "681",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "597",
+    "districtName": "VIRUDHUNAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "682",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "610",
+    "districtName": "Ariyalur",
+    "status": "Active"
+  },
+  {
+    "sno": "683",
+    "stateCode": "33",
+    "stateName": "TAMIL NADU",
+    "districtCode": "634",
+    "districtName": "TIRUPPUR",
+    "status": "Active"
+  },
+  {
+    "sno": "684",
+    "stateCode": "34",
+    "stateName": "PUDUCHERRY",
+    "districtCode": "598",
+    "districtName": "KARAIKAL",
+    "status": "Active"
+  },
+  {
+    "sno": "685",
+    "stateCode": "34",
+    "stateName": "PUDUCHERRY",
+    "districtCode": "599",
+    "districtName": "MAHE",
+    "status": "Active"
+  },
+  {
+    "sno": "686",
+    "stateCode": "34",
+    "stateName": "PUDUCHERRY",
+    "districtCode": "600",
+    "districtName": "PONDICHERRY",
+    "status": "Active"
+  },
+  {
+    "sno": "687",
+    "stateCode": "34",
+    "stateName": "PUDUCHERRY",
+    "districtCode": "601",
+    "districtName": "YANAM",
+    "status": "Active"
+  },
+  {
+    "sno": "688",
+    "stateCode": "35",
+    "stateName": "ANDAMAN AND NICOBAR ISLANDS",
+    "districtCode": "602",
+    "districtName": "SOUTH ANDAMANS",
+    "status": "Active"
+  },
+  {
+    "sno": "689",
+    "stateCode": "35",
+    "stateName": "ANDAMAN AND NICOBAR ISLANDS",
+    "districtCode": "603",
+    "districtName": "NICOBARS",
+    "status": "Active"
+  },
+  {
+    "sno": "690",
+    "stateCode": "35",
+    "stateName": "ANDAMAN AND NICOBAR ISLANDS",
+    "districtCode": "632",
+    "districtName": "NORTH AND MIDDLE ANDAMAN",
+    "status": "Active"
+  },
+  {
+    "sno": "691",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "501",
+    "districtName": "ADILABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "692",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "507",
+    "districtName": "HYDERABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "693",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "508",
+    "districtName": "KARIMNAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "694",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "509",
+    "districtName": "KHAMMAM",
+    "status": "Active"
+  },
+  {
+    "sno": "695",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "512",
+    "districtName": "MAHABUBNAGAR",
+    "status": "Active"
+  },
+  {
+    "sno": "696",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "513",
+    "districtName": "MEDAK",
+    "status": "Active"
+  },
+  {
+    "sno": "697",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "514",
+    "districtName": "NALGONDA",
+    "status": "Active"
+  },
+  {
+    "sno": "698",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "516",
+    "districtName": "NIZAMABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "699",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "518",
+    "districtName": "RANGA REDDY",
+    "status": "Active"
+  },
+  {
+    "sno": "700",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "522",
+    "districtName": "WARANGAL RURAL",
+    "status": "Active"
+  },
+  {
+    "sno": "701",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "680",
+    "districtName": "Nirmal",
+    "status": "Active"
+  },
+  {
+    "sno": "702",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "681",
+    "districtName": "Jagitial",
+    "status": "Active"
+  },
+  {
+    "sno": "703",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "682",
+    "districtName": "PEDDAPALLI",
+    "status": "Active"
+  },
+  {
+    "sno": "704",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "683",
+    "districtName": "RAJANNA SIRCILLA",
+    "status": "Active"
+  },
+  {
+    "sno": "705",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "684",
+    "districtName": "MANCHERIAL",
+    "status": "Active"
+  },
+  {
+    "sno": "706",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "685",
+    "districtName": "KAMAREDDY",
+    "status": "Active"
+  },
+  {
+    "sno": "707",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "686",
+    "districtName": "WARANGAL URBAN",
+    "status": "Active"
+  },
+  {
+    "sno": "708",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "687",
+    "districtName": "JAYASHANKAR BHUPALAPALLY",
+    "status": "Active"
+  },
+  {
+    "sno": "709",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "688",
+    "districtName": "MAHABUBABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "710",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "689",
+    "districtName": "JANGOAN",
+    "status": "Active"
+  },
+  {
+    "sno": "711",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "690",
+    "districtName": "BHADRADRI KOTHAGUDEM",
+    "status": "Active"
+  },
+  {
+    "sno": "712",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "691",
+    "districtName": "SANGAREDDY",
+    "status": "Active"
+  },
+  {
+    "sno": "713",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "692",
+    "districtName": "SIDDIPET",
+    "status": "Active"
+  },
+  {
+    "sno": "714",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "693",
+    "districtName": "WANAPARTHY",
+    "status": "Active"
+  },
+  {
+    "sno": "715",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "694",
+    "districtName": "NAGARKURNOOL",
+    "status": "Active"
+  },
+  {
+    "sno": "716",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "695",
+    "districtName": "JOGULAMBA GADWAL",
+    "status": "Active"
+  },
+  {
+    "sno": "717",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "696",
+    "districtName": "SURYAPET",
+    "status": "Active"
+  },
+  {
+    "sno": "718",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "697",
+    "districtName": "YADADRI BHUVANAGIRI",
+    "status": "Active"
+  },
+  {
+    "sno": "719",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "698",
+    "districtName": "VIKARABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "720",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "699",
+    "districtName": "KUMURAM BHEEM ASIFABAD",
+    "status": "Active"
+  },
+  {
+    "sno": "721",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "700",
+    "districtName": "MEDCHAL MALKAJGIRI",
+    "status": "Active"
+  },
+  {
+    "sno": "722",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "720",
+    "districtName": "Mulugu",
+    "status": "Active"
+  },
+  {
+    "sno": "723",
+    "stateCode": "36",
+    "stateName": "TELANGANA",
+    "districtCode": "721",
+    "districtName": "Narayanpet",
+    "status": "Active"
+  },
+  {
+    "sno": "724",
+    "stateCode": "38",
+    "stateName": "LADAKH",
+    "districtCode": "6",
+    "districtName": "KARGIL",
+    "status": "Active"
+  },
+  {
+    "sno": "725",
+    "stateCode": "38",
+    "stateName": "LADAKH",
+    "districtCode": "9",
+    "districtName": "LEH LADAKH",
+    "status": "Active"
+  },
+  {
+    "sno": "3",
+    "stateCode": "The",
+    "stateName": "above",
+    "districtCode": "changes",
+    "districtName": "may",
+    "status": "Active"
+  },
+  {
+    "sno": "1",
+    "stateCode": "Asia",
+    "stateName": "Pacific",
+    "districtCode": "Trade",
+    "districtName": "Agreement",
+    "status": "Active"
+  },
+  {
+    "sno": "3",
+    "stateCode": "SAARC Preferential Trading",
+    "stateName": "\"11 April",
+    "districtCode": "1993 \"",
+    "districtName": "PTA0SA",
+    "status": "Active"
+  },
+  {
+    "sno": "4",
+    "stateCode": "India - Afghanistan",
+    "stateName": "\"6th March",
+    "districtCode": "2003 \"",
+    "districtName": "PTA0AF",
+    "status": "Active"
+  },
+  {
+    "sno": "5",
+    "stateCode": "India – MERCOSUR",
+    "stateName": "\"25th January",
+    "districtCode": "\"",
+    "districtName": "PTA0MER",
+    "status": "Active"
+  },
+  {
+    "sno": "6",
+    "stateCode": "India - Chile",
+    "stateName": "\"8th March",
+    "districtCode": "2006 \"",
+    "districtName": "PTA0CL",
+    "status": "Active"
+  }
+]

@@ -38,6 +38,7 @@ import Packages from "./routes/Directories/packages.js";
 import SupportingDocuments from "./routes/Directories/supportingdocumentcodes.js";
 import genrateExportChecklist from "./routes/export-dsr/generateExportChecklist.mjs";
 import gatwayPort from "./routes/Directories/gatwayPort.js"; //gatwatPort
+import district from "./routes/Directories/districts.js"; //gatwatPort
 
 //============== EXPORT DSR =========================
 import getExJobsOverview from "./routes/export-dsr/getExJobsOverview.mjs";
@@ -73,7 +74,7 @@ app.use(
       "http://localhost:3000",
       "http://localhost:5173",
       "http://test-ssl-exim.s3-website.ap-south-1.amazonaws.com",
-      "http://exim-export.s3-website.ap-south-1.amazonaws.com"
+      "http://exim-export.s3-website.ap-south-1.amazonaws.com",
     ],
     credentials: true,
     // Allow custom headers for audit trail
@@ -91,8 +92,7 @@ app.use(
 app.use(compression({ level: 9 }));
 
 // MongoDB connection
-const MONGODB_URI =
-  process.env.MONGO_URI ;
+const MONGODB_URI = process.env.MONGO_URI;
 mongoose.set("strictQuery", true);
 
 mongoose
@@ -140,6 +140,7 @@ app.use("/api/supportingDocumentCodes", SupportingDocuments);
 app.use(genrateExportChecklist);
 app.use(getExpJob);
 app.use("/api/gateway-ports", gatwayPort);
+app.use("/api/districts", district);
 // app.set("trust proxy", 1); // Trust first proxy (NGINX, AWS ELB, etc.)
 
 //============== EXPORT DSR =========================
