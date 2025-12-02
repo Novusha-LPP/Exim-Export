@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Box, Typography, TextField, Paper, MenuItem } from "@mui/material";
-import { viewMasterList } from "../../assets/data/DirectoriesData.js";
+import { viewMasterList } from "./DirectoriesData.js";
 import DirectoryComponent from "./DirectoryComponent";
 
 function Directories() {
