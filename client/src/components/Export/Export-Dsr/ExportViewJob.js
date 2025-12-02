@@ -31,7 +31,7 @@ import useExportJobDetails from "../../../customHooks/useExportJobDetails.js";
 import ExchangeRateTab from "./Exchange Rate/ExchangeRateTab.js";
 import ShipmentTab from "./Shipment/ShipmentTab.js";
 import axios from "axios";
-import FinancialTab from "./Finantial/FinancialTab.js";
+import FinancialTab from "./Financial/FinancialTab.js";
 import GeneralTab from "./General/GeneralTab.js";
 import ContainerTab from "./Container/ContainerTab.js";
 import InvoiceTab from "./Invoices/InvoiceTab.js";
