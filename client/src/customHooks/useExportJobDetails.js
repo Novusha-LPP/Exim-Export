@@ -373,7 +373,8 @@ function useExportJobDetails(params, setFileSnackbar) {
             capValue: 0,
             capValuePerUnits: 0,
             amountINR: 0,
-            unit: "KGS",
+            unit: "",
+            capUnit: "",
           },
           areDetails: [
             {

@@ -16,6 +16,7 @@ import {
   TableRow,
   Paper,
   IconButton,
+  MenuItem,
 } from "@mui/material";
 import { Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
 
@@ -38,30 +39,6 @@ const ProductDEECTab = ({ formik, productIndex }) => {
   };
 
   const autoSave = useCallback(() => formik.submitForm(), [formik]);
-
-  const handleDeecFieldChange = (field, value) => {
-    const updatedProducts = [...formik.values.products];
-    if (!updatedProducts[productIndex].deecDetails) {
-      updatedProducts[productIndex].deecDetails = {
-        isDeecItem: false,
-        deecItems: [getDefaultDeecItem(1)],
-      };
-    }
-
-    if (field.includes(".")) {
-      const [parent, child] = field.split(".");
-      updatedProducts[productIndex].deecDetails[parent] = {
-        ...updatedProducts[productIndex].deecDetails[parent],
-        [child]: value,
-      };
-    } else {
-      updatedProducts[productIndex].deecDetails[field] = value;
-    }
-
-    formik.setFieldValue("products", updatedProducts);
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(autoSave, 1200);
-  };
 
   const handleDeecItemChange = (itemIndex, field, value) => {
     const updatedProducts = [...formik.values.products];
@@ -112,23 +89,6 @@ const ProductDEECTab = ({ formik, productIndex }) => {
       formik.setFieldValue("products", updatedProducts);
     }
   };
-
-  if (!deecDetails.isDeecItem) {
-    return (
-      <Box sx={{ textAlign: "center", py: 4 }}>
-        <Typography variant="h6" color="textSecondary">
-          This product is not marked as a DEEC item
-        </Typography>
-        <Button
-          variant="outlined"
-          sx={{ mt: 2 }}
-          onClick={() => handleDeecFieldChange("isDeecItem", true)}
-        >
-          Enable DEEC Details
-        </Button>
-      </Box>
-    );
-  }
 
   return (
     <Box>

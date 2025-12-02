@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { eximCodes, states, PTA_FTA_CODES } from "../../../utils/masterList";
+import { unitCodes } from "../../../utils/masterList";
 
 const apiBase = import.meta.env.VITE_API_STRING;
 
@@ -198,6 +199,122 @@ function toUpper(v) {
 
 // ... (KEEP YOUR EXISTING HOOKS: useEximCodeDropdown, useStateDropdown, useDistrictApiDropdown, usePtaFtaDropdown) ...
 // For brevity, I am assuming the Hooks are pasted here exactly as they were in the previous file.
+
+function UnitDropdownField({
+  label,
+  fieldName,
+  formik,
+  unitOptions,
+  placeholder,
+  onSelect,
+}) {
+  const [open, setOpen] = useState(false);
+
+  // Helper to get deeply nested value from object using path like "products[0].rodtepInfo.unit"
+  function getValueByPath(obj, path) {
+    return path
+      .split(/[\.\[\]]/)
+      .filter(Boolean)
+      .reduce(
+        (acc, key) => (acc && acc[key] !== undefined ? acc[key] : ""),
+        obj
+      );
+  }
+
+  const [query, setQuery] = useState(
+    getValueByPath(formik.values, fieldName) || ""
+  );
+
+  useEffect(() => {
+    setQuery(getValueByPath(formik.values, fieldName) || "");
+  }, [formik.values, fieldName]);
+
+  const [active, setActive] = useState(-1);
+  const wrapperRef = useRef();
+
+  // Filter options case-insensitive based on query input
+  const filtered = (unitOptions || [])
+    .filter((opt) => opt.toUpperCase().includes(query.toUpperCase()))
+    .slice(0, 15);
+
+  useEffect(() => {
+    // Close dropdown menu if clicked outside component
+    function handleClickOutside(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleSelect(index) {
+    const selectedValue = filtered[index].toUpperCase();
+    setQuery(selectedValue);
+    formik.setFieldValue(fieldName, selectedValue);
+
+    if (onSelect) {
+      onSelect(selectedValue);
+    }
+
+    setOpen(false);
+    setActive(-1);
+  }
+
+  return (
+    <div style={styles.field} ref={wrapperRef}>
+      {label && <div style={styles.label}>{label}</div>}
+      <div style={styles.acWrap}>
+        <input
+          style={styles.input}
+          placeholder={placeholder}
+          autoComplete="off"
+          value={query.toUpperCase()}
+          onChange={(e) => {
+            const val = e.target.value.toUpperCase();
+            setQuery(val);
+            formik.setFieldValue(fieldName, val);
+            setOpen(true);
+          }}
+          onFocus={() => {
+            setOpen(true);
+            setActive(-1);
+          }}
+          onKeyDown={(e) => {
+            if (!open) return;
+            if (e.key === "ArrowDown") {
+              setActive((a) =>
+                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1)
+              );
+            } else if (e.key === "ArrowUp") {
+              setActive((a) => Math.max(0, a - 1));
+            } else if (e.key === "Enter" && active >= 0) {
+              e.preventDefault();
+              handleSelect(active);
+            } else if (e.key === "Escape") {
+              setOpen(false);
+            }
+          }}
+        />
+        <span style={styles.acIcon}>▼</span>
+        {open && filtered.length > 0 && (
+          <div style={styles.acMenu}>
+            {filtered.map((val, i) => (
+              <div
+                key={val}
+                style={styles.acItem(active === i)}
+                onMouseDown={() => handleSelect(i)} // use onMouseDown to prevent blur before click
+                onMouseEnter={() => setActive(i)}
+              >
+                {val.toUpperCase()}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function useEximCodeDropdown(
   fieldName,
@@ -745,6 +862,21 @@ const ProductGeneralTab = ({ formik }) => {
       formik.setFieldValue("products", updatedProducts);
     },
     [formik]
+  );
+
+  // Add this function in your ProductGeneralTab component
+  const handleUnitChange = useCallback(
+    (index, unitField, unitValue) => {
+      // Update Formik for dropdown display - dynamic field name
+      formik.setFieldValue(
+        `products[${index}].rodtepInfo.${unitField}`,
+        unitValue
+      );
+
+      // Update local product state via handleProductChange - dynamic field name
+      handleProductChange(index, `rodtepInfo.${unitField}`, unitValue);
+    },
+    [formik, handleProductChange]
   );
 
   const addNewProduct = useCallback(() => {
@@ -1422,7 +1554,7 @@ const ProductGeneralTab = ({ formik }) => {
               </div>
             </div>
 
-            {/* 4. RODTEP INFO (NESTED) */}
+            {/* 4. RODTEP INFO (NESTED) - UPDATED WITH UnitDropdownField */}
             <div style={styles.subSectionTitle}>RODTEP Info</div>
             <div style={styles.grid3}>
               <div style={styles.field}>
@@ -1438,10 +1570,11 @@ const ProductGeneralTab = ({ formik }) => {
                     )
                   }
                 >
-                  <option value="Yes">Yes</option>{" "}
+                  <option value="Yes">Yes</option>
                   <option value="No">No</option>
                 </select>
               </div>
+
               <div style={styles.field}>
                 <label style={styles.label}>Quantity</label>
                 <div style={{ display: "flex", gap: 4 }}>
@@ -1457,20 +1590,21 @@ const ProductGeneralTab = ({ formik }) => {
                       )
                     }
                   />
-                  <span
-                    style={{
-                      ...styles.input,
-                      width: "35%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "#e2e8f0",
-                    }}
-                  >
-                    {product.rodtepInfo?.unit || "KGS"}
-                  </span>
+                  <div style={{ width: "35%" }}>
+                    <UnitDropdownField
+                      label=""
+                      fieldName={`products[${index}].rodtepInfo.unit`}
+                      formik={formik}
+                      unitOptions={unitCodes}
+                      placeholder="UNIT"
+                      onSelect={(value) =>
+                        handleUnitChange(index, "unit", value)
+                      }
+                    />
+                  </div>
                 </div>
               </div>
+
               <div style={styles.field}>
                 <label style={styles.label}>Rate (in %)</label>
                 <input
@@ -1486,6 +1620,7 @@ const ProductGeneralTab = ({ formik }) => {
                   }
                 />
               </div>
+
               <div style={styles.field}>
                 <label style={styles.label}>Cap Value</label>
                 <input
@@ -1501,13 +1636,14 @@ const ProductGeneralTab = ({ formik }) => {
                   }
                 />
               </div>
+
               <div style={styles.field}>
                 <label style={styles.label}>Cap value per units</label>
                 <div style={{ display: "flex", gap: 4 }}>
                   <input
                     style={{ ...styles.input, width: "65%" }}
                     type="number"
-                    value={product.rodtepInfo?.capValuePerUnits || 0}
+                    value={product.rodtepInfo?.capValuePerUnits}
                     onChange={(e) =>
                       handleProductChange(
                         index,
@@ -1516,20 +1652,21 @@ const ProductGeneralTab = ({ formik }) => {
                       )
                     }
                   />
-                  <span
-                    style={{
-                      ...styles.input,
-                      width: "35%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "#e2e8f0",
-                    }}
-                  >
-                    {product.rodtepInfo?.unit || "KGS"}
-                  </span>
+                  <div style={{ width: "35%" }}>
+                    <UnitDropdownField
+                      label=""
+                      fieldName={`products[${index}].rodtepInfo.capUnit`}
+                      formik={formik}
+                      unitOptions={unitCodes}
+                      placeholder="UNIT"
+                      onSelect={(value) =>
+                        handleUnitChange(index, "capUnit", value)
+                      }
+                    />
+                  </div>
                 </div>
               </div>
+
               <div style={styles.field}>
                 <label style={styles.label}>RODTEP Amount(INR)</label>
                 <input
