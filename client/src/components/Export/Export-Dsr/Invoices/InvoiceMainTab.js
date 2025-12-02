@@ -1,9 +1,10 @@
 // InvoiceMainTab.jsx
 import React, { useRef, useCallback } from "react";
 import { Box, Grid, Card, Typography, TextField, Autocomplete, Button } from "@mui/material";
+import {currencyList} from "../../../../utils/masterList";
 
 const currencyOptions = ["USD", "INR", "EUR", "GBP"];
-const toiOptions = ["FOB", "CIF"];
+const toiOptions = ["FOB", "CIF", "C&F", "C&I"];
 
 const InvoiceMainTab = ({ formik }) => {
   const saveTimeoutRef = useRef(null);

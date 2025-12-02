@@ -46,8 +46,6 @@ import getExporterList from "./routes/export-dsr/getExporterList.mjs";
 import getExporterJobs from "./routes/export-dsr/getExporterJobs.mjs";
 import addJobs from "./routes/export-dsr/add-exp-jobs.mjs";
 import getExpJob from "./routes/export-dsr/getExpJob.mjs";
-import handoverRoutes from "./routes/export-dsr/handoverRoutes.js";
-import jobBookingRoutes from "./routes/export-dsr/jobBookingRoutes.js";
 import updateExportJobs from "./routes/export-dsr/updateExportJobs.js";
 import esanchit from "./routes/export-dsr/e-sanchitRoutes.mjs";
 
@@ -148,10 +146,7 @@ app.use(getExJobsOverview);
 app.use(getExporterList);
 app.use(getExporterJobs);
 app.use(addJobs);
-app.use("/api/handover", handoverRoutes);
-app.use("/api/job-booking", jobBookingRoutes);
 app.use("/api/export-jobs", updateExportJobs);
-app.use(jobBookingRoutes);
 app.use(esanchit);
 
 app.get("/", (req, res) => {

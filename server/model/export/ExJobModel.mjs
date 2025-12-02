@@ -2,11 +2,6 @@ import mongoose from "mongoose";
 
 const { Schema, model } = mongoose;
 
-// Image Schema for document attachments
-const ImageSchema = new mongoose.Schema({
-  url: { type: String, trim: true },
-});
-
 // Sub-schemas for complex nested data
 const areDetailsSchema = new Schema(
   {
@@ -119,7 +114,7 @@ const productDetailsSchema = new Schema(
 
     // --- PMV Info (Grouped) ---
     pmvInfo: {
-      currency: { type: String, default: "INR" },
+      currency: { type: String},
       calculationMethod: { type: String, trim: true }, // 'percentage' or 'value'
       percentage: { type: String, default: "110" },
       pmvPerUnit: { type: String, default: "0" },
@@ -250,13 +245,11 @@ const invoiceSchema = new Schema(
     invoiceDate: { type: Date },
     termsOfInvoice: {
       type: String,
-      enum: ["CIF", "FOB", "CFR", "EXW", "FCA", "CPT", "CIP", "DAP", "DDP"],
       default: "FOB",
     },
     currency: {
       type: String,
       ref: "Currency",
-      default: "USD",
     },
     invoiceValue: { type: Number, min: 0 },
     productValue: { type: Number, min: 0 },
@@ -274,57 +267,7 @@ const invoiceSchema = new Schema(
   { _id: true }
 );
 // Payment Request Schema
-const paymentRequestSchema = new Schema(
-  {
-    date: { type: String, trim: true },
-    no: { type: String, trim: true },
-    mode: { type: String, trim: true, default: "Electronic" },
-    payeeName: { type: String, trim: true },
-    amount: { type: Number, default: 0 },
-    status: { type: String, trim: true, default: "Pending" },
-    remarks: { type: String, trim: true },
 
-    // Payment Request Details
-    payTo: { type: String, trim: true, default: "Vendor" },
-    against: { type: String, trim: true, default: "Expense" },
-    jobExpenses: { type: Boolean, default: true },
-    nonJobExpenses: { type: Boolean, default: false },
-    jobNo: { type: String, trim: true },
-    requestTo: { type: String, trim: true },
-    referenceNo: { type: String, trim: true },
-    modeOfPayment: { type: String, trim: true, default: "Cheque No." },
-    markAsUrgent: { type: Boolean, default: false },
-    narration: { type: String, trim: true },
-
-    // Charge Details
-    charges: [
-      {
-        chargeName: { type: String, trim: true },
-        amountTC: { type: Number, default: 0 },
-        curr: { type: String, trim: true, default: "INR" },
-        amountHC: { type: Number, default: 0 },
-        payableTo: { type: String, trim: true },
-      },
-    ],
-
-    // Purchase Bills
-    purchaseBills: [
-      {
-        purchaseBillNo: { type: String, trim: true },
-        date: { type: String, trim: true },
-        vendorInvNo: { type: String, trim: true },
-        curr: { type: String, trim: true, default: "INR" },
-        billAmt: { type: Number, default: 0 },
-        outstandingAmt: { type: Number, default: 0 },
-        amountTC: { type: Number, default: 0 },
-        allocated: { type: Number, default: 0 },
-      },
-    ],
-
-    totalAmount: { type: Number, default: 0 },
-  },
-  { _id: true }
-);
 // Container Details Schema
 const containerDetailsSchema = new Schema(
   {
@@ -393,7 +336,7 @@ const apInvoiceSchema = new Schema(
     bill_no: { type: String, trim: true },
     type: { type: String, trim: true, default: "INV" },
     organization: { type: String, trim: true },
-    currency: { type: String, trim: true, default: "INR" },
+    currency: { type: String, trim: true},
     amount: { type: Number, default: 0 },
     balance: { type: Number, default: 0 },
     vendor_bill_no: { type: String, trim: true },
@@ -407,7 +350,7 @@ const arInvoiceSchema = new Schema(
     bill_no: { type: String, trim: true },
     type: { type: String, trim: true, default: "INV" },
     organization: { type: String, trim: true },
-    currency: { type: String, trim: true, default: "INR" },
+    currency: { type: String, trim: true },
     amount: { type: Number, default: 0 },
     balance: { type: Number, default: 0 },
   },
@@ -533,79 +476,6 @@ const milestoneSchema = new Schema(
   { _id: true }
 );
 
-const vesselSchema = new mongoose.Schema({
-  name: { type: String },
-  voyageNumber: { type: String },
-  scheduleDate: { type: Date },
-  portOfLoading: String,
-  portOfDischarge: String,
-  carrier: String,
-});
-
-// Instead of ObjectId ref 'Vessel', embed vesselSchema or equivalent inline:
-const bookingSchema = new mongoose.Schema(
-  {
-    vessel: vesselSchema, // embedded full vessel details in booking
-    containerType: String,
-    containerQuantity: Number,
-    shippingDate: Date,
-    shipperName: String,
-    consigneeName: String,
-    status: {
-      type: String,
-      enum: ["Pending", "Confirmed", "Rejected"],
-      default: "Pending",
-    },
-    bookingConfirmation: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "BookingConfirmation",
-    },
-  },
-  { timestamps: true }
-);
-
-const bookingConfirmationSchema = new mongoose.Schema({
-  booking: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Booking",
-  },
-  confirmationNumber: { type: String },
-  confirmedAt: { type: Date, default: Date.now },
-  documents: [String], // array of file URLs or paths
-});
-
-// Export Document Schema
-const exportDocumentSchema = new mongoose.Schema({
-  document_name: { type: String, trim: true },
-  document_code: { type: String, trim: true },
-  url: [{ type: String, trim: true }],
-  document_number: { type: String, trim: true },
-  issue_date: { type: String, trim: true },
-  expiry_date: { type: String, trim: true },
-  document_check_date: { type: String, trim: true },
-  is_verified: { type: Boolean, default: false },
-  verification_date: { type: String, trim: true },
-});
-
-// Shipping Bill Document Schema
-const shippingBillDocumentSchema = new mongoose.Schema({
-  sb_number: { type: String, trim: true },
-  sb_date: { type: String, trim: true },
-  sb_type: {
-    type: String,
-    trim: true,
-    enum: ["duty_free", "dutiable", "drawback", "coastal", "ex_bond"],
-  },
-  sb_color_code: { type: String, trim: true }, // white, yellow, green, pink
-  customs_house_code: { type: String, trim: true },
-  port_of_loading: { type: String, trim: true },
-  country_of_destination: { type: String, trim: true },
-  url: [{ type: String, trim: true }],
-  document_check_date: { type: String, trim: true },
-  let_export_order_date: { type: String, trim: true },
-  is_sb_filed: { type: Boolean, default: false },
-  sb_filing_date: { type: String, trim: true },
-});
 
 // Container/Package Schema for Export
 const exportContainerSchema = new mongoose.Schema({
@@ -681,10 +551,7 @@ const exportJobSchema = new mongoose.Schema(
       },
     ],
 
-    // Note: These schemas need to be defined separately before this schema
-    vessel: [vesselSchema],
-    booking: [bookingSchema],
-    bookingConfirmation: [bookingConfirmationSchema],
+  
 
     ////////////////////////////////////////////////// Excel sheet
     year: { type: String, trim: true },
@@ -745,7 +612,7 @@ const exportJobSchema = new mongoose.Schema(
     bank_swift_code: { type: String, trim: true },
 
     // Commercial Fields (Missing)
-    currency: { type: String, trim: true, default: "USD" },
+    currency: { type: String, trim: true },
     terms_of_invoice: { type: String, trim: true },
     product_value_usd: { type: String, trim: true },
 
@@ -897,8 +764,6 @@ const exportJobSchema = new mongoose.Schema(
     master_bl_awb_date: { type: String, trim: true },
     house_bl_awb_number: { type: String, trim: true },
     house_bl_awb_date: { type: String, trim: true },
-    booking_number: { type: String, trim: true },
-    booking_date: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Cargo Information
     commodity_description: { type: String, trim: true },
@@ -934,7 +799,7 @@ const exportJobSchema = new mongoose.Schema(
     commercial_invoice_number: { type: String, trim: true },
     commercial_invoice_date: { type: String, trim: true },
     commercial_invoice_value: { type: String, trim: true },
-    invoice_currency: { type: String, trim: true, default: "USD" },
+    invoice_currency: { type: String, trim: true},
     exchange_rate: { type: String, trim: true },
     fob_value: { type: String, trim: true },
     freight_charges: { type: String, trim: true },
@@ -952,9 +817,7 @@ const exportJobSchema = new mongoose.Schema(
 
     // Annex C1 Details
 
-    ////////////////////////////////////////////////// Documentation Module
-    // Note: These schemas need to be defined separately
-    export_documents: [exportDocumentSchema],
+
 
     ////////////////////////////////////////////////// Regulatory Compliance
 
@@ -1112,7 +975,7 @@ const exportJobSchema = new mongoose.Schema(
 
     // PMV Info (Price Market Value)
     pmvInfo: {
-      currency: { type: String, ref: "Currency", default: "INR" },
+      currency: { type: String, ref: "Currency"},
       calculationMethod: {
         type: String,
         enum: ["%age", "Fixed Amount"],
@@ -1220,39 +1083,39 @@ const exportJobSchema = new mongoose.Schema(
     // Freight, Insurance & Other Charges
     freightInsuranceCharges: {
       freight: {
-        currency: { type: String, ref: "Currency", default: "USD" },
+        currency: { type: String, ref: "Currency" },
         exchangeRate: { type: Number, default: 87.3 },
         rate: { type: Number, default: 0.0 },
         baseValue: { type: Number, default: 63883.17 },
         amount: { type: Number, default: 30.0 },
       },
       insurance: {
-        currency: { type: String, ref: "Currency", default: "USD" },
+        currency: { type: String, ref: "Currency" },
         exchangeRate: { type: Number, default: 87.3 },
         rate: { type: Number, default: 0.0 },
         baseValue: { type: Number, default: 63883.17 },
         amount: { type: Number, default: 7.73 },
       },
       discount: {
-        currency: { type: String, ref: "Currency", default: "USD" },
+        currency: { type: String, ref: "Currency" },
         exchangeRate: { type: Number, default: 87.3 },
         rate: { type: Number, default: 0.0 },
         amount: { type: Number, default: 0.0 },
       },
       otherDeduction: {
-        currency: { type: String, ref: "Currency", default: "USD" },
+        currency: { type: String, ref: "Currency"},
         exchangeRate: { type: Number, default: 87.3 },
         rate: { type: Number, default: 0.0 },
         amount: { type: Number, default: 0.0 },
       },
       commission: {
-        currency: { type: String, ref: "Currency", default: "USD" },
+        currency: { type: String, ref: "Currency" },
         exchangeRate: { type: Number, default: 87.3 },
         rate: { type: Number, default: 0.0 },
         amount: { type: Number, default: 0.0 },
       },
       fobValue: {
-        currency: { type: String, ref: "Currency", default: "USD" },
+        currency: { type: String, ref: "Currency" },
         amount: { type: Number, default: 63845.44 },
       },
     },
@@ -1264,8 +1127,6 @@ const exportJobSchema = new mongoose.Schema(
     charges: [chargeSchema],
 
     // Payment Requests
-    payment_requests: [paymentRequestSchema],
-
     // AR/AP Invoices
     arInvoices: [
       {
@@ -1327,7 +1188,7 @@ const exportJobSchema = new mongoose.Schema(
     ar_invoices: [arInvoiceSchema],
     total_ar_amount: { type: Number, default: 0 },
     outstanding_balance: { type: Number, default: 0 },
-    ar_default_currency: { type: String, trim: true, default: "INR" },
+    ar_default_currency: { type: String, trim: true },
     ar_payment_terms_days: { type: Number, default: 30 },
     ar_last_updated: { type: Date },
     ar_notes: { type: String, trim: true },
@@ -1336,7 +1197,7 @@ const exportJobSchema = new mongoose.Schema(
     ap_invoices: [apInvoiceSchema],
     total_ap_amount: { type: Number, default: 0 },
     ap_outstanding_balance: { type: Number, default: 0 },
-    ap_default_currency: { type: String, trim: true, default: "INR" },
+    ap_default_currency: { type: String, trim: true },
     ap_payment_terms_days: { type: Number, default: 30 },
     ap_last_updated: { type: Date },
     ap_notes: { type: String, trim: true },

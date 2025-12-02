@@ -37,7 +37,6 @@ const allModules = [
   "Screen4",
   "Export - DSR",
   "Directories",
-  "Handover",
 ];
 
 function not(a, b) {

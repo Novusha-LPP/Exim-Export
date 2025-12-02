@@ -20,8 +20,6 @@ export const moduleCategories = {
   // Export: "Export",
   Directories: "Export",
   "Export - DSR": "Export",
-  "Booking Management": "Export",
-  Handover: "Export",
   "Export - Documentation": "Export",
   "Export - ESanchit": "Export",
   "Export - Submission": "Export",

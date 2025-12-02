@@ -265,8 +265,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       master_bl_awb_date: "",
       house_bl_awb_number: "",
       house_bl_awb_date: "",
-      booking_number: "",
-      booking_date: "",
+
 
       // Cargo Information
       commodity_description: "",
@@ -1043,8 +1042,6 @@ function useExportJobDetails(params, setFileSnackbar) {
         actual_departure_date: safeValue(data.actual_departure_date),
         actual_arrival_date: safeValue(data.actual_arrival_date),
 
-        booking_number: safeValue(data.booking_number),
-        booking_date: safeValue(data.booking_date),
 
         // Cargo Information
         commodity_description: safeValue(
