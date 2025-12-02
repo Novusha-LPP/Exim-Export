@@ -1,24 +1,24 @@
-import React, { useRef, useCallback } from "react";
+import { Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
 import {
   Box,
-  Card,
-  Typography,
-  Grid,
-  TextField,
   Button,
+  Card,
   Checkbox,
   FormControlLabel,
+  Grid,
+  IconButton,
+  MenuItem,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  IconButton,
-  MenuItem,
+  TextField,
+  Typography,
 } from "@mui/material";
-import { Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
+import React, { useCallback, useRef } from "react";
 
 // Default DEEC item
 const getDefaultDeecItem = (idx = 1) => ({
@@ -103,9 +103,9 @@ const ProductDEECTab = ({ formik, productIndex }) => {
               control={
                 <Checkbox
                   checked={deecDetails.isDeecItem || false}
-                  onChange={(e) =>
-                    handleDeecFieldChange("isDeecItem", e.target.checked)
-                  }
+                  // onChange={(e) =>
+                  //   handleDeecFieldChange("isDeecItem", e.target.checked)
+                  // }
                 />
               }
               label="This is a DEEC item"
