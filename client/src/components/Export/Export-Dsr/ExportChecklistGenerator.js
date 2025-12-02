@@ -1290,12 +1290,12 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
         sbDate:
           formatDate(exportJob.shippingbilldate || exportJob.sb_date) ||
           "22-Sep-2025",
-        jobNumber: exportJob.job_no || "AMD/EXP/SEA/01546/25-26",
-        customStation: exportJob.customStation || "ICD Sabarmati, Ahmedabad",
-        aeoRegistrationNo: exportJob.aeoRegistrationNo || "INABOFS1766L0F191",
+        jobNumber: exportJob.job_no ,
+        customStation: exportJob.customStation,
+        aeoRegistrationNo: exportJob.aeoRegistrationNo ,
         aeoRole: exportJob.aeoRole || "CUSTOMS",
         partyRef:
-          exportJob.partyRef || exportJob.partyReference || "APG/EXP/25-26/03",
+          exportJob.partyRef || exportJob.partyReference,
         chaCode:
           exportJob.chaCode ||
           "ABOFS1766LCH005 SURAJ FORWARDERS & SHIPPING AGENCIES",
