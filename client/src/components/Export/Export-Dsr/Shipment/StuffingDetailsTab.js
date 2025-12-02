@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback,useEffect } from "react";
-import {cfs} from "../../../utils/masterList";
+import {cfs} from "../../../../utils/masterList";
 
 const styles = {
   page: { fontFamily: "'Segoe UI', Roboto, Arial, sans-serif", fontSize: 13, color: "#1e2e38" },

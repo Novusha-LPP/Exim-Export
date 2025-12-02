@@ -28,18 +28,18 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { UserContext } from "../../../contexts/UserContext";
 import useExportJobDetails from "../../../customHooks/useExportJobDetails.js";
-import ExchangeRateTab from "./ExchangeRateTab.js";
-import ShipmentTab from "./ShipmentTab";
+import ExchangeRateTab from "./Exchange Rate/ExchangeRateTab.js";
+import ShipmentTab from "./Shipment/ShipmentTab.js";
 import axios from "axios";
-import FinancialTab from "./FinancialTab.js";
-import GeneralTab from "./GeneralTab";
-import ContainerTab from "./ContainerTab";
-import InvoiceTab from "./InvoiceTab";
-import ProductTab from "./ProductTab.js";
-import TrackingCompletedTab from "./TrackingCompletedTab.js";
-import ChargesTab from "./ChargesTab.js";
-import ESanchitTab from "./EsanchitTab.js";
-import ExportChecklistGenerator from "./ExportChecklistGenerator.js";
+import FinancialTab from "./Finantial/FinancialTab.js";
+import GeneralTab from "./General/GeneralTab.js";
+import ContainerTab from "./Container/ContainerTab.js";
+import InvoiceTab from "./Invoices/InvoiceTab.js";
+import ProductTab from "./Product/ProductTab.js";
+import TrackingCompletedTab from "./Tracking Completed/TrackingCompletedTab.js";
+import ChargesTab from "./Charges/ChargesTab.js";
+import ESanchitTab from ".//E-sanchit/EsanchitTab.js";
+import ExportChecklistGenerator from "./Checklist/ExportChecklistGenerator.js";
 
 function SimpleSelect({ name, value, options, onChange }) {
   return (

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import {states} from "../../../utils/masterList";
-import {natureOfCargo} from "../../../utils/masterList";
-import {unitCodes} from "../../../utils/masterList";
+import {states} from "../../../../utils/masterList";
+import {natureOfCargo} from "../../../../utils/masterList";
+import {unitCodes} from "../../../../utils/masterList";
 
 const apiBase = import.meta.env.VITE_API_STRING;
 
