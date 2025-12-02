@@ -6,8 +6,6 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { navigateToModule } from "../../utils/navigateToModule.js";
 import { moduleCategories } from "../../utils/moduleCategories.js";
-import { useSearchQuery } from "../../contexts/SearchQueryContext.jsx";
-
 const importPriority = [
   "Import - DSR",
   "e-Sanchit",
@@ -28,20 +26,6 @@ function Home() {
   const navigate = useNavigate();
 
   // Get search context functions to clear all search state
-  const {
-    setSearchQuery,
-    setDetailedStatus,
-    setSelectedICD,
-    setSelectedImporter,
-  } = useSearchQuery();
-
-  // Clear all search queries when visiting the home page
-  useEffect(() => {
-    setSearchQuery("");
-    setDetailedStatus("all");
-    setSelectedICD("all");
-    setSelectedImporter("");
-  }, [setSearchQuery, setDetailedStatus, setSelectedICD, setSelectedImporter]);
 
   useEffect(() => {
     async function getUser() {

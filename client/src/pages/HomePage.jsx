@@ -4,7 +4,6 @@ import CssBaseline from "@mui/material/CssBaseline";
 import Toolbar from "@mui/material/Toolbar";
 import { Route, Routes } from "react-router-dom";
 import { TabValueContext } from "../contexts/TabValueContext.jsx";
-import { SearchQueryProvider } from "../contexts/SearchQueryContext.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 // Home
 import Home from "../components/home/Home.js";
@@ -32,7 +31,6 @@ function HomePage() {
 
   return (
     <TabValueContext.Provider value={{ tabValue, setTabValue }}>
-      <SearchQueryProvider>
         <Box sx={{ display: "flex" }}>
           <CssBaseline />
           <AppbarComponent
@@ -126,7 +124,6 @@ function HomePage() {
             </Routes>
           </Box>
         </Box>
-      </SearchQueryProvider>
     </TabValueContext.Provider>
   );
 }
