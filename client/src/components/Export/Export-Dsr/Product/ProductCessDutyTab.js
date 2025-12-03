@@ -148,17 +148,16 @@ const ProductCessDutyTab = ({ formik, idx = 0 }) => {
 
   return (
     <div>
+      <label style={styles.checkboxRow}>
+        <input
+          type="checkbox"
+          checked={!!cessExpDuty.cessDutyApplicable}
+          onChange={(e) => setCess("cessDutyApplicable", e.target.checked)}
+        />
+        <span>CESS / Exp. Duty is leviable on this item</span>
+      </label>
       {/* CESS / EXPORT DUTY */}
       <div style={styles.cessCard}>
-        <label style={styles.checkboxRow}>
-          <input
-            type="checkbox"
-            checked={!!cessExpDuty.cessDutyApplicable}
-            onChange={(e) => setCess("cessDutyApplicable", e.target.checked)}
-          />
-          <span>CESS / Exp. Duty is leviable on this item</span>
-        </label>
-
         {/* header row */}
         <div style={styles.hdrRow}>
           <div style={styles.hdrCell}></div>
@@ -358,18 +357,18 @@ const ProductCessDutyTab = ({ formik, idx = 0 }) => {
         </div>
       </div>
 
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: "#003366",
+          marginBottom: 4,
+        }}
+      >
+        CENVAT Details
+      </div>
       {/* CENVAT DETAILS */}
       <div style={styles.cessCard}>
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: "#003366",
-            marginBottom: 4,
-          }}
-        >
-          CENVAT Details
-        </div>
         <div style={styles.cenvatGrid}>
           <div style={styles.fieldBlock}>
             <span style={styles.smallLabel}>Certificate Number</span>
