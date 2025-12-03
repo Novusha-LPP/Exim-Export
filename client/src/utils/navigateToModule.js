@@ -37,12 +37,6 @@ export const navigateToModule = (module, navigate) => {
       return navigate("/export-directories");
     case "Export - DSR":
       return navigate("/export-dsr");
-    case "Export - Submission":
-      return navigate("/export-submission");
-    case "Export - Documentation":
-      return navigate("/documentation-jobs");
-    case "Export - ESanchit":
-      return navigate("/esanchit-job-list");
     case "Documentation":
       return navigate("/documentation");
     case "Submission":

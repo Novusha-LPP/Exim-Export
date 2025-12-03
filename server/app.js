@@ -47,7 +47,6 @@ import getExporterJobs from "./routes/export-dsr/getExporterJobs.mjs";
 import addJobs from "./routes/export-dsr/add-exp-jobs.mjs";
 import getExpJob from "./routes/export-dsr/getExpJob.mjs";
 import updateExportJobs from "./routes/export-dsr/updateExportJobs.js";
-import esanchit from "./routes/export-dsr/e-sanchitRoutes.mjs";
 
 process.on("uncaughtException", (error) => {
   logger.error(`Uncaught Exception: ${error.message}`, { stack: error.stack });
@@ -147,7 +146,6 @@ app.use(getExporterList);
 app.use(getExporterJobs);
 app.use(addJobs);
 app.use("/api/export-jobs", updateExportJobs);
-app.use(esanchit);
 
 app.get("/", (req, res) => {
   res.send("Export Jobs API Running");

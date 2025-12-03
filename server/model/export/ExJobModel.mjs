@@ -247,16 +247,18 @@ const invoiceSchema = new Schema(
       type: String,
       default: "FOB",
     },
+    toiPlace: {
+      type: String, trim : true
+    },
     currency: {
       type: String,
       ref: "Currency",
     },
     invoiceValue: { type: Number, min: 0 },
     productValue: { type: Number, min: 0 },
-    taxableValueForIGST: { type: Number, default: 0, min: 0 },
     priceIncludes: {
       type: String,
-      enum: ["Both", "Freight Only", "Insurance Only", "Neither"],
+      enum: ["Both", "Freight", "Insurance", "None"],
       default: "Both",
     },
     // packingFOB: { type: Number, default: 0, min: 0 },
@@ -504,20 +506,7 @@ const exportContainerSchema = new mongoose.Schema({
   departure_date: { type: String, trim: true },
 });
 
-// Charges Schema for Export
-const exportChargesSchema = new mongoose.Schema({
-  charge_type: { type: String, trim: true }, // freight, insurance, handling, etc.
 
-  charge_description: { type: String, trim: true },
-  amount: { type: String, trim: true },
-  currency: { type: String, trim: true },
-  payment_terms: { type: String, trim: true },
-  invoice_number: { type: String, trim: true },
-  invoice_date: { type: String, trim: true },
-  payment_status: { type: String, trim: true },
-  payment_date: { type: String, trim: true },
-  document_urls: [{ type: String, trim: true }],
-});
 
 // Main Export Job Schema
 const exportJobSchema = new mongoose.Schema(
@@ -561,7 +550,6 @@ const exportJobSchema = new mongoose.Schema(
     exporter: { type: String, trim: true },
     supplier_exporter: { type: String, trim: true },
     invoice_number: { type: String, trim: true },
-    invoice_date: { type: String, trim: true },
     description: { type: String, trim: true },
     sb_no: { type: String, trim: true },
     no_of_pkgs: { type: String, trim: true },
@@ -613,8 +601,6 @@ const exportJobSchema = new mongoose.Schema(
 
     // Commercial Fields (Missing)
     currency: { type: String, trim: true },
-    terms_of_invoice: { type: String, trim: true },
-    product_value_usd: { type: String, trim: true },
 
     // Enhanced Shipping Fields (Missing)
     discharge_port: { type: String, trim: true },
@@ -815,17 +801,7 @@ const exportJobSchema = new mongoose.Schema(
     stuffing_remarks: { type: String, trim: true },
     cfs: { type: String, trim: true },
 
-    // Annex C1 Details
-
-
-
-    ////////////////////////////////////////////////// Regulatory Compliance
-
     ////////////////////////////////////////////////// Charges and Financial
-    // Note: exportChargesSchema needs to be defined separately
-    export_charges: [exportChargesSchema],
-
-    ////////////////////////////////////////////////// Additional Information
     remarks: { type: String, trim: true },
 
     // Job Assignment
@@ -981,8 +957,8 @@ const exportJobSchema = new mongoose.Schema(
         enum: ["%age", "Fixed Amount"],
         default: "%age",
       },
-      pmvPerUnit: { type: Number, default: 211141.22 },
-      totalPMV: { type: Number, default: 523841.37 },
+      pmvPerUnit: { type: Number},
+      totalPMV: { type: Number },
     },
 
     // IGST & Compensation Cess Info
@@ -1084,39 +1060,39 @@ const exportJobSchema = new mongoose.Schema(
     freightInsuranceCharges: {
       freight: {
         currency: { type: String, ref: "Currency" },
-        exchangeRate: { type: Number, default: 87.3 },
-        rate: { type: Number, default: 0.0 },
-        baseValue: { type: Number, default: 63883.17 },
-        amount: { type: Number, default: 30.0 },
+        exchangeRate: { type: Number },
+        rate: { type: Number },
+        baseValue: { type: Number },
+        amount: { type: Number},
       },
       insurance: {
         currency: { type: String, ref: "Currency" },
-        exchangeRate: { type: Number, default: 87.3 },
-        rate: { type: Number, default: 0.0 },
-        baseValue: { type: Number, default: 63883.17 },
-        amount: { type: Number, default: 7.73 },
+        exchangeRate: { type: Number },
+        rate: { type: Number },
+        baseValue: { type: Number },
+        amount: { type: Number },
       },
       discount: {
         currency: { type: String, ref: "Currency" },
-        exchangeRate: { type: Number, default: 87.3 },
-        rate: { type: Number, default: 0.0 },
-        amount: { type: Number, default: 0.0 },
+        exchangeRate: { type: Number },
+        rate: { type: Number },
+        amount: { type: Number },
       },
       otherDeduction: {
         currency: { type: String, ref: "Currency"},
-        exchangeRate: { type: Number, default: 87.3 },
-        rate: { type: Number, default: 0.0 },
-        amount: { type: Number, default: 0.0 },
+        exchangeRate: { type: Number },
+        rate: { type: Number},
+        amount: { type: Number },
       },
       commission: {
         currency: { type: String, ref: "Currency" },
-        exchangeRate: { type: Number, default: 87.3 },
-        rate: { type: Number, default: 0.0 },
-        amount: { type: Number, default: 0.0 },
+        exchangeRate: { type: Number },
+        rate: { type: Number },
+        amount: { type: Number },
       },
       fobValue: {
         currency: { type: String, ref: "Currency" },
-        amount: { type: Number, default: 63845.44 },
+        amount: { type: Number},
       },
     },
 
