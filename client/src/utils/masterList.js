@@ -397,3 +397,36 @@ export const eximCodes = [
   { code: "61", description: "EPCG, DRAWBACK AND ROSCTL" },
   { code: "99", description: "NFEI" },
 ];
+
+export const currencyList = [
+  { code: "INR", description: "Indian Rupee" },          // India [web:54][web:62]
+  { code: "USD", description: "US Dollar" },             // United States [web:54][web:62]
+  { code: "EUR", description: "Euro" },                  // Euro area [web:48][web:54]
+  { code: "GBP", description: "Pound Sterling" },        // United Kingdom [web:54][web:62]
+  { code: "AED", description: "UAE Dirham" },            // United Arab Emirates [web:54][web:62]
+  { code: "SAR", description: "Saudi Riyal" },           // Saudi Arabia [web:54][web:62]
+  { code: "QAR", description: "Qatari Riyal" },          // Qatar [web:54][web:62]
+  { code: "OMR", description: "Omani Rial" },            // Oman [web:54][web:62]
+  { code: "KWD", description: "Kuwaiti Dinar" },         // Kuwait [web:54][web:62]
+  { code: "BHD", description: "Bahraini Dinar" },        // Bahrain [web:54][web:62]
+  { code: "AUD", description: "Australian Dollar" },     // Australia [web:54][web:62]
+  { code: "NZD", description: "New Zealand Dollar" },    // New Zealand [web:54][web:62]
+  { code: "CAD", description: "Canadian Dollar" },       // Canada [web:54][web:62]
+  { code: "SGD", description: "Singapore Dollar" },      // Singapore [web:54][web:62]
+  { code: "HKD", description: "Hong Kong Dollar" },      // Hong Kong [web:54][web:62]
+  { code: "JPY", description: "Japanese Yen" },          // Japan [web:54][web:62]
+  { code: "CNY", description: "Chinese Yuan Renminbi" }, // China [web:54][web:62]
+  { code: "CHF", description: "Swiss Franc" },           // Switzerland [web:54][web:62]
+  { code: "SEK", description: "Swedish Krona" },         // Sweden [web:54][web:62]
+  { code: "NOK", description: "Norwegian Krone" },       // Norway [web:54][web:62]
+  { code: "DKK", description: "Danish Krone" },          // Denmark [web:54][web:62]
+  { code: "ZAR", description: "South African Rand" },    // South Africa [web:54][web:62]
+  { code: "TRY", description: "Turkish Lira" },          // Türkiye [web:54][web:62]
+  { code: "BRL", description: "Brazilian Real" },        // Brazil [web:54][web:62]
+  { code: "RUB", description: "Russian Ruble" },         // Russia [web:54][web:62]
+  { code: "THB", description: "Thai Baht" },             // Thailand [web:54][web:62]
+  { code: "PKR", description: "Pakistani Rupee" },       // Pakistan [web:54][web:62]
+  { code: "BDT", description: "Bangladeshi Taka" },      // Bangladesh [web:54][web:62]
+  { code: "LKR", description: "Sri Lankan Rupee" },      // Sri Lanka [web:54][web:62]
+  { code: "MYR", description: "Malaysian Ringgit" },     // Malaysia [web:54][web:62]
+];

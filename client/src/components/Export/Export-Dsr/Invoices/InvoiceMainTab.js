@@ -1,139 +1,362 @@
 // InvoiceMainTab.jsx
-import React, { useRef, useCallback } from "react";
-import { Box, Grid, Card, Typography, TextField, Autocomplete, Button } from "@mui/material";
+import React, { useRef, useCallback, useEffect } from "react";
+import { currencyList } from "../../../../utils/masterList";
 
-const currencyOptions = ["USD", "INR", "EUR", "GBP"];
-const toiOptions = ["FOB", "CIF"];
+const styles = {
+  page: {
+    fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
+    fontSize: 12,
+    color: "#1e2e38",
+  },
+  row: {
+    display: "flex",
+    alignItems: "flex-end",
+    gap: 10,
+    marginBottom: 8,
+    flexWrap: "wrap",
+  },
+  field: { minWidth: 120 },
+  label: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#7b8290",
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
+  input: {
+    width: "100%",
+    fontSize: 12,
+    padding: "3px 6px",
+    border: "1px solid #bdc7d1",
+    borderRadius: 3,
+    height: 24,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+    textTransform: "uppercase",
+    fontWeight: 600,
+  },
+  inputNumber: {
+    width: "100%",
+    fontSize: 12,
+    padding: "3px 6px",
+    border: "1px solid #bdc7d1",
+    borderRadius: 3,
+    height: 24,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+    textAlign: "right",
+    fontWeight: 600,
+  },
+  inputDate: {
+    width: "100%",
+    fontSize: 12,
+    padding: "3px 6px",
+    border: "1px solid #bdc7d1",
+    borderRadius: 3,
+    height: 24,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+    textTransform: "none",
+    fontWeight: 500,
+  },
+  select: {
+    width: "100%",
+    fontSize: 12,
+    padding: "2px 4px",
+    border: "1px solid #bdc7d1",
+    borderRadius: 3,
+    height: 24,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+    textTransform: "uppercase",
+    fontWeight: 600,
+  },
+  pill: {
+    display: "inline-block",
+    padding: "2px 6px",
+    borderRadius: 3,
+    border: "1px solid #cbd5e1",
+    background: "#f9fafb",
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: "uppercase",
+    minWidth: 35,
+    textAlign: "center",
+  },
+};
+
+const termsOptions = ["FOB", "CIF", "C&F", "C&I"];
+const priceIncludesOptions = ["Both", "Freight", "Insurance", "None"];
+const taxableBaseOptions = ["Product Value", "Product FOB"];
+
+function toUpper(v) {
+  return (typeof v === "string" ? v : "").toUpperCase();
+}
 
 const InvoiceMainTab = ({ formik }) => {
   const saveTimeoutRef = useRef(null);
 
+  // Auto-map TOI -> priceIncludes
+  const mapTOIToPriceIncludes = (toi) => {
+    switch (toi?.toUpperCase()) {
+      case "C&I":
+        return "Insurance";
+      case "C&F":
+        return "Freight";
+      case "CIF":
+        return "Both";
+      case "FOB":
+      default:
+        return "None";
+    }
+  };
+
+  const autoSave = useCallback(
+    (values) => {
+      // hook your debounce-save logic here if needed
+    },
+    []
+  );
+
+  // Work on first invoice object from array schema
+  const invoice = formik.values.invoices?.[0] || {};
+
+  const setInvoicesArray = (updatedInvoice) => {
+    const current = formik.values.invoices || [];
+    const next = [...current];
+    next[0] = { ...(next[0] || {}), ...updatedInvoice };
+    formik.setFieldValue("invoices", next);
+  };
+
+  const handleInvChange = (field, value) => {
+    const updatedInvoice = { [field]: value };
+    
+    // Auto-update priceIncludes when termsOfInvoice changes
+    if (field === "termsOfInvoice") {
+      const priceIncludesValue = mapTOIToPriceIncludes(value);
+      updatedInvoice.priceIncludes = priceIncludesValue;
+      
+      // Also update the FOB/CIF pill dynamically
+      if (value === "CIF") {
+        updatedInvoice.productValuePill = "CIF";
+      } else if (["FOB", "C&F", "C&I"].includes(value)) {
+        updatedInvoice.productValuePill = "FOB";
+      }
+    }
+    
+    setInvoicesArray(updatedInvoice);
+
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      autoSave(formik.values);
+    }, 800);
+  };
+
+  // For non-invoice flat fields like exchange_rate, toiPlace
   const handleFieldChange = (field, value) => {
     formik.setFieldValue(field, value);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      autoSave(formik.values);
+    }, 800);
   };
 
+  // Initialize priceIncludes based on termsOfInvoice when component mounts
+  useEffect(() => {
+    if (invoice.termsOfInvoice && !invoice.priceIncludes) {
+      const priceIncludesValue = mapTOIToPriceIncludes(invoice.termsOfInvoice);
+      handleInvChange("priceIncludes", priceIncludesValue);
+    }
+  }, []);
+
+  const currencyCodes = (currencyList || []).map((c) => c.code || c);
+
   return (
-    <Box>
-      <Grid container spacing={3}>
-        {/* Invoice Table */}
-        <Grid item xs={12} md={8}>
-          <Card sx={{ p: 2 }}>
-            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-              Invoice Details
-            </Typography>
-            {/* Simulated Table Row (single example) */}
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <TextField
-                label="Invoice Number"
-                value={formik.values.invoice_number}
-                onChange={e => handleFieldChange("invoice_number", e.target.value)}
-                size="small"
-                sx={{ width: 180 }}
-              />
-              <TextField
-                label="Date"
-                type="date"
-                value={formik.values.invoice_date}
-                onChange={e => handleFieldChange("invoice_date", e.target.value)}
-                size="small"
-                sx={{ width: 150 }}
-                InputLabelProps={{ shrink: true }}
-              />
-              <Autocomplete
-                options={toiOptions}
-                value={formik.values.terms_of_invoice}
-                onChange={(e, val) => handleFieldChange("terms_of_invoice", val || "")}
-                size="small"
-                renderInput={params => (
-                  <TextField {...params} label="TOI & Place" sx={{ width: 150 }}/>
-                )}
-              />
-              <Autocomplete
-                options={currencyOptions}
-                value={formik.values.currency}
-                onChange={(e, val) => handleFieldChange("currency", val || "")}
-                size="small"
-                renderInput={params => (
-                  <TextField {...params} label="Currency" sx={{ width: 150 }}/>
-                )}
-              />
-              <TextField
-                label="Invoice Value"
-                type="number"
-                value={formik.values.invoice_value}
-                onChange={e => handleFieldChange("invoice_value", e.target.value)}
-                size="small"
-                sx={{ width: 150 }}
-              />
-              <TextField
-                label="Product Value (FOB)"
-                type="number"
-                value={formik.values.product_value_fob}
-                onChange={e => handleFieldChange("product_value_fob", e.target.value)}
-                size="small"
-                sx={{ width: 150 }}
-              />
-              {/* <Button variant="outlined" size="small" sx={{ alignSelf: "center" }}>
-                View Products
-              </Button> */}
-            </Box>
+    <div style={styles.page}>
+      {/* Row 1: Invoice No, Date, TOI & Place, TOI Place text */}
+      <div style={styles.row}>
+        <div style={{ ...styles.field, minWidth: 160 }}>
+          <div style={styles.label}>Invoice No</div>
+          <input
+            style={styles.input}
+            value={toUpper(invoice.invoiceNumber || "")}
+            onChange={(e) =>
+              handleInvChange("invoiceNumber", e.target.value.toUpperCase())
+            }
+            placeholder="ENTER INVOICE NO"
+          />
+        </div>
 
-            {/* Row 2: editable table footer for quick updates */}
-            <Box sx={{ mt: 2, display: "flex", gap: 2 }}>
-              <TextField
-                label="Exchange Rate"
-                type="number"
-                value={formik.values.exchange_rate}
-                onChange={e => handleFieldChange("exchange_rate", e.target.value)}
-                size="small"
-              />
-              <TextField
-                label="Packing/FOB"
-                type="number"
-                value={formik.values.packing_fob}
-                onChange={e => handleFieldChange("packing_fob", e.target.value)}
-                size="small"
-              />
-              {/* <Button variant="contained" size="small">Update</Button>
-              <Button variant="contained" size="small" color="secondary">Update & New</Button>
-              <Button variant="outlined" size="small" color="error">Delete</Button>
-              <Button variant="outlined" size="small">Declarations</Button> */}
-            </Box>
-          </Card>
-        </Grid>
+        <div style={{ ...styles.field, minWidth: 130 }}>
+          <div style={styles.label}>Date</div>
+          <input
+            type="date"
+            style={styles.inputDate}
+            value={
+              invoice.invoiceDate ? String(invoice.invoiceDate).substr(0, 10) : ""
+            }
+            onChange={(e) => handleInvChange("invoiceDate", e.target.value)}
+          />
+        </div>
 
-        {/* Invoice Summary */}
-        <Grid item xs={12} md={4}>
-          <Card sx={{ p: 2 }}>
-            {/* Total Section */}
-            <Typography variant="subtitle1" fontWeight="bold">Total</Typography>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              Invoice Value: {formik.values.invoice_value} {formik.values.currency}
-              <br/>
-              Product Value: {formik.values.product_value_fob} {formik.values.currency}
-            </Typography>
+        <div style={{ ...styles.field, minWidth: 110 }}>
+          <div style={styles.label}>TOI</div>
+          <select
+            style={styles.select}
+            value={invoice.termsOfInvoice || ""}
+            onChange={(e) => handleInvChange("termsOfInvoice", e.target.value)}
+          >
+            <option value="">SELECT</option>
+            {termsOptions.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          
+        </div>
 
-            {/* Current Invoice Details */}
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 2 }}>Current Invoice Details</Typography>
-            <Typography variant="body2">
-              Invoice Number: {formik.values.invoice_number}
-              <br/>
-              TOI: {formik.values.terms_of_invoice}
-              <br/>
-              Product Value: {formik.values.product_value_fob}
-            </Typography>
+        <div style={{ ...styles.field, minWidth: 150 }}>
+          <div style={styles.label}>Place</div>
+          <input
+            style={styles.input}
+            value={toUpper(invoice.toiPlace || "")}
+            onChange={(e) =>
+              handleInvChange("toiPlace", e.target.value)
+            }
+            placeholder=" ENTER PLACE"
+          />
+        </div>
+      </div>
 
-            <Button variant="outlined" size="small" sx={{ width: "70%", mt: 1 }}>
-              Calculate Product Value as per TOI
-            </Button>
-            <Button variant="contained" size="small" sx={{ width: "70%", mt: 2 }}>
-              Update IGST Values
-            </Button>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
+      {/* Row 2: Currency + rate + Price Includes + Taxable base */}
+      <div style={styles.row}>
+        <div style={{ ...styles.field, minWidth: 110 }}>
+          <div style={styles.label}>Currency</div>
+          <select
+            style={styles.select}
+            value={invoice.currency || ""}
+            onChange={(e) => handleInvChange("currency", e.target.value)}
+          >
+            <option value="">SELECT</option>
+            {currencyCodes.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ ...styles.field, minWidth: 90 }}>
+          <div style={styles.label}>Rate</div>
+          <input
+            type="number"
+            style={styles.inputNumber}
+            value={formik.values.exchange_rate || 1}
+            onChange={(e) =>
+              handleFieldChange(
+                "exchange_rate",
+                parseFloat(e.target.value || 0)
+              )
+            }
+          />
+        </div>
+
+        <div style={{ ...styles.field, minWidth: 140 }}>
+          <div style={styles.label}>Price Includes</div>
+          <select
+            style={styles.select}
+            value={invoice.priceIncludes || "Neither"}
+            onChange={(e) => handleInvChange("priceIncludes", e.target.value)}
+          >
+            {priceIncludesOptions.map((p) => (
+              <option key={p} value={p}>
+                {p.toUpperCase()}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ ...styles.field, minWidth: 170 }}>
+          <div style={styles.label}>Taxable value for IGST</div>
+          <select
+            style={styles.select}
+            value={formik.values.taxableBase || "Product Value"}
+            onChange={(e) => handleFieldChange("taxableBase", e.target.value)}
+          >
+            {taxableBaseOptions.map((p) => (
+              <option key={p} value={p}>
+                {p.toUpperCase()}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Row 3: Invoice Value, Product Value (CIF/FOB), Packing/FOB, Taxable */}
+      <div style={styles.row}>
+        <div style={{ ...styles.field, minWidth: 170 }}>
+          <div style={styles.label}>Invoice Value</div>
+          <input
+            type="number"
+            style={styles.inputNumber}
+            value={invoice.invoiceValue}
+            onChange={(e) =>
+              handleInvChange(
+                "invoiceValue",
+                parseFloat(e.target.value || 0)
+              )
+            }
+          />
+        </div>
+
+        <div style={{ ...styles.field, minWidth: 200 }}>
+          <div style={styles.label}>Product Value</div>
+          <div style={{ display: "flex", gap: 4 }}>
+            <input
+              type="number"
+              style={styles.inputNumber}
+              value={
+                invoice.productValue ??
+                invoice.product_value_fob ??
+                0
+              }
+              onChange={(e) =>
+                handleInvChange(
+                  "productValue",
+                  parseFloat(e.target.value || 0)
+                )
+              }
+            />
+            <span style={styles.pill}>
+              {invoice.termsOfInvoice === "CIF" ? "CIF" : "FOB"}
+            </span>
+          </div>
+      
+        </div>
+
+        <div style={{ ...styles.field, minWidth: 160 }}>
+          <div style={styles.label}>Packing / FOB</div>
+          <input
+            type="number"
+            style={styles.inputNumber}
+            value={invoice.packing_fob ?? 0}
+            onChange={(e) =>
+              handleInvChange(
+                "packing_fob",
+                parseFloat(e.target.value || 0)
+              )
+            }
+          />
+        </div>
+
+        
+      </div>
+    </div>
   );
 };
 

@@ -89,26 +89,26 @@ const ExchangeRateTab = ({ formik, directories, params, onUpdate }) => {
     formik.values.exchange_rates : 
     [
       {
-        code: "INR",
-        custom_exch_rate: "1.000000",
+        code: "",
+        custom_exch_rate: "",
         non_std_cur: "",
-        ex_rate: "1.000000",
-        ex_rate_revenue: "1.000000",
-        agent_ex_rate: "0.000000",
-        cfx: "0.000000",
-        ex_rate_cost: "0.000000",
-        ex_rate_cost_revenue: "1.000000"
+        ex_rate: "",
+        ex_rate_revenue: "",
+        agent_ex_rate: "",
+        cfx: "",
+        ex_rate_cost: "",
+        ex_rate_cost_revenue: ""
       },
       {
-        code: "USD",
-        custom_exch_rate: "87.300000",
+        code: "",
+        custom_exch_rate: "",
         non_std_cur: "",
-        ex_rate: "90.000000",
-        ex_rate_revenue: "90.000000",
-        agent_ex_rate: "0.000000",
-        cfx: "0.000000",
-        ex_rate_cost: "0.000000",
-        ex_rate_cost_revenue: "90.000000"
+        ex_rate: "",
+        ex_rate_revenue: "",
+        agent_ex_rate: "",
+        cfx: "",
+        ex_rate_cost: "",
+        ex_rate_cost_revenue: ""
       }
     ];
 

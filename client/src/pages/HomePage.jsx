@@ -12,8 +12,6 @@ import ChangePassword from "../components/home/ChangePassword.js";
 
 import Directories from "../components/Export/Directories/Directories.js";
 import DsrTabs from "../components/Export/Export-Dsr/DsrTabs.js";
-import Handover from "../components/Export/Handover.js";
-import JobsListPage from "../components/Export/BookingManagement/JobListPage.js";
 import ExportViewJob from "../components/Export/Export-Dsr/ExportViewJob.js";
 
 // import auditrail
@@ -94,23 +92,7 @@ function HomePage() {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/handover"
-                element={
-                  <ProtectedRoute requiredModule="Handover">
-                    <Handover />
-                  </ProtectedRoute>
-                }
-              />
 
-              <Route
-                path="/booking-job-list"
-                element={
-                  <ProtectedRoute requiredModule="Booking Management">
-                    <JobsListPage />
-                  </ProtectedRoute>
-                }
-              />
 
               <Route
                 path="/export-dsr/job/:year/:job_no"

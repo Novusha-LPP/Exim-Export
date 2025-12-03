@@ -94,17 +94,6 @@ function useExportJobDetails(params, setFileSnackbar) {
       gstin: "",
       exporter_pan: "",
 
-      // Invoice details - EMPTY DEFAULTS
-      invoice_number: "",
-      commercial_invoice_number: "", // Schema field
-      invoice_date: "",
-      commercial_invoice_date: "", // Schema field
-      product_value_usd: "",
-      commercial_invoice_value: "", // Schema field
-      terms_of_invoice: "",
-      invoice_value: "",
-      product_value_fob: "",
-      packing_fob: "",
       // incoterms: "", // Schema field
       currency: "",
       invoice_currency: "", // Schema field
@@ -265,8 +254,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       master_bl_awb_date: "",
       house_bl_awb_number: "",
       house_bl_awb_date: "",
-      booking_number: "",
-      booking_date: "",
+
 
       // Cargo Information
       commodity_description: "",
@@ -286,9 +274,6 @@ function useExportJobDetails(params, setFileSnackbar) {
       packing_group: "",
 
       // Commercial Information
-      proforma_invoice_number: "",
-      proforma_invoice_date: "",
-      proforma_invoice_value: "",
       fob_value: "",
       freight_charges: "",
       insurance_charges: "",
@@ -299,6 +284,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       export_license_required: false,
       export_license_number: "",
       export_license_validity: "",
+
 
       // Container details - EMPTY ARRAYS
       containers: [
@@ -319,8 +305,6 @@ function useExportJobDetails(params, setFileSnackbar) {
           rfid: "",
         },
       ],
-
-      export_charges: [],
 
       // Product details - EMPTY ARRAYS
       products: [
@@ -519,6 +503,58 @@ function useExportJobDetails(params, setFileSnackbar) {
         },
       ],
 
+      cessExpDuty: [
+        {
+          cessDutyApplicable: false,
+          exportDuty: 0,
+          exportDutyRate: 0,
+          exportDutyTariffValue: 0,
+          exportDutyQty: 0,
+          exportDutyDesc: "",
+          cess: 0,
+          cessRate: 0,
+          cessTariffValue: 0,
+          cessQty: 0,
+          cessUnit: "",
+          cessDesc: "",
+          otherDutyCess: 0,
+          otherDutyCessRate: 0,
+          otherDutyCessTariffValue: 0,
+          otherDutyCessQty: 0,
+          otherDutyCessDesc: "",
+          thirdCess: 0,
+          thirdCessRate: 0,
+          thirdCessTariffValue: 0,
+          thirdCessQty: 0,
+          thirdCessDesc: "",
+          cenvat: {
+            certificateNumber: "",
+            date: "",
+            validUpto: "",
+            cexOfficeCode: "",
+            assesseeCode: "",
+          },
+        },
+      ],
+       invoices: [
+      {
+        invoiceNumber: "",
+        invoiceDate: "",
+        termsOfInvoice: "FOB",
+        toiPlace: "",
+        currency: "",
+        invoiceValue: 0,
+        productValue: 0,
+        priceIncludes: "Both",
+        invoice_value: 0,
+        product_value_fob: 0,
+        packing_fob: 0,
+      },
+    ],
+
+freightInsuranceCharges: {
+  freight: {}, insurance: {}, discount: {}, otherDeduction: {}, commission: {}, fobValue: {},
+},
       // Charges information - EMPTY ARRAYS
       charges: [],
 
@@ -571,31 +607,31 @@ function useExportJobDetails(params, setFileSnackbar) {
       // Add these Exchange Rate fields to your hook initialValues:
       exchange_rates: [
         {
-          code: "INR",
-          custom_exch_rate: "1.000000",
+          code: "",
+          custom_exch_rate: "",
           non_std_cur: "",
-          ex_rate: "1.000000",
-          ex_rate_revenue: "1.000000",
-          agent_ex_rate: "0.000000",
-          cfx: "0.000000",
-          ex_rate_cost: "0.000000",
-          ex_rate_cost_revenue: "1.000000",
+          ex_rate: "",
+          ex_rate_revenue: "",
+          agent_ex_rate: "",
+          cfx: "",
+          ex_rate_cost: "",
+          ex_rate_cost_revenue: "",
         },
         {
-          code: "USD",
-          custom_exch_rate: "87.300000",
+          code: "",
+          custom_exch_rate: "",
           non_std_cur: "",
-          ex_rate: "90.000000",
-          ex_rate_revenue: "90.000000",
-          agent_ex_rate: "0.000000",
-          cfx: "0.000000",
-          ex_rate_cost: "0.000000",
-          ex_rate_cost_revenue: "90.000000",
+          ex_rate: "",
+          ex_rate_revenue: "",
+          agent_ex_rate: "",
+          cfx: "",
+          ex_rate_cost: "",
+          ex_rate_cost_revenue: "",
         },
       ],
       last_rate_update_date: "",
-      default_currency: "USD",
-      auto_update_interval: "24",
+      default_currency: "",
+      auto_update_interval: "",
       rate_source: "",
       rate_remarks: "",
     },
@@ -951,13 +987,6 @@ function useExportJobDetails(params, setFileSnackbar) {
         commercial_invoice_date: safeValue(
           data.commercial_invoice_date || data.invoice_date
         ),
-        product_value_usd: safeValue(
-          data.product_value_usd || data.commercial_invoice_value
-        ),
-        commercial_invoice_value: safeValue(
-          data.commercial_invoice_value || data.product_value_usd
-        ),
-        terms_of_invoice: safeValue(data.terms_of_invoice || data.incoterms),
         // incoterms: safeValue(data.incoterms || data.terms_of_invoice),
         currency: safeValue(data.currency || data.invoice_currency),
         invoice_currency: safeValue(data.invoice_currency || data.currency),
@@ -965,7 +994,6 @@ function useExportJobDetails(params, setFileSnackbar) {
         invoice_value: safeValue(data.invoice_value),
         product_value_fob: safeValue(data.product_value_fob),
         packing_fob: safeValue(data.packing_fob),
-        export_charges: safeValue(data.export_charges),
         buyerThirdPartyInfo: safeValue(data.buyerThirdPartyInfo, {
           buyer: {
             name: "",
@@ -1075,8 +1103,6 @@ function useExportJobDetails(params, setFileSnackbar) {
         actual_departure_date: safeValue(data.actual_departure_date),
         actual_arrival_date: safeValue(data.actual_arrival_date),
 
-        booking_number: safeValue(data.booking_number),
-        booking_date: safeValue(data.booking_date),
 
         // Cargo Information
         commodity_description: safeValue(
@@ -1092,9 +1118,6 @@ function useExportJobDetails(params, setFileSnackbar) {
         special_instructions: safeValue(data.special_instructions),
 
         // Commercial Information
-        proforma_invoice_number: safeValue(data.proforma_invoice_number),
-        proforma_invoice_date: safeValue(data.proforma_invoice_date),
-        proforma_invoice_value: safeValue(data.proforma_invoice_value),
         fob_value: safeValue(data.fob_value),
         freight_charges: safeValue(data.freight_charges),
         insurance_charges: safeValue(data.insurance_charges),
@@ -1315,6 +1338,8 @@ function useExportJobDetails(params, setFileSnackbar) {
 
         // AP Invoices - Map from API response
         ap_invoices: safeValue(data.ap_invoices, []),
+        invoices: safeValue(data.invoices, []),
+        freightInsuranceCharges: safeValue(data.freightInsuranceCharges, []),
         total_ap_amount: safeValue(data.total_ap_amount, 0),
         ap_outstanding_balance: safeValue(data.ap_outstanding_balance, 0),
         ap_default_currency: safeValue(data.ap_default_currency, "INR"),
