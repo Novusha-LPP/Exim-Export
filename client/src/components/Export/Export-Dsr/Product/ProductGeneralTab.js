@@ -1,11 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { eximCodes, states, PTA_FTA_CODES } from "../../../../utils/masterList";
-import { unitCodes } from "../../../../utils/masterList";
+import { eximCodes, states, PTA_FTA_CODES, unitCodes } from "../../../../utils/masterList";
 
 const apiBase = import.meta.env.VITE_API_STRING;
 
 const styles = {
-  // ... (Keep your existing styles)
   page: {
     fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
     fontSize: 13,
@@ -197,8 +195,7 @@ function toUpper(v) {
   return (typeof v === "string" ? v : "")?.toUpperCase() || "";
 }
 
-// ... (KEEP YOUR EXISTING HOOKS: useEximCodeDropdown, useStateDropdown, useDistrictApiDropdown, usePtaFtaDropdown) ...
-// For brevity, I am assuming the Hooks are pasted here exactly as they were in the previous file.
+/* ---------- UnitDropdownField (unchanged) ---------- */
 
 function UnitDropdownField({
   label,
@@ -210,10 +207,9 @@ function UnitDropdownField({
 }) {
   const [open, setOpen] = useState(false);
 
-  // Helper to get deeply nested value from object using path like "products[0].rodtepInfo.unit"
   function getValueByPath(obj, path) {
     return path
-      .split(/[\.\[\]]/)
+      .split(/[.\[\]]/)
       .filter(Boolean)
       .reduce(
         (acc, key) => (acc && acc[key] !== undefined ? acc[key] : ""),
@@ -232,13 +228,11 @@ function UnitDropdownField({
   const [active, setActive] = useState(-1);
   const wrapperRef = useRef();
 
-  // Filter options case-insensitive based on query input
   const filtered = (unitOptions || [])
     .filter((opt) => opt.toUpperCase().includes(query.toUpperCase()))
     .slice(0, 15);
 
   useEffect(() => {
-    // Close dropdown menu if clicked outside component
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setOpen(false);
@@ -252,11 +246,7 @@ function UnitDropdownField({
     const selectedValue = filtered[index].toUpperCase();
     setQuery(selectedValue);
     formik.setFieldValue(fieldName, selectedValue);
-
-    if (onSelect) {
-      onSelect(selectedValue);
-    }
-
+    if (onSelect) onSelect(selectedValue);
     setOpen(false);
     setActive(-1);
   }
@@ -303,7 +293,7 @@ function UnitDropdownField({
               <div
                 key={val}
                 style={styles.acItem(active === i)}
-                onMouseDown={() => handleSelect(i)} // use onMouseDown to prevent blur before click
+                onMouseDown={() => handleSelect(i)}
                 onMouseEnter={() => setActive(i)}
               >
                 {val.toUpperCase()}
@@ -316,12 +306,9 @@ function UnitDropdownField({
   );
 }
 
-function useEximCodeDropdown(
-  fieldName,
-  productIndex,
-  formik,
-  handleProductChange
-) {
+/* ---------- Dropdown hooks (unchanged behaviour) ---------- */
+
+function useEximCodeDropdown(fieldName, productIndex, formik, handleProductChange) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
@@ -349,15 +336,9 @@ function useEximCodeDropdown(
   const filtered = eximCodes
     .filter((opt) => {
       const code = toUpper(typeof opt === "string" ? opt : opt.code || "");
-      const desc = toUpper(
-        typeof opt === "string" ? "" : opt.description || ""
-      );
+      const desc = toUpper(typeof opt === "string" ? "" : opt.description || "");
       const q = toUpper(query);
-
-      // FIX: Construct the formatted string.
-      // This ensures that if the input already contains "CODE - DESC", it matches itself.
       const formatted = desc ? `${code} - ${desc}` : code;
-
       return code.includes(q) || desc.includes(q) || formatted.includes(q);
     })
     .slice(0, 15);
@@ -404,20 +385,17 @@ function useEximCodeDropdown(
     },
   };
 }
-function useStateDropdown(
-  fieldName,
-  productIndex,
-  formik,
-  handleProductChange
-) {
-  // ... (Paste existing hook code)
+
+function useStateDropdown(fieldName, productIndex, formik, handleProductChange) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
   const wrapperRef = useRef();
+
   useEffect(() => {
     setQuery(formik.values.products[productIndex]?.[fieldName] || "");
   }, [formik.values.products, productIndex, fieldName]);
+
   useEffect(() => {
     const close = (e) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target))
@@ -426,11 +404,13 @@ function useStateDropdown(
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
   const filteredStates = states
     .filter((s) =>
       toUpper(typeof s === "string" ? s : s.name || "").includes(toUpper(query))
     )
     .slice(0, 10);
+
   const handleSelect = (i) => {
     const stateName = toUpper(
       typeof filteredStates[i] === "string"
@@ -442,12 +422,14 @@ function useStateDropdown(
     setOpen(false);
     setActive(-1);
   };
+
   const handleInput = (e) => {
     const v = e.target.value.toUpperCase();
     setQuery(v);
     handleProductChange(productIndex, fieldName, v);
     setOpen(true);
   };
+
   return {
     wrapperRef,
     open,
@@ -461,22 +443,18 @@ function useStateDropdown(
   };
 }
 
-function useDistrictApiDropdown(
-  fieldName,
-  productIndex,
-  formik,
-  handleProductChange
-) {
-  // ... (Paste existing hook code)
+function useDistrictApiDropdown(fieldName, productIndex, formik, handleProductChange) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
   const wrapperRef = useRef();
   const keepOpenOnInput = useRef(false);
+
   useEffect(() => {
     setQuery(formik.values.products[productIndex]?.[fieldName] || "");
   }, [formik.values.products, productIndex, fieldName]);
+
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(async () => {
@@ -500,6 +478,7 @@ function useDistrictApiDropdown(
     }, 220);
     return () => clearTimeout(t);
   }, [open, query]);
+
   useEffect(() => {
     const close = (e) => {
       if (
@@ -513,12 +492,14 @@ function useDistrictApiDropdown(
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
   const handle = (val) => {
     const v = val.toUpperCase();
     setQuery(v);
     handleProductChange(productIndex, fieldName, v);
     setOpen(true);
   };
+
   const select = (i) => {
     const item = opts[i];
     if (item) {
@@ -550,6 +531,7 @@ function useDistrictApiDropdown(
       setActive(-1);
     }
   };
+
   return {
     wrapperRef,
     open,
@@ -573,21 +555,17 @@ function useDistrictApiDropdown(
   };
 }
 
-function usePtaFtaDropdown(
-  fieldName,
-  productIndex,
-  formik,
-  handleProductChange
-) {
-  // ... (Paste existing hook code)
+function usePtaFtaDropdown(fieldName, productIndex, formik, handleProductChange) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
   const wrapperRef = useRef();
   const keepOpenOnInput = useRef(false);
+
   useEffect(() => {
     setQuery(formik.values.products[productIndex]?.[fieldName] || "");
   }, [formik.values.products, productIndex, fieldName]);
+
   useEffect(() => {
     const close = (e) => {
       if (
@@ -601,18 +579,21 @@ function usePtaFtaDropdown(
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
   const filtered = PTA_FTA_CODES.filter((opt) => {
     const code = toUpper(opt.code || "");
     const desc = toUpper(opt.description || "");
     const q = toUpper(query);
     return code.includes(q) || desc.includes(q);
   }).slice(0, 15);
+
   const handle = (val) => {
     const v = val.toUpperCase();
     setQuery(v);
     handleProductChange(productIndex, fieldName, v);
     setOpen(true);
   };
+
   const select = (i) => {
     const item = filtered[i];
     if (item) {
@@ -623,6 +604,7 @@ function usePtaFtaDropdown(
       setActive(-1);
     }
   };
+
   return {
     wrapperRef,
     open,
@@ -646,7 +628,8 @@ function usePtaFtaDropdown(
   };
 }
 
-// ... (Components: EximCodeField, DistrictApiField, PtaFtaField - Keep as is) ...
+/* ---------- Field components using hooks (unchanged) ---------- */
+
 const EximCodeField = ({
   label,
   fieldName,
@@ -655,18 +638,11 @@ const EximCodeField = ({
   formik,
   handleProductChange,
 }) => {
-  const d = useEximCodeDropdown(
-    fieldName,
-    productIndex,
-    formik,
-    handleProductChange
-  );
+  const d = useEximCodeDropdown(fieldName, productIndex, formik, handleProductChange);
   return (
     <div style={styles.field} ref={d.wrapperRef}>
-      {" "}
-      <div style={styles.label}>{label}</div>{" "}
+      <div style={styles.label}>{label}</div>
       <div style={styles.acWrap}>
-        {" "}
         <input
           style={styles.input}
           placeholder={placeholder}
@@ -688,11 +664,10 @@ const EximCodeField = ({
               d.select(d.active);
             } else if (e.key === "Escape") d.setOpen(false);
           }}
-        />{" "}
-        <span style={styles.acIcon}>▼</span>{" "}
+        />
+        <span style={styles.acIcon}>▼</span>
         {d.open && d.filtered.length > 0 && (
           <div style={styles.acMenu}>
-            {" "}
             {d.filtered.map((opt, i) => (
               <div
                 key={i}
@@ -700,24 +675,23 @@ const EximCodeField = ({
                 onMouseDown={() => d.select(i)}
                 onMouseEnter={() => d.setActive(i)}
               >
-                {" "}
-                {toUpper(typeof opt === "string" ? opt : opt.code || "")}{" "}
+                {toUpper(typeof opt === "string" ? opt : opt.code || "")}
                 {typeof opt !== "string" && opt.description && (
                   <span
                     style={{ marginLeft: 8, color: "#668", fontWeight: 400 }}
                   >
-                    {" "}
-                    ({opt.description}){" "}
+                    ({opt.description})
                   </span>
-                )}{" "}
+                )}
               </div>
-            ))}{" "}
+            ))}
           </div>
-        )}{" "}
-      </div>{" "}
+        )}
+      </div>
     </div>
   );
 };
+
 const DistrictApiField = ({
   label,
   fieldName,
@@ -726,18 +700,11 @@ const DistrictApiField = ({
   formik,
   handleProductChange,
 }) => {
-  const d = useDistrictApiDropdown(
-    fieldName,
-    productIndex,
-    formik,
-    handleProductChange
-  );
+  const d = useDistrictApiDropdown(fieldName, productIndex, formik, handleProductChange);
   return (
     <div style={styles.field} ref={d.wrapperRef}>
-      {" "}
-      <div style={styles.label}>{label}</div>{" "}
+      <div style={styles.label}>{label}</div>
       <div style={styles.acWrap}>
-        {" "}
         <input
           style={styles.input}
           placeholder={placeholder}
@@ -759,11 +726,10 @@ const DistrictApiField = ({
               d.select(d.active);
             } else if (e.key === "Escape") d.setOpen(false);
           }}
-        />{" "}
-        <span style={styles.acIcon}>▼</span>{" "}
+        />
+        <span style={styles.acIcon}>▼</span>
         {d.open && d.opts.length > 0 && (
           <div style={styles.acMenu}>
-            {" "}
             {d.opts.map((opt, i) => (
               <div
                 key={opt._id || i}
@@ -771,16 +737,16 @@ const DistrictApiField = ({
                 onMouseDown={() => d.select(i)}
                 onMouseEnter={() => d.setActive(i)}
               >
-                {" "}
-                {opt.districtCode} - {toUpper(opt.districtName)}{" "}
+                {opt.districtCode} - {toUpper(opt.districtName)}
               </div>
-            ))}{" "}
+            ))}
           </div>
-        )}{" "}
-      </div>{" "}
+        )}
+      </div>
     </div>
   );
 };
+
 const PtaFtaField = ({
   label,
   fieldName,
@@ -789,18 +755,11 @@ const PtaFtaField = ({
   formik,
   handleProductChange,
 }) => {
-  const d = usePtaFtaDropdown(
-    fieldName,
-    productIndex,
-    formik,
-    handleProductChange
-  );
+  const d = usePtaFtaDropdown(fieldName, productIndex, formik, handleProductChange);
   return (
     <div style={styles.field} ref={d.wrapperRef}>
-      {" "}
-      <div style={styles.label}>{label}</div>{" "}
+      <div style={styles.label}>{label}</div>
       <div style={styles.acWrap}>
-        {" "}
         <input
           style={styles.input}
           placeholder={placeholder}
@@ -822,11 +781,10 @@ const PtaFtaField = ({
               d.select(d.active);
             } else if (e.key === "Escape") d.setOpen(false);
           }}
-        />{" "}
-        <span style={styles.acIcon}>▼</span>{" "}
+        />
+        <span style={styles.acIcon}>▼</span>
         {d.open && d.filtered.length > 0 && (
           <div style={styles.acMenu}>
-            {" "}
             {d.filtered.map((opt, i) => (
               <div
                 key={i}
@@ -834,24 +792,617 @@ const PtaFtaField = ({
                 onMouseDown={() => d.select(i)}
                 onMouseEnter={() => d.setActive(i)}
               >
-                {" "}
-                {opt.code} -{" "}
-                <span style={{ fontWeight: 400, fontSize: 11, color: "#555" }}>
-                  {" "}
-                  {opt.description}{" "}
-                </span>{" "}
+                {opt.code}{" "}
+                <span
+                  style={{ fontWeight: 400, fontSize: 11, color: "#555" }}
+                >
+                  {opt.description}
+                </span>
               </div>
-            ))}{" "}
+            ))}
           </div>
-        )}{" "}
-      </div>{" "}
+        )}
+      </div>
     </div>
   );
 };
 
-// ------------------------------------------------------------------
-// MAIN COMPONENT
-// ------------------------------------------------------------------
+/* ---------- ProductRow component: all hooks per-product here ---------- */
+
+function ProductRow({ product, index, formik, handleProductChange, handleUnitChange }) {
+  const stateData = useStateDropdown("originState", index, formik, handleProductChange);
+
+  return (
+    <div style={styles.card}>
+      <div style={styles.cardTitle}>
+        Product {index + 1} - General Details
+        <span style={styles.chip}>S.No: {product.serialNumber}</span>
+      </div>
+
+      {/* 1. TOP SECTION */}
+      <div style={styles.grid3}>
+        <EximCodeField
+          label="Exim Code"
+          fieldName="eximCode"
+          productIndex={index}
+          placeholder="Select Exim Code"
+          formik={formik}
+          handleProductChange={handleProductChange}
+        />
+        <div style={styles.field}>
+          <label style={styles.label}>NFEI Category</label>
+          <input
+            style={styles.input}
+            value={product.nfeiCategory || ""}
+            onChange={(e) =>
+              handleProductChange(index, "nfeiCategory", e.target.value)
+            }
+          />
+        </div>
+        <div
+          style={{
+            ...styles.field,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "center",
+              marginBottom: 4,
+            }}
+          >
+            <label style={styles.inlineCheckbox}>
+              <input
+                type="checkbox"
+                style={styles.checkbox}
+                checked={product.rewardItem || false}
+                onChange={(e) =>
+                  handleProductChange(index, "rewardItem", e.target.checked)
+                }
+              />
+              Reward Item
+            </label>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <label
+              style={{
+                ...styles.label,
+                marginBottom: 0,
+                whiteSpace: "nowrap",
+              }}
+            >
+              STR Code
+            </label>
+            <input
+              style={styles.input}
+              value={product.strCode || ""}
+              onChange={(e) =>
+                handleProductChange(index, "strCode", e.target.value)
+              }
+            />
+          </div>
+        </div>
+
+        {/* Row 2 */}
+        <div style={styles.field}>
+          <label style={styles.label}>End Use</label>
+          <input
+            style={styles.input}
+            value={product.endUse || ""}
+            onChange={(e) =>
+              handleProductChange(index, "endUse", e.target.value)
+            }
+          />
+        </div>
+        <DistrictApiField
+          label="Origin District"
+          fieldName="originDistrict"
+          productIndex={index}
+          placeholder="Type Code/Name"
+          formik={formik}
+          handleProductChange={handleProductChange}
+        />
+        <div style={styles.field} ref={stateData.wrapperRef}>
+          <div style={styles.label}>Origin State</div>
+          <div style={styles.acWrap}>
+            <input
+              style={styles.input}
+              placeholder="State"
+              autoComplete="off"
+              value={toUpper(stateData.query)}
+              onChange={stateData.handleInput}
+              onFocus={() => {
+                stateData.setOpen(true);
+                stateData.setActive(-1);
+              }}
+              onKeyDown={(e) => {
+                if (!stateData.open) return;
+                if (e.key === "ArrowDown")
+                  stateData.setActive((a) =>
+                    Math.min(
+                      stateData.filteredStates.length - 1,
+                      a < 0 ? 0 : a + 1
+                    )
+                  );
+                else if (e.key === "ArrowUp")
+                  stateData.setActive((a) => Math.max(0, a - 1));
+                else if (e.key === "Enter" && stateData.active >= 0) {
+                  e.preventDefault();
+                  stateData.handleSelect(stateData.active);
+                } else if (e.key === "Escape") stateData.setOpen(false);
+              }}
+            />
+            {stateData.open && stateData.filteredStates.length > 0 && (
+              <div style={styles.acMenu}>
+                {stateData.filteredStates.map((state, i) => (
+                  <div
+                    key={i}
+                    style={styles.acItem(stateData.active === i)}
+                    onMouseDown={() => stateData.handleSelect(i)}
+                    onMouseEnter={() => stateData.setActive(i)}
+                  >
+                    {toUpper(
+                      typeof state === "string" ? state : state.name || ""
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Row 3 */}
+        <PtaFtaField
+          label="PTA/FTA Info"
+          fieldName="ptaFtaInfo"
+          productIndex={index}
+          placeholder="Select PTA/FTA"
+          formik={formik}
+          handleProductChange={handleProductChange}
+        />
+        <div style={styles.field}>
+          <label style={styles.label}>Alternate Qty</label>
+          <input
+            style={styles.input}
+            type="number"
+            value={product.alternateQty || 0}
+            onChange={(e) =>
+              handleProductChange(
+                index,
+                "alternateQty",
+                parseFloat(e.target.value) || 0
+              )
+            }
+          />
+        </div>
+        <div style={styles.field}>
+          <label style={styles.label}>Material Code</label>
+          <input
+            style={styles.input}
+            value={product.materialCode || ""}
+            onChange={(e) =>
+              handleProductChange(index, "materialCode", e.target.value)
+            }
+          />
+        </div>
+
+        {/* Row 4 */}
+        <div style={styles.field}>
+          <label style={styles.label}>Medicinal Plant</label>
+          <input
+            style={styles.input}
+            value={product.medicinalPlant || ""}
+            onChange={(e) =>
+              handleProductChange(index, "medicinalPlant", e.target.value)
+            }
+          />
+        </div>
+        <div style={styles.field}>
+          <label style={styles.label}>Formulation</label>
+          <input
+            style={styles.input}
+            value={product.formulation || ""}
+            onChange={(e) =>
+              handleProductChange(index, "formulation", e.target.value)
+            }
+          />
+        </div>
+        <div style={styles.field}>
+          <label style={styles.label}>Surface Material in Contact</label>
+          <input
+            style={styles.input}
+            value={product.surfaceMaterialInContact || ""}
+            onChange={(e) =>
+              handleProductChange(
+                index,
+                "surfaceMaterialInContact",
+                e.target.value
+              )
+            }
+          />
+        </div>
+
+        {/* Row 5 */}
+        <div style={styles.field}>
+          <label style={styles.label}>Lab Grown Diamond</label>
+          <select
+            style={styles.select}
+            value={product.labGrownDiamond || ""}
+            onChange={(e) =>
+              handleProductChange(index, "labGrownDiamond", e.target.value)
+            }
+          >
+            <option value="">Select</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+      </div>
+
+      {/* PMV INFO */}
+      <div style={styles.subSectionTitle}>PMV Info</div>
+      <div style={styles.grid4}>
+        <div style={styles.field}>
+          <label style={styles.label}>Currency</label>
+          <select
+            style={styles.select}
+            value={product.pmvInfo?.currency || "INR"}
+            onChange={(e) =>
+              handleProductChange(index, "pmvInfo.currency", e.target.value)
+            }
+          >
+            <option value="INR">INR</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+        <div style={styles.field}>
+          <label style={styles.label}>Calc. Method</label>
+          <div style={{ display: "flex", gap: 4 }}>
+            <select
+              style={{ ...styles.select, width: "60%" }}
+              value={product.pmvInfo?.calculationMethod || "percentage"}
+              onChange={(e) =>
+                handleProductChange(
+                  index,
+                  "pmvInfo.calculationMethod",
+                  e.target.value
+                )
+              }
+            >
+              <option value="percentage">%age</option>
+              <option value="value">Value</option>
+            </select>
+            <input
+              style={{ ...styles.input, width: "40%" }}
+              type="number"
+              value={product.pmvInfo?.percentage || 110.0}
+              onChange={(e) =>
+                handleProductChange(
+                  index,
+                  "pmvInfo.percentage",
+                  parseFloat(e.target.value)
+                )
+              }
+            />
+          </div>
+        </div>
+        <div style={styles.field}>
+          <label style={styles.label}>PMV/Unit</label>
+          <div style={{ position: "relative" }}>
+            <input
+              style={{ ...styles.input, paddingRight: 35 }}
+              type="number"
+              value={product.pmvInfo?.pmvPerUnit || 0}
+              onChange={(e) =>
+                handleProductChange(
+                  index,
+                  "pmvInfo.pmvPerUnit",
+                  parseFloat(e.target.value)
+                )
+              }
+            />
+            <span
+              style={{
+                position: "absolute",
+                right: 5,
+                top: 5,
+                fontSize: 10,
+                color: "#666",
+              }}
+            >
+              INR
+            </span>
+          </div>
+        </div>
+        <div style={styles.field}>
+          <label style={styles.label}>Total PMV</label>
+          <div style={{ position: "relative" }}>
+            <input
+              style={{ ...styles.input, paddingRight: 35 }}
+              type="number"
+              value={product.pmvInfo?.totalPMV || 0}
+              onChange={(e) =>
+                handleProductChange(
+                  index,
+                  "pmvInfo.totalPMV",
+                  parseFloat(e.target.value)
+                )
+              }
+            />
+            <span
+              style={{
+                position: "absolute",
+                right: 5,
+                top: 5,
+                fontSize: 10,
+                color: "#666",
+              }}
+            >
+              INR
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* IGST INFO */}
+      <div style={styles.subSectionTitle}>IGST & Compensation Cess Info</div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, 1fr)",
+          gap: 16,
+          marginBottom: 8,
+        }}
+      >
+        <div style={{ display: "grid", gap: 8 }}>
+          <div style={styles.field}>
+            <label style={styles.label}>IGST Pymt Status</label>
+            <select
+              style={styles.select}
+              value={product.igstCompensationCess?.igstPaymentStatus || "LUT"}
+              onChange={(e) =>
+                handleProductChange(
+                  index,
+                  "igstCompensationCess.igstPaymentStatus",
+                  e.target.value
+                )
+              }
+            >
+              <option value="LUT">LUT (BOND)</option>
+              <option value="Export Against Payment">
+                Export Against Payment
+              </option>
+            </select>
+          </div>
+          <div style={styles.field}>
+            <label style={styles.label}>IGST Rate (%)</label>
+            <input
+              style={styles.input}
+              type="number"
+              value={product.igstCompensationCess?.igstRate || 0}
+              onChange={(e) =>
+                handleProductChange(
+                  index,
+                  "igstCompensationCess.igstRate",
+                  parseFloat(e.target.value)
+                )
+              }
+            />
+          </div>
+          <div style={styles.field}>
+            <label style={styles.label}>Comp. Cess(%)</label>
+            <input
+              style={styles.input}
+              type="number"
+              value={
+                product.igstCompensationCess?.compensationCessRate || 0
+              }
+              onChange={(e) =>
+                handleProductChange(
+                  index,
+                  "igstCompensationCess.compensationCessRate",
+                  parseFloat(e.target.value)
+                )
+              }
+            />
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 8 }}>
+          <div style={styles.field}>
+            <label style={styles.label}>Taxable Value (INR)</label>
+            <input
+              style={styles.input}
+              type="number"
+              value={product.igstCompensationCess?.taxableValueINR || 0}
+              onChange={(e) =>
+                handleProductChange(
+                  index,
+                  "igstCompensationCess.taxableValueINR",
+                  parseFloat(e.target.value)
+                )
+              }
+            />
+          </div>
+          <div style={styles.field}>
+            <label style={styles.label}>IGST Amt (INR)</label>
+            <input
+              style={styles.input}
+              type="number"
+              value={product.igstCompensationCess?.igstAmountINR || 0}
+              onChange={(e) =>
+                handleProductChange(
+                  index,
+                  "igstCompensationCess.igstAmountINR",
+                  parseFloat(e.target.value)
+                )
+              }
+            />
+          </div>
+          <div style={styles.field}>
+            <label style={styles.label}>Comp. Cess Amt(INR)</label>
+            <input
+              style={styles.input}
+              type="number"
+              value={
+                product.igstCompensationCess?.compensationCessAmountINR ||
+                0
+              }
+              onChange={(e) =>
+                handleProductChange(
+                  index,
+                  "igstCompensationCess.compensationCessAmountINR",
+                  parseFloat(e.target.value)
+                )
+              }
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* RODTEP INFO */}
+      <div style={styles.subSectionTitle}>RODTEP Info</div>
+      <div style={styles.grid3}>
+        <div style={styles.field}>
+          <label style={styles.label}>RODTEP Claim</label>
+          <select
+            style={styles.select}
+            value={product.rodtepInfo?.claim || "Yes"}
+            onChange={(e) =>
+              handleProductChange(
+                index,
+                "rodtepInfo.claim",
+                e.target.value
+              )
+            }
+          >
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>Quantity</label>
+          <div style={{ display: "flex", gap: 4 }}>
+            <input
+              style={{ ...styles.input, width: "65%" }}
+              type="number"
+              value={product.rodtepInfo?.quantity || 0}
+              onChange={(e) =>
+                handleProductChange(
+                  index,
+                  "rodtepInfo.quantity",
+                  parseFloat(e.target.value)
+                )
+              }
+            />
+            <div style={{ width: "35%" }}>
+              <UnitDropdownField
+                label=""
+                fieldName={`products[${index}].rodtepInfo.unit`}
+                formik={formik}
+                unitOptions={unitCodes}
+                placeholder="UNIT"
+                onSelect={(value) => handleUnitChange(index, "unit", value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>Rate (in %)</label>
+          <input
+            style={styles.input}
+            type="number"
+            value={product.rodtepInfo?.ratePercent || 0}
+            onChange={(e) =>
+              handleProductChange(
+                index,
+                "rodtepInfo.ratePercent",
+                parseFloat(e.target.value)
+              )
+            }
+          />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>Cap Value</label>
+          <input
+            style={styles.input}
+            type="number"
+            value={product.rodtepInfo?.capValue || 0}
+            onChange={(e) =>
+              handleProductChange(
+                index,
+                "rodtepInfo.capValue",
+                parseFloat(e.target.value)
+              )
+            }
+          />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>Cap value per units</label>
+          <div style={{ display: "flex", gap: 4 }}>
+            <input
+              style={{ ...styles.input, width: "65%" }}
+              type="number"
+              value={product.rodtepInfo?.capValuePerUnits || 0}
+              onChange={(e) =>
+                handleProductChange(
+                  index,
+                  "rodtepInfo.capValuePerUnits",
+                  parseFloat(e.target.value)
+                )
+              }
+            />
+            <div style={{ width: "35%" }}>
+              <UnitDropdownField
+                label=""
+                fieldName={`products[${index}].rodtepInfo.capUnit`}
+                formik={formik}
+                unitOptions={unitCodes}
+                placeholder="UNIT"
+                onSelect={(value) => handleUnitChange(index, "capUnit", value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>RODTEP Amount(INR)</label>
+          <input
+            style={styles.input}
+            type="number"
+            value={product.rodtepInfo?.amountINR || 0}
+            onChange={(e) =>
+              handleProductChange(
+                index,
+                "rodtepInfo.amountINR",
+                parseFloat(e.target.value)
+              )
+            }
+          />
+        </div>
+      </div>
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: "#4a5568",
+          fontStyle: "italic",
+          marginTop: -8,
+        }}
+      >
+        RODTEP Amt is Calculated on FOB value
+      </div>
+    </div>
+  );
+}
+
+/* ---------- MAIN COMPONENT ---------- */
 
 const ProductGeneralTab = ({ formik }) => {
   const handleProductChange = useCallback(
@@ -859,9 +1410,7 @@ const ProductGeneralTab = ({ formik }) => {
       const updatedProducts = [...formik.values.products];
       if (field.includes(".")) {
         const [parent, child] = field.split(".");
-        // Ensure parent object exists before setting child
-        if (!updatedProducts[index][parent])
-          updatedProducts[index][parent] = {};
+        if (!updatedProducts[index][parent]) updatedProducts[index][parent] = {};
         updatedProducts[index][parent] = {
           ...updatedProducts[index][parent],
           [child]: value,
@@ -874,16 +1423,12 @@ const ProductGeneralTab = ({ formik }) => {
     [formik]
   );
 
-  // Add this function in your ProductGeneralTab component
   const handleUnitChange = useCallback(
     (index, unitField, unitValue) => {
-      // Update Formik for dropdown display - dynamic field name
       formik.setFieldValue(
         `products[${index}].rodtepInfo.${unitField}`,
         unitValue
       );
-
-      // Update local product state via handleProductChange - dynamic field name
       handleProductChange(index, `rodtepInfo.${unitField}`, unitValue);
     },
     [formik, handleProductChange]
@@ -898,8 +1443,6 @@ const ProductGeneralTab = ({ formik }) => {
       unitPrice: 0,
       per: "",
       amount: 0,
-
-      // General
       eximCode: "",
       nfeiCategory: "",
       rewardItem: false,
@@ -914,8 +1457,6 @@ const ProductGeneralTab = ({ formik }) => {
       formulation: "",
       surfaceMaterialInContact: "",
       labGrownDiamond: "",
-
-      // Nested Structures (Initialized)
       pmvInfo: {
         currency: "INR",
         calculationMethod: "percentage",
@@ -960,7 +1501,7 @@ const ProductGeneralTab = ({ formik }) => {
     <div style={styles.page}>
       <div style={styles.sectionTitle}>Product General Information</div>
 
-      {/* Product Table */}
+      {/* Top table of products */}
       <div style={styles.tableContainer}>
         <table style={styles.table}>
           <thead>
@@ -983,7 +1524,7 @@ const ProductGeneralTab = ({ formik }) => {
           </thead>
           <tbody>
             {formik.values.products?.map((product, index) => (
-              <tr key={index}>
+              <tr key={product._id || index}>
                 <td style={styles.td}>{product.serialNumber}</td>
                 <td style={styles.td}>
                   <textarea
@@ -1084,629 +1625,17 @@ const ProductGeneralTab = ({ formik }) => {
         ➕ Add New Product
       </button>
 
-      {/* Product Details Cards */}
-      {formik.values.products?.map((product, index) => {
-        const stateData = useStateDropdown(
-          "originState",
-          index,
-          formik,
-          handleProductChange
-        );
-
-        return (
-          <div key={index} style={styles.card}>
-            <div style={styles.cardTitle}>
-              Product {index + 1} - General Details
-              <span style={styles.chip}>S.No: {product.serialNumber}</span>
-            </div>
-
-            {/* 1. TOP SECTION (Grid based on image) */}
-            <div style={styles.grid3}>
-              {/* Row 1 */}
-              <EximCodeField
-                label="Exim Code"
-                fieldName="eximCode"
-                productIndex={index}
-                placeholder="Select Exim Code"
-                formik={formik}
-                handleProductChange={handleProductChange}
-              />
-              <div style={styles.field}>
-                <label style={styles.label}>NFEI Category</label>
-                <input
-                  style={styles.input}
-                  value={product.nfeiCategory || ""}
-                  onChange={(e) =>
-                    handleProductChange(index, "nfeiCategory", e.target.value)
-                  }
-                />
-              </div>
-              <div
-                style={{
-                  ...styles.field,
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 10,
-                    alignItems: "center",
-                    marginBottom: 4,
-                  }}
-                >
-                  <label style={styles.inlineCheckbox}>
-                    <input
-                      type="checkbox"
-                      style={styles.checkbox}
-                      checked={product.rewardItem || false}
-                      onChange={(e) =>
-                        handleProductChange(
-                          index,
-                          "rewardItem",
-                          e.target.checked
-                        )
-                      }
-                    />{" "}
-                    Reward Item
-                  </label>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <label
-                    style={{
-                      ...styles.label,
-                      marginBottom: 0,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    STR Code
-                  </label>
-                  <input
-                    style={styles.input}
-                    value={product.strCode || ""}
-                    onChange={(e) =>
-                      handleProductChange(index, "strCode", e.target.value)
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Row 2 */}
-              <div style={styles.field}>
-                <label style={styles.label}>End Use</label>
-                <input
-                  style={styles.input}
-                  value={product.endUse || ""}
-                  onChange={(e) =>
-                    handleProductChange(index, "endUse", e.target.value)
-                  }
-                />
-              </div>
-              <DistrictApiField
-                label="Origin District"
-                fieldName="originDistrict"
-                productIndex={index}
-                placeholder="Type Code/Name"
-                formik={formik}
-                handleProductChange={handleProductChange}
-              />
-              <div style={styles.field} ref={stateData.wrapperRef}>
-                <div style={styles.label}>Origin State</div>
-                <div style={styles.acWrap}>
-                  <input
-                    style={styles.input}
-                    placeholder="State"
-                    autoComplete="off"
-                    value={toUpper(stateData.query)}
-                    onChange={stateData.handleInput}
-                    onFocus={() => {
-                      stateData.setOpen(true);
-                      stateData.setActive(-1);
-                    }}
-                    onKeyDown={(e) => {
-                      if (!stateData.open) return;
-                      if (e.key === "ArrowDown")
-                        stateData.setActive((a) =>
-                          Math.min(
-                            stateData.filteredStates.length - 1,
-                            a < 0 ? 0 : a + 1
-                          )
-                        );
-                      else if (e.key === "ArrowUp")
-                        stateData.setActive((a) => Math.max(0, a - 1));
-                      else if (e.key === "Enter" && stateData.active >= 0) {
-                        e.preventDefault();
-                        stateData.handleSelect(stateData.active);
-                      } else if (e.key === "Escape") stateData.setOpen(false);
-                    }}
-                  />
-                  {stateData.open && stateData.filteredStates.length > 0 && (
-                    <div style={styles.acMenu}>
-                      {" "}
-                      {stateData.filteredStates.map((state, i) => (
-                        <div
-                          key={i}
-                          style={styles.acItem(stateData.active === i)}
-                          onMouseDown={() => stateData.handleSelect(i)}
-                          onMouseEnter={() => stateData.setActive(i)}
-                        >
-                          {" "}
-                          {toUpper(
-                            typeof state === "string" ? state : state.name || ""
-                          )}{" "}
-                        </div>
-                      ))}{" "}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Row 3 */}
-              <PtaFtaField
-                label="PTA/FTA Info"
-                fieldName="ptaFtaInfo"
-                productIndex={index}
-                placeholder="Select PTA/FTA"
-                formik={formik}
-                handleProductChange={handleProductChange}
-              />
-              <div style={styles.field}>
-                <label style={styles.label}>Alternate Qty</label>
-                <input
-                  style={styles.input}
-                  type="number"
-                  value={product.alternateQty || 0}
-                  onChange={(e) =>
-                    handleProductChange(
-                      index,
-                      "alternateQty",
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
-                />
-              </div>
-              <div style={styles.field}>
-                <label style={styles.label}>Material Code</label>
-                <input
-                  style={styles.input}
-                  value={product.materialCode || ""}
-                  onChange={(e) =>
-                    handleProductChange(index, "materialCode", e.target.value)
-                  }
-                />
-              </div>
-
-              {/* Row 4 */}
-              <div style={styles.field}>
-                <label style={styles.label}>Medicinal Plant</label>
-                <input
-                  style={styles.input}
-                  value={product.medicinalPlant || ""}
-                  onChange={(e) =>
-                    handleProductChange(index, "medicinalPlant", e.target.value)
-                  }
-                />
-              </div>
-              <div style={styles.field}>
-                <label style={styles.label}>Formulation</label>
-                <input
-                  style={styles.input}
-                  value={product.formulation || ""}
-                  onChange={(e) =>
-                    handleProductChange(index, "formulation", e.target.value)
-                  }
-                />
-              </div>
-              <div style={styles.field}>
-                <label style={styles.label}>Surface Material in Contact</label>
-                <input
-                  style={styles.input}
-                  value={product.surfaceMaterialInContact || ""}
-                  onChange={(e) =>
-                    handleProductChange(
-                      index,
-                      "surfaceMaterialInContact",
-                      e.target.value
-                    )
-                  }
-                />
-              </div>
-
-              {/* Row 5 */}
-              <div style={styles.field}>
-                <label style={styles.label}>Lab Grown Diamond</label>
-                <select
-                  style={styles.select}
-                  value={product.labGrownDiamond || ""}
-                  onChange={(e) =>
-                    handleProductChange(
-                      index,
-                      "labGrownDiamond",
-                      e.target.value
-                    )
-                  }
-                >
-                  <option value="">Select</option>{" "}
-                  <option value="Yes">Yes</option>{" "}
-                  <option value="No">No</option>
-                </select>
-              </div>
-            </div>
-
-            {/* 2. PMV INFO (NESTED) */}
-            <div style={styles.subSectionTitle}>PMV Info</div>
-            <div style={styles.grid4}>
-              <div style={styles.field}>
-                <label style={styles.label}>Currency</label>
-                <select
-                  style={styles.select}
-                  value={product.pmvInfo?.currency || "INR"}
-                  onChange={(e) =>
-                    handleProductChange(
-                      index,
-                      "pmvInfo.currency",
-                      e.target.value
-                    )
-                  }
-                >
-                  <option value="INR">INR</option>{" "}
-                  <option value="USD">USD</option>
-                </select>
-              </div>
-              <div style={styles.field}>
-                <label style={styles.label}>Calc. Method</label>
-                <div style={{ display: "flex", gap: 4 }}>
-                  <select
-                    style={{ ...styles.select, width: "60%" }}
-                    value={product.pmvInfo?.calculationMethod || "percentage"}
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "pmvInfo.calculationMethod",
-                        e.target.value
-                      )
-                    }
-                  >
-                    <option value="percentage">%age</option>{" "}
-                    <option value="value">Value</option>
-                  </select>
-                  <input
-                    style={{ ...styles.input, width: "40%" }}
-                    type="number"
-                    value={product.pmvInfo?.percentage || 110.0}
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "pmvInfo.percentage",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                  />
-                </div>
-              </div>
-              <div style={styles.field}>
-                <label style={styles.label}>PMV/Unit</label>
-                <div style={{ position: "relative" }}>
-                  <input
-                    style={{ ...styles.input, paddingRight: 35 }}
-                    type="number"
-                    value={product.pmvInfo?.pmvPerUnit || 0}
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "pmvInfo.pmvPerUnit",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                  />
-                  <span
-                    style={{
-                      position: "absolute",
-                      right: 5,
-                      top: 5,
-                      fontSize: 10,
-                      color: "#666",
-                    }}
-                  >
-                    INR
-                  </span>
-                </div>
-              </div>
-              <div style={styles.field}>
-                <label style={styles.label}>Total PMV</label>
-                <div style={{ position: "relative" }}>
-                  <input
-                    style={{ ...styles.input, paddingRight: 35 }}
-                    type="number"
-                    value={product.pmvInfo?.totalPMV || 0}
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "pmvInfo.totalPMV",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                  />
-                  <span
-                    style={{
-                      position: "absolute",
-                      right: 5,
-                      top: 5,
-                      fontSize: 10,
-                      color: "#666",
-                    }}
-                  >
-                    INR
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. IGST INFO (NESTED) */}
-            <div style={styles.subSectionTitle}>
-              IGST & Compensation Cess Info
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2, 1fr)",
-                gap: 16,
-                marginBottom: 8,
-              }}
-            >
-              {/* Col 1 */}
-              <div style={{ display: "grid", gap: 8 }}>
-                <div style={styles.field}>
-                  <label style={styles.label}>IGST Pymt Status</label>
-                  <select
-                    style={styles.select}
-                    value={
-                      product.igstCompensationCess?.igstPaymentStatus || "LUT"
-                    }
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "igstCompensationCess.igstPaymentStatus",
-                        e.target.value
-                      )
-                    }
-                  >
-                    <option value="LUT">LUT (BOND)</option>{" "}
-                    <option value="Export Against Payment">
-                      Export Against Payment
-                    </option>
-                  </select>
-                </div>
-                <div style={styles.field}>
-                  <label style={styles.label}>IGST Rate (%)</label>
-                  <input
-                    style={styles.input}
-                    type="number"
-                    value={product.igstCompensationCess?.igstRate || 0}
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "igstCompensationCess.igstRate",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                  />
-                </div>
-                <div style={styles.field}>
-                  <label style={styles.label}>Comp. Cess(%)</label>
-                  <input
-                    style={styles.input}
-                    type="number"
-                    value={
-                      product.igstCompensationCess?.compensationCessRate || 0
-                    }
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "igstCompensationCess.compensationCessRate",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                  />
-                </div>
-              </div>
-              {/* Col 2 */}
-              <div style={{ display: "grid", gap: 8 }}>
-                <div style={styles.field}>
-                  <label style={styles.label}>Taxable Value (INR)</label>
-                  <input
-                    style={styles.input}
-                    type="number"
-                    value={product.igstCompensationCess?.taxableValueINR || 0}
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "igstCompensationCess.taxableValueINR",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                  />
-                </div>
-                <div style={styles.field}>
-                  <label style={styles.label}>IGST Amt (INR)</label>
-                  <input
-                    style={styles.input}
-                    type="number"
-                    value={product.igstCompensationCess?.igstAmountINR || 0}
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "igstCompensationCess.igstAmountINR",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                  />
-                </div>
-                <div style={styles.field}>
-                  <label style={styles.label}>Comp. Cess Amt(INR)</label>
-                  <input
-                    style={styles.input}
-                    type="number"
-                    value={
-                      product.igstCompensationCess?.compensationCessAmountINR ||
-                      0
-                    }
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "igstCompensationCess.compensationCessAmountINR",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 4. RODTEP INFO (NESTED) - UPDATED WITH UnitDropdownField */}
-            <div style={styles.subSectionTitle}>RODTEP Info</div>
-            <div style={styles.grid3}>
-              <div style={styles.field}>
-                <label style={styles.label}>RODTEP Claim</label>
-                <select
-                  style={styles.select}
-                  value={product.rodtepInfo?.claim || "Yes"}
-                  onChange={(e) =>
-                    handleProductChange(
-                      index,
-                      "rodtepInfo.claim",
-                      e.target.value
-                    )
-                  }
-                >
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>Quantity</label>
-                <div style={{ display: "flex", gap: 4 }}>
-                  <input
-                    style={{ ...styles.input, width: "65%" }}
-                    type="number"
-                    value={product.rodtepInfo?.quantity || 0}
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "rodtepInfo.quantity",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                  />
-                  <div style={{ width: "35%" }}>
-                    <UnitDropdownField
-                      label=""
-                      fieldName={`products[${index}].rodtepInfo.unit`}
-                      formik={formik}
-                      unitOptions={unitCodes}
-                      placeholder="UNIT"
-                      onSelect={(value) =>
-                        handleUnitChange(index, "unit", value)
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>Rate (in %)</label>
-                <input
-                  style={styles.input}
-                  type="number"
-                  value={product.rodtepInfo?.ratePercent || 0}
-                  onChange={(e) =>
-                    handleProductChange(
-                      index,
-                      "rodtepInfo.ratePercent",
-                      parseFloat(e.target.value)
-                    )
-                  }
-                />
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>Cap Value</label>
-                <input
-                  style={styles.input}
-                  type="number"
-                  value={product.rodtepInfo?.capValue || 0}
-                  onChange={(e) =>
-                    handleProductChange(
-                      index,
-                      "rodtepInfo.capValue",
-                      parseFloat(e.target.value)
-                    )
-                  }
-                />
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>Cap value per units</label>
-                <div style={{ display: "flex", gap: 4 }}>
-                  <input
-                    style={{ ...styles.input, width: "65%" }}
-                    type="number"
-                    value={product.rodtepInfo?.capValuePerUnits}
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "rodtepInfo.capValuePerUnits",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                  />
-                  <div style={{ width: "35%" }}>
-                    <UnitDropdownField
-                      label=""
-                      fieldName={`products[${index}].rodtepInfo.capUnit`}
-                      formik={formik}
-                      unitOptions={unitCodes}
-                      placeholder="UNIT"
-                      onSelect={(value) =>
-                        handleUnitChange(index, "capUnit", value)
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>RODTEP Amount(INR)</label>
-                <input
-                  style={styles.input}
-                  type="number"
-                  value={product.rodtepInfo?.amountINR || 0}
-                  onChange={(e) =>
-                    handleProductChange(
-                      index,
-                      "rodtepInfo.amountINR",
-                      parseFloat(e.target.value)
-                    )
-                  }
-                />
-              </div>
-            </div>
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: "#4a5568",
-                fontStyle: "italic",
-                marginTop: -8,
-              }}
-            >
-              RODTEP Amt is Calculated on FOB value
-            </div>
-          </div>
-        );
-      })}
+      {/* Detailed cards: each row is a separate component with its own hooks */}
+      {formik.values.products?.map((product, index) => (
+        <ProductRow
+          key={product._id || index}
+          product={product}
+          index={index}
+          formik={formik}
+          handleProductChange={handleProductChange}
+          handleUnitChange={handleUnitChange}
+        />
+      ))}
     </div>
   );
 };
