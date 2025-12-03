@@ -88,7 +88,65 @@ const epcgSchema = new Schema(
   },
   { _id: true }
 );
+const cessExpDutySchema = new Schema(
+  {
+    // master flag
+    cessDutyApplicable: { type: Boolean, default: false },
 
+    // each row has: code dropdown, rate value+unit, TV value+factor, qty, desc
+    exportDutyCode: { type: String, trim: true },
+    exportDuty: { type: Number, default: 0 }, // base amount if needed
+    exportDutyRate: { type: Number, default: 0 },
+    exportDutyRateUnit: { type: String, trim: true }, // "% or Rs"
+    exportDutyTariffValue: { type: Number, default: 0 },
+    exportDutyTariffFactor: { type: Number, default: 0 },
+    exportDutyQty: { type: Number, default: 0 },
+    exportDutyDesc: { type: String, trim: true },
+
+    cessCode: { type: String, trim: true },
+    cess: { type: Number, default: 0 },
+    cessRate: { type: Number, default: 0 },
+    cessRateUnit: { type: String, trim: true },
+    cessTariffValue: { type: Number, default: 0 },
+    cessTariffFactor: { type: Number, default: 0 },
+    cessQty: { type: Number, default: 0 },
+    cessDesc: { type: String, trim: true },
+
+    otherDutyCessCode: { type: String, trim: true },
+    otherDutyCess: { type: Number, default: 0 },
+    otherDutyCessRate: { type: Number, default: 0 },
+    otherDutyCessRateUnit: { type: String, trim: true },
+    otherDutyCessTariffValue: { type: Number, default: 0 },
+    otherDutyCessTariffFactor: { type: Number, default: 0 },
+    otherDutyCessQty: { type: Number, default: 0 },
+    otherDutyCessDesc: { type: String, trim: true },
+
+    tariffValue_tv: { type: Number, default: 0 },
+    tariffUnit_tv: { type: String, trim: true },
+
+    thirdCessCode: { type: String, trim: true },
+    thirdCess: { type: Number, default: 0 },
+    thirdCessRate: { type: Number, default: 0 },
+    thirdCessRateUnit: { type: String, trim: true },
+    thirdCessTariffValue: { type: Number, default: 0 },
+    thirdCessTariffFactor: { type: Number, default: 0 },
+    thirdCessQty: { type: Number, default: 0 },
+    thirdCessDesc: { type: String, trim: true },
+
+    // common unit field at bottom right
+    cessUnit: { type: String, trim: true },
+
+    // nested CENVAT block from screenshot
+    cenvat: {
+      certificateNumber: { type: String, trim: true },
+      date: { type: String, trim: true },
+      validUpto: { type: String, trim: true },
+      cexOfficeCode: { type: String, trim: true },
+      assesseeCode: { type: String, trim: true },
+    },
+  },
+  { _id: false }
+);
 // Product/Item Details Schema (for multiple products per invoice)
 const productDetailsSchema = new Schema(
   {
@@ -148,34 +206,55 @@ const productDetailsSchema = new Schema(
       capUnit: { type: String, trim: true }, // Added capUnit if needed
     },
 
+    cessExpDuty: { type: cessExpDutySchema },
+
     // --- Re-Export Details ---
     reExport: {
       isReExport: { type: Boolean, default: false },
+
+      // Import / B/E Side
       beNumber: { type: String, trim: true },
-      beDate: { type: String, trim: true },
+      beDate: { type: String, trim: true }, // Date picker
       invoiceSerialNo: { type: String, trim: true },
       itemSerialNo: { type: String, trim: true },
       importPortCode: { type: String, trim: true },
       manualBE: { type: Boolean, default: false },
       beItemDescription: { type: String, trim: true },
-      quantityExported: { type: Number, default: 0 },
-      technicalDetails: { type: String, trim: true },
-      inputCreditAvailed: { type: Boolean, default: false },
-      personalUseItem: { type: Boolean, default: false },
-      otherIdentifyingParameters: { type: String, trim: true },
-      againstExportObligation: { type: String, trim: true },
-      obligationNo: { type: String, trim: true },
+
       quantityImported: { type: Number, default: 0 },
+      qtyImportedUnit: { type: String, trim: true }, // Added (Missing in original)
+
       assessableValue: { type: Number, default: 0 },
       totalDutyPaid: { type: Number, default: 0 },
       dutyPaidDate: { type: String, trim: true },
+
+      // Export Side
+      quantityExported: { type: Number, default: 0 },
+      qtyExportedUnit: { type: String, trim: true }, // Added (Missing in original)
+
+      technicalDetails: { type: String, trim: true },
+
+      inputCreditAvailed: { type: Boolean, default: false },
+      personalUseItem: { type: Boolean, default: false },
+
+      otherIdentifyingParameters: { type: String, trim: true },
+
+      againstExportObligation: { type: Boolean, default: false }, // Changed to Boolean to match checkbox
+      obligationNo: { type: String, trim: true },
+
       drawbackAmtClaimed: { type: Number, default: 0 },
+
       itemUnUsed: { type: Boolean, default: false },
-      commissionerPermission: { type: String, trim: true },
-      commPermissionDate: { type: String, trim: true },
+      commissionerPermission: { type: Boolean, default: false }, // Changed to Boolean to match checkbox
+
       boardNumber: { type: String, trim: true },
+      boardDate: { type: String, trim: true }, // Added (Missing in original)
+
       modvatAvailed: { type: Boolean, default: false },
       modvatReversed: { type: Boolean, default: false },
+
+      // Legacy fields just in case
+      commPermissionDate: { type: String, trim: true },
     },
 
     // --- Other Details ---
@@ -211,13 +290,6 @@ const productDetailsSchema = new Schema(
     dbkType: { type: String, trim: true },
     cessExciseDuty: { type: String, default: "0" },
     compensationCess: { type: String, default: "0" },
-
-    cessExpDuty: {
-      // ... existing cessExpDuty fields ...
-      cessDutyApplicable: { type: Boolean, default: false },
-      exportDuty: { type: Number, default: 0 },
-      // ... rest of your existing cess code
-    },
   },
   { _id: true }
 );

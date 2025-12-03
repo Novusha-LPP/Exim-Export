@@ -376,6 +376,66 @@ function useExportJobDetails(params, setFileSnackbar) {
             unit: "",
             capUnit: "",
           },
+          cessExpDuty: {
+            // master flag
+            cessDutyApplicable: false,
+
+            // Export Duty Row
+            exportDutyCode: "",
+            exportDuty: 0,
+            exportDutyRate: 0,
+            exportDutyRateUnit: "",
+            exportDutyTariffValue: 0,
+            exportDutyTariffFactor: 0,
+            exportDutyQty: 0,
+            exportDutyDesc: "",
+
+            // Cess Row
+            cessCode: "",
+            cess: 0,
+            cessRate: 0,
+            cessRateUnit: "",
+            cessTariffValue: 0,
+            cessTariffFactor: 0,
+            cessQty: 0,
+            cessDesc: "",
+
+            //tarriff value + factor
+            tariffValue_tv: 0,
+            tariffUnit_tv: "",
+            // Other Duty / Cess Row
+            otherDutyCessCode: "",
+            otherDutyCess: 0,
+            otherDutyCessRate: 0,
+            otherDutyCessRateUnit: "",
+            otherDutyCessTariffValue: 0,
+            otherDutyCessTariffFactor: 0,
+            otherDutyCessQty: 0,
+            otherDutyCessDesc: "",
+
+            // Third Cess Row
+            thirdCessCode: "",
+            thirdCess: 0,
+            thirdCessRate: 0,
+            thirdCessRateUnit: "",
+            thirdCessTariffValue: 0,
+            thirdCessTariffFactor: 0,
+            thirdCessQty: 0,
+            thirdCessDesc: "",
+
+            // Bottom Right Unit
+            cessUnit: "",
+
+            // Cenvat Block
+            cenvat: {
+              certificateNumber: "",
+              date: "",
+              validUpto: "",
+              cexOfficeCode: "",
+              assesseeCode: "",
+            },
+          },
+
           areDetails: [
             {
               serialNumber: 1,
@@ -389,32 +449,34 @@ function useExportJobDetails(params, setFileSnackbar) {
           ],
 
           reExport: {
-            isReExport: { type: Boolean, default: false },
-            beNumber: { type: String, trim: true },
-            beDate: { type: String, trim: true }, // Or Date, as preferred
-            invoiceSerialNo: { type: String, trim: true },
-            itemSerialNo: { type: String, trim: true },
-            importPortCode: { type: String, trim: true },
-            manualBE: { type: Boolean, default: false },
-            beItemDescription: { type: String, trim: true },
-            quantityExported: { type: Number, default: 0 },
-            technicalDetails: { type: String, trim: true },
-            inputCreditAvailed: { type: Boolean, default: false },
-            personalUseItem: { type: Boolean, default: false },
-            otherIdentifyingParameters: { type: String, trim: true },
-            againstExportObligation: { type: String, trim: true },
-            obligationNo: { type: String, trim: true },
-            quantityImported: { type: Number, default: 0 },
-            assessableValue: { type: Number, default: 0 },
-            totalDutyPaid: { type: Number, default: 0 },
-            dutyPaidDate: { type: String, trim: true }, // Or Date
-            drawbackAmtClaimed: { type: Number, default: 0 },
-            itemUnUsed: { type: Boolean, default: false },
-            commissionerPermission: { type: String, trim: true },
-            commPermissionDate: { type: String, trim: true }, // Or Date
-            boardNumber: { type: String, trim: true },
-            modvatAvailed: { type: Boolean, default: false },
-            modvatReversed: { type: Boolean, default: false },
+            isReExport: false,
+            beNumber: "",
+            beDate: "",
+            invoiceSerialNo: "",
+            itemSerialNo: "",
+            importPortCode: "",
+            manualBE: false,
+            beItemDescription: "",
+            quantityImported: 0,
+            qtyImportedUnit: "", // New
+            assessableValue: 0,
+            totalDutyPaid: 0,
+            dutyPaidDate: "",
+            quantityExported: 0,
+            qtyExportedUnit: "", // New
+            technicalDetails: "",
+            inputCreditAvailed: false,
+            personalUseItem: false,
+            otherIdentifyingParameters: "",
+            againstExportObligation: false, // Boolean now
+            obligationNo: "",
+            drawbackAmtClaimed: 0,
+            itemUnUsed: false,
+            commissionerPermission: false, // Boolean now
+            boardNumber: "",
+            boardDate: "", // New
+            modvatAvailed: false,
+            modvatReversed: false,
           },
           otherDetails: {
             accessories: "",
@@ -454,40 +516,6 @@ function useExportJobDetails(params, setFileSnackbar) {
           percentageOfFobValue: "1.5% of FOB Value",
           isDbkItem: true,
           dbkSrNo: "",
-        },
-      ],
-
-      cessExpDuty: [
-        {
-          cessDutyApplicable: false,
-          exportDuty: 0,
-          exportDutyRate: 0,
-          exportDutyTariffValue: 0,
-          exportDutyQty: 0,
-          exportDutyDesc: "",
-          cess: 0,
-          cessRate: 0,
-          cessTariffValue: 0,
-          cessQty: 0,
-          cessUnit: "",
-          cessDesc: "",
-          otherDutyCess: 0,
-          otherDutyCessRate: 0,
-          otherDutyCessTariffValue: 0,
-          otherDutyCessQty: 0,
-          otherDutyCessDesc: "",
-          thirdCess: 0,
-          thirdCessRate: 0,
-          thirdCessTariffValue: 0,
-          thirdCessQty: 0,
-          thirdCessDesc: "",
-          cenvat: {
-            certificateNumber: "",
-            date: "",
-            validUpto: "",
-            cexOfficeCode: "",
-            assesseeCode: "",
-          },
         },
       ],
 
@@ -807,11 +835,6 @@ function useExportJobDetails(params, setFileSnackbar) {
           updatedAt: new Date(),
         };
 
-        console.log(
-          "Submitting update payload with annexC1Details:",
-          syncedValues.annexC1Details
-        );
-
         const response = await axios.put(
           `${import.meta.env.VITE_API_STRING}/export-jobs/${params.year}/${
             params.job_no
@@ -834,7 +857,16 @@ function useExportJobDetails(params, setFileSnackbar) {
       }
     },
   });
-
+  const getDefaultRegItem = () => ({
+    licRefNo: "",
+    regnNo: "",
+    licDate: "",
+  });
+  const getDefaultEpcgItem = () => ({
+    licRefNo: "",
+    regnNo: "",
+    licDate: "",
+  });
   // Update formik initial values when data is fetched - COMPREHENSIVE MAPPING
   useEffect(() => {
     if (data) {
@@ -1085,6 +1117,9 @@ function useExportJobDetails(params, setFileSnackbar) {
                 itemType: "Indigenous",
               },
             ],
+            deec_reg_obj: product.deecDetails?.deec_reg_obj?.length
+              ? product.deecDetails.deec_reg_obj
+              : [getDefaultRegItem()],
           }),
           epcgDetails: safeValue(product.epcgDetails, {
             isEpcgItem: false,
@@ -1098,12 +1133,22 @@ function useExportJobDetails(params, setFileSnackbar) {
                 itemType: "Indigenous",
               },
             ],
+            epcg_reg_obj: product.epcgDetails?.epcg_reg_obj?.length
+              ? product.epcgDetails.epcg_reg_obj
+              : [getDefaultEpcgItem()],
           }),
+          cessExpDuty: safeValue(product.cessExpDuty, {}),
+          // Ensure cenvat nested object exists
+          cessExpDuty: {
+            ...safeValue(product.cessExpDuty, {}),
+            cenvat: safeValue(product.cessExpDuty?.cenvat, {}),
+          },
+          reExport: safeValue(product.reExport, {}),
         })),
         charges: safeValue(data.charges, []),
         documents: safeValue(data.documents, {}),
         drawbackDetails: safeValue(data.drawbackDetails, []),
-        cessExpDuty: safeValue(data.cessExpDuty, {}),
+
         areDetails: safeValue(data.areDetails, []),
 
         // Other fields

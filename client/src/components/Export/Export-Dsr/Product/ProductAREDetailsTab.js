@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Card, Typography, Grid, TextField, Button } from "@mui/material";
+import { styles } from "./commonStyles";
 
 const defaultAreRow = (idx) => ({
   serialNumber: idx + 1,
@@ -41,112 +41,98 @@ const ProductAREDetailsTab = ({ formik, idx = 0 }) => {
   };
 
   return (
-    <Box>
-      <Card sx={{ p: 2 }}>
-        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-          ARE Details
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={1}>
-            <b>Sr No</b>
-          </Grid>
-          <Grid item xs={2}>
-            <b>ARE Number</b>
-          </Grid>
-          <Grid item xs={2}>
-            <b>ARE Date</b>
-          </Grid>
-          <Grid item xs={2}>
-            <b>Commissionerate</b>
-          </Grid>
-          <Grid item xs={1}>
-            <b>Division</b>
-          </Grid>
-          <Grid item xs={2}>
-            <b>Range</b>
-          </Grid>
-          <Grid item xs={2}>
-            <b>Remark</b>
-          </Grid>
-          <Grid item xs={1}></Grid>
-        </Grid>
+    <div style={styles.card}>
+      <div style={styles.cardTitle}>ARE Details</div>
+
+      <div style={styles.tableContainer}>
+        <div
+          style={{
+            ...styles.tableHeaderRow,
+            gridTemplateColumns: "0.5fr 1.2fr 1fr 1.2fr 0.8fr 1fr 1.2fr 0.6fr",
+          }}
+        >
+          <div>Sr No</div>
+          <div>ARE Number</div>
+          <div>ARE Date</div>
+          <div>Commissionerate</div>
+          <div>Division</div>
+          <div>Range</div>
+          <div>Remark</div>
+          <div></div>
+        </div>
+
         {areDetails.map((row, i) => (
-          <Grid
-            container
-            spacing={2}
-            alignItems="center"
+          <div
             key={i}
-            sx={{ mt: 1 }}
+            style={{
+              ...styles.tableRow,
+              gridTemplateColumns:
+                "0.5fr 1.2fr 1fr 1.2fr 0.8fr 1fr 1.2fr 0.6fr",
+            }}
           >
-            <Grid item xs={1}>
-              {i + 1}
-            </Grid>
-            <Grid item xs={2}>
-              <TextField
-                size="small"
-                value={row.areNumber}
-                onChange={(e) =>
-                  handleAreChange(i, "areNumber", e.target.value)
-                }
+            <div style={{ fontSize: 12 }}>{i + 1}</div>
+            <div>
+              <input
+                style={styles.input}
+                value={row.areNumber || ""}
+                onChange={(e) => handleAreChange(i, "areNumber", e.target.value)}
               />
-            </Grid>
-            <Grid item xs={2}>
-              <TextField
+            </div>
+            <div>
+              <input
                 type="date"
-                size="small"
+                style={styles.input}
                 value={row.areDate ? row.areDate.substring(0, 10) : ""}
                 onChange={(e) => handleAreChange(i, "areDate", e.target.value)}
-                InputLabelProps={{ shrink: true }}
               />
-            </Grid>
-            <Grid item xs={2}>
-              <TextField
-                size="small"
-                value={row.commissionerate}
+            </div>
+            <div>
+              <input
+                style={styles.input}
+                value={row.commissionerate || ""}
                 onChange={(e) =>
                   handleAreChange(i, "commissionerate", e.target.value)
                 }
               />
-            </Grid>
-            <Grid item xs={1}>
-              <TextField
-                size="small"
-                value={row.division}
+            </div>
+            <div>
+              <input
+                style={styles.input}
+                value={row.division || ""}
                 onChange={(e) => handleAreChange(i, "division", e.target.value)}
               />
-            </Grid>
-            <Grid item xs={2}>
-              <TextField
-                size="small"
-                value={row.range}
+            </div>
+            <div>
+              <input
+                style={styles.input}
+                value={row.range || ""}
                 onChange={(e) => handleAreChange(i, "range", e.target.value)}
               />
-            </Grid>
-            <Grid item xs={2}>
-              <TextField
-                size="small"
-                value={row.remark}
+            </div>
+            <div>
+              <input
+                style={styles.input}
+                value={row.remark || ""}
                 onChange={(e) => handleAreChange(i, "remark", e.target.value)}
               />
-            </Grid>
-            <Grid item xs={1}>
-              <Button
-                size="small"
-                color="error"
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <button
+                type="button"
+                style={styles.linkButton}
                 onClick={() => deleteAreRow(i)}
               >
                 Delete
-              </Button>
-            </Grid>
-          </Grid>
+              </button>
+            </div>
+          </div>
         ))}
-        <Box sx={{ mt: 2 }}>
-          <Button variant="outlined" size="small" onClick={addAreRow}>
-            Add ARE Detail
-          </Button>
-        </Box>
-      </Card>
-    </Box>
+      </div>
+
+      <button type="button" style={styles.smallButton} onClick={addAreRow}>
+        + Add ARE Detail
+      </button>
+    </div>
   );
 };
 

@@ -322,15 +322,16 @@ function useEximCodeDropdown(
   formik,
   handleProductChange
 ) {
-  // ... (Paste existing hook code)
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
   const wrapperRef = useRef();
   const keepOpenOnInput = useRef(false);
+
   useEffect(() => {
     setQuery(formik.values.products[productIndex]?.[fieldName] || "");
   }, [formik.values.products, productIndex, fieldName]);
+
   useEffect(() => {
     const close = (e) => {
       if (
@@ -344,21 +345,30 @@ function useEximCodeDropdown(
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
   const filtered = eximCodes
     .filter((opt) => {
       const code = toUpper(typeof opt === "string" ? opt : opt.code || "");
       const desc = toUpper(
         typeof opt === "string" ? "" : opt.description || ""
       );
-      return code.includes(toUpper(query)) || desc.includes(toUpper(query));
+      const q = toUpper(query);
+
+      // FIX: Construct the formatted string.
+      // This ensures that if the input already contains "CODE - DESC", it matches itself.
+      const formatted = desc ? `${code} - ${desc}` : code;
+
+      return code.includes(q) || desc.includes(q) || formatted.includes(q);
     })
     .slice(0, 15);
+
   const handle = (val) => {
     const v = val.toUpperCase();
     setQuery(v);
     handleProductChange(productIndex, fieldName, v);
     setOpen(true);
   };
+
   const select = (i) => {
     const item = filtered[i];
     if (item) {
@@ -371,6 +381,7 @@ function useEximCodeDropdown(
       setActive(-1);
     }
   };
+
   return {
     wrapperRef,
     open,
@@ -393,7 +404,6 @@ function useEximCodeDropdown(
     },
   };
 }
-
 function useStateDropdown(
   fieldName,
   productIndex,

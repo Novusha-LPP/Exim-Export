@@ -1,24 +1,188 @@
-import React, { useRef, useCallback } from "react";
-import {
-  Box,
-  Card,
-  Typography,
-  Grid,
-  TextField,
-  Button,
-  Checkbox,
-  FormControlLabel,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  MenuItem,
-} from "@mui/material";
-import { Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
+import React, { useCallback, useRef, useState, useEffect } from "react";
+import { unitCodes } from "../../../../utils/masterList";
+
+// IMPORTANT: import the same `styles` you use in ProductGeneralTab,
+// or copy the styles object from paste.txt into a shared file and import here.
+const styles = {
+  // ... (Keep your existing styles from the previous file)
+  page: {
+    fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
+    fontSize: 13,
+    color: "#1e2e38",
+    padding: 16,
+  },
+  sectionTitle: {
+    fontWeight: 700,
+    color: "#16408f",
+    fontSize: 12,
+    marginBottom: 10,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
+  },
+  subSectionTitle: {
+    fontWeight: 700,
+    color: "#16408f",
+    fontSize: 11,
+    marginTop: 12,
+    marginBottom: 8,
+    borderBottom: "1px solid #e2e8f0",
+    paddingBottom: 4,
+  },
+  tableContainer: {
+    background: "#fff",
+    border: "1.5px solid #e2e8f0",
+    borderRadius: 7,
+    marginBottom: 18,
+    maxHeight: 400,
+  },
+  table: { width: "100%", borderCollapse: "collapse" },
+  th: {
+    background: "#16408f",
+    color: "white",
+    fontWeight: 700,
+    fontSize: 11,
+    padding: "8px 12px",
+    textAlign: "left",
+    position: "sticky",
+    top: 0,
+    zIndex: 10,
+  },
+  td: { padding: "8px 12px", borderBottom: "1px solid #e2e8f0", zIndex: "999" },
+  input: {
+    width: "100%",
+    textTransform: "uppercase",
+    fontWeight: 600,
+    fontSize: 12,
+    padding: "4px 8px",
+    border: "1px solid #bdc7d1",
+    borderRadius: 3,
+    height: 28,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+  },
+  checkbox: { cursor: "pointer", marginRight: 6 },
+  select: {
+    width: "100%",
+    textTransform: "uppercase",
+    fontWeight: 600,
+    fontSize: 12,
+    padding: "4px 8px",
+    border: "1px solid #bdc7d1",
+    borderRadius: 3,
+    height: 28,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+    cursor: "pointer",
+  },
+  textarea: {
+    width: "100%",
+    fontSize: 12,
+    padding: "5px 8px",
+    border: "1.5px solid #ccd6dd",
+    borderRadius: 4,
+    minHeight: 45,
+    background: "#f7fafc",
+    resize: "vertical",
+    textTransform: "uppercase",
+    fontWeight: 600,
+    boxSizing: "border-box",
+  },
+  acWrap: { position: "relative", display: "inline-block", width: "100%" },
+  acIcon: {
+    position: "absolute",
+    right: 8,
+    top: 8,
+    fontSize: 11,
+    color: "#bbbbbb",
+    pointerEvents: "none",
+  },
+  acMenu: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: "100%",
+    background: "#fff",
+    border: "1.5px solid #d3e3ea",
+    borderRadius: 4,
+    zIndex: 1300,
+    maxHeight: 154,
+    overflow: "auto",
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  acItem: (active) => ({
+    padding: "6px 9px",
+    cursor: "pointer",
+    textTransform: "uppercase",
+    background: active ? "#eaf2fe" : "#fff",
+    color: active ? "#18427c" : "#1b2b38",
+    fontWeight: active ? 700 : 600,
+  }),
+  card: {
+    background: "#fff",
+    border: "1.5px solid #e2e8f0",
+    borderRadius: 7,
+    padding: 16,
+    marginBottom: 18,
+  },
+  cardTitle: {
+    fontWeight: 700,
+    color: "#16408f",
+    fontSize: 14,
+    marginBottom: 12,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  chip: {
+    background: "#e2e8f0",
+    color: "#1e2e38",
+    fontSize: 10,
+    fontWeight: 600,
+    padding: "2px 8px",
+    borderRadius: 12,
+    height: 20,
+  },
+  grid3: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 16,
+    marginBottom: 8,
+    alignItems: "end",
+  },
+  field: { marginBottom: 8 },
+  label: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#263046",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+    display: "block",
+  },
+  addBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "8px 16px",
+    background: "#16408f",
+    color: "white",
+    border: "none",
+    borderRadius: 4,
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: 12,
+  },
+  inlineCheckbox: {
+    display: "flex",
+    alignItems: "center",
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#263046",
+    textTransform: "uppercase",
+  },
+};
 
 // Default EPCG item
 const getDefaultEpcgItem = (idx = 1) => ({
@@ -30,40 +194,153 @@ const getDefaultEpcgItem = (idx = 1) => ({
   itemType: "Indigenous",
 });
 
+// Default Registration Object Item
+const getDefaultRegItem = () => ({
+  licRefNo: "",
+  regnNo: "",
+  licDate: "",
+});
+
+function UnitDropdownField({
+  label,
+  fieldName,
+  formik,
+  unitOptions,
+  placeholder,
+  onSelect,
+}) {
+  const [open, setOpen] = useState(false);
+
+  // Helper to get deeply nested value from object using path like "products[0].rodtepInfo.unit"
+  function getValueByPath(obj, path) {
+    return path
+      .split(/[\.\[\]]/)
+      .filter(Boolean)
+      .reduce(
+        (acc, key) => (acc && acc[key] !== undefined ? acc[key] : ""),
+        obj
+      );
+  }
+
+  const [query, setQuery] = useState(
+    getValueByPath(formik.values, fieldName) || ""
+  );
+
+  useEffect(() => {
+    setQuery(getValueByPath(formik.values, fieldName) || "");
+  }, [formik.values, fieldName]);
+
+  const [active, setActive] = useState(-1);
+  const wrapperRef = useRef();
+
+  // Filter options case-insensitive based on query input
+  const filtered = (unitOptions || [])
+    .filter((opt) => opt.toUpperCase().includes(query.toUpperCase()))
+    .slice(0, 15);
+
+  useEffect(() => {
+    // Close dropdown menu if clicked outside component
+    function handleClickOutside(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleSelect(index) {
+    const selectedValue = filtered[index].toUpperCase();
+    setQuery(selectedValue);
+    formik.setFieldValue(fieldName, selectedValue);
+
+    if (onSelect) {
+      onSelect(selectedValue);
+    }
+
+    setOpen(false);
+    setActive(-1);
+  }
+
+  return (
+    <div style={styles.field} ref={wrapperRef}>
+      {label && <div style={styles.label}>{label}</div>}
+      <div style={styles.acWrap}>
+        <input
+          style={styles.input}
+          placeholder={placeholder}
+          autoComplete="off"
+          value={query.toUpperCase()}
+          onChange={(e) => {
+            const val = e.target.value.toUpperCase();
+            setQuery(val);
+            formik.setFieldValue(fieldName, val);
+            setOpen(true);
+          }}
+          onFocus={() => {
+            setOpen(true);
+            setActive(-1);
+          }}
+          onKeyDown={(e) => {
+            if (!open) return;
+            if (e.key === "ArrowDown") {
+              setActive((a) =>
+                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1)
+              );
+            } else if (e.key === "ArrowUp") {
+              setActive((a) => Math.max(0, a - 1));
+            } else if (e.key === "Enter" && active >= 0) {
+              e.preventDefault();
+              handleSelect(active);
+            } else if (e.key === "Escape") {
+              setOpen(false);
+            }
+          }}
+        />
+        <span style={styles.acIcon}>▼</span>
+        {open && filtered.length > 0 && (
+          <div style={styles.acMenu}>
+            {filtered.map((val, i) => (
+              <div
+                key={val}
+                style={styles.acItem(active === i)}
+                onMouseDown={() => handleSelect(i)} // use onMouseDown to prevent blur before click
+                onMouseEnter={() => setActive(i)}
+              >
+                {val.toUpperCase()}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const ProductEPCGTab = ({ formik, productIndex }) => {
   const saveTimeoutRef = useRef(null);
   const product = formik.values.products[productIndex];
+
+  // Access epcgDetails instead of deecDetails
   const epcgDetails = product?.epcgDetails || {
     isEpcgItem: false,
     epcgItems: [getDefaultEpcgItem(1)],
+    epcg_reg_obj: [getDefaultRegItem()],
   };
 
   const autoSave = useCallback(() => formik.submitForm(), [formik]);
 
+  // Top-level fields (isEpcgItem, etc.)
   const handleEpcgFieldChange = (field, value) => {
     const updatedProducts = [...formik.values.products];
     if (!updatedProducts[productIndex].epcgDetails) {
-      updatedProducts[productIndex].epcgDetails = {
-        isEpcgItem: false,
-        epcgItems: [getDefaultEpcgItem(1)],
-      };
+      updatedProducts[productIndex].epcgDetails = {};
     }
-
-    if (field.includes(".")) {
-      const [parent, child] = field.split(".");
-      updatedProducts[productIndex].epcgDetails[parent] = {
-        ...updatedProducts[productIndex].epcgDetails[parent],
-        [child]: value,
-      };
-    } else {
-      updatedProducts[productIndex].epcgDetails[field] = value;
-    }
-
+    updatedProducts[productIndex].epcgDetails[field] = value;
     formik.setFieldValue("products", updatedProducts);
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(autoSave, 1200);
   };
 
+  // EPCG items (Part C)
   const handleEpcgItemChange = (itemIndex, field, value) => {
     const updatedProducts = [...formik.values.products];
     const epcgItems = [
@@ -76,10 +353,7 @@ const ProductEPCGTab = ({ formik, productIndex }) => {
 
     epcgItems[itemIndex][field] = value;
     updatedProducts[productIndex].epcgDetails.epcgItems = epcgItems;
-
     formik.setFieldValue("products", updatedProducts);
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(autoSave, 1200);
   };
 
   const addEpcgItem = () => {
@@ -105,7 +379,6 @@ const ProductEPCGTab = ({ formik, productIndex }) => {
 
     if (epcgItems.length > 1) {
       epcgItems.splice(itemIndex, 1);
-      // Re-number serial numbers
       epcgItems.forEach((item, idx) => {
         item.serialNumber = idx + 1;
       });
@@ -114,240 +387,301 @@ const ProductEPCGTab = ({ formik, productIndex }) => {
     }
   };
 
-  if (!epcgDetails.isEpcgItem) {
-    return (
-      <Box sx={{ textAlign: "center", py: 4 }}>
-        <Typography variant="h6" color="textSecondary">
-          This product is not marked as an EPCG item
-        </Typography>
-        <Button
-          variant="outlined"
-          sx={{ mt: 2 }}
-          onClick={() => handleEpcgFieldChange("isEpcgItem", true)}
-        >
-          Enable EPCG Details
-        </Button>
-      </Box>
-    );
-  }
+  // License registration items
+  const handleRegItemChange = (itemIndex, field, value) => {
+    const updatedProducts = [...formik.values.products];
+    const regItems = [
+      ...(updatedProducts[productIndex].epcgDetails?.epcg_reg_obj || []),
+    ];
+
+    if (regItems.length === 0) {
+      regItems.push(getDefaultRegItem());
+    }
+
+    regItems[itemIndex][field] = value;
+    updatedProducts[productIndex].epcgDetails.epcg_reg_obj = regItems;
+
+    formik.setFieldValue("products", updatedProducts);
+  };
+
+  const addRegItem = () => {
+    const updatedProducts = [...formik.values.products];
+    const regItems = [
+      ...(updatedProducts[productIndex].epcgDetails?.epcg_reg_obj || []),
+    ];
+    regItems.push(getDefaultRegItem());
+
+    updatedProducts[productIndex].epcgDetails.epcg_reg_obj = regItems;
+    formik.setFieldValue("products", updatedProducts);
+  };
+
+  const deleteRegItem = (itemIndex) => {
+    const updatedProducts = [...formik.values.products];
+    const regItems = [
+      ...(updatedProducts[productIndex].epcgDetails?.epcg_reg_obj || []),
+    ];
+
+    if (regItems.length > 1) {
+      regItems.splice(itemIndex, 1);
+      updatedProducts[productIndex].epcgDetails.epcg_reg_obj = regItems;
+      formik.setFieldValue("products", updatedProducts);
+    }
+  };
 
   return (
-    <Box>
-      <Card sx={{ p: 2, mb: 2 }}>
-        <Typography variant="h6" gutterBottom color="primary">
-          📌 This is a EPCG Item
-        </Typography>
+    <div style={styles.card}>
+      <div style={styles.cardTitle}>
+        PRODUCT EPCG DETAILS
+        <span style={styles.chip}>PART C / LICENSE</span>
+      </div>
 
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={3}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={epcgDetails.isEpcgItem || false}
-                  onChange={(e) =>
-                    handleEpcgFieldChange("isEpcgItem", e.target.checked)
-                  }
-                />
-              }
-              label="This is a EPCG item"
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField
-              label="EDI Regn. No"
-              value={epcgDetails.ediRegnNo || ""}
-              onChange={(e) =>
-                handleEpcgFieldChange("ediRegnNo", e.target.value)
-              }
-              size="small"
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField
-              label="Date"
-              type="date"
-              value={epcgDetails.date || ""}
-              onChange={(e) => handleEpcgFieldChange("date", e.target.value)}
-              size="small"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField
-              label="Item SNo (Part E)"
-              value={epcgDetails.itemSnoPartE || ""}
-              onChange={(e) =>
-                handleEpcgFieldChange("itemSnoPartE", e.target.value)
-              }
-              size="small"
-              fullWidth
-            />
-          </Grid>
+      {/* Checkbox */}
+      <div style={{ marginBottom: 10 }}>
+        <label style={styles.inlineCheckbox}>
+          <input
+            type="checkbox"
+            style={styles.checkbox}
+            checked={epcgDetails.isEpcgItem || false}
+            onChange={(e) =>
+              handleEpcgFieldChange("isEpcgItem", e.target.checked)
+            }
+          />
+          THIS IS AN EPCG ITEM
+        </label>
+      </div>
 
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Export Qty Under Licence"
-              type="number"
-              value={epcgDetails.exportQtyUnderLicence || 0}
-              onChange={(e) =>
-                handleEpcgFieldChange(
-                  "exportQtyUnderLicence",
-                  parseFloat(e.target.value) || 0
-                )
-              }
-              size="small"
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Lic Ref. No"
-              value={epcgDetails.licRefNo || ""}
-              onChange={(e) =>
-                handleEpcgFieldChange("licRefNo", e.target.value)
-              }
-              size="small"
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Regn No"
-              value={epcgDetails.regnNo || ""}
-              onChange={(e) => handleEpcgFieldChange("regnNo", e.target.value)}
-              size="small"
-              fullWidth
-            />
-          </Grid>
-        </Grid>
+      {/* 1. Part E & Quantity Details */}
+      <div style={styles.subSectionTitle}>PART E & QUANTITY DETAILS</div>
+      <div style={styles.grid3}>
+        <div style={styles.field}>
+          <label style={styles.label}>Item SNo (Part E)</label>
+          <input
+            style={styles.input}
+            type="text"
+            value={epcgDetails.itemSnoPartE || ""}
+            onChange={(e) =>
+              handleEpcgFieldChange("itemSnoPartE", e.target.value)
+            }
+            placeholder="ITEM SERIAL NUMBER"
+          />
+        </div>
+        <div style={styles.field}>
+          <label style={styles.label}>Export Qty Under Licence</label>
+          <input
+            style={styles.input}
+            type="number"
+            value={epcgDetails.exportQtyUnderLicence || 0}
+            onChange={(e) =>
+              handleEpcgFieldChange(
+                "exportQtyUnderLicence",
+                parseFloat(e.target.value) || 0
+              )
+            }
+          />
+        </div>
+      </div>
 
-        {/* EPCG Items Table */}
-        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-          EPCG Items
-        </Typography>
+      {/* 2. License Registration Details */}
+      <div style={styles.subSectionTitle}>LICENSE REGISTRATION DETAILS</div>
 
-        <TableContainer component={Paper} sx={{ mb: 2 }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>
-                  <strong>Sr No</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Item SNo Part C</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Description</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Quantity</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Unit</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Item Type</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Actions</strong>
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {epcgDetails.epcgItems?.map((item, idx) => (
-                <TableRow key={idx}>
-                  <TableCell>{item.serialNumber}</TableCell>
-                  <TableCell>
-                    <TextField
-                      value={item.itemSnoPartC || ""}
-                      onChange={(e) =>
-                        handleEpcgItemChange(
-                          idx,
-                          "itemSnoPartC",
-                          e.target.value
-                        )
-                      }
-                      size="small"
-                      fullWidth
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      value={item.description || ""}
-                      onChange={(e) =>
-                        handleEpcgItemChange(idx, "description", e.target.value)
-                      }
-                      size="small"
-                      fullWidth
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      type="number"
-                      value={item.quantity || 0}
-                      onChange={(e) =>
-                        handleEpcgItemChange(
-                          idx,
-                          "quantity",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
-                      size="small"
-                      fullWidth
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      value={item.unit || ""}
-                      onChange={(e) =>
-                        handleEpcgItemChange(idx, "unit", e.target.value)
-                      }
-                      size="small"
-                      fullWidth
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      select
-                      value={item.itemType || "Indigenous"}
-                      onChange={(e) =>
-                        handleEpcgItemChange(idx, "itemType", e.target.value)
-                      }
-                      size="small"
-                      fullWidth
-                    >
-                      <MenuItem value="Indigenous">Indigenous</MenuItem>
-                      <MenuItem value="Imported">Imported</MenuItem>
-                    </TextField>
-                  </TableCell>
-                  <TableCell>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => deleteEpcgItem(idx)}
-                      disabled={epcgDetails.epcgItems?.length <= 1}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+      <div style={styles.tableContainer}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Sr No</th>
+              <th style={styles.th}>License Ref No</th>
+              <th style={styles.th}>Registration No</th>
+              <th style={styles.th}>License Date</th>
+              <th style={{ ...styles.th, textAlign: "center", width: 70 }}>
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {(epcgDetails.epcg_reg_obj && epcgDetails.epcg_reg_obj.length > 0
+              ? epcgDetails.epcg_reg_obj
+              : [getDefaultRegItem()]
+            ).map((item, idx) => (
+              <tr key={`reg-${idx}`}>
+                <td style={styles.td}>{idx + 1}</td>
+                <td style={styles.td}>
+                  <input
+                    style={styles.input}
+                    type="text"
+                    value={item.licRefNo || ""}
+                    placeholder="LIC REF NO"
+                    onChange={(e) =>
+                      handleRegItemChange(idx, "licRefNo", e.target.value)
+                    }
+                  />
+                </td>
+                <td style={styles.td}>
+                  <input
+                    style={styles.input}
+                    type="text"
+                    value={item.regnNo || ""}
+                    placeholder="REGISTRATION NO"
+                    onChange={(e) =>
+                      handleRegItemChange(idx, "regnNo", e.target.value)
+                    }
+                  />
+                </td>
+                <td style={styles.td}>
+                  <input
+                    style={styles.input}
+                    type="date"
+                    value={item.licDate ? item.licDate.split("T")[0] : ""}
+                    onChange={(e) =>
+                      handleRegItemChange(idx, "licDate", e.target.value)
+                    }
+                  />
+                </td>
+                <td style={{ ...styles.td, textAlign: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => deleteRegItem(idx)}
+                    disabled={
+                      (epcgDetails.epcg_reg_obj || [getDefaultRegItem()])
+                        .length <= 1
+                    }
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: "#e53e3e",
+                      cursor:
+                        (epcgDetails.epcg_reg_obj || [getDefaultRegItem()])
+                          .length <= 1
+                          ? "not-allowed"
+                          : "pointer",
+                      fontWeight: 700,
+                    }}
+                  >
+                    ✕
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-        <Button
-          startIcon={<AddIcon />}
-          onClick={addEpcgItem}
-          variant="outlined"
-          size="small"
-        >
-          Add EPCG Item
-        </Button>
-      </Card>
-    </Box>
+      <button type="button" style={styles.addBtn} onClick={addRegItem}>
+        <span>＋</span>
+        <span>Add License Detail</span>
+      </button>
+
+      {/* 3. EPCG Items (Part C) */}
+      <div style={styles.subSectionTitle}>EPCG ITEMS (PART C)</div>
+
+      <div style={styles.tableContainer}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Sr No</th>
+              <th style={styles.th}>Item SNo Part C</th>
+              <th style={styles.th}>Description</th>
+              <th style={styles.th}>Quantity</th>
+              <th style={styles.th}>Unit</th>
+              <th style={styles.th}>Item Type</th>
+              <th style={{ ...styles.th, textAlign: "center", width: 70 }}>
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {epcgDetails.epcgItems?.map((item, idx) => (
+              <tr key={`epcg-${idx}`}>
+                <td style={styles.td}>{item.serialNumber}</td>
+                <td style={styles.td}>
+                  <input
+                    style={styles.input}
+                    type="text"
+                    value={item.itemSnoPartC || ""}
+                    onChange={(e) =>
+                      handleEpcgItemChange(idx, "itemSnoPartC", e.target.value)
+                    }
+                  />
+                </td>
+                <td style={styles.td}>
+                  <input
+                    style={styles.input}
+                    type="text"
+                    value={item.description || ""}
+                    onChange={(e) =>
+                      handleEpcgItemChange(idx, "description", e.target.value)
+                    }
+                  />
+                </td>
+                <td style={styles.td}>
+                  <input
+                    style={styles.input}
+                    type="number"
+                    value={item.quantity || 0}
+                    onChange={(e) =>
+                      handleEpcgItemChange(
+                        idx,
+                        "quantity",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
+                  />
+                </td>
+                <td style={styles.td}>
+                  <UnitDropdownField
+                    label=""
+                    // Correctly format the path for EPCG items
+                    fieldName={`products[${productIndex}].epcgDetails.epcgItems[${idx}].unit`}
+                    formik={formik}
+                    unitOptions={unitCodes}
+                    placeholder="UNIT"
+                    // Correctly call the EPCG item handler
+                    onSelect={(value) =>
+                      handleEpcgItemChange(idx, "unit", value)
+                    }
+                  />
+                </td>
+                <td style={styles.td}>
+                  <select
+                    style={styles.select}
+                    value={item.itemType || "Indigenous"}
+                    onChange={(e) =>
+                      handleEpcgItemChange(idx, "itemType", e.target.value)
+                    }
+                  >
+                    <option value="Indigenous">INDIGENOUS</option>
+                    <option value="Imported">IMPORTED</option>
+                  </select>
+                </td>
+                <td style={{ ...styles.td, textAlign: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => deleteEpcgItem(idx)}
+                    disabled={epcgDetails.epcgItems?.length <= 1}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: "#e53e3e",
+                      cursor:
+                        epcgDetails.epcgItems?.length <= 1
+                          ? "not-allowed"
+                          : "pointer",
+                      fontWeight: 700,
+                    }}
+                  >
+                    ✕
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <button type="button" style={styles.addBtn} onClick={addEpcgItem}>
+        <span>＋</span>
+        <span>Add EPCG Item</span>
+      </button>
+    </div>
   );
 };
 
