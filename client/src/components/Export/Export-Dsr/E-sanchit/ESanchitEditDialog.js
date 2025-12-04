@@ -1,49 +1,206 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios"; // Ensure axios is imported
+import axios from "axios";
 import FileUpload from "../../../gallery/FileUpload.js";
 import ImagePreview from "../../../gallery/ImagePreview.js";
 import ConfirmDialog from "../../../gallery/ConfirmDialog.js";
 
-// Helper to safely uppercase strings
+// Helper
 function toUpper(val) {
   return (typeof val === "string" ? val : "")?.toUpperCase() || "";
 }
 
+// Enterprise styles
+const s = {
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    backgroundColor: "rgba(15,23,42,0.55)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "flex-start",
+    zIndex: 1300,
+    overflowY: "auto",
+    padding: "20px 0",
+    fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    fontWeight: "700",
+  },
+  container: {
+    backgroundColor: "#ffffff",
+    width: "98vw",
+    maxWidth: "980px",
+    borderRadius: 6,
+    boxShadow: "0 18px 45px rgba(15,23,42,0.45)",
+    display: "flex",
+    flexDirection: "column",
+    fontSize: 11,
+    color: "#111827",
+    border: "1px solid #1d4ed8",
+    margin: "auto",
+  },
+  header: {
+    background: "linear-gradient(to bottom, #e0ecff 0%, #c7d7ff 100%)",
+    borderBottom: "1px solid #1d4ed8",
+    padding: "8px 12px",
+    fontWeight: 700,
+    color: "#1d4ed8",
+    fontSize: 12,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+  },
+  body: {
+    padding: "10px 12px 12px 12px",
+    backgroundColor: "#f3f4f6",
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+  row: {
+    display: "flex",
+    gap: 16,
+    marginBottom: 4,
+    alignItems: "flex-start",
+  },
+  col: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+  },
+  fieldGroup: {
+    display: "flex",
+    alignItems: "center",
+    width: "100%",
+  },
+  label: {
+    width: 120,
+    fontWeight: 700,
+    color: "#374151",
+    fontSize: 10,
+    flexShrink: 0,
+    textTransform: "uppercase",
+  },
+  input: {
+    flex: 1,
+    padding: "3px 6px",
+    border: "1px solid #cbd5e1",
+    borderRadius: 3,
+    fontSize: 11,
+    outline: "none",
+    height: 24,
+    backgroundColor: "#ffffff",
+    boxSizing: "border-box",
+    fontWeight: 700,
+  },
+  select: {
+    flex: 1,
+    padding: "0 4px",
+    border: "1px solid #cbd5e1",
+    borderRadius: 3,
+    fontSize: 11,
+    height: 24,
+    backgroundColor: "#ffffff",
+    boxSizing: "border-box",
+        fontWeight: 700,
+
+  },
+  sectionTitleLink: {
+    fontWeight: 700,
+    color: "#1d4ed8",
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+    margin: "6px 0 4px 0",
+  },
+  docSectionContainer: {
+    marginTop: 8,
+    borderTop: "1px solid #e5e7eb",
+    paddingTop: 6,
+  },
+  docHeader: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#1d4ed8",
+    textTransform: "uppercase",
+    marginBottom: 4,
+    letterSpacing: "0.04em",
+  },
+  footerActions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTop: "1px solid #e5e7eb",
+  },
+  btnPrimary: {
+    backgroundColor: "#2563eb",
+    color: "#ffffff",
+    border: "1px solid #1d4ed8",
+    padding: "6px 16px",
+    borderRadius: 4,
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 12,
+    boxShadow: "0 1px 2px rgba(15,23,42,0.2)",
+  },
+  btnSecondary: {
+    backgroundColor: "#e5e7eb",
+    color: "#374151",
+    border: "1px solid #d1d5db",
+    padding: "6px 14px",
+    borderRadius: 4,
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 12,
+  },
+};
+
+// Small field helper
+const Field = ({ label, value, onChange, type = "text", disabled = false }) => (
+  <div style={s.fieldGroup}>
+    <span style={s.label}>{label}</span>
+    <input
+      type={type}
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      style={{
+        ...s.input,
+        backgroundColor: disabled ? "#e5e7eb" : "#ffffff",
+      }}
+    />
+  </div>
+);
+
 const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [organizations, setOrganizations] = useState([]); // Store directory data
+  const [organizations, setOrganizations] = useState([]);
   const [orgLoading, setOrgLoading] = useState(false);
 
   const safeDoc = doc || {};
 
-  // Sync doc prop to local if needed (though you are using parent state setter directly)
   useEffect(() => {
-    if (setDoc && doc) {
-      setDoc(doc);
-    }
+    if (setDoc && doc) setDoc(doc);
   }, [doc, setDoc]);
 
-  // Fetch Organization Directory on Mount
   useEffect(() => {
-    if (open) {
-      const fetchOrgs = async () => {
-        try {
-          setOrgLoading(true);
-          // Adjust API string if your environment variable is different
-          const response = await axios.get(
-            `${import.meta.env.VITE_API_STRING}/directory`
-          );
-          if (response.data?.success) {
-            setOrganizations(response.data.data || []);
-          }
-        } catch (e) {
-          console.error("Error fetching organizations for eSanchit", e);
-        } finally {
-          setOrgLoading(false);
-        }
-      };
-      fetchOrgs();
-    }
+    if (!open) return;
+    const fetchOrgs = async () => {
+      try {
+        setOrgLoading(true);
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_STRING}/directory`
+        );
+        if (res.data?.success) setOrganizations(res.data.data || []);
+      } catch (e) {
+        console.error("Error fetching organizations for eSanchit", e);
+      } finally {
+        setOrgLoading(false);
+      }
+    };
+    fetchOrgs();
   }, [open]);
 
   const issuingParty = safeDoc.issuingParty || {};
@@ -53,7 +210,6 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
   const disableInvSrNo = level === "Job" || level === "Item";
   const disableItemSrNo = level === "Job" || level === "Invoice";
 
-  // -- Handlers --
   const handleFieldChange = (field, value) => {
     setDoc((prev) => ({ ...(prev || {}), [field]: value }));
   };
@@ -72,50 +228,29 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
     }));
   };
 
-  // -- Organization Selection Handlers --
-
-  // Handler for Issuing Party Selection
   const onSelectIssuingParty = (e) => {
     const val = toUpper(e.target.value);
-
-    // Set name first
     handleIssuingPartyChange("name", val);
-
-    // Find org details
     const org = organizations.find(
       (o) => toUpper(o.organization || "") === val
     );
     if (!org) return;
-
     const branch = org.branchInfo?.[0] || {};
-
-    // Auto-fill address fields
-    // Map directory fields to eSanchit fields:
-    // code -> branchCode (or ieCode depending on your need)
-    // addressLine1 -> branch.address
-    // city -> branch.city
-    // pinCode -> branch.postalCode
-
     handleIssuingPartyChange("code", toUpper(branch.branchCode || ""));
     handleIssuingPartyChange("addressLine1", toUpper(branch.address || ""));
-    handleIssuingPartyChange("addressLine2", ""); // Directory might not have line 2 split
+    handleIssuingPartyChange("addressLine2", "");
     handleIssuingPartyChange("city", toUpper(branch.city || ""));
     handleIssuingPartyChange("pinCode", toUpper(branch.postalCode || ""));
   };
 
-  // Handler for Beneficiary Party Selection
   const onSelectBeneficiaryParty = (e) => {
     const val = toUpper(e.target.value);
-
     handleBeneficiaryPartyChange("name", val);
-
     const org = organizations.find(
       (o) => toUpper(o.organization || "") === val
     );
     if (!org) return;
-
     const branch = org.branchInfo?.[0] || {};
-
     handleBeneficiaryPartyChange("code", toUpper(branch.branchCode || ""));
     handleBeneficiaryPartyChange("addressLine1", toUpper(branch.address || ""));
     handleBeneficiaryPartyChange("addressLine2", "");
@@ -123,247 +258,22 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
     handleBeneficiaryPartyChange("pinCode", toUpper(branch.postalCode || ""));
   };
 
-  // -- File Deletion Logic --
-  const initiateDelete = () => {
-    setDeleteConfirmOpen(true);
-  };
-
   const handleConfirmDelete = () => {
     handleFieldChange("fileUrl", "");
     setDeleteConfirmOpen(false);
   };
 
-  const handleCancelDelete = () => {
-    setDeleteConfirmOpen(false);
-  };
-
-  // Helper to extract filename from URL
-  const getFileName = (url) => {
-    if (!url) return "";
-    return url.split("/").pop().split("?")[0];
-  };
+  const fileArray = safeDoc.fileUrl ? [safeDoc.fileUrl] : [];
 
   if (!open) return null;
-
-  // -- Styles (Compact Version) --
-  const s = {
-    overlay: {
-      position: "fixed",
-      inset: 0,
-      backgroundColor: "rgba(0,0,0,0.5)",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "flex-start",
-      zIndex: 1300,
-      overflowY: "auto",
-      padding: "20px 0",
-    },
-    container: {
-      backgroundColor: "#fff",
-      width: "98vw",
-      maxWidth: "950px",
-      borderRadius: "6px",
-      boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
-      display: "flex",
-      flexDirection: "column",
-      fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
-      fontSize: "11px",
-      color: "#1e2e38",
-      border: "1px solid #16408f",
-      height: "fit-content",
-      margin: "auto",
-    },
-    header: {
-      background: "linear-gradient(to bottom, #dbeafe 0%, #bfdbfe 100%)",
-      borderBottom: "1px solid #16408f",
-      padding: "6px 10px",
-      fontWeight: "700",
-      color: "#16408f",
-      fontSize: "12px",
-      borderTopLeftRadius: "6px",
-      borderTopRightRadius: "6px",
-    },
-    body: {
-      padding: "10px",
-      backgroundColor: "#f8f9fa",
-      display: "flex",
-      flexDirection: "column",
-      gap: "4px",
-    },
-    row: {
-      display: "flex",
-      alignItems: "center",
-      gap: "15px",
-      marginBottom: "2px",
-    },
-    col: {
-      flex: 1,
-      display: "flex",
-      flexDirection: "column",
-      gap: "4px",
-    },
-    fieldGroup: {
-      display: "flex",
-      alignItems: "center",
-      width: "100%",
-    },
-    label: {
-      width: "110px",
-      fontWeight: "700",
-      color: "#263046",
-      fontSize: "10px",
-      flexShrink: 0,
-    },
-    input: {
-      flex: 1,
-      padding: "2px 5px",
-      border: "1px solid #bdc7d1",
-      borderRadius: "3px",
-      fontSize: "11px",
-      outline: "none",
-      height: "22px",
-      backgroundColor: "#fff",
-      boxSizing: "border-box",
-      width: "100%",
-    },
-    select: {
-      flex: 1,
-      padding: "0px 2px",
-      border: "1px solid #bdc7d1",
-      borderRadius: "3px",
-      fontSize: "11px",
-      height: "22px",
-      backgroundColor: "#fff",
-      width: "100%",
-    },
-    sectionLink: {
-      fontWeight: "700",
-      color: "blue",
-      textDecoration: "underline",
-      fontSize: "10px",
-      marginBottom: "4px",
-      marginTop: "6px",
-      cursor: "pointer",
-    },
-    // -- NEW DOCUMENT SECTION STYLES --
-    docSectionContainer: {
-      marginTop: "6px",
-      borderTop: "1px solid #e2e8f0",
-      paddingTop: "6px",
-    },
-    docHeader: {
-      fontSize: "11px",
-      fontWeight: "700",
-      color: "#16408f",
-      textTransform: "uppercase",
-      marginBottom: "4px",
-    },
-    fileDisplayBox: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      border: "1px solid #cbd5e0",
-      borderRadius: "4px",
-      padding: "4px 8px",
-      backgroundColor: "#fff",
-      marginBottom: "6px",
-    },
-    fileNameText: {
-      fontWeight: "600",
-      fontSize: "11px",
-      color: "#2d3748",
-      marginBottom: "0px",
-    },
-    fileUrlText: {
-      fontSize: "10px",
-      color: "#718096",
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap",
-      maxWidth: "500px",
-    },
-    iconButton: {
-      width: "22px",
-      height: "22px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      border: "1px solid #cbd5e0",
-      borderRadius: "4px",
-      backgroundColor: "#fff",
-      cursor: "pointer",
-      marginLeft: "6px",
-      fontSize: "14px",
-      color: "#4a5568",
-    },
-    deleteBtn: {
-      color: "#e53e3e",
-      borderColor: "#feb2b2",
-      backgroundColor: "#fff5f5",
-    },
-    footerActions: {
-      display: "flex",
-      justifyContent: "flex-end",
-      gap: "8px",
-      marginTop: "8px",
-      paddingTop: "8px",
-      borderTop: "1px solid #e2e8f0",
-    },
-    btnSave: {
-      backgroundColor: "#3182ce",
-      color: "#fff",
-      border: "none",
-      padding: "5px 15px",
-      borderRadius: "4px",
-      cursor: "pointer",
-      fontWeight: "600",
-      fontSize: "12px",
-    },
-    btnClose: {
-      backgroundColor: "#edf2f7",
-      color: "#2d3748",
-      border: "1px solid #cbd5e0",
-      padding: "5px 15px",
-      borderRadius: "4px",
-      cursor: "pointer",
-      fontWeight: "600",
-      fontSize: "12px",
-    },
-  };
-
-  const Field = ({
-    label,
-    value,
-    onChange,
-    type = "text",
-    style = {},
-    disabled = false,
-  }) => (
-    <div style={s.fieldGroup}>
-      <span style={s.label}>{label}</span>
-      <input
-        type={type}
-        value={value || ""}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          ...s.input,
-          ...style,
-          backgroundColor: disabled ? "#e5e7eb" : "#fff",
-        }}
-        disabled={disabled}
-      />
-    </div>
-  );
-
-  const fileArray = safeDoc.fileUrl ? [safeDoc.fileUrl] : [];
 
   return (
     <div style={s.overlay}>
       <div style={s.container}>
-        <div style={s.header}>eSanchit Document Details</div>
+        <div style={s.header}>ESANCHIT DOCUMENT DETAILS</div>
 
         <div style={s.body}>
-          {/* Top Row */}
+          {/* Top details rows */}
           <div style={s.row}>
             <div style={s.col}>
               <div style={s.fieldGroup}>
@@ -381,7 +291,7 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
                 </select>
               </div>
               <Field
-                label="Inv.Sr.No."
+                label="Inv. Sr. No."
                 value={safeDoc.invSerialNo}
                 onChange={(v) => handleFieldChange("invSerialNo", v)}
                 disabled={disableInvSrNo}
@@ -458,7 +368,7 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
                 </select>
               </div>
               <Field
-                label="Item.Sr.No."
+                label="Item Sr. No."
                 value={safeDoc.itemSerialNo}
                 onChange={(v) => handleFieldChange("itemSerialNo", v)}
                 disabled={disableItemSrNo}
@@ -475,7 +385,6 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
                   <option value="">Select Type...</option>
                   <option value="380">Commercial Invoice</option>
                   <option value="Packing List">Packing List</option>
-                  {/* Add more types as needed */}
                 </select>
               </div>
               <Field
@@ -483,11 +392,12 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
                 value={safeDoc.icegateId}
                 onChange={(v) => handleFieldChange("icegateId", v)}
               />
-              <div style={s.fieldGroup}>
-                <span style={s.label}>File Type</span>
-                <input type="text" value="pdf" disabled style={s.input} />
-              </div>
-              <div style={{ height: "22px" }}></div>
+              <Field
+                label="File Type"
+                value="PDF"
+                onChange={() => {}}
+                disabled
+              />
               <Field
                 label="Place of Issue"
                 value={safeDoc.placeOfIssue}
@@ -504,20 +414,20 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
             </div>
           </div>
 
-          {/* Party Details */}
+          {/* Party details */}
           <div style={s.row}>
             <div style={s.col}>
-              <div style={s.sectionLink}>Issuing Party Details</div>
-
-              {/* ISSUING PARTY NAME SELECT */}
+              <div style={s.sectionTitleLink}>Issuing Party Details</div>
               <div style={s.fieldGroup}>
-                <span style={s.label}>Name {orgLoading ? "(...)" : ""}</span>
+                <span style={s.label}>
+                  Name {orgLoading ? "(...)" : ""}
+                </span>
                 <select
                   style={s.select}
                   value={issuingParty.name || ""}
                   onChange={onSelectIssuingParty}
                 >
-                  <option value="">-- Select / Type --</option>
+                  <option value="">-- Select --</option>
                   {organizations.map((o) => (
                     <option
                       key={o._id || o.organization}
@@ -528,12 +438,6 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
                   ))}
                 </select>
               </div>
-              {/* Fallback Input if they need to type a name not in list, optional: usually Select + Searchable or just select. 
-                  Since native select doesn't support typing custom values easily, users select from directory. 
-                  If manual entry is needed, you'd need a Creatable Select component. 
-                  For now, we stick to Select from Directory as per request. 
-              */}
-
               <Field
                 label="Code"
                 value={issuingParty.code}
@@ -542,12 +446,16 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
               <Field
                 label="Address Line 1"
                 value={issuingParty.addressLine1}
-                onChange={(v) => handleIssuingPartyChange("addressLine1", v)}
+                onChange={(v) =>
+                  handleIssuingPartyChange("addressLine1", v)
+                }
               />
               <Field
                 label="Address Line 2"
                 value={issuingParty.addressLine2}
-                onChange={(v) => handleIssuingPartyChange("addressLine2", v)}
+                onChange={(v) =>
+                  handleIssuingPartyChange("addressLine2", v)
+                }
               />
               <Field
                 label="City"
@@ -562,17 +470,17 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
             </div>
 
             <div style={s.col}>
-              <div style={s.sectionLink}>Beneficiary Party Details</div>
-
-              {/* BENEFICIARY PARTY NAME SELECT */}
+              <div style={s.sectionTitleLink}>Beneficiary Party Details</div>
               <div style={s.fieldGroup}>
-                <span style={s.label}>Name {orgLoading ? "(...)" : ""}</span>
+                <span style={s.label}>
+                  Name {orgLoading ? "(...)" : ""}
+                </span>
                 <select
                   style={s.select}
                   value={beneficiaryParty.name || ""}
                   onChange={onSelectBeneficiaryParty}
                 >
-                  <option value="">-- Select / Type --</option>
+                  <option value="">-- Select --</option>
                   {organizations.map((o) => (
                     <option
                       key={o._id || o.organization}
@@ -583,7 +491,6 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
                   ))}
                 </select>
               </div>
-
               <Field
                 label="Code"
                 value={beneficiaryParty.code}
@@ -606,29 +513,26 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
               <Field
                 label="City"
                 value={beneficiaryParty.city}
-                onChange={(v) => handleBeneficiaryPartyChange("city", v)}
+                onChange={(v) =>
+                  handleBeneficiaryPartyChange("city", v)
+                }
               />
               <Field
                 label="Pin Code"
                 value={beneficiaryParty.pinCode}
-                onChange={(v) => handleBeneficiaryPartyChange("pinCode", v)}
+                onChange={(v) =>
+                  handleBeneficiaryPartyChange("pinCode", v)
+                }
               />
             </div>
           </div>
 
-          {/* --- NEW DOCUMENT UPLOAD SECTION --- */}
+          {/* Unsigned document section */}
           <div style={s.docSectionContainer}>
-            <div style={s.docHeader}>UNSIGNED DOCUMENT PDF</div>
+            <div style={s.docHeader}>Unsigned Document PDF</div>
 
-            {/* If no file, show browse button */}
             {!safeDoc.fileUrl && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  marginBottom: 8,
-                }}
-              >
+              <div style={{ marginBottom: 8 }}>
                 <FileUpload
                   label="Browse"
                   bucketPath="esanchit"
@@ -642,30 +546,32 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
               </div>
             )}
 
-            {/* ImagePreview handles listing and deleting */}
             <ImagePreview
               images={fileArray}
               readOnly={false}
-              onDeleteImage={(idx) => handleFieldChange("fileUrl", "")}
+              onDeleteImage={() => setDeleteConfirmOpen(true)}
             />
           </div>
 
-          {/* Footer Actions */}
+          {/* Footer buttons */}
           <div style={s.footerActions}>
-            <button style={s.btnSave} onClick={() => onSave(safeDoc)}>
+            <button
+              type="button"
+              style={s.btnPrimary}
+              onClick={() => onSave(safeDoc)}
+            >
               Save
             </button>
-            <button style={s.btnClose} onClick={onClose}>
+            <button type="button" style={s.btnSecondary} onClick={onClose}>
               Close
             </button>
           </div>
         </div>
       </div>
 
-      {/* Confirmation Dialog Component */}
       <ConfirmDialog
         open={deleteConfirmOpen}
-        handleClose={handleCancelDelete}
+        handleClose={() => setDeleteConfirmOpen(false)}
         handleConfirm={handleConfirmDelete}
         message="Are you sure you want to remove this file?"
         isEdit={false}
