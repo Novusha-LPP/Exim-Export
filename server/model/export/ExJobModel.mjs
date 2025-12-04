@@ -449,6 +449,8 @@ const eSanchitDocumentSchema = new Schema({
   dateOfIssue: Date,
   placeOfIssue: String,
   expiryDate: Date,
+  fileUrl: String,
+
   dateTimeOfUpload: { type: Date, default: Date.now },
   issuingParty: {
     name: String,
@@ -460,7 +462,9 @@ const eSanchitDocumentSchema = new Schema({
   },
   beneficiaryParty: {
     name: String,
+    code: String,
     addressLine1: String,
+    addressLine2: String,
     city: String,
     pinCode: String,
   },
