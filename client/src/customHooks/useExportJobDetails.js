@@ -651,6 +651,7 @@ freightInsuranceCharges: {
         placeOfIssue: "",
         expiryDate: "",
         dateTimeOfUpload: "",
+        fileUrl: "",
         issuingParty: {
           name: "",
           code: "",
@@ -661,7 +662,9 @@ freightInsuranceCharges: {
         },
         beneficiaryParty: {
           name: "",
+          code: "",
           addressLine1: "",
+          addressLine2: "",
           city: "",
           pinCode: "",
         },

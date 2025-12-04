@@ -1,24 +1,14 @@
+// ESanchitTab.jsx
 import React, { useState } from "react";
-import {
-  Box,
-  Card,
-  Typography,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Dialog,
-} from "@mui/material";
+import { styles as baseStyles } from "../Product/commonStyles.js";
 import ESanchitEditDialog from "./ESanchitEditDialog";
+
 const ESanchitTab = ({ formik }) => {
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
+  // uploads per document; if you want this in formik later, you can move it
   const handleNew = () => {
     setSelectedDoc(null);
     setEditMode(false);
@@ -33,7 +23,7 @@ const ESanchitTab = ({ formik }) => {
 
   const handleSave = (updatedDoc) => {
     const documents = [...(formik.values.eSanchitDocuments || [])];
-    if (editMode && selectedDoc._index !== undefined) {
+    if (editMode && selectedDoc && selectedDoc._index !== undefined) {
       documents[selectedDoc._index] = updatedDoc;
     } else {
       documents.push(updatedDoc);
@@ -42,76 +32,111 @@ const ESanchitTab = ({ formik }) => {
     setIsDialogOpen(false);
   };
 
+  const tableStyles = {
+    width: "100%",
+    borderCollapse: "collapse",
+  };
+
+  const thTdCommon = {
+    border: "1px solid #ccc",
+    padding: "4px 8px",
+    fontSize: "12px",
+    textAlign: "left",
+  };
+
   return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h6" fontWeight="bold" gutterBottom>
-        eSanchit Documents
-      </Typography>
-      <Card sx={{ p: 2 }}>
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Doc. Level</TableCell>
-                <TableCell>Inv. Sr. No.</TableCell>
-                <TableCell>Item Sr. No.</TableCell>
-                <TableCell>Doc. IRN</TableCell>
-                <TableCell>Doc. Type</TableCell>
-                <TableCell>Doc. Ref. No.</TableCell>
-                <TableCell>ICEGATE ID</TableCell>
-                <TableCell>Doc. Issue Date</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
+    <div style={{ ...baseStyles.sectionContainer }}>
+      <div style={{ ...baseStyles.sectionHeader }}>
+        <span style={{ fontWeight: "bold" }}>eSanchit Documents</span>
+      </div>
+
+      <div style={{ ...baseStyles.card }}>
+        <div style={{ overflowX: "auto" }}>
+          <table style={tableStyles}>
+            <thead>
+              <tr>
+                <th style={thTdCommon}>Doc. Level</th>
+                <th style={thTdCommon}>Scope</th>
+                <th style={thTdCommon}>Inv. Sr. No.</th>
+                <th style={thTdCommon}>Item Sr. No.</th>
+                <th style={thTdCommon}>Doc. IRN</th>
+                <th style={thTdCommon}>Doc. Type</th>
+                <th style={thTdCommon}>Doc. Ref. No.</th>
+                <th style={thTdCommon}>ICEGATE ID</th>
+                <th style={thTdCommon}>ICEGATE Filename</th>
+                <th style={thTdCommon}>Doc. Issue Date</th>
+                <th style={thTdCommon}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
               {(formik.values.eSanchitDocuments || []).map((doc, idx) => (
-                <TableRow
+                <tr
                   key={idx}
-                  hover
-                  sx={{ cursor: "pointer" }}
+                  style={{ cursor: "pointer" }}
                   onClick={() => handleEdit(doc, idx)}
                 >
-                  <TableCell>{doc.documentLevel || "Invoice"}</TableCell>
-                  <TableCell>{doc.invSerialNo}</TableCell>
-                  <TableCell>{doc.itemSerialNo}</TableCell>
-                  <TableCell>{doc.irn}</TableCell>
-                  <TableCell>{doc.documentType}</TableCell>
-                  <TableCell>{doc.documentReferenceNo}</TableCell>
-                  <TableCell>{doc.otherIcegateId}</TableCell>
-                  <TableCell>
+                  <td style={thTdCommon}>{doc.documentLevel || "Invoice"}</td>
+                  <td style={thTdCommon}>{doc.scope || "This job only"}</td>
+                  <td style={thTdCommon}>{doc.invSerialNo}</td>
+                  <td style={thTdCommon}>{doc.itemSerialNo}</td>
+                  <td style={thTdCommon}>{doc.irn}</td>
+                  <td style={thTdCommon}>{doc.documentType}</td>
+                  <td style={thTdCommon}>{doc.documentReferenceNo}</td>
+                  <td style={thTdCommon}>{doc.otherIcegateId}</td>
+                  <td style={thTdCommon}>{doc.icegateFilename}</td>
+                  <td style={thTdCommon}>
                     {doc.dateOfIssue
                       ? new Date(doc.dateOfIssue).toLocaleDateString()
                       : ""}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="text" onClick={() => handleEdit(doc, idx)}>
+                  </td>
+                  <td style={thTdCommon}>
+                    <button
+                      type="button"
+                      style={baseStyles.linkButton}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(doc, idx);
+                      }}
+                    >
                       Edit
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                    </button>
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
 
-        <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
-          <Button variant="contained" onClick={handleNew}>
+              {(!formik.values.eSanchitDocuments ||
+                formik.values.eSanchitDocuments.length === 0) && (
+                <tr>
+                  <td style={thTdCommon} colSpan={11}>
+                    No eSanchit documents added.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
+          <button
+            type="button"
+            style={baseStyles.primaryButton}
+            onClick={handleNew}
+          >
             New
-          </Button>
-        </Box>
-      </Card>
+          </button>
+        </div>
+      </div>
 
-      {/* Edit Dialog */}
-      {isDialogOpen && (
-        <ESanchitEditDialog
-          open={isDialogOpen}
-          doc={selectedDoc}
-          setDoc={setSelectedDoc}
-          onClose={() => setIsDialogOpen(false)}
-          onSave={handleSave}
-        />
-      )}
-    </Box>
+{isDialogOpen && (
+  <ESanchitEditDialog
+    open={isDialogOpen}
+    doc={selectedDoc}
+    setDoc={setSelectedDoc}
+    onClose={() => setIsDialogOpen(false)}
+    onSave={handleSave}
+  />
+)}
+    </div>
   );
 };
 

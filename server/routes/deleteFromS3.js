@@ -3,15 +3,10 @@ import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 const router = express.Router();
 
+
 // Check for required environment variables first
-if (
-  !process.env.REACT_APP_ACCESS_KEY ||
-  !process.env.REACT_APP_SECRET_ACCESS_KEY ||
-  !process.env.REACT_APP_AWS_REGION
-) {
-  throw new Error(
-    "Missing AWS credentials or region in environment variables."
-  );
+if (!process.env.REACT_APP_ACCESS_KEY || !process.env.REACT_APP_SECRET_ACCESS_KEY || !process.env.REACT_APP_AWS_REGION) {
+  throw new Error("Missing AWS credentials or region in environment variables.");
 }
 
 const s3 = new S3Client({
