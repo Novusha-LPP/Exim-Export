@@ -1,5 +1,5 @@
 // InvoiceMainTab.jsx
-import React, { useRef, useCallback, useEffect } from "react";
+import React, { useRef, useCallback, useEffect, useState } from "react";
 import { currencyList } from "../../../../utils/masterList";
 
 const styles = {
@@ -100,7 +100,34 @@ function toUpper(v) {
 const InvoiceMainTab = ({ formik }) => {
   const saveTimeoutRef = useRef(null);
 
-  // Auto-map TOI -> priceIncludes
+  // currency code -> export_rate map from /api/currency-rates
+  const [rateMap, setRateMap] = useState({});
+
+  // fetch latest currency rates once
+  useEffect(() => {
+    const fetchRates = async () => {
+      try {
+        const res = await fetch("http://localhost:9002/api/currency-rates");
+        const json = await res.json();
+        if (!json?.success || !Array.isArray(json.data) || !json.data.length)
+          return;
+
+        // assume first element is latest active notification
+        const latest = json.data[0];
+        const map = {};
+        (latest.exchange_rates || []).forEach((r) => {
+          if (r.currency_code && typeof r.export_rate === "number") {
+            map[r.currency_code.toUpperCase()] = r.export_rate;
+          }
+        });
+        setRateMap(map);
+      } catch (e) {
+        console.error("Failed to load currency rates", e);
+      }
+    };
+    fetchRates();
+  }, []);
+
   const mapTOIToPriceIncludes = (toi) => {
     switch (toi?.toUpperCase()) {
       case "C&I":
@@ -115,14 +142,10 @@ const InvoiceMainTab = ({ formik }) => {
     }
   };
 
-  const autoSave = useCallback(
-    (values) => {
-      // hook your debounce-save logic here if needed
-    },
-    []
-  );
+  const autoSave = useCallback((values) => {
+    // debounce-save logic here if needed
+  }, []);
 
-  // Work on first invoice object from array schema
   const invoice = formik.values.invoices?.[0] || {};
 
   const setInvoicesArray = (updatedInvoice) => {
@@ -134,20 +157,28 @@ const InvoiceMainTab = ({ formik }) => {
 
   const handleInvChange = (field, value) => {
     const updatedInvoice = { [field]: value };
-    
-    // Auto-update priceIncludes when termsOfInvoice changes
+
+    // when TOI changes, set priceIncludes + FOB/CIF pill
     if (field === "termsOfInvoice") {
       const priceIncludesValue = mapTOIToPriceIncludes(value);
       updatedInvoice.priceIncludes = priceIncludesValue;
-      
-      // Also update the FOB/CIF pill dynamically
+
       if (value === "CIF") {
         updatedInvoice.productValuePill = "CIF";
       } else if (["FOB", "C&F", "C&I"].includes(value)) {
         updatedInvoice.productValuePill = "FOB";
       }
     }
-    
+
+    // when currency changes, also set exchange_rate from rateMap
+    if (field === "currency") {
+      const code = (value || "").toUpperCase();
+      const exportRate = rateMap[code]; // e.g. 100.85 for EUR
+      if (typeof exportRate === "number") {
+        formik.setFieldValue("exchange_rate", exportRate);
+      }
+    }
+
     setInvoicesArray(updatedInvoice);
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -156,7 +187,6 @@ const InvoiceMainTab = ({ formik }) => {
     }, 800);
   };
 
-  // For non-invoice flat fields like exchange_rate, toiPlace
   const handleFieldChange = (field, value) => {
     formik.setFieldValue(field, value);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -165,19 +195,19 @@ const InvoiceMainTab = ({ formik }) => {
     }, 800);
   };
 
-  // Initialize priceIncludes based on termsOfInvoice when component mounts
   useEffect(() => {
     if (invoice.termsOfInvoice && !invoice.priceIncludes) {
       const priceIncludesValue = mapTOIToPriceIncludes(invoice.termsOfInvoice);
       handleInvChange("priceIncludes", priceIncludesValue);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const currencyCodes = (currencyList || []).map((c) => c.code || c);
 
   return (
     <div style={styles.page}>
-      {/* Row 1: Invoice No, Date, TOI & Place, TOI Place text */}
+      {/* Row 1: Invoice No, Date, TOI & Place */}
       <div style={styles.row}>
         <div style={{ ...styles.field, minWidth: 160 }}>
           <div style={styles.label}>Invoice No</div>
@@ -197,7 +227,9 @@ const InvoiceMainTab = ({ formik }) => {
             type="date"
             style={styles.inputDate}
             value={
-              invoice.invoiceDate ? String(invoice.invoiceDate).substr(0, 10) : ""
+              invoice.invoiceDate
+                ? String(invoice.invoiceDate).substr(0, 10)
+                : ""
             }
             onChange={(e) => handleInvChange("invoiceDate", e.target.value)}
           />
@@ -217,7 +249,6 @@ const InvoiceMainTab = ({ formik }) => {
               </option>
             ))}
           </select>
-          
         </div>
 
         <div style={{ ...styles.field, minWidth: 150 }}>
@@ -225,9 +256,7 @@ const InvoiceMainTab = ({ formik }) => {
           <input
             style={styles.input}
             value={toUpper(invoice.toiPlace || "")}
-            onChange={(e) =>
-              handleInvChange("toiPlace", e.target.value)
-            }
+            onChange={(e) => handleInvChange("toiPlace", e.target.value)}
             placeholder=" ENTER PLACE"
           />
         </div>
@@ -252,7 +281,6 @@ const InvoiceMainTab = ({ formik }) => {
         </div>
 
         <div style={{ ...styles.field, minWidth: 90 }}>
-          <div style={styles.label}>Rate</div>
           <input
             type="number"
             style={styles.inputNumber}
@@ -297,7 +325,7 @@ const InvoiceMainTab = ({ formik }) => {
         </div>
       </div>
 
-      {/* Row 3: Invoice Value, Product Value (CIF/FOB), Packing/FOB, Taxable */}
+      {/* Row 3: Invoice Value, Product Value, Packing/FOB */}
       <div style={styles.row}>
         <div style={{ ...styles.field, minWidth: 170 }}>
           <div style={styles.label}>Invoice Value</div>
@@ -336,7 +364,6 @@ const InvoiceMainTab = ({ formik }) => {
               {invoice.termsOfInvoice === "CIF" ? "CIF" : "FOB"}
             </span>
           </div>
-      
         </div>
 
         <div style={{ ...styles.field, minWidth: 160 }}>
@@ -353,8 +380,6 @@ const InvoiceMainTab = ({ formik }) => {
             }
           />
         </div>
-
-        
       </div>
     </div>
   );

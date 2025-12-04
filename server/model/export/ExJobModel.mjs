@@ -651,7 +651,6 @@ const exportJobSchema = new mongoose.Schema(
     exporter_type: { type: String, trim: true },
 
     // Exporter Additional Fields (Missing)
-    branch_code: { type: String, trim: true },
     branch_sno: { type: String, trim: true },
     regn_no: { type: String, trim: true },
     gstin: { type: String, trim: true },
@@ -775,6 +774,7 @@ const exportJobSchema = new mongoose.Schema(
     exporter_email: { type: String, trim: true },
     exporter_fax: { type: String, trim: true },
     exporter_website: { type: String, trim: true },
+    branch_code: { type: String, trim: true },
 
     // Regulatory Information
     ie_code: { type: String, trim: true }, // Import Export Code

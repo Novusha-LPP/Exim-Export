@@ -20,9 +20,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       try {
         setLoading(true);
         const response = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/export-jobs/${params.year}/${
-            params.job_no
-          }`
+         `${import.meta.env.VITE_API_STRING}/export-jobs/${encodeURIComponent(params.job_no)}`
         );
         let jobData = null;
 
@@ -50,7 +48,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       }
     }
 
-    if (params.job_no && params.year) {
+    if (params.job_no) {
       getExportJobDetails();
     } else {
       console.warn("Missing required parameters:", params);

@@ -94,14 +94,15 @@ function HomePage() {
               />
 
 
-              <Route
-                path="/export-dsr/job/:year/:job_no"
-                element={
-                  <ProtectedRoute requiredModule="Export - DSR">
-                    <ExportViewJob />
-                  </ProtectedRoute>
-                }
-              />
+<Route
+  path="export-dsr/job/:jobNo"
+  element={
+    <ProtectedRoute requiredModule="Export - DSR">
+      <ExportViewJob />
+    </ProtectedRoute>
+  }
+/>
+
 
             </Routes>
           </Box>

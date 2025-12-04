@@ -241,10 +241,11 @@ const ExportJobsTable = () => {
   }, [activeTab, searchQuery, selectedYear, selectedType]);
 
   const handleView = (job) => {
-    const jobNo = job.job_no?.split("/")[3];
-    const year = job.year;
-    if (jobNo && year) {
-      navigate(`/export-dsr/job/${year}/${jobNo}`, { state: { fromJobList: true } });
+    const jobNo = job.job_no
+  if (jobNo) {
+    navigate(`job/${encodeURIComponent(jobNo)}`,  {
+      state: { fromJobList: true },
+    });
     }
   };
 

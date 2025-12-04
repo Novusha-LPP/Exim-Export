@@ -8,6 +8,8 @@ const router = express.Router();
 
 // ✅ SIMPLE APPROACH: Mirror your successful import API exactly
 // ✅ BULLETPROOF: Super Simple Approach
+// exportRoutes.mjs (snippet)
+
 router.post(
   "/api/jobs/add-job-exp-man",
   auditMiddleware("ExportJob"),
@@ -21,22 +23,20 @@ router.post(
         year,
         job_date,
         transportMode,
+        branch_code,          // 👈 NEW
         ...otherFields
       } = req.body;
 
-      // Validate required fields
-      if (!exporter_name || !ie_code) {
+      if (!exporter_name || !ie_code || !branch_code) {
         return res.status(400).json({ message: "Missing required fields." });
       }
 
-      // Validate IE Code format
       if (!/^\d{10}$/.test(ie_code)) {
         return res.status(400).json({
           message: "Invalid IE Code format. Must be 10 digits.",
         });
       }
 
-      // Generate year format
       const currentYear = new Date().getFullYear();
       const yearFormat =
         year ||
@@ -47,14 +47,15 @@ router.post(
       let newJobNo;
 
       if (job_no && job_no.length > 0) {
-        newJobNo = `AMD/EXP/${transportMode}/${job_no}/${year}`;
+        // manual number typed in job_no input
+        newJobNo = `${branch_code}/EXP/${transportMode}/${job_no}/${yearFormat}`;
       } else {
-        // ✅ SUPER SIMPLE: Just count existing jobs for this year
         const jobCount = await ExportJobModel.countDocuments({
           year: yearFormat,
+          branch_code,                    // optional: per-branch sequencing
         });
         const nextSequence = (jobCount + 1).toString().padStart(5, "0");
-        newJobNo = `AMD/EXP/${transportMode}/${nextSequence}/${year}`;
+        newJobNo = `${branch_code}/EXP/${transportMode}/${nextSequence}/${yearFormat}`;
       }
 
       const getTodayDate = () => {
@@ -67,7 +68,6 @@ router.post(
 
       const todayDate = getTodayDate();
 
-      // Create new export job entry
       const newExportJob = new ExportJobModel({
         job_no: newJobNo,
         year: yearFormat,
@@ -76,6 +76,7 @@ router.post(
         consignee_name,
         ie_code,
         transportMode,
+        branch_code,                     // store branch on document
         ...otherFields,
       });
 
@@ -96,6 +97,7 @@ router.post(
           consignee_name: newExportJob.consignee_name,
           ie_code: newExportJob.ie_code,
           transportMode: newExportJob.transportMode,
+          branch_code: newExportJob.branch_code,
         },
       });
     } catch (error) {

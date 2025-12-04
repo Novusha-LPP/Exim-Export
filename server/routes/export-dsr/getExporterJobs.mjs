@@ -135,25 +135,26 @@ router.post('/exports', async (req, res) => {
 });
 
 // OPTION 1: Search using regex pattern (Recommended)
-router.get("/api/export-jobs/:year/:jobNo", async (req, res) => {
+// NOTE the * after :jobNo
+router.get("/api/export-jobs/:jobNo*", async (req, res) => {
   try {
-    const { jobNo, year } = req.params;
+    const decodedJobNo = decodeURIComponent(req.params.jobNo || "");
 
-    // Search for job_no that contains the jobNo anywhere in the string
-    const job = await ExportJobModel.findOne({
-      year,
-      job_no: { $regex: jobNo, $options: 'i' }
-    });
+
+    const job = await ExportJobModel.findOne({ job_no: decodedJobNo });
 
     if (!job) {
+      console.log("No job for job_no:", decodedJobNo);
       return res.status(404).json({ message: "Job not found" });
     }
 
-    res.json(job);
+    res.json({ success: true, data: job });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
   }
 });
+
+
 
 export default router;

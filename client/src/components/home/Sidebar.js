@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/sidebar.scss";
 import { Avatar, IconButton, ListItemButton, Tooltip } from "@mui/material";
@@ -7,11 +7,16 @@ import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import FeedbackIcon from "@mui/icons-material/Feedback";
 import LockResetIcon from "@mui/icons-material/LockReset";
+import DescriptionIcon from '@mui/icons-material/Description';
+import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
 import { UserContext } from "../../contexts/UserContext";
+import CurrencyRateDialog from "./CurrencyRateDialog.js"; // Import the dialog
 
 function Sidebar() {
   const navigate = useNavigate();
   const { user, setUser } = useContext(UserContext);
+  const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
+
   const handleLogout = () => {
     setUser(null);
     navigate("/");
@@ -60,6 +65,48 @@ function Sidebar() {
         </Tooltip>
       )}
 
+       {/* NEW: Currency Exchange Rates Icon */}
+      <Tooltip title="Currency Exchange Rates" enterDelay={0} placement="right">
+        <ListItemButton
+          sx={{ textAlign: "left" }}
+          className="appbar-links"
+          aria-label="list-item"
+          onClick={() => setCurrencyDialogOpen(true)}
+        >
+          <IconButton sx={{ color: "#ffffff9f" }} aria-label="icon">
+            <CurrencyExchangeIcon />
+          </IconButton>
+        </ListItemButton>
+      </Tooltip>
+
+     
+
+      <Tooltip title="Release Notes" enterDelay={0} placement="right">
+        <ListItemButton
+          sx={{ textAlign: "left" }}
+          className="appbar-links"
+          aria-label="list-item"
+          onClick={() => navigate("/release-notes")}
+        >
+          <IconButton sx={{ color: "#ffffff9f" }} aria-label="icon">
+            <DescriptionIcon />
+          </IconButton>
+        </ListItemButton>
+      </Tooltip>
+
+      <Tooltip title="Feedback" enterDelay={0} placement="right">
+        <ListItemButton
+          sx={{ textAlign: "left" }}
+          className="appbar-links"
+          aria-label="list-item"
+          onClick={() => navigate("/feedback")}
+        >
+          <IconButton sx={{ color: "#ffffff9f" }} aria-label="icon">
+            <FeedbackIcon />
+          </IconButton>
+        </ListItemButton>
+      </Tooltip>
+
       <Tooltip title="Change Password" enterDelay={0} placement="right">
         <ListItemButton
           sx={{ textAlign: "left" }}
@@ -85,6 +132,12 @@ function Sidebar() {
           </IconButton>
         </ListItemButton>
       </Tooltip>
+
+      {/* Currency Rate Dialog */}
+      <CurrencyRateDialog
+        open={currencyDialogOpen}
+        onClose={() => setCurrencyDialogOpen(false)}
+      />
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import {currencyList } from "../../../utils/masterList.js"
 
 // --- Ultra-Compact Enterprise Styles ---
+
 const s = {
   wrapper: {
     fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
@@ -10,24 +12,33 @@ const s = {
     minHeight: "100vh",
     color: "#1f2937",
     fontSize: "12px",
+    fontWeight: "700"
   },
   container: {
     maxWidth: "1100px",
     margin: "0 auto",
+        fontWeight: "700"
+
   },
   pageHeader: {
     marginBottom: "15px",
+        fontWeight: "700"
+
   },
   pageTitle: {
     fontSize: "18px",
     fontWeight: "700",
     color: "#111827",
     margin: "0 0 4px 0",
+        fontWeight: "700"
+
   },
   subTitle: {
     fontSize: "12px",
     color: "#6b7280",
     margin: 0,
+        fontWeight: "700"
+
   },
   card: {
     backgroundColor: "#fff",
@@ -36,6 +47,8 @@ const s = {
     marginBottom: "10px",
     border: "1px solid #e5e7eb",
     position: "relative",
+        fontWeight: "700"
+
   },
   cardHeader: {
     padding: "8px 15px",
@@ -45,6 +58,8 @@ const s = {
     gap: "8px",
     backgroundColor: "#fff",
     borderRadius: "4px 4px 0 0",
+        fontWeight: "700"
+
   },
   cardTitle: {
     fontWeight: "700",
@@ -52,6 +67,8 @@ const s = {
     textTransform: "uppercase",
     letterSpacing: "0.04em",
     color: "#374151",
+        fontWeight: "700"
+
   },
   cardBody: {
     padding: "12px 15px",
@@ -71,12 +88,16 @@ const s = {
     display: "flex",
     flexDirection: "column",
     position: "relative",
+        fontWeight: "700"
+
   },
   label: {
     fontSize: "11px",
     fontWeight: "600",
     color: "#4b5563",
     marginBottom: "2px",
+        fontWeight: "700"
+
   },
   input: {
     height: "28px",
@@ -89,6 +110,8 @@ const s = {
     boxSizing: "border-box",
     color: "#111827",
     transition: "border-color 0.15s",
+        fontWeight: "700"
+
   },
   inputWithIcon: {
     height: "28px",
@@ -101,6 +124,8 @@ const s = {
     boxSizing: "border-box",
     color: "#111827",
     cursor: "pointer",
+        fontWeight: "700"
+
   },
   select: {
     height: "28px",
@@ -112,6 +137,8 @@ const s = {
     width: "100%",
     boxSizing: "border-box",
     color: "#111827",
+        fontWeight: "700"
+
   },
   textarea: {
     padding: "6px 8px",
@@ -124,10 +151,14 @@ const s = {
     minHeight: "45px",
     resize: "vertical",
     fontFamily: "inherit",
+        fontWeight: "700"
+
   },
   comboWrapper: {
     position: "relative",
     width: "100%",
+        fontWeight: "700"
+
   },
   comboIcon: {
     position: "absolute",
@@ -137,6 +168,8 @@ const s = {
     fontSize: "10px",
     color: "#6b7280",
     pointerEvents: "none",
+        fontWeight: "700"
+
   },
   dropdownList: {
     position: "absolute",
@@ -151,6 +184,8 @@ const s = {
     boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
     borderRadius: "3px",
     marginTop: "2px",
+        fontWeight: "700"
+
   },
   dropdownItem: {
     padding: "6px 10px",
@@ -158,6 +193,8 @@ const s = {
     borderBottom: "1px solid #f3f4f6",
     display: "flex",
     flexDirection: "column",
+        fontWeight: "700"
+
   },
   consigneeRow: {
     display: "flex",
@@ -168,6 +205,8 @@ const s = {
     padding: "6px",
     borderRadius: "3px",
     border: "1px solid #e5e7eb",
+        fontWeight: "700"
+
   },
   btnPrimary: {
     backgroundColor: "#2563eb",
@@ -179,6 +218,8 @@ const s = {
     fontWeight: "600",
     cursor: "pointer",
     fontSize: "12px",
+        fontWeight: "700"
+
   },
   btnClear: {
     backgroundColor: "#fff",
@@ -191,6 +232,8 @@ const s = {
     cursor: "pointer",
     fontSize: "12px",
     marginRight: "8px",
+        fontWeight: "700"
+
   },
   btnAdd: {
     backgroundColor: "#eff6ff",
@@ -204,6 +247,8 @@ const s = {
     cursor: "pointer",
     display: "inline-flex",
     alignItems: "center",
+        fontWeight: "700"
+
   },
   btnRemove: {
     backgroundColor: "#fee2e2",
@@ -218,6 +263,8 @@ const s = {
     justifyContent: "center",
     fontSize: "14px",
     fontWeight: "bold",
+        fontWeight: "700"
+
   },
   iconBox: {
     width: "20px",
@@ -227,6 +274,8 @@ const s = {
     justifyContent: "center",
     borderRadius: "3px",
     fontSize: "12px",
+        fontWeight: "700"
+
   },
   notification: {
     position: "fixed",
@@ -239,13 +288,259 @@ const s = {
     fontWeight: "600",
     boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
     border: "1px solid transparent",
+        fontWeight: "700"
+
   },
 };
 
 // helper
 const toUpper = (val) => (typeof val === "string" ? val.toUpperCase() : val);
 
+function useConsigneeCountryDropdown(value, onChange, apiBase) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value || "");
+  const [opts, setOpts] = useState([]);
+  const [active, setActive] = useState(-1);
+  const wrapRef = useRef(null);
+  const keepOpen = useRef(false);
+
+  useEffect(() => { setQuery(value || ""); }, [value]);
+
+  // fetch from your /countries API
+  useEffect(() => {
+    if (!open || !query.trim()) { setOpts([]); return; }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `${apiBase}/countries?search=${encodeURIComponent(query.trim())}`
+        );
+        const data = await res.json();
+        setOpts(data?.data || []);
+      } catch {
+        setOpts([]);
+      }
+    }, 220);
+    return () => clearTimeout(t);
+  }, [open, query, apiBase]);
+
+  useEffect(() => {
+    const close = (e) => {
+      if (!keepOpen.current && wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  function selectIndex(i) {
+    const opt = opts[i];
+    if (!opt) return;
+    const name = toUpper(opt.countryName || opt.country_name || "");
+    const code = (opt.countryCode || opt.iso2 || "").toUpperCase();
+    const val = code ? `${name} (${code})` : name;
+    setQuery(val);
+    onChange(val);
+    setOpen(false);
+    setActive(-1);
+  }
+
+  const filtered = opts; // server already filters
+
+  return {
+    wrapRef,
+    open,
+    setOpen,
+    query,
+    setQuery,
+    active,
+    setActive,
+    filtered,
+    handleChange: (val) => {
+      const v = val.toUpperCase();
+      setQuery(v);
+      onChange(v);
+      setOpen(true);
+    },
+    handleFocus: () => {
+      setOpen(true);
+      setActive(-1);
+      keepOpen.current = true;
+    },
+    handleBlur: () => {
+      setTimeout(() => { keepOpen.current = false; }, 100);
+    },
+    selectIndex,
+  };
+}
+
+function ConsigneeCountryField({ value, onChange }) {
+  const apiBase = import.meta.env.VITE_API_STRING;
+  const d = useConsigneeCountryDropdown(value, onChange, apiBase);
+
+  return (
+    <div style={s.col} ref={d.wrapRef}>
+      <label style={s.label}>Country</label>
+      <div style={s.comboWrapper}>
+        <input
+          style={s.inputWithIcon}
+          placeholder="TYPE TO SEARCH COUNTRY"
+          autoComplete="off"
+          value={toUpper(d.query)}
+          onChange={(e) => d.handleChange(e.target.value)}
+          onFocus={d.handleFocus}
+          onBlur={d.handleBlur}
+          onKeyDown={(e) => {
+            if (!d.open) return;
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              d.setActive((a) =>
+                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1)
+              );
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              d.setActive((a) => Math.max(0, a - 1));
+            } else if (e.key === "Enter" && d.active >= 0) {
+              e.preventDefault();
+              d.selectIndex(d.active);
+            } else if (e.key === "Escape") {
+              d.setOpen(false);
+            }
+          }}
+        />
+        <span style={s.comboIcon}>▼</span>
+        {d.open && d.filtered.length > 0 && (
+          <div style={s.dropdownList}>
+            {d.filtered.map((opt, i) => (
+              <div
+                key={opt._id || opt.countryCode || opt.countryName || i}
+                style={s.dropdownItem}
+                onMouseDown={() => d.selectIndex(i)}
+                onMouseEnter={() => d.setActive(i)}
+              >
+                {toUpper(opt.countryName || opt.country_name)}
+                {opt.countryCode && (
+                  <span style={{ marginLeft: 6, color: "#6b7280", fontSize: 10 }}>
+                    ({opt.countryCode.toUpperCase()})
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Gateway Port dropdown (directory-backed)
+
+function useCurrencyDropdown(value, onChange) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value || "");
+  const [active, setActive] = useState(-1);
+  const wrapRef = useRef(null);
+  const keepOpen = useRef(false);
+
+  useEffect(() => {
+    setQuery(value || "");
+  }, [value]);
+
+  useEffect(() => {
+    const close = (e) => {
+      if (!keepOpen.current && wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  const filtered = (currencyList || []).filter((c) => {
+    const code = c.code || "";
+    const desc = c.description || "";
+    const haystack = `${code} ${desc}`.toUpperCase();
+    const needle = (query || "").toUpperCase();
+    return !needle || haystack.includes(needle);
+  });
+
+  function selectIndex(i) {
+    const item = filtered[i];
+    if (!item) return;
+    const val = item.code; // store only code in form
+    setQuery(val);
+    onChange(val);
+    setOpen(false);
+    setActive(-1);
+  }
+
+  return {
+    wrapRef,
+    open,
+    setOpen,
+    query,
+    setQuery,
+    active,
+    setActive,
+    filtered,
+    handleChange: (val) => {
+      const v = val.toUpperCase();
+      setQuery(v);
+      onChange(v);
+      setOpen(true);
+    },
+    handleFocus: () => {
+      setOpen(true);
+      setActive(-1);
+      keepOpen.current = true;
+    },
+    handleBlur: () => {
+      setTimeout(() => {
+        keepOpen.current = false;
+      }, 100);
+    },
+    selectIndex,
+  };
+}
+
+function CurrencyDropdown({ label, value, onChange, placeholder = "SELECT CURRENCY" }) {
+  const d = useCurrencyDropdown(value, onChange);
+
+  return (
+    <div style={s.col} ref={d.wrapRef}>
+      <label style={s.label}>{label}</label>
+      <div style={s.comboWrapper}>
+        <input
+          style={s.inputWithIcon}
+          value={toUpper(d.query)}
+          onChange={(e) => d.handleChange(e.target.value)}
+          onFocus={d.handleFocus}
+          onBlur={d.handleBlur}
+          placeholder={placeholder}
+          autoComplete="off"
+        />
+        <span style={s.comboIcon}>▼</span>
+        {d.open && d.filtered.length > 0 && (
+          <div style={s.dropdownList}>
+            {d.filtered.map((c, i) => (
+              <div
+                key={c.code}
+                style={s.dropdownItem}
+                onMouseDown={() => d.selectIndex(i)}
+                onMouseEnter={() => d.setActive(i)}
+              >
+                <div style={{ fontWeight: 600, color: "#111827" }}>
+                  {c.code} – {c.description}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function useGatewayPortDropdown(value, onChange) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value || "");
@@ -337,7 +632,7 @@ function useGatewayPortDropdown(value, onChange) {
   };
 }
 
-function GatewayPortDropdown({ label, value, onChange, placeholder = "SELECT LOADING PORT" }) {
+function GatewayPortDropdown({ label, value, onChange, placeholder = "SELECT PORT" }) {
   const d = useGatewayPortDropdown(value, onChange);
   return (
     <div style={s.col} ref={d.wrapRef}>
@@ -386,33 +681,44 @@ function GatewayPortDropdown({ label, value, onChange, placeholder = "SELECT LOA
 
 const AddExJobs = () => {
   const emptyConsignee = { consignee_name: "", consignee_address: "", consignee_country: "" };
-  const [formData, setFormData] = useState({
-    exporter_name: "",
-    consignees: [{ ...emptyConsignee }],
-    ie_code: "",
-    job_no: "",
-    movement_type: "FCL",
-    country_of_final_destination: "",
-    commodity_description: "",
-    commercial_invoice_value: "",
-    invoice_currency: "USD",
-    port_of_loading: "",
-    // port_of_discharge removed
-    // country_of_final_destination still kept for data but not displayed in UI
-    total_no_of_pkgs: "",
-    gross_weight_kg: "",
-    net_weight_kg: "",
-    status: "Pending",
-    year: "25-26",
-    transportMode: "SEA",
-    job_date: new Date().toISOString().split("T")[0],
-  });
+const [formData, setFormData] = useState({
+  branch_code: "AMD",          // 👈 default
+  exporter_name: "",
+  consignees: [{ ...emptyConsignee }],
+  ie_code: "",
+  job_no: "",
+  movement_type: "FCL",
+  country_of_final_destination: "",
+  commodity_description: "",
+  commercial_invoice_value: "",
+  invoice_currency: "",
+    custom_house: "",             
+  port_of_loading: "",
+  total_no_of_pkgs: "",
+  gross_weight_kg: "",
+  net_weight_kg: "",
+  status: "Pending",
+  year: "25-26",
+  transportMode: "SEA",
+  job_date: new Date().toISOString().split("T")[0],
+});
+
 
   const [organizations, setOrganizations] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const wrapperRef = useRef(null);
+
+  // inside AddExJobs.jsx, before component
+const branchOptions = [
+  { code: "BRD", label: "BRD - BARODA" },
+  { code: "GIM", label: "GIM - GANDHIDHAM" },
+  { code: "HAZ", label: "HAZ - HAZIRA" },
+  { code: "AMD", label: "AMD - AHMEDABAD" },
+  { code: "COK", label: "COK - COCHIN" },
+];
+
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -501,27 +807,30 @@ const AddExJobs = () => {
     }
   };
 
-  const handleClear = () => {
-    setFormData({
-      exporter_name: "",
-      consignees: [{ ...emptyConsignee }],
-      ie_code: "",
-      job_no: "",
-      movement_type: "FCL",
-      country_of_final_destination: "",
-      commodity_description: "",
-      commercial_invoice_value: "",
-      invoice_currency: "USD",
-      port_of_loading: "",
-      total_no_of_pkgs: "",
-      gross_weight_kg: "",
-      net_weight_kg: "",
-      status: "Pending",
-      year: "25-26",
-      transportMode: "SEA",
-      job_date: new Date().toISOString().split("T")[0],
-    });
-  };
+const handleClear = () => {
+  setFormData({
+    branch_code: "AMD",
+    exporter_name: "",
+    consignees: [{ ...emptyConsignee }],
+    ie_code: "",
+    job_no: "",
+    movement_type: "FCL",
+    country_of_final_destination: "",
+    commodity_description: "",
+    commercial_invoice_value: "",
+    invoice_currency: "",
+    custom_house: "",           // 👈 reset
+    port_of_loading: "",
+    total_no_of_pkgs: "",
+    gross_weight_kg: "",
+    net_weight_kg: "",
+    status: "Pending",
+    year: "25-26",
+    transportMode: "",
+    job_date: new Date().toISOString().split("T")[0],
+  });
+};
+
 
   return (
     <div style={s.wrapper}>
@@ -650,6 +959,20 @@ const AddExJobs = () => {
                     <option value="26-27">26-27</option>
                   </select>
                 </div>
+                  <div style={{ ...s.col, maxWidth: "160px" }}>
+    <label style={s.label}>Branch</label>
+    <select
+      style={s.select}
+      value={formData.branch_code}
+      onChange={(e) => handleInputChange("branch_code", e.target.value)}
+    >
+      {branchOptions.map((b) => (
+        <option key={b.code} value={b.code}>
+          {b.label}
+        </option>
+      ))}
+    </select>
+  </div>
               </div>
             </div>
           </div>
@@ -688,17 +1011,13 @@ const AddExJobs = () => {
                       }
                     />
                   </div>
-                  <div style={{ ...s.col, flex: 1 }}>
-                    <label style={s.label}>Country</label>
-                    <input
-                      style={s.input}
-                      placeholder="Country"
-                      value={item.consignee_country}
-                      onChange={(e) =>
-                        handleConsigneeChange(idx, "consignee_country", e.target.value)
-                      }
-                    />
-                  </div>
+                 <div style={{ ...s.col, flex: 1 }}>
+  <ConsigneeCountryField
+    value={item.consignee_country}
+    onChange={(val) => handleConsigneeChange(idx, "consignee_country", val)}
+  />
+</div>
+
                   <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: "1px" }}>
                     <button
                       type="button"
@@ -726,40 +1045,50 @@ const AddExJobs = () => {
               </span>
               <span style={s.cardTitle}>Shipment Details</span>
             </div>
-            <div style={s.cardBody}>
-              <div style={s.row}>
-                <div style={{ ...s.col, maxWidth: "120px" }}>
-                  <label style={s.label}>Movement</label>
-                  <select
-                    style={s.select}
-                    value={formData.movement_type}
-                    onChange={(e) => handleInputChange("movement_type", e.target.value)}
-                  >
-                    <option value="FCL">FCL</option>
-                    <option value="LCL">LCL</option>
-                  </select>
-                </div>
-                <div style={{ ...s.col, maxWidth: "120px" }}>
-                  <label style={s.label}>Transport</label>
-                  <select
-                    style={s.select}
-                    value={formData.transportMode}
-                    onChange={(e) => handleInputChange("transportMode", e.target.value)}
-                  >
-                    <option value="SEA">SEA</option>
-                    <option value="AIR">AIR</option>
-                    <option value="LAND">LAND</option>
-                  </select>
-                </div>
+{/* Shipment Details card body */}
+<div style={s.cardBody}>
+  <div style={s.row}>
+    <div style={{ ...s.col, maxWidth: "120px" }}>
+      <label style={s.label}>Movement</label>
+      <select
+        style={s.select}
+        value={formData.movement_type}
+        onChange={(e) => handleInputChange("movement_type", e.target.value)}
+      >
+        <option value="FCL">FCL</option>
+        <option value="LCL">LCL</option>
+      </select>
+    </div>
 
-                {/* Port of Loading from Gateway Port Directory */}
-                <GatewayPortDropdown
-                  label="Port of Loading"
-                  value={formData.port_of_loading}
-                  onChange={(val) => handleInputChange("port_of_loading", val)}
-                />
-              </div>
-            </div>
+    <div style={{ ...s.col, maxWidth: "120px" }}>
+      <label style={s.label}>Transport</label>
+      <select
+        style={s.select}
+        value={formData.transportMode}
+        onChange={(e) => handleInputChange("transportMode", e.target.value)}
+      >
+        <option value="SEA">SEA</option>
+        <option value="AIR">AIR</option>
+        <option value="LAND">LAND</option>
+      </select>
+    </div>
+
+    {/* Port of Loading from Gateway Port Directory */}
+    <GatewayPortDropdown
+      label="Port of Loading"
+      value={formData.port_of_loading}
+      onChange={(val) => handleInputChange("port_of_loading", val)}
+    />
+
+    {/* Custom House using SAME directory */}
+    <GatewayPortDropdown
+      label="Custom House"
+      value={formData.custom_house}
+      onChange={(val) => handleInputChange("custom_house", val)}
+    />
+  </div>
+</div>
+
           </div>
 
           {/* 4. Commercial & Cargo */}
@@ -784,22 +1113,15 @@ const AddExJobs = () => {
                     }
                   />
                 </div>
-                <div style={{ ...s.col, maxWidth: "100px" }}>
-                  <label style={s.label}>Currency</label>
-                  <select
-                    style={s.select}
-                    value={formData.invoice_currency}
-                    onChange={(e) =>
-                      handleInputChange("invoice_currency", e.target.value)
-                    }
-                  >
-                    {["USD", "EUR", "INR"].map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <div style={{ ...s.col, maxWidth: "180px" }}>
+  <label style={s.label}>Currency</label>
+  <CurrencyDropdown
+    label=""
+    value={formData.invoice_currency}
+    onChange={(val) => handleInputChange("invoice_currency", val)}
+    placeholder="SELECT CURRENCY"
+  />
+</div>
                 <div style={s.col}>
                   <label style={s.label}>Packages</label>
                   <input

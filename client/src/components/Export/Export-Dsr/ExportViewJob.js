@@ -75,10 +75,7 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
     value: exp.organization,
   }));
   const customHouseOpts = [
-    { value: "ICD SACHANA", label: "ICD SACHANA" },
-    { value: "JNPT", label: "JNPT" },
-    { value: "Chennai Port", label: "Chennai Port" },
-    { value: "Cochin Port", label: "Cochin Port" },
+    { value: formik.values.custom_house, label: formik.values.custom_house },
   ];
 
   return (
@@ -186,7 +183,6 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
             options={[
               { value: "Sea", label: "Sea" },
               { value: "Air", label: "Air" },
-              { value: "Land", label: "Land" },
             ]}
             onChange={formik.handleChange}
           />
@@ -201,7 +197,7 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
             onChange={formik.handleChange}
           />
         </div>
-        {/* Consignment Type */}
+        {/* Consignment Type
         <div style={{ flex: "1 1 120px", minWidth: 100 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Consignment Type</div>
           <SimpleSelect
@@ -214,7 +210,7 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
             ]}
             onChange={formik.handleChange}
           />
-        </div>
+        </div> */}
         {/* SB Type */}
         <div style={{ flex: "1 1 120px", minWidth: 100 }}>
           <div style={{ fontSize: 11, color: "#888" }}>SB Type</div>
@@ -299,11 +295,10 @@ function LogisysExportViewJob() {
   const [fileSnackbar, setFileSnackbar] = useState(false);
 
   const [directories, setDirectories] = useState({});
+     const { jobNo } = useParams();
+const decodedJobNo = decodeURIComponent(jobNo || "");
 
-  const { data, loading, formik, setData } = useExportJobDetails(
-    params,
-    setFileSnackbar
-  );
+  const { data, loading, formik, setData } = useExportJobDetails({ job_no: decodedJobNo }, setFileSnackbar);
   const getInitialTab = () => {
     const tabFromUrl = searchParams.get('tab');
     return tabFromUrl ? parseInt(tabFromUrl) : 0;
@@ -432,9 +427,9 @@ function LogisysExportViewJob() {
 <TabPanel value={activeTab} index={4}>
   <ProductTab formik={formik} />
 </TabPanel>
-<TabPanel value={activeTab} index={5}>
+{/* <TabPanel value={activeTab} index={5}>
   <ExchangeRateTab formik={formik} />
-</TabPanel>
+</TabPanel> */}
 <TabPanel value={activeTab} index={6}>
   <ESanchitTab formik={formik} />
 </TabPanel>
