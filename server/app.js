@@ -47,7 +47,6 @@ import getExporterJobs from "./routes/export-dsr/getExporterJobs.mjs";
 import addJobs from "./routes/export-dsr/add-exp-jobs.mjs";
 import getExpJob from "./routes/export-dsr/getExpJob.mjs";
 import updateExportJobs from "./routes/export-dsr/updateExportJobs.js";
-import esanchit from "./routes/export-dsr/e-sanchitRoutes.mjs";
 import deleteFromS3Routes from "./routes/deleteFromS3.js";
 
 process.on("uncaughtException", (error) => {
