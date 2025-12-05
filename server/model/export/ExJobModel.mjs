@@ -172,7 +172,7 @@ const productDetailsSchema = new Schema(
 
     // --- PMV Info (Grouped) ---
     pmvInfo: {
-      currency: { type: String},
+      currency: { type: String },
       calculationMethod: { type: String, trim: true }, // 'percentage' or 'value'
       percentage: { type: String, default: "110" },
       pmvPerUnit: { type: String, default: "0" },
@@ -320,7 +320,8 @@ const invoiceSchema = new Schema(
       default: "FOB",
     },
     toiPlace: {
-      type: String, trim : true
+      type: String,
+      trim: true,
     },
     currency: {
       type: String,
@@ -410,7 +411,7 @@ const apInvoiceSchema = new Schema(
     bill_no: { type: String, trim: true },
     type: { type: String, trim: true, default: "INV" },
     organization: { type: String, trim: true },
-    currency: { type: String, trim: true},
+    currency: { type: String, trim: true },
     amount: { type: Number, default: 0 },
     balance: { type: Number, default: 0 },
     vendor_bill_no: { type: String, trim: true },
@@ -554,7 +555,6 @@ const milestoneSchema = new Schema(
   { _id: true }
 );
 
-
 // Container/Package Schema for Export
 const exportContainerSchema = new mongoose.Schema({
   container_number: { type: String, trim: true },
@@ -581,8 +581,6 @@ const exportContainerSchema = new mongoose.Schema({
   loading_date: { type: String, trim: true },
   departure_date: { type: String, trim: true },
 });
-
-
 
 // Main Export Job Schema
 const exportJobSchema = new mongoose.Schema(
@@ -615,8 +613,6 @@ const exportJobSchema = new mongoose.Schema(
         date_time: { type: Date },
       },
     ],
-
-  
 
     ////////////////////////////////////////////////// Excel sheet
     year: { type: String, trim: true },
@@ -861,7 +857,7 @@ const exportJobSchema = new mongoose.Schema(
     commercial_invoice_number: { type: String, trim: true },
     commercial_invoice_date: { type: String, trim: true },
     commercial_invoice_value: { type: String, trim: true },
-    invoice_currency: { type: String, trim: true},
+    invoice_currency: { type: String, trim: true },
     exchange_rate: { type: String, trim: true },
     fob_value: { type: String, trim: true },
     freight_charges: { type: String, trim: true },
@@ -1027,13 +1023,13 @@ const exportJobSchema = new mongoose.Schema(
 
     // PMV Info (Price Market Value)
     pmvInfo: {
-      currency: { type: String, ref: "Currency"},
+      currency: { type: String, ref: "Currency" },
       calculationMethod: {
         type: String,
         enum: ["%age", "Fixed Amount"],
         default: "%age",
       },
-      pmvPerUnit: { type: Number},
+      pmvPerUnit: { type: Number },
       totalPMV: { type: Number },
     },
 
@@ -1139,7 +1135,7 @@ const exportJobSchema = new mongoose.Schema(
         exchangeRate: { type: Number },
         rate: { type: Number },
         baseValue: { type: Number },
-        amount: { type: Number},
+        amount: { type: Number },
       },
       insurance: {
         currency: { type: String, ref: "Currency" },
@@ -1155,9 +1151,9 @@ const exportJobSchema = new mongoose.Schema(
         amount: { type: Number },
       },
       otherDeduction: {
-        currency: { type: String, ref: "Currency"},
+        currency: { type: String, ref: "Currency" },
         exchangeRate: { type: Number },
-        rate: { type: Number},
+        rate: { type: Number },
         amount: { type: Number },
       },
       commission: {
@@ -1168,7 +1164,7 @@ const exportJobSchema = new mongoose.Schema(
       },
       fobValue: {
         currency: { type: String, ref: "Currency" },
-        amount: { type: Number},
+        amount: { type: Number },
       },
     },
 
@@ -1212,11 +1208,11 @@ const exportJobSchema = new mongoose.Schema(
 
     // Milestone Tracking
     milestones: [milestoneSchema],
-    job_tracking_completed: { type: String, trim: true }, // "16-Sep-2025"
+    job_tracking_completed: { type: String, trim: true }, 
     customer_remark: { type: String, trim: true, default: "Ready for Billing" },
     workflow_location: { type: String, trim: true, default: "All Locations" },
     shipment_type: { type: String, trim: true, default: "International" },
-    milestones: [milestoneSchema],
+
     milestone_remarks: { type: String, trim: true },
     milestone_view_upload_documents: { type: String, trim: true },
     milestone_handled_by: { type: String, trim: true },

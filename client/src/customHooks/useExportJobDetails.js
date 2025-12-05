@@ -20,7 +20,9 @@ function useExportJobDetails(params, setFileSnackbar) {
       try {
         setLoading(true);
         const response = await axios.get(
-         `${import.meta.env.VITE_API_STRING}/export-jobs/${encodeURIComponent(params.job_no)}`
+          `${import.meta.env.VITE_API_STRING}/export-jobs/${encodeURIComponent(
+            params.job_no
+          )}`
         );
         let jobData = null;
 
@@ -253,7 +255,6 @@ function useExportJobDetails(params, setFileSnackbar) {
       house_bl_awb_number: "",
       house_bl_awb_date: "",
 
-
       // Cargo Information
       commodity_description: "",
       description: "", // Schema field for compatibility
@@ -282,7 +283,6 @@ function useExportJobDetails(params, setFileSnackbar) {
       export_license_required: false,
       export_license_number: "",
       export_license_validity: "",
-
 
       // Container details - EMPTY ARRAYS
       containers: [
@@ -534,25 +534,30 @@ function useExportJobDetails(params, setFileSnackbar) {
           },
         },
       ],
-       invoices: [
-      {
-        invoiceNumber: "",
-        invoiceDate: "",
-        termsOfInvoice: "FOB",
-        toiPlace: "",
-        currency: "",
-        invoiceValue: 0,
-        productValue: 0,
-        priceIncludes: "Both",
-        invoice_value: 0,
-        product_value_fob: 0,
-        packing_fob: 0,
-      },
-    ],
+      invoices: [
+        {
+          invoiceNumber: "",
+          invoiceDate: "",
+          termsOfInvoice: "FOB",
+          toiPlace: "",
+          currency: "",
+          invoiceValue: 0,
+          productValue: 0,
+          priceIncludes: "Both",
+          invoice_value: 0,
+          product_value_fob: 0,
+          packing_fob: 0,
+        },
+      ],
 
-freightInsuranceCharges: {
-  freight: {}, insurance: {}, discount: {}, otherDeduction: {}, commission: {}, fobValue: {},
-},
+      freightInsuranceCharges: {
+        freight: {},
+        insurance: {},
+        discount: {},
+        otherDeduction: {},
+        commission: {},
+        fobValue: {},
+      },
       // Charges information - EMPTY ARRAYS
       charges: [],
 
@@ -713,71 +718,75 @@ freightInsuranceCharges: {
     customer_remark: "Ready for Billing",
     workflow_location: "All Locations",
     shipment_type: "International",
-    milestones: [
-      {
-        milestoneName: "SB Filed",
-        planDate: "dd-MMM-yyyy HH:mm",
-        actualDate: "15-Sep-2025 15:45",
-        isCompleted: true,
-        isMandatory: true,
-        completedBy: "",
-        remarks: "",
-      },
-      {
-        milestoneName: "SB Receipt",
-        planDate: "dd-MMM-yyyy HH:mm",
-        actualDate: "15-Sep-2025 15:51",
-        isCompleted: true,
-        isMandatory: true,
-        completedBy: "",
-        remarks: "",
-      },
-      {
-        milestoneName: "L.E.O",
-        planDate: "dd-MMM-yyyy HH:mm",
-        actualDate: "15-Sep-2025 18:15",
-        isCompleted: true,
-        isMandatory: true,
-        completedBy: "",
-        remarks: "",
-      },
-      {
-        milestoneName: "Container HO to Concor",
-        planDate: "dd-MMM-yyyy HH:mm",
-        actualDate: "16-Sep-2025 13:47",
-        isCompleted: true,
-        isMandatory: true,
-        completedBy: "",
-        remarks: "",
-      },
-      {
-        milestoneName: "Rail Out",
-        planDate: "dd-MMM-yyyy HH:mm",
-        actualDate: "dd-mmm-yyyy hh:mm",
-        isCompleted: false,
-        isMandatory: false,
-        completedBy: "",
-        remarks: "",
-      },
-      {
-        milestoneName: "Ready for Billing",
-        planDate: "dd-MMM-yyyy HH:mm",
-        actualDate: "16-Sep-2025 13:47",
-        isCompleted: true,
-        isMandatory: true,
-        completedBy: "",
-        remarks: "",
-      },
-      {
-        milestoneName: "Billing Done",
-        planDate: "dd-MMM-yyyy HH:mm",
-        actualDate: "dd-mmm-yyyy hh:mm",
-        isCompleted: false,
-        isMandatory: false,
-        completedBy: "",
-        remarks: "",
-      },
-    ],
+    milestone_completed_by: "",
+    milestone_remarks: "",
+    milestone_view_upload_documents: "",
+    milestone_handled_by: "",
+  milestones: [
+  {
+    milestoneName: "SB Filed",
+    planDate: "dd-MMM-yyyy HH:mm",
+    actualDate: "dd-mmm-yyyy hh:mm",
+    isCompleted: false,
+    isMandatory: true,
+    completedBy: "",
+    remarks: ""
+  },
+  {
+    milestoneName: "SB Receipt",
+    planDate: "dd-MMM-yyyy HH:mm",
+    actualDate: "dd-mmm-yyyy hh:mm",
+    isCompleted: false,
+    isMandatory: true,
+    completedBy: "",
+    remarks: ""
+  },
+  {
+    milestoneName: "L.E.O",
+    planDate: "dd-MMM-yyyy HH:mm",
+    actualDate: "dd-mmm-yyyy hh:mm",
+    isCompleted: false,
+    isMandatory: true,
+    completedBy: "",
+    remarks: ""
+  },
+  {
+    milestoneName: "Container HO to Concor",
+    planDate: "dd-MMM-yyyy HH:mm",
+    actualDate: "dd-mmm-yyyy hh:mm",
+    isCompleted: false,
+    isMandatory: false,
+    completedBy: "",
+    remarks: ""
+  },
+  {
+    milestoneName: "Rail Out",
+    planDate: "dd-MMM-yyyy HH:mm",
+    actualDate: "dd-mmm-yyyy hh:mm",
+    isCompleted: false,
+    isMandatory: false,
+    completedBy: "",
+    remarks: ""
+  },
+  {
+    milestoneName: "Ready for Billing",
+    planDate: "dd-MMM-yyyy HH:mm",
+    actualDate: "dd-mmm-yyyy hh:mm",
+    isCompleted: false,
+    isMandatory: true,
+    completedBy: "",
+    remarks: ""
+  },
+  {
+    milestoneName: "Billing Done",
+    planDate: "dd-MMM-yyyy HH:mm",
+    actualDate: "dd-mmm-yyyy hh:mm",
+    isCompleted: false,
+    isMandatory: false,
+    completedBy: "",
+    remarks: ""
+  }
+],
     milestone_remarks: "",
     milestone_view_upload_documents: "",
     milestone_handled_by: "",
@@ -873,9 +882,9 @@ freightInsuranceCharges: {
         };
 
         const response = await axios.put(
-          `${import.meta.env.VITE_API_STRING}/export-jobs/${
-            encodeURIComponent(params.job_no) 
-          }`,
+          `${import.meta.env.VITE_API_STRING}/export-jobs/${encodeURIComponent(
+            params.job_no
+          )}`,
           syncedValues,
           { headers }
         );
@@ -1103,7 +1112,6 @@ freightInsuranceCharges: {
         eta_port_of_discharge: safeValue(data.eta_port_of_discharge),
         actual_departure_date: safeValue(data.actual_departure_date),
         actual_arrival_date: safeValue(data.actual_arrival_date),
-
 
         // Cargo Information
         commodity_description: safeValue(
