@@ -1,286 +1,522 @@
-import React, { useState, useRef, useCallback } from "react";
-import {
-  Grid,
-  Card,
-  Typography,
-  Box,
-  Button,
-  TextField,
-  Checkbox,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper
-} from "@mui/material";
+import React, { useRef, useCallback, useState, useEffect } from "react";
+
+const BASE_MILESTONES = [
+  "SB Filed",
+  "SB Receipt",
+  "L.E.O",
+  "Container HO to Concor",
+  "Rail Out",
+  "Ready for Billing",
+  "Billing Done"
+];
+
+const mandatoryNames = new Set(["SB Filed", "SB Receipt", "L.E.O", "Ready for Billing"]);
 
 const TrackingCompletedTab = ({ formik, directories, params, onUpdate }) => {
   const saveTimeoutRef = useRef(null);
+  const [filter, setFilter] = useState("Show All");
 
-  // Auto-save function
   const autoSave = useCallback(
     async (values) => {
       try {
-        if (onUpdate) {
-          await onUpdate(values);
-        }
-      } catch (error) {
-        console.error("Auto-save failed:", error);
+        if (onUpdate) await onUpdate(values);
+      } catch (err) {
+        console.error("Auto-save failed:", err);
       }
     },
     [onUpdate]
   );
 
-  // Handle field changes with auto-save
-  const handleFieldChange = (field, value) => {
-    formik.setFieldValue(field, value);
-    
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
+  const scheduleSave = () => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       autoSave(formik.values);
-    }, 1500);
+    }, 1200);
   };
 
+  const handleFieldChange = (field, value) => {
+    formik.setFieldValue(field, value);
+    scheduleSave();
+  };
+
+  // ONE‑TIME normalization of base milestones
+  useEffect(() => {
+    const ms = formik.values.milestones || [];
+    if (!ms.length) {
+      const defaults = BASE_MILESTONES.map((name) => ({
+        milestoneName: name,
+        planDate: "dd-MMM-yyyy HH:mm",
+        actualDate: "dd-mmm-yyyy hh:mm",
+        isCompleted: false,
+        isMandatory: mandatoryNames.has(name),
+        completedBy: "",
+        remarks: ""
+      }));
+      formik.setFieldValue("milestones", defaults);
+    } else {
+      const byName = new Map(ms.map((m) => [m.milestoneName, m]));
+      const basePart = BASE_MILESTONES.map((name) => {
+        const existing = byName.get(name);
+        return (
+          existing || {
+            milestoneName: name,
+            planDate: "dd-MMM-yyyy HH:mm",
+            actualDate: "dd-mmm-yyyy hh:mm",
+            isCompleted: false,
+            isMandatory: mandatoryNames.has(name),
+            completedBy: "",
+            remarks: ""
+          }
+        );
+      });
+      const extra = ms.filter((m) => !BASE_MILESTONES.includes(m.milestoneName));
+      formik.setFieldValue("milestones", [...basePart, ...extra]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleMilestoneChange = (index, field, value) => {
-    const milestones = [...(formik.values.milestones || [])];
-    if (!milestones[index]) {
-      milestones[index] = {
-        milestoneName: "",
+    const current = formik.values.milestones || [];
+    const milestones = [...current];
+    milestones[index] = { ...milestones[index], [field]: value };
+    formik.setFieldValue("milestones", milestones);
+    scheduleSave();
+  };
+
+  const addCustomMilestone = () => {
+    const name = window.prompt("Enter new milestone name");
+    if (!name) return;
+    const current = formik.values.milestones || [];
+    const milestones = [
+      ...current,
+      {
+        milestoneName: name,
         planDate: "dd-MMM-yyyy HH:mm",
         actualDate: "dd-mmm-yyyy hh:mm",
         isCompleted: false,
         isMandatory: false,
         completedBy: "",
         remarks: ""
-      };
-    }
-    milestones[index][field] = value;
-    formik.setFieldValue('milestones', milestones);
-    
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    saveTimeoutRef.current = setTimeout(() => {
-      autoSave(formik.values);
-    }, 1500);
-  };
-
-  const reloadMilestones = () => {
-    console.log("Reloading milestones...");
-    // Implement reload logic here
+      }
+    ];
+    formik.setFieldValue("milestones", milestones);
+    scheduleSave();
   };
 
   const updatePlanDate = () => {
-    console.log("Updating plan dates...");
-    // Implement update logic here
+    const now = new Date();
+    const current = formik.values.milestones || [];
+    const milestones = current.map((m, idx) => {
+      if (!m.planDate || m.planDate === "dd-MMM-yyyy HH:mm") {
+        const d = new Date(now);
+        d.setHours(now.getHours() + idx * 2);
+        const iso = d.toISOString().slice(0, 16);
+        return { ...m, planDate: iso };
+      }
+      return m;
+    });
+    formik.setFieldValue("milestones", milestones);
+    scheduleSave();
   };
 
-  const milestones = formik.values.milestones || [];
+  const getMaxDateTime = () => {
+    const d = new Date();
+    return d.toISOString().slice(0, 16);
+  };
+
+  const allMilestones = formik.values.milestones || [];
+  const visibleMilestones =
+    filter === "Completed Only"
+      ? allMilestones.filter((m) => m.isCompleted)
+      : filter === "Pending Only"
+      ? allMilestones.filter((m) => !m.isCompleted)
+      : allMilestones;
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h6" fontWeight="bold" gutterBottom>
-        Job Tracking Completed
-      </Typography>
-      
-      <Grid container spacing={3}>
-        {/* Header Section */}
-        <Grid item xs={12}>
-          <Card sx={{ p: 2, mb: 2 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={3}>
-                <TextField
-                  label="Job Tracking Completed"
-                  type="date"
-                  size="small"
-                  fullWidth
-                  value={formik.values.job_tracking_completed || ''}
-                  onChange={(e) => handleFieldChange('job_tracking_completed', e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={3}>
-                <TextField
-                  label="Customer Remark"
-                  size="small"
-                  fullWidth
-                  value={formik.values.customer_remark || ''}
-                  onChange={(e) => handleFieldChange('customer_remark', e.target.value)}
-                  placeholder="Ready for Billing"
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Workflow for
-                  </Typography>
-                  <Typography variant="body2">
-                    Location: {formik.values.workflow_location || 'All Locations'}
-                  </Typography>
-                  <Typography variant="body2">
-                    Shipment Type: {formik.values.shipment_type || 'International'}
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </Card>
-        </Grid>
+    <div
+      style={{
+        fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+        fontSize: 12,
+        background: "#f5f7fb",
+        padding: 12,
+        boxSizing: "border-box"
+      }}
+    >
+      {/* Header band */}
+      <div
+        style={{
+          background: "#ffffff",
+          borderRadius: 4,
+          border: "1px solid #d0d7e2",
+          padding: "10px 12px",
+          marginBottom: 10,
+          display: "grid",
+          gridTemplateColumns: "260px 1fr 260px",
+          columnGap: 12,
+          alignItems: "center"
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontWeight: 600 }}>Job Tracking Completed</span>
+          <input
+            type="date"
+            style={{
+              fontSize: 12,
+              padding: "4px 6px",
+              borderRadius: 3,
+              border: "1px solid #c4cdd7",
+              minWidth: 135
+            }}
+            value={formik.values.jobtrackingcompleted || ""}
+            onChange={(e) => handleFieldChange("jobtrackingcompleted", e.target.value)}
+          />
+        </div>
 
-        {/* Milestones Table */}
-        <Grid item xs={12} md={8}>
-          <Card sx={{ p: 2 }}>
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                    <TableCell><strong>Milestone Name</strong></TableCell>
-                    <TableCell><strong>Plan Date</strong></TableCell>
-                    <TableCell><strong>Actual Date</strong></TableCell>
-                    <TableCell><strong>Completed</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {milestones.map((milestone, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          {milestone.isMandatory && (
-                            <span style={{ color: 'red', marginRight: 4 }}>*</span>
-                          )}
-                          {milestone.milestoneName}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          size="small"
-                          value={milestone.planDate || ''}
-                          onChange={(e) => handleMilestoneChange(index, 'planDate', e.target.value)}
-                          placeholder="dd-MMM-yyyy HH:mm"
-                          sx={{ width: 150 }}
+        <div>
+          <div style={{ marginBottom: 4, fontWeight: 500 }}>Customer Remark</div>
+          <textarea
+            rows={2}
+            style={{
+              width: "100%",
+              fontSize: 12,
+              padding: "4px 6px",
+              borderRadius: 3,
+              border: "1px solid #c4cdd7",
+              resize: "none"
+            }}
+            value={formik.values.customerremark || ""}
+            onChange={(e) => handleFieldChange("customerremark", e.target.value)}
+          />
+        </div>
+
+        <div
+          style={{
+            borderLeft: "1px solid #e1e7f0",
+            paddingLeft: 10,
+            fontSize: 11,
+            lineHeight: 1.4
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 2 }}>Workflow for</div>
+          <div>Location : {formik.values.workflowlocation || "All Locations"}</div>
+          <div>Shipment Type : {formik.values.shipmenttype || "International"}</div>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 2fr) 280px",
+          columnGap: 10,
+          alignItems: "flex-start"
+        }}
+      >
+        {/* Milestones */}
+        <div
+          style={{
+            background: "#ffffff",
+            borderRadius: 4,
+            border: "1px solid #d0d7e2",
+            padding: 8,
+            boxShadow: "0 1px 2px rgba(15,23,42,0.04)"
+          }}
+        >
+          <div style={{ marginBottom: 6, fontWeight: 600 }}>Milestones</div>
+
+          <div
+            style={{
+              border: "1px solid #d0d7e2",
+              borderRadius: 3,
+              overflow: "hidden",
+              background: "#fbfcff"
+            }}
+          >
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                tableLayout: "fixed"
+              }}
+            >
+              <colgroup>
+                <col style={{ width: "34%" }} />
+                <col style={{ width: "28%" }} />
+                <col style={{ width: "28%" }} />
+                <col style={{ width: "10%" }} />
+              </colgroup>
+              <thead>
+                <tr style={{ background: "#e4ecf7" }}>
+                  <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 600 }}>
+                    Milestone Name
+                  </th>
+                  <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 600 }}>
+                    Plan Date
+                  </th>
+                  <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 600 }}>
+                    Actual Date
+                  </th>
+                  <th style={{ padding: "6px 8px", textAlign: "center", fontWeight: 600 }}>
+                    Done
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleMilestones.map((m, idx) => {
+                  const realIndex = allMilestones.indexOf(m);
+                  const isBase = BASE_MILESTONES.includes(m.milestoneName);
+                  return (
+                    <tr
+                      key={realIndex}
+                      style={{
+                        background: idx % 2 === 0 ? "#ffffff" : "#f7f9fc",
+                        borderTop: "1px solid #e1e7f0"
+                      }}
+                    >
+                      <td style={{ padding: "5px 8px", whiteSpace: "nowrap" }}>
+                        {m.isMandatory && (
+                          <span style={{ color: "#e11d48", marginRight: 4 }}>*</span>
+                        )}
+                        <span style={{ fontWeight: isBase ? 500 : 400 }}>
+                          {m.milestoneName}
+                        </span>
+                      </td>
+                      <td style={{ padding: "4px 8px" }}>
+                        <input
+                          type="datetime-local"
+                          style={{
+                            width: "100%",
+                            fontSize: 11,
+                            padding: "3px 4px",
+                            borderRadius: 3,
+                            border: "1px solid #c4cdd7",
+                            background: "#ffffff"
+                          }}
+                          value={
+                            m.planDate && m.planDate !== "dd-MMM-yyyy HH:mm"
+                              ? m.planDate
+                              : ""
+                          }
+                          onChange={(e) =>
+                            handleMilestoneChange(
+                              realIndex,
+                              "planDate",
+                              e.target.value || "dd-MMM-yyyy HH:mm"
+                            )
+                          }
                         />
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          size="small"
-                          value={milestone.actualDate || ''}
-                          onChange={(e) => handleMilestoneChange(index, 'actualDate', e.target.value)}
-                          placeholder="dd-mmm-yyyy hh:mm"
-                          sx={{ 
-                            width: 150,
-                            '& .MuiInputBase-input': {
-                              color: milestone.actualDate && milestone.actualDate !== 'dd-mmm-yyyy hh:mm' 
-                                ? 'inherit' 
-                                : '#ccc'
+                      </td>
+                      <td style={{ padding: "4px 8px" }}>
+                        <input
+                          type="datetime-local"
+                          style={{
+                            width: "100%",
+                            fontSize: 11,
+                            padding: "3px 4px",
+                            borderRadius: 3,
+                            border: "1px solid #c4cdd7",
+                            background:
+                              m.actualDate && m.actualDate !== "dd-mmm-yyyy hh:mm"
+                                ? "#ecfdf3"
+                                : "#ffffff"
+                          }}
+                          value={
+                            m.actualDate && m.actualDate !== "dd-mmm-yyyy hh:mm"
+                              ? m.actualDate
+                              : ""
+                          }
+                          max={getMaxDateTime()}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (!v) {
+                              handleMilestoneChange(
+                                realIndex,
+                                "actualDate",
+                                "dd-mmm-yyyy hh:mm"
+                              );
+                              return;
                             }
+                            const picked = new Date(v);
+                            const now = new Date();
+                            if (picked > now) return;
+                            handleMilestoneChange(realIndex, "actualDate", v);
                           }}
                         />
-                      </TableCell>
-                      <TableCell>
-                        <Checkbox
-                          checked={milestone.isCompleted || false}
-                          onChange={(e) => handleMilestoneChange(index, 'isCompleted', e.target.checked)}
-                          color="primary"
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <input
+                          type="checkbox"
+                          checked={!!m.isCompleted}
+                          onChange={(e) => {
+                            handleMilestoneChange(
+                              realIndex,
+                              "isCompleted",
+                              e.target.checked
+                            );
+                            if (
+                              e.target.checked &&
+                              (!m.actualDate || m.actualDate === "dd-mmm-yyyy hh:mm")
+                            ) {
+                              const nowIso = new Date().toISOString().slice(0, 16);
+                              handleMilestoneChange(realIndex, "actualDate", nowIso);
+                            }
+                          }}
+                          style={{ cursor: "pointer" }}
                         />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-            {/* Action Buttons */}
-            <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-              <Button 
-                variant="outlined" 
-                size="small"
-                onClick={reloadMilestones}
-                sx={{ fontSize: "0.75rem", textTransform: "none" }}
-              >
-                Reload Milestones
-              </Button>
-              <Button 
-                variant="outlined" 
-                size="small"
+          <div
+            style={{
+              marginTop: 6,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              justifyContent: "space-between"
+            }}
+          >
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                type="button"
                 onClick={updatePlanDate}
-                sx={{ fontSize: "0.75rem", textTransform: "none" }}
+                style={{
+                  fontSize: 11,
+                  padding: "4px 10px",
+                  borderRadius: 3,
+                  border: "1px solid #2563eb",
+                  background: "#2563eb",
+                  color: "#ffffff",
+                  cursor: "pointer"
+                }}
               >
                 Update Plan Date
-              </Button>
-              <FormControl size="small" sx={{ minWidth: 120 }}>
-                <Select
-                  value="Show All"
-                  displayEmpty
-                  sx={{ fontSize: "0.75rem" }}
-                >
-                  <MenuItem value="Show All">Show All</MenuItem>
-                  <MenuItem value="Completed Only">Completed Only</MenuItem>
-                  <MenuItem value="Pending Only">Pending Only</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              * - Indicates that milestone is mandatory.
-            </Typography>
-          </Card>
-        </Grid>
-
-        {/* Right Panel - Milestone Details */}
-        <Grid item xs={12} md={4}>
-          <Card sx={{ p: 2 }}>
-            <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-              Milestone:
-            </Typography>
-            
-            <TextField
-              label="Remarks"
-              multiline
-              rows={3}
-              fullWidth
-              size="small"
-              value={formik.values.milestone_remarks || ''}
-              onChange={(e) => handleFieldChange('milestone_remarks', e.target.value)}
-              sx={{ mb: 2 }}
-            />
-
-            <TextField
-              label="View/Upload Documents"
-              size="small"
-              fullWidth
-              value={formik.values.milestone_view_upload_documents || ''}
-              onChange={(e) => handleFieldChange('milestone_view_upload_documents', e.target.value)}
-              sx={{ mb: 2 }}
-            />
-
-            <FormControl size="small" fullWidth>
-              <InputLabel>Handled By</InputLabel>
-              <Select
-                value={formik.values.milestone_handled_by || ''}
-                onChange={(e) => handleFieldChange('milestone_handled_by', e.target.value)}
+              </button>
+              <button
+                type="button"
+                onClick={addCustomMilestone}
+                style={{
+                  fontSize: 11,
+                  padding: "4px 10px",
+                  borderRadius: 3,
+                  border: "1px solid #4b5563",
+                  background: "#ffffff",
+                  color: "#111827",
+                  cursor: "pointer"
+                }}
               >
-                <MenuItem value="">Select User</MenuItem>
-                <MenuItem value="Jyothish K R">Jyothish K R</MenuItem>
-                <MenuItem value="Admin">Admin</MenuItem>
-                <MenuItem value="User1">User1</MenuItem>
-              </Select>
-            </FormControl>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
+                + Add Milestone
+              </button>
+            </div>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              style={{
+                fontSize: 11,
+                padding: "3px 8px",
+                borderRadius: 3,
+                border: "1px solid #c4cdd7",
+                background: "#ffffff"
+              }}
+            >
+              <option value="Show All">Show All</option>
+              <option value="Completed Only">Completed Only</option>
+              <option value="Pending Only">Pending Only</option>
+            </select>
+          </div>
+
+          <div style={{ fontSize: 10, marginTop: 4, color: "#4b5563" }}>
+            * Mandatory milestones. Actual date cannot be a future date.
+          </div>
+        </div>
+
+        {/* Right panel */}
+        <div
+          style={{
+            background: "#ffffff",
+            borderRadius: 4,
+            border: "1px solid #d0d7e2",
+            padding: 8,
+            boxShadow: "0 1px 2px rgba(15,23,42,0.04)"
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 600,
+                         borderBottom: "1px solid #e1e7f0",
+              paddingBottom: 4,
+              marginBottom: 6
+            }}
+          >
+            Milestone
+          </div>
+
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ marginBottom: 3 }}>Remarks</div>
+            <textarea
+              rows={4}
+              style={{
+                width: "100%",
+                fontSize: 11,
+                padding: "4px 6px",
+                borderRadius: 3,
+                border: "1px solid #c4cdd7",
+                resize: "vertical"
+              }}
+              value={formik.values.milestoneremarks || ""}
+              onChange={(e) => handleFieldChange("milestoneremarks", e.target.value)}
+            />
+          </div>
+
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ marginBottom: 3 }}>View/Upload Documents</div>
+            <input
+              type="text"
+              style={{
+                width: "100%",
+                fontSize: 11,
+                padding: "4px 6px",
+                borderRadius: 3,
+                border: "1px solid #c4cdd7"
+              }}
+              value={formik.values.milestoneviewuploaddocuments || ""}
+              onChange={(e) =>
+                handleFieldChange("milestoneviewuploaddocuments", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <div style={{ marginBottom: 3 }}>Handled By</div>
+            <select
+              style={{
+                width: "100%",
+                fontSize: 11,
+                padding: "4px 6px",
+                borderRadius: 3,
+                border: "1px solid #c4cdd7",
+                background: "#ffffff"
+              }}
+              value={formik.values.milestonehandledby || ""}
+              onChange={(e) => handleFieldChange("milestonehandledby", e.target.value)}
+            >
+              <option value="">Select User</option>
+              {directories?.users?.map((u) => (
+                <option key={u.id} value={u.username}>
+                  {u.username}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
 export default TrackingCompletedTab;
+
