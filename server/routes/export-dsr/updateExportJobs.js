@@ -1,18 +1,149 @@
-// routes/exportJobs.js
-import express from "express";
-import ExJobModel from "../../model/export/ExJobModel.mjs";
+import express from 'express';
+import ExportJobModel from '../../model/export/ExJobModel.mjs';
+import ExJobModel from '../../model/export/ExJobModel.mjs';
 import auditMiddleware from "../../middleware/auditTrail.mjs";
+
+
 
 const router = express.Router();
 
-// Get export job details
-router.get("/:year/:job_no", async (req, res) => {
+// GET /api/exports - List all exports with pagination & filtering
+// Updated exports API with status filtering
+router.get('/api/exports/:status?', async (req, res) => {
   try {
-    const { year, job_no } = req.params;
+    const { 
+      page = 1, 
+      limit = 10, 
+      search = '', 
+      exporter = '', 
+      country = '', 
+      movement_type = '',
+      status = 'all' 
+    } = { ...req.params, ...req.query };
+
+    const filter = {};
+    
+    // Initialize $and array for complex queries
+    if (!filter.$and) filter.$and = [];
+
+    // Status filtering logic (similar to your import jobs API)
+    if (status && status.toLowerCase() !== 'all') {
+      const statusLower = status.toLowerCase();
+      
+      if (statusLower === 'pending') {
+        filter.$and.push({
+          $or: [
+            { status: { $regex: '^pending$', $options: 'i' } },
+            { status: { $exists: false } },
+            { status: null },
+            { status: '' }
+          ]
+        });
+      } else if (statusLower === 'completed') {
+        filter.$and.push({
+          status: { $regex: '^completed$', $options: 'i' }
+        });
+      } else if (statusLower === 'cancelled') {
+        filter.$and.push({
+          status: { $regex: '^cancelled$', $options: 'i' }
+        });
+      } else {
+        filter.$and.push({
+          status: { $regex: `^${status}$`, $options: 'i' }
+        });
+      }
+    }
+
+    // Search filter
+    if (search) {
+      filter.$and.push({
+        $or: [
+          { job_no: { $regex: search, $options: 'i' } },
+          { exporter_name: { $regex: search, $options: 'i' } },
+          { consignee_name: { $regex: search, $options: 'i' } },
+          { ie_code: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    // Additional filters
+    if (exporter) {
+      filter.$and.push({
+        exporter_name: { $regex: exporter, $options: 'i' }
+      });
+    }
+    
+    if (country) {
+      filter.$and.push({
+        country_of_final_destination: { $regex: country, $options: 'i' }
+      });
+    }
+    
+    if (movement_type) {
+      filter.$and.push({
+        movement_type: movement_type
+      });
+    }
+
+    // Remove empty $and array if no conditions were added
+    if (filter.$and && filter.$and.length === 0) {
+      delete filter.$and;
+    }
+
+    const skip = (page - 1) * limit;
+    
+    // Execute queries in parallel
+    const [jobs, totalCount] = await Promise.all([
+      ExportJobModel.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      ExportJobModel.countDocuments(filter)
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        jobs,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalCount / parseInt(limit)),
+          totalCount,
+          hasNextPage: page < Math.ceil(totalCount / parseInt(limit)),
+          hasPrevPage: page > 1
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching export jobs:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching export jobs', 
+      error: error.message 
+    });
+  }
+});
+
+// POST /api/exports - Create new export job
+router.post('/exports', async (req, res) => {
+  try {
+    const newJob = new ExportJobModel(req.body);
+    const savedJob = await newJob.save();
+    res.status(201).json({ success: true, data: savedJob });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error creating job', error: error.message });
+  }
+});
+
+router.get("/:job_no*", async (req, res) => {
+  try {
+    const raw = req.params.job_no || "";          // "AMD/EXP/SEA/00002/25-26"
+    const job_no = decodeURIComponent(raw);
 
     const exportJob = await ExJobModel.findOne({
-      year: year,
-      job_no: job_no,
+      job_no: { $regex: `^${job_no}$`, $options: "i" },
     });
 
     if (!exportJob) {
@@ -26,144 +157,113 @@ router.get("/:year/:job_no", async (req, res) => {
   }
 });
 
-// Update export job
-router.put("/:year/:job_no", auditMiddleware("Job"), async (req, res) => {
-  
+// Update export job (full)
+router.put("/:job_no*", auditMiddleware("Job"), async (req, res) => {
   try {
-    const { year, job_no } = req.params;
-    const updateData = req.body;
+    const raw = req.params.job_no || "";
+    const job_no = decodeURIComponent(raw);
 
-    // Add update timestamp
-    updateData.updatedAt = new Date();
+    const updateData = { ...req.body, updatedAt: new Date() };
 
     const updatedExportJob = await ExJobModel.findOneAndUpdate(
-      { year: year,
-       job_no: { $regex: job_no, $options: "i" } },
+      { job_no: { $regex: `^${job_no}$`, $options: "i" } },
       { $set: updateData },
       { new: true, runValidators: true }
     );
+
+    if (!updatedExportJob) {
+      return res.status(404).json({ message: "Export job not found" });
+    }
+
+    res.json({ message: "Export job updated successfully", data: updatedExportJob });
+  } catch (error) {
+    console.error("Error updating export job:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// PATCH fields
+router.patch("/:job_no*/fields", auditMiddleware("Job"), async (req, res) => {
+  try {
+    const raw = req.params.job_no || "";
+    const job_no = decodeURIComponent(raw);
+
+    const { fieldUpdates } = req.body;
+    const updateObject = {};
+    (fieldUpdates || []).forEach(({ field, value }) => {
+      updateObject[field] = value;
+    });
+    updateObject.updatedAt = new Date();
+
+    const updatedExportJob = await ExJobModel.findOneAndUpdate(
+      { job_no: { $regex: `^${job_no}$`, $options: "i" } },
+      { $set: updateObject },
+      { new: true }
+    );
+
     if (!updatedExportJob) {
       return res.status(404).json({ message: "Export job not found" });
     }
 
     res.json({
-      message: "Export job updated successfully",
+      message: "Fields updated successfully",
+      updatedFields: Object.keys(updateObject),
       data: updatedExportJob,
     });
   } catch (error) {
-    console.error("Error updating export job:", error);
-    res.status(500).json({
-      message: "Server error",
-      error: error.message,
-    });
+    console.error("Error updating export job fields:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-// Update specific fields
-router.patch(
-  "/:year/:job_no/fields",
-  auditMiddleware("Job"),
-  async (req, res) => {
-    try {
-      const { year, job_no } = req.params;
-      const { fieldUpdates } = req.body;
+// PUT documents
+router.put("/:job_no*/documents", auditMiddleware("Job"), async (req, res) => {
+  try {
+    const raw = req.params.job_no || "";
+    const job_no = decodeURIComponent(raw);
 
-      const updateObject = {};
-      fieldUpdates.forEach(({ field, value }) => {
-        updateObject[field] = value;
-      });
-      updateObject.updatedAt = new Date();
+    const { export_documents } = req.body;
 
-      const updatedExportJob = await ExJobModel.findOneAndUpdate(
-        { year: year, job_no: job_no },
-        { $set: updateObject },
-        { new: true }
-      );
+    const updatedExportJob = await ExJobModel.findOneAndUpdate(
+      { job_no: { $regex: `^${job_no}$`, $options: "i" } },
+      { $set: { export_documents, updatedAt: new Date() } },
+      { new: true }
+    );
 
-      if (!updatedExportJob) {
-        return res.status(404).json({ message: "Export job not found" });
-      }
-
-      res.json({
-        message: "Fields updated successfully",
-        updatedFields: Object.keys(updateObject),
-        data: updatedExportJob,
-      });
-    } catch (error) {
-      console.error("Error updating export job fields:", error);
-      res.status(500).json({ message: "Server error" });
+    if (!updatedExportJob) {
+      return res.status(404).json({ message: "Export job not found" });
     }
+
+    res.json({ message: "Documents updated successfully", data: updatedExportJob });
+  } catch (error) {
+    console.error("Error updating export documents:", error);
+    res.status(500).json({ message: "Server error" });
   }
-);
+});
 
-// Update documents
-router.put(
-  "/:year/:job_no/documents",
-  auditMiddleware("Job"),
-  async (req, res) => {
-    try {
-      const { year, job_no } = req.params;
-      const { export_documents } = req.body;
+// PUT containers
+router.put("/:job_no*/containers", auditMiddleware("Job"), async (req, res) => {
+  try {
+    const raw = req.params.job_no || "";
+    const job_no = decodeURIComponent(raw);
 
-      const updatedExportJob = await ExJobModel.findOneAndUpdate(
-        { year: year, job_no: job_no },
-        {
-          $set: {
-            export_documents: export_documents,
-            updatedAt: new Date(),
-          },
-        },
-        { new: true }
-      );
+    const { containers } = req.body;
 
-      if (!updatedExportJob) {
-        return res.status(404).json({ message: "Export job not found" });
-      }
+    const updatedExportJob = await ExJobModel.findOneAndUpdate(
+      { job_no: { $regex: `^${job_no}$`, $options: "i" } },
+      { $set: { containers, updatedAt: new Date() } },
+      { new: true }
+    );
 
-      res.json({
-        message: "Documents updated successfully",
-        data: updatedExportJob,
-      });
-    } catch (error) {
-      console.error("Error updating export documents:", error);
-      res.status(500).json({ message: "Server error" });
+    if (!updatedExportJob) {
+      return res.status(404).json({ message: "Export job not found" });
     }
+
+    res.json({ message: "Containers updated successfully", data: updatedExportJob });
+  } catch (error) {
+    console.error("Error updating containers:", error);
+    res.status(500).json({ message: "Server error" });
   }
-);
-
-// Update containers
-router.put(
-  "/:year/:job_no/containers",
-  auditMiddleware("Job"),
-  async (req, res) => {
-    try {
-      const { year, job_no } = req.params;
-      const { containers } = req.body;
-
-      const updatedExportJob = await ExJobModel.findOneAndUpdate(
-        { year: year, job_no: job_no },
-        {
-          $set: {
-            containers: containers,
-            updatedAt: new Date(),
-          },
-        },
-        { new: true }
-      );
-
-      if (!updatedExportJob) {
-        return res.status(404).json({ message: "Export job not found" });
-      }
-
-      res.json({
-        message: "Containers updated successfully",
-        data: updatedExportJob,
-      });
-    } catch (error) {
-      console.error("Error updating containers:", error);
-      res.status(500).json({ message: "Server error" });
-    }
-  }
-);
+});
 
 export default router;

@@ -43,7 +43,7 @@ import district from "./routes/Directories/districts.js"; //gatwatPort
 //============== EXPORT DSR =========================
 import getExJobsOverview from "./routes/export-dsr/getExJobsOverview.mjs";
 import getExporterList from "./routes/export-dsr/getExporterList.mjs";
-import getExporterJobs from "./routes/export-dsr/getExporterJobs.mjs";
+// import getExporterJobs from "./routes/export-dsr/getExporterJobs.mjs";
 import addJobs from "./routes/export-dsr/add-exp-jobs.mjs";
 import getExpJob from "./routes/export-dsr/getExpJob.mjs";
 import updateExportJobs from "./routes/export-dsr/updateExportJobs.js";
@@ -145,7 +145,7 @@ app.use("/api/districts", district);
 //============== EXPORT DSR =========================
 app.use(getExJobsOverview);
 app.use(getExporterList);
-app.use(getExporterJobs);
+// app.use(getExporterJobs);
 app.use(addJobs);
 app.use("/api/export-jobs", updateExportJobs);
 app.use(currencyRate)
