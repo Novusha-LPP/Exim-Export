@@ -7,7 +7,7 @@ import fs from "fs/promises";
 
 // ====== Config ======
 const URL = "https://foservices.icegate.gov.in/#/services/notifyPublishScreen";
-const TEMP_DIR = "temp_pdfs"; // Temporary directory for PDFs
+const TEMP_DIR = "temp_pdfs";
 const PAGE_TIMEOUT = 60000;
 const CLICK_TIMEOUT = 30000;
 const SLEEP_BETWEEN = 800;
@@ -19,7 +19,6 @@ const ensureDir = (dirPath) => {
   }
 };
 
-// remove a folder and its contents (ignores errors)
 const removeDirIfExists = async (dirPath) => {
   try {
     if (existsSync(dirPath)) {
@@ -166,7 +165,7 @@ const parsePdfText = (text, pdfPath) => {
   // Extract effective date
   let effMatch = null;
   const datePatterns = [
-    /w\.e\.f\s*[:\s]*(\d{2}-\d{2}-\d{4})/i,
+    /w\.e\.f\.?\s*[:\s]*(\d{2}-\d{2}-\d{4})/i,
     /effective\s*date[:\s]*(\d{2}-\d{2}-\d{4})/i,
     /Date\s*[:\s]*(\d{2}-\d{2}-\d{4})/i,
     /(\d{2}-\d{2}-\d{4})/,
@@ -183,11 +182,7 @@ const parsePdfText = (text, pdfPath) => {
   const effectiveDate = effMatch ? effMatch[1] : "unknown";
 
   // Parse currency rates
-  let exchangeRates = parseCurrencyRatesImproved(lines);
-
-  if (exchangeRates.length === 0) {
-    exchangeRates = parseCurrencyRatesAlternative(lines);
-  }
+  const exchangeRates = parseCurrencyRates(lines);
 
   return {
     notification_number: notificationNumber,
@@ -202,103 +197,109 @@ const parsePdfText = (text, pdfPath) => {
   };
 };
 
-const parseCurrencyRatesImproved = (lines) => {
+const parseCurrencyRates = (lines) => {
   const parsed = [];
+  const seenCurrencies = new Set(); // Track already parsed currencies
 
   const currencies = [
-    { code: "USD", name: "US Dollar", patterns: ["US Dollar", "US$", "USD"] },
-    { code: "EUR", name: "EURO", patterns: ["EURO", "EUR"] },
-    { code: "GBP", name: "Pound Sterling", patterns: ["Pound Sterling", "GBP"] },
-    { code: "JPY", name: "Japanese Yen", patterns: ["Japanese Yen", "JPY"], unit: 100 },
-    { code: "CHF", name: "Swiss Franc", patterns: ["Swiss Franc", "CHF"] },
-    { code: "AUD", name: "Australian Dollar", patterns: ["Australian Dollar", "AUD"] },
-    { code: "CAD", name: "Canadian Dollar", patterns: ["Canadian Dollar", "CAD"] },
-    { code: "SGD", name: "Singapore Dollar", patterns: ["Singapore Dollar", "SGD"] },
-    { code: "HKD", name: "Hong Kong Dollar", patterns: ["Hong Kong Dollar", "HKD"] },
-    { code: "NZD", name: "New Zealand Dollar", patterns: ["New Zealand Dollar", "NZD"] },
-    { code: "CNY", name: "Chinese Yuan", patterns: ["Chinese Yuan", "CNY"] },
-    { code: "KRW", name: "Korean won", patterns: ["Korean won", "KRW"], unit: 100 },
-    { code: "ZAR", name: "South African Rand", patterns: ["South African Rand", "ZAR"] },
-    { code: "AED", name: "UAE Dirham", patterns: ["UAE Dirham", "AED"] },
-    { code: "SAR", name: "Saudi Arabian Riyal", patterns: ["Saudi Arabian Riyal", "SAR"] },
-    { code: "QAR", name: "Qatari Riyal", patterns: ["Qatari Riyal", "QAR"] },
-    { code: "BHD", name: "Bahraini Dinar", patterns: ["Bahraini Dinar", "BHD"] },
-    { code: "KWD", name: "Kuwaiti Dinar", patterns: ["Kuwaiti Dinar", "KWD"] },
-    { code: "TRY", name: "Turkish Lira", patterns: ["Turkish Lira", "TRY"] },
-    { code: "DKK", name: "Danish Kroner", patterns: ["Danish Kroner", "DKK"] },
-    { code: "NOK", name: "Norwegian Kroner", patterns: ["Norwegian Kroner", "NOK"] },
-    { code: "SEK", name: "Swedish Kroner", patterns: ["Swedish Kroner", "SEK"] },
+    { code: "AED", name: "UAE Dirham" },
+    { code: "AUD", name: "Australian Dollar" },
+    { code: "BHD", name: "Bahraini Dinar" },
+    { code: "CAD", name: "Canadian Dollar" },
+    { code: "CHF", name: "Swiss Franc" },
+    { code: "CNY", name: "Chinese Yuan" },
+    { code: "DKK", name: "Danish Kroner" },
+    { code: "EUR", name: "EURO" },
+    { code: "GBP", name: "Pound Sterling" },
+    { code: "HKD", name: "Hong Kong Dollar" },
+    { code: "JPY", name: "Japanese Yen", unit: 100 },
+    { code: "KRW", name: "Korean won", unit: 100 },
+    { code: "KWD", name: "Kuwaiti Dinar" },
+    { code: "NOK", name: "Norwegian Kroner" },
+    { code: "NZD", name: "New Zealand Dollar" },
+    { code: "QAR", name: "Qatari Riyal" },
+    { code: "SAR", name: "Saudi Arabian Riyal" },
+    { code: "SEK", name: "Swedish Kroner" },
+    { code: "SGD", name: "Singapore Dollar" },
+    { code: "TRY", name: "Turkish Lira" },
+    { code: "USD", name: "US Dollar" },
+    { code: "ZAR", name: "South African Rand" },
   ];
 
-  let inRatesSection = false;
-
+  // Find where the table starts
+  let tableStartIndex = -1;
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    if (line.match(/Currency|Exchange|Rate|USD|EUR|GBP/i) && !inRatesSection) {
-      inRatesSection = true;
-      continue;
+    const line = lines[i].toLowerCase();
+    if (
+      line.includes("currency code") ||
+      line.includes("currency name") ||
+      (line.includes("rate") && line.includes("import"))
+    ) {
+      tableStartIndex = i;
+      break;
     }
+  }
 
-    if (!inRatesSection) continue;
-
-    for (const currency of currencies) {
-      const hasCurrency = currency.patterns.some((pattern) =>
-        new RegExp(pattern.replace(/\s+/g, "\\s*"), "i").test(line)
-      );
-
-      if (hasCurrency) {
-        const numbers = extractRateNumbers(line);
-
-        if (numbers.length < 2 && i + 1 < lines.length) {
-          const nextNumbers = extractRateNumbers(lines[i + 1]);
-          numbers.push(...nextNumbers);
-        }
-
-        if (numbers.length >= 2) {
-          const unit = currency.unit || 1.0;
-          const importRate = numbers[0];
-          const exportRate = numbers[1];
-
-          if (
-            importRate > 0.1 &&
-            importRate < 1000 &&
-            exportRate > 0.1 &&
-            exportRate < 1000
-          ) {
-            parsed.push({
-              currency_code: currency.code,
-              currency_name: currency.name,
-              unit: unit,
-              import_rate: importRate,
-              export_rate: exportRate,
-            });
-          }
-        }
+  if (tableStartIndex === -1) {
+    // Fallback: look for first currency
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].match(/^[A-Z]{3}\s/)) {
+        tableStartIndex = i;
         break;
       }
     }
-
-    if (parsed.length >= 15 && line.match(/Note|Total|END|Page/i)) break;
   }
 
+  // Parse each line starting from table
+  for (let i = Math.max(0, tableStartIndex); i < lines.length; i++) {
+    const line = lines[i];
+
+    // Check if this line contains a currency code
+    for (const currency of currencies) {
+      // Skip if already parsed
+      if (seenCurrencies.has(currency.code)) continue;
+
+      // Match pattern: CODE Name Unit ImportRate ExportRate
+      // Example: "AED UAE Dirham 1.0 25.4 23.9"
+      const pattern = new RegExp(
+        `^${currency.code}\\s+${currency.name.replace(/\s+/g, "\\s+")}\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)`,
+        "i"
+      );
+
+      const match = line.match(pattern);
+
+      if (match) {
+        const unit = parseFloat(match[1]);
+        const importRate = parseFloat(match[2]);
+        const exportRate = parseFloat(match[3]);
+
+        // Validate rates
+        if (
+          !isNaN(unit) &&
+          !isNaN(importRate) &&
+          !isNaN(exportRate) &&
+          importRate > 0 &&
+          exportRate > 0 &&
+          importRate < 10000 &&
+          exportRate < 10000
+        ) {
+          parsed.push({
+            currency_code: currency.code,
+            currency_name: currency.name,
+            unit: currency.unit || unit,
+            import_rate: importRate,
+            export_rate: exportRate,
+          });
+
+          seenCurrencies.add(currency.code);
+          break;
+        }
+      }
+    }
+  }
+
+  // Sort by currency code
   return parsed.sort((a, b) => a.currency_code.localeCompare(b.currency_code));
-};
-
-const parseCurrencyRatesAlternative = (lines) => {
-  // Alternative parsing logic (same as your original)
-  return parseCurrencyRatesImproved(lines);
-};
-
-const extractRateNumbers = (line) => {
-  const numberMatches = line.match(/\b\d+\.\d{2}\b/g) || [];
-
-  if (numberMatches.length === 0) {
-    const intMatches = line.match(/\b\d{2,3}\b/g) || [];
-    return intMatches.map(Number).filter((num) => num > 1 && num < 1000);
-  }
-
-  return numberMatches.map(Number).filter((num) => num > 0.1 && num < 1000);
 };
 
 // ====== Main Scraper Function ======
@@ -443,7 +444,6 @@ export const scrapeAndSaveCurrencyRates = async () => {
     results.errors.push({ general: e.message });
   } finally {
     await browser.close();
-    // Remove temp folder and any remaining PDFs
     await removeDirIfExists(TEMP_DIR);
   }
 
