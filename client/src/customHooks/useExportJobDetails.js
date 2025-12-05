@@ -873,7 +873,7 @@ freightInsuranceCharges: {
         };
 
         const response = await axios.put(
-          `${import.meta.env.VITE_API_STRING}/export-jobs/${params.year}/${
+          `${import.meta.env.VITE_API_STRING}/export-jobs/${
             params.job_no
           }`,
           syncedValues,
