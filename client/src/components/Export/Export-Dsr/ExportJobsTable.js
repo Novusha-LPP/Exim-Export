@@ -207,7 +207,7 @@ const ExportJobsTable = () => {
     const fetchJobs = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/exports`, {
+        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/export-jobs/api/exports`, {
           params: {
             status: activeTab,
             search: searchQuery,
