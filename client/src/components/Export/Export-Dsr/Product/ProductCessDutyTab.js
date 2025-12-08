@@ -1,7 +1,7 @@
 import React from "react";
 import { styles as baseStyles } from "./commonStyles";
 import { unitCodes } from "../../../../utils/masterList";
-
+import { toUpperVal } from "./commonStyles.js";
 const dutyRows = [
   { key: "exportDuty", label: "Export Duty" },
   { key: "cess", label: "Cess" },
@@ -330,7 +330,9 @@ const ProductCessDutyTab = ({ formik, idx = 0 }) => {
                   boxSizing: "border-box",
                 }}
                 value={cessExpDuty[`${r.key}Desc`] || ""}
-                onChange={(e) => setCess(`${r.key}Desc`, e.target.value)}
+                onChange={(e) =>
+                  setCess(`${r.key}Desc`, toUpperVals(e.target.value))
+                }
               />
             </div>
           </div>
@@ -352,7 +354,7 @@ const ProductCessDutyTab = ({ formik, idx = 0 }) => {
             type="text"
             style={{ ...styles.inputText, width: 120 }}
             value={cessExpDuty.cessUnit || ""}
-            onChange={(e) => setCess("cessUnit", e.target.value)}
+            onChange={(e) => setCess("cessUnit", toUpperVal(e.target.value))}
           />
         </div>
       </div>
@@ -375,7 +377,9 @@ const ProductCessDutyTab = ({ formik, idx = 0 }) => {
             <input
               style={styles.inputText}
               value={cenvat.certificateNumber || ""}
-              onChange={(e) => setCenvat("certificateNumber", e.target.value)}
+              onChange={(e) =>
+                setCenvat("certificateNumber", toUpperVal(e.target.value))
+              }
             />
           </div>
           <div style={styles.fieldBlock}>
@@ -384,7 +388,7 @@ const ProductCessDutyTab = ({ formik, idx = 0 }) => {
               type="date"
               style={styles.inputText}
               value={cenvat.date || ""}
-              onChange={(e) => setCenvat("date", e.target.value)}
+              onChange={(e) => setCenvat("date", toUpperVal(e.target.value))}
             />
           </div>
           <div style={styles.fieldBlock}>
@@ -401,7 +405,9 @@ const ProductCessDutyTab = ({ formik, idx = 0 }) => {
             <input
               style={styles.inputText}
               value={cenvat.cexOfficeCode || ""}
-              onChange={(e) => setCenvat("cexOfficeCode", e.target.value)}
+              onChange={(e) =>
+                setCenvat("cexOfficeCode", toUpperVal(e.target.value))
+              }
             />
           </div>
           <div style={styles.fieldBlock}>
@@ -409,7 +415,9 @@ const ProductCessDutyTab = ({ formik, idx = 0 }) => {
             <input
               style={styles.inputText}
               value={cenvat.assesseeCode || ""}
-              onChange={(e) => setCenvat("assesseeCode", e.target.value)}
+              onChange={(e) =>
+                setCenvat("assesseeCode", toUpperVal(e.target.value))
+              }
             />
           </div>
         </div>

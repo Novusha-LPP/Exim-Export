@@ -1,5 +1,5 @@
 import React from "react";
-import { styles } from "./commonStyles";
+import { styles, toUpperVal } from "./commonStyles";
 
 const defaultAreRow = (idx) => ({
   serialNumber: idx + 1,
@@ -75,7 +75,9 @@ const ProductAREDetailsTab = ({ formik, idx = 0 }) => {
               <input
                 style={styles.input}
                 value={row.areNumber || ""}
-                onChange={(e) => handleAreChange(i, "areNumber", e.target.value)}
+                onChange={(e) =>
+                  handleAreChange(i, "areNumber", toUpperVal(e.target.value))
+                }
               />
             </div>
             <div>
@@ -83,7 +85,9 @@ const ProductAREDetailsTab = ({ formik, idx = 0 }) => {
                 type="date"
                 style={styles.input}
                 value={row.areDate ? row.areDate.substring(0, 10) : ""}
-                onChange={(e) => handleAreChange(i, "areDate", e.target.value)}
+                onChange={(e) =>
+                  handleAreChange(i, "areDate", toUpperVal(e.target.value))
+                }
               />
             </div>
             <div>
@@ -91,7 +95,11 @@ const ProductAREDetailsTab = ({ formik, idx = 0 }) => {
                 style={styles.input}
                 value={row.commissionerate || ""}
                 onChange={(e) =>
-                  handleAreChange(i, "commissionerate", e.target.value)
+                  handleAreChange(
+                    i,
+                    "commissionerate",
+                    toUpperVal(e.target.value)
+                  )
                 }
               />
             </div>

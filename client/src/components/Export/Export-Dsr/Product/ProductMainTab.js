@@ -1,9 +1,35 @@
-// ProductMainTab.jsx
-import React, { useRef } from "react";
+// ProductMainTab.jsx - COMPLETE PRODUCTION-READY VERSION
+import React, { useRef, useState, useCallback } from "react";
+import { unitCodes } from "../../../../utils/masterList";
 
 function toUpper(val) {
   return (typeof val === "string" ? val : "").toUpperCase();
 }
+
+// Format helpers - ONLY format on blur, store raw strings during typing
+const formatQty = (v) => {
+  if (v === "" || v == null || v === 0) return "";
+  const num = Number(v);
+  return isNaN(num) ? "" : num.toFixed(3);
+};
+
+const formatSocQty = (v) => {
+  if (v === "" || v == null || v === 0) return "";
+  const num = Number(v);
+  return isNaN(num) ? "" : num.toFixed(5);
+};
+
+const formatUnitPrice = (v) => {
+  if (v === "" || v == null || v === 0) return "";
+  const num = Number(v);
+  return isNaN(num) ? "" : num.toFixed(4);
+};
+
+const formatAmount = (v) => {
+  if (v === "" || v == null || v === 0) return "";
+  const num = Number(v);
+  return isNaN(num) ? "" : num.toFixed(2);
+};
 
 const styles = {
   page: {
@@ -38,7 +64,7 @@ const styles = {
   tableHeaderRow: {
     display: "grid",
     gridTemplateColumns:
-      "0.5fr 2fr 1.1fr 0.9fr 0.9fr 1fr 0.8fr 1.1fr 0.7fr",
+      "0.5fr 2fr 1.1fr 0.9fr 0.8fr 0.9fr 0.9fr 0.8fr 1.1fr 0.9fr",
     gap: 6,
     fontSize: 11,
     fontWeight: 700,
@@ -50,7 +76,7 @@ const styles = {
   tableRow: {
     display: "grid",
     gridTemplateColumns:
-      "0.5fr 2fr 1.1fr 0.9fr 0.9fr 1fr 0.8fr 1.1fr 0.7fr",
+      "0.5fr 2fr 1.1fr 0.9fr 0.8fr 0.9fr 0.9fr 0.8fr 1.1fr 0.9fr",
     gap: 6,
     padding: "5px 8px",
     alignItems: "center",
@@ -71,7 +97,7 @@ const styles = {
     background: "#f7fafc",
     outline: "none",
     boxSizing: "border-box",
-    fontWeight: 700
+    fontWeight: 700,
   },
   textarea: {
     width: "100%",
@@ -83,8 +109,7 @@ const styles = {
     background: "#f7fafc",
     resize: "vertical",
     boxSizing: "border-box",
-        fontWeight: 700
-
+    fontWeight: 700,
   },
   smallButton: {
     padding: "3px 9px",
@@ -95,6 +120,7 @@ const styles = {
     color: "#ffffff",
     cursor: "pointer",
     fontWeight: 600,
+    marginRight: 6,
   },
   linkButton: {
     padding: "2px 7px",
@@ -109,37 +135,119 @@ const styles = {
 };
 
 const ProductMainTab = ({ formik }) => {
-  const saveTimeoutRef = useRef(null);
   const products = formik.values.products || [];
+  const inputRefs = useRef({});
 
-  const handleProductFieldChange = (idx, field, value) => {
-    const updated = [...products];
-    updated[idx] = { ...updated[idx], [field]: value };
-    formik.setFieldValue("products", updated);
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-  };
+  const setProducts = useCallback(
+    (updated) => {
+      formik.setFieldValue("products", updated);
+    },
+    [formik]
+  );
 
-  const addNewProduct = () => {
+  const recalcAmount = useCallback((prod) => {
+    const qty = Number(prod.quantity);
+    const rate = Number(prod.unitPrice);
+    const per = Number(prod.per);
+    return qty * rate * per;
+  }, []);
+
+  const handleProductFieldChange = useCallback(
+    (idx, field, rawValue, { autoRecalc = false } = {}) => {
+      const updated = [...products];
+      const current = { ...updated[idx] };
+
+      // Store RAW STRING - no formatting during typing
+      current[field] = rawValue;
+
+      // Auto-calculate amount (skip if editing amount manually)
+      if (autoRecalc && field !== "amount") {
+        const calculated = recalcAmount(current);
+        if (!isNaN(calculated)) {
+          current.amount = String(calculated);
+        }
+      }
+
+      updated[idx] = current;
+      setProducts(updated);
+    },
+    [products, setProducts, recalcAmount]
+  );
+
+  const handleBlur = useCallback(
+    (idx, field) => {
+      const updated = [...products];
+      const current = { ...updated[idx] };
+      let value = current[field];
+
+      // Format ONLY on blur
+      switch (field) {
+        case "quantity":
+          current[field] = formatQty(value);
+          break;
+        case "socQuantity":
+          current[field] = formatSocQty(value);
+          break;
+        case "unitPrice":
+          current[field] = formatUnitPrice(value);
+          break;
+        case "amount":
+          current[field] = formatAmount(value);
+          break;
+        case "per":
+          const num = Number(value);
+          current[field] = isNaN(num) ? value : String(num);
+          break;
+        default:
+          break;
+      }
+
+      setProducts(updated);
+    },
+    [products, setProducts]
+  );
+
+  const addNewProduct = useCallback(() => {
     const next = [...products];
     next.push({
       serialNumber: next.length + 1,
       description: "",
       ritc: "",
-      quantity: 0,
-      socQuantity: 0,
-      unitPrice: 0,
-      per: "",
-      amount: 0,
+      quantity: "",
+      socQuantity: "",
+      unitPrice: "",
+      per: "1",
+      amount: "",
+      qtyUnit: "",
+      priceUnit: "",
     });
-    formik.setFieldValue("products", next);
-  };
+    setProducts(next);
+  }, [products, setProducts]);
 
-  const deleteProduct = (idx) => {
-    const next = products
-      .filter((_, i) => i !== idx)
-      .map((p, i) => ({ ...p, serialNumber: i + 1 }));
-    formik.setFieldValue("products", next);
-  };
+  const deleteProduct = useCallback(
+    (idx) => {
+      const next = products
+        .filter((_, i) => i !== idx)
+        .map((p, i) => ({ ...p, serialNumber: i + 1 }));
+      setProducts(next);
+    },
+    [products, setProducts]
+  );
+
+  const copyProduct = useCallback(
+    (idx) => {
+      const next = [...products];
+      const source = next[idx] || {};
+      const clone = { ...source };
+      next.splice(idx + 1, 0, clone);
+      const resequenced = next.map((p, i) => ({
+        ...p,
+        serialNumber: i + 1,
+      }));
+      setProducts(resequenced);
+    },
+    [products, setProducts]
+  );
 
   return (
     <div style={styles.page}>
@@ -152,6 +260,7 @@ const ProductMainTab = ({ formik }) => {
             <div style={styles.headerCell}>Description</div>
             <div style={styles.headerCell}>RITC</div>
             <div style={styles.headerCell}>Quantity</div>
+            <div style={styles.headerCell}>Qty Unit</div>
             <div style={styles.headerCell}>SOC Qty</div>
             <div style={styles.headerCell}>Unit Price</div>
             <div style={styles.headerCell}>Per</div>
@@ -161,19 +270,26 @@ const ProductMainTab = ({ formik }) => {
 
           {products.map((prod, idx) => (
             <div key={idx} style={styles.tableRow}>
+              {/* Sr No */}
               <div>{prod.serialNumber || idx + 1}</div>
 
+              {/* Description */}
               <div>
                 <textarea
                   style={styles.textarea}
                   rows={2}
                   value={prod.description || ""}
                   onChange={(e) =>
-                    handleProductFieldChange(idx, "description", e.target.value)
+                    handleProductFieldChange(
+                      idx,
+                      "description",
+                      toUpper(e.target.value)
+                    )
                   }
                 />
               </div>
 
+              {/* RITC */}
               <div>
                 <input
                   style={styles.input}
@@ -188,81 +304,130 @@ const ProductMainTab = ({ formik }) => {
                 />
               </div>
 
+              {/* Quantity - RAW STRING DURING TYPING */}
               <div>
                 <input
-                  type="number"
+                  ref={(el) => {
+                    inputRefs.current[`${idx}-quantity`] = el;
+                  }}
+                  type="text"
                   style={styles.input}
-                  value={prod.quantity || 0}
-                  onChange={(e) =>
-                    handleProductFieldChange(
-                      idx,
-                      "quantity",
-                      Number(e.target.value) || 0
-                    )
-                  }
+                  value={prod.quantity || ""}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d.-]/g, "");
+                    handleProductFieldChange(idx, "quantity", value, {
+                      autoRecalc: true,
+                    });
+                  }}
+                  onBlur={() => handleBlur(idx, "quantity")}
+                  placeholder="0.000"
                 />
               </div>
 
+              {/* Qty Unit */}
+              <div>
+                <select
+                  style={styles.input}
+                  value={prod.qtyUnit || ""}
+                  onChange={(e) =>
+                    handleProductFieldChange(idx, "qtyUnit", e.target.value)
+                  }
+                >
+                  <option value="">Unit</option>
+                  {unitCodes &&
+                    unitCodes.map((unit) => (
+                      <option key={unit.code || unit} value={unit.code || unit}>
+                        {unit.code || unit}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* SOC Qty - RAW STRING DURING TYPING */}
               <div>
                 <input
-                  type="number"
+                  ref={(el) => {
+                    inputRefs.current[`${idx}-socQuantity`] = el;
+                  }}
+                  type="text"
                   style={styles.input}
-                  value={prod.socQuantity || 0}
-                  onChange={(e) =>
-                    handleProductFieldChange(
-                      idx,
-                      "socQuantity",
-                      Number(e.target.value) || 0
-                    )
-                  }
+                  value={prod.socQuantity || ""}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d.-]/g, "");
+                    handleProductFieldChange(idx, "socQuantity", value);
+                  }}
+                  onBlur={() => handleBlur(idx, "socQuantity")}
+                  placeholder="0.00000"
                 />
               </div>
 
+              {/* Unit Price - RAW STRING DURING TYPING */}
               <div>
                 <input
-                  type="number"
+                  ref={(el) => {
+                    inputRefs.current[`${idx}-unitPrice`] = el;
+                  }}
+                  type="text"
                   style={styles.input}
-                  value={prod.unitPrice || 0}
-                  onChange={(e) =>
-                    handleProductFieldChange(
-                      idx,
-                      "unitPrice",
-                      Number(e.target.value) || 0
-                    )
-                  }
+                  value={prod.unitPrice || ""}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d.-]/g, "");
+                    handleProductFieldChange(idx, "unitPrice", value, {
+                      autoRecalc: true,
+                    });
+                  }}
+                  onBlur={() => handleBlur(idx, "unitPrice")}
+                  placeholder="0.0000"
                 />
               </div>
 
+              {/* Per - RAW STRING DURING TYPING */}
               <div>
                 <input
+                  ref={(el) => {
+                    inputRefs.current[`${idx}-per`] = el;
+                  }}
+                  type="text"
                   style={styles.input}
-                  value={toUpper(prod.per || "")}
-                  onChange={(e) =>
-                    handleProductFieldChange(
-                      idx,
-                      "per",
-                      toUpper(e.target.value)
-                    )
-                  }
+                  value={prod.per || ""}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d.-]/g, "");
+                    handleProductFieldChange(idx, "per", value, {
+                      autoRecalc: true,
+                    });
+                  }}
+                  onBlur={() => handleBlur(idx, "per")}
+                  placeholder="1"
                 />
               </div>
 
+              {/* Amount - RAW STRING DURING TYPING */}
               <div>
                 <input
-                  type="number"
+                  ref={(el) => {
+                    inputRefs.current[`${idx}-amount`] = el;
+                  }}
+                  type="text"
                   style={styles.input}
-                  value={prod.amount || 0}
-                  onChange={(e) =>
-                    handleProductFieldChange(
-                      idx,
-                      "amount",
-                      Number(e.target.value) || 0
-                    )
-                  }
+                  value={prod.amount || ""}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d.-]/g, "");
+                    handleProductFieldChange(idx, "amount", value);
+                  }}
+                  onBlur={() => handleBlur(idx, "amount")}
+                  placeholder="0.00"
                 />
               </div>
 
+              {/* Action: Copy + Delete */}
               <div>
+                <button
+                  type="button"
+                  style={styles.smallButton}
+                  onClick={() => copyProduct(idx)}
+                >
+                  Copy
+                </button>
                 <button
                   type="button"
                   style={styles.linkButton}

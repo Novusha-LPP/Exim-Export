@@ -1,7 +1,7 @@
 import React from "react";
 import { styles } from "./commonStyles";
 import { unitCodes } from "../../../../utils/masterList";
-
+import { toUpperVal } from "./commonStyles.js";
 const ProductReExportTab = ({ formik, idx = 0 }) => {
   const product = formik.values.products?.[idx] || {};
   const reExport = product.reExport || {};
@@ -50,8 +50,10 @@ const ProductReExportTab = ({ formik, idx = 0 }) => {
               <span style={styles.label}>B/E Number</span>
               <input
                 style={styles.input}
-                value={reExport.beNumber || ""}
-                onChange={(e) => handleChange("beNumber", e.target.value)}
+                value={toUpperVal(reExport.beNumber || "")}
+                onChange={(e) =>
+                  handleChange("beNumber", toUpperVal(e.target.value))
+                }
                 disabled={!isEnabled}
               />
             </div>
@@ -97,8 +99,10 @@ const ProductReExportTab = ({ formik, idx = 0 }) => {
               <span style={styles.label}>Import Port Code</span>
               <input
                 style={styles.input}
-                value={reExport.importPortCode || ""}
-                onChange={(e) => handleChange("importPortCode", e.target.value)}
+                value={toUpperVal(reExport.importPortCode || "")}
+                onChange={(e) =>
+                  handleChange("importPortCode", toUpperVal(e.target.value))
+                }
                 disabled={!isEnabled}
               />
             </div>
@@ -120,9 +124,9 @@ const ProductReExportTab = ({ formik, idx = 0 }) => {
             <span style={styles.label}>B/E Item Desc.</span>
             <textarea
               style={{ ...styles.textarea, height: 60 }}
-              value={reExport.beItemDescription || ""}
+              value={toUpperVal(reExport.beItemDescription || "")}
               onChange={(e) =>
-                handleChange("beItemDescription", e.target.value)
+                handleChange("beItemDescription", toUpperVal(e.target.value))
               }
               disabled={!isEnabled}
             />
@@ -153,11 +157,12 @@ const ProductReExportTab = ({ formik, idx = 0 }) => {
                 disabled={!isEnabled}
               >
                 <option value="">Select Unit</option>
-                {unitCodes.map((unit) => (
-                  <option key={unit.code} value={unit.code}>
-                    {unit.code} - {unit.name}
-                  </option>
-                ))}
+                {unitCodes &&
+                  unitCodes.map((unit) => (
+                    <option key={unit.code || unit} value={unit.code || unit}>
+                      {unit.code || unit}
+                    </option>
+                  ))}
               </select>
             </div>
           </div>
@@ -242,8 +247,10 @@ const ProductReExportTab = ({ formik, idx = 0 }) => {
             <span style={styles.label}>Technical Details</span>
             <input
               style={styles.input}
-              value={reExport.technicalDetails || ""}
-              onChange={(e) => handleChange("technicalDetails", e.target.value)}
+              value={toUpperVal(reExport.technicalDetails || "")}
+              onChange={(e) =>
+                handleChange("technicalDetails", toUpperVal(e.target.value))
+              }
               disabled={!isEnabled}
             />
           </div>

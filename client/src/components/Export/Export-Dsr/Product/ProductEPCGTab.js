@@ -1,10 +1,10 @@
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import { unitCodes } from "../../../../utils/masterList";
+import { toUpperVal } from "./commonStyles.js";
 
 // IMPORTANT: import the same `styles` you use in ProductGeneralTab,
 // or copy the styles object from paste.txt into a shared file and import here.
 const styles = {
-  // ... (Keep your existing styles from the previous file)
   page: {
     fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
     fontSize: 13,
@@ -460,7 +460,7 @@ const ProductEPCGTab = ({ formik, productIndex }) => {
             type="text"
             value={epcgDetails.itemSnoPartE || ""}
             onChange={(e) =>
-              handleEpcgFieldChange("itemSnoPartE", e.target.value)
+              handleEpcgFieldChange("itemSnoPartE", toUpperVal(e.target.value))
             }
             placeholder="ITEM SERIAL NUMBER"
           />
@@ -511,7 +511,11 @@ const ProductEPCGTab = ({ formik, productIndex }) => {
                     value={item.licRefNo || ""}
                     placeholder="LIC REF NO"
                     onChange={(e) =>
-                      handleRegItemChange(idx, "licRefNo", e.target.value)
+                      handleRegItemChange(
+                        idx,
+                        "licRefNo",
+                        toUpperVal(e.target.value)
+                      )
                     }
                   />
                 </td>

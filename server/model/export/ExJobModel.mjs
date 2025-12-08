@@ -149,8 +149,10 @@ const productDetailsSchema = new Schema(
     description: { type: String, maxlength: 500 },
     ritc: { type: String, ref: "TariffHead" },
     quantity: { type: String },
+    qtyUnit:{type:String},
     socQuantity: { type: String, default: "0" },
     unitPrice: { type: String },
+        priceUnit:{type:String},
     per: { type: String, ref: "UQC" },
     amount: { type: String },
 

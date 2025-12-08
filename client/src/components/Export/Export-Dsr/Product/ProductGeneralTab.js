@@ -1,5 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { eximCodes, states, PTA_FTA_CODES, unitCodes } from "../../../../utils/masterList";
+import {
+  eximCodes,
+  states,
+  PTA_FTA_CODES,
+  unitCodes,
+} from "../../../../utils/masterList";
+import { toUpperVal } from "./commonStyles.js";
 
 const apiBase = import.meta.env.VITE_API_STRING;
 
@@ -308,7 +314,12 @@ function UnitDropdownField({
 
 /* ---------- Dropdown hooks (unchanged behaviour) ---------- */
 
-function useEximCodeDropdown(fieldName, productIndex, formik, handleProductChange) {
+function useEximCodeDropdown(
+  fieldName,
+  productIndex,
+  formik,
+  handleProductChange
+) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
@@ -336,7 +347,9 @@ function useEximCodeDropdown(fieldName, productIndex, formik, handleProductChang
   const filtered = eximCodes
     .filter((opt) => {
       const code = toUpper(typeof opt === "string" ? opt : opt.code || "");
-      const desc = toUpper(typeof opt === "string" ? "" : opt.description || "");
+      const desc = toUpper(
+        typeof opt === "string" ? "" : opt.description || ""
+      );
       const q = toUpper(query);
       const formatted = desc ? `${code} - ${desc}` : code;
       return code.includes(q) || desc.includes(q) || formatted.includes(q);
@@ -386,7 +399,12 @@ function useEximCodeDropdown(fieldName, productIndex, formik, handleProductChang
   };
 }
 
-function useStateDropdown(fieldName, productIndex, formik, handleProductChange) {
+function useStateDropdown(
+  fieldName,
+  productIndex,
+  formik,
+  handleProductChange
+) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
@@ -443,7 +461,12 @@ function useStateDropdown(fieldName, productIndex, formik, handleProductChange) 
   };
 }
 
-function useDistrictApiDropdown(fieldName, productIndex, formik, handleProductChange) {
+function useDistrictApiDropdown(
+  fieldName,
+  productIndex,
+  formik,
+  handleProductChange
+) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [opts, setOpts] = useState([]);
@@ -555,7 +578,12 @@ function useDistrictApiDropdown(fieldName, productIndex, formik, handleProductCh
   };
 }
 
-function usePtaFtaDropdown(fieldName, productIndex, formik, handleProductChange) {
+function usePtaFtaDropdown(
+  fieldName,
+  productIndex,
+  formik,
+  handleProductChange
+) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
@@ -638,7 +666,12 @@ const EximCodeField = ({
   formik,
   handleProductChange,
 }) => {
-  const d = useEximCodeDropdown(fieldName, productIndex, formik, handleProductChange);
+  const d = useEximCodeDropdown(
+    fieldName,
+    productIndex,
+    formik,
+    handleProductChange
+  );
   return (
     <div style={styles.field} ref={d.wrapperRef}>
       <div style={styles.label}>{label}</div>
@@ -700,7 +733,12 @@ const DistrictApiField = ({
   formik,
   handleProductChange,
 }) => {
-  const d = useDistrictApiDropdown(fieldName, productIndex, formik, handleProductChange);
+  const d = useDistrictApiDropdown(
+    fieldName,
+    productIndex,
+    formik,
+    handleProductChange
+  );
   return (
     <div style={styles.field} ref={d.wrapperRef}>
       <div style={styles.label}>{label}</div>
@@ -755,7 +793,12 @@ const PtaFtaField = ({
   formik,
   handleProductChange,
 }) => {
-  const d = usePtaFtaDropdown(fieldName, productIndex, formik, handleProductChange);
+  const d = usePtaFtaDropdown(
+    fieldName,
+    productIndex,
+    formik,
+    handleProductChange
+  );
   return (
     <div style={styles.field} ref={d.wrapperRef}>
       <div style={styles.label}>{label}</div>
@@ -793,9 +836,7 @@ const PtaFtaField = ({
                 onMouseEnter={() => d.setActive(i)}
               >
                 {opt.code}{" "}
-                <span
-                  style={{ fontWeight: 400, fontSize: 11, color: "#555" }}
-                >
+                <span style={{ fontWeight: 400, fontSize: 11, color: "#555" }}>
                   {opt.description}
                 </span>
               </div>
@@ -809,8 +850,19 @@ const PtaFtaField = ({
 
 /* ---------- ProductRow component: all hooks per-product here ---------- */
 
-function ProductRow({ product, index, formik, handleProductChange, handleUnitChange }) {
-  const stateData = useStateDropdown("originState", index, formik, handleProductChange);
+function ProductRow({
+  product,
+  index,
+  formik,
+  handleProductChange,
+  handleUnitChange,
+}) {
+  const stateData = useStateDropdown(
+    "originState",
+    index,
+    formik,
+    handleProductChange
+  );
 
   return (
     <div style={styles.card}>
@@ -833,9 +885,13 @@ function ProductRow({ product, index, formik, handleProductChange, handleUnitCha
           <label style={styles.label}>NFEI Category</label>
           <input
             style={styles.input}
-            value={product.nfeiCategory || ""}
+            value={toUpperVal(product.nfeiCategory || "")}
             onChange={(e) =>
-              handleProductChange(index, "nfeiCategory", e.target.value)
+              handleProductChange(
+                index,
+                "nfeiCategory",
+                toUpperVal(e.target.value)
+              )
             }
           />
         </div>
@@ -1197,9 +1253,7 @@ function ProductRow({ product, index, formik, handleProductChange, handleUnitCha
             <input
               style={styles.input}
               type="number"
-              value={
-                product.igstCompensationCess?.compensationCessRate || 0
-              }
+              value={product.igstCompensationCess?.compensationCessRate || 0}
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1247,8 +1301,7 @@ function ProductRow({ product, index, formik, handleProductChange, handleUnitCha
               style={styles.input}
               type="number"
               value={
-                product.igstCompensationCess?.compensationCessAmountINR ||
-                0
+                product.igstCompensationCess?.compensationCessAmountINR || 0
               }
               onChange={(e) =>
                 handleProductChange(
@@ -1271,11 +1324,7 @@ function ProductRow({ product, index, formik, handleProductChange, handleUnitCha
             style={styles.select}
             value={product.rodtepInfo?.claim || "Yes"}
             onChange={(e) =>
-              handleProductChange(
-                index,
-                "rodtepInfo.claim",
-                e.target.value
-              )
+              handleProductChange(index, "rodtepInfo.claim", e.target.value)
             }
           >
             <option value="Yes">Yes</option>
@@ -1410,7 +1459,8 @@ const ProductGeneralTab = ({ formik }) => {
       const updatedProducts = [...formik.values.products];
       if (field.includes(".")) {
         const [parent, child] = field.split(".");
-        if (!updatedProducts[index][parent]) updatedProducts[index][parent] = {};
+        if (!updatedProducts[index][parent])
+          updatedProducts[index][parent] = {};
         updatedProducts[index][parent] = {
           ...updatedProducts[index][parent],
           [child]: value,
@@ -1529,11 +1579,14 @@ const ProductGeneralTab = ({ formik }) => {
                 <td style={styles.td}>
                   <textarea
                     style={styles.textarea}
-                    value={product.description || ""}
+                    value={toUpperVal(product.description || "")}
                     onChange={(e) =>
-                      handleProductChange(index, "description", e.target.value)
+                      handleProductChange(
+                        index,
+                        "description",
+                        toUpperVal(e.target.value)
+                      )
                     }
-                    rows={2}
                   />
                 </td>
                 <td style={styles.td}>
