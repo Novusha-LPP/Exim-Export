@@ -1,5 +1,7 @@
+// ProductTab.js - UPDATED TO USE selectedProductIndex
 import React, { useState, useMemo } from "react";
 import { Box, Tabs, Tab, Typography, Divider, Chip } from "@mui/material";
+
 import ProductMainTab from "./ProductMainTab";
 import ProductGeneralTab from "./ProductGeneralTab";
 import DrawbackTab from "./DrawbackTab";
@@ -10,10 +12,15 @@ import ProductOtherDetailsTab from "./ProductOtherDetailsTab";
 import ProductDEECTab from "./ProductDEECTab";
 import ProductEPCGTab from "./ProductEPCGTab";
 
-function ProductTabPanel(props) {
-  const { children, value, index, ...other } = props;
+function ProductTabPanel({ children, value, index, ...other }) {
   return (
-    <div role="tabpanel" hidden={value !== index} {...other}>
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`product-tabpanel-${index}`}
+      aria-labelledby={`product-tab-${index}`}
+      {...other}
+    >
       {value === index && <Box>{children}</Box>}
     </div>
   );
@@ -22,63 +29,59 @@ function ProductTabPanel(props) {
 // EXIM Code to Tab mapping
 const getTabsForEximCode = (eximCode) => {
   const code = eximCode?.toString();
-
   switch (code) {
-    case "03 - ADVANCE LICENCE": // DEEC
+    case "03": // ADVANCE LICENCE DEEC
       return [
         "Main",
         "General",
         "DEEC",
-        "Cess/Export Duty",
+        "CessExport Duty",
         "AreDetails",
         "Re-Export",
         "Other Details",
       ];
-
-    case "19 - DRAWBACK (DBK)": // Drawback
-    case "60 - DRAWBACK AND ROSCTL": // Drawback
+    case "19": // DRAWBACK DBK
+      return ["Drawback"];
+    case "60": // DRAWBACK AND ROSCTL
       return [
         "Main",
         "General",
         "Drawback",
-        "Cess/Export Duty",
+        "CessExport Duty",
         "AreDetails",
         "Re-Export",
         "Other Details",
       ];
-
-    case "43 - DRAWBACK AND ZERO DUTY PECG": // EPCG
-    case "61 - EPCG, DRAWBACK AND ROSCTL": // EPCG & Drawback
+    case "43": // DRAWBACK AND ZERO DUTY PECG EPCG
+    case "61": // EPCG, DRAWBACK AND ROSCTL EPCG Drawback
       return [
         "Main",
         "General",
         "EPCG",
         "Drawback",
-        "Cess/Export Duty",
+        "CessExport Duty",
         "AreDetails",
         "Re-Export",
         "Other Details",
       ];
-
-    case "50 - EPCG AND ADVANCE LICENSE": // DEEC & EPCG
+    case "50": // EPCG AND ADVANCE LICENSE DEEC EPCG
       return [
         "Main",
         "General",
         "DEEC",
         "EPCG",
-        "Cess/Export Duty",
+        "CessExport Duty",
         "AreDetails",
         "Re-Export",
         "Other Details",
       ];
-
-    case "21 - EQU/EPZ/SEZ/EHTP/STP": // Nothing special
-    case "99 - NFEI": // NFEI
+    case "21": // EQUEPZSEZEHTPSTP
+    case "99": // NFEI
     default:
       return [
         "Main",
         "General",
-        "Cess/Export Duty",
+        "CessExport Duty",
         "AreDetails",
         "Re-Export",
         "Other Details",
@@ -88,13 +91,13 @@ const getTabsForEximCode = (eximCode) => {
 
 const ProductTab = ({ formik, directories, params }) => {
   const [activeSubTab, setActiveSubTab] = useState(0);
-  const [selectedProductIndex, setSelectedProductIndex] = useState(0);
+  const [selectedProductIndex, setSelectedProductIndex] = useState(0); // Default to first product
 
-  // Get current product's EXIM code
+  // Get current selected product
   const currentProduct = formik.values.products?.[selectedProductIndex];
   const eximCode = currentProduct?.eximCode;
 
-  // Get tabs based on EXIM code
+  // Get tabs based on CURRENT SELECTED product's EXIM code
   const availableTabs = useMemo(() => getTabsForEximCode(eximCode), [eximCode]);
 
   const handleTabChange = (event, newValue) => {
@@ -107,39 +110,47 @@ const ProductTab = ({ formik, directories, params }) => {
         return (
           <ProductMainTab
             formik={formik}
-            directories={directories}
-            params={params}
+            selectedProductIndex={selectedProductIndex}
           />
         );
-
       case "General":
-        return <ProductGeneralTab formik={formik} />;
-
+        return (
+          <ProductGeneralTab
+            formik={formik}
+            selectedProductIndex={selectedProductIndex}
+          />
+        );
       case "Drawback":
-        return <DrawbackTab formik={formik} />;
-
-      case "Cess/Export Duty":
-        return <ProductCessDutyTab formik={formik} />;
-
+        return (
+          <DrawbackTab
+            formik={formik}
+            selectedProductIndex={selectedProductIndex}
+          />
+        );
+      case "CessExport Duty":
+        return (
+          <ProductCessDutyTab formik={formik} idx={selectedProductIndex} />
+        );
       case "AreDetails":
-        return <ProductAREDetailsTab formik={formik} />;
-
+        return (
+          <ProductAREDetailsTab formik={formik} idx={selectedProductIndex} />
+        );
       case "Re-Export":
-        return <ProductReExportTab formik={formik} />;
-
+        return (
+          <ProductReExportTab formik={formik} idx={selectedProductIndex} />
+        );
       case "Other Details":
-        return <ProductOtherDetailsTab formik={formik} />;
-
+        return (
+          <ProductOtherDetailsTab formik={formik} idx={selectedProductIndex} />
+        );
       case "DEEC":
         return (
           <ProductDEECTab formik={formik} productIndex={selectedProductIndex} />
         );
-
       case "EPCG":
         return (
           <ProductEPCGTab formik={formik} productIndex={selectedProductIndex} />
         );
-
       default:
         return <Typography>Tab content not implemented</Typography>;
     }
@@ -149,25 +160,22 @@ const ProductTab = ({ formik, directories, params }) => {
     <Box sx={{ p: 2 }}>
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
           mb: 2,
         }}
       >
         <Typography variant="h6" fontWeight="bold">
-          Product & Item Details
+          Product Item Details
         </Typography>
 
-        {/* Product Selector */}
-        {formik.values.products?.length > 1 && (
+        {/* Product Selector - Renders based on selectedProductIndex */}
+        {formik.values.products?.length > 0 && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="body2">Product:</Typography>
+            <Typography variant="body2">Product</Typography>
             <Box sx={{ display: "flex", gap: 0.5 }}>
               {formik.values.products.map((product, index) => (
                 <Chip
                   key={index}
-                  label={`${product.serialNumber}`}
+                  label={product.serialNumber || index + 1}
                   onClick={() => setSelectedProductIndex(index)}
                   color={selectedProductIndex === index ? "primary" : "default"}
                   variant={
@@ -179,17 +187,17 @@ const ProductTab = ({ formik, directories, params }) => {
             </Box>
           </Box>
         )}
-
-        {/* EXIM Code Indicator */}
-        {eximCode && (
-          <Chip
-            label={`EXIM: ${eximCode}`}
-            size="small"
-            color="secondary"
-            variant="outlined"
-          />
-        )}
       </Box>
+
+      {/* EXIM Code Indicator */}
+      {eximCode && (
+        <Chip
+          label={`EXIM: ${eximCode}`}
+          size="small"
+          color="secondary"
+          variant="outlined"
+        />
+      )}
 
       <Divider sx={{ mb: 2 }} />
 
@@ -201,8 +209,8 @@ const ProductTab = ({ formik, directories, params }) => {
         scrollButtons="auto"
         sx={{
           mb: 2,
-          "& .MuiTab-root": {
-            minWidth: 80,
+          ".MuiTab-root": {
+            minWidth: "80px",
             fontSize: "0.85rem",
             fontWeight: 500,
             textTransform: "none",
@@ -214,7 +222,7 @@ const ProductTab = ({ formik, directories, params }) => {
         ))}
       </Tabs>
 
-      {/* Dynamic Tab Content */}
+      {/* Dynamic Tab Content - PASSES selectedProductIndex to child tabs */}
       {availableTabs.map((tabName, index) => (
         <ProductTabPanel key={tabName} value={activeSubTab} index={index}>
           {renderTabContent(tabName)}

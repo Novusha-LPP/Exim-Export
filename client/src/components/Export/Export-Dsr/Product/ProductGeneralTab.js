@@ -1453,7 +1453,9 @@ function ProductRow({
 
 /* ---------- MAIN COMPONENT ---------- */
 
-const ProductGeneralTab = ({ formik }) => {
+const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
+  const products = formik.values.products || [];
+  const product = products[selectedProductIndex]; // single product
   const handleProductChange = useCallback(
     (index, field, value) => {
       const updatedProducts = [...formik.values.products];
@@ -1572,105 +1574,120 @@ const ProductGeneralTab = ({ formik }) => {
               ))}
             </tr>
           </thead>
-          <tbody>
-            {formik.values.products?.map((product, index) => (
-              <tr key={product._id || index}>
-                <td style={styles.td}>{product.serialNumber}</td>
-                <td style={styles.td}>
-                  <textarea
-                    style={styles.textarea}
-                    value={toUpperVal(product.description || "")}
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "description",
-                        toUpperVal(e.target.value)
-                      )
-                    }
-                  />
-                </td>
-                <td style={styles.td}>
-                  <input
-                    style={styles.input}
-                    value={product.ritc || ""}
-                    onChange={(e) =>
-                      handleProductChange(index, "ritc", e.target.value)
-                    }
-                  />
-                </td>
-                <td style={styles.td}>
-                  <input
-                    style={styles.input}
-                    type="number"
-                    value={product.quantity || 0}
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "quantity",
-                        parseFloat(e.target.value) || 0
-                      )
-                    }
-                  />
-                </td>
-                <td style={styles.td}>
-                  <input
-                    style={styles.input}
-                    type="number"
-                    value={product.unitPrice || 0}
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "unitPrice",
-                        parseFloat(e.target.value) || 0
-                      )
-                    }
-                  />
-                </td>
-                <td style={styles.td}>
-                  <input
-                    style={styles.input}
-                    value={product.per || ""}
-                    onChange={(e) =>
-                      handleProductChange(index, "per", e.target.value)
-                    }
-                  />
-                </td>
-                <td style={styles.td}>
-                  <input
-                    style={styles.input}
-                    type="number"
-                    value={product.amount || 0}
-                    onChange={(e) =>
-                      handleProductChange(
-                        index,
-                        "amount",
-                        parseFloat(e.target.value) || 0
-                      )
-                    }
-                  />
-                </td>
-                <td style={styles.td}>
-                  <button
-                    onClick={() => removeProduct(index)}
-                    disabled={formik.values.products.length <= 1}
-                    style={{
-                      padding: "4px 8px",
-                      background: "#ef4444",
-                      color: "white",
-                      border: "none",
-                      borderRadius: 3,
-                      cursor:
-                        formik.values.products.length <= 1
-                          ? "not-allowed"
-                          : "pointer",
-                    }}
-                  >
-                    ✕
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+
+<tbody>
+  {(() => {
+    const products = formik.values.products || [];
+    const product = products[selectedProductIndex] || null;
+
+    if (!product) return null;
+
+    const index = selectedProductIndex;
+
+    return (
+      <tr key={product._id || index}>
+        <td style={styles.td}>{product.serialNumber}</td>
+
+        <td style={styles.td}>
+          <textarea
+            style={styles.textarea}
+            value={toUpperVal(product.description || "")}
+            onChange={(e) =>
+              handleProductChange(
+                index,
+                "description",
+                toUpperVal(e.target.value)
+              )
+            }
+          />
+        </td>
+
+        <td style={styles.td}>
+          <input
+            style={styles.input}
+            value={product.ritc || ""}
+            onChange={(e) =>
+              handleProductChange(index, "ritc", toUpperVal(e.target.value))
+            }
+          />
+        </td>
+
+        <td style={styles.td}>
+          <input
+            style={styles.input}
+            type="number"
+            value={product.quantity || 0}
+            onChange={(e) =>
+              handleProductChange(
+                index,
+                "quantity",
+                parseFloat(e.target.value) || 0
+              )
+            }
+          />
+        </td>
+
+        <td style={styles.td}>
+          <input
+            style={styles.input}
+            type="number"
+            value={product.unitPrice || 0}
+            onChange={(e) =>
+              handleProductChange(
+                index,
+                "unitPrice",
+                parseFloat(e.target.value) || 0
+              )
+            }
+          />
+        </td>
+
+        <td style={styles.td}>
+          <input
+            style={styles.input}
+            value={product.per || ""}
+            onChange={(e) =>
+              handleProductChange(index, "per", e.target.value)
+            }
+          />
+        </td>
+
+        <td style={styles.td}>
+          <input
+            style={styles.input}
+            type="number"
+            value={product.amount || 0}
+            onChange={(e) =>
+              handleProductChange(
+                index,
+                "amount",
+                parseFloat(e.target.value) || 0
+              )
+            }
+          />
+        </td>
+
+        <td style={styles.td}>
+          <button
+            onClick={() => removeProduct(index)}
+            disabled={products.length <= 1}
+            style={{
+              padding: "4px 8px",
+              background: "#ef4444",
+              color: "white",
+              border: "none",
+              borderRadius: 3,
+              cursor: products.length <= 1 ? "not-allowed" : "pointer",
+            }}
+          >
+            ✕
+          </button>
+        </td>
+      </tr>
+    );
+  })()}
+</tbody>
+
         </table>
       </div>
 
@@ -1679,16 +1696,17 @@ const ProductGeneralTab = ({ formik }) => {
       </button>
 
       {/* Detailed cards: each row is a separate component with its own hooks */}
-      {formik.values.products?.map((product, index) => (
+      {/* Detailed card for selected product only */}
+      {product && (
         <ProductRow
-          key={product._id || index}
+          key={product.id || selectedProductIndex}
           product={product}
-          index={index}
+          index={selectedProductIndex}
           formik={formik}
           handleProductChange={handleProductChange}
           handleUnitChange={handleUnitChange}
         />
-      ))}
+      )}
     </div>
   );
 };

@@ -6,7 +6,8 @@ import { format, parseISO, isValid } from "date-fns";
 // --- Clean Enterprise Styles ---
 const s = {
   wrapper: {
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+    fontFamily:
+      "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
     backgroundColor: "#ffffff",
     padding: "10px 20px 20px 20px",
     minHeight: "100vh",
@@ -27,7 +28,7 @@ const s = {
     color: "#111",
     margin: "0",
   },
-  
+
   // Tabs
   tabContainer: {
     display: "flex",
@@ -72,6 +73,7 @@ const s = {
     gap: "10px",
     alignItems: "center",
     marginBottom: "10px",
+    flexWrap: "wrap",
   },
   input: {
     height: "30px",
@@ -92,8 +94,9 @@ const s = {
     backgroundColor: "#fff",
     color: "#333",
     cursor: "pointer",
+    minWidth: "150px",
   },
-  
+
   // Table
   tableContainer: {
     overflowX: "auto",
@@ -130,7 +133,7 @@ const s = {
     cursor: "pointer",
     transition: "background 0.1s",
   },
-  
+
   // Chips
   chip: {
     padding: "2px 6px",
@@ -141,7 +144,7 @@ const s = {
     backgroundColor: "#fff",
     display: "inline-block",
   },
-  
+
   // Pagination Footer
   footer: {
     display: "flex",
@@ -168,9 +171,14 @@ const s = {
     cursor: "not-allowed",
     backgroundColor: "#f9fafb",
   },
-  
+
   // Loading
-  message: { padding: "40px", textAlign: "center", color: "#9ca3af", fontStyle: "italic" }
+  message: {
+    padding: "40px",
+    textAlign: "center",
+    color: "#9ca3af",
+    fontStyle: "italic",
+  },
 };
 
 // Helper
@@ -179,48 +187,66 @@ const safeDate = (val) => {
   try {
     const date = parseISO(val);
     return isValid(date) ? format(date, "dd/MM/yyyy") : "";
-  } catch (e) { return ""; }
+  } catch (e) {
+    return "";
+  }
 };
+
+// Branch Options
+const branchOptions = [
+  { code: "", label: "All Branches" },
+  { code: "BRD", label: "BRD - BARODA" },
+  { code: "GIM", label: "GIM - GANDHIDHAM" },
+  { code: "HAZ", label: "HAZ - HAZIRA" },
+  { code: "AMD", label: "AMD - AHMEDABAD" },
+  { code: "COK", label: "COK - COCHIN" },
+];
 
 const ExportJobsTable = () => {
   const navigate = useNavigate();
-  
+
   // State
   const [activeTab, setActiveTab] = useState("pending");
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Pagination State
   const [page, setPage] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
-  const LIMIT = 20; // Fixed limit per request
+  const LIMIT = 20;
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedType, setSelectedMovementType] = useState("");
-
-
+  const [selectedBranch, setSelectedBranch] = useState("");
 
   // --- Fetch Jobs ---
   useEffect(() => {
     const fetchJobs = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/export-jobs/api/exports`, {
-          params: {
-            status: activeTab,
-            search: searchQuery,
-            year: selectedYear === "all" ? "" : selectedYear,
-            consignmentType: selectedType,
-            page: page,      // Current Page
-            limit: LIMIT,    // 30 records
-          },
-        });
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_STRING}/export-jobs/api/exports`,
+          {
+            params: {
+              status: activeTab,
+              search: searchQuery,
+              year: selectedYear === "all" ? "" : selectedYear,
+              consignmentType: selectedType,
+              branch: selectedBranch, // Added branch parameter
+              page: page,
+              limit: LIMIT,
+            },
+          }
+        );
         if (response.data.success) {
           setJobs(response.data.data.jobs || []);
-          // Assuming API returns total count for pagination calculation
-          setTotalRecords(response.data.data.total || response.data.data.pagination?.totalCount || 0);
+          setTotalRecords(
+            response.data.data.total ||
+              response.data.data.pagination?.totalCount ||
+              0
+          );
         }
       } catch (err) {
         console.error(err);
@@ -233,19 +259,26 @@ const ExportJobsTable = () => {
 
     const timer = setTimeout(fetchJobs, 300);
     return () => clearTimeout(timer);
-  }, [activeTab, searchQuery, selectedYear, selectedType, page]); // Refetch when page changes
+  }, [
+    activeTab,
+    searchQuery,
+    selectedYear,
+    selectedType,
+    selectedBranch,
+    page,
+  ]);
 
   // Reset page when tab/filters change
   useEffect(() => {
     setPage(1);
-  }, [activeTab, searchQuery, selectedYear, selectedType]);
+  }, [activeTab, searchQuery, selectedYear, selectedType, selectedBranch]);
 
   const handleView = (job) => {
-    const jobNo = job.job_no
-  if (jobNo) {
-    navigate(`job/${encodeURIComponent(jobNo)}`,  {
-      state: { fromJobList: true },
-    });
+    const jobNo = job.job_no;
+    if (jobNo) {
+      navigate(`job/${encodeURIComponent(jobNo)}`, {
+        state: { fromJobList: true },
+      });
     }
   };
 
@@ -254,7 +287,6 @@ const ExportJobsTable = () => {
   return (
     <div style={s.wrapper}>
       <div style={s.container}>
-        
         {/* Title */}
         <div style={s.headerRow}>
           <h1 style={s.pageTitle}>Export Jobs</h1>
@@ -262,46 +294,97 @@ const ExportJobsTable = () => {
 
         {/* Tabs */}
         <div style={s.tabContainer}>
-          <button 
-            style={activeTab === 'pending' ? {...s.tab, ...s.activeTab} : s.tab}
-            onClick={() => setActiveTab('pending')}
+          <button
+            style={
+              activeTab === "pending" ? { ...s.tab, ...s.activeTab } : s.tab
+            }
+            onClick={() => setActiveTab("pending")}
           >
-            Pending <span style={activeTab === 'pending' ? {...s.badge, ...s.activeBadge} : s.badge}></span>
+            Pending{" "}
+            <span
+              style={
+                activeTab === "pending"
+                  ? { ...s.badge, ...s.activeBadge }
+                  : s.badge
+              }
+            ></span>
           </button>
-          <button 
-            style={activeTab === 'completed' ? {...s.tab, ...s.activeTab} : s.tab}
-            onClick={() => setActiveTab('completed')}
+          <button
+            style={
+              activeTab === "completed" ? { ...s.tab, ...s.activeTab } : s.tab
+            }
+            onClick={() => setActiveTab("completed")}
           >
-            Completed <span style={activeTab === 'completed' ? {...s.badge, ...s.activeBadge} : s.badge}></span>
+            Completed{" "}
+            <span
+              style={
+                activeTab === "completed"
+                  ? { ...s.badge, ...s.activeBadge }
+                  : s.badge
+              }
+            ></span>
           </button>
-          <button 
-            style={activeTab === 'cancelled' ? {...s.tab, ...s.activeTab} : s.tab}
-            onClick={() => setActiveTab('cancelled')}
+          <button
+            style={
+              activeTab === "cancelled" ? { ...s.tab, ...s.activeTab } : s.tab
+            }
+            onClick={() => setActiveTab("cancelled")}
           >
-            Cancelled <span style={activeTab === 'cancelled' ? {...s.badge, ...s.activeBadge} : s.badge}></span>
+            Cancelled{" "}
+            <span
+              style={
+                activeTab === "cancelled"
+                  ? { ...s.badge, ...s.activeBadge }
+                  : s.badge
+              }
+            ></span>
           </button>
         </div>
 
         {/* Filters */}
         <div style={s.toolbar}>
-          <select style={s.select} value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
+          {/* Year Filter */}
+          <select
+            style={s.select}
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+          >
             <option value="">All Years</option>
             <option value="25-26">25-26</option>
             <option value="26-27">26-27</option>
           </select>
 
-          <select style={s.select} value={selectedType} onChange={e => setSelectedMovementType(e.target.value)}>
+          {/* Movement Type Filter */}
+          <select
+            style={s.select}
+            value={selectedType}
+            onChange={(e) => setSelectedMovementType(e.target.value)}
+          >
             <option value="">All Movement</option>
             <option value="FCL">FCL</option>
             <option value="LCL">LCL</option>
             <option value="AIR">Air Freight</option>
           </select>
 
-          <input 
+          {/* Branch Filter - NEW */}
+          <select
+            style={s.select}
+            value={selectedBranch}
+            onChange={(e) => setSelectedBranch(e.target.value)}
+          >
+            {branchOptions.map((branch) => (
+              <option key={branch.code} value={branch.code}>
+                {branch.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Search Input */}
+          <input
             style={s.input}
             placeholder="Search..."
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
@@ -310,11 +393,23 @@ const ExportJobsTable = () => {
           <table style={s.table}>
             <thead>
               <tr>
-                <th style={{...s.th, width: '40px', textAlign: 'center'}}>#</th>
-                <th style={{...s.th, width: '130px', position: 'sticky', left: 0, zIndex: 20}}>Job Number</th>
+                <th style={{ ...s.th, width: "40px", textAlign: "center" }}>
+                  #
+                </th>
+                <th
+                  style={{
+                    ...s.th,
+                    width: "130px",
+                    position: "sticky",
+                    left: 0,
+                    zIndex: 20,
+                  }}
+                >
+                  Job Number
+                </th>
                 <th style={s.th}>Exporter</th>
                 <th style={s.th}>Consignee</th>
-                <th style={{...s.th, width: '60px'}}>Type</th>
+                <th style={{ ...s.th, width: "60px" }}>Type</th>
                 <th style={s.th}>Date</th>
                 <th style={s.th}>POL</th>
                 <th style={s.th}>POD</th>
@@ -325,39 +420,81 @@ const ExportJobsTable = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="12" style={s.message}>Loading data...</td></tr>
+                <tr>
+                  <td colSpan="12" style={s.message}>
+                    Loading data...
+                  </td>
+                </tr>
               ) : jobs.length === 0 ? (
-                <tr><td colSpan="12" style={s.message}>No jobs found.</td></tr>
+                <tr>
+                  <td colSpan="12" style={s.message}>
+                    No jobs found.
+                  </td>
+                </tr>
               ) : (
                 jobs.map((job, idx) => (
-                  <tr 
-                    key={job._id || idx} 
+                  <tr
+                    key={job._id || idx}
                     style={s.rowHover}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0f7ff"}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.backgroundColor = "#f0f7ff")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.backgroundColor = "transparent")
+                    }
                     onClick={() => handleView(job)}
                   >
-                    <td style={{...s.td, textAlign: 'center', color: '#9ca3af'}}>{(page - 1) * LIMIT + idx + 1}</td>
-                    
+                    <td
+                      style={{ ...s.td, textAlign: "center", color: "#9ca3af" }}
+                    >
+                      {(page - 1) * LIMIT + idx + 1}
+                    </td>
+
                     {/* Sticky 1st Col */}
-                    <td style={{...s.td, fontWeight: '600', color: '#2563eb', position: 'sticky', left: 0, backgroundColor: 'inherit', zIndex: 5}}>
+                    <td
+                      style={{
+                        ...s.td,
+                        fontWeight: "600",
+                        color: "#2563eb",
+                        position: "sticky",
+                        left: 0,
+                        backgroundColor: "inherit",
+                        zIndex: 5,
+                      }}
+                    >
                       {job.job_no}
                     </td>
-                    
-                    <td style={{...s.td, maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis'}} title={job.exporter_name}>
+
+                    <td
+                      style={{
+                        ...s.td,
+                        maxWidth: "220px",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                      title={job.exporter_name}
+                    >
                       {job.exporter_name}
                     </td>
-                    <td style={{...s.td, maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis'}} title={job.consignee_name}>
-                      {job.consignee_name || '-'}
+                    <td
+                      style={{
+                        ...s.td,
+                        maxWidth: "220px",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                      title={job.consignee_name}
+                    >
+                      {job.consignee_name || "-"}
                     </td>
                     <td style={s.td}>
-                      <span style={s.chip}>{job.consignmentType || '-'}</span>
+                      <span style={s.chip}>{job.consignmentType || "-"}</span>
                     </td>
                     <td style={s.td}>{safeDate(job.job_date)}</td>
-                    <td style={s.td}>{job.port_of_origin || '-'}</td>
-                    <td style={s.td}>{job.port_of_discharge || '-'}</td>
-                    <td style={s.td}>{job.discharge_country || '-'}</td>
-                    <td style={s.td}>{job.sb_no || '-'}</td>
+                    <td style={s.td}>{job.port_of_origin || "-"}</td>
+                    <td style={s.td}>{job.port_of_discharge || "-"}</td>
+                    <td style={s.td}>{job.discharge_country || "-"}</td>
+                    <td style={s.td}>{job.sb_no || "-"}</td>
                     <td style={s.td}>{safeDate(job.sb_no)}</td>
                   </tr>
                 ))
@@ -372,26 +509,31 @@ const ExportJobsTable = () => {
             Showing {jobs.length} of {totalRecords} Records
           </div>
           <div>
-            <button 
-              style={page === 1 ? {...s.btnPage, ...s.btnDisabled} : s.btnPage}
-              onClick={() => setPage(p => Math.max(1, p - 1))}
+            <button
+              style={
+                page === 1 ? { ...s.btnPage, ...s.btnDisabled } : s.btnPage
+              }
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
             >
               Prev
             </button>
-            <span style={{margin: "0 10px"}}>
+            <span style={{ margin: "0 10px" }}>
               Page {page} of {totalPages || 1}
             </span>
-            <button 
-              style={page >= totalPages ? {...s.btnPage, ...s.btnDisabled} : s.btnPage}
-              onClick={() => setPage(p => p + 1)}
+            <button
+              style={
+                page >= totalPages
+                  ? { ...s.btnPage, ...s.btnDisabled }
+                  : s.btnPage
+              }
+              onClick={() => setPage((p) => p + 1)}
               disabled={page >= totalPages}
             >
               Next
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
