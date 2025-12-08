@@ -97,30 +97,42 @@ function toUpper(v) {
   return (typeof v === "string" ? v : "").toUpperCase();
 }
 
+// ✅ Helper function to get today's date in DD-MM-YYYY format
+const getTodayFormatted = () => {
+  const today = new Date();
+  const dd = String(today.getDate()).padStart(2, '0');
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const yyyy = today.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+};
+
 const InvoiceMainTab = ({ formik }) => {
   const saveTimeoutRef = useRef(null);
-
-  // currency code -> export_rate map from /api/currency-rates
   const [rateMap, setRateMap] = useState({});
 
-  // fetch latest currency rates once
+  // ✅ fetch currency rates for today's date
   useEffect(() => {
     const fetchRates = async () => {
       try {
-        const res = await fetch("http://localhost:9002/api/currency-rates");
+        const todayDate = getTodayFormatted(); // DD-MM-YYYY format
+        const res = await fetch(
+          `http://localhost:9002/api/currency-rates/by-date/${todayDate}`
+        );
         const json = await res.json();
-        if (!json?.success || !Array.isArray(json.data) || !json.data.length)
+        
+        if (!json?.success || !json?.data) {
+          console.warn("No currency rates found for today");
           return;
+        }
 
-        // assume first element is latest active notification
-        const latest = json.data[0];
         const map = {};
-        (latest.exchange_rates || []).forEach((r) => {
+        (json.data.exchange_rates || []).forEach((r) => {
           if (r.currency_code && typeof r.export_rate === "number") {
             map[r.currency_code.toUpperCase()] = r.export_rate;
           }
         });
         setRateMap(map);
+        console.log("Currency rates loaded for", todayDate, map);
       } catch (e) {
         console.error("Failed to load currency rates", e);
       }
@@ -170,13 +182,30 @@ const InvoiceMainTab = ({ formik }) => {
       }
     }
 
-    // when currency changes, also set exchange_rate from rateMap
+    // when currency changes, set exchange_rate and propagate to freight tab
     if (field === "currency") {
       const code = (value || "").toUpperCase();
-      const exportRate = rateMap[code]; // e.g. 100.85 for EUR
+      const exportRate = rateMap[code];
+      
       if (typeof exportRate === "number") {
         formik.setFieldValue("exchange_rate", exportRate);
       }
+
+      // Propagate currency to ALL freight/insurance rows
+      const currentCharges = formik.values.freightInsuranceCharges || {};
+      const rowKeys = ["freight", "insurance", "discount", "otherDeduction", "commission", "fobValue"];
+      const nextCharges = { ...currentCharges };
+
+      rowKeys.forEach((k) => {
+        const row = currentCharges[k] || {};
+        nextCharges[k] = {
+          ...row,
+          currency: code,
+          exchangeRate: typeof exportRate === "number" ? exportRate : (row.exchangeRate || 0),
+        };
+      });
+
+      formik.setFieldValue("freightInsuranceCharges", nextCharges);
     }
 
     setInvoicesArray(updatedInvoice);

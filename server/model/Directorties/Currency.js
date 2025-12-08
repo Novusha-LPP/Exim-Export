@@ -17,13 +17,11 @@ const CurrencySchema = new mongoose.Schema({
   },
   currencyDescription: {
     type: String,
-    required: true,
     trim: true,
     maxlength: 100
   },
   countryCode: {
     type: String,
-    required: true,
     uppercase: true,
     trim: true,
     maxlength: 2,

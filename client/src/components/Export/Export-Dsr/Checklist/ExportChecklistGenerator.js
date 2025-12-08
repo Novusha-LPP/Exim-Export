@@ -1276,228 +1276,217 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
   // ==================== MAIN GENERATOR ====================
   const generateExportChecklist = async () => {
     try {
+              const encodedJobNo = encodeURIComponent(jobNo);
       const response = await axios.get(
-        `${import.meta.env.VITE_API_STRING}/get-export-job/${jobNo}`
+        `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`
       );
 
       const exportJob = response.data;
       const currentDate = formatDate(new Date());
 
       // Prepare comprehensive data object with all fields from PDF
-      const data = {
-        // Basic Information
-        sbNumber: exportJob.shippingbillnumber || exportJob.sbNo || "5550031",
-        sbDate:
-          formatDate(exportJob.shippingbilldate || exportJob.sb_date) ||
-          "22-Sep-2025",
-        jobNumber: exportJob.job_no ,
-        customStation: exportJob.customStation,
-        aeoRegistrationNo: exportJob.aeoRegistrationNo ,
-        aeoRole: exportJob.aeoRole || "CUSTOMS",
-        partyRef:
-          exportJob.partyRef || exportJob.partyReference,
-        chaCode:
-          exportJob.chaCode ||
-          "ABOFS1766LCH005 SURAJ FORWARDERS & SHIPPING AGENCIES",
+const data = {
+  // Basic Information
+  sbNumber: exportJob.sb_no || "5550031",
+  sbDate: formatDate(exportJob.sb_date) || "22-Sep-2025",
+  jobNumber: exportJob.job_no,
+  customStation: exportJob.custom_house,
+  aeoRegistrationNo: exportJob.otherInfo?.aeoCode || "",
+  aeoRole: exportJob.otherInfo?.aeoRole || "CUSTOMS",
+  partyRef: exportJob.exporter_ref_no || "",
+  chaCode: exportJob.cha || "ABOFS1766LCH005 SURAJ FORWARDERS & SHIPPING AGENCIES",
 
-        // Exporter & Consignee Details
-        exporterDetails:
-          exportJob.exporterName ||
-          exportJob.exporter ||
-          "ANEETA PACKAGING PRIVATE LIMITED\nBranch Ser #1\n1103 - 1104, Parshwanath Business Park,\nNear Auda, Garden,\nPrahladnagar",
-        consigneeDetails:
-          exportJob.consigneename ||
-          exportJob.consigneeName ||
-          exportJob.consigneeId ||
-          "TO ORDER",
+  // Exporter Details - BUILD FROM MULTIPLE FIELDS
+  exporterGstin: exportJob.exporter_gstin || exportJob.gstin || "",
+  exporterGstinFull: exportJob.exporter_gstin ? `GSTIN: ${exportJob.exporter_gstin}` : "",
+  exporterPan: exportJob.exporter_pan ? `PAN No: ${exportJob.exporter_pan}` : "",
+  exporterType: exportJob.exporter_type ? `Exporter Type: ${exportJob.exporter_type}` : "",
+  exporterName: exportJob.exporter || "",
+  exporterBranch: exportJob.branch_code ? `Branch Ser #${exportJob.branch_code}` : "",
+  exporterAddress1: exportJob.exporter_address || "",
+  exporterAddress2: "", // Parse from exporter_address if multi-line
+  exporterAddress3: "", // Parse from exporter_address if multi-line
 
-        // Shipping Details
-        portOfLoading:
-          exportJob.portofloading || "ICD Sabarmati, Ahmedabad(INSBIf6)",
-        natureOfCargo: exportJob.natureOfCargo || "C - Containerised",
-        portOfDischarge: exportJob.portofdischarge || "Southampton(GBSOU)",
-        totalPackages: `${exportJob.totalPackages || "726"} BOX`,
-        portOfDestination:
-          exportJob.portOfDestination ||
-          exportJob.portofdischarge ||
-          "Southampton(GBSOU)",
-        numberOfContainers: exportJob.numberOfContainers || "1",
-        dischargeCountry:
-          exportJob.dischargeCountry ||
-          exportJob.countryoffinaldestination ||
-          "United Kingdom",
-        loosePackets: exportJob.loosePackets || "",
-        countryOfDest: exportJob.countryoffinaldestination || "United Kingdom",
-        grossWeight: `${exportJob.grossweightkg || "2330"}.000 KGS`,
-        masterBlNo: exportJob.masterblno || "",
-        netWeight: `${exportJob.netweightkg || "1890"}.000 KGS`,
-        houseBlNo: exportJob.houseblno || "",
-        rotationNo: exportJob.rotationNo || "",
-        stateOfOrigin: exportJob.stateOfOrigin || "GUJARAT",
-        adCode: exportJob.adCode || "0510052",
+  // Consignee Details
+  consigneeName: exportJob.consignees?.[0]?.consignee_name || "TO ORDER",
+  consigneeCountry1: exportJob.consignees?.[0]?.consignee_country || "",
+  consigneeCountry2: exportJob.discharge_country || "",
 
-        // Financial Details
-        totalFobInr:
-          exportJob.totalFOBINR || exportJob.fobValINR || "583104.96",
-        igstTaxableValue: exportJob.igstTaxableValue || "583104.61",
-        igstAmount: exportJob.igstAmount || "104958.83",
-        compCess: exportJob.compCess || "0.00",
-        forexBankAcNo: exportJob.forexBankAcNo || "",
-        dbkStr: exportJob.dbkStr || "6997.26",
-        rbiWaiverNo: exportJob.rbiWaiverNo || "",
-        strAmount: exportJob.strAmount || "",
-        dbkBankAcNo: exportJob.dbkBankAcNo || "",
-        totalDbk: exportJob.totalDBKINR || "6997.26",
-        rodtepAmount: exportJob.rodtepAmount || "5247.94",
+  // Shipping Details
+  portOfLoading: exportJob.port_of_loading || "",
+  portOfDischarge: exportJob.port_of_discharge || exportJob.discharge_port || "",
+  portOfDestination: exportJob.final_destination || exportJob.destination_port || "",
+  dischargeCountry: exportJob.discharge_country || "",
+  countryOfDest: exportJob.destination_country || exportJob.discharge_country || "",
+  masterBlNo: exportJob.mbl_no || exportJob.masterblno || "",
+  houseBlNo: exportJob.hbl_no || exportJob.houseblno || "",
+  rotationNo: exportJob.voyage_no ? `${exportJob.voyage_no} dt ${formatDate(exportJob.vessel_sailing_date)}` : "",
+  stateOfOrigin: exportJob.state_of_origin || exportJob.exporter_state || "",
+  adCode: exportJob.ad_code || exportJob.adCode || "",
+  natureOfCargo: exportJob.nature_of_cargo || "",
+  totalPackages: exportJob.total_no_of_pkgs || "",
+  numberOfContainers: exportJob.no_of_containers || "",
+  loosePackets: exportJob.loose_pkgs || "",
+  
+  // Weight calculation from products or containers
+  grossWeight: exportJob.containers?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0).toFixed(3) + " KGS" || "0.000 KGS",
+  netWeight: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0).toFixed(3) + " KGS" || "0.000 KGS",
 
-        // Invoice Details
-        invoiceNo: exportJob.invoiceNo || "APG/EXP/25-26/03",
-        invoiceValue: exportJob.invoiceValue || "USD 6690.82 (INR 583104.96)",
-        invoiceDate: formatDate(exportJob.invoiceDate) || "20-Sep-2025",
-        fobValue: exportJob.fobValue || "USD 6690.82 (INR 583104.96)",
-        natureOfContract: exportJob.natureOfContract || "FOB",
-        expContractNo: exportJob.expContractNo || "",
-        expContractDate: formatDate(exportJob.expContractDate) || "",
-        unitPriceIncludes: exportJob.unitPriceIncludes || "",
-        invoiceCurrency: exportJob.invoiceCurrency || "USD",
-        exchangeRate: exportJob.exchangeRate || "1 USD = 87.1500 INR",
+  // Financial Details - Calculate from products and invoices
+  totalFobInr: exportJob.invoices?.reduce((sum, inv) => sum + (parseFloat(inv.invoice_value) || 0), 0).toFixed(2) || "0.00",
+  igstTaxableValue: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.igstCompensationCess?.taxableValueINR) || 0), 0).toFixed(2) || "0.00",
+  igstAmount: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0), 0).toFixed(2) || "0.00",
+  compCess: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.igstCompensationCess?.compensationCessAmountINR) || 0), 0).toFixed(2) || "0.00",
+  forexBankAcNo: exportJob.bank_account_number || "",
+  dbkStr: exportJob.drawbackDetails?.reduce((sum, d) => sum + (parseFloat(d.dbkAmount) || 0), 0).toFixed(2) || "0.00",
+  rbiWaiverNo: exportJob.rbi_waiver_no || "",
+  strAmount: "", // Not found in data structure
+  dbkBankAcNo: "", // Not found in data structure
+  totalDbk: exportJob.drawbackDetails?.reduce((sum, d) => sum + (parseFloat(d.dbkAmount) || 0), 0).toFixed(2) || "0.00",
+  rodtepAmount: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.rodtepInfo?.amountINR) || 0), 0).toFixed(2) || "0.00",
 
-        // Rate Details
-        insurance: exportJob.insurance || "",
-        freight: exportJob.freight || "",
-        discount: exportJob.discount || "",
-        commission: exportJob.commission || "",
-        otherDeduction: exportJob.otherDeduction || "",
-        packingCharges: exportJob.packingCharges || "",
+  // Invoice Details - From first invoice
+  invoiceNo: exportJob.invoices?.[0]?.invoiceNumber || "",
+  invoiceValue: exportJob.invoices?.[0]?.invoice_value ? 
+    `${exportJob.invoices[0].currency} ${exportJob.invoices[0].invoice_value}` : "",
+  invoiceDate: formatDate(exportJob.invoices?.[0]?.invoiceDate) || "",
+  fobValue: exportJob.invoices?.[0]?.product_value_fob ?
+    `${exportJob.invoices[0].currency} ${exportJob.invoices[0].product_value_fob}` : "",
+  natureOfContract: exportJob.invoices?.[0]?.termsOfInvoice || "FOB",
+  expContractNo: "", // Not found in data structure
+  expContractDate: formatDate(exportJob.otherInfo?.exportContractNoDate) || "",
+  unitPriceIncludes: exportJob.invoices?.[0]?.priceIncludes || "",
+  invoiceCurrency: exportJob.invoices?.[0]?.currency || exportJob.currency || "",
+  exchangeRate: exportJob.exchange_rate || "",
 
-        // Payment & Buyer Details
-        natureOfPayment: exportJob.natureOfPayment || "",
-        periodOfPayment: exportJob.periodOfPayment || "",
-        buyerName:
-          exportJob.buyerName ||
-          "FARRAG PACKAGING\n3 SHELDON AVENUE\nVICARS CROSS\nCHESTER CH3 5LF UNITED KINGDOM",
-        buyerAeoCode: exportJob.buyerAeoCode || "",
-        buyerAeoCountry: exportJob.buyerAeoCountry || "",
-        buyerAeoRole: exportJob.buyerAeoRole || "",
-        thirdPartyDetails: exportJob.thirdPartyDetails || "",
+  // Rate Details - From freightInsuranceCharges
+  insurance: exportJob.freightInsuranceCharges?.insurance?.amount || "",
+  freight: exportJob.freightInsuranceCharges?.freight?.amount || "",
+  discount: exportJob.freightInsuranceCharges?.discount?.amount || "",
+  commission: exportJob.freightInsuranceCharges?.commission?.amount || "",
+  otherDeduction: exportJob.freightInsuranceCharges?.otherDeduction?.amount || "",
+  packingCharges: exportJob.invoices?.[0]?.packing_fob || "",
 
-        // EOU Details
-        eou: exportJob.eou || "",
-        iec: exportJob.iec || "",
-        branchSno: exportJob.branchSno || "1",
-        factoryAddress: exportJob.factoryAddress || "",
+  // Payment & Buyer Details
+  natureOfPayment: exportJob.otherInfo?.natureOfPayment || "",
+  periodOfPayment: exportJob.otherInfo?.paymentPeriod ? `${exportJob.otherInfo.paymentPeriod} days` : "",
+  buyerName: exportJob.buyerThirdPartyInfo?.buyer?.name || "",
+  buyerAeoCode: "", // Not found in data structure
+  buyerAeoCountry: exportJob.buyerThirdPartyInfo?.buyer?.country || "",
+  buyerAeoRole: "", // Not found in data structure
+  thirdPartyDetails: exportJob.buyerThirdPartyInfo?.thirdParty?.isThirdPartyExport ?
+    `${exportJob.buyerThirdPartyInfo.thirdParty.name}\n${exportJob.buyerThirdPartyInfo.thirdParty.address}` : "",
 
-        // Marks & Nos
-        marksAndNos:
-          exportJob.marksAndNos ||
-          "WE INTEND TO CLAIM BENEFIT UNDER RODTEP SCHEME AS APPLICABLE.",
+  // EOU Details
+  eou: exportJob.ie_code_of_eou || exportJob.annexC1Details?.ieCodeOfEOU || "",
+  iec: exportJob.ie_code || exportJob.ie_code_no || "",
+  branchSno: exportJob.branch_sr_no || exportJob.branchSrNo || exportJob.annexC1Details?.branchSerialNo || "0",
+  factoryAddress: exportJob.factory_address || "",
 
-        // Item Details
-        products: exportJob.products || [
-          // In the data preparation section, add these product fields:
-          {
-            ritc: "39233090",
-            description:
-              "EMPTY HDPE BOTTLES - HDPE BOTTLES 60 ML AS PER INVOICE",
-            quantity: "209088.000",
-            per: "PCS",
-            unitPrice: "0.032000/PCS",
-            amount: "6690.82",
-            pmvPerUnit: "3.07",
-            totalPMV: "641900.16",
-            eximCode: "19 (Drawback (DBK))",
-            nfeiCategory: "",
-            rewardItem: true,
-            fobValueFC: "6690.82",
-            fobValueINR: "583104.96",
-            igstPaymentStatus: "P",
-            taxableValueINR: "583104.61",
-            igstAmountINR: "104958.83",
-          },
-        ],
+  // Marks & Nos
+  marksAndNos: exportJob.marks_nos || "WE INTEND TO CLAIM BENEFIT UNDER RODTEP SCHEME AS APPLICABLE.",
 
-        // Also add these total fields:
-        totalPmv: exportJob.totalPmv || "641900.16",
-        totalIgst: exportJob.totalIgst || "104958.83",
-        totalPmvGross: exportJob.totalPmvGross || "641900.16",
-        totalIgstGross: exportJob.totalIgstGross || "104958.83",
+  // Item Details - Map products array
+  products: exportJob.products?.map((product, index) => ({
+    ritc: product.ritc || "",
+    description: product.description || "",
+    quantity: product.quantity || "",
+    per: product.per || "PCS",
+    unitPrice: product.unitPrice ? `${product.unitPrice}/${product.per}` : "",
+    amount: product.amount || "",
+    pmvPerUnit: product.pmvInfo?.pmvPerUnit || "",
+    totalPMV: product.pmvInfo?.totalPMV || "",
+    eximCode: product.eximCode || "",
+    nfeiCategory: product.nfeiCategory || "",
+    rewardItem: product.rewardItem || false,
+    fobValueFC: product.amount || "", // Assuming amount is in foreign currency
+    fobValueINR: "", // Calculate: amount * exchange_rate
+    igstPaymentStatus: product.igstCompensationCess?.igstPaymentStatus || "",
+    taxableValueINR: product.igstCompensationCess?.taxableValueINR || "",
+    igstAmountINR: product.igstCompensationCess?.igstAmountINR || "",
+  })) || [],
 
-        // DBK Details
-        dbkData: exportJob.drawbackDetails || [
-          {
-            invNo: "1",
-            itemNo: "1",
-            dbkSlNo: "392399B",
-            customRate: "",
-            dbkRate: "1.20",
-            dbkQtyUnit: "209088.000 / PCS",
-            dbkAmount: "6997.26",
-            customSPE: "",
-            dbkSPE: "0.00",
-          },
-        ],
+  // Totals from products
+  totalPmv: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.pmvInfo?.totalPMV) || 0), 0).toFixed(2) || "0.00",
+  totalIgst: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0), 0).toFixed(2) || "0.00",
+  totalPmvGross: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.pmvInfo?.totalPMV) || 0), 0).toFixed(2) || "0.00",
+  totalIgstGross: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0), 0).toFixed(2) || "0.00",
 
-        // Vessel & Container Details
-        factoryStuffed: exportJob.factoryStuffed || "No",
-        sealType: exportJob.sealType || "BTSL - Bottle Seal",
-        sampleAcc: exportJob.sampleAcc || "No",
-        vesselName: exportJob.vesselName || "FTAU1600308",
-        voyageNumber: exportJob.voyageNumber || "",
-        containers: exportJob.containers,
+  // DBK Details
+  dbkData: exportJob.drawbackDetails?.map((dbk, index) => ({
+    invNo: "1", // Assuming single invoice
+    itemNo: (index + 1).toString(),
+    dbkSlNo: dbk.dbkSrNo || "",
+    customRate: "", // Not found in data structure
+    dbkRate: dbk.dbkRate?.toString() || "",
+    dbkQtyUnit: `${dbk.quantity || ""} / ${dbk.dbkDescription || ""}`,
+    dbkAmount: dbk.dbkAmount?.toFixed(2) || "0.00",
+    customSPE: "", // Not found in data structure
+    dbkSPE: "0.00",
+  })) || [],
 
-        // Additional Details
-        invItemSln: exportJob.invItemSln || "1/1",
-        sqcQtyUnit: exportJob.sqcQtyUnit || "1890.000000 KGS",
-        originDistrict: exportJob.originDistrict || "446 - GANDHINAGAR",
-        originState: exportJob.originState || "GUJARAT",
-        compCessAmount: exportJob.compCessAmount || "0.00",
-        ptaFta:
-          exportJob.ptaFta ||
-          "NCPTI - Preferential Trade Benefit not claimed at Importing Country",
+  // Vessel & Container Details
+  factoryStuffed: exportJob.goods_stuffed_at === "Factory" ? "Yes" : "No",
+  sealType: exportJob.stuffing_seal_type || "",
+  sampleAcc: exportJob.sample_accompanied ? "Yes" : "No",
+  vesselName: exportJob.shipping_line_airline || "",
+  voyageNumber: exportJob.voyage_no || "",
+  
+  containers: exportJob.containers?.map(container => ({
+    containerNo: container.containerNo || "",
+    size: container.type?.match(/\d+/)?.[0] || "", // Extract number from type like "20GP"
+    type: container.type?.replace(/\d+/, "") || "", // Extract letters from type
+    sealNo: container.sealNo || "",
+    sealType: container.sealType || exportJob.stuffing_seal_type || "",
+    sealDate: formatDate(container.sealDate) || "",
+    sealDeviceID: container.sealDeviceId || container.rfid || "",
+  })) || [],
 
-        // Single Window Data
-        singleWindowData: exportJob.singleWindowData || [
-          {
-            invNo: "1",
-            itemNo: "1",
-            infoType: "Duty",
-            infoQualifier: "Remission of Duty",
-            infoCode: "RODTEPY",
-            information: "Claimed",
-            measurement: "1890.000000",
-            unit: "KGS",
-          },
-        ],
+  // Additional Details
+  invItemSln: "1/1", // Static for single item/invoice
+  sqcQtyUnit: exportJob.products?.[0]?.socQuantity ?
+    `${exportJob.products[0].socQuantity} ${exportJob.products[0].per}` : "",
+  originDistrict: exportJob.products?.[0]?.originDistrict || "",
+  originState: exportJob.products?.[0]?.originState || exportJob.state_of_origin || "",
+  compCessAmount: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.igstCompensationCess?.compensationCessAmountINR) || 0), 0).toFixed(2) || "0.00",
+  ptaFta: exportJob.products?.[0]?.ptaFtaInfo || "NCPTI - Preferential Trade Benefit not claimed at Importing Country",
 
-        // End Use Information
-        endUseCode: exportJob.endUseCode || "GNX200",
-        endUseInvItem: exportJob.endUseInvItem || "1/1",
-        endUseDescription:
-          exportJob.endUseDescription ||
-          "Generic - For Commercial Assembly or processing (For Manufacture/Actual use)",
+  // Single Window Data
+  singleWindowData: exportJob.products?.map((product, index) => ({
+    invNo: "1",
+    itemNo: (index + 1).toString(),
+    infoType: "Duty",
+    infoQualifier: "Remission of Duty",
+    infoCode: product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
+    information: product.rodtepInfo?.claim === "Yes" ? "Claimed" : "",
+    measurement: product.rodtepInfo?.quantity || "",
+    unit: product.rodtepInfo?.unit || "",
+  })) || [],
 
-        // RODTEP Data
-        rodtepData: exportJob.rodtepData || [
-          {
-            invItemSr: "1/1",
-            claimStatus: "RODTEPY",
-            quantity: "1890.000000",
-            rate: "0.900",
-            capValue: "",
-            noOfUnits: "1",
-            rodtepAmount: "5247.94",
-          },
-        ],
+  // End Use Information
+  endUseCode: exportJob.products?.[0]?.endUse || "",
+  endUseInvItem: "1/1",
+  endUseDescription: "", // Not found in data structure
 
-        // Declaration Data
-        declarationData: exportJob.declarationData || [
-          {
-            declType: "DEC",
-            declCode: "RD001",
-            invItemSrNo: "1/1",
-          },
-        ],
-        declarationText: `I/We, in regard to my/our claim under RoDTEP scheme made in this Shipping Bill or Bill of Export, hereby declare that:
+  // RODTEP Data
+  rodtepData: exportJob.products?.map((product, index) => ({
+    invItemSr: `1/${index + 1}`,
+    claimStatus: product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
+    quantity: product.rodtepInfo?.quantity || "",
+    rate: product.rodtepInfo?.ratePercent || "",
+    capValue: product.rodtepInfo?.capValue || "",
+    noOfUnits: "1",
+    rodtepAmount: product.rodtepInfo?.amountINR || "",
+  })) || [],
+
+  // Declaration Data - Build from products that have declarations
+  declarationData: exportJob.products?.map((product, index) => ({
+    declType: "DEC",
+    declCode: "RD001", // Standard RODTEP declaration
+    invItemSrNo: `1/${index + 1}`,
+  })) || [],
+
+  declarationText: `I/We, in regard to my/our claim under RoDTEP scheme made in this Shipping Bill or Bill of Export, hereby declare that:
 
 1. I/ We undertake to abide by the provisions, including conditions, restrictions, exclusions and time-limits as provided under RoDTEP scheme, and relevant notifications, regulations, etc., as amended from time to time.
 
@@ -1505,43 +1494,40 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
 
 3. I/We undertake to preserve and make available relevant documents relating to the exported goods for the purposes of audit in the manner and for the time period prescribed in the Customs Audit Regulations, 2018.`,
 
-        // Supporting Documents
-        supportingDocs: exportJob.supportingDocs || [
-          {
-            invItemSrNo: "1/0/1",
-            imageRefNo: "2025092200042373",
-            icegateId: "RAJANSPPL",
-            issuingPartyName: "ANEETA PACKAGING PRIVATE LIMITED",
-            beneficiaryPartyName: "TO ORDER",
-            docIssueDate: "20-Sep-2025",
-            docRefNo: "APG/EXP/25-26/03",
-            fileType: "pdf",
-            issuingPartyAdd1:
-              "1103 - 1104, Parshwanath Business Park, Near Auda, Garden, Ahmedabad 380015",
-            beneficiaryPartyAdd1: "UK, United Kingdom",
-            docExpiryDate: "",
-            docUploadedOn: "",
-            placeOfIssue: "",
-            issuingPartyAdd2: "",
-            beneficiaryPartyAdd2: "",
-            docTypeCode: "",
-            docName: "",
-            issuingPartyCode: "",
-            issuingPartyCity: "",
-            beneficiaryPartyCity: "",
-            beneficiaryPartyCode: "",
-            issuingPartyPinCode: "",
-            beneficiaryPartyPinCode: "",
-          },
-        ],
+  // Supporting Documents
+  supportingDocs: exportJob.eSanchitDocuments?.[0] ? {
+    invItemSrNo: exportJob.eSanchitDocuments[0].invSerialNo || "1/0/1",
+    imageRefNo: exportJob.eSanchitDocuments[0].irn || "",
+    icegateId: exportJob.eSanchitDocuments[0].otherIcegateId || "",
+    issuingPartyName: exportJob.eSanchitDocuments[0].issuingParty?.name || exportJob.exporter || "",
+    beneficiaryPartyName: exportJob.eSanchitDocuments[0].beneficiaryParty?.name || exportJob.consignees?.[0]?.consignee_name || "",
+    docIssueDate: formatDate(exportJob.eSanchitDocuments[0].dateOfIssue) || "",
+    docRefNo: exportJob.eSanchitDocuments[0].documentReferenceNo || "",
+    fileType: exportJob.eSanchitDocuments[0].icegateFilename?.split('.').pop() || "",
+    issuingPartyAdd1: exportJob.eSanchitDocuments[0].issuingParty?.addressLine1 || exportJob.exporter_address || "",
+    beneficiaryPartyAdd1: exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine1 || exportJob.consignees?.[0]?.consignee_address || "",
+    docExpiryDate: formatDate(exportJob.eSanchitDocuments[0].expiryDate) || "",
+    docUploadedOn: formatDate(exportJob.eSanchitDocuments[0].dateTimeOfUpload) || "",
+    placeOfIssue: exportJob.eSanchitDocuments[0].placeOfIssue || "",
+    issuingPartyAdd2: exportJob.eSanchitDocuments[0].issuingParty?.addressLine2 || "",
+    beneficiaryPartyAdd2: exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine2 || "",
+    docTypeCode: exportJob.eSanchitDocuments[0].documentType || "",
+    docName: exportJob.eSanchitDocuments[0].icegateFilename || "",
+    issuingPartyCode: exportJob.eSanchitDocuments[0].issuingParty?.code || "",
+    issuingPartyCity: exportJob.eSanchitDocuments[0].issuingParty?.city || "",
+    beneficiaryPartyCity: exportJob.eSanchitDocuments[0].beneficiaryParty?.city || "",
+    beneficiaryPartyCode: exportJob.eSanchitDocuments[0].beneficiaryParty?.code || "",
+    issuingPartyPinCode: exportJob.eSanchitDocuments[0].issuingParty?.pinCode || "",
+    beneficiaryPartyPinCode: exportJob.eSanchitDocuments[0].beneficiaryParty?.pinCode || "",
+  } : {},
 
-        // Final Declaration
-        finalDeclaration: `1. I/We declare that the particulars given herein are true and are correct.
+  // Final Declaration
+  finalDeclaration: `1. I/We declare that the particulars given herein are true and are correct.
 
 2. I/We undertake to abide by the provisions of Foreign Exchange Management Act, 1999, as amended from time to time, including realisation or repatriation of foreign exchange to or from India.
 
 Signature of Exporter/CHA with date`,
-      };
+};
 
       // Create PDF
       const pdf = new jsPDF("p", "pt", "a4");

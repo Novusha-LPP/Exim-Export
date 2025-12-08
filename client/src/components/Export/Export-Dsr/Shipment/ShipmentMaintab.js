@@ -840,7 +840,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
               </div>
               <div style={styles.half}>
    <PortField label="DESTINATION PORT" fieldName="destination_port" placeholder="Enter Port" formik={formik} />
-                <CountryField label="DESTINATION COUNTRY" fieldName="country_of_final_destination" placeholder="Enter Port" formik={formik} />
+                <CountryField label="DESTINATION COUNTRY" fieldName="destination_country" placeholder="Enter Port" formik={formik} />
                 <div style={styles.field}>
                   <div style={styles.label}>VESSEL/SAILING DATE</div>
                   <input style={styles.input} type="date"

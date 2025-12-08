@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import {currencyList } from "../../../utils/masterList.js"
+import { currencyList } from "../../../utils/masterList.js";
 
 // --- Ultra-Compact Enterprise Styles ---
 
@@ -12,33 +12,29 @@ const s = {
     minHeight: "100vh",
     color: "#1f2937",
     fontSize: "12px",
-    fontWeight: "700"
+    fontWeight: "700",
   },
   container: {
     maxWidth: "1100px",
     margin: "0 auto",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   pageHeader: {
     marginBottom: "15px",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   pageTitle: {
     fontSize: "18px",
     fontWeight: "700",
     color: "#111827",
     margin: "0 0 4px 0",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   subTitle: {
     fontSize: "12px",
     color: "#6b7280",
     margin: 0,
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   card: {
     backgroundColor: "#fff",
@@ -47,8 +43,7 @@ const s = {
     marginBottom: "10px",
     border: "1px solid #e5e7eb",
     position: "relative",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   cardHeader: {
     padding: "8px 15px",
@@ -58,8 +53,7 @@ const s = {
     gap: "8px",
     backgroundColor: "#fff",
     borderRadius: "4px 4px 0 0",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   cardTitle: {
     fontWeight: "700",
@@ -67,8 +61,7 @@ const s = {
     textTransform: "uppercase",
     letterSpacing: "0.04em",
     color: "#374151",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   cardBody: {
     padding: "12px 15px",
@@ -88,16 +81,14 @@ const s = {
     display: "flex",
     flexDirection: "column",
     position: "relative",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   label: {
     fontSize: "11px",
     fontWeight: "600",
     color: "#4b5563",
     marginBottom: "2px",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   input: {
     height: "28px",
@@ -110,8 +101,7 @@ const s = {
     boxSizing: "border-box",
     color: "#111827",
     transition: "border-color 0.15s",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   inputWithIcon: {
     height: "28px",
@@ -124,8 +114,7 @@ const s = {
     boxSizing: "border-box",
     color: "#111827",
     cursor: "pointer",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   select: {
     height: "28px",
@@ -137,8 +126,7 @@ const s = {
     width: "100%",
     boxSizing: "border-box",
     color: "#111827",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   textarea: {
     padding: "6px 8px",
@@ -151,14 +139,12 @@ const s = {
     minHeight: "45px",
     resize: "vertical",
     fontFamily: "inherit",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   comboWrapper: {
     position: "relative",
     width: "100%",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   comboIcon: {
     position: "absolute",
@@ -168,8 +154,7 @@ const s = {
     fontSize: "10px",
     color: "#6b7280",
     pointerEvents: "none",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   dropdownList: {
     position: "absolute",
@@ -184,8 +169,7 @@ const s = {
     boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
     borderRadius: "3px",
     marginTop: "2px",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   dropdownItem: {
     padding: "6px 10px",
@@ -193,8 +177,7 @@ const s = {
     borderBottom: "1px solid #f3f4f6",
     display: "flex",
     flexDirection: "column",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   consigneeRow: {
     display: "flex",
@@ -205,8 +188,7 @@ const s = {
     padding: "6px",
     borderRadius: "3px",
     border: "1px solid #e5e7eb",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   btnPrimary: {
     backgroundColor: "#2563eb",
@@ -218,8 +200,7 @@ const s = {
     fontWeight: "600",
     cursor: "pointer",
     fontSize: "12px",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   btnClear: {
     backgroundColor: "#fff",
@@ -232,8 +213,7 @@ const s = {
     cursor: "pointer",
     fontSize: "12px",
     marginRight: "8px",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   btnAdd: {
     backgroundColor: "#eff6ff",
@@ -247,8 +227,7 @@ const s = {
     cursor: "pointer",
     display: "inline-flex",
     alignItems: "center",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   btnRemove: {
     backgroundColor: "#fee2e2",
@@ -263,8 +242,7 @@ const s = {
     justifyContent: "center",
     fontSize: "14px",
     fontWeight: "bold",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   iconBox: {
     width: "20px",
@@ -274,8 +252,7 @@ const s = {
     justifyContent: "center",
     borderRadius: "3px",
     fontSize: "12px",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
   notification: {
     position: "fixed",
@@ -288,8 +265,7 @@ const s = {
     fontWeight: "600",
     boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
     border: "1px solid transparent",
-        fontWeight: "700"
-
+    fontWeight: "700",
   },
 };
 
@@ -304,11 +280,16 @@ function useConsigneeCountryDropdown(value, onChange, apiBase) {
   const wrapRef = useRef(null);
   const keepOpen = useRef(false);
 
-  useEffect(() => { setQuery(value || ""); }, [value]);
+  useEffect(() => {
+    setQuery(value || "");
+  }, [value]);
 
   // fetch from your /countries API
   useEffect(() => {
-    if (!open || !query.trim()) { setOpts([]); return; }
+    if (!open || !query.trim()) {
+      setOpts([]);
+      return;
+    }
     const t = setTimeout(async () => {
       try {
         const res = await fetch(
@@ -325,7 +306,11 @@ function useConsigneeCountryDropdown(value, onChange, apiBase) {
 
   useEffect(() => {
     const close = (e) => {
-      if (!keepOpen.current && wrapRef.current && !wrapRef.current.contains(e.target)) {
+      if (
+        !keepOpen.current &&
+        wrapRef.current &&
+        !wrapRef.current.contains(e.target)
+      ) {
         setOpen(false);
       }
     };
@@ -368,7 +353,9 @@ function useConsigneeCountryDropdown(value, onChange, apiBase) {
       keepOpen.current = true;
     },
     handleBlur: () => {
-      setTimeout(() => { keepOpen.current = false; }, 100);
+      setTimeout(() => {
+        keepOpen.current = false;
+      }, 100);
     },
     selectIndex,
   };
@@ -390,6 +377,7 @@ function ConsigneeCountryField({ value, onChange }) {
           onChange={(e) => d.handleChange(e.target.value)}
           onFocus={d.handleFocus}
           onBlur={d.handleBlur}
+          // 🔥 ADD THIS
           onKeyDown={(e) => {
             if (!d.open) return;
             if (e.key === "ArrowDown") {
@@ -400,10 +388,13 @@ function ConsigneeCountryField({ value, onChange }) {
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
               d.setActive((a) => Math.max(0, a - 1));
-            } else if (e.key === "Enter" && d.active >= 0) {
-              e.preventDefault();
-              d.selectIndex(d.active);
+            } else if (e.key === "Enter") {
+              e.preventDefault(); // 👈 Prevent form submission
+              if (d.active >= 0) {
+                d.selectIndex(d.active);
+              }
             } else if (e.key === "Escape") {
+              e.preventDefault();
               d.setOpen(false);
             }
           }}
@@ -414,13 +405,18 @@ function ConsigneeCountryField({ value, onChange }) {
             {d.filtered.map((opt, i) => (
               <div
                 key={opt._id || opt.countryCode || opt.countryName || i}
-                style={s.dropdownItem}
+                style={{
+                  ...s.dropdownItem,
+                  backgroundColor: i === d.active ? "#f9fafb" : "#fff",
+                }}
                 onMouseDown={() => d.selectIndex(i)}
                 onMouseEnter={() => d.setActive(i)}
               >
                 {toUpper(opt.countryName || opt.country_name)}
                 {opt.countryCode && (
-                  <span style={{ marginLeft: 6, color: "#6b7280", fontSize: 10 }}>
+                  <span
+                    style={{ marginLeft: 6, color: "#6b7280", fontSize: 10 }}
+                  >
                     ({opt.countryCode.toUpperCase()})
                   </span>
                 )}
@@ -448,7 +444,11 @@ function useCurrencyDropdown(value, onChange) {
 
   useEffect(() => {
     const close = (e) => {
-      if (!keepOpen.current && wrapRef.current && !wrapRef.current.contains(e.target)) {
+      if (
+        !keepOpen.current &&
+        wrapRef.current &&
+        !wrapRef.current.contains(e.target)
+      ) {
         setOpen(false);
       }
     };
@@ -503,7 +503,12 @@ function useCurrencyDropdown(value, onChange) {
   };
 }
 
-function CurrencyDropdown({ label, value, onChange, placeholder = "SELECT CURRENCY" }) {
+function CurrencyDropdown({
+  label,
+  value,
+  onChange,
+  placeholder = "SELECT CURRENCY",
+}) {
   const d = useCurrencyDropdown(value, onChange);
 
   return (
@@ -567,7 +572,13 @@ function useGatewayPortDropdown(value, onChange) {
       try {
         const res = await fetch(url);
         const data = await res.json();
-        setOpts(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
+        setOpts(
+          Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data)
+            ? data
+            : []
+        );
       } catch {
         setOpts([]);
       }
@@ -577,7 +588,11 @@ function useGatewayPortDropdown(value, onChange) {
 
   useEffect(() => {
     function close(e) {
-      if (!keepOpen.current && wrapRef.current && !wrapRef.current.contains(e.target)) {
+      if (
+        !keepOpen.current &&
+        wrapRef.current &&
+        !wrapRef.current.contains(e.target)
+      ) {
         setOpen(false);
       }
     }
@@ -588,7 +603,9 @@ function useGatewayPortDropdown(value, onChange) {
   function selectIndex(i) {
     const item = opts[i];
     if (!item) return;
-    const val = `${(item.unece_code || "").toUpperCase()} - ${(item.name || "").toUpperCase()}`.trim();
+    const val = `${(item.unece_code || "").toUpperCase()} - ${(
+      item.name || ""
+    ).toUpperCase()}`.trim();
     setQuery(val);
     onChange(val);
     setOpen(false);
@@ -632,7 +649,12 @@ function useGatewayPortDropdown(value, onChange) {
   };
 }
 
-function GatewayPortDropdown({ label, value, onChange, placeholder = "SELECT PORT" }) {
+function GatewayPortDropdown({
+  label,
+  value,
+  onChange,
+  placeholder = "SELECT PORT",
+}) {
   const d = useGatewayPortDropdown(value, onChange);
   return (
     <div style={s.col} ref={d.wrapRef}>
@@ -646,6 +668,28 @@ function GatewayPortDropdown({ label, value, onChange, placeholder = "SELECT POR
           onBlur={d.handleBlur}
           placeholder={placeholder}
           autoComplete="off"
+          // 🔥 ADD THIS onKeyDown handler to prevent form submission
+          onKeyDown={(e) => {
+            if (!d.open) return;
+            
+            if (e.key === "Enter") {
+              e.preventDefault(); // 👈 Prevent form submission
+              if (d.active >= 0) {
+                d.selectIndex(d.active);
+              }
+            } else if (e.key === "ArrowDown") {
+              e.preventDefault();
+              d.setActive((a) =>
+                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1)
+              );
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              d.setActive((a) => Math.max(0, a - 1));
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              d.setOpen(false);
+            }
+          }}
         />
         <span style={s.comboIcon}>▼</span>
         {d.open && d.filtered.length > 0 && (
@@ -653,12 +697,16 @@ function GatewayPortDropdown({ label, value, onChange, placeholder = "SELECT POR
             {d.filtered.map((p, i) => (
               <div
                 key={p._id || p.unece_code || p.name || i}
-                style={s.dropdownItem}
+                style={{
+                  ...s.dropdownItem,
+                  backgroundColor: i === d.active ? "#f9fafb" : "#fff",
+                }}
                 onMouseDown={() => d.selectIndex(i)}
                 onMouseEnter={() => d.setActive(i)}
               >
                 <div style={{ fontWeight: 600, color: "#111827" }}>
-                  {(p.unece_code || "").toUpperCase()} - {(p.name || "").toUpperCase()}
+                  {(p.unece_code || "").toUpperCase()} -{" "}
+                  {(p.name || "").toUpperCase()}
                 </div>
                 {p.port_type && (
                   <div style={{ fontSize: 10, color: "#6b7280" }}>
@@ -680,29 +728,29 @@ function GatewayPortDropdown({ label, value, onChange, placeholder = "SELECT POR
 }
 
 const AddExJobs = () => {
-  const emptyConsignee = { consignee_name: "", consignee_address: "", consignee_country: "" };
-const [formData, setFormData] = useState({
-  branch_code: "AMD",          // 👈 default
-  exporter_name: "",
-  consignees: [{ ...emptyConsignee }],
-  ie_code: "",
-  job_no: "",
-  movement_type: "FCL",
-  country_of_final_destination: "",
-  commodity_description: "",
-  commercial_invoice_value: "",
-  invoice_currency: "",
-    custom_house: "",             
-  port_of_loading: "",
-  total_no_of_pkgs: "",
-  gross_weight_kg: "",
-  net_weight_kg: "",
-  status: "Pending",
-  year: "25-26",
-  transportMode: "SEA",
-  job_date: new Date().toISOString().split("T")[0],
-});
-
+  const emptyConsignee = {
+    consignee_name: "",
+    consignee_address: "",
+    consignee_country: "",
+  };
+  const [formData, setFormData] = useState({
+    branch_code: "AMD", // 👈 default
+    exporter_name: "",
+    consignees: [{ ...emptyConsignee }],
+    ie_code: "",
+    job_no: "",
+    consignmentType: "FCL",
+    discharge_country: "",
+    custom_house: "",
+    port_of_loading: "",
+    total_no_of_pkgs: "",
+    gross_weight_kg: "",
+    net_weight_kg: "",
+    status: "Pending",
+    year: "25-26",
+    transportMode: "SEA",
+    job_date: new Date().toISOString().split("T")[0],
+  });
 
   const [organizations, setOrganizations] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -711,14 +759,13 @@ const [formData, setFormData] = useState({
   const wrapperRef = useRef(null);
 
   // inside AddExJobs.jsx, before component
-const branchOptions = [
-  { code: "BRD", label: "BRD - BARODA" },
-  { code: "GIM", label: "GIM - GANDHIDHAM" },
-  { code: "HAZ", label: "HAZ - HAZIRA" },
-  { code: "AMD", label: "AMD - AHMEDABAD" },
-  { code: "COK", label: "COK - COCHIN" },
-];
-
+  const branchOptions = [
+    { code: "BRD", label: "BRD - BARODA" },
+    { code: "GIM", label: "GIM - GANDHIDHAM" },
+    { code: "HAZ", label: "HAZ - HAZIRA" },
+    { code: "AMD", label: "AMD - AHMEDABAD" },
+    { code: "COK", label: "COK - COCHIN" },
+  ];
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -727,7 +774,8 @@ const branchOptions = [
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setShowDropdown(false);
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target))
+        setShowDropdown(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -737,7 +785,9 @@ const branchOptions = [
     const fetchOrgs = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/directory`);
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_STRING}/directory`
+        );
         if (response.data.success) {
           const allOrgs = response.data.data;
           const filtered = formData.exporter_name
@@ -780,11 +830,17 @@ const branchOptions = [
   };
 
   const addConsignee = () =>
-    setFormData((p) => ({ ...p, consignees: [...p.consignees, { ...emptyConsignee }] }));
+    setFormData((p) => ({
+      ...p,
+      consignees: [...p.consignees, { ...emptyConsignee }],
+    }));
 
   const removeConsignee = (idx) => {
     if (formData.consignees.length === 1) return;
-    setFormData((p) => ({ ...p, consignees: p.consignees.filter((_, i) => i !== idx) }));
+    setFormData((p) => ({
+      ...p,
+      consignees: p.consignees.filter((_, i) => i !== idx),
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -807,30 +863,25 @@ const branchOptions = [
     }
   };
 
-const handleClear = () => {
-  setFormData({
-    branch_code: "AMD",
-    exporter_name: "",
-    consignees: [{ ...emptyConsignee }],
-    ie_code: "",
-    job_no: "",
-    movement_type: "FCL",
-    country_of_final_destination: "",
-    commodity_description: "",
-    commercial_invoice_value: "",
-    invoice_currency: "",
-    custom_house: "",           // 👈 reset
-    port_of_loading: "",
-    total_no_of_pkgs: "",
-    gross_weight_kg: "",
-    net_weight_kg: "",
-    status: "Pending",
-    year: "25-26",
-    transportMode: "",
-    job_date: new Date().toISOString().split("T")[0],
-  });
-};
-
+  const handleClear = () => {
+    setFormData({
+      branch_code: "AMD",
+      exporter_name: "",
+      consignees: [{ ...emptyConsignee }],
+      ie_code: "",
+      job_no: "",
+      consignmentType: "FCL",
+      discharge_country: "",
+      custom_house: "", // 👈 reset
+      port_of_loading: "",
+      gross_weight_kg: "",
+      net_weight_kg: "",
+      status: "Pending",
+      year: "25-26",
+      transportMode: "",
+      job_date: new Date().toISOString().split("T")[0],
+    });
+  };
 
   return (
     <div style={s.wrapper}>
@@ -857,7 +908,13 @@ const handleClear = () => {
           {/* 1. Organization */}
           <div style={{ ...s.card, ...s.borderBlue }}>
             <div style={s.cardHeader}>
-              <span style={{ ...s.iconBox, backgroundColor: "#eff6ff", color: "#2563eb" }}>
+              <span
+                style={{
+                  ...s.iconBox,
+                  backgroundColor: "#eff6ff",
+                  color: "#2563eb",
+                }}
+              >
                 🏢
               </span>
               <span style={s.cardTitle}>Organization & Directory</span>
@@ -898,20 +955,24 @@ const handleClear = () => {
                               key={i}
                               style={s.dropdownItem}
                               onMouseEnter={(e) =>
-                                (e.currentTarget.style.backgroundColor = "#f9fafb")
+                                (e.currentTarget.style.backgroundColor =
+                                  "#f9fafb")
                               }
                               onMouseLeave={(e) =>
                                 (e.currentTarget.style.backgroundColor = "#fff")
                               }
                               onMouseDown={() => handleDirectorySelect(org)}
                             >
-                              <div style={{ fontWeight: "600", color: "#1f2937" }}>
+                              <div
+                                style={{ fontWeight: "600", color: "#1f2937" }}
+                              >
                                 {org.organization}
                               </div>
                               <div
                                 style={{ fontSize: "10px", color: "#6b7280" }}
                               >
-                                IE Code: {org.registrationDetails?.ieCode || "N/A"}
+                                IE Code:{" "}
+                                {org.registrationDetails?.ieCode || "N/A"}
                               </div>
                             </div>
                           ))
@@ -931,7 +992,10 @@ const handleClear = () => {
                     style={s.input}
                     value={formData.ie_code}
                     onChange={(e) =>
-                      handleInputChange("ie_code", e.target.value.replace(/\D/g, ""))
+                      handleInputChange(
+                        "ie_code",
+                        e.target.value.replace(/\D/g, "")
+                      )
                     }
                     maxLength={10}
                     required
@@ -944,7 +1008,9 @@ const handleClear = () => {
                     type="date"
                     style={s.input}
                     value={formData.job_date}
-                    onChange={(e) => handleInputChange("job_date", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("job_date", e.target.value)
+                    }
                   />
                 </div>
 
@@ -959,20 +1025,22 @@ const handleClear = () => {
                     <option value="26-27">26-27</option>
                   </select>
                 </div>
-                  <div style={{ ...s.col, maxWidth: "160px" }}>
-    <label style={s.label}>Branch</label>
-    <select
-      style={s.select}
-      value={formData.branch_code}
-      onChange={(e) => handleInputChange("branch_code", e.target.value)}
-    >
-      {branchOptions.map((b) => (
-        <option key={b.code} value={b.code}>
-          {b.label}
-        </option>
-      ))}
-    </select>
-  </div>
+                <div style={{ ...s.col, maxWidth: "160px" }}>
+                  <label style={s.label}>Branch</label>
+                  <select
+                    style={s.select}
+                    value={formData.branch_code}
+                    onChange={(e) =>
+                      handleInputChange("branch_code", e.target.value)
+                    }
+                  >
+                    {branchOptions.map((b) => (
+                      <option key={b.code} value={b.code}>
+                        {b.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -980,7 +1048,13 @@ const handleClear = () => {
           {/* 2. Consignees */}
           <div style={{ ...s.card, ...s.borderTeal }}>
             <div style={s.cardHeader}>
-              <span style={{ ...s.iconBox, backgroundColor: "#ecfeff", color: "#0891b2" }}>
+              <span
+                style={{
+                  ...s.iconBox,
+                  backgroundColor: "#ecfeff",
+                  color: "#0891b2",
+                }}
+              >
                 👥
               </span>
               <span style={s.cardTitle}>Party Details (Consignees)</span>
@@ -995,7 +1069,11 @@ const handleClear = () => {
                       placeholder="Name"
                       value={item.consignee_name}
                       onChange={(e) =>
-                        handleConsigneeChange(idx, "consignee_name", e.target.value)
+                        handleConsigneeChange(
+                          idx,
+                          "consignee_name",
+                          e.target.value
+                        )
                       }
                       required
                     />
@@ -1007,18 +1085,30 @@ const handleClear = () => {
                       placeholder="Full Address"
                       value={item.consignee_address}
                       onChange={(e) =>
-                        handleConsigneeChange(idx, "consignee_address", e.target.value)
+                        handleConsigneeChange(
+                          idx,
+                          "consignee_address",
+                          e.target.value
+                        )
                       }
                     />
                   </div>
-                 <div style={{ ...s.col, flex: 1 }}>
-  <ConsigneeCountryField
-    value={item.consignee_country}
-    onChange={(val) => handleConsigneeChange(idx, "consignee_country", val)}
-  />
-</div>
+                  <div style={{ ...s.col, flex: 1 }}>
+                    <ConsigneeCountryField
+                      value={item.consignee_country}
+                      onChange={(val) =>
+                        handleConsigneeChange(idx, "consignee_country", val)
+                      }
+                    />
+                  </div>
 
-                  <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: "1px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-end",
+                      paddingBottom: "1px",
+                    }}
+                  >
                     <button
                       type="button"
                       onClick={() => removeConsignee(idx)}
@@ -1040,134 +1130,73 @@ const handleClear = () => {
           {/* 3. Shipment Details */}
           <div style={{ ...s.card, ...s.borderBlue }}>
             <div style={s.cardHeader}>
-              <span style={{ ...s.iconBox, backgroundColor: "#eff6ff", color: "#2563eb" }}>
+              <span
+                style={{
+                  ...s.iconBox,
+                  backgroundColor: "#eff6ff",
+                  color: "#2563eb",
+                }}
+              >
                 🚢
               </span>
               <span style={s.cardTitle}>Shipment Details</span>
             </div>
-{/* Shipment Details card body */}
-<div style={s.cardBody}>
-  <div style={s.row}>
-    <div style={{ ...s.col, maxWidth: "120px" }}>
-      <label style={s.label}>Movement</label>
-      <select
-        style={s.select}
-        value={formData.movement_type}
-        onChange={(e) => handleInputChange("movement_type", e.target.value)}
-      >
-        <option value="FCL">FCL</option>
-        <option value="LCL">LCL</option>
-      </select>
-    </div>
-
-    <div style={{ ...s.col, maxWidth: "120px" }}>
-      <label style={s.label}>Transport</label>
-      <select
-        style={s.select}
-        value={formData.transportMode}
-        onChange={(e) => handleInputChange("transportMode", e.target.value)}
-      >
-        <option value="SEA">SEA</option>
-        <option value="AIR">AIR</option>
-        <option value="LAND">LAND</option>
-      </select>
-    </div>
-
-    {/* Port of Loading from Gateway Port Directory */}
-    <GatewayPortDropdown
-      label="Port of Loading"
-      value={formData.port_of_loading}
-      onChange={(val) => handleInputChange("port_of_loading", val)}
-    />
-
-    {/* Custom House using SAME directory */}
-    <GatewayPortDropdown
-      label="Custom House"
-      value={formData.custom_house}
-      onChange={(val) => handleInputChange("custom_house", val)}
-    />
-  </div>
-</div>
-
-          </div>
-
-          {/* 4. Commercial & Cargo */}
-          <div style={{ ...s.card, ...s.borderOrange }}>
-            <div style={s.cardHeader}>
-              <span style={{ ...s.iconBox, backgroundColor: "#fff7ed", color: "#ea580c" }}>
-                📦
-              </span>
-              <span style={s.cardTitle}>Commercial & Cargo</span>
-            </div>
+            {/* Shipment Details card body */}
             <div style={s.cardBody}>
               <div style={s.row}>
-                <div style={s.col}>
-                  <label style={s.label}>Invoice Value</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    style={s.input}
-                    value={formData.commercial_invoice_value}
+                <div style={{ ...s.col, maxWidth: "120px" }}>
+                  <label style={s.label}>Movement</label>
+                  <select
+                    style={s.select}
+                    value={formData.consignmentType}
                     onChange={(e) =>
-                      handleInputChange("commercial_invoice_value", e.target.value)
+                      handleInputChange("consignmentType", e.target.value)
                     }
-                  />
+                  >
+                    <option value="FCL">FCL</option>
+                    <option value="LCL">LCL</option>
+                  </select>
                 </div>
-                <div style={{ ...s.col, maxWidth: "180px" }}>
-  <label style={s.label}>Currency</label>
-  <CurrencyDropdown
-    label=""
-    value={formData.invoice_currency}
-    onChange={(val) => handleInputChange("invoice_currency", val)}
-    placeholder="SELECT CURRENCY"
-  />
-</div>
-                <div style={s.col}>
-                  <label style={s.label}>Packages</label>
-                  <input
-                    type="number"
-                    style={s.input}
-                    value={formData.total_no_of_pkgs}
-                    onChange={(e) => handleInputChange("total_no_of_pkgs", e.target.value)}
-                  />
-                </div>
-                <div style={s.col}>
-                  <label style={s.label}>Gross Wt (KG)</label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    style={s.input}
-                    value={formData.gross_weight_kg}
-                    onChange={(e) => handleInputChange("gross_weight_kg", e.target.value)}
-                  />
-                </div>
-                <div style={s.col}>
-                  <label style={s.label}>Net Wt (KG)</label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    style={s.input}
-                    value={formData.net_weight_kg}
-                    onChange={(e) => handleInputChange("net_weight_kg", e.target.value)}
-                  />
-                </div>
-              </div>
-              <div style={s.row}>
-                <div style={{ ...s.col, flex: 1 }}>
-                  <label style={s.label}>Commodity Description</label>
-                  <textarea
-                    style={s.textarea}
-                    value={formData.commodity_description}
+
+                <div style={{ ...s.col, maxWidth: "120px" }}>
+                  <label style={s.label}>Transport</label>
+                  <select
+                    style={s.select}
+                    value={formData.transportMode}
                     onChange={(e) =>
-                      handleInputChange("commodity_description", e.target.value)
+                      handleInputChange("transportMode", e.target.value)
                     }
-                  />
+                  >
+                    <option value="SEA">SEA</option>
+                    <option value="AIR">AIR</option>
+                    <option value="LAND">LAND</option>
+                  </select>
                 </div>
+
+                {/* Port of Loading from Gateway Port Directory */}
+                <GatewayPortDropdown
+                  label="Port of Loading"
+                  value={formData.port_of_loading}
+                  onChange={(val) => handleInputChange("port_of_loading", val)}
+                />
+
+                {/* Custom House using SAME directory */}
+                <GatewayPortDropdown
+                  label="Custom House"
+                  value={formData.custom_house}
+                  onChange={(val) => handleInputChange("custom_house", val)}
+                />
               </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "15px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginTop: "15px",
+            }}
+          >
             <button type="button" onClick={handleClear} style={s.btnClear}>
               Clear
             </button>

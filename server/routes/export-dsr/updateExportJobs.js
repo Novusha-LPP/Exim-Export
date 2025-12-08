@@ -17,7 +17,7 @@ router.get('/api/exports/:status?', async (req, res) => {
       search = '', 
       exporter = '', 
       country = '', 
-      movement_type = '',
+      consignmentType = '',
       status = 'all' 
     } = { ...req.params, ...req.query };
 
@@ -75,13 +75,13 @@ router.get('/api/exports/:status?', async (req, res) => {
     
     if (country) {
       filter.$and.push({
-        country_of_final_destination: { $regex: country, $options: 'i' }
+        destination_country: { $regex: country, $options: 'i' }
       });
     }
     
-    if (movement_type) {
+    if (consignmentType) {
       filter.$and.push({
-        movement_type: movement_type
+        consignmentType: consignmentType
       });
     }
 

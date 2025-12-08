@@ -436,9 +436,7 @@ const arInvoiceSchema = new Schema(
 const eSanchitDocumentSchema = new Schema({
   documentLevel: { type: String, enum: ["Invoice", "Item", "Job"] },
   scope: {
-    type: String,
-    enum: ["This job only", "All jobs"],
-    default: "This job only",
+    type: String, 
   },
   invSerialNo: String,
   itemSerialNo: String,
@@ -516,30 +514,6 @@ const chargeSchema = new Schema(
   { _id: true }
 );
 
-// Exchange Rates Schema
-const exchangeRateSchema = new Schema(
-  {
-    currencyCode: { type: String, ref: "Currency" },
-    customExchangeRate: { type: Number },
-    nonStdCurrency: { type: Boolean, default: false },
-
-    // Different exchange rates for different purposes
-    revenue: {
-      exchangeRate: Number,
-      cfx: Number,
-    },
-    cost: {
-      exchangeRate: Number,
-      cfx: Number,
-    },
-    agentExchangeRate: Number,
-
-    // Bank details for exchange rate
-    bankDetails: { type: Boolean, default: false },
-    rateDate: Date,
-  },
-  { _id: false }
-);
 
 // Milestone Tracking Schema
 const milestoneSchema = new Schema(
@@ -594,58 +568,25 @@ const exportJobSchema = new mongoose.Schema(
       default: Date.now,
     },
 
-    ////////////////////////////////////////////////// Basic Job Information
-
-    submission_status: {
-      type: String,
-      enum: ["draft", "submitted", "under_review", "approved", "rejected"],
-      default: "draft",
-    },
-    submitted_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    admin_approved_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    admin_approved_date_time: { type: Date },
-    admin_remark: { type: String, trim: true },
-
-    submission_status_history: [
-      {
-        status: { type: String },
-        changed_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-        date_time: { type: Date },
-      },
-    ],
-
     ////////////////////////////////////////////////// Excel sheet
     year: { type: String, trim: true },
     // job_no: { type: String, trim: true },
     custom_house: { type: String, trim: true },
     job_date: { type: String, trim: true },
     exporter: { type: String, trim: true },
-    supplier_exporter: { type: String, trim: true },
-    invoice_number: { type: String, trim: true },
     description: { type: String, trim: true },
     sb_no: { type: String, trim: true },
-    no_of_pkgs: { type: String, trim: true },
-    unit: { type: String, trim: true },
+        consignmentType: {
+      type: String,
+      enum: ["FCL", "LCL", "Break Bulk"],
+    },
     shipping_line_airline: { type: String, trim: true },
     branchSrNo: { type: String, trim: true },
     adCode: { type: String, trim: true },
     bank_name: { type: String, trim: true },
-    isDraftDoc: { type: Boolean },
-    fta_Benefit_date_time: { type: String, trim: true },
-    exBondValue: { type: String, trim: true },
-    scheme: { type: String, trim: true },
-    clearanceValue: { type: String, trim: true },
     ie_code_no: { type: String, trim: true },
-    incoterms: {
-      type: String,
-      trim: true,
-      default: "FOB",
-      enum: ["FOB", "CIF", "CFR", "EXW", "DDP", "DDU", "FCA", "CPT", "CIP"],
-    },
     exporter_ref_no: { type: String, trim: true },
-    filing_mode: { type: String, trim: true },
     shipper: { type: String, trim: true },
-    job_received_on: { type: Date },
     sb_type: { type: String, trim: true },
     transportMode: { type: String, trim: true },
     exporter_type: { type: String, trim: true },
@@ -662,13 +603,8 @@ const exportJobSchema = new mongoose.Schema(
     gr_waived: { type: Boolean, default: false },
     gr_no: { type: String, trim: true },
     rbi_waiver_no: { type: String, trim: true },
-    epz_code: { type: String, trim: true },
     notify: { type: String, trim: true },
 
-    // Additional Banking Fields (Missing)
-    bank_branch: { type: String, trim: true },
-    bank_ifsc_code: { type: String, trim: true },
-    bank_swift_code: { type: String, trim: true },
 
     // Commercial Fields (Missing)
     currency: { type: String, trim: true },
@@ -692,7 +628,6 @@ const exportJobSchema = new mongoose.Schema(
     vessel_sailing_date: { type: String, trim: true },
     voyage_no: { type: String, trim: true },
     nature_of_cargo: { type: String, trim: true },
-    total_no_of_pkgs: { type: String, trim: true },
     loose_pkgs: { type: String, trim: true },
     no_of_containers: { type: String, trim: true },
     marks_nos: { type: String, trim: true },
@@ -704,69 +639,28 @@ const exportJobSchema = new mongoose.Schema(
     stuffing_seal_no: { type: String, trim: true },
     stuffing_agency_name: { type: String, trim: true },
 
-    // Job Management Fields (Missing)
-    movement_type: { type: String, trim: true },
-    // Port & Delivery Fields (Missing)
-    place_of_delivery: { type: String, trim: true },
-    country_of_final_destination: { type: String, trim: true },
-
-    // Cargo Dimension Fields (Missing)
-    dimensions_length: { type: String, trim: true },
-    dimensions_width: { type: String, trim: true },
-    dimensions_height: { type: String, trim: true },
-
-    // Proforma Invoice Fields (Missing)
-    proforma_invoice_number: { type: String, trim: true },
-    proforma_invoice_date: { type: String, trim: true },
-    proforma_invoice_value: { type: String, trim: true },
+    total_no_of_pkgs: { type: String, trim: true },
+    package_unit: { type: String, trim: true },
+    gross_weight_kg: { type: String, trim: true },
+    gross_weight_unit: { type: String, trim: true },
+    net_weight_kg: { type: String, trim: true },
+    net_weight_unit: { type: String, trim: true },
+    volume_cbm: { type: String, trim: true },
+    volume_unit: { type: String, trim: true },
+    chargeable_weight: { type: String, trim: true },
+    chargeable_weight_unit: { type: String, trim: true },
 
     // Boolean Control Fields (Missing)
     buyer_other_than_consignee: { type: Boolean, default: false },
 
-    // Assignment Fields (Missing)
-    assigned_documentation_executive: { type: String, trim: true },
-    assigned_operations_executive: { type: String, trim: true },
-    assigned_accounts_executive: { type: String, trim: true },
-
-    // Ensure these arrays exist (some might be missing)
     // products: { type: Array, default: [] },
     charges: { type: Array, default: [] },
     documents: { type: Object, default: {} },
-    priority_level: {
-      type: String,
-      trim: true,
-      default: "Normal",
-      enum: ["High", "Normal", "Low", "Urgent"],
-    },
-    status: { type: String, trim: true },
-    detailed_status: { type: String, trim: true },
 
-    // Additional tracking fields for your export schema
-    container_placement_date_factory: { type: String, trim: true },
-    original_docs_received_date: { type: String, trim: true },
-    gate_in_thar_khodiyar_date: { type: String, trim: true },
-    gate_in_thar_khodiyar_time: { type: String, trim: true },
-    hand_over_date: { type: String, trim: true },
-    file_hand_over_date: { type: String, trim: true },
-    rail_out_date_plan: { type: String, trim: true },
-    rail_out_date_actual: { type: String, trim: true },
-    port_gate_in_date: { type: String, trim: true },
-    cargo_arrived_icd_date: { type: String, trim: true },
-    customs_clearance_done: { type: Boolean, default: false },
-    cntr_size: {
-      type: String,
-      trim: true,
-      enum: ["20", "40", "20HC", "40HC", "AIR"],
-    },
-    port_of_origin: { type: String, trim: true },
-    docs_received_date: { type: String, trim: true },
-    tracking_remarks: { type: String, trim: true },
-    operation_remarks: { type: String, trim: true },
+    status: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Exporter Information
-    exporter_name: { type: String, trim: true },
     exporter_address: { type: String, trim: true },
-    exporter_city: { type: String, trim: true },
     exporter_state: { type: String, trim: true },
     exporter_country: { type: String, trim: true, default: "India" },
     exporter_pincode: { type: String, trim: true },
@@ -782,11 +676,8 @@ const exportJobSchema = new mongoose.Schema(
     exporter_gstin: { type: String, trim: true },
     exporter_tan: { type: String, trim: true },
     ad_code: { type: String, trim: true }, // Authorized Dealer Code
-    rcmc_number: { type: String, trim: true }, // Registration Cum Membership Certificate
-    rcmc_validity: { type: String, trim: true },
 
     // Banking Information - Removed duplicate bank_name
-    bank_branch: { type: String, trim: true },
     bank_account_number: { type: String, trim: true },
     bank_ifsc_code: { type: String, trim: true },
     bank_swift_code: { type: String, trim: true },
@@ -806,67 +697,15 @@ const exportJobSchema = new mongoose.Schema(
     final_destination: { type: String, trim: true },
     place_of_receipt: { type: String, trim: true },
     place_of_delivery: { type: String, trim: true },
-    country_of_origin: { type: String, trim: true, default: "India" },
-    country_of_final_destination: { type: String, trim: true },
 
-    // Vessel/Flight Information
-    vessel_flight_name: { type: String, trim: true },
-    voyage_flight_number: { type: String, trim: true },
-    etd_port_of_loading: { type: String, trim: true }, // Estimated Time of Departure
-    eta_port_of_discharge: { type: String, trim: true }, // Estimated Time of Arrival
-    actual_departure_date: { type: String, trim: true },
-    actual_arrival_date: { type: String, trim: true },
-
-    // Carrier Information - Removed duplicate shipping_line_airline
-    master_bl_awb_number: { type: String, trim: true },
-    master_bl_awb_date: { type: String, trim: true },
-    house_bl_awb_number: { type: String, trim: true },
-    house_bl_awb_date: { type: String, trim: true },
-
-    ////////////////////////////////////////////////// Cargo Information
-    commodity_description: { type: String, trim: true },
-    hs_code: { type: String, trim: true },
-    package_unit: { type: String, trim: true },
-    gross_weight_kg: { type: String, trim: true },
-    gross_weight_unit: { type: String, trim: true },
-    net_weight_kg: { type: String, trim: true },
-    net_weight_unit: { type: String, trim: true },
-    volume_cbm: { type: String, trim: true },
-    volume_unit: { type: String, trim: true },
-    chargeable_weight: { type: String, trim: true },
-    chargeable_weight_unit: { type: String, trim: true },
-
-    dimensions_length: { type: String, trim: true },
-    dimensions_width: { type: String, trim: true },
-    dimensions_height: { type: String, trim: true },
-    marks_and_numbers: { type: String, trim: true },
-    special_instructions: { type: String, trim: true },
-
-    // Dangerous Goods Information
-    is_dangerous_goods: { type: Boolean, default: false },
-    un_number: { type: String, trim: true },
-    proper_shipping_name: { type: String, trim: true },
-    hazard_class: { type: String, trim: true },
-    packing_group: { type: String, trim: true },
-
-    ////////////////////////////////////////////////// Commercial Information
     // Invoice Details
-    proforma_invoice_number: { type: String, trim: true },
-    proforma_invoice_date: { type: String, trim: true },
-    proforma_invoice_value: { type: String, trim: true },
-    commercial_invoice_number: { type: String, trim: true },
-    commercial_invoice_date: { type: String, trim: true },
-    commercial_invoice_value: { type: String, trim: true },
-    invoice_currency: { type: String, trim: true },
+ 
     exchange_rate: { type: String, trim: true },
-    fob_value: { type: String, trim: true },
-    freight_charges: { type: String, trim: true },
-    insurance_charges: { type: String, trim: true },
-    cif_value: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Containers Information
-    // Note: exportContainerSchema needs to be defined separately
     containers: [exportContainerSchema],
+
+
     // Removed duplicate container_count
     stuffing_date: { type: String, trim: true },
     stuffing_supervisor: { type: String, trim: true },
@@ -884,68 +723,6 @@ const exportJobSchema = new mongoose.Schema(
       unique: true,
       uppercase: true,
     },
-    sbNo: String, // Shipping Bill Number
-
-    // Filing Information
-    filingMode: {
-      type: String,
-      ref: "Directory", // Reference to exporter company
-    },
-    customHouse: {
-      type: String,
-      ref: "EDILocation",
-    },
-    loadingPort: {
-      type: String,
-      ref: "Port",
-    },
-    sbType: {
-      type: String,
-      enum: ["Green - Drawback", "Yellow", "Red", "Blue"],
-      default: "Green - Drawback",
-    },
-    consignmentType: {
-      type: String,
-      enum: ["FCL", "LCL", "Break Bulk"],
-      default: "FCL",
-    },
-    jobOwner: String, // User who created the job
-
-    // Job Status and Tracking
-    // Add proper validations
-    jobStatus: {
-      type: String,
-      enum: {
-        values: ["Draft", "In Progress", "Filed", "Completed", "Cancelled"],
-        message: "{VALUE} is not a valid job status",
-      },
-      default: "Draft",
-      index: true,
-    },
-
-    // Add string length limits
-    remarks: {
-      type: String,
-      trim: true,
-      maxlength: [1000, "Remarks cannot exceed 1000 characters"],
-    },
-    jobTrackingCompleted: { type: Boolean, default: false },
-    jobCompletedDate: Date,
-    customerRemark: String,
-
-    // Workflow Information
-    workflow: {
-      location: {
-        type: String,
-        enum: ["All Locations", "Mumbai", "Delhi", "Chennai", "Kolkata"],
-        default: "All Locations",
-      },
-      shipmentType: {
-        type: String,
-        enum: ["Domestic", "International"],
-        default: "International",
-      },
-    },
 
     // Multiple Invoices
     invoices: [invoiceSchema],
@@ -955,26 +732,6 @@ const exportJobSchema = new mongoose.Schema(
 
     // Buyer and Third Party Information
     buyerThirdPartyInfo: buyerThirdPartySchema,
-
-    // Export Bond Details
-    exportBondDetails: {
-      qCertNoDate: String,
-      typeOfShipment: {
-        type: String,
-        enum: ["Outright Sale", "Consignment", "Free Sample", "Replacement"],
-        default: "Outright Sale",
-      },
-      specifyIfOther: String,
-      permissionNoDate: String,
-      exportUnder: {
-        type: String,
-        enum: ["EPCG", "Advance License", "DFRC", "Other"],
-        default: "Other",
-      },
-      sbHeading: String,
-      textToBePrintedOnSB: String,
-      exportTradeControl: String,
-    },
 
     // ARE Details
 
@@ -997,68 +754,6 @@ const exportJobSchema = new mongoose.Schema(
       aeoCode: String,
       aeoCountry: { type: String, ref: "Country", default: "IN" },
       aeoRole: String,
-    },
-
-    // DOC Info (Deemed Export/Special Economic Zone)
-    docInfo: {
-      eximCode: {
-        type: String,
-        enum: ["19 : Drawback (DBK)", "Other"],
-        default: "19 : Drawback (DBK)",
-      },
-      nfeiCategory: String,
-      rewardItem: { type: Boolean, default: false },
-      strCode: String,
-      endUse: String,
-      ptaFtaInfo: String,
-      originDistrict: String,
-      originState: { type: String, ref: "State" },
-      alternateQty: Number,
-      materialCode: String,
-      medicinalPlant: String,
-      formulation: String,
-      surfaceMaterialInContact: String,
-      labGrownDiamond: String,
-    },
-
-    // PMV Info (Price Market Value)
-    pmvInfo: {
-      currency: { type: String, ref: "Currency" },
-      calculationMethod: {
-        type: String,
-        enum: ["%age", "Fixed Amount"],
-        default: "%age",
-      },
-      pmvPerUnit: { type: Number },
-      totalPMV: { type: Number },
-    },
-
-    // IGST & Compensation Cess Info
-    igstCompensationInfo: {
-      igstPaymentStatus: {
-        type: String,
-        enum: ["Export Against Payment", "LUT", "Bond"],
-        default: "Export Against Payment",
-      },
-      taxableValueINR: { type: Number, default: 476500.85 },
-      igstRate: { type: Number, default: 18.0 },
-      igstAmountINR: { type: Number, default: 85770.96 },
-      compensationCessRate: { type: Number, default: 0.0 },
-      compensationCessAmountINR: { type: Number, default: 0.0 },
-    },
-
-    // RODTEP Info (Remission of Duties and Taxes on Exported Products)
-    rodtepInfo: {
-      rodtepClaim: {
-        type: String,
-        enum: ["Not Applicable", "Applicable"],
-        default: "Not Applicable",
-      },
-      quantity: { type: Number, default: 0.0 },
-      rateInPercentage: { type: Number, default: 0.0 },
-      capValue: { type: Number, default: 0.0 },
-      capValuePerUnits: { type: Number, default: 1 },
-      rodtepAmountINR: { type: Number, default: 0.0 },
     },
 
     annexC1Details: {
@@ -1168,9 +863,6 @@ const exportJobSchema = new mongoose.Schema(
       },
     },
 
-    // Exchange Rates
-    exchangeRates: [exchangeRateSchema],
-
     // Charges and Billing
     charges: [chargeSchema],
 
@@ -1189,48 +881,15 @@ const exportJobSchema = new mongoose.Schema(
       },
     ],
 
-    apInvoices: [
-      {
-        date: Date,
-        billNo: String,
-        type: String,
-        organization: { type: String, ref: "Directory" },
-        currency: { type: String, ref: "Currency" },
-        amount: Number,
-        balance: Number,
-      },
-    ],
-
-    // Document Management
-
     // eSanchit Documents
     eSanchitDocuments: [eSanchitDocumentSchema],
 
     // Milestone Tracking
     milestones: [milestoneSchema],
-    job_tracking_completed: { type: String, trim: true }, 
-    customer_remark: { type: String, trim: true, default: "Ready for Billing" },
-    workflow_location: { type: String, trim: true, default: "All Locations" },
-    shipment_type: { type: String, trim: true, default: "International" },
-
-    milestone_remarks: { type: String, trim: true },
-    milestone_view_upload_documents: { type: String, trim: true },
-    milestone_handled_by: { type: String, trim: true },
-
+  
     // System Fields
     createdBy: { type: String },
     updatedBy: String,
-
-    // History/Audit Trail
-    history: [
-      {
-        action: String,
-        user: String,
-        timestamp: { type: Date, default: Date.now },
-        changes: Schema.Types.Mixed,
-        remarks: String,
-      },
-    ],
     products: [productDetailsSchema],
     drawbackDetails: [drawbackDetailsSchema],
     ar_invoices: [arInvoiceSchema],
@@ -1247,7 +906,6 @@ const exportJobSchema = new mongoose.Schema(
     ap_outstanding_balance: { type: Number, default: 0 },
     ap_default_currency: { type: String, trim: true },
     ap_payment_terms_days: { type: Number, default: 30 },
-    ap_last_updated: { type: Date },
     ap_notes: { type: String, trim: true },
     // Add to main exportJobSchema:
     charges: [chargeSchema],
@@ -1259,11 +917,6 @@ const exportJobSchema = new mongoose.Schema(
     },
     masterblno: { type: String, trim: true }, // Master BL Number
     houseblno: { type: String, trim: true }, // House BL Number
-    rbi_waiver_date: { type: String, trim: true }, // RBI Waiver Date (number already exists)
-    rotation_no: { type: String, trim: true }, // Rotation Number
-    rotation_date: { type: String, trim: true }, // Rotation Date
-    nature_of_contract: { type: String, trim: true }, // Nature of Contract
-    str_amount_inr: { type: String, trim: true }, // STR Amount in INR (strCode already exists)
   },
 
   {

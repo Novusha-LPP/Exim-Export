@@ -212,7 +212,7 @@ const ExportJobsTable = () => {
             status: activeTab,
             search: searchQuery,
             year: selectedYear === "all" ? "" : selectedYear,
-            movement_type: selectedType,
+            consignmentType: selectedType,
             page: page,      // Current Page
             limit: LIMIT,    // 30 records
           },
@@ -315,7 +315,6 @@ const ExportJobsTable = () => {
                 <th style={s.th}>Exporter</th>
                 <th style={s.th}>Consignee</th>
                 <th style={{...s.th, width: '60px'}}>Type</th>
-                <th style={s.th}>Invoice No</th>
                 <th style={s.th}>Date</th>
                 <th style={s.th}>POL</th>
                 <th style={s.th}>POD</th>
@@ -352,13 +351,12 @@ const ExportJobsTable = () => {
                       {job.consignee_name || '-'}
                     </td>
                     <td style={s.td}>
-                      <span style={s.chip}>{job.movement_type || '-'}</span>
+                      <span style={s.chip}>{job.consignmentType || '-'}</span>
                     </td>
-                    <td style={s.td}>{job.commercial_invoice_number || '-'}</td>
                     <td style={s.td}>{safeDate(job.job_date)}</td>
                     <td style={s.td}>{job.port_of_origin || '-'}</td>
                     <td style={s.td}>{job.port_of_discharge || '-'}</td>
-                    <td style={s.td}>{job.country_of_final_destination || '-'}</td>
+                    <td style={s.td}>{job.discharge_country || '-'}</td>
                     <td style={s.td}>{job.sb_no || '-'}</td>
                     <td style={s.td}>{safeDate(job.sb_no)}</td>
                   </tr>
