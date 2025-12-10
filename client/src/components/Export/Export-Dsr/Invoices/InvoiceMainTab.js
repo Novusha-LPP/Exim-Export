@@ -116,7 +116,7 @@ const InvoiceMainTab = ({ formik }) => {
       try {
         const todayDate = getTodayFormatted(); // DD-MM-YYYY format
         const res = await fetch(
-          `http://localhost:9002/api/currency-rates/by-date/${todayDate}`
+         `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${todayDate}`
         );
         const json = await res.json();
         
