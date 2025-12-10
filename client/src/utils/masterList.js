@@ -134,7 +134,7 @@ export const unitCodes = [
   "YDS",
 ];
 
-export const PTA_FTA_CODES = [
+export const END_USE_CODES = [
   {
     code: "DCA100",
     description:
@@ -379,6 +379,89 @@ export const PTA_FTA_CODES = [
   {
     code: "LVP730",
     description: "Live Plants -For a display in a Botanical Garden",
+  },
+];
+
+export const PTA_FTA_CODES = [
+  {
+    code: "FTA0SA",
+    description: "Agreement on SAFTA",
+  },
+  {
+    code: "PTAAPTA",
+    description: "Asia Pacific Trade Agreement (APTA)",
+  },
+  {
+    code: "GSTP",
+    description: "Global System of Trade Preferences (GSTP)",
+  },
+  {
+    code: "PTA0AF",
+    description: "India - Afghanistan",
+  },
+  {
+    code: "CEPASEA",
+    description:
+      "India - ASEAN- CECA - Trade in goods, Services and Investment Agreement",
+  },
+  {
+    code: "FTA0BT",
+    description:
+      "India - Bhutan Agreement on Trade Commerce and Transit",
+  },
+  {
+    code: "PTA0CL",
+    description: "India - Chile",
+  },
+  {
+    code: "CEPAJP",
+    description: "India - Japan CEPA",
+  },
+  {
+    code: "CECAMY",
+    description: "India - Malaysia CECA",
+  },
+  {
+    code: "PTA0MER",
+    description: "India - MERCOSUR",
+  },
+  {
+    code: "CEPASG",
+    description: "India - Singapore CECA",
+  },
+  {
+    code: "CEPAKR",
+    description: "India - South Korea CEPA",
+  },
+  {
+    code: "FTA0SL",
+    description: "India - Sri Lanka FTA",
+  },
+  {
+    code: "FTA0TH",
+    description: "India - Thailand FTA - Early Harvest Scheme (EHS)",
+  },
+  {
+    code: "FTA0NL",
+    description: "India Nepal Treaty of Trade",
+  },
+  {
+    code: "ECTAAU",
+    description: "India-AUS ECTA",
+  },
+  {
+    code: "CEPAAE",
+    description: "India-UAE CEPA",
+  },
+  {
+    code: "NCPTI",
+    description:
+      "Preferential Trade Benefit not claimed at importing country",
+  },
+  {
+    code: "PTA0SA",
+    description:
+      "SAARC Preferential Trading Agreement (SAPTA)",
   },
 ];
 

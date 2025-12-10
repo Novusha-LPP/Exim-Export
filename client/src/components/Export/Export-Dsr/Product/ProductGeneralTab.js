@@ -4,6 +4,7 @@ import {
   states,
   PTA_FTA_CODES,
   unitCodes,
+  END_USE_CODES,
 } from "../../../../utils/masterList";
 import { toUpperVal } from "./commonStyles.js";
 
@@ -656,6 +657,88 @@ function usePtaFtaDropdown(
   };
 }
 
+function useEndUseDropdown(
+  fieldName,
+  productIndex,
+  formik,
+  handleProductChange
+) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [active, setActive] = useState(-1);
+  const wrapperRef = useRef(null);
+  const keepOpenOnInput = useRef(false);
+
+  useEffect(() => {
+    setQuery(formik.values.products?.[productIndex]?.[fieldName] || "");
+  }, [formik.values.products, productIndex, fieldName]);
+
+  useEffect(() => {
+    const close = (e) => {
+      if (
+        !keepOpenOnInput.current &&
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  const filtered = END_USE_CODES.filter((opt) => {
+    const code = (opt.code || "").toUpperCase();
+    const desc = (opt.description || "").toUpperCase();
+    const q = (query || "").toUpperCase();
+    return code.includes(q) || desc.includes(q);
+  }).slice(0, 15);
+
+  const handle = (val) => {
+    const v = (val || "").toUpperCase();
+    setQuery(v);
+    handleProductChange(productIndex, fieldName, v);
+    setOpen(true);
+  };
+
+  const select = (i) => {
+    const item = filtered[i];
+    if (!item) return;
+    const formattedValue = `${item.code} - ${item.description}`;
+    const upper = formattedValue.toUpperCase();
+    setQuery(upper);
+    handleProductChange(productIndex, fieldName, upper);
+    setOpen(false);
+    setActive(-1);
+  };
+
+  const onInputFocus = () => {
+    setOpen(true);
+    setActive(-1);
+    keepOpenOnInput.current = true;
+  };
+
+  const onInputBlur = () => {
+    setTimeout(() => {
+      keepOpenOnInput.current = false;
+    }, 100);
+  };
+
+  return {
+    wrapperRef,
+    open,
+    setOpen,
+    query,
+    handle,
+    select,
+    active,
+    setActive,
+    filtered,
+    onInputFocus,
+    onInputBlur,
+  };
+}
+
 /* ---------- Field components using hooks (unchanged) ---------- */
 
 const EximCodeField = ({
@@ -847,11 +930,78 @@ const PtaFtaField = ({
     </div>
   );
 };
+const EndUseField = ({
+  label,
+  fieldName,
+  productIndex,
+  placeholder,
+  formik,
+  handleProductChange,
+}) => {
+  const d = useEndUseDropdown(
+    fieldName,
+    productIndex,
+    formik,
+    handleProductChange
+  );
+
+  return (
+    <div style={styles.field} ref={d.wrapperRef}>
+      <div style={styles.label}>{label}</div>
+      <div style={styles.acWrap}>
+        <input
+          style={styles.input}
+          placeholder={placeholder}
+          autoComplete="off"
+          value={(d.query || "").toUpperCase()}
+          onChange={(e) => d.handle(e.target.value)}
+          onFocus={d.onInputFocus}
+          onBlur={d.onInputBlur}
+          onKeyDown={(e) => {
+            if (!d.open) return;
+            if (e.key === "ArrowDown") {
+              d.setActive((a) =>
+                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1)
+              );
+            } else if (e.key === "ArrowUp") {
+              d.setActive((a) => Math.max(0, a - 1));
+            } else if (e.key === "Enter" && d.active >= 0) {
+              e.preventDefault();
+              d.select(d.active);
+            } else if (e.key === "Escape") {
+              d.setOpen(false);
+            }
+          }}
+        />
+        <span style={styles.acIcon}>⌄</span>
+        {d.open && d.filtered.length > 0 && (
+          <div style={styles.acMenu}>
+            {d.filtered.map((opt, i) => (
+              <div
+                key={opt.code}
+                style={styles.acItem(d.active === i)}
+                onMouseDown={() => d.select(i)}
+                onMouseEnter={() => d.setActive(i)}
+              >
+                {opt.code}
+                <span style={{ fontWeight: 400, fontSize: 11, color: "#555" }}>
+                  {" "}
+                  {opt.description}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 /* ---------- ProductRow component: all hooks per-product here ---------- */
 
 function ProductRow({
   product,
+  invoice,
   index,
   formik,
   handleProductChange,
@@ -943,16 +1093,15 @@ function ProductRow({
         </div>
 
         {/* Row 2 */}
-        <div style={styles.field}>
-          <label style={styles.label}>End Use</label>
-          <input
-            style={styles.input}
-            value={product.endUse || ""}
-            onChange={(e) =>
-              handleProductChange(index, "endUse", e.target.value)
-            }
-          />
-        </div>
+        <EndUseField
+          label="End Use"
+          fieldName="endUse"
+          productIndex={index}
+          placeholder="Select End Use"
+          formik={formik}
+          handleProductChange={handleProductChange}
+        />
+
         <DistrictApiField
           label="Origin District"
           fieldName="originDistrict"
@@ -1105,15 +1254,16 @@ function ProductRow({
           <label style={styles.label}>Currency</label>
           <select
             style={styles.select}
-            value={product.pmvInfo?.currency || "INR"}
+            value={product.pmvInfo?.currency}
             onChange={(e) =>
               handleProductChange(index, "pmvInfo.currency", e.target.value)
             }
           >
             <option value="INR">INR</option>
-            <option value="USD">USD</option>
+            <option value="USD">{invoice.currency}</option>
           </select>
         </div>
+
         <div style={styles.field}>
           <label style={styles.label}>Calc. Method</label>
           <div style={{ display: "flex", gap: 4 }}>
@@ -1129,27 +1279,38 @@ function ProductRow({
               }
             >
               <option value="percentage">%age</option>
-              <option value="value">Value</option>
+              <option value="manual">Manual</option>
             </select>
-            <input
-              style={{ ...styles.input, width: "40%" }}
-              type="number"
-              value={product.pmvInfo?.percentage || 110.0}
-              onChange={(e) =>
-                handleProductChange(
-                  index,
-                  "pmvInfo.percentage",
-                  parseFloat(e.target.value)
-                )
-              }
-            />
+            {/* Only show percentage input in percentage mode */}
+            {product.pmvInfo?.calculationMethod === "percentage" && (
+              <input
+                style={{ ...styles.input, width: "40%" }}
+                type="number"
+                value={product.pmvInfo?.percentage || 110.0}
+                onChange={(e) =>
+                  handleProductChange(
+                    index,
+                    "pmvInfo.percentage",
+                    parseFloat(e.target.value)
+                  )
+                }
+              />
+            )}
           </div>
         </div>
+
         <div style={styles.field}>
           <label style={styles.label}>PMV/Unit</label>
           <div style={{ position: "relative" }}>
             <input
-              style={{ ...styles.input, paddingRight: 35 }}
+              style={{
+                ...styles.input,
+                paddingRight: 35,
+                backgroundColor:
+                  product.pmvInfo?.calculationMethod === "percentage"
+                    ? "#e2e8f0"
+                    : "#f7fafc",
+              }}
               type="number"
               value={product.pmvInfo?.pmvPerUnit || 0}
               onChange={(e) =>
@@ -1159,6 +1320,8 @@ function ProductRow({
                   parseFloat(e.target.value)
                 )
               }
+              disabled={product.pmvInfo?.calculationMethod === "percentage"}
+              readOnly={product.pmvInfo?.calculationMethod === "percentage"}
             />
             <span
               style={{
@@ -1173,11 +1336,19 @@ function ProductRow({
             </span>
           </div>
         </div>
+
         <div style={styles.field}>
           <label style={styles.label}>Total PMV</label>
           <div style={{ position: "relative" }}>
             <input
-              style={{ ...styles.input, paddingRight: 35 }}
+              style={{
+                ...styles.input,
+                paddingRight: 35,
+                backgroundColor:
+                  product.pmvInfo?.calculationMethod === "percentage"
+                    ? "#e2e8f0"
+                    : "#f7fafc",
+              }}
               type="number"
               value={product.pmvInfo?.totalPMV || 0}
               onChange={(e) =>
@@ -1187,6 +1358,8 @@ function ProductRow({
                   parseFloat(e.target.value)
                 )
               }
+              disabled={product.pmvInfo?.calculationMethod === "percentage"}
+              readOnly={product.pmvInfo?.calculationMethod === "percentage"}
             />
             <span
               style={{
@@ -1453,12 +1626,91 @@ function ProductRow({
 
 /* ---------- MAIN COMPONENT ---------- */
 
+// ...imports and helper hooks unchanged above
+
+/* ---------- MAIN COMPONENT ---------- */
+
 const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
   const products = formik.values.products || [];
   const product = products[selectedProductIndex]; // single product
+  const invoice = formik.values.invoices?.[0];
+
+  const [exchangeRates, setExchangeRates] = useState([]);
+  const [ratesLoading, setRatesLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRates = async () => {
+      try {
+        setRatesLoading(true);
+        const res = await fetch(`${apiBase}/currency-rates/`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          const latestRates = data.data[0]?.exchange_rates || [];
+          setExchangeRates(latestRates);
+        }
+      } catch (error) {
+        console.error("Error fetching exchange rates:", error);
+      } finally {
+        setRatesLoading(false);
+      }
+    };
+    fetchRates();
+  }, []);
+
+  const getExportRate = useCallback(
+    (currencyCode) => {
+      if (!currencyCode || currencyCode === "INR") return 1;
+      const rate = exchangeRates.find(
+        (r) => r.currency_code === currencyCode.toUpperCase()
+      );
+      return rate ? rate.export_rate : 1;
+    },
+    [exchangeRates]
+  );
+
+  const convertToINR = useCallback(
+    (amount, fromCurrency) => {
+      if (!amount || !fromCurrency) return 0;
+      if (fromCurrency === "INR") return parseFloat(amount) || 0;
+
+      const rate = getExportRate(fromCurrency);
+      const total = parseFloat(amount) * rate;
+      return isNaN(total) ? 0 : total;
+    },
+    [getExportRate]
+  );
+
+  // Calculate PMV values
+  const calculatePMV = useCallback(
+    (prod, inv) => {
+      const amount = parseFloat(prod.amount) || 0;
+      const quantity = parseFloat(prod.quantity) || 1;
+      const amountCurrency = inv?.currency || "INR";
+
+      const amountInINR = convertToINR(amount, amountCurrency);
+      if (prod.pmvInfo?.calculationMethod === "percentage") {
+        const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
+        const totalPMV = (amountInINR * percentage) / 100;
+        const pmvPerUnit = totalPMV / quantity;
+
+        return {
+          pmvPerUnit: pmvPerUnit.toFixed(2),
+          totalPMV: totalPMV.toFixed(2),
+        };
+      }
+      // manual mode: keep existing
+      return {
+        pmvPerUnit: prod.pmvInfo?.pmvPerUnit || 0,
+        totalPMV: prod.pmvInfo?.totalPMV || 0,
+      };
+    },
+    [convertToINR]
+  );
+
   const handleProductChange = useCallback(
     (index, field, value) => {
       const updatedProducts = [...formik.values.products];
+
       if (field.includes(".")) {
         const [parent, child] = field.split(".");
         if (!updatedProducts[index][parent])
@@ -1470,9 +1722,21 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
       } else {
         updatedProducts[index][field] = value;
       }
+
+      // Auto-calculate PMV if in percentage mode
+      const prod = updatedProducts[index];
+      if (prod.pmvInfo?.calculationMethod === "percentage") {
+        const calculated = calculatePMV(prod, invoice);
+        updatedProducts[index].pmvInfo = {
+          ...updatedProducts[index].pmvInfo,
+          pmvPerUnit: calculated.pmvPerUnit,
+          totalPMV: calculated.totalPMV,
+        };
+      }
+
       formik.setFieldValue("products", updatedProducts);
     },
-    [formik]
+    [formik, calculatePMV, invoice]
   );
 
   const handleUnitChange = useCallback(
@@ -1549,6 +1813,40 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
     [formik]
   );
 
+  // Recalculate PMV for all products when invoice currency changes
+  // keep invoice, calculatePMV defined as in your file
+
+  useEffect(() => {
+    if (!invoice?.currency) return;
+
+    const currentProducts = formik.values.products || [];
+    let changed = false;
+    const updatedProducts = currentProducts.map((prod) => {
+      if (prod.pmvInfo?.calculationMethod !== "percentage") return prod;
+
+      const calculated = calculatePMV(prod, invoice);
+      const nextPmv = {
+        ...(prod.pmvInfo || {}),
+        pmvPerUnit: calculated.pmvPerUnit,
+        totalPMV: calculated.totalPMV,
+      };
+
+      // shallow equality check to avoid useless updates
+      if (
+        nextPmv.pmvPerUnit !== prod.pmvInfo?.pmvPerUnit ||
+        nextPmv.totalPMV !== prod.pmvInfo?.totalPMV
+      ) {
+        changed = true;
+        return { ...prod, pmvInfo: nextPmv };
+      }
+      return prod;
+    });
+
+    if (changed) {
+      formik.setFieldValue("products", updatedProducts);
+    }
+  }, [invoice?.currency, calculatePMV]); // ❗ remove formik.values.products, formik, invoice
+
   return (
     <div style={styles.page}>
       <div style={styles.sectionTitle}>Product General Information</div>
@@ -1574,120 +1872,121 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
               ))}
             </tr>
           </thead>
+          <tbody>
+            {(() => {
+              const productsLocal = formik.values.products || [];
+              const rowProduct = productsLocal[selectedProductIndex] || null;
+              if (!rowProduct) return null;
+              const index = selectedProductIndex;
 
-<tbody>
-  {(() => {
-    const products = formik.values.products || [];
-    const product = products[selectedProductIndex] || null;
+              return (
+                <tr key={rowProduct._id || index}>
+                  <td style={styles.td}>{rowProduct.serialNumber}</td>
 
-    if (!product) return null;
+                  <td style={styles.td}>
+                    <textarea
+                      style={styles.textarea}
+                      value={toUpperVal(rowProduct.description || "")}
+                      onChange={(e) =>
+                        handleProductChange(
+                          index,
+                          "description",
+                          toUpperVal(e.target.value)
+                        )
+                      }
+                    />
+                  </td>
 
-    const index = selectedProductIndex;
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      value={rowProduct.ritc || ""}
+                      onChange={(e) =>
+                        handleProductChange(
+                          index,
+                          "ritc",
+                          toUpperVal(e.target.value)
+                        )
+                      }
+                    />
+                  </td>
 
-    return (
-      <tr key={product._id || index}>
-        <td style={styles.td}>{product.serialNumber}</td>
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      value={rowProduct.quantity || 0}
+                      onChange={(e) =>
+                        handleProductChange(
+                          index,
+                          "quantity",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                    />
+                  </td>
 
-        <td style={styles.td}>
-          <textarea
-            style={styles.textarea}
-            value={toUpperVal(product.description || "")}
-            onChange={(e) =>
-              handleProductChange(
-                index,
-                "description",
-                toUpperVal(e.target.value)
-              )
-            }
-          />
-        </td>
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      value={rowProduct.unitPrice || 0}
+                      onChange={(e) =>
+                        handleProductChange(
+                          index,
+                          "unitPrice",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                    />
+                  </td>
 
-        <td style={styles.td}>
-          <input
-            style={styles.input}
-            value={product.ritc || ""}
-            onChange={(e) =>
-              handleProductChange(index, "ritc", toUpperVal(e.target.value))
-            }
-          />
-        </td>
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      value={rowProduct.per || ""}
+                      onChange={(e) =>
+                        handleProductChange(index, "per", e.target.value)
+                      }
+                    />
+                  </td>
 
-        <td style={styles.td}>
-          <input
-            style={styles.input}
-            type="number"
-            value={product.quantity || 0}
-            onChange={(e) =>
-              handleProductChange(
-                index,
-                "quantity",
-                parseFloat(e.target.value) || 0
-              )
-            }
-          />
-        </td>
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      value={rowProduct.amount || 0}
+                      onChange={(e) =>
+                        handleProductChange(
+                          index,
+                          "amount",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                    />
+                  </td>
 
-        <td style={styles.td}>
-          <input
-            style={styles.input}
-            type="number"
-            value={product.unitPrice || 0}
-            onChange={(e) =>
-              handleProductChange(
-                index,
-                "unitPrice",
-                parseFloat(e.target.value) || 0
-              )
-            }
-          />
-        </td>
-
-        <td style={styles.td}>
-          <input
-            style={styles.input}
-            value={product.per || ""}
-            onChange={(e) =>
-              handleProductChange(index, "per", e.target.value)
-            }
-          />
-        </td>
-
-        <td style={styles.td}>
-          <input
-            style={styles.input}
-            type="number"
-            value={product.amount || 0}
-            onChange={(e) =>
-              handleProductChange(
-                index,
-                "amount",
-                parseFloat(e.target.value) || 0
-              )
-            }
-          />
-        </td>
-
-        <td style={styles.td}>
-          <button
-            onClick={() => removeProduct(index)}
-            disabled={products.length <= 1}
-            style={{
-              padding: "4px 8px",
-              background: "#ef4444",
-              color: "white",
-              border: "none",
-              borderRadius: 3,
-              cursor: products.length <= 1 ? "not-allowed" : "pointer",
-            }}
-          >
-            ✕
-          </button>
-        </td>
-      </tr>
-    );
-  })()}
-</tbody>
-
+                  <td style={styles.td}>
+                    <button
+                      onClick={() => removeProduct(index)}
+                      disabled={productsLocal.length <= 1}
+                      style={{
+                        padding: "4px 8px",
+                        background: "#ef4444",
+                        color: "white",
+                        border: "none",
+                        borderRadius: 3,
+                        cursor:
+                          productsLocal.length <= 1 ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              );
+            })()}
+          </tbody>
         </table>
       </div>
 
@@ -1695,11 +1994,11 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
         ➕ Add New Product
       </button>
 
-      {/* Detailed cards: each row is a separate component with its own hooks */}
       {/* Detailed card for selected product only */}
       {product && (
         <ProductRow
           key={product.id || selectedProductIndex}
+          invoice={invoice}
           product={product}
           index={selectedProductIndex}
           formik={formik}

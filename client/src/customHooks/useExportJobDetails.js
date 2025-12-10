@@ -454,6 +454,7 @@ function useExportJobDetails(params, setFileSnackbar) {
           priceUnit:"",
           per: "",
           amount: "",
+          amountUnit:"",
           eximCode: "",
           nfeiCategory: "",
           rewardItem: false,

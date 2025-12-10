@@ -49,6 +49,8 @@ import getExpJob from "./routes/export-dsr/getExpJob.mjs";
 import updateExportJobs from "./routes/export-dsr/updateExportJobs.js";
 import currencyRate from "./routes/currencyRate.js";
 import deleteFromS3Routes from "./routes/deleteFromS3.js";
+import getRodtep from "./routes/export-dsr/getRodtep.js";
+import getCthsExport from "./routes/export-dsr/getCthsExport.js";
 
 process.on("uncaughtException", (error) => {
   logger.error(`Uncaught Exception: ${error.message}`, { stack: error.stack });
@@ -148,7 +150,9 @@ app.use(getExporterList);
 // app.use(getExporterJobs);
 app.use(addJobs);
 app.use("/api/export-jobs", updateExportJobs);
-app.use(currencyRate)
+app.use("/api/getRodtep", getRodtep);
+app.use("/api/getCthsExport", getCthsExport);
+app.use(currencyRate);
 
 // s3 route
 

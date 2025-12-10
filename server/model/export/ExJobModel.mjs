@@ -149,12 +149,13 @@ const productDetailsSchema = new Schema(
     description: { type: String, maxlength: 500 },
     ritc: { type: String, ref: "TariffHead" },
     quantity: { type: String },
-    qtyUnit:{type:String},
+    qtyUnit: { type: String },
     socQuantity: { type: String, default: "0" },
     unitPrice: { type: String },
-        priceUnit:{type:String},
+    priceUnit: { type: String },
     per: { type: String, ref: "UQC" },
     amount: { type: String },
+    amountUnit: { type: String },
 
     // --- General / Origin Details ---
     eximCode: { type: String, trim: true },
@@ -438,7 +439,7 @@ const arInvoiceSchema = new Schema(
 const eSanchitDocumentSchema = new Schema({
   documentLevel: { type: String, enum: ["Invoice", "Item", "Job"] },
   scope: {
-    type: String, 
+    type: String,
   },
   invSerialNo: String,
   itemSerialNo: String,
@@ -516,7 +517,6 @@ const chargeSchema = new Schema(
   { _id: true }
 );
 
-
 // Milestone Tracking Schema
 const milestoneSchema = new Schema(
   {
@@ -578,7 +578,7 @@ const exportJobSchema = new mongoose.Schema(
     exporter: { type: String, trim: true },
     description: { type: String, trim: true },
     sb_no: { type: String, trim: true },
-        consignmentType: {
+    consignmentType: {
       type: String,
       enum: ["FCL", "LCL", "Break Bulk"],
     },
@@ -606,7 +606,6 @@ const exportJobSchema = new mongoose.Schema(
     gr_no: { type: String, trim: true },
     rbi_waiver_no: { type: String, trim: true },
     notify: { type: String, trim: true },
-
 
     // Commercial Fields (Missing)
     currency: { type: String, trim: true },
@@ -701,12 +700,11 @@ const exportJobSchema = new mongoose.Schema(
     place_of_delivery: { type: String, trim: true },
 
     // Invoice Details
- 
+
     exchange_rate: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Containers Information
     containers: [exportContainerSchema],
-
 
     // Removed duplicate container_count
     stuffing_date: { type: String, trim: true },
@@ -888,7 +886,7 @@ const exportJobSchema = new mongoose.Schema(
 
     // Milestone Tracking
     milestones: [milestoneSchema],
-  
+
     // System Fields
     createdBy: { type: String },
     updatedBy: String,
