@@ -59,7 +59,7 @@ const GeneralTab = ({ formik, directories }) => {
   // --- 1. Directory-aware autofill: live on any input
   function onExporterInput(e) {
     const val = toUpperVal(e);
-    handleFieldChange("exporter_name", val);
+    handleFieldChange("exporter", val);
     // UseEffect below will now take care of population as needed.
   }
   function handleRemoveConsignee(idx) {
@@ -80,9 +80,9 @@ const GeneralTab = ({ formik, directories }) => {
     }
   }
 
-  // 3. Watch exporter_name, do instant, one-time population when directory match occurs!
+  // 3. Watch exporter, do instant, one-time population when directory match occurs!
   useEffect(() => {
-    const exporterName = getVal("exporter_name");
+    const exporterName = getVal("exporter");
     const exp = exporters.find(
       (ex) => toUpper(ex.organization) === exporterName
     );
@@ -105,7 +105,7 @@ const GeneralTab = ({ formik, directories }) => {
       if (shouldUpdate) {
         const branch = exp.branchInfo?.[0] || {};
         const updates = {
-          exporter_name: toUpper(exp.organization),
+          exporter: toUpper(exp.organization),
           exporter: toUpper(exp.organization),
           exporter_address: toUpper(
             `${branch.address || ""}${
@@ -148,7 +148,7 @@ const GeneralTab = ({ formik, directories }) => {
       }
     }
     // eslint-disable-next-line
-  }, [directories, formik.values.exporter_name]); // react on directory or user input/name change only
+  }, [directories, formik.values.exporter]); // react on directory or user input/name change only
 
   // --- UI generators ---
   function field(label, name, opts = {}) {
@@ -180,8 +180,8 @@ const GeneralTab = ({ formik, directories }) => {
     const handleExporterSelect = (e) => {
       const val = toUpperVal(e);
       // keep single source of truth in formik
-      handleFieldChange("exporter_name", val);
-      // onExporterInput just writes exporter_name, so this keeps behaviour same
+      handleFieldChange("exporter", val);
+      // onExporterInput just writes exporter, so this keeps behaviour same
       onExporterInput({ target: { value: val } });
     };
 
@@ -189,8 +189,8 @@ const GeneralTab = ({ formik, directories }) => {
       <div>
         <div style={{ fontSize: 11, color: "#666" }}>Exporter</div>
         <select
-          name="exporter_name"
-          value={getVal("exporter_name")}
+          name="exporter"
+          value={getVal("exporter")}
           onChange={handleExporterSelect}
           style={{
             border: "1px solid #cad3db",

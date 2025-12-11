@@ -17,7 +17,7 @@ router.post(
   async (req, res) => {
     try {
       const {
-        exporter_name,
+        exporter,
         consignee_name,
         ie_code,
         job_no,
@@ -28,11 +28,11 @@ router.post(
         ...otherFields
       } = req.body;
 
-      if (!exporter_name || !ie_code || !branch_code || !transportMode) {
+      if (!exporter || !ie_code || !branch_code || !transportMode) {
         return res.status(400).json({
           success: false,
           message:
-            "Missing required fields: exporter_name, ie_code, branch_code, and transportMode are required.",
+            "Missing required fields: exporter, ie_code, branch_code, and transportMode are required.",
         });
       }
 
@@ -68,7 +68,7 @@ router.post(
             message: `Job number ${newJobNo} already exists. Please use a different number.`,
             existingJob: {
               job_no: existingJob.job_no,
-              exporter_name: existingJob.exporter_name,
+              exporter: existingJob.exporter,
               created: existingJob.createdAt,
             },
           });
@@ -145,7 +145,7 @@ router.post(
         job_no: newJobNo,
         year: yearFormat,
         job_date: job_date || todayDate,
-        exporter_name,
+        exporter,
         consignee_name,
         ie_code,
         transportMode,
@@ -166,7 +166,7 @@ router.post(
         message: "Export job successfully created.",
         job: {
           job_no: newExportJob.job_no,
-          exporter_name: newExportJob.exporter_name,
+          exporter: newExportJob.exporter,
           consignee_name: newExportJob.consignee_name,
           ie_code: newExportJob.ie_code,
           transportMode: newExportJob.transportMode,
@@ -256,7 +256,7 @@ router.post(
             message: `Job number ${newJobNo} already exists. Please use a different sequence.`,
             existingJob: {
               job_no: existingJob.job_no,
-              exporter_name: existingJob.exporter_name,
+              exporter: existingJob.exporter,
             },
           });
         }
@@ -345,7 +345,7 @@ router.post(
         message: "Export job copied successfully.",
         job: {
           job_no: newExportJob.job_no,
-          exporter_name: newExportJob.exporter_name,
+          exporter: newExportJob.exporter,
           consignee_name: newExportJob.consignee_name,
           ie_code: newExportJob.ie_code,
           transportMode: newExportJob.transportMode,

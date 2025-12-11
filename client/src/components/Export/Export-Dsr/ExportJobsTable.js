@@ -344,6 +344,28 @@ const ExportJobsTable = () => {
       }
     }
 
+    // Get suggested next sequence
+    let nextSequence = "";
+    if (extractedBranch && extractedYear) {
+      try {
+        // Call backend to get suggested sequence
+        const response = await axios.post(
+          `${import.meta.env.VITE_API_STRING}/jobs/suggest-sequence`,
+          {
+            branch_code: extractedBranch,
+            transportMode: job.transportMode || "SEA",
+            year: extractedYear,
+          }
+        );
+
+        if (response.data.success) {
+          nextSequence = response.data.suggestedSequence;
+        }
+      } catch (error) {
+        console.error("Error getting suggested sequence:", error);
+      }
+    }
+
     // Set form with extracted values or defaults
     setCopyForm({
       branch_code: extractedBranch || job.branch_code || "",
@@ -352,11 +374,11 @@ const ExportJobsTable = () => {
       manualSequence: "",
     });
 
-    // Don't fetch sequence yet - will be done when user changes fields
-    setSuggestedSequence("");
+    setSuggestedSequence(nextSequence);
     setShowCopyModal(true);
     setCopyError("");
   };
+
   const handleCopySubmit = async () => {
     if (!copySourceJob) return;
 
@@ -792,9 +814,9 @@ const ExportJobsTable = () => {
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                         }}
-                        title={job.exporter_name}
+                        title={job.exporter}
                       >
-                        {job.exporter_name}
+                        {job.exporter}
                       </td>
                       <td
                         style={{
@@ -803,9 +825,9 @@ const ExportJobsTable = () => {
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                         }}
-                        title={job.consignee_name}
+                        title={job.consignees[0].consignee_name}
                       >
-                        {job.consignee_name || "-"}
+                        {job.consignees[0].consignee_name || "-"}
                       </td>
                       <td style={s.td}>
                         <span style={s.chip}>{job.consignmentType || "-"}</span>

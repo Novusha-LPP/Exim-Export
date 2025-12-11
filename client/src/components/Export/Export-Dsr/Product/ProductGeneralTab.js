@@ -5,6 +5,7 @@ import {
   PTA_FTA_CODES,
   unitCodes,
   END_USE_CODES,
+  currencyList,
 } from "../../../../utils/masterList";
 import { toUpperVal } from "./commonStyles.js";
 
@@ -1861,10 +1862,12 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
                 "Description",
                 "RITC/Tariff",
                 "Qty",
+                "Qty Unit",
                 "Unit Price",
+                "Unit Currency",
                 "Per(UQC)",
                 "Amount",
-                "Actions",
+                "Amount Unit",
               ].map((h) => (
                 <th key={h} style={styles.th}>
                   {h}
@@ -1887,13 +1890,7 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
                     <textarea
                       style={styles.textarea}
                       value={toUpperVal(rowProduct.description || "")}
-                      onChange={(e) =>
-                        handleProductChange(
-                          index,
-                          "description",
-                          toUpperVal(e.target.value)
-                        )
-                      }
+                      readOnly
                     />
                   </td>
 
@@ -1901,13 +1898,7 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
                     <input
                       style={styles.input}
                       value={rowProduct.ritc || ""}
-                      onChange={(e) =>
-                        handleProductChange(
-                          index,
-                          "ritc",
-                          toUpperVal(e.target.value)
-                        )
-                      }
+                      readOnly
                     />
                   </td>
 
@@ -1916,14 +1907,15 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
                       style={styles.input}
                       type="number"
                       value={rowProduct.quantity || 0}
-                      onChange={(e) =>
-                        handleProductChange(
-                          index,
-                          "quantity",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
+                      readOnly
                     />
+                  </td>
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      value={rowProduct.qtyUnit || ""}
+                      readOnly
+                    ></input>
                   </td>
 
                   <td style={styles.td}>
@@ -1931,13 +1923,15 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
                       style={styles.input}
                       type="number"
                       value={rowProduct.unitPrice || 0}
-                      onChange={(e) =>
-                        handleProductChange(
-                          index,
-                          "unitPrice",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
+                      readOnly
+                    />
+                  </td>
+
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      value={invoice?.currency || ""}
+                      readOnly
                     />
                   </td>
 
@@ -1945,9 +1939,7 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
                     <input
                       style={styles.input}
                       value={rowProduct.per || ""}
-                      onChange={(e) =>
-                        handleProductChange(index, "per", e.target.value)
-                      }
+                      readOnly
                     />
                   </td>
 
@@ -1956,32 +1948,16 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
                       style={styles.input}
                       type="number"
                       value={rowProduct.amount || 0}
-                      onChange={(e) =>
-                        handleProductChange(
-                          index,
-                          "amount",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
+                      readOnly
                     />
                   </td>
 
                   <td style={styles.td}>
-                    <button
-                      onClick={() => removeProduct(index)}
-                      disabled={productsLocal.length <= 1}
-                      style={{
-                        padding: "4px 8px",
-                        background: "#ef4444",
-                        color: "white",
-                        border: "none",
-                        borderRadius: 3,
-                        cursor:
-                          productsLocal.length <= 1 ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      ✕
-                    </button>
+                    <input
+                      style={styles.input}
+                      value={invoice?.currency || ""}
+                      readOnly
+                    />
                   </td>
                 </tr>
               );

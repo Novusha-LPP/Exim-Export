@@ -671,7 +671,7 @@ function GatewayPortDropdown({
           // 🔥 ADD THIS onKeyDown handler to prevent form submission
           onKeyDown={(e) => {
             if (!d.open) return;
-            
+
             if (e.key === "Enter") {
               e.preventDefault(); // 👈 Prevent form submission
               if (d.active >= 0) {
@@ -735,7 +735,7 @@ const AddExJobs = () => {
   };
   const [formData, setFormData] = useState({
     branch_code: "AMD", // 👈 default
-    exporter_name: "",
+    exporter: "",
     consignees: [{ ...emptyConsignee }],
     ie_code: "",
     job_no: "",
@@ -790,11 +790,11 @@ const AddExJobs = () => {
         );
         if (response.data.success) {
           const allOrgs = response.data.data;
-          const filtered = formData.exporter_name
+          const filtered = formData.exporter
             ? allOrgs.filter((o) =>
                 (o.organization || "")
                   .toUpperCase()
-                  .includes(formData.exporter_name.toUpperCase())
+                  .includes(formData.exporter.toUpperCase())
               )
             : allOrgs;
           setOrganizations(filtered);
@@ -807,7 +807,7 @@ const AddExJobs = () => {
     };
     const timer = setTimeout(fetchOrgs, 200);
     return () => clearTimeout(timer);
-  }, [formData.exporter_name]);
+  }, [formData.exporter]);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: toUpper(value) }));
@@ -816,7 +816,7 @@ const AddExJobs = () => {
   const handleDirectorySelect = (org) => {
     setFormData((prev) => ({
       ...prev,
-      exporter_name: toUpper(org.organization),
+      exporter: toUpper(org.organization),
       ie_code: toUpper(org.registrationDetails?.ieCode || ""),
     }));
     setShowDropdown(false);
@@ -845,7 +845,7 @@ const AddExJobs = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.exporter_name) {
+    if (!formData.exporter) {
       showToast("Exporter Name is required", "error");
       return;
     }
@@ -866,7 +866,7 @@ const AddExJobs = () => {
   const handleClear = () => {
     setFormData({
       branch_code: "AMD",
-      exporter_name: "",
+      exporter: "",
       consignees: [{ ...emptyConsignee }],
       ie_code: "",
       job_no: "",
@@ -926,9 +926,9 @@ const AddExJobs = () => {
                   <div style={s.comboWrapper}>
                     <input
                       style={s.inputWithIcon}
-                      value={formData.exporter_name}
+                      value={formData.exporter}
                       onChange={(e) => {
-                        handleInputChange("exporter_name", e.target.value);
+                        handleInputChange("exporter", e.target.value);
                         setShowDropdown(true);
                       }}
                       onFocus={() => setShowDropdown(true)}

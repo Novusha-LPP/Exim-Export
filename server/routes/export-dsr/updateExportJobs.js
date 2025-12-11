@@ -58,7 +58,7 @@ router.get("/api/exports/:status?", async (req, res) => {
       filter.$and.push({
         $or: [
           { job_no: { $regex: search, $options: "i" } },
-          { exporter_name: { $regex: search, $options: "i" } },
+          { exporter: { $regex: search, $options: "i" } },
           { consignee_name: { $regex: search, $options: "i" } },
           { ie_code: { $regex: search, $options: "i" } },
         ],
@@ -68,7 +68,7 @@ router.get("/api/exports/:status?", async (req, res) => {
     // Additional filters
     if (exporter) {
       filter.$and.push({
-        exporter_name: { $regex: exporter, $options: "i" },
+        exporter: { $regex: exporter, $options: "i" },
       });
     }
 
