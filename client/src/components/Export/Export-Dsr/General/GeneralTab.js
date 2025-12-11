@@ -148,6 +148,25 @@ const GeneralTab = ({ formik, directories }) => {
     // eslint-disable-next-line
   }, [directories, formik.values.exporter, formik.values.branch_index]);
 
+  function handleIsBuyerToggle() {
+  const isBuyer = !formik.values.isBuyer;
+  handleFieldChange("isBuyer", isBuyer);
+  
+  // If isBuyer is checked, copy exporter details to buyer details
+  if (isBuyer) {
+    formik.setFieldValue("buyer_name", getVal("exporter"));
+    formik.setFieldValue("buyer_address", getVal("exporter_address"));
+    formik.setFieldValue("buyer_gstin", getVal("gstin"));
+    formik.setFieldValue("buyer_state", getVal("state"));
+  } else {
+    // Clear buyer details when unchecked
+    formik.setFieldValue("buyer_name", "");
+    formik.setFieldValue("buyer_address", "");
+    formik.setFieldValue("buyer_gstin", "");
+    formik.setFieldValue("buyer_state", "");
+  }
+}
+
   // --- UI generators ---
   function field(label, name, opts = {}) {
     return (
@@ -293,44 +312,73 @@ const GeneralTab = ({ formik, directories }) => {
     >
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         {/* Left: Exporter & Bank */}
-        <div
-          style={{
-            flex: 1,
-            minWidth: 295,
-            background: "#fff",
-            borderRadius: 6,
-            border: "1px solid #e3e7ee",
-            padding: 14,
-            marginBottom: 8,
-          }}
-        >
-          <div style={{ fontWeight: 700, color: "#2366b3", marginBottom: 8 }}>
-            Exporter & Bank
-          </div>
-          {exporterInputField()}
-          {branchSelectField()}
-          {field("Address", "exporter_address")}
-          <div style={{ display: "flex", gap: 10 }}>
-            {field("Branch S/No", "branch_sno")}
-            {field("State", "state")}
-            {field("IE Code No", "ieCode")}
-          </div>
-          {field("GSTIN", "gstin")}
-          <div
-            style={{
-              fontWeight: 700,
-              color: "#a37035",
-              margin: "10px 0 8px 0",
-            }}
-          >
-            Bank Details
-          </div>
-          {bankInputField()}
-          <div style={{ display: "flex", gap: 10 }}>
-            {field("A/C Number", "ac_number")}
-            {field("AD Code", "ad_code")}
-          </div>
-        </div>
+       <div
+  style={{
+    flex: 1,
+    minWidth: 295,
+    background: "#fff",
+    borderRadius: 6,
+    border: "1px solid #e3e7ee",
+    padding: 14,
+    marginBottom: 8,
+  }}
+>
+  <div style={{ fontWeight: 700, color: "#2366b3", marginBottom: 8 }}>
+    Exporter & Bank
+  </div>
+  {exporterInputField()}
+  {branchSelectField()}
+  {field("Address", "exporter_address")}
+  <div style={{ display: "flex", gap: 10 }}>
+    {field("Branch S/No", "branch_sno")}
+    {field("State", "state")}
+    {field("IE Code No", "ieCode")}
+  </div>
+  {field("GSTIN", "gstin")}
+
+  
+  <div
+    style={{
+      fontWeight: 700,
+      color: "#a37035",
+      margin: "10px 0 8px 0",
+    }}
+  >
+    Bank Details
+  </div>
+  {bankInputField()}
+  <div style={{ display: "flex", gap: 10 }}>
+    {field("A/C Number", "ac_number")}
+    {field("AD Code", "ad_code")}
+  </div>
+
+    
+  {/* Add the isBuyer checkbox here - right after the GSTIN field */}
+  <div style={{ display: "flex", alignItems: "center", margin: "8px 0 12px 0" }}>
+    <input
+      type="checkbox"
+      id="isBuyer"
+      name="isBuyer"
+      checked={formik.values.isBuyer || false}
+      onChange={handleIsBuyerToggle}
+      style={{
+        marginRight: "6px",
+        cursor: "pointer"
+      }}
+    />
+    <label
+      htmlFor="isBuyer"
+      style={{
+        fontSize: "13px",
+        color: "#555",
+        cursor: "pointer",
+        userSelect: "none"
+      }}
+    >
+      This party is Buyer
+    </label>
+  </div>
+</div>
         {/* Right: Reference Details */}
         <div
           style={{
