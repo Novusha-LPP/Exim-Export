@@ -737,7 +737,8 @@ const AddExJobs = () => {
     branch_code: "AMD", // 👈 default
     exporter: "",
     consignees: [{ ...emptyConsignee }],
-    ie_code: "",
+    ieCode: "",
+    panNo: "",
     job_no: "",
     consignmentType: "FCL",
     discharge_country: "",
@@ -814,13 +815,24 @@ const AddExJobs = () => {
   };
 
   const handleDirectorySelect = (org) => {
+    const ieCode = org.registrationDetails?.ieCode || "";
+    const panNo = org.registrationDetails?.panNo || "";
+
+    const displayValue = ieCode || panNo;
+
     setFormData((prev) => ({
       ...prev,
       exporter: toUpper(org.organization),
-      ie_code: toUpper(org.registrationDetails?.ieCode || ""),
+      ieCode: toUpper(displayValue), // 👈 match state + input
+      panNo: toUpper(panNo),
     }));
+
     setShowDropdown(false);
-    showToast("Exporter details populated!");
+    showToast(
+      ieCode
+        ? "Exporter details populated!"
+        : "PAN auto-filled in IE Code field"
+    );
   };
 
   const handleConsigneeChange = (idx, field, val) => {
@@ -868,7 +880,8 @@ const AddExJobs = () => {
       branch_code: "AMD",
       exporter: "",
       consignees: [{ ...emptyConsignee }],
-      ie_code: "",
+      ieCode: "",
+      pan_no: "",
       job_no: "",
       consignmentType: "FCL",
       discharge_country: "",
@@ -987,17 +1000,38 @@ const AddExJobs = () => {
                 </div>
 
                 <div style={s.col}>
-                  <label style={s.label}>IE Code *</label>
+                  <label style={s.label}>
+                    IE Code / PAN *
+                    {formData.ieCode && (
+                      <span
+                        style={{
+                          fontSize: "10px",
+                          color: "#10b981",
+                          marginLeft: "4px",
+                        }}
+                      >
+                        ✓ Auto-filled
+                      </span>
+                    )}
+                  </label>
                   <input
-                    style={s.input}
-                    value={formData.ie_code}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "ie_code",
-                        e.target.value.replace(/\D/g, "")
-                      )
-                    }
+                    style={{
+                      ...s.input,
+                      backgroundColor: formData.ieCode ? "#f9fafb" : "#fff",
+                      ...(formData.ieCode && { cursor: "not-allowed" }),
+                    }}
+                    value={formData.ieCode}
+                    placeholder="Enter IE Code/PAN or select exporter"
+                    onChange={(e) => {
+                      if (!formData.ieCode) {
+                        handleInputChange(
+                          "ieCode",
+                          e.target.value.replace(/\D/g, "")
+                        );
+                      }
+                    }}
                     maxLength={10}
+                    readOnly={!!formData.ieCode}
                     required
                   />
                 </div>

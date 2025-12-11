@@ -325,6 +325,7 @@ const ProductMainTab = ({ formik }) => {
                 <th style={{ ...styles.th, width: 110 }}>Quantity</th>
                 <th style={{ ...styles.th, width: 100 }}>Qty Unit</th>
                 <th style={{ ...styles.th, width: 110 }}>SOC Qty</th>
+                <th style={{ ...styles.th, width: 110 }}>SOC Qty Unit</th>
                 <th style={{ ...styles.th, width: 110 }}>Unit Price</th>
                 <th style={{ ...styles.th, width: 90 }}>Unit Currency</th>
                 <th style={{ ...styles.th, width: 80 }}>Per</th>
@@ -451,6 +452,26 @@ const ProductMainTab = ({ formik }) => {
                       onBlur={() => handleBlur(idx, "socQuantity")}
                       placeholder="0.00000"
                     />
+                  </td>
+                  <td style={styles.td}>
+                    <select
+                      style={styles.input}
+                      value={prod.socunit || ""}
+                      onChange={(e) =>
+                        handleProductFieldChange(idx, "socunit", e.target.value)
+                      }
+                    >
+                      <option value="">Unit</option>
+                      {unitCodes &&
+                        unitCodes.map((unit) => (
+                          <option
+                            key={unit.code || unit}
+                            value={unit.code || unit}
+                          >
+                            {unit.code || unit}
+                          </option>
+                        ))}
+                    </select>
                   </td>
 
                   <td style={styles.td}>

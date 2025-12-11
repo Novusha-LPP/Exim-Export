@@ -19,7 +19,7 @@ router.post(
       const {
         exporter,
         consignee_name,
-        ie_code,
+        ieCode,
         job_no,
         year,
         job_date,
@@ -28,18 +28,13 @@ router.post(
         ...otherFields
       } = req.body;
 
-      if (!exporter || !ie_code || !branch_code || !transportMode) {
+      const hasIdentifier = ieCode || panNo;
+
+      if (!exporter || !hasIdentifier || !branch_code || !transportMode) {
         return res.status(400).json({
           success: false,
           message:
-            "Missing required fields: exporter, ie_code, branch_code, and transportMode are required.",
-        });
-      }
-
-      if (!/^\d{10}$/.test(ie_code)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid IE Code format. Must be 10 digits.",
+            "Missing required fields: exporter,(IE Code or PAN), branch_code, and transportMode are required.",
         });
       }
 
@@ -147,7 +142,7 @@ router.post(
         job_date: job_date || todayDate,
         exporter,
         consignee_name,
-        ie_code,
+        ieCode,
         transportMode,
         branch_code,
         ...otherFields,
@@ -168,7 +163,7 @@ router.post(
           job_no: newExportJob.job_no,
           exporter: newExportJob.exporter,
           consignee_name: newExportJob.consignee_name,
-          ie_code: newExportJob.ie_code,
+          ieCode: newExportJob.ieCode,
           transportMode: newExportJob.transportMode,
           branch_code: newExportJob.branch_code,
           year: newExportJob.year,
@@ -347,7 +342,7 @@ router.post(
           job_no: newExportJob.job_no,
           exporter: newExportJob.exporter,
           consignee_name: newExportJob.consignee_name,
-          ie_code: newExportJob.ie_code,
+          ieCode: newExportJob.ieCode,
           transportMode: newExportJob.transportMode,
           branch_code: newExportJob.branch_code,
           year: newExportJob.year,

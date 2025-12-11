@@ -103,14 +103,23 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
   const tp = formik.values.buyerThirdPartyInfo?.thirdParty || {};
   const by = formik.values.buyerThirdPartyInfo?.buyer || {};
 
+  const isBuyer = !!formik.values.isBuyer;
+  const buyerDisabled = !isBuyer;
+
   const [orgs, setOrgs] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState(tp.name || "");
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(-1);
-  const wrapRef = useRef(null);
 
-  const buyerDisabled = true;
+  const [query, setQuery] = useState(tp.name || "");
+  const [buyerQuery, setBuyerQuery] = useState(by.name || "");
+
+  const [open, setOpen] = useState(false);
+  const [buyerOpen, setBuyerOpen] = useState(false);
+
+  const [active, setActive] = useState(-1);
+  const [buyerActive, setBuyerActive] = useState(-1);
+
+  const wrapRef = useRef(null);
+  const buyerWrapRef = useRef(null);
 
   // --------- fetch directory once ----------
   useEffect(() => {
@@ -130,11 +139,14 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
     fetchOrgs();
   }, []);
 
-  // close dropdown on outside click
+  // close dropdowns on outside click
   useEffect(() => {
     const close = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) {
         setOpen(false);
+      }
+      if (buyerWrapRef.current && !buyerWrapRef.current.contains(e.target)) {
+        setBuyerOpen(false);
       }
     };
     document.addEventListener("mousedown", close);
@@ -162,16 +174,18 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
     toUpper(o.organization || "").includes(toUpper(query))
   );
 
-  // --------- EXACT analogue of GeneralTab exporter useEffect ----------
+  const buyerFiltered = orgs.filter((o) =>
+    toUpper(o.organization || "").includes(toUpper(buyerQuery))
+  );
+
+  // --------- Third Party auto-populate ----------
   useEffect(() => {
     const nameInForm = toUpper(
       formik.values.buyerThirdPartyInfo?.thirdParty?.name || ""
     );
     if (!nameInForm) return;
 
-    const org = orgs.find(
-      (o) => toUpper(o.organization || "") === nameInForm
-    );
+    const org = orgs.find((o) => toUpper(o.organization || "") === nameInForm);
     if (!org) return;
 
     const branch = org.branchInfo?.[0] || {};
@@ -202,6 +216,46 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
     setQuery(toUpper(org.organization || ""));
   }, [orgs, formik.values.buyerThirdPartyInfo?.thirdParty?.name]);
 
+  // --------- Buyer auto-populate (only when isBuyer) ----------
+  useEffect(() => {
+    if (!isBuyer) return;
+
+    const nameInForm = toUpper(
+      formik.values.buyerThirdPartyInfo?.buyer?.name || ""
+    );
+    if (!nameInForm) return;
+
+    const org = orgs.find((o) => toUpper(o.organization || "") === nameInForm);
+    if (!org) return;
+
+    const branch = org.branchInfo?.[0] || {};
+    const address = `${branch.address || ""}${
+      branch.postalCode ? `, ${branch.postalCode}` : ""
+    }`;
+
+    const current = formik.values.buyerThirdPartyInfo?.buyer || {};
+
+    const shouldUpdate =
+      toUpper(current.addressLine1 || "") !== toUpper(address) ||
+      toUpper(current.city || "") !== toUpper(branch.city || "") ||
+      (current.pin || "") !== (branch.postalCode || "") ||
+      toUpper(current.country || "") !== toUpper(branch.country || "") ||
+      toUpper(current.state || "") !== toUpper(branch.state || "");
+
+    if (!shouldUpdate) return;
+
+    setBuyer({
+      name: toUpper(org.organization || ""),
+      addressLine1: toUpper(address),
+      city: toUpper(branch.city || ""),
+      pin: branch.postalCode || "",
+      country: toUpper(branch.country || ""),
+      state: toUpper(branch.state || ""),
+    });
+
+    setBuyerQuery(toUpper(org.organization || ""));
+  }, [isBuyer, orgs, formik.values.buyerThirdPartyInfo?.buyer?.name]);
+
   // --------- handlers ----------
 
   const handleNameInput = (e) => {
@@ -220,6 +274,24 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
     setQuery(val);
     setOpen(false);
     setActive(-1);
+  };
+
+  const handleBuyerNameInput = (e) => {
+    const val = toUpperVal(e);
+    setBuyerQuery(val);
+    setBuyer({ name: val }); // triggers Buyer useEffect
+    setBuyerOpen(true);
+    setBuyerActive(-1);
+  };
+
+  const handleSelectBuyerOrg = (idx) => {
+    const org = buyerFiltered[idx];
+    if (!org) return;
+    const val = toUpper(org.organization || "");
+    setBuyer({ name: val }); // rest populated in Buyer useEffect
+    setBuyerQuery(val);
+    setBuyerOpen(false);
+    setBuyerActive(-1);
   };
 
   return (
@@ -327,34 +399,83 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
           </div>
         </div>
 
-        {/* RIGHT: Buyer Info (disabled) */}
+        {/* RIGHT: Buyer Info */}
         <div>
           <div style={styles.subSectionTitle}>Buyer Info</div>
           <div style={styles.grid1}>
+            {/* Buyer Name with autocomplete (enabled only when isBuyer) */}
             <div>
-              <div style={styles.label}>Name</div>
-              <input
-                style={{ ...styles.input, ...styles.disabledInput }}
-                value={by.name || ""}
-                disabled={buyerDisabled}
-                onChange={(e) => setBuyer({ name: e.target.value })}
-              />
+              <div style={styles.label}>
+                Name
+                {loading && isBuyer && (
+                  <span style={styles.inlineHint}> Loading...</span>
+                )}
+              </div>
+              <div style={styles.acWrap} ref={buyerWrapRef}>
+                <input
+                  style={{
+                    ...styles.input,
+                    ...(buyerDisabled ? styles.disabledInput : {}),
+                  }}
+                  value={buyerQuery}
+                  disabled={buyerDisabled}
+                  onChange={handleBuyerNameInput}
+                  onFocus={() => !buyerDisabled && setBuyerOpen(true)}
+                  onKeyDown={(e) => {
+                    if (!buyerOpen || buyerDisabled) return;
+                    if (e.key === "ArrowDown") {
+                      setBuyerActive((a) =>
+                        Math.min(buyerFiltered.length - 1, a < 0 ? 0 : a + 1)
+                      );
+                    } else if (e.key === "ArrowUp") {
+                      setBuyerActive((a) => Math.max(0, a - 1));
+                    } else if (e.key === "Enter" && buyerActive >= 0) {
+                      e.preventDefault();
+                      handleSelectBuyerOrg(buyerActive);
+                    } else if (e.key === "Escape") {
+                      setBuyerOpen(false);
+                    }
+                  }}
+                />
+                {buyerOpen && !buyerDisabled && buyerFiltered.length > 0 && (
+                  <div style={styles.acMenu}>
+                    {buyerFiltered.map((o, i) => (
+                      <div
+                        key={o._id || i}
+                        style={styles.acItem(buyerActive === i)}
+                        onMouseDown={() => handleSelectBuyerOrg(i)}
+                        onMouseEnter={() => setBuyerActive(i)}
+                      >
+                        {toUpper(o.organization || "")}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+
             <div>
               <div style={styles.label}>Address</div>
               <textarea
-                style={{ ...styles.textarea, ...styles.disabledInput }}
+                style={{
+                  ...styles.textarea,
+                  ...(buyerDisabled ? styles.disabledInput : {}),
+                }}
                 rows={2}
                 value={by.addressLine1 || ""}
                 disabled={buyerDisabled}
                 onChange={(e) => setBuyer({ addressLine1: e.target.value })}
               />
             </div>
+
             <div style={styles.grid2}>
               <div>
                 <div style={styles.label}>City</div>
                 <input
-                  style={{ ...styles.input, ...styles.disabledInput }}
+                  style={{
+                    ...styles.input,
+                    ...(buyerDisabled ? styles.disabledInput : {}),
+                  }}
                   value={by.city || ""}
                   disabled={buyerDisabled}
                   onChange={(e) => setBuyer({ city: e.target.value })}
@@ -363,18 +484,25 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
               <div>
                 <div style={styles.label}>PIN</div>
                 <input
-                  style={{ ...styles.input, ...styles.disabledInput }}
+                  style={{
+                    ...styles.input,
+                    ...(buyerDisabled ? styles.disabledInput : {}),
+                  }}
                   value={by.pin || ""}
                   disabled={buyerDisabled}
                   onChange={(e) => setBuyer({ pin: e.target.value })}
                 />
               </div>
             </div>
+
             <div style={styles.grid2}>
               <div>
                 <div style={styles.label}>Country</div>
                 <input
-                  style={{ ...styles.input, ...styles.disabledInput }}
+                  style={{
+                    ...styles.input,
+                    ...(buyerDisabled ? styles.disabledInput : {}),
+                  }}
                   value={by.country || ""}
                   disabled={buyerDisabled}
                   onChange={(e) => setBuyer({ country: e.target.value })}
@@ -383,7 +511,10 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
               <div>
                 <div style={styles.label}>State</div>
                 <input
-                  style={{ ...styles.input, ...styles.disabledInput }}
+                  style={{
+                    ...styles.input,
+                    ...(buyerDisabled ? styles.disabledInput : {}),
+                  }}
                   value={by.state || ""}
                   disabled={buyerDisabled}
                   onChange={(e) => setBuyer({ state: e.target.value })}

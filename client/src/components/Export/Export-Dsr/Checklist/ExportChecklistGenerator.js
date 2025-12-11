@@ -1276,7 +1276,7 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
   // ==================== MAIN GENERATOR ====================
   const generateExportChecklist = async () => {
     try {
-              const encodedJobNo = encodeURIComponent(jobNo);
+      const encodedJobNo = encodeURIComponent(jobNo);
       const response = await axios.get(
         `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`
       );
@@ -1285,208 +1285,345 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
       const currentDate = formatDate(new Date());
 
       // Prepare comprehensive data object with all fields from PDF
-const data = {
-  // Basic Information
-  sbNumber: exportJob.sb_no || "5550031",
-  sbDate: formatDate(exportJob.sb_date) || "22-Sep-2025",
-  jobNumber: exportJob.job_no,
-  customStation: exportJob.custom_house,
-  aeoRegistrationNo: exportJob.otherInfo?.aeoCode || "",
-  aeoRole: exportJob.otherInfo?.aeoRole || "CUSTOMS",
-  partyRef: exportJob.exporter_ref_no || "",
-  chaCode: exportJob.cha || "ABOFS1766LCH005 SURAJ FORWARDERS & SHIPPING AGENCIES",
+      const data = {
+        // Basic Information
+        sbNumber: exportJob.sb_no || "5550031",
+        sbDate: formatDate(exportJob.sb_date) || "22-Sep-2025",
+        jobNumber: exportJob.job_no,
+        customStation: exportJob.custom_house,
+        aeoRegistrationNo: exportJob.otherInfo?.aeoCode || "",
+        aeoRole: exportJob.otherInfo?.aeoRole || "CUSTOMS",
+        partyRef: exportJob.exporter_ref_no || "",
+        chaCode:
+          exportJob.cha ||
+          "ABOFS1766LCH005 SURAJ FORWARDERS & SHIPPING AGENCIES",
 
-  // Exporter Details - BUILD FROM MULTIPLE FIELDS
-  exporterGstin: exportJob.exporter_gstin || exportJob.gstin || "",
-  exporterGstinFull: exportJob.exporter_gstin ? `GSTIN: ${exportJob.exporter_gstin}` : "",
-  exporterPan: exportJob.exporter_pan ? `PAN No: ${exportJob.exporter_pan}` : "",
-  exporterType: exportJob.exporter_type ? `Exporter Type: ${exportJob.exporter_type}` : "",
-  exporterName: exportJob.exporter || "",
-  exporterBranch: exportJob.branch_code ? `Branch Ser #${exportJob.branch_code}` : "",
-  exporterAddress1: exportJob.exporter_address || "",
-  exporterAddress2: "", // Parse from exporter_address if multi-line
-  exporterAddress3: "", // Parse from exporter_address if multi-line
+        // Exporter Details - BUILD FROM MULTIPLE FIELDS
+        exporterGstin: exportJob.exporter_gstin || exportJob.gstin || "",
+        exporterGstinFull: exportJob.exporter_gstin
+          ? `GSTIN: ${exportJob.exporter_gstin}`
+          : "",
+        exporterPan: exportJob.exporter_pan
+          ? `PAN No: ${exportJob.exporter_pan}`
+          : "",
+        exporterType: exportJob.exporter_type
+          ? `Exporter Type: ${exportJob.exporter_type}`
+          : "",
+        exporterName: exportJob.exporter || "",
+        exporterBranch: exportJob.branch_code
+          ? `Branch Ser #${exportJob.branch_code}`
+          : "",
+        exporterAddress1: exportJob.exporter_address || "",
+        exporterAddress2: "", // Parse from exporter_address if multi-line
+        exporterAddress3: "", // Parse from exporter_address if multi-line
 
-  // Consignee Details
-  consigneeName: exportJob.consignees?.[0]?.consignee_name || "TO ORDER",
-  consigneeCountry1: exportJob.consignees?.[0]?.consignee_country || "",
-  consigneeCountry2: exportJob.discharge_country || "",
+        // Consignee Details
+        consigneeName: exportJob.consignees?.[0]?.consignee_name || "TO ORDER",
+        consigneeCountry1: exportJob.consignees?.[0]?.consignee_country || "",
+        consigneeCountry2: exportJob.discharge_country || "",
 
-  // Shipping Details
-  portOfLoading: exportJob.port_of_loading || "",
-  portOfDischarge: exportJob.port_of_discharge || exportJob.discharge_port || "",
-  portOfDestination: exportJob.final_destination || exportJob.destination_port || "",
-  dischargeCountry: exportJob.discharge_country || "",
-  countryOfDest: exportJob.destination_country || exportJob.discharge_country || "",
-  masterBlNo: exportJob.mbl_no || exportJob.masterblno || "",
-  houseBlNo: exportJob.hbl_no || exportJob.houseblno || "",
-  rotationNo: exportJob.voyage_no ? `${exportJob.voyage_no} dt ${formatDate(exportJob.vessel_sailing_date)}` : "",
-  stateOfOrigin: exportJob.state_of_origin || exportJob.exporter_state || "",
-  adCode: exportJob.ad_code || exportJob.adCode || "",
-  natureOfCargo: exportJob.nature_of_cargo || "",
-  totalPackages: exportJob.total_no_of_pkgs || "",
-  numberOfContainers: exportJob.no_of_containers || "",
-  loosePackets: exportJob.loose_pkgs || "",
-  
-  // Weight calculation from products or containers
-  grossWeight: exportJob.containers?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0).toFixed(3) + " KGS" || "0.000 KGS",
-  netWeight: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0).toFixed(3) + " KGS" || "0.000 KGS",
+        // Shipping Details
+        portOfLoading: exportJob.port_of_loading || "",
+        portOfDischarge:
+          exportJob.port_of_discharge || exportJob.discharge_port || "",
+        portOfDestination:
+          exportJob.final_destination || exportJob.destination_port || "",
+        dischargeCountry: exportJob.discharge_country || "",
+        countryOfDest:
+          exportJob.destination_country || exportJob.discharge_country || "",
+        masterBlNo: exportJob.mbl_no || exportJob.masterblno || "",
+        houseBlNo: exportJob.hbl_no || exportJob.houseblno || "",
+        rotationNo: exportJob.voyage_no
+          ? `${exportJob.voyage_no} dt ${formatDate(
+              exportJob.vessel_sailing_date
+            )}`
+          : "",
+        stateOfOrigin:
+          exportJob.state_of_origin || exportJob.exporter_state || "",
+        adCode: exportJob.ad_code || exportJob.adCode || "",
+        natureOfCargo: exportJob.nature_of_cargo || "",
+        totalPackages: exportJob.total_no_of_pkgs || "",
+        numberOfContainers: exportJob.no_of_containers || "",
+        loosePackets: exportJob.loose_pkgs || "",
 
-  // Financial Details - Calculate from products and invoices
-  totalFobInr: exportJob.invoices?.reduce((sum, inv) => sum + (parseFloat(inv.invoice_value) || 0), 0).toFixed(2) || "0.00",
-  igstTaxableValue: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.igstCompensationCess?.taxableValueINR) || 0), 0).toFixed(2) || "0.00",
-  igstAmount: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0), 0).toFixed(2) || "0.00",
-  compCess: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.igstCompensationCess?.compensationCessAmountINR) || 0), 0).toFixed(2) || "0.00",
-  forexBankAcNo: exportJob.bank_account_number || "",
-  dbkStr: exportJob.drawbackDetails?.reduce((sum, d) => sum + (parseFloat(d.dbkAmount) || 0), 0).toFixed(2) || "0.00",
-  rbiWaiverNo: exportJob.rbi_waiver_no || "",
-  strAmount: "", // Not found in data structure
-  dbkBankAcNo: "", // Not found in data structure
-  totalDbk: exportJob.drawbackDetails?.reduce((sum, d) => sum + (parseFloat(d.dbkAmount) || 0), 0).toFixed(2) || "0.00",
-  rodtepAmount: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.rodtepInfo?.amountINR) || 0), 0).toFixed(2) || "0.00",
+        // Weight calculation from products or containers
+        grossWeight:
+          exportJob.containers
+            ?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0)
+            .toFixed(3) + " KGS" || "0.000 KGS",
+        netWeight:
+          exportJob.products
+            ?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
+            .toFixed(3) + " KGS" || "0.000 KGS",
 
-  // Invoice Details - From first invoice
-  invoiceNo: exportJob.invoices?.[0]?.invoiceNumber || "",
-  invoiceValue: exportJob.invoices?.[0]?.invoice_value ? 
-    `${exportJob.invoices[0].currency} ${exportJob.invoices[0].invoice_value}` : "",
-  invoiceDate: formatDate(exportJob.invoices?.[0]?.invoiceDate) || "",
-  fobValue: exportJob.invoices?.[0]?.product_value_fob ?
-    `${exportJob.invoices[0].currency} ${exportJob.invoices[0].product_value_fob}` : "",
-  natureOfContract: exportJob.invoices?.[0]?.termsOfInvoice || "FOB",
-  expContractNo: "", // Not found in data structure
-  expContractDate: formatDate(exportJob.otherInfo?.exportContractNoDate) || "",
-  unitPriceIncludes: exportJob.invoices?.[0]?.priceIncludes || "",
-  invoiceCurrency: exportJob.invoices?.[0]?.currency || exportJob.currency || "",
-  exchangeRate: exportJob.exchange_rate || "",
+        // Financial Details - Calculate from products and invoices
+        totalFobInr:
+          exportJob.invoices
+            ?.reduce(
+              (sum, inv) => sum + (parseFloat(inv.invoice_value) || 0),
+              0
+            )
+            .toFixed(2) || "0.00",
+        igstTaxableValue:
+          exportJob.products
+            ?.reduce(
+              (sum, p) =>
+                sum +
+                (parseFloat(p.igstCompensationCess?.taxableValueINR) || 0),
+              0
+            )
+            .toFixed(2) || "0.00",
+        igstAmount:
+          exportJob.products
+            ?.reduce(
+              (sum, p) =>
+                sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0),
+              0
+            )
+            .toFixed(2) || "0.00",
+        compCess:
+          exportJob.products
+            ?.reduce(
+              (sum, p) =>
+                sum +
+                (parseFloat(
+                  p.igstCompensationCess?.compensationCessAmountINR
+                ) || 0),
+              0
+            )
+            .toFixed(2) || "0.00",
+        forexBankAcNo: exportJob.bank_account_number || "",
+        dbkStr:
+          exportJob.drawbackDetails
+            ?.reduce((sum, d) => sum + (parseFloat(d.dbkAmount) || 0), 0)
+            .toFixed(2) || "0.00",
+        rbiWaiverNo: exportJob.rbi_waiver_no || "",
+        strAmount: "", // Not found in data structure
+        dbkBankAcNo: "", // Not found in data structure
+        totalDbk:
+          exportJob.drawbackDetails
+            ?.reduce((sum, d) => sum + (parseFloat(d.dbkAmount) || 0), 0)
+            .toFixed(2) || "0.00",
+        rodtepAmount:
+          exportJob.products
+            ?.reduce(
+              (sum, p) => sum + (parseFloat(p.rodtepInfo?.amountINR) || 0),
+              0
+            )
+            .toFixed(2) || "0.00",
 
-  // Rate Details - From freightInsuranceCharges
-  insurance: exportJob.freightInsuranceCharges?.insurance?.amount || "",
-  freight: exportJob.freightInsuranceCharges?.freight?.amount || "",
-  discount: exportJob.freightInsuranceCharges?.discount?.amount || "",
-  commission: exportJob.freightInsuranceCharges?.commission?.amount || "",
-  otherDeduction: exportJob.freightInsuranceCharges?.otherDeduction?.amount || "",
-  packingCharges: exportJob.invoices?.[0]?.packing_fob || "",
+        // Invoice Details - From first invoice
+        invoiceNo: exportJob.invoices?.[0]?.invoiceNumber || "",
+        invoiceValue: exportJob.invoices?.[0]?.invoice_value
+          ? `${exportJob.invoices[0].currency} ${exportJob.invoices[0].invoice_value}`
+          : "",
+        invoiceDate: formatDate(exportJob.invoices?.[0]?.invoiceDate) || "",
+        fobValue: exportJob.invoices?.[0]?.product_value_fob
+          ? `${exportJob.invoices[0].currency} ${exportJob.invoices[0].product_value_fob}`
+          : "",
+        natureOfContract: exportJob.invoices?.[0]?.termsOfInvoice || "FOB",
+        expContractNo: "", // Not found in data structure
+        expContractDate:
+          formatDate(exportJob.otherInfo?.exportContractNoDate) || "",
+        unitPriceIncludes: exportJob.invoices?.[0]?.priceIncludes || "",
+        invoiceCurrency:
+          exportJob.invoices?.[0]?.currency || exportJob.currency || "",
+        exchangeRate: exportJob.exchange_rate || "",
 
-  // Payment & Buyer Details
-  natureOfPayment: exportJob.otherInfo?.natureOfPayment || "",
-  periodOfPayment: exportJob.otherInfo?.paymentPeriod ? `${exportJob.otherInfo.paymentPeriod} days` : "",
-  buyerName: exportJob.buyerThirdPartyInfo?.buyer?.name || "",
-  buyerAeoCode: "", // Not found in data structure
-  buyerAeoCountry: exportJob.buyerThirdPartyInfo?.buyer?.country || "",
-  buyerAeoRole: "", // Not found in data structure
-  thirdPartyDetails: exportJob.buyerThirdPartyInfo?.thirdParty?.isThirdPartyExport ?
-    `${exportJob.buyerThirdPartyInfo.thirdParty.name}\n${exportJob.buyerThirdPartyInfo.thirdParty.address}` : "",
+        // Rate Details - From freightInsuranceCharges
+        insurance: exportJob.freightInsuranceCharges?.insurance?.amount || "",
+        freight: exportJob.freightInsuranceCharges?.freight?.amount || "",
+        discount: exportJob.freightInsuranceCharges?.discount?.amount || "",
+        commission: exportJob.freightInsuranceCharges?.commission?.amount || "",
+        otherDeduction:
+          exportJob.freightInsuranceCharges?.otherDeduction?.amount || "",
+        packingCharges: exportJob.invoices?.[0]?.packing_fob || "",
 
-  // EOU Details
-  eou: exportJob.ie_code_of_eou || exportJob.annexC1Details?.ieCodeOfEOU || "",
-  iec: exportJob.ie_code || exportJob.ie_code_no || "",
-  branchSno: exportJob.branch_sr_no || exportJob.branchSrNo || exportJob.annexC1Details?.branchSerialNo || "0",
-  factoryAddress: exportJob.factory_address || "",
+        // Payment & Buyer Details
+        natureOfPayment: exportJob.otherInfo?.natureOfPayment || "",
+        periodOfPayment: exportJob.otherInfo?.paymentPeriod
+          ? `${exportJob.otherInfo.paymentPeriod} days`
+          : "",
+        buyerName: exportJob.buyerThirdPartyInfo?.buyer?.name || "",
+        buyerAeoCode: "", // Not found in data structure
+        buyerAeoCountry: exportJob.buyerThirdPartyInfo?.buyer?.country || "",
+        buyerAeoRole: "", // Not found in data structure
+        thirdPartyDetails: exportJob.buyerThirdPartyInfo?.thirdParty
+          ?.isThirdPartyExport
+          ? `${exportJob.buyerThirdPartyInfo.thirdParty.name}\n${exportJob.buyerThirdPartyInfo.thirdParty.address}`
+          : "",
 
-  // Marks & Nos
-  marksAndNos: exportJob.marks_nos || "WE INTEND TO CLAIM BENEFIT UNDER RODTEP SCHEME AS APPLICABLE.",
+        // EOU Details
+        eou:
+          exportJob.ie_code_of_eou ||
+          exportJob.annexC1Details?.ieCodeOfEOU ||
+          "",
+        iec: exportJob.ieCode || exportJob.ieCode || "",
+        branchSno:
+          exportJob.branch_sr_no ||
+          exportJob.branchSrNo ||
+          exportJob.annexC1Details?.branchSerialNo ||
+          "0",
+        factoryAddress: exportJob.factory_address || "",
 
-  // Item Details - Map products array
-  products: exportJob.products?.map((product, index) => ({
-    ritc: product.ritc || "",
-    description: product.description || "",
-    quantity: product.quantity || "",
-    per: product.per || "PCS",
-    unitPrice: product.unitPrice ? `${product.unitPrice}/${product.per}` : "",
-    amount: product.amount || "",
-    pmvPerUnit: product.pmvInfo?.pmvPerUnit || "",
-    totalPMV: product.pmvInfo?.totalPMV || "",
-    eximCode: product.eximCode || "",
-    nfeiCategory: product.nfeiCategory || "",
-    rewardItem: product.rewardItem || false,
-    fobValueFC: product.amount || "", // Assuming amount is in foreign currency
-    fobValueINR: "", // Calculate: amount * exchange_rate
-    igstPaymentStatus: product.igstCompensationCess?.igstPaymentStatus || "",
-    taxableValueINR: product.igstCompensationCess?.taxableValueINR || "",
-    igstAmountINR: product.igstCompensationCess?.igstAmountINR || "",
-  })) || [],
+        // Marks & Nos
+        marksAndNos:
+          exportJob.marks_nos ||
+          "WE INTEND TO CLAIM BENEFIT UNDER RODTEP SCHEME AS APPLICABLE.",
 
-  // Totals from products
-  totalPmv: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.pmvInfo?.totalPMV) || 0), 0).toFixed(2) || "0.00",
-  totalIgst: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0), 0).toFixed(2) || "0.00",
-  totalPmvGross: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.pmvInfo?.totalPMV) || 0), 0).toFixed(2) || "0.00",
-  totalIgstGross: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0), 0).toFixed(2) || "0.00",
+        // Item Details - Map products array
+        products:
+          exportJob.products?.map((product, index) => ({
+            ritc: product.ritc || "",
+            description: product.description || "",
+            quantity: product.quantity || "",
+            per: product.per || "PCS",
+            unitPrice: product.unitPrice
+              ? `${product.unitPrice}/${product.per}`
+              : "",
+            amount: product.amount || "",
+            pmvPerUnit: product.pmvInfo?.pmvPerUnit || "",
+            totalPMV: product.pmvInfo?.totalPMV || "",
+            eximCode: product.eximCode || "",
+            nfeiCategory: product.nfeiCategory || "",
+            rewardItem: product.rewardItem || false,
+            fobValueFC: product.amount || "", // Assuming amount is in foreign currency
+            fobValueINR: "", // Calculate: amount * exchange_rate
+            igstPaymentStatus:
+              product.igstCompensationCess?.igstPaymentStatus || "",
+            taxableValueINR:
+              product.igstCompensationCess?.taxableValueINR || "",
+            igstAmountINR: product.igstCompensationCess?.igstAmountINR || "",
+          })) || [],
 
-  // DBK Details
-  dbkData: exportJob.drawbackDetails?.map((dbk, index) => ({
-    invNo: "1", // Assuming single invoice
-    itemNo: (index + 1).toString(),
-    dbkSlNo: dbk.dbkSrNo || "",
-    customRate: "", // Not found in data structure
-    dbkRate: dbk.dbkRate?.toString() || "",
-    dbkQtyUnit: `${dbk.quantity || ""} / ${dbk.dbkDescription || ""}`,
-    dbkAmount: dbk.dbkAmount?.toFixed(2) || "0.00",
-    customSPE: "", // Not found in data structure
-    dbkSPE: "0.00",
-  })) || [],
+        // Totals from products
+        totalPmv:
+          exportJob.products
+            ?.reduce(
+              (sum, p) => sum + (parseFloat(p.pmvInfo?.totalPMV) || 0),
+              0
+            )
+            .toFixed(2) || "0.00",
+        totalIgst:
+          exportJob.products
+            ?.reduce(
+              (sum, p) =>
+                sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0),
+              0
+            )
+            .toFixed(2) || "0.00",
+        totalPmvGross:
+          exportJob.products
+            ?.reduce(
+              (sum, p) => sum + (parseFloat(p.pmvInfo?.totalPMV) || 0),
+              0
+            )
+            .toFixed(2) || "0.00",
+        totalIgstGross:
+          exportJob.products
+            ?.reduce(
+              (sum, p) =>
+                sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0),
+              0
+            )
+            .toFixed(2) || "0.00",
 
-  // Vessel & Container Details
-  factoryStuffed: exportJob.goods_stuffed_at === "Factory" ? "Yes" : "No",
-  sealType: exportJob.stuffing_seal_type || "",
-  sampleAcc: exportJob.sample_accompanied ? "Yes" : "No",
-  vesselName: exportJob.shipping_line_airline || "",
-  voyageNumber: exportJob.voyage_no || "",
-  
-  containers: exportJob.containers?.map(container => ({
-    containerNo: container.containerNo || "",
-    size: container.type?.match(/\d+/)?.[0] || "", // Extract number from type like "20GP"
-    type: container.type?.replace(/\d+/, "") || "", // Extract letters from type
-    sealNo: container.sealNo || "",
-    sealType: container.sealType || exportJob.stuffing_seal_type || "",
-    sealDate: formatDate(container.sealDate) || "",
-    sealDeviceID: container.sealDeviceId || container.rfid || "",
-  })) || [],
+        // DBK Details
+        dbkData:
+          exportJob.drawbackDetails?.map((dbk, index) => ({
+            invNo: "1", // Assuming single invoice
+            itemNo: (index + 1).toString(),
+            dbkSlNo: dbk.dbkSrNo || "",
+            customRate: "", // Not found in data structure
+            dbkRate: dbk.dbkRate?.toString() || "",
+            dbkQtyUnit: `${dbk.quantity || ""} / ${dbk.dbkDescription || ""}`,
+            dbkAmount: dbk.dbkAmount?.toFixed(2) || "0.00",
+            customSPE: "", // Not found in data structure
+            dbkSPE: "0.00",
+          })) || [],
 
-  // Additional Details
-  invItemSln: "1/1", // Static for single item/invoice
-  sqcQtyUnit: exportJob.products?.[0]?.socQuantity ?
-    `${exportJob.products[0].socQuantity} ${exportJob.products[0].per}` : "",
-  originDistrict: exportJob.products?.[0]?.originDistrict || "",
-  originState: exportJob.products?.[0]?.originState || exportJob.state_of_origin || "",
-  compCessAmount: exportJob.products?.reduce((sum, p) => sum + (parseFloat(p.igstCompensationCess?.compensationCessAmountINR) || 0), 0).toFixed(2) || "0.00",
-  ptaFta: exportJob.products?.[0]?.ptaFtaInfo || "NCPTI - Preferential Trade Benefit not claimed at Importing Country",
+        // Vessel & Container Details
+        factoryStuffed: exportJob.goods_stuffed_at === "Factory" ? "Yes" : "No",
+        sealType: exportJob.stuffing_seal_type || "",
+        sampleAcc: exportJob.sample_accompanied ? "Yes" : "No",
+        vesselName: exportJob.shipping_line_airline || "",
+        voyageNumber: exportJob.voyage_no || "",
 
-  // Single Window Data
-  singleWindowData: exportJob.products?.map((product, index) => ({
-    invNo: "1",
-    itemNo: (index + 1).toString(),
-    infoType: "Duty",
-    infoQualifier: "Remission of Duty",
-    infoCode: product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
-    information: product.rodtepInfo?.claim === "Yes" ? "Claimed" : "",
-    measurement: product.rodtepInfo?.quantity || "",
-    unit: product.rodtepInfo?.unit || "",
-  })) || [],
+        containers:
+          exportJob.containers?.map((container) => ({
+            containerNo: container.containerNo || "",
+            size: container.type?.match(/\d+/)?.[0] || "", // Extract number from type like "20GP"
+            type: container.type?.replace(/\d+/, "") || "", // Extract letters from type
+            sealNo: container.sealNo || "",
+            sealType: container.sealType || exportJob.stuffing_seal_type || "",
+            sealDate: formatDate(container.sealDate) || "",
+            sealDeviceID: container.sealDeviceId || container.rfid || "",
+          })) || [],
 
-  // End Use Information
-  endUseCode: exportJob.products?.[0]?.endUse || "",
-  endUseInvItem: "1/1",
-  endUseDescription: "", // Not found in data structure
+        // Additional Details
+        invItemSln: "1/1", // Static for single item/invoice
+        sqcQtyUnit: exportJob.products?.[0]?.socQuantity
+          ? `${exportJob.products[0].socQuantity} ${exportJob.products[0].per}`
+          : "",
+        originDistrict: exportJob.products?.[0]?.originDistrict || "",
+        originState:
+          exportJob.products?.[0]?.originState ||
+          exportJob.state_of_origin ||
+          "",
+        compCessAmount:
+          exportJob.products
+            ?.reduce(
+              (sum, p) =>
+                sum +
+                (parseFloat(
+                  p.igstCompensationCess?.compensationCessAmountINR
+                ) || 0),
+              0
+            )
+            .toFixed(2) || "0.00",
+        ptaFta:
+          exportJob.products?.[0]?.ptaFtaInfo ||
+          "NCPTI - Preferential Trade Benefit not claimed at Importing Country",
 
-  // RODTEP Data
-  rodtepData: exportJob.products?.map((product, index) => ({
-    invItemSr: `1/${index + 1}`,
-    claimStatus: product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
-    quantity: product.rodtepInfo?.quantity || "",
-    rate: product.rodtepInfo?.ratePercent || "",
-    capValue: product.rodtepInfo?.capValue || "",
-    noOfUnits: "1",
-    rodtepAmount: product.rodtepInfo?.amountINR || "",
-  })) || [],
+        // Single Window Data
+        singleWindowData:
+          exportJob.products?.map((product, index) => ({
+            invNo: "1",
+            itemNo: (index + 1).toString(),
+            infoType: "Duty",
+            infoQualifier: "Remission of Duty",
+            infoCode: product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
+            information: product.rodtepInfo?.claim === "Yes" ? "Claimed" : "",
+            measurement: product.rodtepInfo?.quantity || "",
+            unit: product.rodtepInfo?.unit || "",
+          })) || [],
 
-  // Declaration Data - Build from products that have declarations
-  declarationData: exportJob.products?.map((product, index) => ({
-    declType: "DEC",
-    declCode: "RD001", // Standard RODTEP declaration
-    invItemSrNo: `1/${index + 1}`,
-  })) || [],
+        // End Use Information
+        endUseCode: exportJob.products?.[0]?.endUse || "",
+        endUseInvItem: "1/1",
+        endUseDescription: "", // Not found in data structure
 
-  declarationText: `I/We, in regard to my/our claim under RoDTEP scheme made in this Shipping Bill or Bill of Export, hereby declare that:
+        // RODTEP Data
+        rodtepData:
+          exportJob.products?.map((product, index) => ({
+            invItemSr: `1/${index + 1}`,
+            claimStatus: product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
+            quantity: product.rodtepInfo?.quantity || "",
+            rate: product.rodtepInfo?.ratePercent || "",
+            capValue: product.rodtepInfo?.capValue || "",
+            noOfUnits: "1",
+            rodtepAmount: product.rodtepInfo?.amountINR || "",
+          })) || [],
+
+        // Declaration Data - Build from products that have declarations
+        declarationData:
+          exportJob.products?.map((product, index) => ({
+            declType: "DEC",
+            declCode: "RD001", // Standard RODTEP declaration
+            invItemSrNo: `1/${index + 1}`,
+          })) || [],
+
+        declarationText: `I/We, in regard to my/our claim under RoDTEP scheme made in this Shipping Bill or Bill of Export, hereby declare that:
 
 1. I/ We undertake to abide by the provisions, including conditions, restrictions, exclusions and time-limits as provided under RoDTEP scheme, and relevant notifications, regulations, etc., as amended from time to time.
 
@@ -1494,40 +1631,72 @@ const data = {
 
 3. I/We undertake to preserve and make available relevant documents relating to the exported goods for the purposes of audit in the manner and for the time period prescribed in the Customs Audit Regulations, 2018.`,
 
-  // Supporting Documents
-  supportingDocs: exportJob.eSanchitDocuments?.[0] ? {
-    invItemSrNo: exportJob.eSanchitDocuments[0].invSerialNo || "1/0/1",
-    imageRefNo: exportJob.eSanchitDocuments[0].irn || "",
-    icegateId: exportJob.eSanchitDocuments[0].otherIcegateId || "",
-    issuingPartyName: exportJob.eSanchitDocuments[0].issuingParty?.name || exportJob.exporter || "",
-    beneficiaryPartyName: exportJob.eSanchitDocuments[0].beneficiaryParty?.name || exportJob.consignees?.[0]?.consignee_name || "",
-    docIssueDate: formatDate(exportJob.eSanchitDocuments[0].dateOfIssue) || "",
-    docRefNo: exportJob.eSanchitDocuments[0].documentReferenceNo || "",
-    fileType: exportJob.eSanchitDocuments[0].icegateFilename?.split('.').pop() || "",
-    issuingPartyAdd1: exportJob.eSanchitDocuments[0].issuingParty?.addressLine1 || exportJob.exporter_address || "",
-    beneficiaryPartyAdd1: exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine1 || exportJob.consignees?.[0]?.consignee_address || "",
-    docExpiryDate: formatDate(exportJob.eSanchitDocuments[0].expiryDate) || "",
-    docUploadedOn: formatDate(exportJob.eSanchitDocuments[0].dateTimeOfUpload) || "",
-    placeOfIssue: exportJob.eSanchitDocuments[0].placeOfIssue || "",
-    issuingPartyAdd2: exportJob.eSanchitDocuments[0].issuingParty?.addressLine2 || "",
-    beneficiaryPartyAdd2: exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine2 || "",
-    docTypeCode: exportJob.eSanchitDocuments[0].documentType || "",
-    docName: exportJob.eSanchitDocuments[0].icegateFilename || "",
-    issuingPartyCode: exportJob.eSanchitDocuments[0].issuingParty?.code || "",
-    issuingPartyCity: exportJob.eSanchitDocuments[0].issuingParty?.city || "",
-    beneficiaryPartyCity: exportJob.eSanchitDocuments[0].beneficiaryParty?.city || "",
-    beneficiaryPartyCode: exportJob.eSanchitDocuments[0].beneficiaryParty?.code || "",
-    issuingPartyPinCode: exportJob.eSanchitDocuments[0].issuingParty?.pinCode || "",
-    beneficiaryPartyPinCode: exportJob.eSanchitDocuments[0].beneficiaryParty?.pinCode || "",
-  } : {},
+        // Supporting Documents
+        supportingDocs: exportJob.eSanchitDocuments?.[0]
+          ? {
+              invItemSrNo:
+                exportJob.eSanchitDocuments[0].invSerialNo || "1/0/1",
+              imageRefNo: exportJob.eSanchitDocuments[0].irn || "",
+              icegateId: exportJob.eSanchitDocuments[0].otherIcegateId || "",
+              issuingPartyName:
+                exportJob.eSanchitDocuments[0].issuingParty?.name ||
+                exportJob.exporter ||
+                "",
+              beneficiaryPartyName:
+                exportJob.eSanchitDocuments[0].beneficiaryParty?.name ||
+                exportJob.consignees?.[0]?.consignee_name ||
+                "",
+              docIssueDate:
+                formatDate(exportJob.eSanchitDocuments[0].dateOfIssue) || "",
+              docRefNo:
+                exportJob.eSanchitDocuments[0].documentReferenceNo || "",
+              fileType:
+                exportJob.eSanchitDocuments[0].icegateFilename
+                  ?.split(".")
+                  .pop() || "",
+              issuingPartyAdd1:
+                exportJob.eSanchitDocuments[0].issuingParty?.addressLine1 ||
+                exportJob.exporter_address ||
+                "",
+              beneficiaryPartyAdd1:
+                exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine1 ||
+                exportJob.consignees?.[0]?.consignee_address ||
+                "",
+              docExpiryDate:
+                formatDate(exportJob.eSanchitDocuments[0].expiryDate) || "",
+              docUploadedOn:
+                formatDate(exportJob.eSanchitDocuments[0].dateTimeOfUpload) ||
+                "",
+              placeOfIssue: exportJob.eSanchitDocuments[0].placeOfIssue || "",
+              issuingPartyAdd2:
+                exportJob.eSanchitDocuments[0].issuingParty?.addressLine2 || "",
+              beneficiaryPartyAdd2:
+                exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine2 ||
+                "",
+              docTypeCode: exportJob.eSanchitDocuments[0].documentType || "",
+              docName: exportJob.eSanchitDocuments[0].icegateFilename || "",
+              issuingPartyCode:
+                exportJob.eSanchitDocuments[0].issuingParty?.code || "",
+              issuingPartyCity:
+                exportJob.eSanchitDocuments[0].issuingParty?.city || "",
+              beneficiaryPartyCity:
+                exportJob.eSanchitDocuments[0].beneficiaryParty?.city || "",
+              beneficiaryPartyCode:
+                exportJob.eSanchitDocuments[0].beneficiaryParty?.code || "",
+              issuingPartyPinCode:
+                exportJob.eSanchitDocuments[0].issuingParty?.pinCode || "",
+              beneficiaryPartyPinCode:
+                exportJob.eSanchitDocuments[0].beneficiaryParty?.pinCode || "",
+            }
+          : {},
 
-  // Final Declaration
-  finalDeclaration: `1. I/We declare that the particulars given herein are true and are correct.
+        // Final Declaration
+        finalDeclaration: `1. I/We declare that the particulars given herein are true and are correct.
 
 2. I/We undertake to abide by the provisions of Foreign Exchange Management Act, 1999, as amended from time to time, including realisation or repatriation of foreign exchange to or from India.
 
 Signature of Exporter/CHA with date`,
-};
+      };
 
       // Create PDF
       const pdf = new jsPDF("p", "pt", "a4");

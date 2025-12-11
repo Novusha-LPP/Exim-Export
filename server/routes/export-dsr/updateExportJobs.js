@@ -60,7 +60,7 @@ router.get("/api/exports/:status?", async (req, res) => {
           { job_no: { $regex: search, $options: "i" } },
           { exporter: { $regex: search, $options: "i" } },
           { consignee_name: { $regex: search, $options: "i" } },
-          { ie_code: { $regex: search, $options: "i" } },
+          { ieCode: { $regex: search, $options: "i" } },
         ],
       });
     }

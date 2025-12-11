@@ -151,6 +151,7 @@ const productDetailsSchema = new Schema(
     quantity: { type: String },
     qtyUnit: { type: String },
     socQuantity: { type: String, default: "0" },
+    socunit: { type: String },
     unitPrice: { type: String },
     priceUnit: { type: String },
     per: { type: String, ref: "UQC" },
@@ -158,6 +159,7 @@ const productDetailsSchema = new Schema(
     amountUnit: { type: String },
 
     // --- General / Origin Details ---
+
     eximCode: { type: String, trim: true },
     nfeiCategory: { type: String, trim: true },
     rewardItem: { type: Boolean, default: false }, // Changed to Boolean
@@ -569,7 +571,7 @@ const exportJobSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-
+    isBuyer: { type: Boolean },
     ////////////////////////////////////////////////// Excel sheet
     year: { type: String, trim: true },
     // job_no: { type: String, trim: true },
@@ -586,7 +588,8 @@ const exportJobSchema = new mongoose.Schema(
     branchSrNo: { type: String, trim: true },
     adCode: { type: String, trim: true },
     bank_name: { type: String, trim: true },
-    ie_code_no: { type: String, trim: true },
+    ieCode: { type: String, trim: true },
+    branch_index: {type: String, trim: true},
     exporter_ref_no: { type: String, trim: true },
     shipper: { type: String, trim: true },
     sb_type: { type: String, trim: true },
@@ -672,7 +675,7 @@ const exportJobSchema = new mongoose.Schema(
     branch_code: { type: String, trim: true },
 
     // Regulatory Information
-    ie_code: { type: String, trim: true }, // Import Export Code
+    ieCode: { type: String, trim: true }, // Import Export Code
     exporter_pan: { type: String, trim: true },
     exporter_gstin: { type: String, trim: true },
     exporter_tan: { type: String, trim: true },
