@@ -1,24 +1,36 @@
 import React, { useState, useRef, useCallback } from "react";
+import DateInput from "../../../common/DateInput.js";
 
 const styles = {
-  page: { fontFamily: "'Segoe UI', Roboto, Arial, sans-serif", fontSize: 13, color: "#1e2e38" }, 
+  page: {
+    fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
+    fontSize: 13,
+    color: "#1e2e38",
+  },
   sectionTitleMain: {
-    fontWeight: 700, color: "#16408f", fontSize: 13, marginBottom: 10,
-    letterSpacing: 1.2, textTransform: "uppercase"
+    fontWeight: 700,
+    color: "#16408f",
+    fontSize: 13,
+    marginBottom: 10,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
   card: {
-    background: "#fff", border: "1.5px solid #e2e8f0",
-    borderRadius: 7, padding: 10, marginBottom: 18
+    background: "#fff",
+    border: "1.5px solid #e2e8f0",
+    borderRadius: 7,
+    padding: 10,
+    marginBottom: 18,
   },
   tableWrap: {
     border: "1px solid #e2e8f0",
     borderRadius: 5,
     overflow: "hidden",
-    fontSize: 12
+    fontSize: 12,
   },
   headRow: {
     background: "#f7fafc",
-    borderBottom: "1px solid #e2e8f0"
+    borderBottom: "1px solid #e2e8f0",
   },
   headCell: {
     padding: "6px 6px",
@@ -28,87 +40,157 @@ const styles = {
     textTransform: "uppercase",
     letterSpacing: 0.6,
     borderRight: "1px solid #e2e8f0",
-    whiteSpace: "nowrap"
+    whiteSpace: "nowrap",
   },
   bodyRow: {
     borderBottom: "1px solid #edf2f7",
-    background: "#fff"
+    background: "#fff",
   },
   cell: {
     padding: "3px 4px",
     borderRight: "1px solid #edf2f7",
-    verticalAlign: "middle"
+    verticalAlign: "middle",
   },
   srCell: {
     padding: "3px 6px",
     borderRight: "1px solid #edf2f7",
     fontSize: 12,
     fontWeight: 600,
-    textAlign: "center"
+    textAlign: "center",
   },
   label: {
-    fontSize: 11, fontWeight: 700, color: "#263046",
-    letterSpacing: 1, textTransform: "uppercase", marginBottom: 2
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#263046",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginBottom: 2,
   },
   input: {
-    width: "100%", fontSize: 12, padding: "3px 8px",
-    border: "1px solid #bdc7d1", borderRadius: 3, height: 26,
-    background: "#f7fafc", outline: "none", boxSizing: "border-box",
-    textTransform: "uppercase", fontWeight: 600
+    width: "100%",
+    fontSize: 12,
+    padding: "3px 8px",
+    border: "1px solid #bdc7d1",
+    borderRadius: 3,
+    height: 26,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+    textTransform: "uppercase",
+    fontWeight: 600,
   },
   inputNumeric: {
-    width: "100%", fontSize: 12, padding: "3px 8px",
-    border: "1px solid #bdc7d1", borderRadius: 3, height: 26,
-    background: "#f7fafc", outline: "none", boxSizing: "border-box",
-    textAlign: "right", fontWeight: 600
+    width: "100%",
+    fontSize: 12,
+    padding: "3px 8px",
+    border: "1px solid #bdc7d1",
+    borderRadius: 3,
+    height: 26,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+    textAlign: "right",
+    fontWeight: 600,
   },
   inputDate: {
-    width: "100%", fontSize: 12, padding: "3px 8px",
-    border: "1px solid #bdc7d1", borderRadius: 3, height: 26,
-    background: "#f7fafc", outline: "none", boxSizing: "border-box",
-    textTransform: "none", fontWeight: 500
+    width: "100%",
+    fontSize: 12,
+    padding: "3px 8px",
+    border: "1px solid #bdc7d1",
+    borderRadius: 3,
+    height: 26,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+    textTransform: "none",
+    fontWeight: 500,
   },
   select: {
-    width: "100%", fontSize: 12, padding: "3px 6px",
-    border: "1px solid #bdc7d1", borderRadius: 3, height: 26,
-    background: "#f7fafc", outline: "none", boxSizing: "border-box",
-    textTransform: "uppercase", fontWeight: 600
+    width: "100%",
+    fontSize: 12,
+    padding: "3px 6px",
+    border: "1px solid #bdc7d1",
+    borderRadius: 3,
+    height: 26,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+    textTransform: "uppercase",
+    fontWeight: 600,
   },
   textReadonly: {
-    fontSize: 12, fontWeight: 600, color: "#1f2933"
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#1f2933",
   },
   topBar: {
-    display: "flex", justifyContent: "flex-end", marginBottom: 8
+    display: "flex",
+    justifyContent: "flex-end",
+    marginBottom: 8,
   },
   newBtn: {
-    fontSize: 11, padding: "4px 12px", borderRadius: 3,
-    border: "1px solid #2563eb", background: "#2563eb",
-    color: "#fff", textTransform: "uppercase", letterSpacing: 0.8,
-    fontWeight: 600, cursor: "pointer"
+    fontSize: 11,
+    padding: "4px 12px",
+    borderRadius: 3,
+    border: "1px solid #2563eb",
+    background: "#2563eb",
+    color: "#fff",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    fontWeight: 600,
+    cursor: "pointer",
   },
   actionBtn: (variant) => {
     const base = {
-      fontSize: 11, padding: "3px 8px", borderRadius: 3,
-      border: "1px solid", cursor: "pointer",
-      textTransform: "uppercase", fontWeight: 600
+      fontSize: 11,
+      padding: "3px 8px",
+      borderRadius: 3,
+      border: "1px solid",
+      cursor: "pointer",
+      textTransform: "uppercase",
+      fontWeight: 600,
     };
     if (variant === "save") {
-      return { ...base, borderColor: "#16a34a", background: "#e8f7ee", color: "#166534" };
+      return {
+        ...base,
+        borderColor: "#16a34a",
+        background: "#e8f7ee",
+        color: "#166534",
+      };
     }
     if (variant === "cancel") {
-      return { ...base, borderColor: "#f59e0b", background: "#fff7e6", color: "#b45309" };
+      return {
+        ...base,
+        borderColor: "#f59e0b",
+        background: "#fff7e6",
+        color: "#b45309",
+      };
     }
     if (variant === "delete") {
-      return { ...base, borderColor: "#dc2626", background: "#fee2e2", color: "#b91c1c" };
+      return {
+        ...base,
+        borderColor: "#dc2626",
+        background: "#fee2e2",
+        color: "#b91c1c",
+      };
     }
-    return { ...base, borderColor: "#0ea5e9", background: "#e0f2fe", color: "#0369a1" };
+    return {
+      ...base,
+      borderColor: "#0ea5e9",
+      background: "#e0f2fe",
+      color: "#0369a1",
+    };
   },
   actionsCellInner: {
-    display: "flex", gap: 4, justifyContent: "center"
+    display: "flex",
+    gap: 4,
+    justifyContent: "center",
   },
   emptyRow: {
-    padding: "10px 8px", fontSize: 12, color: "#6b7280"
-  }
+    padding: "10px 8px",
+    fontSize: 12,
+    color: "#6b7280",
+  },
 };
 
 const containerTypes = [
@@ -129,13 +211,13 @@ const containerTypes = [
   "40 HARD TOP",
   "40 HIGH CUBE",
   "40 REEFER HIGH CUBE",
-  "40 PLATFORM"
+  "40 PLATFORM",
 ];
 
 const sealTypes = [
   "BTSL - BOTTLE",
   "ES - ELECTRONIC SEAL",
-  "RFID - RADIO FREQUENCY IDENTIFIER"
+  "RFID - RADIO FREQUENCY IDENTIFIER",
 ];
 
 function ContainerTab({ formik, onUpdate }) {
@@ -144,7 +226,7 @@ function ContainerTab({ formik, onUpdate }) {
 
   const autoSave = useCallback(
     async (values) => {
-      if (onUpdate) await onUpdate(values); 
+      if (onUpdate) await onUpdate(values);
     },
     [onUpdate]
   );
@@ -176,7 +258,7 @@ function ContainerTab({ formik, onUpdate }) {
       sealType: "",
       sealDeviceId: "",
       grWtPlusTrWt: 0,
-      rfid: ""
+      rfid: "",
     });
     formik.setFieldValue("containers", list);
     setEditingIndex(list.length - 1);
@@ -185,7 +267,9 @@ function ContainerTab({ formik, onUpdate }) {
 
   const handleDelete = (idx) => {
     const list = (formik.values.containers || []).filter((_, i) => i !== idx);
-    list.forEach((c, i) => { c.serialNumber = i + 1; });
+    list.forEach((c, i) => {
+      c.serialNumber = i + 1;
+    });
     formik.setFieldValue("containers", list);
     if (editingIndex === idx) setEditingIndex(null);
     else if (editingIndex > idx) setEditingIndex(editingIndex - 1);
@@ -221,9 +305,19 @@ function ContainerTab({ formik, onUpdate }) {
                 <th style={{ ...styles.headCell, width: 110 }}>PKGS STUFFED</th>
                 <th style={{ ...styles.headCell, width: 130 }}>GROSS WEIGHT</th>
                 <th style={{ ...styles.headCell, width: 150 }}>SEAL TYPE</th>
-                <th style={{ ...styles.headCell, width: 130 }}>SEAL DEVICE ID</th>
+                <th style={{ ...styles.headCell, width: 130 }}>
+                  SEAL DEVICE ID
+                </th>
                 <th style={{ ...styles.headCell, width: 130 }}>GR-WT + TR-W</th>
-                <th style={{ ...styles.headCell, width: 160, textAlign: "center" }}>ACTIONS</th>
+                <th
+                  style={{
+                    ...styles.headCell,
+                    width: 160,
+                    textAlign: "center",
+                  }}
+                >
+                  ACTIONS
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -247,7 +341,11 @@ function ContainerTab({ formik, onUpdate }) {
                         style={styles.input}
                         value={row.containerNo || ""}
                         onChange={(e) =>
-                          handleFieldChange(idx, "containerNo", e.target.value.toUpperCase())
+                          handleFieldChange(
+                            idx,
+                            "containerNo",
+                            e.target.value.toUpperCase()
+                          )
                         }
                       />
                     </td>
@@ -258,18 +356,23 @@ function ContainerTab({ formik, onUpdate }) {
                         style={styles.input}
                         value={row.sealNo || ""}
                         onChange={(e) =>
-                          handleFieldChange(idx, "sealNo", e.target.value.toUpperCase())
+                          handleFieldChange(
+                            idx,
+                            "sealNo",
+                            e.target.value.toUpperCase()
+                          )
                         }
                       />
                     </td>
 
                     {/* SEAL DATE */}
                     <td style={styles.cell}>
-                      <input
-                        type="date"
+                      <DateInput
                         style={styles.inputDate}
-                        value={row.sealDate ? row.sealDate.substr(0, 10) : ""}
-                        onChange={(e) => handleFieldChange(idx, "sealDate", e.target.value)}
+                        value={row.sealDate || ""}
+                        onChange={(e) =>
+                          handleFieldChange(idx, "sealDate", e.target.value)
+                        }
                       />
                     </td>
 
@@ -278,7 +381,9 @@ function ContainerTab({ formik, onUpdate }) {
                       <select
                         style={styles.select}
                         value={row.type || ""}
-                        onChange={(e) => handleFieldChange(idx, "type", e.target.value)}
+                        onChange={(e) =>
+                          handleFieldChange(idx, "type", e.target.value)
+                        }
                       >
                         <option value="">SELECT</option>
                         {containerTypes.map((opt) => (
@@ -296,7 +401,11 @@ function ContainerTab({ formik, onUpdate }) {
                         style={styles.inputNumeric}
                         value={row.pkgsStuffed || 0}
                         onChange={(e) =>
-                          handleFieldChange(idx, "pkgsStuffed", Number(e.target.value || 0))
+                          handleFieldChange(
+                            idx,
+                            "pkgsStuffed",
+                            Number(e.target.value || 0)
+                          )
                         }
                       />
                     </td>
@@ -308,7 +417,11 @@ function ContainerTab({ formik, onUpdate }) {
                         style={styles.inputNumeric}
                         value={row.grossWeight || 0}
                         onChange={(e) =>
-                          handleFieldChange(idx, "grossWeight", Number(e.target.value || 0))
+                          handleFieldChange(
+                            idx,
+                            "grossWeight",
+                            Number(e.target.value || 0)
+                          )
                         }
                       />
                     </td>
@@ -318,7 +431,9 @@ function ContainerTab({ formik, onUpdate }) {
                       <select
                         style={styles.select}
                         value={row.sealType || ""}
-                        onChange={(e) => handleFieldChange(idx, "sealType", e.target.value)}
+                        onChange={(e) =>
+                          handleFieldChange(idx, "sealType", e.target.value)
+                        }
                       >
                         <option value="">SELECT</option>
                         {sealTypes.map((opt) => (
@@ -335,7 +450,11 @@ function ContainerTab({ formik, onUpdate }) {
                         style={styles.input}
                         value={row.sealDeviceId || ""}
                         onChange={(e) =>
-                          handleFieldChange(idx, "sealDeviceId", e.target.value.toUpperCase())
+                          handleFieldChange(
+                            idx,
+                            "sealDeviceId",
+                            e.target.value.toUpperCase()
+                          )
                         }
                       />
                     </td>
@@ -347,7 +466,11 @@ function ContainerTab({ formik, onUpdate }) {
                         style={styles.inputNumeric}
                         value={row.grWtPlusTrWt || 0}
                         onChange={(e) =>
-                          handleFieldChange(idx, "grWtPlusTrWt", Number(e.target.value || 0))
+                          handleFieldChange(
+                            idx,
+                            "grWtPlusTrWt",
+                            Number(e.target.value || 0)
+                          )
                         }
                       />
                     </td>

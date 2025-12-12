@@ -7,7 +7,7 @@ const areDetailsSchema = new Schema(
   {
     serialNumber: { type: Number },
     areNumber: { type: String, trim: true },
-    areDate: { type: Date }, // use String if you prefer
+    areDate: { type: String, trim: true }, // Changed to String for DD-MM-YYYY
     commissionerate: { type: String, trim: true },
     division: { type: String, trim: true },
     range: { type: String, trim: true },
@@ -42,7 +42,7 @@ const deecSchema = new Schema(
       {
         licRefNo: { type: String, trim: true },
         regnNo: { type: String, trim: true },
-        licDate: { type: Date },
+        licDate: { type: String, trim: true },
       },
     ],
   },
@@ -77,7 +77,7 @@ const epcgSchema = new Schema(
       {
         licRefNo: { type: String, trim: true },
         regnNo: { type: String, trim: true },
-        licDate: { type: Date },
+        licDate: { type: String, trim: true },
       },
     ],
   },
@@ -319,7 +319,7 @@ const drawbackDetailsSchema = new Schema(
 const invoiceSchema = new Schema(
   {
     invoiceNumber: { type: String },
-    invoiceDate: { type: Date },
+    invoiceDate: { type: String, trim: true },
     termsOfInvoice: {
       type: String,
       default: "FOB",
@@ -354,7 +354,7 @@ const containerDetailsSchema = new Schema(
     serialNumber: { type: Number },
     containerNo: { type: String },
     sealNo: String,
-    sealDate: Date,
+    sealDate: { type: String, trim: true },
     type: {
       type: String,
     },
@@ -450,9 +450,9 @@ const eSanchitDocumentSchema = new Schema({
   documentReferenceNo: String,
   otherIcegateId: String,
   icegateFilename: String,
-  dateOfIssue: Date,
+  dateOfIssue: { type: String, trim: true },
   placeOfIssue: String,
-  expiryDate: Date,
+  expiryDate: { type: String, trim: true },
   fileUrl: String,
 
   dateTimeOfUpload: { type: Date, default: Date.now },
@@ -589,7 +589,7 @@ const exportJobSchema = new mongoose.Schema(
     adCode: { type: String, trim: true },
     bank_name: { type: String, trim: true },
     ieCode: { type: String, trim: true },
-    branch_index: {type: String, trim: true},
+    branch_index: { type: String, trim: true },
     exporter_ref_no: { type: String, trim: true },
     shipper: { type: String, trim: true },
     sb_type: { type: String, trim: true },
@@ -768,7 +768,7 @@ const exportJobSchema = new mongoose.Schema(
         type: Number,
         default: 0,
       },
-      examinationDate: Date,
+      examinationDate: { type: String, trim: true },
       examiningOfficer: {
         type: String,
         trim: true,

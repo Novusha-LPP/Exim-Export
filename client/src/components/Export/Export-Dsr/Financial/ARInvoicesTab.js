@@ -14,7 +14,7 @@ import {
   TableRow,
   Paper,
   TextField,
-  Link
+  Link,
 } from "@mui/material";
 
 const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
@@ -38,11 +38,11 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
   // Handle field changes with auto-save
   const handleFieldChange = (field, value) => {
     formik.setFieldValue(field, value);
-    
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
-    
+
     saveTimeoutRef.current = setTimeout(() => {
       autoSave(formik.values);
     }, 1500);
@@ -52,12 +52,12 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
   const handleARInvoiceChange = (index, field, value) => {
     const arInvoices = [...(formik.values.ar_invoices || [])];
     arInvoices[index] = { ...arInvoices[index], [field]: value };
-    formik.setFieldValue('ar_invoices', arInvoices);
-    
+    formik.setFieldValue("ar_invoices", arInvoices);
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
-    
+
     saveTimeoutRef.current = setTimeout(() => {
       autoSave(formik.values);
     }, 1500);
@@ -72,40 +72,40 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
       organization: "",
       currency: "",
       amount: 0,
-      balance: 0
+      balance: 0,
     });
-    formik.setFieldValue('ar_invoices', arInvoices);
+    formik.setFieldValue("ar_invoices", arInvoices);
   };
 
   const deleteARInvoice = (index) => {
     const arInvoices = [...(formik.values.ar_invoices || [])];
     arInvoices.splice(index, 1);
-    formik.setFieldValue('ar_invoices', arInvoices);
+    formik.setFieldValue("ar_invoices", arInvoices);
   };
 
   // Initialize with sample data if empty
-  const arInvoices = formik.values.ar_invoices?.length ? 
-    formik.values.ar_invoices : 
-    [
-      {
-        date: "",
-        bill_no: "",
-        type: "",
-        organization: "",
-        currency: "",
-        amount: "",
-        balance: ""
-      },
-      {
-        date: "",
-        bill_no: "",
-        type: "",
-        organization: "",
-        currency: "",
-        amount: "" ,
-        balance: ""
-      }
-    ];
+  const arInvoices = formik.values.ar_invoices?.length
+    ? formik.values.ar_invoices
+    : [
+        {
+          date: "",
+          bill_no: "",
+          type: "",
+          organization: "",
+          currency: "",
+          amount: "",
+          balance: "",
+        },
+        {
+          date: "",
+          bill_no: "",
+          type: "",
+          organization: "",
+          currency: "",
+          amount: "",
+          balance: "",
+        },
+      ];
 
   const refreshInvoices = () => {
     // Implement refresh logic here
@@ -117,38 +117,61 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
       <Typography variant="h6" fontWeight="bold" gutterBottom>
         AR Invoices
       </Typography>
-      
+
       <Grid container spacing={3}>
         {/* AR Invoices Table - Full Width */}
         <Grid item xs={12}>
           <Card sx={{ p: 2 }}>
             {/* Action Buttons */}
-            <Box sx={{ mb: 2, display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-              <Button 
-                variant="contained" 
+            <Box
+              sx={{
+                mb: 2,
+                display: "flex",
+                gap: 1,
+                justifyContent: "flex-end",
+              }}
+            >
+              <Button
+                variant="contained"
                 size="small"
                 onClick={refreshInvoices}
-                sx={{ 
+                sx={{
                   fontSize: "0.75rem",
-                  textTransform: "none"
+                  textTransform: "none",
                 }}
               >
                 Refresh
               </Button>
             </Box>
-            
+
             <TableContainer component={Paper} sx={{ mt: 2 }}>
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                    <TableCell><strong>Date</strong></TableCell>
-                    <TableCell><strong>Bill No.</strong></TableCell>
-                    <TableCell><strong>Type</strong></TableCell>
-                    <TableCell><strong>Organization</strong></TableCell>
-                    <TableCell><strong>Cur</strong></TableCell>
-                    <TableCell><strong>Amount</strong></TableCell>
-                    <TableCell><strong>Balance</strong></TableCell>
-                    <TableCell><strong>Actions</strong></TableCell>
+                    <TableCell>
+                      <strong>Date</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Bill No.</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Type</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Organization</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Cur</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Amount</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Balance</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Actions</strong>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -156,10 +179,15 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     <TableRow key={index}>
                       <TableCell>
                         <TextField
-                          type="date"
                           size="small"
-                          value={invoice.date || ''}
-                          onChange={(e) => handleARInvoiceChange(index, 'date', e.target.value)}
+                          placeholder="DD-MM-YYYY"
+                          value={invoice.date || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (/^[0-9-]*$/.test(val) && val.length <= 10) {
+                              handleARInvoiceChange(index, "date", val);
+                            }
+                          }}
                           sx={{ width: 130 }}
                           InputLabelProps={{ shrink: true }}
                         />
@@ -168,10 +196,10 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                         <Link
                           href="#"
                           underline="hover"
-                          sx={{ 
+                          sx={{
                             color: "blue",
                             fontSize: "0.875rem",
-                            cursor: "pointer"
+                            cursor: "pointer",
                           }}
                         >
                           {invoice.bill_no}
@@ -180,24 +208,38 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                       <TableCell>
                         <TextField
                           size="small"
-                          value={invoice.type || ''}
-                          onChange={(e) => handleARInvoiceChange(index, 'type', e.target.value)}
+                          value={invoice.type || ""}
+                          onChange={(e) =>
+                            handleARInvoiceChange(index, "type", e.target.value)
+                          }
                           sx={{ width: 80 }}
                         />
                       </TableCell>
                       <TableCell>
                         <TextField
                           size="small"
-                          value={invoice.organization || ''}
-                          onChange={(e) => handleARInvoiceChange(index, 'organization', e.target.value)}
+                          value={invoice.organization || ""}
+                          onChange={(e) =>
+                            handleARInvoiceChange(
+                              index,
+                              "organization",
+                              e.target.value
+                            )
+                          }
                           sx={{ width: 200 }}
                         />
                       </TableCell>
                       <TableCell>
                         <TextField
                           size="small"
-                          value={invoice.currency || ''}
-                          onChange={(e) => handleARInvoiceChange(index, 'currency', e.target.value)}
+                          value={invoice.currency || ""}
+                          onChange={(e) =>
+                            handleARInvoiceChange(
+                              index,
+                              "currency",
+                              e.target.value
+                            )
+                          }
                           sx={{ width: 80 }}
                         />
                       </TableCell>
@@ -205,27 +247,41 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                         <TextField
                           size="small"
                           type="number"
-                          value={invoice.amount || ''}
-                          onChange={(e) => handleARInvoiceChange(index, 'amount', e.target.value)}
+                          value={invoice.amount || ""}
+                          onChange={(e) =>
+                            handleARInvoiceChange(
+                              index,
+                              "amount",
+                              e.target.value
+                            )
+                          }
                           sx={{ width: 100 }}
                         />
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Box
+                          sx={{ display: "flex", gap: 1, alignItems: "center" }}
+                        >
                           <TextField
                             size="small"
                             type="number"
-                            value={invoice.balance || ''}
-                            onChange={(e) => handleARInvoiceChange(index, 'balance', e.target.value)}
+                            value={invoice.balance || ""}
+                            onChange={(e) =>
+                              handleARInvoiceChange(
+                                index,
+                                "balance",
+                                e.target.value
+                              )
+                            }
                             sx={{ width: 100 }}
                           />
                           <Link
                             href="#"
                             underline="hover"
-                            sx={{ 
+                            sx={{
                               color: "blue",
                               fontSize: "0.75rem",
-                              cursor: "pointer"
+                              cursor: "pointer",
                             }}
                           >
                             View
@@ -233,10 +289,10 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                           <Link
                             href="#"
                             underline="hover"
-                            sx={{ 
+                            sx={{
                               color: "blue",
                               fontSize: "0.75rem",
-                              cursor: "pointer"
+                              cursor: "pointer",
                             }}
                           >
                             Show Status
@@ -244,8 +300,8 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                         </Box>
                       </TableCell>
                       <TableCell>
-                        <Button 
-                          size="small" 
+                        <Button
+                          size="small"
                           color="error"
                           onClick={() => deleteARInvoice(index)}
                           sx={{ fontSize: "0.75rem" }}
@@ -260,10 +316,10 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
             </TableContainer>
 
             {/* Add New Button */}
-            <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-              <Button 
-                variant="outlined" 
-                size="small" 
+            <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
                 onClick={addNewARInvoice}
                 sx={{ fontSize: "0.75rem", textTransform: "none" }}
               >
@@ -276,7 +332,7 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
               <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                 AR Invoice Settings
               </Typography>
-              
+
               <Grid container spacing={2}>
                 {/* Total AR Amount */}
                 <Grid item xs={12} md={3}>
@@ -285,8 +341,10 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     label="Total AR Amount"
                     type="number"
                     size="small"
-                    value={formik.values.total_ar_amount || ''}
-                    onChange={(e) => handleFieldChange('total_ar_amount', e.target.value)}
+                    value={formik.values.total_ar_amount || ""}
+                    onChange={(e) =>
+                      handleFieldChange("total_ar_amount", e.target.value)
+                    }
                     placeholder="0.00"
                   />
                 </Grid>
@@ -298,8 +356,10 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     label="Outstanding Balance"
                     type="number"
                     size="small"
-                    value={formik.values.outstanding_balance || ''}
-                    onChange={(e) => handleFieldChange('outstanding_balance', e.target.value)}
+                    value={formik.values.outstanding_balance || ""}
+                    onChange={(e) =>
+                      handleFieldChange("outstanding_balance", e.target.value)
+                    }
                     placeholder="0.00"
                   />
                 </Grid>
@@ -310,8 +370,10 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     fullWidth
                     label="Default Currency"
                     size="small"
-                    value={formik.values.ar_default_currency || 'INR'}
-                    onChange={(e) => handleFieldChange('ar_default_currency', e.target.value)}
+                    value={formik.values.ar_default_currency || "INR"}
+                    onChange={(e) =>
+                      handleFieldChange("ar_default_currency", e.target.value)
+                    }
                   />
                 </Grid>
 
@@ -322,8 +384,10 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     label="Payment Terms (Days)"
                     type="number"
                     size="small"
-                    value={formik.values.ar_payment_terms_days || ''}
-                    onChange={(e) => handleFieldChange('ar_payment_terms_days', e.target.value)}
+                    value={formik.values.ar_payment_terms_days || ""}
+                    onChange={(e) =>
+                      handleFieldChange("ar_payment_terms_days", e.target.value)
+                    }
                     placeholder="30"
                   />
                 </Grid>
@@ -333,10 +397,15 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                   <TextField
                     fullWidth
                     label="Last Updated"
-                    type="datetime-local"
                     size="small"
-                    value={formik.values.ar_last_updated || ''}
-                    onChange={(e) => handleFieldChange('ar_last_updated', e.target.value)}
+                    placeholder="DD-MM-YYYY"
+                    value={formik.values.ar_last_updated || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/^[0-9-]*$/.test(val) && val.length <= 10) {
+                        handleFieldChange("ar_last_updated", val);
+                      }
+                    }}
                     InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
@@ -349,8 +418,10 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     multiline
                     rows={2}
                     size="small"
-                    value={formik.values.ar_notes || ''}
-                    onChange={(e) => handleFieldChange('ar_notes', e.target.value)}
+                    value={formik.values.ar_notes || ""}
+                    onChange={(e) =>
+                      handleFieldChange("ar_notes", e.target.value)
+                    }
                     placeholder="Enter any notes about AR invoices..."
                   />
                 </Grid>

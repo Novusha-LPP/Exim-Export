@@ -13,7 +13,7 @@ import {
   TableRow,
   Paper,
   TextField,
-  Link
+  Link,
 } from "@mui/material";
 
 const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
@@ -37,11 +37,11 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
   // Handle field changes with auto-save
   const handleFieldChange = (field, value) => {
     formik.setFieldValue(field, value);
-    
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
-    
+
     saveTimeoutRef.current = setTimeout(() => {
       autoSave(formik.values);
     }, 1500);
@@ -59,16 +59,16 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
         currency: "INR",
         amount: 0,
         balance: 0,
-        vendor_bill_no: ""
+        vendor_bill_no: "",
       };
     }
     apInvoices[index][field] = value;
-    formik.setFieldValue('ap_invoices', apInvoices);
-    
+    formik.setFieldValue("ap_invoices", apInvoices);
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
-    
+
     saveTimeoutRef.current = setTimeout(() => {
       autoSave(formik.values);
     }, 1500);
@@ -84,15 +84,15 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
       currency: "INR",
       amount: 0,
       balance: 0,
-      vendor_bill_no: ""
+      vendor_bill_no: "",
     });
-    formik.setFieldValue('ap_invoices', apInvoices);
+    formik.setFieldValue("ap_invoices", apInvoices);
   };
 
   const deleteAPInvoice = (index) => {
     const apInvoices = [...(formik.values.ap_invoices || [])];
     apInvoices.splice(index, 1);
-    formik.setFieldValue('ap_invoices', apInvoices);
+    formik.setFieldValue("ap_invoices", apInvoices);
   };
 
   const refreshInvoices = () => {
@@ -101,59 +101,84 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
   };
 
   // Ensure we have at least one empty invoice for display
-  const apInvoices = formik.values.ap_invoices?.length ? 
-    formik.values.ap_invoices : 
-    [
-      {
-        date: "",
-        bill_no: "",
-        type: "INV",
-        organization: "",
-        currency: "INR",
-        amount: 0,
-        balance: 0,
-        vendor_bill_no: ""
-      }
-    ];
+  const apInvoices = formik.values.ap_invoices?.length
+    ? formik.values.ap_invoices
+    : [
+        {
+          date: "",
+          bill_no: "",
+          type: "INV",
+          organization: "",
+          currency: "INR",
+          amount: 0,
+          balance: 0,
+          vendor_bill_no: "",
+        },
+      ];
 
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h6" fontWeight="bold" gutterBottom>
         AP Invoices
       </Typography>
-      
+
       <Grid container spacing={3}>
         {/* AP Invoices Table - Full Width */}
         <Grid item xs={12}>
           <Card sx={{ p: 2 }}>
             {/* Action Buttons */}
-            <Box sx={{ mb: 2, display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-              <Button 
-                variant="contained" 
+            <Box
+              sx={{
+                mb: 2,
+                display: "flex",
+                gap: 1,
+                justifyContent: "flex-end",
+              }}
+            >
+              <Button
+                variant="contained"
                 size="small"
                 onClick={refreshInvoices}
-                sx={{ 
+                sx={{
                   fontSize: "0.75rem",
-                  textTransform: "none"
+                  textTransform: "none",
                 }}
               >
                 Refresh
               </Button>
             </Box>
-            
+
             <TableContainer component={Paper} sx={{ mt: 2 }}>
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                    <TableCell><strong>Date</strong></TableCell>
-                    <TableCell><strong>Bill No</strong></TableCell>
-                    <TableCell><strong>Type</strong></TableCell>
-                    <TableCell><strong>Organization</strong></TableCell>
-                    <TableCell><strong>Curr</strong></TableCell>
-                    <TableCell><strong>Amount</strong></TableCell>
-                    <TableCell><strong>Balance</strong></TableCell>
-                    <TableCell><strong>Vendor Bill No</strong></TableCell>
-                    <TableCell><strong>Actions</strong></TableCell>
+                    <TableCell>
+                      <strong>Date</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Bill No</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Type</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Organization</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Curr</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Amount</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Balance</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Vendor Bill No</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Actions</strong>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -161,10 +186,15 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     <TableRow key={index}>
                       <TableCell>
                         <TextField
-                          type="date"
                           size="small"
-                          value={invoice.date || ''}
-                          onChange={(e) => handleAPInvoiceChange(index, 'date', e.target.value)}
+                          placeholder="DD-MM-YYYY"
+                          value={invoice.date || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (/^[0-9-]*$/.test(val) && val.length <= 10) {
+                              handleAPInvoiceChange(index, "date", val);
+                            }
+                          }}
                           sx={{ width: 140 }}
                           InputLabelProps={{ shrink: true }}
                         />
@@ -173,10 +203,10 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                         <Link
                           href="#"
                           underline="hover"
-                          sx={{ 
+                          sx={{
                             color: "blue",
                             fontSize: "0.875rem",
-                            cursor: "pointer"
+                            cursor: "pointer",
                           }}
                         >
                           {invoice.bill_no || "Enter Bill No"}
@@ -185,16 +215,24 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                       <TableCell>
                         <TextField
                           size="small"
-                          value={invoice.type || 'INV'}
-                          onChange={(e) => handleAPInvoiceChange(index, 'type', e.target.value)}
+                          value={invoice.type || "INV"}
+                          onChange={(e) =>
+                            handleAPInvoiceChange(index, "type", e.target.value)
+                          }
                           sx={{ width: 80 }}
                         />
                       </TableCell>
                       <TableCell>
                         <TextField
                           size="small"
-                          value={invoice.organization || ''}
-                          onChange={(e) => handleAPInvoiceChange(index, 'organization', e.target.value)}
+                          value={invoice.organization || ""}
+                          onChange={(e) =>
+                            handleAPInvoiceChange(
+                              index,
+                              "organization",
+                              e.target.value
+                            )
+                          }
                           sx={{ width: 200 }}
                           placeholder="Organization name"
                         />
@@ -202,8 +240,14 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                       <TableCell>
                         <TextField
                           size="small"
-                          value={invoice.currency || 'INR'}
-                          onChange={(e) => handleAPInvoiceChange(index, 'currency', e.target.value)}
+                          value={invoice.currency || "INR"}
+                          onChange={(e) =>
+                            handleAPInvoiceChange(
+                              index,
+                              "currency",
+                              e.target.value
+                            )
+                          }
                           sx={{ width: 80 }}
                         />
                       </TableCell>
@@ -211,11 +255,17 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                         <TextField
                           size="small"
                           type="number"
-                          value={invoice.amount || ''}
-                          onChange={(e) => handleAPInvoiceChange(index, 'amount', parseFloat(e.target.value) || 0)}
+                          value={invoice.amount || ""}
+                          onChange={(e) =>
+                            handleAPInvoiceChange(
+                              index,
+                              "amount",
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
                           sx={{ width: 120 }}
                           InputProps={{
-                            inputProps: { min: 0, step: 0.01 }
+                            inputProps: { min: 0, step: 0.01 },
                           }}
                         />
                       </TableCell>
@@ -223,26 +273,38 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                         <TextField
                           size="small"
                           type="number"
-                          value={invoice.balance || ''}
-                          onChange={(e) => handleAPInvoiceChange(index, 'balance', parseFloat(e.target.value) || 0)}
+                          value={invoice.balance || ""}
+                          onChange={(e) =>
+                            handleAPInvoiceChange(
+                              index,
+                              "balance",
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
                           sx={{ width: 120 }}
                           InputProps={{
-                            inputProps: { min: 0, step: 0.01 }
+                            inputProps: { min: 0, step: 0.01 },
                           }}
                         />
                       </TableCell>
                       <TableCell>
                         <TextField
                           size="small"
-                          value={invoice.vendor_bill_no || ''}
-                          onChange={(e) => handleAPInvoiceChange(index, 'vendor_bill_no', e.target.value)}
+                          value={invoice.vendor_bill_no || ""}
+                          onChange={(e) =>
+                            handleAPInvoiceChange(
+                              index,
+                              "vendor_bill_no",
+                              e.target.value
+                            )
+                          }
                           sx={{ width: 140 }}
                           placeholder="Vendor bill number"
                         />
                       </TableCell>
                       <TableCell>
-                        <Button 
-                          size="small" 
+                        <Button
+                          size="small"
                           color="error"
                           onClick={() => deleteAPInvoice(index)}
                           sx={{ fontSize: "0.75rem" }}
@@ -257,10 +319,10 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
             </TableContainer>
 
             {/* Add New Button */}
-            <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-              <Button 
-                variant="outlined" 
-                size="small" 
+            <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
                 onClick={addNewAPInvoice}
                 sx={{ fontSize: "0.75rem", textTransform: "none" }}
               >
@@ -273,7 +335,7 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
               <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                 AP Invoice Summary
               </Typography>
-              
+
               <Grid container spacing={2}>
                 {/* Total AP Amount */}
                 <Grid item xs={12} md={3}>
@@ -282,11 +344,16 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     label="Total AP Amount"
                     type="number"
                     size="small"
-                    value={formik.values.total_ap_amount || ''}
-                    onChange={(e) => handleFieldChange('total_ap_amount', parseFloat(e.target.value) || 0)}
+                    value={formik.values.total_ap_amount || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "total_ap_amount",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                     placeholder="0.00"
                     InputProps={{
-                      inputProps: { min: 0, step: 0.01 }
+                      inputProps: { min: 0, step: 0.01 },
                     }}
                   />
                 </Grid>
@@ -298,11 +365,16 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     label="Outstanding Balance"
                     type="number"
                     size="small"
-                    value={formik.values.ap_outstanding_balance || ''}
-                    onChange={(e) => handleFieldChange('ap_outstanding_balance', parseFloat(e.target.value) || 0)}
+                    value={formik.values.ap_outstanding_balance || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "ap_outstanding_balance",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                     placeholder="0.00"
                     InputProps={{
-                      inputProps: { min: 0, step: 0.01 }
+                      inputProps: { min: 0, step: 0.01 },
                     }}
                   />
                 </Grid>
@@ -313,8 +385,10 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     fullWidth
                     label="Default Currency"
                     size="small"
-                    value={formik.values.ap_default_currency || 'INR'}
-                    onChange={(e) => handleFieldChange('ap_default_currency', e.target.value)}
+                    value={formik.values.ap_default_currency || "INR"}
+                    onChange={(e) =>
+                      handleFieldChange("ap_default_currency", e.target.value)
+                    }
                   />
                 </Grid>
 
@@ -325,11 +399,16 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     label="Payment Terms (Days)"
                     type="number"
                     size="small"
-                    value={formik.values.ap_payment_terms_days || ''}
-                    onChange={(e) => handleFieldChange('ap_payment_terms_days', parseInt(e.target.value) || 30)}
+                    value={formik.values.ap_payment_terms_days || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "ap_payment_terms_days",
+                        parseInt(e.target.value) || 30
+                      )
+                    }
                     placeholder="30"
                     InputProps={{
-                      inputProps: { min: 0, step: 1 }
+                      inputProps: { min: 0, step: 1 },
                     }}
                   />
                 </Grid>
@@ -342,8 +421,10 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     multiline
                     rows={3}
                     size="small"
-                    value={formik.values.ap_notes || ''}
-                    onChange={(e) => handleFieldChange('ap_notes', e.target.value)}
+                    value={formik.values.ap_notes || ""}
+                    onChange={(e) =>
+                      handleFieldChange("ap_notes", e.target.value)
+                    }
                     placeholder="Add notes about AP invoices..."
                   />
                 </Grid>

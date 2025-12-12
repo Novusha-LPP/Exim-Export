@@ -30,7 +30,7 @@ function ProductTabPanel({ children, value, index, ...other }) {
 const getTabsForEximCode = (eximCode) => {
   const code = eximCode?.toString();
   switch (code) {
-    case "03": // ADVANCE LICENCE DEEC
+    case "03 - ADVANCE LICENCE ": // ADVANCE LICENCE DEEC
       return [
         "Main",
         "General",
@@ -40,9 +40,7 @@ const getTabsForEximCode = (eximCode) => {
         "Re-Export",
         "Other Details",
       ];
-    case "19": // DRAWBACK DBK
-      return ["Drawback"];
-    case "60": // DRAWBACK AND ROSCTL
+    case "19 - DRAWBACK (DBK)": // DRAWBACK DBK
       return [
         "Main",
         "General",
@@ -52,8 +50,17 @@ const getTabsForEximCode = (eximCode) => {
         "Re-Export",
         "Other Details",
       ];
-    case "43": // DRAWBACK AND ZERO DUTY PECG EPCG
-    case "61": // EPCG, DRAWBACK AND ROSCTL EPCG Drawback
+    case "60 - DRAWBACK AND ROSCTL": // DRAWBACK AND ROSCTL
+      return [
+        "Main",
+        "General",
+        "Drawback",
+        "CessExport Duty",
+        "AreDetails",
+        "Re-Export",
+        "Other Details",
+      ];
+    case "43 - DRAWBACK AND ZERO DUTY PECG": // DRAWBACK AND ZERO DUTY PECG EPCG
       return [
         "Main",
         "General",
@@ -64,7 +71,18 @@ const getTabsForEximCode = (eximCode) => {
         "Re-Export",
         "Other Details",
       ];
-    case "50": // EPCG AND ADVANCE LICENSE DEEC EPCG
+    case "61 - EPCG, DRAWBACK AND ROSCTL": // EPCG, DRAWBACK AND ROSCTL EPCG Drawback
+      return [
+        "Main",
+        "General",
+        "EPCG",
+        "Drawback",
+        "CessExport Duty",
+        "AreDetails",
+        "Re-Export",
+        "Other Details",
+      ];
+    case "50 - EPCG AND ADVANCE LICENSE DEEC EPCG": // EPCG AND ADVANCE LICENSE DEEC EPCG
       return [
         "Main",
         "General",
@@ -75,8 +93,8 @@ const getTabsForEximCode = (eximCode) => {
         "Re-Export",
         "Other Details",
       ];
-    case "21": // EQUEPZSEZEHTPSTP
-    case "99": // NFEI
+    case "21 - EQUEPZSEZEHTPSTP": // EQUEPZSEZEHTPSTP
+    case "99 - NFEI": // NFEI
     default:
       return [
         "Main",
@@ -95,11 +113,12 @@ const ProductTab = ({ formik, directories, params }) => {
 
   // Get current selected product
   const currentProduct = formik.values.products?.[selectedProductIndex];
+  console.log("currentProduct", currentProduct);
   const eximCode = currentProduct?.eximCode;
 
   // Get tabs based on CURRENT SELECTED product's EXIM code
   const availableTabs = useMemo(() => getTabsForEximCode(eximCode), [eximCode]);
-
+  console.log("availableTabs", availableTabs);
   const handleTabChange = (event, newValue) => {
     setActiveSubTab(newValue);
   };

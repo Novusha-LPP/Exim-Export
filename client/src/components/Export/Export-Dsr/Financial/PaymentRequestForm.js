@@ -23,7 +23,7 @@ import {
   Paper,
   Box,
   Tabs,
-  Tab
+  Tab,
 } from "@mui/material";
 
 function TabPanel({ children, value, index, ...other }) {
@@ -45,14 +45,14 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
   }, [request]);
 
   const handleFieldChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleChargeChange = (index, field, value) => {
     const charges = [...(formData.charges || [])];
     if (!charges[index]) charges[index] = {};
     charges[index][field] = value;
-    setFormData(prev => ({ ...prev, charges }));
+    setFormData((prev) => ({ ...prev, charges }));
   };
 
   const addCharge = () => {
@@ -62,16 +62,16 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
       amountTC: 0,
       curr: "INR",
       amountHC: 0,
-      payableTo: ""
+      payableTo: "",
     });
-    setFormData(prev => ({ ...prev, charges }));
+    setFormData((prev) => ({ ...prev, charges }));
   };
 
   const handlePurchaseBillChange = (index, field, value) => {
     const purchaseBills = [...(formData.purchaseBills || [])];
     if (!purchaseBills[index]) purchaseBills[index] = {};
     purchaseBills[index][field] = value;
-    setFormData(prev => ({ ...prev, purchaseBills }));
+    setFormData((prev) => ({ ...prev, purchaseBills }));
   };
 
   const handleSave = () => {
@@ -88,7 +88,7 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
   const handleSaveAndNew = () => {
     handleSave();
     setFormData({
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().split("T")[0],
       no: `PR-${Date.now()}`,
       mode: "Electronic",
       payeeName: "",
@@ -107,7 +107,7 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
       narration: "",
       charges: [],
       purchaseBills: [],
-      totalAmount: 0
+      totalAmount: 0,
     });
   };
 
@@ -115,13 +115,13 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
     <Dialog open={true} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>
         <Typography variant="h6">
-          Payment Request - {editMode ? 'Edit' : 'New'}
+          Payment Request - {editMode ? "Edit" : "New"}
         </Typography>
         <Typography variant="subtitle2" color="text.secondary">
-          Task: {editMode ? 'Edit' : 'New'} | 59 mins left ⚡ Active
+          Task: {editMode ? "Edit" : "New"} | 59 mins left ⚡ Active
         </Typography>
       </DialogTitle>
-      
+
       <DialogContent>
         {/* Header Information */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -130,7 +130,7 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
               <InputLabel>Pay To</InputLabel>
               <Select
                 value={formData.payTo || "Vendor"}
-                onChange={(e) => handleFieldChange('payTo', e.target.value)}
+                onChange={(e) => handleFieldChange("payTo", e.target.value)}
               >
                 <MenuItem value="Vendor">Vendor</MenuItem>
                 <MenuItem value="Customer">Customer</MenuItem>
@@ -138,36 +138,41 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12} md={2}>
             <TextField
               label="Reference No."
               size="small"
               fullWidth
               value={formData.referenceNo || ""}
-              onChange={(e) => handleFieldChange('referenceNo', e.target.value)}
+              onChange={(e) => handleFieldChange("referenceNo", e.target.value)}
               placeholder="--New--"
             />
           </Grid>
-          
+
           <Grid item xs={12} md={2}>
             <TextField
               label="Date"
-              type="date"
               size="small"
               fullWidth
+              placeholder="DD-MM-YYYY"
               value={formData.date || ""}
-              onChange={(e) => handleFieldChange('date', e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (/^[0-9-]*$/.test(val) && val.length <= 10) {
+                  handleFieldChange("date", val);
+                }
+              }}
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
-          
+
           <Grid item xs={12} md={2}>
             <FormControl size="small" fullWidth>
               <InputLabel>Against</InputLabel>
               <Select
                 value={formData.against || "Expense"}
-                onChange={(e) => handleFieldChange('against', e.target.value)}
+                onChange={(e) => handleFieldChange("against", e.target.value)}
               >
                 <MenuItem value="Expense">Expense</MenuItem>
                 <MenuItem value="Invoice">Invoice</MenuItem>
@@ -175,25 +180,29 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12} md={2}>
             <FormControlLabel
               control={
                 <Checkbox
                   checked={formData.jobExpenses || false}
-                  onChange={(e) => handleFieldChange('jobExpenses', e.target.checked)}
+                  onChange={(e) =>
+                    handleFieldChange("jobExpenses", e.target.checked)
+                  }
                 />
               }
               label="Job Expenses"
             />
           </Grid>
-          
+
           <Grid item xs={12} md={2}>
             <FormControlLabel
               control={
                 <Checkbox
                   checked={formData.nonJobExpenses || false}
-                  onChange={(e) => handleFieldChange('nonJobExpenses', e.target.checked)}
+                  onChange={(e) =>
+                    handleFieldChange("nonJobExpenses", e.target.checked)
+                  }
                 />
               }
               label="Non Job Expenses"
@@ -209,19 +218,19 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
               size="small"
               fullWidth
               value={formData.jobNo || ""}
-              onChange={(e) => handleFieldChange('jobNo', e.target.value)}
+              onChange={(e) => handleFieldChange("jobNo", e.target.value)}
               InputProps={{
-                endAdornment: <Button size="small">🔍</Button>
+                endAdornment: <Button size="small">🔍</Button>,
               }}
             />
           </Grid>
-          
+
           <Grid item xs={12} md={2}>
             <FormControl size="small" fullWidth>
               <InputLabel>Request To</InputLabel>
               <Select
                 value={formData.requestTo || "AHMEDABAD"}
-                onChange={(e) => handleFieldChange('requestTo', e.target.value)}
+                onChange={(e) => handleFieldChange("requestTo", e.target.value)}
               >
                 <MenuItem value="AHMEDABAD">AHMEDABAD</MenuItem>
                 <MenuItem value="MUMBAI">MUMBAI</MenuItem>
@@ -229,13 +238,15 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12} md={2}>
             <FormControl size="small" fullWidth>
               <InputLabel>Mode of Payment</InputLabel>
               <Select
                 value={formData.modeOfPayment || "Cheque No."}
-                onChange={(e) => handleFieldChange('modeOfPayment', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("modeOfPayment", e.target.value)
+                }
               >
                 <MenuItem value="Cheque No.">Cheque No.</MenuItem>
                 <MenuItem value="NEFT">NEFT</MenuItem>
@@ -244,19 +255,21 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12} md={2}>
             <FormControlLabel
               control={
                 <Checkbox
                   checked={formData.markAsUrgent || false}
-                  onChange={(e) => handleFieldChange('markAsUrgent', e.target.checked)}
+                  onChange={(e) =>
+                    handleFieldChange("markAsUrgent", e.target.checked)
+                  }
                 />
               }
               label="Mark As Urgent"
             />
           </Grid>
-          
+
           <Grid item xs={12} md={3}>
             <TextField
               label="Amount"
@@ -264,7 +277,9 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
               size="small"
               fullWidth
               value={formData.amount || 0}
-              onChange={(e) => handleFieldChange('amount', parseFloat(e.target.value) || 0)}
+              onChange={(e) =>
+                handleFieldChange("amount", parseFloat(e.target.value) || 0)
+              }
             />
           </Grid>
         </Grid>
@@ -278,13 +293,13 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
               rows={3}
               fullWidth
               value={formData.narration || ""}
-              onChange={(e) => handleFieldChange('narration', e.target.value)}
+              onChange={(e) => handleFieldChange("narration", e.target.value)}
             />
           </Grid>
         </Grid>
 
         {/* Tabs */}
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
           <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)}>
             <Tab label="General" />
             <Tab label="Notes" />
@@ -314,7 +329,13 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
                       <TextField
                         size="small"
                         value={charge.chargeName || ""}
-                        onChange={(e) => handleChargeChange(index, 'chargeName', e.target.value)}
+                        onChange={(e) =>
+                          handleChargeChange(
+                            index,
+                            "chargeName",
+                            e.target.value
+                          )
+                        }
                         fullWidth
                       />
                     </TableCell>
@@ -323,14 +344,22 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
                         type="number"
                         size="small"
                         value={charge.amountTC || 0}
-                        onChange={(e) => handleChargeChange(index, 'amountTC', parseFloat(e.target.value) || 0)}
+                        onChange={(e) =>
+                          handleChargeChange(
+                            index,
+                            "amountTC",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
                       />
                     </TableCell>
                     <TableCell>
                       <TextField
                         size="small"
                         value={charge.curr || "INR"}
-                        onChange={(e) => handleChargeChange(index, 'curr', e.target.value)}
+                        onChange={(e) =>
+                          handleChargeChange(index, "curr", e.target.value)
+                        }
                       />
                     </TableCell>
                     <TableCell>
@@ -338,14 +367,22 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
                         type="number"
                         size="small"
                         value={charge.amountHC || 0}
-                        onChange={(e) => handleChargeChange(index, 'amountHC', parseFloat(e.target.value) || 0)}
+                        onChange={(e) =>
+                          handleChargeChange(
+                            index,
+                            "amountHC",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
                       />
                     </TableCell>
                     <TableCell>
                       <TextField
                         size="small"
                         value={charge.payableTo || ""}
-                        onChange={(e) => handleChargeChange(index, 'payableTo', e.target.value)}
+                        onChange={(e) =>
+                          handleChargeChange(index, "payableTo", e.target.value)
+                        }
                         fullWidth
                       />
                     </TableCell>
@@ -354,7 +391,7 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
               </TableBody>
             </Table>
           </TableContainer>
-          
+
           <Button onClick={addCharge} variant="outlined" size="small">
             Add Charge
           </Button>
@@ -402,18 +439,18 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
             rows={6}
             fullWidth
             value={formData.remarks || ""}
-            onChange={(e) => handleFieldChange('remarks', e.target.value)}
+            onChange={(e) => handleFieldChange("remarks", e.target.value)}
           />
         </TabPanel>
 
         {/* Total */}
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+        <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
           <Typography variant="h6">
             Total: {formData.totalAmount || 0}
           </Typography>
         </Box>
       </DialogContent>
-      
+
       <DialogActions>
         <Button onClick={handleSave} variant="outlined">
           Save

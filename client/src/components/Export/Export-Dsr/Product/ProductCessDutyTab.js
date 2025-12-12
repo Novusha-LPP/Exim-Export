@@ -2,6 +2,7 @@ import React from "react";
 import { styles as baseStyles } from "./commonStyles";
 import { unitCodes } from "../../../../utils/masterList";
 import { toUpperVal } from "./commonStyles.js";
+import DateInput from "../../../common/DateInput.js";
 const dutyRows = [
   { key: "exportDuty", label: "Export Duty" },
   { key: "cess", label: "Cess" },
@@ -384,8 +385,7 @@ const ProductCessDutyTab = ({ formik, idx = 0 }) => {
           </div>
           <div style={styles.fieldBlock}>
             <span style={styles.smallLabel}>Date</span>
-            <input
-              type="date"
+            <DateInput
               style={styles.inputText}
               value={cenvat.date || ""}
               onChange={(e) => setCenvat("date", toUpperVal(e.target.value))}
@@ -393,8 +393,7 @@ const ProductCessDutyTab = ({ formik, idx = 0 }) => {
           </div>
           <div style={styles.fieldBlock}>
             <span style={styles.smallLabel}>Valid Upto</span>
-            <input
-              type="date"
+            <DateInput
               style={styles.inputText}
               value={cenvat.validUpto || ""}
               onChange={(e) => setCenvat("validUpto", e.target.value)}

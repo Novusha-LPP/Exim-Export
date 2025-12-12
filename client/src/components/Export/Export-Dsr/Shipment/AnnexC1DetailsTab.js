@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import DateInput from "../../../common/DateInput.js";
 
 const styles = {
   page: {
@@ -278,17 +279,17 @@ function AnnexC1DetailsTab({ formik, onUpdate }) {
             </div>
             <div style={styles.field}>
               <div style={styles.label}>EXAMINATION DATE</div>
-              <input
+              <DateInput
                 style={{
                   ...styles.input,
                   textTransform: "none",
                   fontWeight: 500,
                 }}
-                type="datetime-local"
-                value={toDateTimeLocal(
+                value={
                   formik.values.examination_date ||
-                    formik.values.annexC1Details?.examinationDate
-                )}
+                  formik.values.annexC1Details?.examinationDate ||
+                  ""
+                }
                 onChange={(e) =>
                   handleFieldChange("examination_date", e.target.value)
                 }

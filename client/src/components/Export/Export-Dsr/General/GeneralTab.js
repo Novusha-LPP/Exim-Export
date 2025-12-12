@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import DateInput from "../../../common/DateInput.js";
 
 function toUpper(val) {
   return (typeof val === "string" ? val : "")?.toUpperCase() || "";
@@ -17,20 +18,20 @@ const GeneralTab = ({ formik, directories }) => {
     consignee_country: "",
   };
   const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
-  
+
   function handleConsigneeChange(idx, field, value) {
     const updated = [...consignees];
     updated[idx][field] = value;
     setConsignees(updated);
     formik.setFieldValue("consignees", updated);
   }
-  
+
   function handleAddConsignee() {
     const updated = [...consignees, { ...emptyConsignee }];
     setConsignees(updated);
     formik.setFieldValue("consignees", updated);
   }
-  
+
   useEffect(() => {
     if (formik.values.consignees && formik.values.consignees.length > 0) {
       setConsignees(formik.values.consignees);
@@ -64,7 +65,7 @@ const GeneralTab = ({ formik, directories }) => {
     const val = toUpperVal(e);
     handleFieldChange("exporter", val);
   }
-  
+
   function handleRemoveConsignee(idx) {
     const updated = consignees.filter((_, i) => i !== idx);
     setConsignees(updated);
@@ -103,12 +104,14 @@ const GeneralTab = ({ formik, directories }) => {
 
     const shouldUpdate =
       getVal("ieCode") !== toUpper(effectiveIe) ||
-      getVal("gstin") !== toUpper(exp.registrationDetails?.gstinMainBranch || "") ||
-      getVal("exporter_address") !== toUpper(
-        `${branch.address || ""}${
-          branch.postalCode ? `, ${branch.postalCode}` : ""
-        }`
-      );
+      getVal("gstin") !==
+        toUpper(exp.registrationDetails?.gstinMainBranch || "") ||
+      getVal("exporter_address") !==
+        toUpper(
+          `${branch.address || ""}${
+            branch.postalCode ? `, ${branch.postalCode}` : ""
+          }`
+        );
 
     if (!shouldUpdate) return;
 
@@ -149,23 +152,23 @@ const GeneralTab = ({ formik, directories }) => {
   }, [directories, formik.values.exporter, formik.values.branch_index]);
 
   function handleIsBuyerToggle() {
-  const isBuyer = !formik.values.isBuyer;
-  handleFieldChange("isBuyer", isBuyer);
-  
-  // If isBuyer is checked, copy exporter details to buyer details
-  if (isBuyer) {
-    formik.setFieldValue("buyer_name", getVal("exporter"));
-    formik.setFieldValue("buyer_address", getVal("exporter_address"));
-    formik.setFieldValue("buyer_gstin", getVal("gstin"));
-    formik.setFieldValue("buyer_state", getVal("state"));
-  } else {
-    // Clear buyer details when unchecked
-    formik.setFieldValue("buyer_name", "");
-    formik.setFieldValue("buyer_address", "");
-    formik.setFieldValue("buyer_gstin", "");
-    formik.setFieldValue("buyer_state", "");
+    const isBuyer = !formik.values.isBuyer;
+    handleFieldChange("isBuyer", isBuyer);
+
+    // If isBuyer is checked, copy exporter details to buyer details
+    if (isBuyer) {
+      formik.setFieldValue("buyer_name", getVal("exporter"));
+      formik.setFieldValue("buyer_address", getVal("exporter_address"));
+      formik.setFieldValue("buyer_gstin", getVal("gstin"));
+      formik.setFieldValue("buyer_state", getVal("state"));
+    } else {
+      // Clear buyer details when unchecked
+      formik.setFieldValue("buyer_name", "");
+      formik.setFieldValue("buyer_address", "");
+      formik.setFieldValue("buyer_gstin", "");
+      formik.setFieldValue("buyer_state", "");
+    }
   }
-}
 
   // --- UI generators ---
   function field(label, name, opts = {}) {
@@ -237,7 +240,7 @@ const GeneralTab = ({ formik, directories }) => {
     const exp = exporters.find(
       (ex) => toUpper(ex.organization) === exporterName
     );
-    
+
     if (!exp || !exp.branchInfo || exp.branchInfo.length <= 1) {
       return null;
     }
@@ -250,7 +253,9 @@ const GeneralTab = ({ formik, directories }) => {
         <div style={{ fontSize: 11, color: "#666" }}>Select Branch</div>
         <select
           value={currentBranchIndex}
-          onChange={(e) => handleFieldChange("branch_index", parseInt(e.target.value))}
+          onChange={(e) =>
+            handleFieldChange("branch_index", parseInt(e.target.value))
+          }
           style={{
             border: "1px solid #cad3db",
             borderRadius: 4,
@@ -263,7 +268,8 @@ const GeneralTab = ({ formik, directories }) => {
         >
           {branches.map((b, i) => (
             <option key={i} value={i}>
-              {toUpper(b.branchName || b.branchCode || `BRANCH ${i + 1}`)} - {toUpper(b.city || "")}
+              {toUpper(b.branchName || b.branchCode || `BRANCH ${i + 1}`)} -{" "}
+              {toUpper(b.city || "")}
             </option>
           ))}
         </select>
@@ -312,73 +318,77 @@ const GeneralTab = ({ formik, directories }) => {
     >
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         {/* Left: Exporter & Bank */}
-       <div
-  style={{
-    flex: 1,
-    minWidth: 295,
-    background: "#fff",
-    borderRadius: 6,
-    border: "1px solid #e3e7ee",
-    padding: 14,
-    marginBottom: 8,
-  }}
->
-  <div style={{ fontWeight: 700, color: "#2366b3", marginBottom: 8 }}>
-    Exporter & Bank
-  </div>
-  {exporterInputField()}
-  {branchSelectField()}
-  {field("Address", "exporter_address")}
-  <div style={{ display: "flex", gap: 10 }}>
-    {field("Branch S/No", "branch_sno")}
-    {field("State", "state")}
-    {field("IE Code No", "ieCode")}
-  </div>
-  {field("GSTIN", "gstin")}
+        <div
+          style={{
+            flex: 1,
+            minWidth: 295,
+            background: "#fff",
+            borderRadius: 6,
+            border: "1px solid #e3e7ee",
+            padding: 14,
+            marginBottom: 8,
+          }}
+        >
+          <div style={{ fontWeight: 700, color: "#2366b3", marginBottom: 8 }}>
+            Exporter & Bank
+          </div>
+          {exporterInputField()}
+          {branchSelectField()}
+          {field("Address", "exporter_address")}
+          <div style={{ display: "flex", gap: 10 }}>
+            {field("Branch S/No", "branch_sno")}
+            {field("State", "state")}
+            {field("IE Code No", "ieCode")}
+          </div>
+          {field("GSTIN", "gstin")}
 
-  
-  <div
-    style={{
-      fontWeight: 700,
-      color: "#a37035",
-      margin: "10px 0 8px 0",
-    }}
-  >
-    Bank Details
-  </div>
-  {bankInputField()}
-  <div style={{ display: "flex", gap: 10 }}>
-    {field("A/C Number", "ac_number")}
-    {field("AD Code", "ad_code")}
-  </div>
+          <div
+            style={{
+              fontWeight: 700,
+              color: "#a37035",
+              margin: "10px 0 8px 0",
+            }}
+          >
+            Bank Details
+          </div>
+          {bankInputField()}
+          <div style={{ display: "flex", gap: 10 }}>
+            {field("A/C Number", "ac_number")}
+            {field("AD Code", "ad_code")}
+          </div>
 
-    
-  {/* Add the isBuyer checkbox here - right after the GSTIN field */}
-  <div style={{ display: "flex", alignItems: "center", margin: "8px 0 12px 0" }}>
-    <input
-      type="checkbox"
-      id="isBuyer"
-      name="isBuyer"
-      checked={formik.values.isBuyer || false}
-      onChange={handleIsBuyerToggle}
-      style={{
-        marginRight: "6px",
-        cursor: "pointer"
-      }}
-    />
-    <label
-      htmlFor="isBuyer"
-      style={{
-        fontSize: "13px",
-        color: "#555",
-        cursor: "pointer",
-        userSelect: "none"
-      }}
-    >
-      This party is Buyer
-    </label>
-  </div>
-</div>
+          {/* Add the isBuyer checkbox here - right after the GSTIN field */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              margin: "8px 0 12px 0",
+            }}
+          >
+            <input
+              type="checkbox"
+              id="isBuyer"
+              name="isBuyer"
+              checked={formik.values.isBuyer || false}
+              onChange={handleIsBuyerToggle}
+              style={{
+                marginRight: "6px",
+                cursor: "pointer",
+              }}
+            />
+            <label
+              htmlFor="isBuyer"
+              style={{
+                fontSize: "13px",
+                color: "#555",
+                cursor: "pointer",
+                userSelect: "none",
+              }}
+            >
+              This party is Buyer
+            </label>
+          </div>
+        </div>
         {/* Right: Reference Details */}
         <div
           style={{
@@ -425,8 +435,7 @@ const GeneralTab = ({ formik, directories }) => {
             {field("SB Number", "sb_no")}
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 11, color: "#666" }}>SB Date</div>
-              <input
-                type="datetime-local"
+              <DateInput
                 name="sb_date"
                 value={formik.values["sb_date"] || ""}
                 onChange={(e) => handleFieldChange("sb_date", e.target.value)}

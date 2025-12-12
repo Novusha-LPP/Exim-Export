@@ -780,7 +780,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         shipper: safeValue(data.shipper),
         sb_type: safeValue(data.sb_type),
         transportMode: safeValue(data.transportMode),
-        isBuyer: safeValue(data.isBuyer),
+        isBuyer: safeValue(data.isBuyer, false),
         exporter_type: safeValue(data.exporter_type),
         branch_sno: safeValue(data.branch_sno),
         regn_no: safeValue(data.regn_no),

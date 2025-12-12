@@ -1,5 +1,6 @@
 // InvoiceMainTab.jsx
 import React, { useRef, useCallback, useEffect, useState } from "react";
+import DateInput from "../../../common/DateInput.js";
 import { currencyList } from "../../../../utils/masterList";
 
 const styles = {
@@ -100,8 +101,8 @@ function toUpper(v) {
 // ✅ Helper function to get today's date in DD-MM-YYYY format
 const getTodayFormatted = () => {
   const today = new Date();
-  const dd = String(today.getDate()).padStart(2, '0');
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, "0");
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
   const yyyy = today.getFullYear();
   return `${dd}-${mm}-${yyyy}`;
 };
@@ -116,10 +117,12 @@ const InvoiceMainTab = ({ formik }) => {
       try {
         const todayDate = getTodayFormatted(); // DD-MM-YYYY format
         const res = await fetch(
-         `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${todayDate}`
+          `${
+            import.meta.env.VITE_API_STRING
+          }/currency-rates/by-date/${todayDate}`
         );
         const json = await res.json();
-        
+
         if (!json?.success || !json?.data) {
           console.warn("No currency rates found for today");
           return;
@@ -186,14 +189,21 @@ const InvoiceMainTab = ({ formik }) => {
     if (field === "currency") {
       const code = (value || "").toUpperCase();
       const exportRate = rateMap[code];
-      
+
       if (typeof exportRate === "number") {
         formik.setFieldValue("exchange_rate", exportRate);
       }
 
       // Propagate currency to ALL freight/insurance rows
       const currentCharges = formik.values.freightInsuranceCharges || {};
-      const rowKeys = ["freight", "insurance", "discount", "otherDeduction", "commission", "fobValue"];
+      const rowKeys = [
+        "freight",
+        "insurance",
+        "discount",
+        "otherDeduction",
+        "commission",
+        "fobValue",
+      ];
       const nextCharges = { ...currentCharges };
 
       rowKeys.forEach((k) => {
@@ -201,7 +211,8 @@ const InvoiceMainTab = ({ formik }) => {
         nextCharges[k] = {
           ...row,
           currency: code,
-          exchangeRate: typeof exportRate === "number" ? exportRate : (row.exchangeRate || 0),
+          exchangeRate:
+            typeof exportRate === "number" ? exportRate : row.exchangeRate || 0,
         };
       });
 
@@ -252,14 +263,9 @@ const InvoiceMainTab = ({ formik }) => {
 
         <div style={{ ...styles.field, minWidth: 160 }}>
           <div style={styles.label}>Date</div>
-          <input
-            type="date"
+          <DateInput
             style={styles.inputDate}
-            value={
-              invoice.invoiceDate
-                ? String(invoice.invoiceDate).substr(0, 10)
-                : ""
-            }
+            value={invoice.invoiceDate || ""}
             onChange={(e) => handleInvChange("invoiceDate", e.target.value)}
           />
         </div>
@@ -363,10 +369,7 @@ const InvoiceMainTab = ({ formik }) => {
             style={styles.inputNumber}
             value={invoice.invoiceValue}
             onChange={(e) =>
-              handleInvChange(
-                "invoiceValue",
-                parseFloat(e.target.value || 0)
-              )
+              handleInvChange("invoiceValue", parseFloat(e.target.value || 0))
             }
           />
         </div>
@@ -377,16 +380,9 @@ const InvoiceMainTab = ({ formik }) => {
             <input
               type="number"
               style={styles.inputNumber}
-              value={
-                invoice.productValue ??
-                invoice.product_value_fob ??
-                0
-              }
+              value={invoice.productValue ?? invoice.product_value_fob ?? 0}
               onChange={(e) =>
-                handleInvChange(
-                  "productValue",
-                  parseFloat(e.target.value || 0)
-                )
+                handleInvChange("productValue", parseFloat(e.target.value || 0))
               }
             />
             <span style={styles.pill}>
@@ -402,10 +398,7 @@ const InvoiceMainTab = ({ formik }) => {
             style={styles.inputNumber}
             value={invoice.packing_fob ?? 0}
             onChange={(e) =>
-              handleInvChange(
-                "packing_fob",
-                parseFloat(e.target.value || 0)
-              )
+              handleInvChange("packing_fob", parseFloat(e.target.value || 0))
             }
           />
         </div>
