@@ -1,4 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
+import axios from "axios";
+import DateInput from "../../../common/DateInput.js";
+
+const apiBase = import.meta.env.VITE_API_STRING;
 
 function toUpper(val) {
   return (typeof val === "string" ? val : "")?.toUpperCase() || "";
@@ -17,20 +21,20 @@ const GeneralTab = ({ formik, directories }) => {
     consignee_country: "",
   };
   const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
-  
+
   function handleConsigneeChange(idx, field, value) {
     const updated = [...consignees];
     updated[idx][field] = value;
     setConsignees(updated);
     formik.setFieldValue("consignees", updated);
   }
-  
+
   function handleAddConsignee() {
     const updated = [...consignees, { ...emptyConsignee }];
     setConsignees(updated);
     formik.setFieldValue("consignees", updated);
   }
-  
+
   useEffect(() => {
     if (formik.values.consignees && formik.values.consignees.length > 0) {
       setConsignees(formik.values.consignees);
@@ -42,6 +46,66 @@ const GeneralTab = ({ formik, directories }) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {}, 1000);
   }
+
+  // --- Consignee Autocomplete Logic ---
+  const [consigneeList, setConsigneeList] = useState([]);
+  const [activeIdx, setActiveIdx] = useState(-1); // which row is active
+  const [showMenu, setShowMenu] = useState(false);
+  const [filteredConsignees, setFilteredConsignees] = useState([]);
+  const [keyboardActive, setKeyboardActive] = useState(-1);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const fetchConsignees = async () => {
+      try {
+        const res = await axios.get(`${apiBase}/dsr/consignees`);
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setConsigneeList(res.data.data);
+        }
+      } catch (e) {
+        console.error("Error fetching consignees", e);
+      }
+    };
+    fetchConsignees();
+  }, []);
+
+  // Close menu on click outside
+  useEffect(() => {
+    const close = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowMenu(false);
+        setActiveIdx(-1);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  const handleConsigneeNameChange = (idx, e) => {
+    const val = toUpperVal(e);
+    handleConsigneeChange(idx, "consignee_name", val);
+
+    // Filter list
+    const filtered = consigneeList.filter((c) =>
+      toUpper(c.consignee_name).includes(val)
+    );
+    setFilteredConsignees(filtered);
+    setActiveIdx(idx);
+    setShowMenu(true);
+    setKeyboardActive(-1);
+  };
+
+  const handleSelectConsignee = (idx, consignee) => {
+    const updated = [...consignees];
+    updated[idx].consignee_name = toUpper(consignee.consignee_name);
+    updated[idx].consignee_address = toUpper(consignee.consignee_address || "");
+    updated[idx].consignee_country = toUpper(consignee.consignee_country || "");
+    setConsignees(updated);
+    formik.setFieldValue("consignees", updated);
+
+    setShowMenu(false);
+    setActiveIdx(-1);
+  };
 
   // Directory options
   const exporters = directories?.exporters || [];
@@ -64,7 +128,7 @@ const GeneralTab = ({ formik, directories }) => {
     const val = toUpperVal(e);
     handleFieldChange("exporter", val);
   }
-  
+
   function handleRemoveConsignee(idx) {
     const updated = consignees.filter((_, i) => i !== idx);
     setConsignees(updated);
@@ -103,12 +167,14 @@ const GeneralTab = ({ formik, directories }) => {
 
     const shouldUpdate =
       getVal("ieCode") !== toUpper(effectiveIe) ||
-      getVal("gstin") !== toUpper(exp.registrationDetails?.gstinMainBranch || "") ||
-      getVal("exporter_address") !== toUpper(
-        `${branch.address || ""}${
-          branch.postalCode ? `, ${branch.postalCode}` : ""
-        }`
-      );
+      getVal("gstin") !==
+        toUpper(exp.registrationDetails?.gstinMainBranch || "") ||
+      getVal("exporter_address") !==
+        toUpper(
+          `${branch.address || ""}${
+            branch.postalCode ? `, ${branch.postalCode}` : ""
+          }`
+        );
 
     if (!shouldUpdate) return;
 
@@ -149,23 +215,23 @@ const GeneralTab = ({ formik, directories }) => {
   }, [directories, formik.values.exporter, formik.values.branch_index]);
 
   function handleIsBuyerToggle() {
-  const isBuyer = !formik.values.isBuyer;
-  handleFieldChange("isBuyer", isBuyer);
-  
-  // If isBuyer is checked, copy exporter details to buyer details
-  if (isBuyer) {
-    formik.setFieldValue("buyer_name", getVal("exporter"));
-    formik.setFieldValue("buyer_address", getVal("exporter_address"));
-    formik.setFieldValue("buyer_gstin", getVal("gstin"));
-    formik.setFieldValue("buyer_state", getVal("state"));
-  } else {
-    // Clear buyer details when unchecked
-    formik.setFieldValue("buyer_name", "");
-    formik.setFieldValue("buyer_address", "");
-    formik.setFieldValue("buyer_gstin", "");
-    formik.setFieldValue("buyer_state", "");
+    const isBuyer = !formik.values.isBuyer;
+    handleFieldChange("isBuyer", isBuyer);
+
+    // If isBuyer is checked, copy exporter details to buyer details
+    if (isBuyer) {
+      formik.setFieldValue("buyer_name", getVal("exporter"));
+      formik.setFieldValue("buyer_address", getVal("exporter_address"));
+      formik.setFieldValue("buyer_gstin", getVal("gstin"));
+      formik.setFieldValue("buyer_state", getVal("state"));
+    } else {
+      // Clear buyer details when unchecked
+      formik.setFieldValue("buyer_name", "");
+      formik.setFieldValue("buyer_address", "");
+      formik.setFieldValue("buyer_gstin", "");
+      formik.setFieldValue("buyer_state", "");
+    }
   }
-}
 
   // --- UI generators ---
   function field(label, name, opts = {}) {
@@ -237,7 +303,7 @@ const GeneralTab = ({ formik, directories }) => {
     const exp = exporters.find(
       (ex) => toUpper(ex.organization) === exporterName
     );
-    
+
     if (!exp || !exp.branchInfo || exp.branchInfo.length <= 1) {
       return null;
     }
@@ -250,7 +316,9 @@ const GeneralTab = ({ formik, directories }) => {
         <div style={{ fontSize: 11, color: "#666" }}>Select Branch</div>
         <select
           value={currentBranchIndex}
-          onChange={(e) => handleFieldChange("branch_index", parseInt(e.target.value))}
+          onChange={(e) =>
+            handleFieldChange("branch_index", parseInt(e.target.value))
+          }
           style={{
             border: "1px solid #cad3db",
             borderRadius: 4,
@@ -263,7 +331,8 @@ const GeneralTab = ({ formik, directories }) => {
         >
           {branches.map((b, i) => (
             <option key={i} value={i}>
-              {toUpper(b.branchName || b.branchCode || `BRANCH ${i + 1}`)} - {toUpper(b.city || "")}
+              {toUpper(b.branchName || b.branchCode || `BRANCH ${i + 1}`)} -{" "}
+              {toUpper(b.city || "")}
             </option>
           ))}
         </select>
@@ -312,73 +381,77 @@ const GeneralTab = ({ formik, directories }) => {
     >
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         {/* Left: Exporter & Bank */}
-       <div
-  style={{
-    flex: 1,
-    minWidth: 295,
-    background: "#fff",
-    borderRadius: 6,
-    border: "1px solid #e3e7ee",
-    padding: 14,
-    marginBottom: 8,
-  }}
->
-  <div style={{ fontWeight: 700, color: "#2366b3", marginBottom: 8 }}>
-    Exporter & Bank
-  </div>
-  {exporterInputField()}
-  {branchSelectField()}
-  {field("Address", "exporter_address")}
-  <div style={{ display: "flex", gap: 10 }}>
-    {field("Branch S/No", "branch_sno")}
-    {field("State", "state")}
-    {field("IE Code No", "ieCode")}
-  </div>
-  {field("GSTIN", "gstin")}
+        <div
+          style={{
+            flex: 1,
+            minWidth: 295,
+            background: "#fff",
+            borderRadius: 6,
+            border: "1px solid #e3e7ee",
+            padding: 14,
+            marginBottom: 8,
+          }}
+        >
+          <div style={{ fontWeight: 700, color: "#2366b3", marginBottom: 8 }}>
+            Exporter & Bank
+          </div>
+          {exporterInputField()}
+          {branchSelectField()}
+          {field("Address", "exporter_address")}
+          <div style={{ display: "flex", gap: 10 }}>
+            {field("Branch S/No", "branch_sno")}
+            {field("State", "state")}
+            {field("IE Code No", "ieCode")}
+          </div>
+          {field("GSTIN", "gstin")}
 
-  
-  <div
-    style={{
-      fontWeight: 700,
-      color: "#a37035",
-      margin: "10px 0 8px 0",
-    }}
-  >
-    Bank Details
-  </div>
-  {bankInputField()}
-  <div style={{ display: "flex", gap: 10 }}>
-    {field("A/C Number", "ac_number")}
-    {field("AD Code", "ad_code")}
-  </div>
+          <div
+            style={{
+              fontWeight: 700,
+              color: "#a37035",
+              margin: "10px 0 8px 0",
+            }}
+          >
+            Bank Details
+          </div>
+          {bankInputField()}
+          <div style={{ display: "flex", gap: 10 }}>
+            {field("A/C Number", "ac_number")}
+            {field("AD Code", "ad_code")}
+          </div>
 
-    
-  {/* Add the isBuyer checkbox here - right after the GSTIN field */}
-  <div style={{ display: "flex", alignItems: "center", margin: "8px 0 12px 0" }}>
-    <input
-      type="checkbox"
-      id="isBuyer"
-      name="isBuyer"
-      checked={formik.values.isBuyer || false}
-      onChange={handleIsBuyerToggle}
-      style={{
-        marginRight: "6px",
-        cursor: "pointer"
-      }}
-    />
-    <label
-      htmlFor="isBuyer"
-      style={{
-        fontSize: "13px",
-        color: "#555",
-        cursor: "pointer",
-        userSelect: "none"
-      }}
-    >
-      This party is Buyer
-    </label>
-  </div>
-</div>
+          {/* Add the isBuyer checkbox here - right after the GSTIN field */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              margin: "8px 0 12px 0",
+            }}
+          >
+            <input
+              type="checkbox"
+              id="isBuyer"
+              name="isBuyer"
+              checked={formik.values.isBuyer || false}
+              onChange={handleIsBuyerToggle}
+              style={{
+                marginRight: "6px",
+                cursor: "pointer",
+              }}
+            />
+            <label
+              htmlFor="isBuyer"
+              style={{
+                fontSize: "13px",
+                color: "#555",
+                cursor: "pointer",
+                userSelect: "none",
+              }}
+            >
+              This party is Buyer
+            </label>
+          </div>
+        </div>
         {/* Right: Reference Details */}
         <div
           style={{
@@ -425,8 +498,7 @@ const GeneralTab = ({ formik, directories }) => {
             {field("SB Number", "sb_no")}
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 11, color: "#666" }}>SB Date</div>
-              <input
-                type="datetime-local"
+              <DateInput
                 name="sb_date"
                 value={formik.values["sb_date"] || ""}
                 onChange={(e) => handleFieldChange("sb_date", e.target.value)}
@@ -500,20 +572,84 @@ const GeneralTab = ({ formik, directories }) => {
         </div>
         {consignees.map((consignee, idx) => (
           <div key={idx} style={{ display: "flex", gap: 10, marginBottom: 5 }}>
-            <input
-              style={{
-                border: "1px solid #cad3db",
-                borderRadius: 4,
-                fontSize: 13,
-                padding: "2px 7px",
-                flex: 1,
-              }}
-              value={toUpper(consignee.consignee_name)}
-              placeholder="Consignee Name"
-              onChange={(e) =>
-                handleConsigneeChange(idx, "consignee_name", toUpperVal(e))
-              }
-            />
+            <div style={{ flex: 1, position: "relative" }} ref={menuRef}>
+              <input
+                style={{
+                  border: "1px solid #cad3db",
+                  borderRadius: 4,
+                  fontSize: 13,
+                  padding: "2px 7px",
+                  width: "100%",
+                  boxSizing: "border-box",
+                }}
+                value={toUpper(consignee.consignee_name)}
+                placeholder="Consignee Name"
+                onChange={(e) => handleConsigneeNameChange(idx, e)}
+                onFocus={() => {
+                  const val = toUpper(consignee.consignee_name);
+                  const filtered = consigneeList.filter((c) =>
+                    toUpper(c.consignee_name).includes(val)
+                  );
+                  setFilteredConsignees(filtered);
+                  setActiveIdx(idx);
+                  setShowMenu(true);
+                }}
+                onKeyDown={(e) => {
+                  if (activeIdx !== idx || !showMenu) return;
+                  if (e.key === "ArrowDown") {
+                    setKeyboardActive((a) =>
+                      Math.min(filteredConsignees.length - 1, a + 1)
+                    );
+                  } else if (e.key === "ArrowUp") {
+                    setKeyboardActive((a) => Math.max(0, a - 1));
+                  } else if (e.key === "Enter" && keyboardActive >= 0) {
+                    e.preventDefault();
+                    handleSelectConsignee(
+                      idx,
+                      filteredConsignees[keyboardActive]
+                    );
+                  } else if (e.key === "Escape") {
+                    setShowMenu(false);
+                  }
+                }}
+              />
+              {showMenu &&
+                activeIdx === idx &&
+                filteredConsignees.length > 0 && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      top: "100%",
+                      background: "#fff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 3,
+                      zIndex: 20,
+                      maxHeight: 150,
+                      overflow: "auto",
+                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                    }}
+                  >
+                    {filteredConsignees.map((c, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          padding: "4px 8px",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          background: keyboardActive === i ? "#e5edff" : "#fff",
+                          fontWeight: keyboardActive === i ? 600 : 400,
+                        }}
+                        onMouseDown={() => handleSelectConsignee(idx, c)}
+                        onMouseEnter={() => setKeyboardActive(i)}
+                      >
+                        {toUpper(c.consignee_name)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
             <input
               style={{
                 border: "1px solid #cad3db",

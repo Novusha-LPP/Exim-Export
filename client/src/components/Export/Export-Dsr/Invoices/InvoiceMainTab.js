@@ -1,5 +1,6 @@
 // InvoiceMainTab.jsx
 import React, { useRef, useCallback, useEffect, useState } from "react";
+import DateInput from "../../../common/DateInput.js";
 import { currencyList } from "../../../../utils/masterList";
 
 const styles = {
@@ -9,13 +10,13 @@ const styles = {
     color: "#1e2e38",
   },
   row: {
-    display: "flex",
-    alignItems: "flex-end",
-    gap: 10,
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 16,
     marginBottom: 8,
-    flexWrap: "wrap",
+    alignItems: "end",
   },
-  field: { minWidth: 120 },
+  field: { width: "100%" },
   label: {
     fontSize: 11,
     fontWeight: 700,
@@ -51,6 +52,7 @@ const styles = {
   },
   inputDate: {
     width: "100%",
+
     fontSize: 12,
     padding: "3px 6px",
     border: "1px solid #bdc7d1",
@@ -60,7 +62,7 @@ const styles = {
     outline: "none",
     boxSizing: "border-box",
     textTransform: "none",
-    fontWeight: 500,
+    fontWeight: 600,
   },
   select: {
     width: "100%",
@@ -77,6 +79,7 @@ const styles = {
   },
   pill: {
     display: "inline-block",
+    textAlign: "center",
     padding: "2px 6px",
     borderRadius: 3,
     border: "1px solid #cbd5e1",
@@ -84,7 +87,6 @@ const styles = {
     fontSize: 11,
     fontWeight: 600,
     textTransform: "uppercase",
-    minWidth: 160,
     textAlign: "center",
   },
 };
@@ -100,8 +102,8 @@ function toUpper(v) {
 // ✅ Helper function to get today's date in DD-MM-YYYY format
 const getTodayFormatted = () => {
   const today = new Date();
-  const dd = String(today.getDate()).padStart(2, '0');
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, "0");
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
   const yyyy = today.getFullYear();
   return `${dd}-${mm}-${yyyy}`;
 };
@@ -116,10 +118,12 @@ const InvoiceMainTab = ({ formik }) => {
       try {
         const todayDate = getTodayFormatted(); // DD-MM-YYYY format
         const res = await fetch(
-         `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${todayDate}`
+          `${
+            import.meta.env.VITE_API_STRING
+          }/currency-rates/by-date/${todayDate}`
         );
         const json = await res.json();
-        
+
         if (!json?.success || !json?.data) {
           console.warn("No currency rates found for today");
           return;
@@ -186,14 +190,21 @@ const InvoiceMainTab = ({ formik }) => {
     if (field === "currency") {
       const code = (value || "").toUpperCase();
       const exportRate = rateMap[code];
-      
+
       if (typeof exportRate === "number") {
         formik.setFieldValue("exchange_rate", exportRate);
       }
 
       // Propagate currency to ALL freight/insurance rows
       const currentCharges = formik.values.freightInsuranceCharges || {};
-      const rowKeys = ["freight", "insurance", "discount", "otherDeduction", "commission", "fobValue"];
+      const rowKeys = [
+        "freight",
+        "insurance",
+        "discount",
+        "otherDeduction",
+        "commission",
+        "fobValue",
+      ];
       const nextCharges = { ...currentCharges };
 
       rowKeys.forEach((k) => {
@@ -201,7 +212,8 @@ const InvoiceMainTab = ({ formik }) => {
         nextCharges[k] = {
           ...row,
           currency: code,
-          exchangeRate: typeof exportRate === "number" ? exportRate : (row.exchangeRate || 0),
+          exchangeRate:
+            typeof exportRate === "number" ? exportRate : row.exchangeRate || 0,
         };
       });
 
@@ -238,7 +250,7 @@ const InvoiceMainTab = ({ formik }) => {
     <div style={styles.page}>
       {/* Row 1: Invoice No, Date, TOI & Place */}
       <div style={styles.row}>
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Invoice No</div>
           <input
             style={styles.input}
@@ -250,21 +262,16 @@ const InvoiceMainTab = ({ formik }) => {
           />
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Date</div>
-          <input
-            type="date"
+          <DateInput
             style={styles.inputDate}
-            value={
-              invoice.invoiceDate
-                ? String(invoice.invoiceDate).substr(0, 10)
-                : ""
-            }
+            value={invoice.invoiceDate || ""}
             onChange={(e) => handleInvChange("invoiceDate", e.target.value)}
           />
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>TOI</div>
           <select
             style={styles.select}
@@ -280,7 +287,7 @@ const InvoiceMainTab = ({ formik }) => {
           </select>
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Place</div>
           <input
             style={styles.input}
@@ -293,7 +300,7 @@ const InvoiceMainTab = ({ formik }) => {
 
       {/* Row 2: Currency + rate + Price Includes + Taxable base */}
       <div style={styles.row}>
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Currency</div>
           <select
             style={styles.select}
@@ -309,7 +316,8 @@ const InvoiceMainTab = ({ formik }) => {
           </select>
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
+          <div style={styles.label}>Exchange Rate</div>
           <input
             type="number"
             style={styles.inputNumber}
@@ -323,7 +331,7 @@ const InvoiceMainTab = ({ formik }) => {
           />
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Price Includes</div>
           <select
             style={styles.select}
@@ -338,7 +346,7 @@ const InvoiceMainTab = ({ formik }) => {
           </select>
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Taxable value for IGST</div>
           <select
             style={styles.select}
@@ -356,37 +364,27 @@ const InvoiceMainTab = ({ formik }) => {
 
       {/* Row 3: Invoice Value, Product Value, Packing/FOB */}
       <div style={styles.row}>
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Invoice Value</div>
           <input
             type="number"
             style={styles.inputNumber}
             value={invoice.invoiceValue}
             onChange={(e) =>
-              handleInvChange(
-                "invoiceValue",
-                parseFloat(e.target.value || 0)
-              )
+              handleInvChange("invoiceValue", parseFloat(e.target.value || 0))
             }
           />
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Product Value</div>
           <div style={{ display: "flex", gap: 4 }}>
             <input
               type="number"
               style={styles.inputNumber}
-              value={
-                invoice.productValue ??
-                invoice.product_value_fob ??
-                0
-              }
+              value={invoice.productValue ?? invoice.product_value_fob ?? 0}
               onChange={(e) =>
-                handleInvChange(
-                  "productValue",
-                  parseFloat(e.target.value || 0)
-                )
+                handleInvChange("productValue", parseFloat(e.target.value || 0))
               }
             />
             <span style={styles.pill}>
@@ -395,17 +393,14 @@ const InvoiceMainTab = ({ formik }) => {
           </div>
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Packing / FOB</div>
           <input
             type="number"
             style={styles.inputNumber}
             value={invoice.packing_fob ?? 0}
             onChange={(e) =>
-              handleInvChange(
-                "packing_fob",
-                parseFloat(e.target.value || 0)
-              )
+              handleInvChange("packing_fob", parseFloat(e.target.value || 0))
             }
           />
         </div>

@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import { unitCodes } from "../../../../utils/masterList";
+import DateInput from "../../../common/DateInput.js";
 import { toUpperVal } from "./commonStyles.js";
 
 // IMPORTANT: import the same `styles` you use in ProductGeneralTab,
@@ -531,10 +532,9 @@ const ProductEPCGTab = ({ formik, productIndex }) => {
                   />
                 </td>
                 <td style={styles.td}>
-                  <input
+                  <DateInput
                     style={styles.input}
-                    type="date"
-                    value={item.licDate ? item.licDate.split("T")[0] : ""}
+                    value={item.licDate || ""}
                     onChange={(e) =>
                       handleRegItemChange(idx, "licDate", e.target.value)
                     }

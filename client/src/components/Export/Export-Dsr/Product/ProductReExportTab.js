@@ -2,6 +2,7 @@ import React from "react";
 import { styles } from "./commonStyles";
 import { unitCodes } from "../../../../utils/masterList";
 import { toUpperVal } from "./commonStyles.js";
+import DateInput from "../../../common/DateInput.js";
 const ProductReExportTab = ({ formik, idx = 0 }) => {
   const product = formik.values.products?.[idx] || {};
   const reExport = product.reExport || {};
@@ -15,7 +16,7 @@ const ProductReExportTab = ({ formik, idx = 0 }) => {
     formik.setFieldValue("products", updatedProducts);
   };
 
-  const formatDate = (dateStr) => (dateStr ? dateStr.substring(0, 10) : "");
+  // const formatDate = (dateStr) => (dateStr ? dateStr.substring(0, 10) : "");
 
   return (
     <div style={styles.card}>
@@ -59,10 +60,9 @@ const ProductReExportTab = ({ formik, idx = 0 }) => {
             </div>
             <div style={styles.field}>
               <span style={styles.label}>B/E Date</span>
-              <input
-                type="date"
+              <DateInput
                 style={styles.input}
-                value={formatDate(reExport.beDate)}
+                value={reExport.beDate || ""}
                 onChange={(e) => handleChange("beDate", e.target.value)}
                 disabled={!isEnabled}
               />
@@ -193,10 +193,9 @@ const ProductReExportTab = ({ formik, idx = 0 }) => {
             </div>
             <div style={styles.field}>
               <span style={styles.label}>Duty Paid Date</span>
-              <input
-                type="date"
+              <DateInput
                 style={styles.input}
-                value={formatDate(reExport.dutyPaidDate)}
+                value={reExport.dutyPaidDate || ""}
                 onChange={(e) => handleChange("dutyPaidDate", e.target.value)}
                 disabled={!isEnabled}
               />
@@ -380,10 +379,9 @@ const ProductReExportTab = ({ formik, idx = 0 }) => {
             </div>
             <div style={styles.field}>
               <span style={styles.label}>Board Date</span>
-              <input
-                type="date"
+              <DateInput
                 style={styles.input}
-                value={formatDate(reExport.boardDate)}
+                value={reExport.boardDate || ""}
                 onChange={(e) => handleChange("boardDate", e.target.value)}
                 disabled={!isEnabled}
               />

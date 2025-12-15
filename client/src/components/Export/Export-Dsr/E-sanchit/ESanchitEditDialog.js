@@ -3,6 +3,7 @@ import axios from "axios";
 import FileUpload from "../../../gallery/FileUpload.js";
 import ImagePreview from "../../../gallery/ImagePreview.js";
 import ConfirmDialog from "../../../gallery/ConfirmDialog.js";
+import DateInput from "../../../common/DateInput.js";
 
 // Helper
 function toUpper(val) {
@@ -102,8 +103,7 @@ const s = {
     height: 24,
     backgroundColor: "#ffffff",
     boxSizing: "border-box",
-        fontWeight: 700,
-
+    fontWeight: 700,
   },
   sectionTitleLink: {
     fontWeight: 700,
@@ -328,31 +328,31 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
                 value={safeDoc.icegateFilename}
                 onChange={(v) => handleFieldChange("icegateFilename", v)}
               />
-              <Field
-                label="Date-Time Upload"
-                type="datetime-local"
-                value={
-                  safeDoc.dateTimeOfUpload
-                    ? safeDoc.dateTimeOfUpload.substring(0, 16)
-                    : ""
-                }
-                onChange={(v) => handleFieldChange("dateTimeOfUpload", v)}
-              />
+              <div style={s.fieldGroup}>
+                <span style={s.label}>Date-Time Upload</span>
+                <DateInput
+                  style={s.input}
+                  value={safeDoc.dateTimeOfUpload || ""}
+                  onChange={(e) =>
+                    handleFieldChange("dateTimeOfUpload", e.target.value)
+                  }
+                />
+              </div>
               <Field
                 label="Doc Ref No."
                 value={safeDoc.documentReferenceNo}
                 onChange={(v) => handleFieldChange("documentReferenceNo", v)}
               />
-              <Field
-                label="Date of Issue"
-                type="date"
-                value={
-                  safeDoc.dateOfIssue
-                    ? safeDoc.dateOfIssue.substring(0, 10)
-                    : ""
-                }
-                onChange={(v) => handleFieldChange("dateOfIssue", v)}
-              />
+              <div style={s.fieldGroup}>
+                <span style={s.label}>Date of Issue</span>
+                <DateInput
+                  style={s.input}
+                  value={safeDoc.dateOfIssue || ""}
+                  onChange={(e) =>
+                    handleFieldChange("dateOfIssue", e.target.value)
+                  }
+                />
+              </div>
             </div>
 
             <div style={s.col}>
@@ -403,14 +403,16 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
                 value={safeDoc.placeOfIssue}
                 onChange={(v) => handleFieldChange("placeOfIssue", v)}
               />
-              <Field
-                label="Expiry Date"
-                type="date"
-                value={
-                  safeDoc.expiryDate ? safeDoc.expiryDate.substring(0, 10) : ""
-                }
-                onChange={(v) => handleFieldChange("expiryDate", v)}
-              />
+              <div style={s.fieldGroup}>
+                <span style={s.label}>Expiry Date</span>
+                <DateInput
+                  style={s.input}
+                  value={safeDoc.expiryDate || ""}
+                  onChange={(e) =>
+                    handleFieldChange("expiryDate", e.target.value)
+                  }
+                />
+              </div>
             </div>
           </div>
 
@@ -419,9 +421,7 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
             <div style={s.col}>
               <div style={s.sectionTitleLink}>Issuing Party Details</div>
               <div style={s.fieldGroup}>
-                <span style={s.label}>
-                  Name {orgLoading ? "(...)" : ""}
-                </span>
+                <span style={s.label}>Name {orgLoading ? "(...)" : ""}</span>
                 <select
                   style={s.select}
                   value={issuingParty.name || ""}
@@ -446,16 +446,12 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
               <Field
                 label="Address Line 1"
                 value={issuingParty.addressLine1}
-                onChange={(v) =>
-                  handleIssuingPartyChange("addressLine1", v)
-                }
+                onChange={(v) => handleIssuingPartyChange("addressLine1", v)}
               />
               <Field
                 label="Address Line 2"
                 value={issuingParty.addressLine2}
-                onChange={(v) =>
-                  handleIssuingPartyChange("addressLine2", v)
-                }
+                onChange={(v) => handleIssuingPartyChange("addressLine2", v)}
               />
               <Field
                 label="City"
@@ -472,9 +468,7 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
             <div style={s.col}>
               <div style={s.sectionTitleLink}>Beneficiary Party Details</div>
               <div style={s.fieldGroup}>
-                <span style={s.label}>
-                  Name {orgLoading ? "(...)" : ""}
-                </span>
+                <span style={s.label}>Name {orgLoading ? "(...)" : ""}</span>
                 <select
                   style={s.select}
                   value={beneficiaryParty.name || ""}
@@ -513,16 +507,12 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
               <Field
                 label="City"
                 value={beneficiaryParty.city}
-                onChange={(v) =>
-                  handleBeneficiaryPartyChange("city", v)
-                }
+                onChange={(v) => handleBeneficiaryPartyChange("city", v)}
               />
               <Field
                 label="Pin Code"
                 value={beneficiaryParty.pinCode}
-                onChange={(v) =>
-                  handleBeneficiaryPartyChange("pinCode", v)
-                }
+                onChange={(v) => handleBeneficiaryPartyChange("pinCode", v)}
               />
             </div>
           </div>

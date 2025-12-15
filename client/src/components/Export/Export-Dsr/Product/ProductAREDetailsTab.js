@@ -1,5 +1,6 @@
 import React from "react";
 import { styles, toUpperVal } from "./commonStyles";
+import DateInput from "../../../common/DateInput.js";
 
 const defaultAreRow = (idx) => ({
   serialNumber: idx + 1,
@@ -81,10 +82,9 @@ const ProductAREDetailsTab = ({ formik, idx = 0 }) => {
               />
             </div>
             <div>
-              <input
-                type="date"
+              <DateInput
                 style={styles.input}
-                value={row.areDate ? row.areDate.substring(0, 10) : ""}
+                value={row.areDate || ""}
                 onChange={(e) =>
                   handleAreChange(i, "areDate", toUpperVal(e.target.value))
                 }

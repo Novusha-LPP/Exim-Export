@@ -54,6 +54,8 @@ import getCthsExport from "./routes/export-dsr/getCthsExport.js";
 import feedback from "./routes/feedbackRoutes.js";
 
 
+import getConsignees from "./routes/export-dsr/getConsignees.js";
+
 process.on("uncaughtException", (error) => {
   logger.error(`Uncaught Exception: ${error.message}`, { stack: error.stack });
 });
@@ -156,6 +158,7 @@ app.use("/api/getRodtep", getRodtep);
 app.use("/api/getCthsExport", getCthsExport);
 app.use(currencyRate);
 app.use("/api",feedback);
+app.use(getConsignees);
 
 // s3 route
 

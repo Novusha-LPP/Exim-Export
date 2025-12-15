@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import ConfirmDialog from "../../gallery/ConfirmDialog.js";
+import DateInput from "../../common/DateInput.js";
 import { currencyList } from "../../../utils/masterList.js";
 
 // --- Ultra-Compact Enterprise Styles ---
@@ -1038,10 +1040,9 @@ const AddExJobs = () => {
 
                 <div style={s.col}>
                   <label style={s.label}>Job Date</label>
-                  <input
-                    type="date"
+                  <DateInput
                     style={s.input}
-                    value={formData.job_date}
+                    value={formData.job_date || ""}
                     onChange={(e) =>
                       handleInputChange("job_date", e.target.value)
                     }

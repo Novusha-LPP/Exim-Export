@@ -24,6 +24,7 @@ import TrackingCompletedTab from "./Tracking Completed/TrackingCompletedTab.js";
 import ChargesTab from "./Charges/ChargesTab.js";
 import ESanchitTab from ".//E-sanchit/EsanchitTab.js";
 import ExportChecklistGenerator from "./Checklist/ExportChecklistGenerator.js";
+import DateInput from "../../common/DateInput.js";
 
 function SimpleSelect({ name, value, options, onChange }) {
   return (
@@ -295,6 +296,7 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
     value: exp.organization,
   }));
 
+  // console.log("shipperOpts", shipperOpts);
   return (
     <div
       style={{
@@ -383,9 +385,8 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
         {/* Job Date */}
         <div style={{ flex: "1 1 110px", minWidth: 100 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Job Date</div>
-          <input
+          <DateInput
             name="job_date"
-            type="date"
             value={formik.values.job_date}
             onChange={formik.handleChange}
             style={{
@@ -420,9 +421,8 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
         {/* SB Date */}
         <div style={{ flex: "1 1 150px", minWidth: 120 }}>
           <div style={{ fontSize: 11, color: "#888" }}>SB Date</div>
-          <input
+          <DateInput
             name="sb_date"
-            type="datetime-local"
             value={formik.values.sb_date}
             onChange={formik.handleChange}
             style={{
@@ -460,7 +460,7 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
           <input
             name="shipper"
             list="shipper-list"
-            value={formik.values.shipper}
+            value={formik.values.exporter}
             onChange={formik.handleChange}
             style={{
               width: "98%",
