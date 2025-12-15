@@ -126,12 +126,12 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
     const fetchOrgs = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`${apiBase}/directory`);
+        const res = await axios.get(`${apiBase}/dsr/consignees`);
         if (res.data?.success && Array.isArray(res.data.data)) {
           setOrgs(res.data.data);
         }
       } catch (e) {
-        console.error("Error fetching directory", e);
+        console.error("Error fetching consignees", e);
       } finally {
         setLoading(false);
       }
@@ -171,11 +171,11 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
   };
 
   const filtered = orgs.filter((o) =>
-    toUpper(o.organization || "").includes(toUpper(query))
+    toUpper(o.consignee_name || "").includes(toUpper(query))
   );
 
   const buyerFiltered = orgs.filter((o) =>
-    toUpper(o.organization || "").includes(toUpper(buyerQuery))
+    toUpper(o.consignee_name || "").includes(toUpper(buyerQuery))
   );
 
   // --------- Third Party auto-populate ----------
@@ -185,35 +185,30 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
     );
     if (!nameInForm) return;
 
-    const org = orgs.find((o) => toUpper(o.organization || "") === nameInForm);
+    const org = orgs.find(
+      (o) => toUpper(o.consignee_name || "") === nameInForm
+    );
     if (!org) return;
 
-    const branch = org.branchInfo?.[0] || {};
-    const address = `${branch.address || ""}${
-      branch.postalCode ? `, ${branch.postalCode}` : ""
-    }`;
+    const address = org.consignee_address || "";
+    const country = org.consignee_country || "";
 
     const current = formik.values.buyerThirdPartyInfo?.thirdParty || {};
 
     const shouldUpdate =
       toUpper(current.address || "") !== toUpper(address) ||
-      toUpper(current.city || "") !== toUpper(branch.city || "") ||
-      (current.pin || "") !== (branch.postalCode || "") ||
-      toUpper(current.country || "") !== toUpper(branch.country || "") ||
-      toUpper(current.state || "") !== toUpper(branch.state || "");
+      toUpper(current.country || "") !== toUpper(country);
 
     if (!shouldUpdate) return;
 
     setThirdParty({
-      name: toUpper(org.organization || ""),
+      name: toUpper(org.consignee_name || ""),
       address: toUpper(address),
-      city: toUpper(branch.city || ""),
-      pin: branch.postalCode || "",
-      country: toUpper(branch.country || ""),
-      state: toUpper(branch.state || ""),
+      country: toUpper(country),
+      // city, pin, state not available in consignee API
     });
 
-    setQuery(toUpper(org.organization || ""));
+    setQuery(toUpper(org.consignee_name || ""));
   }, [orgs, formik.values.buyerThirdPartyInfo?.thirdParty?.name]);
 
   // --------- Buyer auto-populate (only when isBuyer) ----------
@@ -225,35 +220,30 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
     );
     if (!nameInForm) return;
 
-    const org = orgs.find((o) => toUpper(o.organization || "") === nameInForm);
+    const org = orgs.find(
+      (o) => toUpper(o.consignee_name || "") === nameInForm
+    );
     if (!org) return;
 
-    const branch = org.branchInfo?.[0] || {};
-    const address = `${branch.address || ""}${
-      branch.postalCode ? `, ${branch.postalCode}` : ""
-    }`;
+    const address = org.consignee_address || "";
+    const country = org.consignee_country || "";
 
     const current = formik.values.buyerThirdPartyInfo?.buyer || {};
 
     const shouldUpdate =
       toUpper(current.addressLine1 || "") !== toUpper(address) ||
-      toUpper(current.city || "") !== toUpper(branch.city || "") ||
-      (current.pin || "") !== (branch.postalCode || "") ||
-      toUpper(current.country || "") !== toUpper(branch.country || "") ||
-      toUpper(current.state || "") !== toUpper(branch.state || "");
+      toUpper(current.country || "") !== toUpper(country);
 
     if (!shouldUpdate) return;
 
     setBuyer({
-      name: toUpper(org.organization || ""),
+      name: toUpper(org.consignee_name || ""),
       addressLine1: toUpper(address),
-      city: toUpper(branch.city || ""),
-      pin: branch.postalCode || "",
-      country: toUpper(branch.country || ""),
-      state: toUpper(branch.state || ""),
+      country: toUpper(country),
+      // city, pin, state not available in consignee API
     });
 
-    setBuyerQuery(toUpper(org.organization || ""));
+    setBuyerQuery(toUpper(org.consignee_name || ""));
   }, [isBuyer, orgs, formik.values.buyerThirdPartyInfo?.buyer?.name]);
 
   // --------- handlers ----------
@@ -269,7 +259,7 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
   const handleSelectOrg = (idx) => {
     const org = filtered[idx];
     if (!org) return;
-    const val = toUpper(org.organization || "");
+    const val = toUpper(org.consignee_name || "");
     setThirdParty({ name: val }); // rest populated in useEffect
     setQuery(val);
     setOpen(false);
@@ -287,7 +277,7 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
   const handleSelectBuyerOrg = (idx) => {
     const org = buyerFiltered[idx];
     if (!org) return;
-    const val = toUpper(org.organization || "");
+    const val = toUpper(org.consignee_name || "");
     setBuyer({ name: val }); // rest populated in Buyer useEffect
     setBuyerQuery(val);
     setBuyerOpen(false);
@@ -338,7 +328,7 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
                         onMouseDown={() => handleSelectOrg(i)}
                         onMouseEnter={() => setActive(i)}
                       >
-                        {toUpper(o.organization || "")}
+                        {toUpper(o.consignee_name || "")}
                       </div>
                     ))}
                   </div>
@@ -446,7 +436,7 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
                         onMouseDown={() => handleSelectBuyerOrg(i)}
                         onMouseEnter={() => setBuyerActive(i)}
                       >
-                        {toUpper(o.organization || "")}
+                        {toUpper(o.consignee_name || "")}
                       </div>
                     ))}
                   </div>

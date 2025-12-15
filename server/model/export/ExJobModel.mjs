@@ -744,10 +744,11 @@ const exportJobSchema = new mongoose.Schema(
       natureOfPayment: {
         type: String,
         enum: [
+          "Not Applicable",
           "Letter Of Credit",
+          "Delivery against Acceptance",
+          "Direct Payment",
           "Advance Payment",
-          "Open Account",
-          "Consignment",
         ],
         default: "Letter Of Credit",
       },

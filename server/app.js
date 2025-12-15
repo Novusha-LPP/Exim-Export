@@ -52,6 +52,8 @@ import deleteFromS3Routes from "./routes/deleteFromS3.js";
 import getRodtep from "./routes/export-dsr/getRodtep.js";
 import getCthsExport from "./routes/export-dsr/getCthsExport.js";
 
+import getConsignees from "./routes/export-dsr/getConsignees.js";
+
 process.on("uncaughtException", (error) => {
   logger.error(`Uncaught Exception: ${error.message}`, { stack: error.stack });
 });
@@ -153,6 +155,7 @@ app.use("/api/export-jobs", updateExportJobs);
 app.use("/api/getRodtep", getRodtep);
 app.use("/api/getCthsExport", getCthsExport);
 app.use(currencyRate);
+app.use(getConsignees);
 
 // s3 route
 

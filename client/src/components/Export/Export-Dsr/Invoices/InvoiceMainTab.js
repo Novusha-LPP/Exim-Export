@@ -10,13 +10,13 @@ const styles = {
     color: "#1e2e38",
   },
   row: {
-    display: "flex",
-    alignItems: "flex-end",
-    gap: 10,
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 16,
     marginBottom: 8,
-    flexWrap: "wrap",
+    alignItems: "end",
   },
-  field: { minWidth: 120 },
+  field: { width: "100%" },
   label: {
     fontSize: 11,
     fontWeight: 700,
@@ -52,6 +52,7 @@ const styles = {
   },
   inputDate: {
     width: "100%",
+
     fontSize: 12,
     padding: "3px 6px",
     border: "1px solid #bdc7d1",
@@ -61,7 +62,7 @@ const styles = {
     outline: "none",
     boxSizing: "border-box",
     textTransform: "none",
-    fontWeight: 500,
+    fontWeight: 600,
   },
   select: {
     width: "100%",
@@ -78,6 +79,7 @@ const styles = {
   },
   pill: {
     display: "inline-block",
+    textAlign: "center",
     padding: "2px 6px",
     borderRadius: 3,
     border: "1px solid #cbd5e1",
@@ -85,7 +87,6 @@ const styles = {
     fontSize: 11,
     fontWeight: 600,
     textTransform: "uppercase",
-    minWidth: 160,
     textAlign: "center",
   },
 };
@@ -249,7 +250,7 @@ const InvoiceMainTab = ({ formik }) => {
     <div style={styles.page}>
       {/* Row 1: Invoice No, Date, TOI & Place */}
       <div style={styles.row}>
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Invoice No</div>
           <input
             style={styles.input}
@@ -261,7 +262,7 @@ const InvoiceMainTab = ({ formik }) => {
           />
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Date</div>
           <DateInput
             style={styles.inputDate}
@@ -270,7 +271,7 @@ const InvoiceMainTab = ({ formik }) => {
           />
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>TOI</div>
           <select
             style={styles.select}
@@ -286,7 +287,7 @@ const InvoiceMainTab = ({ formik }) => {
           </select>
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Place</div>
           <input
             style={styles.input}
@@ -299,7 +300,7 @@ const InvoiceMainTab = ({ formik }) => {
 
       {/* Row 2: Currency + rate + Price Includes + Taxable base */}
       <div style={styles.row}>
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Currency</div>
           <select
             style={styles.select}
@@ -315,7 +316,8 @@ const InvoiceMainTab = ({ formik }) => {
           </select>
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
+          <div style={styles.label}>Exchange Rate</div>
           <input
             type="number"
             style={styles.inputNumber}
@@ -329,7 +331,7 @@ const InvoiceMainTab = ({ formik }) => {
           />
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Price Includes</div>
           <select
             style={styles.select}
@@ -344,7 +346,7 @@ const InvoiceMainTab = ({ formik }) => {
           </select>
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Taxable value for IGST</div>
           <select
             style={styles.select}
@@ -362,7 +364,7 @@ const InvoiceMainTab = ({ formik }) => {
 
       {/* Row 3: Invoice Value, Product Value, Packing/FOB */}
       <div style={styles.row}>
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Invoice Value</div>
           <input
             type="number"
@@ -374,7 +376,7 @@ const InvoiceMainTab = ({ formik }) => {
           />
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Product Value</div>
           <div style={{ display: "flex", gap: 4 }}>
             <input
@@ -391,7 +393,7 @@ const InvoiceMainTab = ({ formik }) => {
           </div>
         </div>
 
-        <div style={{ ...styles.field, minWidth: 160 }}>
+        <div style={styles.field}>
           <div style={styles.label}>Packing / FOB</div>
           <input
             type="number"

@@ -296,6 +296,7 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
     value: exp.organization,
   }));
 
+  // console.log("shipperOpts", shipperOpts);
   return (
     <div
       style={{
@@ -459,7 +460,7 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
           <input
             name="shipper"
             list="shipper-list"
-            value={formik.values.shipper}
+            value={formik.values.exporter}
             onChange={formik.handleChange}
             style={{
               width: "98%",

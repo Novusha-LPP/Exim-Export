@@ -35,8 +35,8 @@ const getTabsForEximCode = (eximCode) => {
         "Main",
         "General",
         "DEEC",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
@@ -45,8 +45,8 @@ const getTabsForEximCode = (eximCode) => {
         "Main",
         "General",
         "Drawback",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
@@ -55,8 +55,8 @@ const getTabsForEximCode = (eximCode) => {
         "Main",
         "General",
         "Drawback",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
@@ -66,8 +66,8 @@ const getTabsForEximCode = (eximCode) => {
         "General",
         "EPCG",
         "Drawback",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
@@ -77,8 +77,8 @@ const getTabsForEximCode = (eximCode) => {
         "General",
         "EPCG",
         "Drawback",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
@@ -88,8 +88,8 @@ const getTabsForEximCode = (eximCode) => {
         "General",
         "DEEC",
         "EPCG",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
@@ -99,8 +99,8 @@ const getTabsForEximCode = (eximCode) => {
       return [
         "Main",
         "General",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
