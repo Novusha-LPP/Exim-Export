@@ -9,11 +9,12 @@ const s = {
     fontFamily:
       "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
     backgroundColor: "#ffffff",
-    padding: "10px 20px 20px 20px",
+    padding: "0 20px 20px 20px", // ⬅️ reduced
     minHeight: "100vh",
     color: "#333",
     fontSize: "12px",
   },
+
   container: {
     width: "100%",
     margin: "0 auto",

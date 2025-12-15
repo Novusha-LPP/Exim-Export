@@ -430,6 +430,8 @@ function useExportJobDetails(params, setFileSnackbar) {
       ],
 
       // Milestone Tracking
+      isJobtrackingEnabled: false,
+      isJobCanceled:false,  
       milestones: [
         {
           milestoneName: "",
@@ -965,6 +967,8 @@ function useExportJobDetails(params, setFileSnackbar) {
         charges: safeValue(data.charges, []),
         arInvoices: safeValue(data.arInvoices, []),
         eSanchitDocuments: safeValue(data.eSanchitDocuments, []),
+        isJobtrackingEnabled: safeValue(data.isJobtrackingEnabled, false),
+        isJobCanceled: safeValue(data.isJobCanceled, false),
         milestones: safeValue(data.milestones, []),
         products: safeValue(data.products, []).map((product) => ({
           ...product,

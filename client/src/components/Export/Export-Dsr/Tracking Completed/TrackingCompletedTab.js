@@ -87,6 +87,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
       },
     ];
     formik.setFieldValue("milestones", milestones);
+    // scheduleSave();
   };
 
   const updatePlanDate = () => {
@@ -137,23 +138,42 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
           alignItems: "center",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontWeight: 600 }}>Job Tracking Completed</span>
-          <DateInput
-            style={{
-              fontSize: 12,
-              padding: "4px 6px",
-              borderRadius: 3,
-              border: "1px solid #c4cdd7",
-              minWidth: 135,
-            }}
-            value={formik.values.jobtrackingcompleted || ""}
-            onChange={(e) =>
-              handleFieldChange("jobtrackingcompleted", e.target.value)
-            }
-          />
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontWeight: 600 }}>Job Tracking Completed</span>
+            <input
+              type="checkbox"
+              checked={formik.values.isJobtrackingEnabled ?? false}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  handleFieldChange("isJobtrackingEnabled", true);
+                  handleFieldChange("isJobCanceled", false);
+                } else {
+                  handleFieldChange("isJobtrackingEnabled", false);
+                }
+              }}
+              disabled={formik.values.isJobCanceled ?? false}
+              style={{ cursor: (formik.values.isJobCanceled ?? false) ? "not-allowed" : "pointer" }}
+            />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontWeight: 600 }}>Job Canceled</span>
+            <input
+              type="checkbox"
+              checked={formik.values.isJobCanceled ?? false}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  handleFieldChange("isJobCanceled", true);
+                  handleFieldChange("isJobtrackingEnabled", false);
+                } else {
+                  handleFieldChange("isJobCanceled", false);
+                }
+              }}
+              disabled={formik.values.isJobtrackingEnabled ?? false}
+              style={{ cursor: (formik.values.isJobtrackingEnabled ?? false) ? "not-allowed" : "pointer" }}
+            />
+          </div>
         </div>
-
         <div>
           <div style={{ marginBottom: 4, fontWeight: 500 }}>
             Customer Remark
@@ -174,7 +194,6 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
             }
           />
         </div>
-
         <div
           style={{
             borderLeft: "1px solid #e1e7f0",

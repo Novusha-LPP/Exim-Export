@@ -38,14 +38,13 @@ function DsrTabs() {
             ,]
           </Tabs>
         </Box>
-
-
-        <CustomTabPanel value={tabValue} index={0}>
-          {/* <Dashboard /> */}
-        </CustomTabPanel>
         <CustomTabPanel value={tabValue} index={0}>
           <ExportJobsTable />
         </CustomTabPanel>
+        <CustomTabPanel value={tabValue} index={0}>
+          {/* <Dashboard /> */}
+        </CustomTabPanel>
+
         <CustomTabPanel value={tabValue} index={2}>
           {/* <ViewDSR /> */}
         </CustomTabPanel>

@@ -572,6 +572,7 @@ const exportJobSchema = new mongoose.Schema(
       default: Date.now,
     },
     isBuyer: { type: Boolean },
+
     ////////////////////////////////////////////////// Excel sheet
     year: { type: String, trim: true },
     // job_no: { type: String, trim: true },
@@ -889,6 +890,8 @@ const exportJobSchema = new mongoose.Schema(
     eSanchitDocuments: [eSanchitDocumentSchema],
 
     // Milestone Tracking
+    isJobtrackingEnabled: { type: Boolean, default: false },
+    isJobCanceled: { type: Boolean, default: false },
     milestones: [milestoneSchema],
 
     // System Fields

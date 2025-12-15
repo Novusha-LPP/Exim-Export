@@ -7,6 +7,7 @@ const router = express.Router();
 
 // GET /api/exports - List all exports with pagination & filtering
 // Updated exports API with status filtering
+// If jobTracking is enabled and all milestones are completed, status is treated as "completed"
 router.get("/api/exports/:status?", async (req, res) => {
   try {
     const {
@@ -18,6 +19,7 @@ router.get("/api/exports/:status?", async (req, res) => {
       consignmentType = "",
       branch = "",
       status = "all",
+      year = "",
     } = { ...req.params, ...req.query };
 
     const filter = {};
@@ -25,26 +27,50 @@ router.get("/api/exports/:status?", async (req, res) => {
     // Initialize $and array for complex queries
     if (!filter.$and) filter.$and = [];
 
-    // Status filtering logic (similar to your import jobs API)
+    // Status filtering logic with job tracking consideration
+    // Job is considered "completed" if:
+    // 1. Explicit status is "completed", OR
+    // 2. jobTracking is enabled (regardless of milestone status)
     if (status && status.toLowerCase() !== "all") {
       const statusLower = status.toLowerCase();
 
       if (statusLower === "pending") {
+        // Pending: Status is pending or not set, AND jobTracking is disabled
         filter.$and.push({
-          $or: [
-            { status: { $regex: "^pending$", $options: "i" } },
-            { status: { $exists: false } },
-            { status: null },
-            { status: "" },
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            // Exclude jobs where jobTracking is enabled
+            {
+              $or: [
+                { isJobtrackingEnabled: false },
+                { isJobtrackingEnabled: { $exists: false } },
+              ],
+            },
           ],
         });
       } else if (statusLower === "completed") {
+        // Completed: Explicit status is completed OR jobTracking is enabled
         filter.$and.push({
-          status: { $regex: "^completed$", $options: "i" },
+          $or: [
+            { status: { $regex: "^completed$", $options: "i" } },
+            // If jobTracking is enabled, show in completed tab
+            { isJobtrackingEnabled: true },
+          ],
         });
       } else if (statusLower === "cancelled") {
         filter.$and.push({
-          status: { $regex: "^cancelled$", $options: "i" },
+          $or: [
+            { status: { $regex: "^cancelled$", $options: "i" } },
+            // If jobTracking is enabled, show in completed tab
+            { isJobCanceled: true },
+          ],
         });
       } else {
         filter.$and.push({
@@ -86,6 +112,13 @@ router.get("/api/exports/:status?", async (req, res) => {
     if (branch) {
       filter.$and.push({
         branch_code: { $regex: `^${branch}$`, $options: "i" },
+      });
+    }
+
+    // Year filter - extract from job_no (format: BRANCH/EXP/MODE/SEQ/YEAR)
+    if (year) {
+      filter.$and.push({
+        job_no: { $regex: `/${year}$`, $options: "i" },
       });
     }
 
