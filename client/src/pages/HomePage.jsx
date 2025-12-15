@@ -19,6 +19,8 @@ import AllUsersPage from "./AllUsersPage.js";
 
 import AppbarComponent from "../components/home/AppbarComponent.js";
 import DrawerComponent from "../components/home/DrawerComponent.js";
+
+import Feedback from "../components/home/FeedBack.js"
 const drawerWidth = 60;
 
 function HomePage() {
@@ -29,84 +31,83 @@ function HomePage() {
 
   return (
     <TabValueContext.Provider value={{ tabValue, setTabValue }}>
-        <Box sx={{ display: "flex" }}>
-          <CssBaseline />
-          <AppbarComponent
-            mobileOpen={mobileOpen}
-            setMobileOpen={setMobileOpen}
-          />
+      <Box sx={{ display: "flex" }}>
+        <CssBaseline />
+        <AppbarComponent
+          mobileOpen={mobileOpen}
+          setMobileOpen={setMobileOpen}
+        />
 
-          <DrawerComponent
-            mobileOpen={mobileOpen}
-            setMobileOpen={setMobileOpen}
-          />
+        <DrawerComponent
+          mobileOpen={mobileOpen}
+          setMobileOpen={setMobileOpen}
+        />
 
-          <Box
-            component="main"
-            sx={{
-              flexGrow: 1,
-              width: {
-                lg: `calc(100% - ${drawerWidth}px)`,
-                height: "100vh",
-                padding: "20px",
-                paddingTop: 0,
-              },
-            }}
-          >
-            <Toolbar />
-            <Routes>
-              {/* Public Routes - No protection needed */}
-              <Route path="/" element={<Home />} />
-              <Route path="/change-password" element={<ChangePassword />} />
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            width: {
+              lg: `calc(100% - ${drawerWidth}px)`,
+              height: "100vh",
+              padding: "20px",
+              paddingTop: 0,
+            },
+          }}
+        >
+          <Toolbar />
+          <Routes>
+            {/* Public Routes - No protection needed */}
+            <Route path="/" element={<Home />} />
+            <Route path="/change-password" element={<ChangePassword />} />
 
-              {/* Protected Routes */}
-              <Route path="/assign" element={<Assign />} />
+            {/* Protected Routes */}
+            <Route path="/assign" element={<Assign />} />
 
-              {/* Accounts */}
+            {/* Accounts */}
 
-              <Route
-                path="/all-users"
-                element={
-                  <ProtectedRoute requiredModule="Audit Trail">
-                    <AllUsersPage />
-                  </ProtectedRoute>
-                }
-              />
+            <Route
+              path="/all-users"
+              element={
+                <ProtectedRoute requiredModule="Audit Trail">
+                  <AllUsersPage />
+                </ProtectedRoute>
+              }
+            />
 
-              {/* Screens */}
+            {/* Screens */}
 
-              {/* Export */}
-              <Route
-                path="/export-directories"
-                element={
-                  <ProtectedRoute requiredModule="Directories">
-                    <Directories />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/export-dsr"
-                element={
-                  <ProtectedRoute requiredModule="Export - DSR">
-                    <DsrTabs />
-                  </ProtectedRoute>
-                }
-              />
+            {/* Export */}
+            <Route
+              path="/export-directories"
+              element={
+                <ProtectedRoute requiredModule="Directories">
+                  <Directories />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/export-dsr"
+              element={
+                <ProtectedRoute requiredModule="Export - DSR">
+                  <DsrTabs />
+                </ProtectedRoute>
+              }
+            />
 
+            <Route
+              path="export-dsr/job/:jobNo"
+              element={
+                <ProtectedRoute requiredModule="Export - DSR">
+                  <ExportViewJob />
+                </ProtectedRoute>
+              }
+            />
 
-<Route
-  path="export-dsr/job/:jobNo"
-  element={
-    <ProtectedRoute requiredModule="Export - DSR">
-      <ExportViewJob />
-    </ProtectedRoute>
-  }
-/>
-
-
-            </Routes>
-          </Box>
+            <Route path="/feedback" element={<Feedback />} />
+          </Routes>
         </Box>
+      </Box>
     </TabValueContext.Provider>
   );
 }
