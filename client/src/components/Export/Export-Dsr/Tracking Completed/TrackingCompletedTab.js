@@ -18,31 +18,11 @@ const mandatoryNames = new Set([
   "Ready for Billing",
 ]);
 
-const TrackingCompletedTab = ({ formik, directories, params, onUpdate }) => {
-  const saveTimeoutRef = useRef(null);
+const TrackingCompletedTab = ({ formik, directories, params }) => {
   const [filter, setFilter] = useState("Show All");
-
-  const autoSave = useCallback(
-    async (values) => {
-      try {
-        if (onUpdate) await onUpdate(values);
-      } catch (err) {
-        console.error("Auto-save failed:", err);
-      }
-    },
-    [onUpdate]
-  );
-
-  const scheduleSave = () => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      autoSave(formik.values);
-    }, 1200);
-  };
 
   const handleFieldChange = (field, value) => {
     formik.setFieldValue(field, value);
-    scheduleSave();
   };
 
   // ONE‑TIME normalization of base milestones
@@ -88,7 +68,6 @@ const TrackingCompletedTab = ({ formik, directories, params, onUpdate }) => {
     const milestones = [...current];
     milestones[index] = { ...milestones[index], [field]: value };
     formik.setFieldValue("milestones", milestones);
-    scheduleSave();
   };
 
   const addCustomMilestone = () => {
@@ -108,7 +87,6 @@ const TrackingCompletedTab = ({ formik, directories, params, onUpdate }) => {
       },
     ];
     formik.setFieldValue("milestones", milestones);
-    scheduleSave();
   };
 
   const updatePlanDate = () => {
@@ -124,12 +102,6 @@ const TrackingCompletedTab = ({ formik, directories, params, onUpdate }) => {
       return m;
     });
     formik.setFieldValue("milestones", milestones);
-    scheduleSave();
-  };
-
-  const getMaxDateTime = () => {
-    const d = new Date();
-    return d.toISOString().slice(0, 16);
   };
 
   const allMilestones = formik.values.milestones || [];

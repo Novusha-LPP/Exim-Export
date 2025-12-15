@@ -73,4 +73,4 @@ feedbackSchema.pre('save', function(next) {
   next();
 });
 
-export default mongoose.model('Feedback', feedbackSchema);
+export default mongoose.model('ExFeedback', feedbackSchema);

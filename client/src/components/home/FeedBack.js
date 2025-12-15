@@ -91,15 +91,15 @@ const Feedback = () => {
 
   const modules = [
     { value: 'general', label: 'General' },
-    { value: 'Shipment', label: 'Shipment'},
+    { value: 'shipment', label: 'Shipment'},
     { value: 'container', label: 'Container' },
     { value: 'invoice', label: 'Invoice' },
     { value: 'product', label: 'Product' },
     { value: 'e-sanchit', label: 'E-sanchit' },
-    { value: 'Charges', label: 'Charges' },
+    { value: 'charges', label: 'Charges' },
     { value: 'financial', label: 'Financial' },
-    { value: 'opration', label: 'Opration' },
-    { value: 'Tracking Completed', label: 'Tracking Completed' },
+    { value: 'operation', label: 'Operation' },
+    { value: 'tracking Completed', label: 'Tracking Completed' },
     { value: 'audit-trail', label: 'Audit Trail' },
   ];
 
