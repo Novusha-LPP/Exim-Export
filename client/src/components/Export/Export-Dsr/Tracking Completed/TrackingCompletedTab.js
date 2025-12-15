@@ -153,7 +153,12 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                 }
               }}
               disabled={formik.values.isJobCanceled ?? false}
-              style={{ cursor: (formik.values.isJobCanceled ?? false) ? "not-allowed" : "pointer" }}
+              style={{
+                cursor:
+                  formik.values.isJobCanceled ?? false
+                    ? "not-allowed"
+                    : "pointer",
+              }}
             />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -170,7 +175,12 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                 }
               }}
               disabled={formik.values.isJobtrackingEnabled ?? false}
-              style={{ cursor: (formik.values.isJobtrackingEnabled ?? false) ? "not-allowed" : "pointer" }}
+              style={{
+                cursor:
+                  formik.values.isJobtrackingEnabled ?? false
+                    ? "not-allowed"
+                    : "pointer",
+              }}
             />
           </div>
         </div>
