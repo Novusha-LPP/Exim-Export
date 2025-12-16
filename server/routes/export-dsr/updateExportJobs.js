@@ -215,6 +215,7 @@ router.put("/:job_no*", auditMiddleware("Job"), async (req, res) => {
       return res.status(404).json({ message: "Export job not found" });
     }
 
+    await updatedExportJob.save(); // This WILL trigger pre-save
     res.json({
       message: "Export job updated successfully",
       data: updatedExportJob,

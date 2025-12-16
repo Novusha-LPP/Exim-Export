@@ -25,6 +25,7 @@ import ChargesTab from "./Charges/ChargesTab.js";
 import ESanchitTab from ".//E-sanchit/EsanchitTab.js";
 import ExportChecklistGenerator from "./Checklist/ExportChecklistGenerator.js";
 import DateInput from "../../common/DateInput.js";
+import OperationsTab from "./Operations/OperationsTab.jsx";
 
 function SimpleSelect({ name, value, options, onChange }) {
   return (
@@ -746,6 +747,7 @@ function LogisysExportViewJob() {
             <Tab label="ESanchit" />
             <Tab label="Charges" />
             <Tab label="Financial" />
+            <Tab label="Operations" />
             <Tab label="Tracking Completed" />
           </Tabs>
         </Box>
@@ -787,6 +789,9 @@ function LogisysExportViewJob() {
           <FinancialTab formik={formik} />
         </TabPanel>
         <TabPanel value={activeTab} index={8}>
+          <OperationsTab formik={formik} />
+        </TabPanel>
+        <TabPanel value={activeTab} index={9}>
           <TrackingCompletedTab formik={formik} />
         </TabPanel>
 
