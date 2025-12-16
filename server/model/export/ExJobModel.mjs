@@ -307,10 +307,10 @@ const drawbackDetailsSchema = new Schema(
       default: "Actual",
     },
     dbkDescription: { type: String, maxlength: 500 },
-    dbkRate: { type: Number, default: 1.5, min: 0 },
+    dbkRate: { type: Number, default: 0, min: 0 },
     dbkCap: { type: Number, default: 0, min: 0 },
     dbkAmount: { type: Number, default: 0, min: 0 },
-    percentageOfFobValue: { type: String, default: "1.5% of FOB Value" },
+    percentageOfFobValue: { type: String },
   },
   { _id: true }
 );
@@ -920,7 +920,7 @@ const exportJobSchema = new mongoose.Schema(
     cha: {
       type: String,
       trim: true,
-      default: "ABOFS1766LCH005 SURAJ FORWARDERS & SHIPPING AGENCIES",
+
     },
     masterblno: { type: String, trim: true }, // Master BL Number
     houseblno: { type: String, trim: true }, // House BL Number

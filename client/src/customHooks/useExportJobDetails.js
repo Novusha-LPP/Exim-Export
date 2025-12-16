@@ -477,13 +477,13 @@ function useExportJobDetails(params, setFileSnackbar) {
           pmvInfo: {
             currency: "",
             calculationMethod: "percentage",
-            percentage: "110",
+            percentage: "",
             pmvPerUnit: "0",
             totalPMV: "0",
           },
 
           igstCompensationCess: {
-            igstPaymentStatus: "LUT",
+            igstPaymentStatus: "",
             taxableValueINR: "0",
             igstRate: "0",
             igstAmountINR: "0",
@@ -693,7 +693,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       cfs: "",
 
       // CHA Details
-      cha: "ABOFS1766LCH005 SURAJ FORWARDERS & SHIPPING AGENCIES",
+      cha: "",
       masterblno: "",
       houseblno: "",
 
