@@ -1,6 +1,220 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import FileUpload from "../../../gallery/FileUpload";
 import ImagePreview from "../../../gallery/ImagePreview";
+
+// Helper
+const toUpper = (str) => (str ? str.toUpperCase() : "");
+
+function useShippingOrAirlineDropdown(fieldName, formik) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(
+    (formik.values[fieldName.split(".")[0]] &&
+      getNestedValue(formik.values, fieldName)) ||
+      ""
+  );
+  const [opts, setOpts] = useState([]);
+  const [active, setActive] = useState(-1);
+  const wrapperRef = useRef();
+  const keepOpen = useRef(false);
+  const apiBase = import.meta.env.VITE_API_STRING;
+
+  const transportMode = toUpper(formik.values.transportMode || "");
+
+  // Helper to get nested value "operations.0.bookingDetails.0.shippingLineName"
+  function getNestedValue(obj, path) {
+    return path.split(".").reduce((acc, part) => acc && acc[part], obj);
+  }
+
+  // React to external changes (e.g. from saved data)
+  const fieldValue = getNestedValue(formik.values, fieldName);
+  useEffect(() => {
+    setQuery(fieldValue || "");
+  }, [fieldValue]);
+
+  useEffect(() => {
+    if (!open) {
+      setOpts([]);
+      return;
+    }
+    const searchVal = (query || "").trim();
+    const isAir = transportMode === "AIR";
+
+    const url = isAir
+      ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
+          searchVal
+        )}`
+      : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
+          searchVal
+        )}`;
+
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        setOpts(
+          Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data)
+            ? data
+            : []
+        );
+      } catch {
+        setOpts([]);
+      }
+    }, 220);
+
+    return () => clearTimeout(t);
+  }, [open, query, transportMode, apiBase]);
+
+  useEffect(() => {
+    function close(e) {
+      if (
+        !keepOpen.current &&
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  function select(i) {
+    const item = opts[i];
+    if (!item) return;
+
+    const isAir = transportMode === "AIR";
+
+    const code = isAir
+      ? item.alphanumericCode || item.code || ""
+      : item.shippingLineCode || item.code || "";
+    const name = isAir
+      ? item.airlineName || item.name || ""
+      : item.shippingName || item.name || "";
+
+    const value = `${toUpper(code)} - ${toUpper(name)}`.trim();
+    setQuery(value);
+    formik.setFieldValue(fieldName, value);
+    setOpen(false);
+    setActive(-1);
+  }
+
+  return {
+    wrapperRef,
+    open,
+    setOpen,
+    query,
+    setQuery,
+    opts,
+    active,
+    setActive,
+    handle: (val) => {
+      const v = val.toUpperCase();
+      setQuery(v);
+      formik.setFieldValue(fieldName, v);
+      setOpen(true);
+    },
+    select,
+    onInputFocus: () => {
+      setOpen(true);
+      setActive(-1);
+      keepOpen.current = true;
+    },
+    onInputBlur: () => {
+      setTimeout(() => {
+        keepOpen.current = false;
+      }, 100);
+    },
+  };
+}
+
+function ShippingLineDropdownField({ fieldName, formik, placeholder = "" }) {
+  const d = useShippingOrAirlineDropdown(fieldName, formik);
+  const transportMode = toUpper(formik.values.transportMode || "");
+  const isAir = transportMode === "AIR";
+
+  const filteredOpts = d.opts.filter((opt) => {
+    const code = isAir
+      ? opt.alphanumericCode || opt.code || ""
+      : opt.shippingLineCode || opt.code || "";
+    const name = isAir
+      ? opt.airlineName || opt.name || ""
+      : opt.shippingName || opt.name || "";
+    const haystack = `${code} ${name}`.toUpperCase();
+    const needle = (d.query || "").toUpperCase();
+    return !needle || haystack.includes(needle);
+  });
+
+  const indexInOpts = (filteredIndex) => {
+    const target = filteredOpts[filteredIndex];
+    if (!target) return -1;
+    return d.opts.findIndex((o) => o === target);
+  };
+
+  return (
+    <div style={styles.field} ref={d.wrapperRef}>
+      <div style={styles.acWrap}>
+        <input
+          style={styles.input}
+          placeholder={placeholder}
+          autoComplete="off"
+          value={toUpper(d.query)}
+          onChange={(e) => d.handle(e.target.value)}
+          onFocus={d.onInputFocus}
+          onBlur={d.onInputBlur}
+          onKeyDown={(e) => {
+            if (!d.open) return;
+            if (e.key === "ArrowDown")
+              d.setActive((a) =>
+                Math.min(filteredOpts.length - 1, a < 0 ? 0 : a + 1)
+              );
+            else if (e.key === "ArrowUp")
+              d.setActive((a) => Math.max(0, a - 1));
+            else if (e.key === "Enter" && d.active >= 0) {
+              e.preventDefault();
+              const originalIndex = indexInOpts(d.active);
+              if (originalIndex >= 0) d.select(originalIndex);
+            } else if (e.key === "Escape") d.setOpen(false);
+          }}
+        />
+        <span style={styles.acIcon}>▼</span>
+        {d.open && filteredOpts.length > 0 && (
+          <div style={styles.acMenu}>
+            {filteredOpts.map((opt, i) => {
+              const code = isAir
+                ? toUpper(opt.alphanumericCode || opt.code || "")
+                : toUpper(opt.shippingLineCode || opt.code || "");
+              const name = isAir
+                ? toUpper(opt.airlineName || opt.name || "")
+                : toUpper(opt.shippingName || opt.name || "");
+              const originalIndex = indexInOpts(i);
+              return (
+                <div
+                  key={opt._id || code || name || i}
+                  style={styles.acItem(d.active === i)}
+                  onMouseDown={() => {
+                    if (originalIndex >= 0) d.select(originalIndex);
+                  }}
+                  onMouseEnter={() => d.setActive(i)}
+                >
+                  {code} - {name}
+                  {opt.status && (
+                    <span
+                      style={{ marginLeft: 8, color: "#8ad", fontWeight: 500 }}
+                    >
+                      ({toUpper(opt.status)})
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const OperationsTab = ({ formik }) => {
   const operations = formik.values.operations || [];
@@ -44,15 +258,23 @@ const OperationsTab = ({ formik }) => {
   };
 
   const updateField = (section, itemIndex, field, value) => {
-    const newOperations = [...operations];
-    if (
-      newOperations[activeOpIndex] &&
-      newOperations[activeOpIndex][section] &&
-      newOperations[activeOpIndex][section][itemIndex]
-    ) {
-      newOperations[activeOpIndex][section][itemIndex][field] = value;
-      formik.setFieldValue("operations", newOperations);
-    }
+    // Use formik.values.operations directly to avoid stale closure issues
+    const currentOps = formik.values.operations || [];
+
+    const newOperations = currentOps.map((op, opIdx) => {
+      if (opIdx !== activeOpIndex) return op;
+
+      // Handle the active operation
+      const currentSection = op[section] || [];
+      const newSection = currentSection.map((item, itemIdx) => {
+        if (itemIdx !== itemIndex) return item;
+        return { ...item, [field]: value };
+      });
+
+      return { ...op, [section]: newSection };
+    });
+
+    formik.setFieldValue("operations", newOperations);
   };
 
   const addItem = (section) => {
@@ -133,6 +355,8 @@ const OperationsTab = ({ formik }) => {
         <TableSection
           title="Transporter Details"
           data={activeOperation.transporterDetails || []}
+          formik={formik}
+          activeOpIndex={activeOpIndex}
           columns={[
             {
               field: "transporterName",
@@ -179,6 +403,8 @@ const OperationsTab = ({ formik }) => {
         <TableSection
           title="Container Details"
           data={activeOperation.containerDetails || []}
+          formik={formik}
+          activeOpIndex={activeOpIndex}
           columns={[
             { field: "containerNo", label: "Container No.", width: "140px" },
             { field: "containerSize", label: "Size", width: "80px" },
@@ -220,12 +446,16 @@ const OperationsTab = ({ formik }) => {
         <TableSection
           title="Booking Details"
           data={activeOperation.bookingDetails || []}
+          formik={formik}
+          activeOpIndex={activeOpIndex}
           columns={[
             {
               field: "shippingLineName",
               label: "Shipping Line",
-              width: "180px",
+              width: "200px",
+              type: "shipping-dropdown",
             },
+            { field: "forwarderName", label: "Forwarder Name", width: "150px" },
             { field: "bookingNo", label: "Booking No.", width: "140px" },
             {
               field: "bookingDate",
@@ -265,6 +495,8 @@ const OperationsTab = ({ formik }) => {
         <TableSection
           title="Weighment Details"
           data={activeOperation.weighmentDetails || []}
+          formik={formik}
+          activeOpIndex={activeOpIndex}
           columns={[
             { field: "weighBridgeName", label: "Weigh Bridge", width: "180px" },
             { field: "regNo", label: "Reg No.", width: "120px" },
@@ -319,6 +551,8 @@ const TableSection = ({
   onUpdate,
   onAdd,
   onDelete,
+  formik,
+  activeOpIndex,
 }) => {
   return (
     <div style={styles.sectionContainer}>
@@ -348,6 +582,8 @@ const TableSection = ({
                       <div style={styles.uploadCell}>
                         <FileUpload
                           bucketPath={col.bucketPath || "general_uploads"}
+                          multiple={true}
+                          acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
                           onFilesUploaded={(newUrls) => {
                             const currentImages = item[col.field] || [];
                             const updatedList = [...currentImages, ...newUrls];
@@ -366,6 +602,12 @@ const TableSection = ({
                           }}
                         />
                       </div>
+                    ) : col.type === "shipping-dropdown" ? (
+                      <ShippingLineDropdownField
+                        fieldName={`operations.${activeOpIndex}.${section}.${rowIdx}.${col.field}`}
+                        formik={formik}
+                        placeholder={col.placeholder || ""}
+                      />
                     ) : (
                       <input
                         type={col.type || "text"}
@@ -418,11 +660,22 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
   if (!data || !data.length) return null;
 
   const fields = [
-    { field: "goodsRegistrationDate", label: "Goods Reg. Date", type: "date" },
-    { field: "rmsLetExportOrderDate", label: "RMS/LEO Date", type: "date" },
+    {
+      field: "rms",
+      label: "RMS Status",
+      type: "select",
+      options: ["RMS", "Assessment"],
+    },
+    {
+      field: "goodsRegistrationDate",
+      label: "Goods Reg. Date/ Report Date",
+      type: "date",
+    },
+    { field: "leoDate", label: "LEO Date", type: "date" },
     { field: "leoUpload", label: "LEO Uploaded", type: "upload" },
     { field: "stuffingDate", label: "Stuffing Date", type: "date" },
     { field: "stuffingSheetUpload", label: "Stuffing Sheet", type: "upload" },
+    { field: "stuffingPhotoUpload", label: "Stuffing Photo", type: "upload" },
     { field: "eGatePassCopyDate", label: "E-Gate Pass Date", type: "date" },
     { field: "eGatePassUpload", label: "E-Gate Pass", type: "upload" },
     {
@@ -438,10 +691,15 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
     },
     { field: "billingDocsSentDt", label: "Billing Docs Sent", type: "date" },
     {
+      field: "billingDocsSentUpload",
+      label: "Billing Docs Sent Image",
+      type: "upload",
+    },
+    {
       field: "billingDocsStatus",
       label: "Bill Status",
       type: "select",
-      options: ["YES", "NO"],
+      options: ["Pending", "Completed"],
     },
   ];
 
@@ -460,8 +718,12 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                   ? "leo_uploads"
                   : f.field === "eGatePassUpload"
                   ? "egate_uploads"
-                  : f.field === "stuffingSheetUpload" // Added stuffingSheetUpload logic
-                  ? "stuffing_uploads"
+                  : f.field === "stuffingSheetUpload"
+                  ? "stuffing_sheet_uploads"
+                  : f.field === "stuffingPhotoUpload"
+                  ? "stuffing_photo_uploads"
+                  : f.field === "billingDocsSentUpload"
+                  ? "billing_uploads"
                   : "job_handover_images";
 
               return (
@@ -469,6 +731,8 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                   <label style={styles.statusLabel}>{f.label}</label>
                   <FileUpload
                     bucketPath={bucketPath}
+                    multiple={true}
+                    acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
                     onFilesUploaded={(newUrls) => {
                       const updatedList = [...currentImages, ...newUrls];
                       onUpdate(section, idx, f.field, updatedList);
@@ -515,8 +779,11 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                     style={styles.statusInput}
                   >
                     <option value="">Select...</option>
-                    <option value="YES">YES</option>
-                    <option value="NO">NO</option>
+                    {f.options.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
                   </select>
                 ) : (
                   <input
@@ -589,6 +856,7 @@ const getDefaultItem = (section) => {
     },
     bookingDetails: {
       shippingLineName: "",
+      forwarderName: "",
       bookingNo: "",
       bookingDate: "",
       vesselName: "",
@@ -611,18 +879,21 @@ const getDefaultItem = (section) => {
       address: "",
     },
     statusDetails: {
-      goodsRegistrationDate: "",
-      rmsLetExportOrderDate: "",
+      rms: "RMS", // Default
+      goodsRegistrationDate: null,
+      leoDate: null,
       leoUpload: [],
-      stuffingDate: "",
+      stuffingDate: null,
       stuffingSheetUpload: [],
-      eGatePassCopyDate: "",
+      stuffingPhotoUpload: [],
+      eGatePassCopyDate: null,
       eGatePassUpload: [],
-      handoverForwardingNoteDate: "",
+      handoverForwardingNoteDate: null,
       handoverImageUpload: [],
-      handoverConcorTharSanganaRailRoadDate: "",
-      billingDocsSentDt: "",
-      billingDocsStatus: null,
+      handoverConcorTharSanganaRailRoadDate: null,
+      billingDocsSentDt: null,
+      billingDocsSentUpload: [],
+      billingDocsStatus: "Pending",
     },
   };
   return defaults[section] || {};
@@ -750,6 +1021,7 @@ const styles = {
   },
   tableWrapper: {
     overflowX: "auto",
+    minHeight: "200px",
   },
   table: {
     width: "100%",
@@ -782,7 +1054,7 @@ const styles = {
     border: "2px solid transparent",
     padding: "4px 8px",
     fontSize: "12px",
-        fontWeight: "700",
+    fontWeight: "700",
     color: "#1e293b",
     outline: "none",
     background: "transparent",
@@ -882,6 +1154,63 @@ const styles = {
     boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)",
     transition: "background 0.2s",
   },
+  // --- New Styles for Dropdown ---
+  field: {
+    marginBottom: "0",
+    position: "relative",
+    width: "100%",
+    height: "100%",
+  },
+  acWrap: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    width: "100%",
+    height: "100%",
+  },
+  input: {
+    width: "100%",
+    minHeight: "32px",
+    border: "2px solid transparent",
+    padding: "4px 8px",
+    paddingRight: "20px",
+    fontSize: "12px",
+    fontWeight: "700",
+    color: "#1e293b",
+    outline: "none",
+    background: "transparent",
+    boxSizing: "border-box",
+    transition: "border-color 0.2s",
+  },
+  acIcon: {
+    position: "absolute",
+    right: "6px",
+    fontSize: "10px",
+    pointerEvents: "none",
+    color: "#64748b",
+  },
+  acMenu: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    right: 0,
+    background: "#fff",
+    border: "1px solid #cbd5e1",
+    borderRadius: "6px",
+    marginTop: "4px",
+    maxHeight: "200px",
+    overflowY: "auto",
+    zIndex: 1000,
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+  },
+  acItem: (isActive) => ({
+    padding: "8px 12px",
+    fontSize: "12px",
+    cursor: "pointer",
+    background: isActive ? "#f1f5f9" : "transparent",
+    color: "#1e293b",
+    borderBottom: "1px solid #f1f5f9",
+  }),
 };
 
 export default OperationsTab;
