@@ -382,7 +382,7 @@ const InvoiceMainTab = ({ formik }) => {
             <input
               type="number"
               style={styles.inputNumber}
-              value={invoice.productValue ?? invoice.product_value_fob ?? 0}
+              value={invoice.productValue}
               onChange={(e) =>
                 handleInvChange("productValue", parseFloat(e.target.value || 0))
               }

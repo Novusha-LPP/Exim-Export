@@ -226,7 +226,51 @@ const InvoiceFreightTab = ({ formik }) => {
     return nextCharges;
   };
 
+  // Compute FOB in USD from FOB (which is in INR)
+const computeFOBInUSD = (chargesObj) => {
+  const fobRow = chargesObj?.fobValue || {};
+  const fobAmountINR = Number(fobRow.amount || 0); // you already store FOB in INR
+  if (!fobAmountINR || !invoiceExchangeRate) return 0;
+
+  // invoiceExchangeRate is invoiceCurrency → INR
+  // So 1 invoiceCurrency = invoiceExchangeRate INR
+  // 1 INR = 1 / invoiceExchangeRate invoiceCurrency
+  const fobInInvoiceCurrency = fobAmountINR / invoiceExchangeRate;
+
+  // If invoiceCurrency is already USD, you're done
+  if (invoiceCurrency === "USD") return fobInInvoiceCurrency;
+
+  // Otherwise convert invoice currency → USD using rateMap (INR pivot)
+  // invoiceCurrency → INR = invoiceExchangeRate
+  // USD → INR = rateMap.USD
+  const usdRateInINR = Number(rateMap["USD"] || 0);
+  if (!usdRateInINR) return 0;
+
+  const fobInUSD = fobAmountINR / usdRateInINR; // INR → USD
+  return Number.isFinite(fobInUSD) ? Number(fobInUSD.toFixed(2)) : 0;
+};
+
   const effectiveCharges = computeFOBCharges();
+
+// Derive FOB in USD and store it as a separate field in Formik
+const fobValueUSD = computeFOBInUSD(effectiveCharges);
+useEffect(() => {
+  formik.setFieldValue(
+    "freightInsuranceCharges",
+    {
+      ...effectiveCharges,
+      fobValueUSD, // new variable stored in Formik
+    },
+    false
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [fobValueUSD]);
+
+useEffect(() => {
+  formik.setFieldValue("fobValueUSD", fobValueUSD, false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [fobValueUSD]);
+
 
   const getRow = (key) => effectiveCharges[key] || {};
 

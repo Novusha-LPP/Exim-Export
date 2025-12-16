@@ -222,7 +222,6 @@ function useExportJobDetails(params, setFileSnackbar) {
           productValue: 0,
           priceIncludes: "Both",
           invoice_value: 0,
-          product_value_fob: 0,
           packing_fob: 0,
         },
       ],

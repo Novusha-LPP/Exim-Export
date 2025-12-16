@@ -339,9 +339,6 @@ const invoiceSchema = new Schema(
       enum: ["Both", "Freight", "Insurance", "None"],
       default: "Both",
     },
-    // packingFOB: { type: Number, default: 0, min: 0 },
-    invoice_value: { type: Number, default: 0 },
-    product_value_fob: { type: Number, default: 0 },
     packing_fob: { type: Number, default: 0 },
   },
   { _id: true }
@@ -864,6 +861,7 @@ const exportJobSchema = new mongoose.Schema(
       },
       fobValue: {
         currency: { type: String, ref: "Currency" },
+        fobValueUSD: { type: Number },
         amount: { type: Number },
       },
     },

@@ -217,15 +217,19 @@ const safeSplitText = (text, width) => {
     let consigneeY = yPos + 10; // Start at same Y as exporter details
     const consigneeLines = [
       data.consigneeName,
+      data.consigneeAddress,
       data.consigneeCountry1,
       data.consigneeCountry2,
     ];
 
     consigneeLines.forEach((line) => {
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(FONT_SIZES.fieldValue);
-      pdf.text(line, rightColX, consigneeY);
-      consigneeY += 9;
+      if (line) {
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(FONT_SIZES.fieldValue);
+        const splitLines = pdf.splitTextToSize(line, 250);
+        pdf.text(splitLines, rightColX, consigneeY);
+        consigneeY += splitLines.length * 9;
+      }
     });
 
     // Move yPos to the bottom of whichever column is longer
@@ -350,20 +354,53 @@ const safeSplitText = (text, width) => {
     pdf.text("Amount", leftColX + 220, yPos);
     yPos += 10;
 
-    // Rate items - empty values as shown in first image
-    const rateItems = [
-      "Insurance",
-      "Freight",
-      "Discount",
-      "Commission",
-      "Other Deduction",
-      "Packing Charges",
+    // Rate items - Display actual data in Rate, Currency, Amount columns
+    const rateItemsData = [
+      {
+        label: "Insurance",
+        rate: data.insuranceData?.rate || "",
+        currency: data.insuranceData?.currency || "",
+        amount: data.insuranceData?.amount || "",
+      },
+      {
+        label: "Freight",
+        rate: data.freightData?.rate || "",
+        currency: data.freightData?.currency || "",
+        amount: data.freightData?.amount || "",
+      },
+      {
+        label: "Discount",
+        rate: data.discountData?.rate || "",
+        currency: data.discountData?.currency || "",
+        amount: data.discountData?.amount || "",
+      },
+      {
+        label: "Commission",
+        rate: data.commissionData?.rate || "",
+        currency: data.commissionData?.currency || "",
+        amount: data.commissionData?.amount || "",
+      },
+      {
+        label: "Other Deduction",
+        rate: data.otherDeductionData?.rate || "",
+        currency: data.otherDeductionData?.currency || "",
+        amount: data.otherDeductionData?.amount || "",
+      },
+      {
+        label: "Packing Charges",
+        rate: data.packingChargesData?.rate || "",
+        currency: data.packingChargesData?.currency || "",
+        amount: data.packingChargesData?.amount || "",
+      },
     ];
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(FONT_SIZES.tableContent);
 
-    rateItems.forEach((item) => {
-      pdf.text(item, leftColX, yPos);
+    rateItemsData.forEach((item) => {
+      pdf.text(item.label, leftColX, yPos);
+      pdf.text(item.rate.toString(), leftColX + 80, yPos);
+      pdf.text(item.currency.toString(), leftColX + 150, yPos);
+      pdf.text(item.amount.toString(), leftColX + 220, yPos);
       yPos += 10;
     });
 
@@ -1190,11 +1227,12 @@ const renderPage4 = (pdf, helpers, data) => {
         exporterAddress1: exportJob.exporter_address || "",
         exporterAddress2: "", // Parse from exporter_address if multi-line
         exporterAddress3: "", // Parse from exporter_address if multi-line
+// Consignee Details
+consigneeName:    exportJob.consignees?.[0]?.consignee_name,
+consigneeAddress: exportJob.consignees?.[0]?.consignee_address,
+consigneeCountry1: exportJob.consignees?.[0]?.consignee_country,
+consigneeCountry2: exportJob.dischargecountry,
 
-        // Consignee Details
-        consigneeName: exportJob.consignees?.[0]?.consignee_name || "",
-        consigneeCountry1: exportJob.consignees?.[0]?.consignee_country || "",
-        consigneeCountry2: exportJob.discharge_country || "",
 
         // Shipping Details
         portOfLoading: exportJob.port_of_loading || "",
@@ -1221,14 +1259,18 @@ const renderPage4 = (pdf, helpers, data) => {
         loosePackets: exportJob.loose_pkgs || "",
 
         // Weight calculation from products or containers
-        grossWeight:
-          exportJob.containers
-            ?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0)
-            .toFixed(3) + " KGS" || "0.000 KGS",
-        netWeight:
-          exportJob.products
-            ?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
-            .toFixed(3) + " KGS" || "0.000 KGS",
+        grossWeight: exportJob.gross_weight_kg
+          ? `${exportJob.gross_weight_kg} ${
+              exportJob.gross_weight_unit || "KGS"
+            }`
+          : exportJob.containers
+              ?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0)
+              .toFixed(3) + " KGS" || "0.000 KGS",
+        netWeight: exportJob.net_weight_kg
+          ? `${exportJob.net_weight_kg} ${exportJob.net_weight_unit || "KGS"}`
+          : exportJob.products
+              ?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
+              .toFixed(3) + " KGS" || "0.000 KGS",
 
         // Financial Details - Calculate from products and invoices
         totalFobInr:
@@ -1288,13 +1330,22 @@ const renderPage4 = (pdf, helpers, data) => {
 
         // Invoice Details - From first invoice
         invoiceNo: exportJob.invoices?.[0]?.invoiceNumber || "",
-        invoiceValue: exportJob.invoices?.[0]?.invoice_value
-          ? `${exportJob.invoices[0].currency} ${exportJob.invoices[0].invoice_value}`
-          : "",
+        invoiceValue:
+          exportJob.invoices?.[0]?.invoiceValue 
+            ? `${exportJob.invoices[0].currency} ${
+                exportJob.invoices[0].invoiceValue ||
+                exportJob.invoices[0].invoice_value
+              }`
+            : "",
         invoiceDate: formatDate(exportJob.invoices?.[0]?.invoiceDate) || "",
-        fobValue: exportJob.invoices?.[0]?.product_value_fob
-          ? `${exportJob.invoices[0].currency} ${exportJob.invoices[0].product_value_fob}`
-          : "",
+        fobValue:
+          exportJob.invoices?.[0]?.productValue ||
+          exportJob.invoices?.[0]?.product_value_fob
+            ? `${exportJob.invoices[0].currency} ${
+                exportJob.invoices[0].productValue ||
+                exportJob.invoices[0].product_value_fob
+              }`
+            : "",
         natureOfContract: exportJob.invoices?.[0]?.termsOfInvoice || "",
         expContractNo: "", // Not found in data structure
         expContractDate:
@@ -1305,13 +1356,112 @@ const renderPage4 = (pdf, helpers, data) => {
         exchangeRate: exportJob.exchange_rate || "",
 
         // Rate Details - From freightInsuranceCharges
-        insurance: exportJob.freightInsuranceCharges?.insurance?.amount || "",
-        freight: exportJob.freightInsuranceCharges?.freight?.amount || "",
-        discount: exportJob.freightInsuranceCharges?.discount?.amount || "",
-        commission: exportJob.freightInsuranceCharges?.commission?.amount || "",
-        otherDeduction:
-          exportJob.freightInsuranceCharges?.otherDeduction?.amount || "",
-        packingCharges: exportJob.invoices?.[0]?.packing_fob || "",
+        // Store as objects with rate, currency, amount for proper table display
+        // Calculate amount if not present: amount = baseValue × rate / 100
+        insuranceData: (() => {
+          const rate = exportJob.freightInsuranceCharges?.insurance?.rate || 0;
+          const amount = exportJob.freightInsuranceCharges?.insurance?.amount;
+          const baseValue = exportJob.invoices?.[0]?.productValue || exportJob.invoices?.[0]?.invoiceValue || 0;
+          const calculatedAmount = amount !== undefined && amount !== null && amount !== "" 
+            ? amount 
+            : rate ? ((baseValue * rate) / 100).toFixed(2) : "";
+          return {
+            rate: rate || "",
+            currency: exportJob.freightInsuranceCharges?.insurance?.currency || "",
+            amount: calculatedAmount,
+          };
+        })(),
+        freightData: (() => {
+          const rate = exportJob.freightInsuranceCharges?.freight?.rate || 0;
+          const amount = exportJob.freightInsuranceCharges?.freight?.amount;
+          const baseValue = exportJob.invoices?.[0]?.productValue || exportJob.invoices?.[0]?.invoiceValue || 0;
+          const calculatedAmount = amount !== undefined && amount !== null && amount !== "" 
+            ? amount 
+            : rate ? ((baseValue * rate) / 100).toFixed(2) : "";
+          return {
+            rate: rate || "",
+            currency: exportJob.freightInsuranceCharges?.freight?.currency || "",
+            amount: calculatedAmount,
+          };
+        })(),
+        discountData: (() => {
+          const rate = exportJob.freightInsuranceCharges?.discount?.rate || 0;
+          const amount = exportJob.freightInsuranceCharges?.discount?.amount;
+          const baseValue = exportJob.invoices?.[0]?.productValue || exportJob.invoices?.[0]?.invoiceValue || 0;
+          const calculatedAmount = amount !== undefined && amount !== null && amount !== "" 
+            ? amount 
+            : rate ? ((baseValue * rate) / 100).toFixed(2) : "";
+          return {
+            rate: rate || "",
+            currency: exportJob.freightInsuranceCharges?.discount?.currency || "",
+            amount: calculatedAmount,
+          };
+        })(),
+        commissionData: (() => {
+          const rate = exportJob.freightInsuranceCharges?.commission?.rate || 0;
+          const amount = exportJob.freightInsuranceCharges?.commission?.amount;
+          const baseValue = exportJob.invoices?.[0]?.productValue || exportJob.invoices?.[0]?.invoiceValue || 0;
+          const calculatedAmount = amount !== undefined && amount !== null && amount !== "" 
+            ? amount 
+            : rate ? ((baseValue * rate) / 100).toFixed(2) : "";
+          return {
+            rate: rate || "",
+            currency: exportJob.freightInsuranceCharges?.commission?.currency || "",
+            amount: calculatedAmount,
+          };
+        })(),
+        otherDeductionData: (() => {
+          const rate = exportJob.freightInsuranceCharges?.otherDeduction?.rate || 0;
+          const amount = exportJob.freightInsuranceCharges?.otherDeduction?.amount;
+          const baseValue = exportJob.invoices?.[0]?.productValue || exportJob.invoices?.[0]?.invoiceValue || 0;
+          const calculatedAmount = amount !== undefined && amount !== null && amount !== "" 
+            ? amount 
+            : rate ? ((baseValue * rate) / 100).toFixed(2) : "";
+          return {
+            rate: rate || "",
+            currency: exportJob.freightInsuranceCharges?.otherDeduction?.currency || "",
+            amount: calculatedAmount,
+          };
+        })(),
+        packingChargesData: {
+          rate: "",
+          currency: "",
+          amount:
+            exportJob.invoices?.[0]?.packing_fob ||
+            exportJob.invoices?.[0]?.packingFOB ||
+            "",
+        },
+        
+        // Keep legacy string versions for backward compatibility
+        insurance: exportJob.freightInsuranceCharges?.insurance?.amount
+          ? exportJob.freightInsuranceCharges.insurance.amount.toString()
+          : exportJob.freightInsuranceCharges?.insurance?.rate
+          ? `${exportJob.freightInsuranceCharges.insurance.rate}%`
+          : "Not entered",
+        freight: exportJob.freightInsuranceCharges?.freight?.amount
+          ? exportJob.freightInsuranceCharges.freight.amount.toString()
+          : exportJob.freightInsuranceCharges?.freight?.rate
+          ? `${exportJob.freightInsuranceCharges.freight.rate}%`
+          : "Not entered",
+        discount: exportJob.freightInsuranceCharges?.discount?.amount
+          ? exportJob.freightInsuranceCharges.discount.amount.toString()
+          : exportJob.freightInsuranceCharges?.discount?.rate
+          ? `${exportJob.freightInsuranceCharges.discount.rate}%`
+          : "Not entered",
+        commission: exportJob.freightInsuranceCharges?.commission?.amount
+          ? exportJob.freightInsuranceCharges.commission.amount.toString()
+          : exportJob.freightInsuranceCharges?.commission?.rate
+          ? `${exportJob.freightInsuranceCharges.commission.rate}%`
+          : "Not entered",
+        otherDeduction: exportJob.freightInsuranceCharges?.otherDeduction?.amount
+          ? exportJob.freightInsuranceCharges.otherDeduction.amount.toString()
+          : exportJob.freightInsuranceCharges?.otherDeduction?.rate
+          ? `${exportJob.freightInsuranceCharges.otherDeduction.rate}%`
+          : "Not entered",
+        packingCharges:
+          exportJob.invoices?.[0]?.packing_fob ||
+          exportJob.invoices?.[0]?.packingFOB ||
+          "Not entered",
 
         // Payment & Buyer Details
         natureOfPayment: exportJob.otherInfo?.natureOfPayment || "",
