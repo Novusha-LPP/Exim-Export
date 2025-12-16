@@ -431,7 +431,7 @@ function useExportJobDetails(params, setFileSnackbar) {
 
       // Milestone Tracking
       isJobtrackingEnabled: false,
-      isJobCanceled:false,  
+      isJobCanceled: false,
       milestones: [
         {
           milestoneName: "",
@@ -685,6 +685,8 @@ function useExportJobDetails(params, setFileSnackbar) {
 
       // Documents
       documents: {},
+
+      operations: [],
 
       // Stuffing Details
       stuffing_date: "",
@@ -996,6 +998,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         stuffing_date: safeValue(data.stuffing_date),
         stuffing_supervisor: safeValue(data.stuffing_supervisor),
         stuffing_remarks: safeValue(data.stuffing_remarks),
+        operations: safeValue(data.operations, []),
         cfs: safeValue(data.cfs),
         cha: safeValue(data.cha),
         masterblno: safeValue(data.masterblno),

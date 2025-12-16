@@ -106,7 +106,9 @@ const InvoiceFreightTab = ({ formik }) => {
       try {
         const todayDate = getTodayFormatted();
         const res = await fetch(
-        `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${todayDate}`
+          `${
+            import.meta.env.VITE_API_STRING
+          }/currency-rates/by-date/${todayDate}`
         );
         const json = await res.json();
 
@@ -122,7 +124,6 @@ const InvoiceFreightTab = ({ formik }) => {
           }
         });
         setRateMap(map);
-        console.log("Currency rates loaded for", todayDate, map);
       } catch (e) {
         console.error("Failed to load currency rates (freight tab)", e);
       }
@@ -200,17 +201,21 @@ const InvoiceFreightTab = ({ formik }) => {
 
     let totalNonFOBInInvoice = 0;
 
-    ["freight", "insurance", "discount", "otherDeduction", "commission"].forEach(
-      (k) => {
-        const row = charges[k] || {};
-        const rowAmount = Number(row.amount || 0);
-        if (!rowAmount) return;
+    [
+      "freight",
+      "insurance",
+      "discount",
+      "otherDeduction",
+      "commission",
+    ].forEach((k) => {
+      const row = charges[k] || {};
+      const rowAmount = Number(row.amount || 0);
+      if (!rowAmount) return;
 
-        const rowRate = Number(row.exchangeRate || 0); // rowCur → INR
-        const amountInInvoice = rowToInvoiceCurrency(rowAmount, rowRate);
-        totalNonFOBInInvoice += amountInInvoice;
-      }
-    );
+      const rowRate = Number(row.exchangeRate || 0); // rowCur → INR
+      const amountInInvoice = rowToInvoiceCurrency(rowAmount, rowRate);
+      totalNonFOBInInvoice += amountInInvoice;
+    });
 
     const fobInInvoice = invoiceVal - totalNonFOBInInvoice;
     const fobInINR = fobInInvoice * invoiceExchangeRate;
@@ -448,9 +453,9 @@ const InvoiceFreightTab = ({ formik }) => {
                     marginBottom: 4,
                   }}
                 >
-                  Base converted from {invoiceCurrency} ({invoiceExchangeRate.toFixed(
-                    2
-                  )} INR) → {effectiveCurrency} ({exchangeRate.toFixed(2)} INR).
+                  Base converted from {invoiceCurrency} (
+                  {invoiceExchangeRate.toFixed(2)} INR) → {effectiveCurrency} (
+                  {exchangeRate.toFixed(2)} INR).
                 </div>
               )}
             </div>

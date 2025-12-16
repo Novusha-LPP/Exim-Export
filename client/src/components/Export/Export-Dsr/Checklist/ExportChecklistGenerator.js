@@ -17,10 +17,10 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
       bottom: 30,
     },
   };
-const safeSplitText = (text, width) => {
-  if (!text || typeof text !== 'string') return [""];
-  return pdf.splitTextToSize(text, width);
-};
+  const safeSplitText = (text, width) => {
+    if (!text || typeof text !== "string") return [""];
+    return pdf.splitTextToSize(text, width);
+  };
   const FONT_SIZES = {
     title: 14,
     sectionHeader: 11,
@@ -361,7 +361,7 @@ const safeSplitText = (text, width) => {
     ];
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(FONT_SIZES.tableContent);
-
+    console.log(rateItems);
     rateItems.forEach((item) => {
       pdf.text(item, leftColX, yPos);
       yPos += 10;
@@ -389,11 +389,7 @@ const safeSplitText = (text, width) => {
     pdf.setFont("helvetica", "bold");
     pdf.text("Marks & Nos", leftColX, yPos);
     pdf.setFont("helvetica", "normal");
-    pdf.text(
-      data.marksAndNos,
-      leftColX + 70,
-      yPos
-    );
+    pdf.text(data.marksAndNos, leftColX + 70, yPos);
     yPos += 12;
 
     yPos += 5;
@@ -406,10 +402,7 @@ const safeSplitText = (text, width) => {
     yPos += 12;
 
     // Buyer address on left side
-    const buyerLines = pdf.splitTextToSize(
-      data.buyerName,
-      colWidth - 20
-    );
+    const buyerLines = pdf.splitTextToSize(data.buyerName, colWidth - 20);
     buyerLines.forEach((line) => {
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(FONT_SIZES.fieldValue);
@@ -426,8 +419,7 @@ const safeSplitText = (text, width) => {
       { label: "AEO Role", value: data.buyerAeoRole },
       {
         label: "Third Party Name & Addr.",
-        value:
-          data.thirdPartyDetails,
+        value: data.thirdPartyDetails,
       },
     ];
 
@@ -478,151 +470,184 @@ const safeSplitText = (text, width) => {
   };
 
   // ==================== NEW PAGE FOR ITEM DETAILS ====================
-const renderItemDetailsPage = (pdf, helpers, data) => {
-  const { drawLine, leftX, rightX } = helpers;
-  let yPos = 80;
+  const renderItemDetailsPage = (pdf, helpers, data) => {
+    const { drawLine, leftX, rightX } = helpers;
+    let yPos = 80;
 
-  // ITEM DETAILS Header
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(FONT_SIZES.sectionHeader);
-  pdf.text("ITEM DETAILS", leftX, yPos);
-  yPos += 10;
-  drawLine(leftX, yPos, rightX);
-  yPos += 12;
-
-  // Define column positions
-  const col1 = leftX + 10;  // SI No, Qty, Unit
-  const col2 = leftX + 60;  // RITC, Exim Scheme, NFEI Catg, Reward Item
-  const col3 = leftX + 160; // Description
-  const col4 = leftX + 240; // Unit Price/Unit, FOB ValFC
-  const col5 = leftX + 320; // FOB ValINR
-  const col6 = leftX + 410; // Total ValueFC, IGST Pymt Status
-  const col7 = leftX + 500; // PMV/Unit, IGST Taxable Value
-
-  // ITEM DETAILS Table Headers - PROPERLY ALIGNED
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(FONT_SIZES.tableHeader);
-
-  // Column 1: SI No, Qty, Unit
-  pdf.text("SI No", col1, yPos);
-  pdf.text("Qty", col1, yPos + 10);
-  pdf.text("Unit", col1, yPos + 20);
-
-  // Column 2: RITC, Exim Scheme Code description, NFEI Catg, Reward Item
-  pdf.text("RITC", col2, yPos);
-  pdf.text("Exim Scheme Code description", col2, yPos + 10);
-  pdf.text("NFEI Catg", col2, yPos + 20);
-  pdf.text("Reward Item", col2, yPos + 30);
-
-  // Column 3: Description (single row spanning height)
-  pdf.text("Description", col3, yPos);
-
-  // Column 4: Unit Price/Unit, FOB ValFC
-  pdf.text("Unit Price Unit", col3, yPos + 20);
-  pdf.text("FOB ValFC", col3, yPos + 30);
-
-  // Column 5: FOB ValINR - single row
-  pdf.text("FOB ValINR", col4, yPos + 30);
-
-  // Column 6: Total ValueFC, IGST Pymt Status
-  pdf.text("Total ValueFC", col5, yPos + 20);
-  pdf.text("IGST Pymt Status", col5, yPos + 30);
-
-  // Column 7: PMV/Unit, IGST Taxable Value
-  pdf.text("PMV/Unit", col6, yPos + 20);
-  pdf.text("IGST Taxable Value", col6, yPos + 30);
-
-  // Column 8: Total PMV INR, IGST Amount
-  pdf.text("Total PMV INR", col7, yPos + 20);
-  pdf.text("IGST Amount", col7, yPos + 30);
-
-  yPos += 40; // Increased for multi-row headers
-  drawLine(leftX, yPos, rightX);
-  yPos += 12;
-
-  // Item Data - 100% SAFE PURE DATABASE DATA ONLY
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(FONT_SIZES.tableContent);
-
-  if (data.products && data.products.length > 0) {
-    data.products.forEach((product, index) => {
-      const itemY = yPos;
-
-      // Column 1: SI No, Qty, Unit - PURE DATA
-      pdf.text((index + 1).toString(), col1, itemY);
-      pdf.text(product.quantity || "", col1, itemY + 10);
-      pdf.text(product.per || product.unit || "", col1, itemY + 20);
-
-      // Column 2: RITC, Exim Scheme, NFEI Catg, Reward Item - PURE DATA
-      pdf.text(product.ritc || "", col2, itemY);
-      pdf.text(product.eximCode || "", col2, itemY + 10);
-      pdf.text(product.nfeiCategory || "", col2, itemY + 20);
-      pdf.text(product.rewardItem ? "Yes" : "No", col2, itemY + 30);
-
-      // Column 3: Description - PURE DATA
-      const description = product.description || "";
-      const descriptionLines = pdf.splitTextToSize(description, 90);
-      pdf.text(descriptionLines, col3, itemY);
-
-      // Unit Price and FOB ValFC - SAFE (adjust Y based on description height)
-      const unitPriceY = itemY + (descriptionLines.length * 10);
-      pdf.text(`${product.unitPrice || ""}/${product.per || "PCS"}`, col3, unitPriceY);
-      pdf.text(product.fobValueFC || product.amount || "", col3, unitPriceY + 20);
-
-      // Column 5: FOB ValINR - PURE DATA
-      pdf.text(product.fobValueINR || "", col4, itemY + 20);
-
-      // Column 6: Total ValueFC, IGST Pymt Status - PURE DATA
-      pdf.text(product.amount || "", col5, itemY);
-      pdf.text(product.igstPaymentStatus || product.igstCompensationCess?.igstPaymentStatus || "", col5, itemY + 20);
-
-      // Column 7: PMV/Unit, IGST Taxable Value - PURE DATA
-      pdf.text(product.pmvPerUnit || product.pmvInfo?.pmvPerUnit || "", col6, itemY);
-      pdf.text(product.taxableValueINR || product.igstCompensationCess?.taxableValueINR || "", col6, itemY + 20);
-
-      // Column 8: Total PMV INR, IGST Amount - PURE DATA
-      pdf.text(product.totalPMV || product.pmvInfo?.totalPMV || "", col7, itemY);
-      pdf.text(product.igstAmountINR || product.igstCompensationCess?.igstAmountINR || "", col7, itemY + 20);
-
-      // Calculate height needed for this item based on description lines
-      const itemHeight = Math.max(35, (descriptionLines.length + 3) * 10);
-      yPos += itemHeight;
-
-      // Add separator line between items
-      if (index < data.products.length - 1) {
-        drawLine(leftX, yPos, rightX);
-        yPos += 8;
-      }
-    });
-  } else {
-    // EMPTY TABLE - No hardcoded default data, just spacing
+    // ITEM DETAILS Header
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(FONT_SIZES.sectionHeader);
+    pdf.text("ITEM DETAILS", leftX, yPos);
     yPos += 10;
-  }
+    drawLine(leftX, yPos, rightX);
+    yPos += 12;
 
-  // Totals section - PURE DATA
-  yPos += 5;
-  yPos += 12;
-  pdf.setFont("helvetica", "bold");
-  drawLine(leftX, yPos + 20, rightX);
-  pdf.setFontSize(FONT_SIZES.tableContent);
-  yPos += 30;
+    // Define column positions
+    const col1 = leftX + 10; // SI No, Qty, Unit
+    const col2 = leftX + 60; // RITC, Exim Scheme, NFEI Catg, Reward Item
+    const col3 = leftX + 160; // Description
+    const col4 = leftX + 240; // Unit Price/Unit, FOB ValFC
+    const col5 = leftX + 320; // FOB ValINR
+    const col6 = leftX + 410; // Total ValueFC, IGST Pymt Status
+    const col7 = leftX + 500; // PMV/Unit, IGST Taxable Value
 
-  // Align totals to the right - PURE DATA
-  pdf.text("Total PMV", rightX - 150, yPos);
-  pdf.text(data.totalPmv || "", rightX - 50, yPos);
-  yPos += 10;
-  pdf.text("Total IGST", rightX - 150, yPos);
-  pdf.text(data.totalIgst || "", rightX - 50, yPos);
-  yPos += 10;
-  pdf.text("Total PMV Gross", rightX - 150, yPos);
-  pdf.text(data.totalPmvGross || "", rightX - 50, yPos);
-  yPos += 10;
-  pdf.text("Total IGST Gross", rightX - 150, yPos);
-  pdf.text(data.totalIgstGross || "", rightX - 50, yPos);
+    // ITEM DETAILS Table Headers - PROPERLY ALIGNED
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(FONT_SIZES.tableHeader);
 
-  return yPos + 20;
-};
+    // Column 1: SI No, Qty, Unit
+    pdf.text("SI No", col1, yPos);
+    pdf.text("Qty", col1, yPos + 10);
+    pdf.text("Unit", col1, yPos + 20);
 
+    // Column 2: RITC, Exim Scheme Code description, NFEI Catg, Reward Item
+    pdf.text("RITC", col2, yPos);
+    pdf.text("Exim Scheme Code description", col2, yPos + 10);
+    pdf.text("NFEI Catg", col2, yPos + 20);
+    pdf.text("Reward Item", col2, yPos + 30);
+
+    // Column 3: Description (single row spanning height)
+    pdf.text("Description", col3, yPos);
+
+    // Column 4: Unit Price/Unit, FOB ValFC
+    pdf.text("Unit Price Unit", col3, yPos + 20);
+    pdf.text("FOB ValFC", col3, yPos + 30);
+
+    // Column 5: FOB ValINR - single row
+    pdf.text("FOB ValINR", col4, yPos + 30);
+
+    // Column 6: Total ValueFC, IGST Pymt Status
+    pdf.text("Total ValueFC", col5, yPos + 20);
+    pdf.text("IGST Pymt Status", col5, yPos + 30);
+
+    // Column 7: PMV/Unit, IGST Taxable Value
+    pdf.text("PMV/Unit", col6, yPos + 20);
+    pdf.text("IGST Taxable Value", col6, yPos + 30);
+
+    // Column 8: Total PMV INR, IGST Amount
+    pdf.text("Total PMV INR", col7, yPos + 20);
+    pdf.text("IGST Amount", col7, yPos + 30);
+
+    yPos += 40; // Increased for multi-row headers
+    drawLine(leftX, yPos, rightX);
+    yPos += 12;
+
+    // Item Data - 100% SAFE PURE DATABASE DATA ONLY
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(FONT_SIZES.tableContent);
+
+    if (data.products && data.products.length > 0) {
+      data.products.forEach((product, index) => {
+        const itemY = yPos;
+
+        // Column 1: SI No, Qty, Unit - PURE DATA
+        pdf.text((index + 1).toString(), col1, itemY);
+        pdf.text(product.quantity || "", col1, itemY + 10);
+        pdf.text(product.per || product.unit || "", col1, itemY + 20);
+
+        // Column 2: RITC, Exim Scheme, NFEI Catg, Reward Item - PURE DATA
+        pdf.text(product.ritc || "", col2, itemY);
+        pdf.text(product.eximCode || "", col2, itemY + 10);
+        pdf.text(product.nfeiCategory || "", col2, itemY + 20);
+        pdf.text(product.rewardItem ? "Yes" : "No", col2, itemY + 30);
+
+        // Column 3: Description - PURE DATA
+        const description = product.description || "";
+        const descriptionLines = pdf.splitTextToSize(description, 90);
+        pdf.text(descriptionLines, col3, itemY);
+
+        // Unit Price and FOB ValFC - SAFE (adjust Y based on description height)
+        const unitPriceY = itemY + descriptionLines.length * 10;
+        pdf.text(
+          `${product.unitPrice || ""}/${product.per || "PCS"}`,
+          col3,
+          unitPriceY
+        );
+        pdf.text(
+          product.fobValueFC || product.amount || "",
+          col3,
+          unitPriceY + 20
+        );
+
+        // Column 5: FOB ValINR - PURE DATA
+        pdf.text(product.fobValueINR || "", col4, itemY + 20);
+
+        // Column 6: Total ValueFC, IGST Pymt Status - PURE DATA
+        pdf.text(product.amount || "", col5, itemY);
+        pdf.text(
+          product.igstPaymentStatus ||
+            product.igstCompensationCess?.igstPaymentStatus ||
+            "",
+          col5,
+          itemY + 20
+        );
+
+        // Column 7: PMV/Unit, IGST Taxable Value - PURE DATA
+        pdf.text(
+          product.pmvPerUnit || product.pmvInfo?.pmvPerUnit || "",
+          col6,
+          itemY
+        );
+        pdf.text(
+          product.taxableValueINR ||
+            product.igstCompensationCess?.taxableValueINR ||
+            "",
+          col6,
+          itemY + 20
+        );
+
+        // Column 8: Total PMV INR, IGST Amount - PURE DATA
+        pdf.text(
+          product.totalPMV || product.pmvInfo?.totalPMV || "",
+          col7,
+          itemY
+        );
+        pdf.text(
+          product.igstAmountINR ||
+            product.igstCompensationCess?.igstAmountINR ||
+            "",
+          col7,
+          itemY + 20
+        );
+
+        // Calculate height needed for this item based on description lines
+        const itemHeight = Math.max(35, (descriptionLines.length + 3) * 10);
+        yPos += itemHeight;
+
+        // Add separator line between items
+        if (index < data.products.length - 1) {
+          drawLine(leftX, yPos, rightX);
+          yPos += 8;
+        }
+      });
+    } else {
+      // EMPTY TABLE - No hardcoded default data, just spacing
+      yPos += 10;
+    }
+
+    // Totals section - PURE DATA
+    yPos += 5;
+    yPos += 12;
+    pdf.setFont("helvetica", "bold");
+    drawLine(leftX, yPos + 20, rightX);
+    pdf.setFontSize(FONT_SIZES.tableContent);
+    yPos += 30;
+
+    // Align totals to the right - PURE DATA
+    pdf.text("Total PMV", rightX - 150, yPos);
+    pdf.text(data.totalPmv || "", rightX - 50, yPos);
+    yPos += 10;
+    pdf.text("Total IGST", rightX - 150, yPos);
+    pdf.text(data.totalIgst || "", rightX - 50, yPos);
+    yPos += 10;
+    pdf.text("Total PMV Gross", rightX - 150, yPos);
+    pdf.text(data.totalPmvGross || "", rightX - 50, yPos);
+    yPos += 10;
+    pdf.text("Total IGST Gross", rightX - 150, yPos);
+    pdf.text(data.totalIgstGross || "", rightX - 50, yPos);
+
+    return yPos + 20;
+  };
 
   // Update the renderPage2 function to remove ITEM DETAILS and keep only DBK, VESSEL, CONTAINER details
   const renderPage2 = (pdf, helpers, data) => {
@@ -776,8 +801,7 @@ const renderItemDetailsPage = (pdf, helpers, data) => {
       { label: "Comp. Cess Amount(INR)", value: data.compCessAmount },
       {
         label: "PTA/FTA",
-        value:
-          data.ptaFta,
+        value: data.ptaFta,
       },
     ];
 
@@ -855,21 +879,14 @@ const renderItemDetailsPage = (pdf, helpers, data) => {
 
     yPos = drawField("Code", data.endUseCode, leftX, yPos, 160);
     yPos += 9;
-    yPos = drawField(
-      "Inv / Item Sr.No.",
-      data.endUseInvItem,
-      leftX,
-      yPos,
-      160
-    );
+    yPos = drawField("Inv / Item Sr.No.", data.endUseInvItem, leftX, yPos, 160);
     yPos += 15;
 
     pdf.setFont("helvetica", "bold");
     pdf.text("Code Description", leftX, yPos);
     yPos += 10;
     pdf.setFont("helvetica", "normal");
-    const codeDesc =
-      data.endUseDescription;
+    const codeDesc = data.endUseDescription;
     const descLines = pdf.splitTextToSize(codeDesc, rightX - leftX);
     descLines.forEach((line) => {
       pdf.text(line, leftX, yPos);
@@ -984,169 +1001,204 @@ const renderItemDetailsPage = (pdf, helpers, data) => {
   };
 
   // Update renderPage4 for SUPPORTING DOCUMENTS
-const renderPage4 = (pdf, helpers, data) => {
-  const { drawLine, leftX, rightX } = helpers;
-  let yPos = 80;
- // INLINE SAFE SPLIT TEXT - No helpers dependency
-  const safeSplitText = (text, width = 140) => {
-    if (!text || typeof text !== 'string') return [""];
-    try {
-      return pdf.splitTextToSize(text, width);
-    } catch (e) {
-      return [""];
-    }
+  const renderPage4 = (pdf, helpers, data) => {
+    const { drawLine, leftX, rightX } = helpers;
+    let yPos = 80;
+    // INLINE SAFE SPLIT TEXT - No helpers dependency
+    const safeSplitText = (text, width = 140) => {
+      if (!text || typeof text !== "string") return [""];
+      try {
+        return pdf.splitTextToSize(text, width);
+      } catch (e) {
+        return [""];
+      }
+    };
+    // SUPPORTING DOCUMENTS
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(FONT_SIZES.sectionHeader);
+    pdf.text("SUPPORTING DOCUMENTS", leftX, yPos);
+    yPos += 10;
+    drawLine(leftX, yPos, rightX);
+    yPos += 17;
+
+    // Define column positions
+    const col1 = leftX + 5; // First column
+    const col2 = leftX + 80; // Second column
+    const col3 = leftX + 180; // Third column
+    const col4 = leftX + 280; // Fourth column
+    const col5 = leftX + 430; // Fifth column
+
+    const rowHeight = 12;
+    const headerSectionHeight = 60;
+
+    // HEADERS SECTION - All headers in one section
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(FONT_SIZES.tableHeader);
+    let headerY = yPos;
+
+    // Column 1 Headers
+    pdf.text("Inv/Item/SrNo.", col1, headerY);
+    headerY += rowHeight;
+    pdf.text("Doc Issue Date", col1, headerY);
+    headerY += rowHeight;
+    pdf.text("Doc Expiry Date", col1, headerY);
+    headerY += rowHeight;
+    pdf.text("Doc Type Code", col1, headerY);
+
+    // Column 2 Headers
+    headerY = yPos;
+    pdf.text("Image Ref.No.(IRN)", col2, headerY);
+    headerY += rowHeight;
+    pdf.text("Doc Ref.No.", col2, headerY);
+    headerY += rowHeight;
+    pdf.text("Doc Uploaded On", col2, headerY);
+    headerY += rowHeight;
+    pdf.text("Doc Name", col2, headerY);
+
+    // Column 3 Headers
+    headerY = yPos;
+    pdf.text("ICEGATE ID", col3, headerY);
+    headerY += rowHeight;
+    pdf.text("File Type", col3, headerY);
+    headerY += rowHeight;
+    pdf.text("Place of Issue", col3, headerY);
+    headerY += rowHeight;
+    pdf.text("Issuing Party Code", col3, headerY);
+    headerY += rowHeight;
+    pdf.text("Beneficiary Party Code", col3, headerY);
+
+    // Column 4 Headers
+    headerY = yPos;
+    pdf.text("Issuing Party Name", col4, headerY);
+    headerY += rowHeight;
+    pdf.text("Issuing Party Add1", col4, headerY);
+    headerY += rowHeight;
+    pdf.text("Issuing Party Add2", col4, headerY);
+    headerY += rowHeight;
+    pdf.text("Issuing Party City", col4, headerY);
+    headerY += rowHeight;
+    pdf.text("Issuing Party Pin Code", col4, headerY);
+
+    // Column 5 Headers
+    headerY = yPos;
+    pdf.text("Beneficiary Party Name", col5, headerY);
+    headerY += rowHeight;
+    pdf.text("Beneficiary Party Add1", col5, headerY);
+    headerY += rowHeight;
+    pdf.text("Beneficiary Party Add2", col5, headerY);
+    headerY += rowHeight;
+    pdf.text("Beneficiary Party City", col5, headerY);
+    headerY += rowHeight;
+    pdf.text("Beneficiary Party Pin Code", col5, headerY);
+
+    // Draw line at the end of header section
+    yPos += headerSectionHeight;
+    drawLine(leftX, yPos, rightX);
+    yPos += 8;
+
+    // VALUES SECTION - SAFE RENDERING (FIXES jsPDF.text ERROR)
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(FONT_SIZES.tableContent);
+    let valueY = yPos;
+
+    // Column 1 Values - SAFE
+    pdf.text(data.supportingDocs?.invItemSrNo || "", col1, valueY);
+    valueY += rowHeight;
+    pdf.text(data.supportingDocs?.docIssueDate || "", col1, valueY);
+    valueY += rowHeight;
+    pdf.text(data.supportingDocs?.docExpiryDate || "", col1, valueY);
+    valueY += rowHeight;
+    pdf.text(data.supportingDocs?.docTypeCode || "", col1, valueY);
+
+    // Column 2 Values - SAFE
+    valueY = yPos;
+    pdf.text(data.supportingDocs?.imageRefNo || "", col2, valueY);
+    valueY += rowHeight;
+    pdf.text(data.supportingDocs?.docRefNo || "", col2, valueY);
+    valueY += rowHeight;
+    pdf.text(data.supportingDocs?.docUploadedOn || "", col2, valueY);
+    valueY += rowHeight;
+    pdf.text(data.supportingDocs?.docName || "", col2, valueY);
+
+    // Column 3 Values - SAFE
+    valueY = yPos;
+    pdf.text(data.supportingDocs?.icegateId || "", col3, valueY);
+    valueY += rowHeight;
+    pdf.text(data.supportingDocs?.fileType || "", col3, valueY);
+    valueY += rowHeight;
+    pdf.text(data.supportingDocs?.placeOfIssue || "", col3, valueY);
+    valueY += rowHeight;
+    pdf.text(data.supportingDocs?.issuingPartyCode || "", col3, valueY);
+    valueY += rowHeight;
+    pdf.text(data.supportingDocs?.beneficiaryPartyCode || "", col3, valueY);
+
+    // Column 4 Values (Issuing Party) - SAFE TEXT WRAPPING
+    valueY = yPos;
+    const issuingPartyName = data.supportingDocs?.issuingPartyName || "";
+    const issuingNameLines = safeSplitText(issuingPartyName, 140);
+    pdf.text(issuingNameLines, col4, valueY);
+    valueY += issuingNameLines.length * 10;
+
+    const issuingAdd1 = data.supportingDocs?.issuingPartyAdd1 || "";
+    const add1Lines = safeSplitText(issuingAdd1, 140);
+    pdf.text(add1Lines, col4, valueY);
+    valueY += add1Lines.length * 10;
+
+    const issuingAdd2 = data.supportingDocs?.issuingPartyAdd2 || "";
+    const add2Lines = safeSplitText(issuingAdd2, 140);
+    pdf.text(add2Lines, col4, valueY);
+    valueY += add2Lines.length * 10;
+
+    pdf.text(data.supportingDocs?.issuingPartyCity || "", col4, valueY);
+    valueY += rowHeight;
+    pdf.text(data.supportingDocs?.issuingPartyPinCode || "", col4, valueY);
+
+    // Column 5 Values (Beneficiary Party) - SAFE TEXT WRAPPING
+    valueY = yPos;
+    pdf.text(data.supportingDocs?.beneficiaryPartyName || "", col5, valueY);
+    valueY += rowHeight;
+
+    const beneficiaryAdd1 = data.supportingDocs?.beneficiaryPartyAdd1 || "";
+    const beneficiaryAdd1Lines = safeSplitText(beneficiaryAdd1, 140);
+    pdf.text(beneficiaryAdd1Lines, col5, valueY);
+    valueY += beneficiaryAdd1Lines.length * 10;
+
+    pdf.text(data.supportingDocs?.beneficiaryPartyAdd2 || "", col5, valueY);
+    valueY += rowHeight;
+    pdf.text(data.supportingDocs?.beneficiaryPartyCity || "", col5, valueY);
+    valueY += rowHeight;
+    pdf.text(data.supportingDocs?.beneficiaryPartyPinCode || "", col5, valueY);
+
+    // Calculate final Y position
+    yPos += 120; // Fixed height for supporting docs section
+
+    // FINAL DECLARATION
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(FONT_SIZES.sectionHeader);
+    pdf.text("DECLARATION", leftX, yPos);
+    yPos += 10;
+    drawLine(leftX, yPos, rightX);
+    yPos += 17;
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(FONT_SIZES.declaration);
+    const declarationLines = safeSplitText(
+      data.finalDeclaration || "",
+      rightX - leftX
+    );
+    declarationLines.forEach((line) => {
+      pdf.text(line, leftX, yPos);
+      yPos += FONT_SIZES.declaration * 1.3;
+    });
+
+    yPos += 20;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Signature of Exporter/CHA with date", leftX, yPos);
+    yPos += 8;
+    drawLine(leftX, yPos, rightX - 200);
+
+    return yPos + 20;
   };
-  // SUPPORTING DOCUMENTS
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(FONT_SIZES.sectionHeader);
-  pdf.text("SUPPORTING DOCUMENTS", leftX, yPos);
-  yPos += 10;
-  drawLine(leftX, yPos, rightX);
-  yPos += 17;
-
-  // Define column positions
-  const col1 = leftX + 5;   // First column
-  const col2 = leftX + 80;  // Second column
-  const col3 = leftX + 180; // Third column
-  const col4 = leftX + 280; // Fourth column
-  const col5 = leftX + 430; // Fifth column
-
-  const rowHeight = 12;
-  const headerSectionHeight = 60;
-
-  // HEADERS SECTION - All headers in one section
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(FONT_SIZES.tableHeader);
-  let headerY = yPos;
-
-  // Column 1 Headers
-  pdf.text("Inv/Item/SrNo.", col1, headerY); headerY += rowHeight;
-  pdf.text("Doc Issue Date", col1, headerY); headerY += rowHeight;
-  pdf.text("Doc Expiry Date", col1, headerY); headerY += rowHeight;
-  pdf.text("Doc Type Code", col1, headerY);
-
-  // Column 2 Headers
-  headerY = yPos;
-  pdf.text("Image Ref.No.(IRN)", col2, headerY); headerY += rowHeight;
-  pdf.text("Doc Ref.No.", col2, headerY); headerY += rowHeight;
-  pdf.text("Doc Uploaded On", col2, headerY); headerY += rowHeight;
-  pdf.text("Doc Name", col2, headerY);
-
-  // Column 3 Headers
-  headerY = yPos;
-  pdf.text("ICEGATE ID", col3, headerY); headerY += rowHeight;
-  pdf.text("File Type", col3, headerY); headerY += rowHeight;
-  pdf.text("Place of Issue", col3, headerY); headerY += rowHeight;
-  pdf.text("Issuing Party Code", col3, headerY); headerY += rowHeight;
-  pdf.text("Beneficiary Party Code", col3, headerY);
-
-  // Column 4 Headers
-  headerY = yPos;
-  pdf.text("Issuing Party Name", col4, headerY); headerY += rowHeight;
-  pdf.text("Issuing Party Add1", col4, headerY); headerY += rowHeight;
-  pdf.text("Issuing Party Add2", col4, headerY); headerY += rowHeight;
-  pdf.text("Issuing Party City", col4, headerY); headerY += rowHeight;
-  pdf.text("Issuing Party Pin Code", col4, headerY);
-
-  // Column 5 Headers
-  headerY = yPos;
-  pdf.text("Beneficiary Party Name", col5, headerY); headerY += rowHeight;
-  pdf.text("Beneficiary Party Add1", col5, headerY); headerY += rowHeight;
-  pdf.text("Beneficiary Party Add2", col5, headerY); headerY += rowHeight;
-  pdf.text("Beneficiary Party City", col5, headerY); headerY += rowHeight;
-  pdf.text("Beneficiary Party Pin Code", col5, headerY);
-
-  // Draw line at the end of header section
-  yPos += headerSectionHeight;
-  drawLine(leftX, yPos, rightX);
-  yPos += 8;
-
-  // VALUES SECTION - SAFE RENDERING (FIXES jsPDF.text ERROR)
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(FONT_SIZES.tableContent);
-  let valueY = yPos;
-
-  // Column 1 Values - SAFE
-  pdf.text(data.supportingDocs?.invItemSrNo || "", col1, valueY); valueY += rowHeight;
-  pdf.text(data.supportingDocs?.docIssueDate || "", col1, valueY); valueY += rowHeight;
-  pdf.text(data.supportingDocs?.docExpiryDate || "", col1, valueY); valueY += rowHeight;
-  pdf.text(data.supportingDocs?.docTypeCode || "", col1, valueY);
-
-  // Column 2 Values - SAFE
-  valueY = yPos;
-  pdf.text(data.supportingDocs?.imageRefNo || "", col2, valueY); valueY += rowHeight;
-  pdf.text(data.supportingDocs?.docRefNo || "", col2, valueY); valueY += rowHeight;
-  pdf.text(data.supportingDocs?.docUploadedOn || "", col2, valueY); valueY += rowHeight;
-  pdf.text(data.supportingDocs?.docName || "", col2, valueY);
-
-  // Column 3 Values - SAFE
-  valueY = yPos;
-  pdf.text(data.supportingDocs?.icegateId || "", col3, valueY); valueY += rowHeight;
-  pdf.text(data.supportingDocs?.fileType || "", col3, valueY); valueY += rowHeight;
-  pdf.text(data.supportingDocs?.placeOfIssue || "", col3, valueY); valueY += rowHeight;
-  pdf.text(data.supportingDocs?.issuingPartyCode || "", col3, valueY); valueY += rowHeight;
-  pdf.text(data.supportingDocs?.beneficiaryPartyCode || "", col3, valueY);
-
-  // Column 4 Values (Issuing Party) - SAFE TEXT WRAPPING
-  valueY = yPos;
-  const issuingPartyName = data.supportingDocs?.issuingPartyName || "";
-  const issuingNameLines = safeSplitText(issuingPartyName, 140);
-  pdf.text(issuingNameLines, col4, valueY);
-  valueY += issuingNameLines.length * 10;
-
-  const issuingAdd1 = data.supportingDocs?.issuingPartyAdd1 || "";
-  const add1Lines = safeSplitText(issuingAdd1, 140);
-  pdf.text(add1Lines, col4, valueY);
-  valueY += add1Lines.length * 10;
-
-  const issuingAdd2 = data.supportingDocs?.issuingPartyAdd2 || "";
-  const add2Lines = safeSplitText(issuingAdd2, 140);
-  pdf.text(add2Lines, col4, valueY);
-  valueY += add2Lines.length * 10;
-
-  pdf.text(data.supportingDocs?.issuingPartyCity || "", col4, valueY); valueY += rowHeight;
-  pdf.text(data.supportingDocs?.issuingPartyPinCode || "", col4, valueY);
-
-  // Column 5 Values (Beneficiary Party) - SAFE TEXT WRAPPING
-  valueY = yPos;
-  pdf.text(data.supportingDocs?.beneficiaryPartyName || "", col5, valueY); valueY += rowHeight;
-
-  const beneficiaryAdd1 = data.supportingDocs?.beneficiaryPartyAdd1 || "";
-  const beneficiaryAdd1Lines = safeSplitText(beneficiaryAdd1, 140);
-  pdf.text(beneficiaryAdd1Lines, col5, valueY);
-  valueY += beneficiaryAdd1Lines.length * 10;
-
-  pdf.text(data.supportingDocs?.beneficiaryPartyAdd2 || "", col5, valueY); valueY += rowHeight;
-  pdf.text(data.supportingDocs?.beneficiaryPartyCity || "", col5, valueY); valueY += rowHeight;
-  pdf.text(data.supportingDocs?.beneficiaryPartyPinCode || "", col5, valueY);
-
-  // Calculate final Y position
-  yPos += 120; // Fixed height for supporting docs section
-
-  // FINAL DECLARATION
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(FONT_SIZES.sectionHeader);
-  pdf.text("DECLARATION", leftX, yPos);
-  yPos += 10;
-  drawLine(leftX, yPos, rightX);
-  yPos += 17;
-
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(FONT_SIZES.declaration);
-  const declarationLines = safeSplitText(data.finalDeclaration || "", rightX - leftX);
-  declarationLines.forEach((line) => {
-    pdf.text(line, leftX, yPos);
-    yPos += FONT_SIZES.declaration * 1.3;
-  });
-
-  yPos += 20;
-  pdf.setFont("helvetica", "bold");
-  pdf.text("Signature of Exporter/CHA with date", leftX, yPos);
-  yPos += 8;
-  drawLine(leftX, yPos, rightX - 200);
-
-  return yPos + 20;
-};
 
   // ==================== MAIN GENERATOR ====================
   const generateExportChecklist = async () => {
@@ -1169,8 +1221,7 @@ const renderPage4 = (pdf, helpers, data) => {
         aeoRegistrationNo: exportJob.otherInfo?.aeoCode || "",
         aeoRole: exportJob.otherInfo?.aeoRole,
         partyRef: exportJob.exporter_ref_no,
-        chaCode:
-          exportJob.cha,
+        chaCode: exportJob.cha,
 
         // Exporter Details - BUILD FROM MULTIPLE FIELDS
         exporterGstin: exportJob.exporter_gstin || exportJob.gstin || "",
@@ -1300,12 +1351,12 @@ const renderPage4 = (pdf, helpers, data) => {
         expContractDate:
           formatDate(exportJob.otherInfo?.exportContractNoDate) || "",
         unitPriceIncludes: exportJob.invoices?.[0]?.priceIncludes || "",
-        invoiceCurrency:
-          exportJob.invoices?.[0]?.currency || exportJob.currency || "",
+        invoiceCurrency: exportJob.invoices?.[0]?.currency,
         exchangeRate: exportJob.exchange_rate || "",
 
         // Rate Details - From freightInsuranceCharges
         insurance: exportJob.freightInsuranceCharges?.insurance?.amount || "",
+
         freight: exportJob.freightInsuranceCharges?.freight?.amount || "",
         discount: exportJob.freightInsuranceCharges?.discount?.amount || "",
         commission: exportJob.freightInsuranceCharges?.commission?.amount || "",
@@ -1341,8 +1392,7 @@ const renderPage4 = (pdf, helpers, data) => {
         factoryAddress: exportJob.factory_address || "",
 
         // Marks & Nos
-        marksAndNos:
-          exportJob.marks_nos,
+        marksAndNos: exportJob.marks_nos,
 
         // Item Details - Map products array
         products:
@@ -1362,44 +1412,32 @@ const renderPage4 = (pdf, helpers, data) => {
             rewardItem: product.rewardItem,
             fobValueFC: product.amount, // Assuming amount is in foreign currency
             fobValueINR: "", // Calculate: amount * exchange_rate
-            igstPaymentStatus:
-              product.igstCompensationCess?.igstPaymentStatus,
-            taxableValueINR:
-              product.igstCompensationCess?.taxableValueINR,
+            igstPaymentStatus: product.igstCompensationCess?.igstPaymentStatus,
+            taxableValueINR: product.igstCompensationCess?.taxableValueINR,
             igstAmountINR: product.igstCompensationCess?.igstAmountINR,
           })) || [],
 
         // Totals from products
-        totalPmv:
-          exportJob.products
-            ?.reduce(
-              (sum, p) => sum + (parseFloat(p.pmvInfo?.totalPMV) || 0),
-              0
-            )
-            .toFixed(2),
-        totalIgst:
-          exportJob.products
-            ?.reduce(
-              (sum, p) =>
-                sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0),
-              0
-            )
-            .toFixed(2),
-        totalPmvGross:
-          exportJob.products
-            ?.reduce(
-              (sum, p) => sum + (parseFloat(p.pmvInfo?.totalPMV) || 0),
-              0
-            )
-            .toFixed(2) ,
-        totalIgstGross:
-          exportJob.products
-            ?.reduce(
-              (sum, p) =>
-                sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0),
-              0
-            )
-            .toFixed(2),
+        totalPmv: exportJob.products
+          ?.reduce((sum, p) => sum + (parseFloat(p.pmvInfo?.totalPMV) || 0), 0)
+          .toFixed(2),
+        totalIgst: exportJob.products
+          ?.reduce(
+            (sum, p) =>
+              sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0),
+            0
+          )
+          .toFixed(2),
+        totalPmvGross: exportJob.products
+          ?.reduce((sum, p) => sum + (parseFloat(p.pmvInfo?.totalPMV) || 0), 0)
+          .toFixed(2),
+        totalIgstGross: exportJob.products
+          ?.reduce(
+            (sum, p) =>
+              sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0),
+            0
+          )
+          .toFixed(2),
 
         // DBK Details
         dbkData:
@@ -1454,8 +1492,7 @@ const renderPage4 = (pdf, helpers, data) => {
               0
             )
             .toFixed(2) || "0.00",
-        ptaFta:
-          exportJob.products?.[0]?.ptaFtaInfo,
+        ptaFta: exportJob.products?.[0]?.ptaFtaInfo,
 
         // Single Window Data
         singleWindowData:

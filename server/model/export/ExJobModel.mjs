@@ -533,32 +533,84 @@ const milestoneSchema = new Schema(
   { _id: true }
 );
 
-// Container/Package Schema for Export
-const exportContainerSchema = new mongoose.Schema({
-  container_number: { type: String, trim: true },
-  container_type: { type: String, trim: true }, // FCL, LCL
-  container_size: { type: String, trim: true }, // 20ft, 40ft, 40HC
-  seal_number: { type: String, trim: true },
-  stuffing_date: { type: String, trim: true },
-  stuffing_location: { type: String, trim: true },
-  gross_weight: { type: String, trim: true },
-  net_weight: { type: String, trim: true },
-  tare_weight: { type: String, trim: true },
-  volume: { type: String, trim: true },
-  packages_count: { type: String, trim: true },
-  package_type: { type: String, trim: true }, // Cartons, Pallets, Bags, etc.
-  marks_and_numbers: { type: String, trim: true },
-  container_images: [{ type: String, trim: true }],
-  stuffing_images: [{ type: String, trim: true }],
-  seal_images: [{ type: String, trim: true }],
-  weighment_slip: [{ type: String, trim: true }],
-  vgm_certificate: [{ type: String, trim: true }], // Verified Gross Mass
-  vgm_date: { type: String, trim: true },
-  gate_in_date: { type: String, trim: true },
-  gate_out_date: { type: String, trim: true },
-  loading_date: { type: String, trim: true },
-  departure_date: { type: String, trim: true },
-});
+// Container/Package Schema for Export - FIXED as proper Mongoose Schema
+const exportOperationSchema = new Schema(
+  {
+    transporterDetails: [
+      {
+        transporterName: { type: String },
+        vehicleNo: { type: String },
+        containerNo: { type: String },
+        driverName: { type: String },
+        contactNo: { type: String },
+        noOfPackages: { type: Number },
+        netWeightKgs: { type: Number },
+        grossWeightKgs: { type: Number },
+        images: [String],
+      },
+    ],
+
+    containerDetails: [
+      {
+        containerNo: { type: String },
+        containerSize: { type: String },
+        containerType: { type: String },
+        cargoType: { type: String },
+        maxGrossWeightKgs: { type: Number },
+        tareWeightKgs: { type: Number },
+        maxPayloadKgs: { type: Number },
+        images: [String],
+      },
+    ],
+
+    bookingDetails: [
+      {
+        shippingLineName: { type: String },
+        bookingNo: { type: String },
+        bookingDate: { type: Date },
+        vesselName: { type: String },
+        voyageNo: { type: String },
+        portOfLoading: { type: String },
+        handoverLocation: { type: String },
+        validity: { type: String },
+        images: [String],
+      },
+    ],
+
+    weighmentDetails: [
+      {
+        weighBridgeName: { type: String },
+        regNo: { type: String },
+        dateTime: { type: Date },
+        vehicleNo: { type: String },
+        containerNo: { type: String },
+        size: { type: String },
+        grossWeight: { type: Number },
+        tareWeight: { type: Number },
+        netWeight: { type: Number },
+        address: { type: String },
+      },
+    ],
+
+    statusDetails: [
+      {
+        goodsRegistrationDate: { type: Date },
+        rmsLetExportOrderDate: { type: Date },
+        leoUpload: [String],
+        stuffingDate: { type: Date },
+        stuffingSheetUpload: [String],
+        eGatePassCopyDate: { type: Date },
+        eGatePassUpload: [String],
+        handoverForwardingNoteDate: { type: Date },
+        handoverImageUpload: [String],
+        handoverConcorTharSanganaRailRoadDate: { type: Date },
+        billingDocsSentDt: { type: Date },
+        billingDocsStatus: { type: String, trim: true },
+      },
+    ],
+  },
+  { _id: true }
+);
 
 // Main Export Job Schema
 const exportJobSchema = new mongoose.Schema(
@@ -708,7 +760,7 @@ const exportJobSchema = new mongoose.Schema(
     exchange_rate: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Containers Information
-    containers: [exportContainerSchema],
+    operations: [exportOperationSchema], // ✅ CORRECT - works directly
 
     // Removed duplicate container_count
     stuffing_date: { type: String, trim: true },
@@ -920,7 +972,6 @@ const exportJobSchema = new mongoose.Schema(
     cha: {
       type: String,
       trim: true,
-
     },
     masterblno: { type: String, trim: true }, // Master BL Number
     houseblno: { type: String, trim: true }, // House BL Number
@@ -932,20 +983,318 @@ const exportJobSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   }
 );
+
+exportJobSchema.pre("save", function (next) {
+  console.log(
+    "🔧 Pre-save: containers:",
+    this.containers?.length || 0,
+    "operations:",
+    this.operations?.length || 0
+  );
+
+  // ========================================
+  // COLLECT ALL UNIQUE CONTAINER NUMBERS FROM BOTH SOURCES
+  // ========================================
+
+  // From containers array
+  const containerNosFromContainers = new Set(
+    (this.containers || []).map((c) => c.containerNo).filter(Boolean)
+  );
+
+  // From operations - CHECK ALL ARRAYS (transporterDetails, containerDetails, weighmentDetails)
+  const containerNosFromOperations = new Set();
+  (this.operations || []).forEach((op) => {
+    // Get from transporterDetails array
+    (op.transporterDetails || []).forEach((td) => {
+      if (td.containerNo) containerNosFromOperations.add(td.containerNo);
+    });
+    // Get from containerDetails array
+    (op.containerDetails || []).forEach((cd) => {
+      if (cd.containerNo) containerNosFromOperations.add(cd.containerNo);
+    });
+    // Get from weighmentDetails array
+    (op.weighmentDetails || []).forEach((wd) => {
+      if (wd.containerNo) containerNosFromOperations.add(wd.containerNo);
+    });
+  });
+
+  // Merge all unique container numbers
+  const allContainerNos = new Set([
+    ...containerNosFromContainers,
+    ...containerNosFromOperations,
+  ]);
+  console.log(
+    `🔍 Found ${allContainerNos.size} unique containers:`,
+    Array.from(allContainerNos)
+  );
+
+  // ========================================
+  // STEP 1: SYNC CONTAINERS ARRAY
+  // ========================================
+  const existingContainers = this.containers || [];
+  const existingContainerMap = new Map(
+    existingContainers.map((c) => [c.containerNo, c])
+  );
+
+  // Create missing containers from operations
+  const syncedContainers = [];
+  let serialNum = 1;
+
+  allContainerNos.forEach((containerNo) => {
+    if (existingContainerMap.has(containerNo)) {
+      // Keep existing container
+      const existing = existingContainerMap.get(containerNo);
+      existing.serialNumber = serialNum++;
+      syncedContainers.push(existing);
+      console.log(`✅ Keeping existing container: ${containerNo}`);
+    } else {
+      // Create new container from operation data
+      const opData = this.getOperationDataForContainer(containerNo);
+      const newContainer = {
+        serialNumber: serialNum++,
+        containerNo: containerNo,
+        type: opData.containerSize || "",
+        pkgsStuffed: opData.noOfPackages || 0,
+        grossWeight: opData.grossWeight || 0,
+        sealNo: "",
+        sealDate: "",
+        sealType: "",
+        grWtPlusTrWt: 0,
+        sealDeviceId: "",
+        rfid: "",
+      };
+      syncedContainers.push(newContainer);
+      console.log(`🆕 Created new container: ${containerNo}`);
+    }
+  });
+
+  this.containers = syncedContainers;
+  console.log(`✅ Containers synced: ${this.containers.length} total`);
+
+  // ========================================
+  // STEP 2: SYNC OPERATIONS ARRAY
+  // ========================================
+
+  // If no operations exist, create one operation with all containers
+  if (!this.operations || this.operations.length === 0) {
+    console.log(
+      `🆕 Creating new operation with ${allContainerNos.size} containers`
+    );
+
+    const transporterDetails = [];
+    const containerDetails = [];
+    const weighmentDetails = [];
+
+    allContainerNos.forEach((containerNo) => {
+      const container = syncedContainers.find(
+        (c) => c.containerNo === containerNo
+      );
+
+      transporterDetails.push({
+        containerNo,
+        transporterName: "",
+        vehicleNo: "",
+        driverName: "",
+        contactNo: "",
+        noOfPackages: 0,
+        netWeightKgs: 0,
+        grossWeightKgs: container?.grossWeight || 0,
+        images: [],
+      });
+
+      containerDetails.push({
+        containerNo,
+        containerSize: container?.type || "",
+        containerType: "",
+        cargoType: "GEN",
+        maxGrossWeightKgs: 0,
+        tareWeightKgs: 2250,
+        maxPayloadKgs: 28230,
+        images: [],
+      });
+
+      weighmentDetails.push({
+        containerNo,
+        weighBridgeName: "",
+        regNo: "",
+        dateTime: new Date(),
+        vehicleNo: "",
+        size: container?.type || "",
+        grossWeight: container?.grossWeight || 0,
+        tareWeight: 0,
+        netWeight: 0,
+        address: "",
+      });
+    });
+
+    this.operations = [
+      {
+        transporterDetails,
+        containerDetails,
+        weighmentDetails,
+        bookingDetails: [
+          {
+            shippingLineName: "",
+            bookingNo: "",
+            bookingDate: null,
+            vesselName: "",
+            voyageNo: "",
+            portOfLoading: "",
+            handoverLocation: "",
+            validity: "",
+            images: [],
+          },
+        ],
+        statusDetails: [
+          {
+            goodsRegistrationDate: null,
+            rmsLetExportOrderDate: null,
+            leoUpload: false,
+            stuffingDate: null,
+            stuffingSheetUpload: false,
+            eGatePassCopyDate: null,
+            eGatePassUpload: false,
+            handoverForwardingNoteDate: null,
+            handoverImageUpload: false,
+            handoverConcorTharSanganaRailRoadDate: null,
+            billingDocsSentDt: null,
+            billingDocsStatus: null,
+          },
+        ],
+      },
+    ];
+  } else {
+    // Update existing operation(s)
+    this.operations.forEach((operation) => {
+      // Get existing container numbers in this operation
+      const existingOpContainerNos = new Set();
+      (operation.transporterDetails || []).forEach((td) => {
+        if (td.containerNo) existingOpContainerNos.add(td.containerNo);
+      });
+
+      // Find new containers to add
+      const newContainerNos = Array.from(allContainerNos).filter(
+        (cn) => !existingOpContainerNos.has(cn)
+      );
+
+      // Add missing containers to operation
+      newContainerNos.forEach((containerNo) => {
+        const container = syncedContainers.find(
+          (c) => c.containerNo === containerNo
+        );
+        console.log(`🆕 Adding ${containerNo} to operation`);
+
+        // Add to transporterDetails
+        operation.transporterDetails = operation.transporterDetails || [];
+        operation.transporterDetails.push({
+          containerNo,
+          transporterName: "",
+          vehicleNo: "",
+          driverName: "",
+          contactNo: "",
+          noOfPackages: 0,
+          netWeightKgs: 0,
+          grossWeightKgs: container?.grossWeight || 0,
+          images: [],
+        });
+
+        // Add to containerDetails
+        operation.containerDetails = operation.containerDetails || [];
+        operation.containerDetails.push({
+          containerNo,
+          containerSize: container?.type || "",
+          containerType: "",
+          cargoType: "",
+          maxGrossWeightKgs: 0,
+          tareWeightKgs: 0,
+          maxPayloadKgs: 0,
+          images: [],
+        });
+
+        // Add to weighmentDetails
+        operation.weighmentDetails = operation.weighmentDetails || [];
+        operation.weighmentDetails.push({
+          containerNo,
+          weighBridgeName: "",
+          regNo: "",
+          dateTime: new Date(),
+          vehicleNo: "",
+          size: container?.type || "",
+          grossWeight: container?.grossWeight || 0,
+          tareWeight: 0,
+          netWeight: 0,
+          address: "",
+        });
+      });
+
+      // Remove deleted containers from operation
+      operation.transporterDetails = (
+        operation.transporterDetails || []
+      ).filter((td) => allContainerNos.has(td.containerNo));
+      operation.containerDetails = (operation.containerDetails || []).filter(
+        (cd) => allContainerNos.has(cd.containerNo)
+      );
+      operation.weighmentDetails = (operation.weighmentDetails || []).filter(
+        (wd) => allContainerNos.has(wd.containerNo)
+      );
+    });
+  }
+
+  console.log(
+    `✅ Operations synced: ${this.operations.length} operation(s) with ${allContainerNos.size} containers each`
+  );
+
+  // ========================================
+  // STEP 3: SEAL SYNC
+  // ========================================
+  if (this.stuffing_seal_no) {
+    this.annexC1Details = this.annexC1Details || {};
+    this.annexC1Details.sealNumber = this.stuffing_seal_no;
+  }
+
+  console.log(
+    `✅ Sync complete: ${this.containers.length} containers ↔ ${allContainerNos.size} unique containers in operations`
+  );
+  next();
+});
+
+// Helper method to extract operation data for a container
+exportJobSchema.methods.getOperationDataForContainer = function (containerNo) {
+  let result = { containerSize: "", grossWeight: 0, noOfPackages: 0 };
+
+  (this.operations || []).forEach((op) => {
+    const cd = (op.containerDetails || []).find(
+      (c) => c.containerNo === containerNo
+    );
+    if (cd) {
+      result.containerSize = cd.containerSize || result.containerSize;
+    }
+
+    const wd = (op.weighmentDetails || []).find(
+      (w) => w.containerNo === containerNo
+    );
+    if (wd) {
+      result.grossWeight = wd.grossWeight || result.grossWeight;
+    }
+
+    const td = (op.transporterDetails || []).find(
+      (t) => t.containerNo === containerNo
+    );
+    if (td) {
+      result.noOfPackages = td.noOfPackages || result.noOfPackages;
+      result.grossWeight = td.grossWeightKgs || result.grossWeight;
+    }
+  });
+
+  return result;
+};
+
 // Remove redundant indexes and add compound indexes
 exportJobSchema.index({ jobNumber: 1 }, { unique: true });
 exportJobSchema.index({ filingMode: 1, jobStatus: 1 }); // Compound index
 exportJobSchema.index({ jobDate: -1, customHouse: 1 }); // Common query pattern
 exportJobSchema.index({ createdAt: -1 }); // For recent jobs
 exportJobSchema.index({ "invoices.invoiceNumber": 1 }, { sparse: true });
-
-// Virtual fields
-exportJobSchema.virtual("totalInvoiceValue").get(function () {
-  return this.invoices.reduce(
-    (total, invoice) => total + invoice.invoiceValue,
-    0
-  );
-});
 
 exportJobSchema.virtual("totalCharges").get(function () {
   return this.charges.reduce(
