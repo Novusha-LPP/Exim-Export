@@ -20,7 +20,7 @@ import AllUsersPage from "./AllUsersPage.js";
 import AppbarComponent from "../components/home/AppbarComponent.js";
 import DrawerComponent from "../components/home/DrawerComponent.js";
 
-import Feedback from "../components/home/FeedBack.js"
+import Feedback from "../components/home/FeedBack.js";
 const drawerWidth = 60;
 
 function HomePage() {
@@ -89,7 +89,7 @@ function HomePage() {
             <Route
               path="/export-dsr"
               element={
-                <ProtectedRoute requiredModule="Export - DSR">
+                <ProtectedRoute requiredModule="Export - Jobs">
                   <DsrTabs />
                 </ProtectedRoute>
               }
@@ -98,7 +98,7 @@ function HomePage() {
             <Route
               path="export-dsr/job/:jobNo"
               element={
-                <ProtectedRoute requiredModule="Export - DSR">
+                <ProtectedRoute requiredModule="Export - Jobs">
                   <ExportViewJob />
                 </ProtectedRoute>
               }

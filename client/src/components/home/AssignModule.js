@@ -35,7 +35,7 @@ const allModules = [
   "Screen2",
   "Screen3",
   "Screen4",
-  "Export - DSR",
+  "Export - Jobs",
   "Directories",
 ];
 
