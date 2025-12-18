@@ -281,7 +281,7 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
         pdf.text(leftFields[i].label, leftColX, leftY);
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(FONT_SIZES.fieldValue);
-        pdf.text(leftFields[i].value, leftColX + 100, leftY);
+        pdf.text(String(leftFields[i].value || ""), leftColX + 100, leftY);
       }
 
       if (rightFields[i]) {
@@ -290,7 +290,7 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
         pdf.text(rightFields[i].label, rightColX, rightY);
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(FONT_SIZES.fieldValue);
-        pdf.text(rightFields[i].value, rightColX + 100, rightY);
+        pdf.text(String(rightFields[i].value || ""), rightColX + 100, rightY);
       }
 
       leftY += 12;
@@ -331,12 +331,12 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
       pdf.text(invoiceLeftFields[i].label, leftColX, invoiceLeftY);
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(FONT_SIZES.fieldValue);
-      pdf.text(invoiceLeftFields[i].value, leftColX + 80, invoiceLeftY);
+      pdf.text(String(invoiceLeftFields[i].value || ""), leftColX + 80, invoiceLeftY);
 
       pdf.setFont("helvetica", "bold");
       pdf.text(invoiceRightFields[i].label, rightColX, invoiceRightY);
       pdf.setFont("helvetica", "normal");
-      pdf.text(invoiceRightFields[i].value, rightColX + 80, invoiceRightY);
+      pdf.text(String(invoiceRightFields[i].value || ""), rightColX + 80, invoiceRightY);
 
       invoiceLeftY += 12;
       invoiceRightY += 12;
@@ -1248,6 +1248,33 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
       const exportJob = response.data;
       const currentDate = formatDate(new Date());
 
+      // ==================== CURRENCY RATES (FOR INR + FOREIGN DISPLAY) ====================
+      let currencyRates = null;
+      const getExportRate = (code) => {
+        if (!currencyRates || !code) return null;
+        const rateObj = currencyRates.find(
+          (r) => r.currency_code === code
+        );
+        return rateObj ? rateObj.export_rate : null;
+      };
+
+      try {
+        const invoiceDateRaw =
+          exportJob.invoices?.[0]?.invoiceDate || exportJob.sb_date || new Date();
+        const dt = new Date(invoiceDateRaw);
+        const dd = String(dt.getDate()).padStart(2, "0");
+        const mm = String(dt.getMonth() + 1).padStart(2, "0");
+        const yyyy = dt.getFullYear();
+        const dateStr = `${dd}-${mm}-${yyyy}`;
+
+        const ratesResp = await axios.get(
+          `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`
+        );
+        currencyRates = ratesResp.data?.data?.exchange_rates || null;
+      } catch (err) {
+        console.error("Error fetching currency rates for checklist:", err);
+      }
+
       // Prepare comprehensive data object with all fields from PDF
       const data = {
         // Basic Information
@@ -1298,7 +1325,7 @@ consigneeCountry2: exportJob.dischargecountry,
         houseBlNo: exportJob.hbl_no || exportJob.houseblno || "",
         rotationNo: exportJob.voyage_no
           ? `${exportJob.voyage_no} dt ${formatDate(
-              exportJob.vessel_sailing_date
+              exportJob.sailing_date
             )}`
           : "",
         stateOfOrigin:
@@ -1381,26 +1408,83 @@ consigneeCountry2: exportJob.dischargecountry,
 
         // Invoice Details - From first invoice
         invoiceNo: exportJob.invoices?.[0]?.invoiceNumber || "",
-        invoiceValue:
-          exportJob.invoices?.[0]?.invoiceValue 
-            ? `${exportJob.invoices[0].currency} ${
-                exportJob.invoices[0].invoiceValue ||
-                exportJob.invoices[0].invoice_value
-              }`
-            : "",
+        // Invoice Value - show in invoice currency + INR using customs rate
+        invoiceValue: (() => {
+          const inv = exportJob.invoices?.[0];
+          if (!inv) return "";
+
+          const baseCurrency = inv.currency;
+          const rawAmount = inv.invoiceValue ?? inv.invoice_value;
+          if (rawAmount === null || rawAmount === undefined || rawAmount === "")
+            return "";
+
+          const amountNum = parseFloat(rawAmount) || 0;
+          const basePart = `${baseCurrency} ${amountNum.toFixed(2)}`;
+
+          // Prefer customs export rate; fall back to stored exchange_rate
+          const rateFromApi = getExportRate(baseCurrency);
+          const rate = rateFromApi || exportJob.exchange_rate;
+
+          if (!rate) return basePart;
+
+          const inrAmount = (amountNum * rate).toFixed(2);
+          return `${basePart} / INR ${inrAmount}`;
+        })(),
         invoiceDate: formatDate(exportJob.invoices?.[0]?.invoiceDate) || "",
-        fobValue:
-          exportJob.invoices?.[0]?.productValue ||
-          exportJob.invoices?.[0]?.product_value_fob
-            ? `${exportJob.invoices[0].currency} ${
-                exportJob.invoices[0].productValue ||
-                exportJob.invoices[0].product_value_fob
-              }`
-            : "",
+        // FOB Value - use freightInsuranceCharges.fobValue (USD + INR if available)
+        fobValue: (() => {
+          const fob = exportJob.freightInsuranceCharges?.fobValue;
+          if (!fob) return "";
+
+          // Try to get USD value from multiple possible fields
+          const usdRaw = fob.fobValueUSD ?? fob.fobUSD ?? fob.usd;
+          // Try to get INR value from multiple possible fields
+          const inrRaw = fob.fobValueINR ?? fob.amount ?? fob.inr;
+
+          const usdPart =
+            usdRaw !== null && usdRaw !== undefined && usdRaw !== ""
+              ? `USD ${
+                  typeof usdRaw === "number" ? usdRaw.toFixed(2) : usdRaw
+                }`
+              : "";
+
+          const inrPart =
+            inrRaw !== null && inrRaw !== undefined && inrRaw !== ""
+              ? `INR ${
+                  typeof inrRaw === "number" ? inrRaw.toFixed(2) : inrRaw
+                }`
+              : "";
+
+          // If we have both, show both
+          if (usdPart && inrPart) return `${usdPart} / ${inrPart}`;
+          
+          // If we only have INR but have exchange rate, calculate USD
+          if (!usdPart && inrPart && exportJob.exchange_rate) {
+            const inrNum = typeof inrRaw === "number" ? inrRaw : parseFloat(inrRaw);
+            if (!isNaN(inrNum) && exportJob.exchange_rate) {
+              const calculatedUSD = (inrNum / exportJob.exchange_rate).toFixed(2);
+              return `USD ${calculatedUSD} / ${inrPart}`;
+            }
+          }
+          
+          // If we only have USD but have exchange rate, calculate INR
+          if (usdPart && !inrPart && exportJob.exchange_rate) {
+            const usdNum = typeof usdRaw === "number" ? usdRaw : parseFloat(usdRaw);
+            if (!isNaN(usdNum) && exportJob.exchange_rate) {
+              const calculatedINR = (usdNum * exportJob.exchange_rate).toFixed(2);
+              return `${usdPart} / INR ${calculatedINR}`;
+            }
+          }
+          
+          // Fallback to whatever we have
+          if (usdPart) return usdPart;
+          if (inrPart) return inrPart;
+          return "";
+        })(),
         natureOfContract: exportJob.invoices?.[0]?.termsOfInvoice || "",
-        expContractNo: "", // Not found in data structure
+        expContractNo: exportJob.otherInfo?.exportContractNo || "",
         expContractDate:
-          formatDate(exportJob.otherInfo?.exportContractNoDate) || "",
+          formatDate(exportJob.otherInfo?.exportContractNo) || "",
         unitPriceIncludes: exportJob.invoices?.[0]?.priceIncludes || "",
         invoiceCurrency: exportJob.invoices?.[0]?.currency,
         exchangeRate: exportJob.exchange_rate || "",

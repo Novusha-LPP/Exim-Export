@@ -524,6 +524,7 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
             options={[
               { value: "FCL", label: "FCL" },
               { value: "LCL", label: "LCL" },
+              { value: "AIR", label: "AIR" },
               { value: "Break Bulk", label: "Break Bulk" },
             ]}
             onChange={formik.handleChange}
@@ -633,7 +634,7 @@ function LogisysExportViewJob() {
   const { jobNo } = useParams();
   const decodedJobNo = decodeURIComponent(jobNo || "");
 
-  const { data, loading, formik, setData } = useExportJobDetails(
+  const { data, loading, lockError, formik, setData } = useExportJobDetails(
     { job_no: decodedJobNo },
     setFileSnackbar
   );
@@ -664,9 +665,60 @@ function LogisysExportViewJob() {
     fetchDirectories();
   }, []);
 
+  // Lock/Unlock lifecycle
+  useEffect(() => {
+    if (!decodedJobNo || !user?.username) return;
+
+    const lockJob = async () => {
+      try {
+        await axios.put(
+          `${
+            import.meta.env.VITE_API_STRING
+          }/export-jobs/${encodeURIComponent(decodedJobNo)}/lock`,
+          { username: user.username }
+        );
+      } catch (err) {
+        console.error("Lock error:", err);
+      }
+    };
+
+    const unlockJob = async () => {
+      try {
+        await axios.put(
+          `${
+            import.meta.env.VITE_API_STRING
+          }/export-jobs/${encodeURIComponent(decodedJobNo)}/unlock`,
+          { username: user.username }
+        );
+      } catch (err) {
+        console.error("Unlock error:", err);
+      }
+    };
+
+    lockJob();
+
+    return () => {
+      unlockJob();
+    };
+  }, [decodedJobNo, user?.username]);
+
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
     setSearchParams({ tab: newValue.toString() });
+  };
+
+  const handleUpdateAndClose = async () => {
+    try {
+      await formik.submitForm();
+      // Use a small delay to ensure visibility of any success snackbars if needed,
+      // but since the original onSubmit had a window.close, we can navigate here.
+      navigate("/export-dsr");
+    } catch (error) {
+      console.error("Error during auto-update on close:", error);
+      // Still navigate if requested, or maybe stay if there's an error?
+      // Usually user expects "Close" to actually close.
+      navigate("/export-dsr");
+    }
   };
 
   if (loading) {
@@ -795,6 +847,50 @@ function LogisysExportViewJob() {
           <TrackingCompletedTab formik={formik} />
         </TabPanel>
 
+        {lockError && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(255, 255, 255, 0.6)",
+              backdropFilter: "blur(2px)",
+              zIndex: 1500,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              borderRadius: 3,
+            }}
+          >
+            <Paper
+              elevation={6}
+              sx={{
+                p: 4,
+                textAlign: "center",
+                maxWidth: 400,
+                border: "2px solid #d32f2f",
+              }}
+            >
+              <Typography variant="h5" color="error" gutterBottom sx={{ fontWeight: 700 }}>
+                Job Locked
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 3 }}>
+                {lockError}
+              </Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => navigate("/export-dsr")}
+                fullWidth
+              >
+                Go Back to Job List
+              </Button>
+            </Paper>
+          </Box>
+        )}
+
         <Divider sx={{ my: 2 }} />
 
         {/* Action Buttons */}
@@ -809,18 +905,49 @@ function LogisysExportViewJob() {
         >
           <Button
             variant="contained"
-            size="small"
             onClick={formik.handleSubmit}
-            sx={{ minWidth: 120 }}
+            disabled={!!lockError}
+            sx={{
+              position: "fixed",
+              bottom: 25,
+              right: 30,
+              zIndex: 2000,
+              minWidth: 150,
+              backgroundColor: "#1565c0",
+              color: "#fff",
+              fontWeight: "bold",
+              borderRadius: "50px",
+              padding: "10px 25px",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
+              "&:hover": {
+                backgroundColor: "#0d47a1",
+                boxShadow: "0 6px 25px rgba(0,0,0,0.35)",
+              },
+            }}
           >
             Update Job
           </Button>
           <Button
-            variant="outlined"
-            size="small"
-            color="error"
-            sx={{ minWidth: 90 }}
-            onClick={() => navigate("/export-dsr")}
+            variant="contained"
+            onClick={handleUpdateAndClose}
+            sx={{
+              position: "fixed",
+              bottom: 25,
+              right: 195,
+              zIndex: 2000,
+              minWidth: 110,
+              backgroundColor: "#fff",
+              color: "#d32f2f",
+              border: "1px solid #d32f2f",
+              fontWeight: "bold",
+              borderRadius: "50px",
+              padding: "10px 25px",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.20)",
+              "&:hover": {
+                backgroundColor: "#fff5f5",
+                boxShadow: "0 6px 25px rgba(0,0,0,0.30)",
+              },
+            }}
           >
             Close
           </Button>

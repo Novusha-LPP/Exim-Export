@@ -20,7 +20,6 @@ const allModules = [
   "Import Utility Tool",
   "Report",
   "Audit Trail",
-  "Export",
   "Accounts",
   "Employee Onboarding",
   "Employee KYC",

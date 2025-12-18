@@ -494,8 +494,8 @@ function useDistrictApiDropdown(
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -1751,56 +1751,56 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
     [formik, handleProductChange]
   );
 
-  const addNewProduct = useCallback(() => {
-    const newProduct = {
-      serialNumber: formik.values.products.length + 1,
-      description: "",
-      ritc: "",
-      quantity: 0,
-      unitPrice: 0,
-      per: "",
-      amount: 0,
-      eximCode: "",
-      nfeiCategory: "",
-      rewardItem: false,
-      strCode: "",
-      endUse: "",
-      originDistrict: "",
-      originState: "",
-      ptaFtaInfo: "",
-      alternateQty: 0,
-      materialCode: "",
-      medicinalPlant: "",
-      formulation: "",
-      surfaceMaterialInContact: "",
-      labGrownDiamond: "",
-      pmvInfo: {
-        currency: "INR",
-        calculationMethod: "percentage",
-        percentage: 110.0,
-        pmvPerUnit: 0,
-        totalPMV: 0,
-      },
-      igstCompensationCess: {
-        igstPaymentStatus: "LUT",
-        taxableValueINR: 0,
-        igstRate: 18.0,
-        igstAmountINR: 0,
-        compensationCessRate: 0,
-        compensationCessAmountINR: 0,
-      },
-      rodtepInfo: {
-        claim: "Yes",
-        quantity: 0,
-        ratePercent: 0.9,
-        capValue: 0,
-        capValuePerUnits: 0,
-        amountINR: 0,
-        unit: "KGS",
-      },
-    };
-    formik.setFieldValue("products", [...formik.values.products, newProduct]);
-  }, [formik]);
+  // const addNewProduct = useCallback(() => {
+  //   const newProduct = {
+  //     serialNumber: formik.values.products.length + 1,
+  //     description: "",
+  //     ritc: "",
+  //     quantity: 0,
+  //     unitPrice: 0,
+  //     per: "",
+  //     amount: 0,
+  //     eximCode: "",
+  //     nfeiCategory: "",
+  //     rewardItem: false,
+  //     strCode: "",
+  //     endUse: "",
+  //     originDistrict: "",
+  //     originState: "",
+  //     ptaFtaInfo: "",
+  //     alternateQty: 0,
+  //     materialCode: "",
+  //     medicinalPlant: "",
+  //     formulation: "",
+  //     surfaceMaterialInContact: "",
+  //     labGrownDiamond: "",
+  //     pmvInfo: {
+  //       currency: "INR",
+  //       calculationMethod: "percentage",
+  //       percentage: 110.0,
+  //       pmvPerUnit: 0,
+  //       totalPMV: 0,
+  //     },
+  //     igstCompensationCess: {
+  //       igstPaymentStatus: "LUT",
+  //       taxableValueINR: 0,
+  //       igstRate: 18.0,
+  //       igstAmountINR: 0,
+  //       compensationCessRate: 0,
+  //       compensationCessAmountINR: 0,
+  //     },
+  //     rodtepInfo: {
+  //       claim: "Yes",
+  //       quantity: 0,
+  //       ratePercent: 0.9,
+  //       capValue: 0,
+  //       capValuePerUnits: 0,
+  //       amountINR: 0,
+  //       unit: "KGS",
+  //     },
+  //   };
+  //   formik.setFieldValue("products", [...formik.values.products, newProduct]);
+  // }, [formik]);
 
   const removeProduct = useCallback(
     (index) => {
@@ -1865,7 +1865,8 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
                 "Qty Unit",
                 "Unit Price",
                 "Unit Currency",
-                "Per(UQC)",
+                "Per",
+                "Per Unit",
                 "Amount",
                 "Amount Unit",
               ].map((h) => (
@@ -1942,6 +1943,13 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
                       readOnly
                     />
                   </td>
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      value={rowProduct.perUnit || ""}
+                      readOnly
+                    />
+                  </td>
 
                   <td style={styles.td}>
                     <input
@@ -1965,10 +1973,10 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
           </tbody>
         </table>
       </div>
-
+      {/* 
       <button style={styles.addBtn} onClick={addNewProduct}>
         ➕ Add New Product
-      </button>
+      </button> */}
 
       {/* Detailed card for selected product only */}
       {product && (

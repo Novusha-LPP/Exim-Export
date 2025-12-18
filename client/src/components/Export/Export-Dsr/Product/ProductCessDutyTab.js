@@ -3,6 +3,7 @@ import { styles as baseStyles } from "./commonStyles";
 import { unitCodes } from "../../../../utils/masterList";
 import { toUpperVal } from "./commonStyles.js";
 import DateInput from "../../../common/DateInput.js";
+import SearchableDropdown from "../../../common/SearchableDropdown.js";
 const dutyRows = [
   { key: "exportDuty", label: "Export Duty" },
   { key: "cess", label: "Cess" },
@@ -245,24 +246,15 @@ const ProductCessDutyTab = ({ formik, idx = 0 }) => {
                     }
                   />
                   <span style={{ fontSize: 11 }}>/</span>
-                  <select
-                    style={{ ...styles.select, width: "40%", height: 20 }}
+                  <SearchableDropdown
+                    options={unitCodes}
                     value={cessExpDuty[`${r.key}RateUnit`] ?? ""}
                     onChange={(e) =>
                       setCess(`${r.key}RateUnit`, e.target.value)
                     }
-                  >
-                    <option value="">Unit</option>
-                    {unitCodes &&
-                      unitCodes.map((unit) => (
-                        <option
-                          key={unit.code || unit}
-                          value={unit.code || unit}
-                        >
-                          {unit.code || unit}
-                        </option>
-                      ))}
-                  </select>
+                    placeholder="Unit"
+                    style={{ width: "40%", height: 20, fontSize: 11 }}
+                  />
                 </div>
               </div>
             </div>
@@ -285,22 +277,13 @@ const ProductCessDutyTab = ({ formik, idx = 0 }) => {
                     onChange={(e) => setCess("tariffValue_tv", e.target.value)}
                   />
                   <span style={{ fontSize: 11 }}>/</span>
-                  <select
-                    style={{ ...styles.select, width: "35%", height: 20 }}
+                  <SearchableDropdown
+                    options={unitCodes}
                     value={cessExpDuty.tariffUnit_tv || ""}
                     onChange={(e) => setCess("tariffUnit_tv", e.target.value)}
-                  >
-                    <option value="">Unit</option>
-                    {unitCodes &&
-                      unitCodes.map((unit) => (
-                        <option
-                          key={unit.code || unit}
-                          value={unit.code || unit}
-                        >
-                          {unit.code || unit}
-                        </option>
-                      ))}
-                  </select>
+                    placeholder="Unit"
+                    style={{ width: "35%", height: 20, fontSize: 11 }}
+                  />
                 </div>
               </div>
             ) : (

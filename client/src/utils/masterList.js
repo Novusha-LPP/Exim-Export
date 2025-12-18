@@ -47,7 +47,7 @@ export const cfs = [
 
 export const natureOfCargo = [
   "C - containerized",
-  "C - non containerized packaged",
+  "P - non containerized packaged",
   "LB - liquid bulk",
   "DB - dry bulk",
   "CP - containerized and packaged",

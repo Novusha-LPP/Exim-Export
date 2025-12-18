@@ -1,6 +1,6 @@
-// ProductMainTab.jsx
-import React, { useRef, useState, useCallback, useEffect } from "react";
 import { unitCodes, currencyList } from "../../../../utils/masterList";
+import React, { useRef, useState, useCallback, useEffect } from "react";
+import SearchableDropdown from "../../../common/SearchableDropdown";
 
 function toUpper(val) {
   return (typeof val === "string" ? val : "").toUpperCase();
@@ -273,8 +273,8 @@ const ProductMainTab = ({ formik }) => {
       const list = Array.isArray(data?.data)
         ? data.data
         : Array.isArray(data)
-        ? data
-        : [];
+          ? data
+          : [];
 
       setHsDialogOptions(list);
       if (data?.pagination) {
@@ -329,6 +329,7 @@ const ProductMainTab = ({ formik }) => {
                 <th style={{ ...styles.th, width: 110 }}>Unit Price</th>
                 <th style={{ ...styles.th, width: 90 }}>Unit Currency</th>
                 <th style={{ ...styles.th, width: 80 }}>Per</th>
+                <th style={{ ...styles.th, width: 80 }}>Per Unit</th>
                 <th style={{ ...styles.th, width: 110 }}>Amount</th>
                 <th style={{ ...styles.th, width: 100 }}>Amount Unit</th>
                 <th style={{ ...styles.th, width: 180 }}>Action</th>
@@ -417,24 +418,15 @@ const ProductMainTab = ({ formik }) => {
                   </td>
 
                   <td style={styles.td}>
-                    <select
-                      style={styles.input}
+                    <SearchableDropdown
+                      options={unitCodes}
                       value={prod.qtyUnit || ""}
                       onChange={(e) =>
                         handleProductFieldChange(idx, "qtyUnit", e.target.value)
                       }
-                    >
-                      <option value="">Unit</option>
-                      {unitCodes &&
-                        unitCodes.map((unit) => (
-                          <option
-                            key={unit.code || unit}
-                            value={unit.code || unit}
-                          >
-                            {unit.code || unit}
-                          </option>
-                        ))}
-                    </select>
+                      placeholder="Unit"
+                      style={{ fontSize: 12, height: 24 }}
+                    />
                   </td>
 
                   <td style={styles.td}>
@@ -454,24 +446,15 @@ const ProductMainTab = ({ formik }) => {
                     />
                   </td>
                   <td style={styles.td}>
-                    <select
-                      style={styles.input}
+                    <SearchableDropdown
+                      options={unitCodes}
                       value={prod.socunit || ""}
                       onChange={(e) =>
                         handleProductFieldChange(idx, "socunit", e.target.value)
                       }
-                    >
-                      <option value="">Unit</option>
-                      {unitCodes &&
-                        unitCodes.map((unit) => (
-                          <option
-                            key={unit.code || unit}
-                            value={unit.code || unit}
-                          >
-                            {unit.code || unit}
-                          </option>
-                        ))}
-                    </select>
+                      placeholder="Unit"
+                      style={{ fontSize: 12, height: 24 }}
+                    />
                   </td>
 
                   <td style={styles.td}>
@@ -535,6 +518,17 @@ const ProductMainTab = ({ formik }) => {
                     />
                   </td>
 
+                  <td style={styles.td}>
+                    <SearchableDropdown
+                      options={unitCodes}
+                      value={prod.perUnit || ""}
+                      onChange={(e) =>
+                        handleProductFieldChange(idx, "perUnit", e.target.value)
+                      }
+                      placeholder="Unit"
+                      style={{ fontSize: 12, height: 24 }}
+                    />
+                  </td>
                   <td style={styles.td}>
                     <input
                       ref={(el) => {

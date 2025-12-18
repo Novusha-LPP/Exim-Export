@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import FileUpload from "../../../gallery/FileUpload";
 import ImagePreview from "../../../gallery/ImagePreview";
+import zIndex from "@mui/material/styles/zIndex";
 
 // Helper
 const toUpper = (str) => (str ? str.toUpperCase() : "");
@@ -15,6 +17,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
   const wrapperRef = useRef();
+  const menuRef = useRef(); // New ref for the portal menu
   const keepOpen = useRef(false);
   const apiBase = import.meta.env.VITE_API_STRING;
 
@@ -71,7 +74,8 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
       if (
         !keepOpen.current &&
         wrapperRef.current &&
-        !wrapperRef.current.contains(e.target)
+        !wrapperRef.current.contains(e.target) &&
+        (!menuRef.current || !menuRef.current.contains(e.target))
       ) {
         setOpen(false);
       }
@@ -102,6 +106,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
 
   return {
     wrapperRef,
+    menuRef,
     open,
     setOpen,
     query,
@@ -124,15 +129,40 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
     onInputBlur: () => {
       setTimeout(() => {
         keepOpen.current = false;
-      }, 100);
+      }, 150);
     },
   };
 }
 
 function ShippingLineDropdownField({ fieldName, formik, placeholder = "" }) {
   const d = useShippingOrAirlineDropdown(fieldName, formik);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const transportMode = toUpper(formik.values.transportMode || "");
   const isAir = transportMode === "AIR";
+
+  const updateCoords = () => {
+    if (d.wrapperRef.current) {
+      const rect = d.wrapperRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (d.open) {
+      updateCoords();
+      // Listen to scroll events in the entire app to keep dropdown attached
+      window.addEventListener("scroll", updateCoords, true);
+      window.addEventListener("resize", updateCoords);
+    }
+    return () => {
+      window.removeEventListener("scroll", updateCoords, true);
+      window.removeEventListener("resize", updateCoords);
+    };
+  }, [d.open]);
 
   const filteredOpts = d.opts.filter((opt) => {
     const code = isAir
@@ -179,38 +209,56 @@ function ShippingLineDropdownField({ fieldName, formik, placeholder = "" }) {
           }}
         />
         <span style={styles.acIcon}>▼</span>
-        {d.open && filteredOpts.length > 0 && (
-          <div style={styles.acMenu}>
-            {filteredOpts.map((opt, i) => {
-              const code = isAir
-                ? toUpper(opt.alphanumericCode || opt.code || "")
-                : toUpper(opt.shippingLineCode || opt.code || "");
-              const name = isAir
-                ? toUpper(opt.airlineName || opt.name || "")
-                : toUpper(opt.shippingName || opt.name || "");
-              const originalIndex = indexInOpts(i);
-              return (
-                <div
-                  key={opt._id || code || name || i}
-                  style={styles.acItem(d.active === i)}
-                  onMouseDown={() => {
-                    if (originalIndex >= 0) d.select(originalIndex);
-                  }}
-                  onMouseEnter={() => d.setActive(i)}
-                >
-                  {code} - {name}
-                  {opt.status && (
-                    <span
-                      style={{ marginLeft: 8, color: "#8ad", fontWeight: 500 }}
-                    >
-                      ({toUpper(opt.status)})
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+
+        {/* Use Portal to show menu outside table/row clipping */}
+        {d.open && filteredOpts.length > 0 &&
+          createPortal(
+            <div
+              ref={d.menuRef}
+              style={{
+                ...styles.acMenu,
+                position: "fixed",
+                top: coords.top + 4,
+                left: coords.left,
+                width: coords.width,
+              }}
+            >
+              {filteredOpts.map((opt, i) => {
+                const code = isAir
+                  ? toUpper(opt.alphanumericCode || opt.code || "")
+                  : toUpper(opt.shippingLineCode || opt.code || "");
+                const name = isAir
+                  ? toUpper(opt.airlineName || opt.name || "")
+                  : toUpper(opt.shippingName || opt.name || "");
+                const originalIndex = indexInOpts(i);
+                return (
+                  <div
+                    key={opt._id || code || name || i}
+                    style={styles.acItem(d.active === i)}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // Prevent input blur before selection
+                      if (originalIndex >= 0) d.select(originalIndex);
+                    }}
+                    onMouseEnter={() => d.setActive(i)}
+                  >
+                    {code} - {name}
+                    {opt.status && (
+                      <span
+                        style={{
+                          marginLeft: 8,
+                          color: "#8ad",
+                          fontWeight: 500,
+                        }}
+                      >
+                        ({toUpper(opt.status)})
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>,
+            document.body
+          )}
       </div>
     </div>
   );
@@ -220,16 +268,163 @@ const OperationsTab = ({ formik }) => {
   const operations = formik.values.operations || [];
   const [activeOpIndex, setActiveOpIndex] = useState(0);
 
-  const containerNos = (formik.values.containers || [])
-    .map((c) => c.containerNo)
-    .filter(Boolean);
-  const operationContainerNos = operations
-    .map((op) => op.containerDetails?.[0]?.containerNo)
-    .filter(Boolean);
-  const syncStatus =
-    containerNos.length === operationContainerNos.length
-      ? "Synced"
-      : "Out of Sync";
+  // Ensure at least one operation exists
+  useEffect(() => {
+    if (operations.length === 0) {
+      const newOp = {
+        transporterDetails: [getDefaultItem("transporterDetails")],
+        containerDetails: [getDefaultItem("containerDetails")],
+        bookingDetails: [getDefaultItem("bookingDetails")],
+        weighmentDetails: [getDefaultItem("weighmentDetails")],
+        statusDetails: [getDefaultItem("statusDetails")],
+      };
+      formik.setFieldValue("operations", [newOp]);
+    }
+  }, []);
+
+  // 1. Collect all unique container numbers from ALL sections of ALL operations
+  const allOpContainersSet = new Set();
+  operations.forEach((op) => {
+    ["transporterDetails", "containerDetails", "weighmentDetails"].forEach(
+      (sec) => {
+        (op[sec] || []).forEach((item) => {
+          if (item.containerNo && item.containerNo.trim()) {
+            allOpContainersSet.add(item.containerNo.trim().toUpperCase());
+          }
+        });
+      }
+    );
+  });
+  const opContainerNos = Array.from(allOpContainersSet);
+
+  // 2. Get master list container numbers
+  const masterContainers = formik.values.containers || [];
+  const masterContainerNos = masterContainers.map((c) =>
+    (c.containerNo || "").toUpperCase()
+  );
+
+  // 3. Check Sync Status
+  const isSynced =
+    opContainerNos.length === masterContainerNos.length &&
+    opContainerNos.every((no) => masterContainerNos.includes(no));
+
+  const syncStatus = isSynced ? "Synced" : "Out of Sync";
+
+  // 4. Auto-sync Effect: Keeps operations consistent and updates the main containers array
+  useEffect(() => {
+    // Phase A: Intra-operation Sync (Ensure Transporter, Container, and Weighment Details stay in lock-step)
+    let opsModified = false;
+    const nextOperations = operations.map((op) => {
+      const tArr = op.transporterDetails || [];
+      const cArr = op.containerDetails || [];
+      const wArr = op.weighmentDetails || [];
+      const maxLen = Math.max(tArr.length, cArr.length, wArr.length);
+
+      // Check if we need to expand any arrays to match lengths
+      let opIsDirty =
+        tArr.length !== maxLen || cArr.length !== maxLen || wArr.length !== maxLen;
+
+      const syncedOp = { ...op };
+      ["transporterDetails", "containerDetails", "weighmentDetails"].forEach(
+        (s) => {
+          const arr = [...(op[s] || [])];
+          while (arr.length < maxLen) {
+            arr.push(getDefaultItem(s));
+          }
+          syncedOp[s] = arr;
+        }
+      );
+
+      // Check for missing container numbers at the same index
+      for (let i = 0; i < maxLen; i++) {
+        const nosFound = [
+          syncedOp.transporterDetails[i]?.containerNo,
+          syncedOp.containerDetails[i]?.containerNo,
+          syncedOp.weighmentDetails[i]?.containerNo,
+        ].filter((n) => n && n.trim());
+
+        if (nosFound.length > 0) {
+          const bestNo = nosFound[0].trim().toUpperCase();
+          if (
+            syncedOp.transporterDetails[i].containerNo !== bestNo ||
+            syncedOp.containerDetails[i].containerNo !== bestNo ||
+            syncedOp.weighmentDetails[i].containerNo !== bestNo
+          ) {
+            syncedOp.transporterDetails[i] = {
+              ...syncedOp.transporterDetails[i],
+              containerNo: bestNo,
+            };
+            syncedOp.containerDetails[i] = {
+              ...syncedOp.containerDetails[i],
+              containerNo: bestNo,
+            };
+            syncedOp.weighmentDetails[i] = {
+              ...syncedOp.weighmentDetails[i],
+              containerNo: bestNo,
+            };
+            opIsDirty = true;
+          }
+        }
+      }
+
+      if (opIsDirty) opsModified = true;
+      return syncedOp;
+    });
+
+    if (opsModified) {
+      formik.setFieldValue("operations", nextOperations);
+      return; // Exit and wait for next render cycle
+    }
+
+    // Phase B: Master Containers Sync (Updates formik.values.containers)
+    const currentMaster = formik.values.containers || [];
+    
+    // Filter: Keep if used in an operation OR if it has meaningful data
+    const nextContainers = currentMaster.filter((c) => {
+      const cNo = (c.containerNo || "").toUpperCase();
+      if (!cNo) return false;
+      
+      const isUsed = allOpContainersSet.has(cNo);
+      const hasData =
+        (c.sealNo && c.sealNo.trim()) ||
+        (c.type && c.type.trim()) ||
+        (c.sealDeviceId && c.sealDeviceId.trim()) ||
+        (c.grossWeight > 0) ||
+        (c.tareWeight > 0);
+
+      return isUsed || hasData;
+    });
+
+    // Add missing ones from operations
+    let changed = false;
+    const existingInNext = new Set(nextContainers.map(c => c.containerNo.toUpperCase()));
+    
+    opContainerNos.forEach(no => {
+      if (!existingInNext.has(no)) {
+        nextContainers.push({
+          containerNo: no,
+          type: "",
+          sealNo: "",
+          sealType: "",
+          sealDate: "",
+          sealDeviceId: "",
+          grossWeight: 0,
+          tareWeight: 0,
+          netWeight: 0,
+        });
+        changed = true;
+      }
+    });
+
+    // Final check for removals to mark 'changed'
+    if (nextContainers.length !== currentMaster.length) {
+      changed = true;
+    }
+
+    if (changed) {
+      formik.setFieldValue("containers", nextContainers);
+    }
+  }, [operations]); // Watch operations to trigger sync
 
   // --- Actions ---
 
@@ -258,20 +453,44 @@ const OperationsTab = ({ formik }) => {
   };
 
   const updateField = (section, itemIndex, field, value) => {
-    // Use formik.values.operations directly to avoid stale closure issues
     const currentOps = formik.values.operations || [];
+    const isLinkedContainerField =
+      field === "containerNo" &&
+      ["transporterDetails", "containerDetails", "weighmentDetails"].includes(
+        section
+      );
 
     const newOperations = currentOps.map((op, opIdx) => {
       if (opIdx !== activeOpIndex) return op;
 
-      // Handle the active operation
+      const updatedOp = { ...op };
       const currentSection = op[section] || [];
-      const newSection = currentSection.map((item, itemIdx) => {
+      const finalValue = field === "containerNo" ? toUpper(value) : value;
+
+      // Update the targeted field
+      updatedOp[section] = currentSection.map((item, itemIdx) => {
         if (itemIdx !== itemIndex) return item;
-        return { ...item, [field]: value };
+        return { ...item, [field]: finalValue };
       });
 
-      return { ...op, [section]: newSection };
+      // SYNC: If it's a linked container field, update other sections at same index
+      if (isLinkedContainerField) {
+        ["transporterDetails", "containerDetails", "weighmentDetails"].forEach(
+          (s) => {
+            if (s === section) return;
+            if (updatedOp[s] && updatedOp[s][itemIndex]) {
+              const row = {
+                ...updatedOp[s][itemIndex],
+                containerNo: finalValue,
+              };
+              updatedOp[s] = [...updatedOp[s]];
+              updatedOp[s][itemIndex] = row;
+            }
+          }
+        );
+      }
+
+      return updatedOp;
     });
 
     formik.setFieldValue("operations", newOperations);
@@ -279,26 +498,71 @@ const OperationsTab = ({ formik }) => {
 
   const addItem = (section) => {
     const newOperations = [...operations];
-    if (newOperations[activeOpIndex] && newOperations[activeOpIndex][section]) {
-      newOperations[activeOpIndex][section].push(getDefaultItem(section));
-      formik.setFieldValue("operations", newOperations);
+    const op = { ...newOperations[activeOpIndex] };
+    if (!op) return;
+
+    const isLinkedSection = [
+      "transporterDetails",
+      "containerDetails",
+      "weighmentDetails",
+    ].includes(section);
+
+    if (isLinkedSection) {
+      // Add row to all 3 linked sections to maintain index alignment
+      op.transporterDetails = [
+        ...(op.transporterDetails || []),
+        getDefaultItem("transporterDetails"),
+      ];
+      op.containerDetails = [
+        ...(op.containerDetails || []),
+        getDefaultItem("containerDetails"),
+      ];
+      op.weighmentDetails = [
+        ...(op.weighmentDetails || []),
+        getDefaultItem("weighmentDetails"),
+      ];
+    } else {
+      op[section] = [...(op[section] || []), getDefaultItem(section)];
     }
+
+    newOperations[activeOpIndex] = op;
+    formik.setFieldValue("operations", newOperations);
   };
 
   const deleteItem = (section, itemIndex) => {
     const newOperations = [...operations];
-    if (newOperations[activeOpIndex] && newOperations[activeOpIndex][section]) {
-      newOperations[activeOpIndex][section] = newOperations[activeOpIndex][
-        section
-      ].filter((_, i) => i !== itemIndex);
-      formik.setFieldValue("operations", newOperations);
+    const op = { ...newOperations[activeOpIndex] };
+    if (!op) return;
+
+    const isLinkedSection = [
+      "transporterDetails",
+      "containerDetails",
+      "weighmentDetails",
+    ].includes(section);
+
+    if (isLinkedSection) {
+      // Delete row from all linked sections to maintain index alignment
+      op.transporterDetails = (op.transporterDetails || []).filter(
+        (_, i) => i !== itemIndex
+      );
+      op.containerDetails = (op.containerDetails || []).filter(
+        (_, i) => i !== itemIndex
+      );
+      op.weighmentDetails = (op.weighmentDetails || []).filter(
+        (_, i) => i !== itemIndex
+      );
+    } else {
+      op[section] = (op[section] || []).filter((_, i) => i !== itemIndex);
     }
+
+    newOperations[activeOpIndex] = op;
+    formik.setFieldValue("operations", newOperations);
   };
 
   // --- Render Helpers ---
 
   if (operations.length === 0) {
-    return <EmptyState onAdd={addOperation} />;
+    return null; // Will be handled by useEffect
   }
 
   const activeOperation = operations[activeOpIndex];
@@ -361,9 +625,9 @@ const OperationsTab = ({ formik }) => {
             {
               field: "transporterName",
               label: "Transporter Name",
-              width: "180px",
+              width: "110px",
             },
-            { field: "vehicleNo", label: "Vehicle No.", width: "120px" },
+            { field: "vehicleNo", label: "Vehicle No.", width: "10px" },
             { field: "containerNo", label: "Container No.", width: "140px" },
             { field: "driverName", label: "Driver Name", width: "150px" },
             { field: "contactNo", label: "Contact No.", width: "120px" },
@@ -554,6 +818,16 @@ const TableSection = ({
   formik,
   activeOpIndex,
 }) => {
+  // Ensure at least one row exists
+  const displayData = data && data.length > 0 ? data : [getDefaultItem(section)];
+  
+  // If data was empty, initialize it with one default item
+  useEffect(() => {
+    if (!data || data.length === 0) {
+      onAdd(section);
+    }
+  }, []);
+
   return (
     <div style={styles.sectionContainer}>
       <div style={styles.sectionHeader}>
@@ -574,7 +848,7 @@ const TableSection = ({
             </tr>
           </thead>
           <tbody>
-            {(data || []).map((item, rowIdx) => (
+            {displayData.map((item, rowIdx) => (
               <tr key={rowIdx} style={styles.tr}>
                 {columns.map((col) => (
                   <td key={col.field} style={styles.td}>
@@ -638,6 +912,7 @@ const TableSection = ({
                     onClick={() => onDelete(section, rowIdx)}
                     style={styles.rowDeleteBtn}
                     title="Delete Row"
+                    disabled={displayData.length === 1}
                   >
                     Delete
                   </button>
@@ -903,8 +1178,8 @@ const getDefaultItem = (section) => {
 
 const styles = {
   container: {
-    fontFamily: "-apple-system, system-ui, sans-serif",
-    backgroundColor: "#f1f5f9",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    backgroundColor: "#f8fafc",
     padding: "16px",
     minHeight: "100%",
   },
@@ -913,61 +1188,66 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: "16px",
-    background: "#fff",
-    padding: "10px 16px",
+    background: "linear-gradient(to bottom, #ffffff, #f8fafc)",
+    padding: "12px 16px",
     borderRadius: "8px",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
     border: "1px solid #e2e8f0",
   },
   tabsScroll: {
     display: "flex",
-    gap: "6px",
+    gap: "8px",
     overflowX: "auto",
     paddingBottom: "2px",
     alignItems: "center",
+    flex: 1,
   },
   opTab: {
-    padding: "6px 12px",
+    padding: "8px 16px",
     borderRadius: "6px",
-    background: "#f8fafc",
-    color: "#475569",
-    fontSize: "12px",
+    background: "#ffffff",
+    color: "#64748b",
+    fontSize: "13px",
     fontWeight: "600",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     gap: "6px",
     border: "1px solid #e2e8f0",
-    transition: "all 0.2s",
+    transition: "all 0.2s ease",
     userSelect: "none",
+    whiteSpace: "nowrap",
   },
   opTabActive: {
-    background: "#2563eb",
-    color: "#fff",
+    background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+    color: "#ffffff",
     borderColor: "#2563eb",
-    boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)",
+    boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)",
   },
   opTabText: {
     whiteSpace: "nowrap",
+    fontSize: "13px",
+    fontWeight: "600",
   },
   opTabClose: {
     fontSize: "11px",
     lineHeight: 1,
-    padding: "2px 6px",
+    padding: "3px 6px",
     borderRadius: "4px",
     marginLeft: "4px",
-    background: "rgba(255, 255, 255, 0.2)",
+    background: "rgba(255, 255, 255, 0.25)",
     color: "#fff",
     cursor: "pointer",
+    transition: "background 0.2s",
   },
   addOpButton: {
-    padding: "6px 12px",
+    padding: "8px 16px",
     borderRadius: "6px",
     border: "1px dashed #cbd5e1",
-    background: "transparent",
+    background: "#ffffff",
     color: "#64748b",
-    fontSize: "12px",
-    fontWeight: "500",
+    fontSize: "13px",
+    fontWeight: "600",
     cursor: "pointer",
     whiteSpace: "nowrap",
     transition: "all 0.2s",
@@ -976,94 +1256,101 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "6px",
-    fontSize: "11px",
+    fontSize: "12px",
     fontWeight: "600",
     color: "#475569",
-    background: "#f8fafc",
-    padding: "6px 12px",
+    background: "#ffffff",
+    padding: "8px 14px",
     borderRadius: "20px",
     border: "1px solid #e2e8f0",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
   },
   statusDot: {
-    width: "6px",
-    height: "6px",
+    width: "7px",
+    height: "7px",
     borderRadius: "50%",
   },
   contentArea: {
     display: "flex",
     flexDirection: "column",
-    gap: "16px",
   },
   sectionContainer: {
-    background: "#fff",
+    background: "#ffffff",
     borderRadius: "8px",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
     border: "1px solid #e2e8f0",
     overflow: "hidden",
   },
   sectionHeader: {
     padding: "12px 16px",
     borderBottom: "1px solid #e2e8f0",
-    background: "#f8fafc",
+    background: "linear-gradient(to bottom, #f8fafc, #f1f5f9)",
   },
   sectionTitle: {
     margin: 0,
     fontSize: "13px",
     fontWeight: "700",
-    color: "#040505ff",
+    color: "#0f172a",
     textTransform: "uppercase",
     letterSpacing: "0.5px",
   },
   sectionFooter: {
-    padding: "10px 16px",
+    padding: "12px 16px",
     borderTop: "1px solid #e2e8f0",
     background: "#f8fafc",
   },
-  tableWrapper: {
-    overflowX: "auto",
-    minHeight: "200px",
-  },
+tableWrapper: {
+  overflowX: "auto",
+  overflowY: "visible",
+},
   table: {
     width: "100%",
     borderCollapse: "collapse",
     fontSize: "12px",
+    tableLayout: "auto", // Changed from fixed to auto for dynamic column widths
   },
   th: {
-    background: "#f1f5f9",
-    color: "#040505ff",
+    background: "linear-gradient(to bottom, #f1f5f9, #e2e8f0)",
+    color: "#0f172a",
     fontWeight: "700",
     textAlign: "left",
-    padding: "8px 12px",
-    borderBottom: "1px solid #e2e8f0",
+    padding: "10px 12px",
+    borderBottom: "1px solid #cbd5e1",
     borderRight: "1px solid #e2e8f0",
     whiteSpace: "nowrap",
+    fontSize: "11px",
+    textTransform: "uppercase",
+    letterSpacing: "0.3px",
   },
   tr: {
-    transition: "background 0.1s",
+    transition: "background 0.1s ease",
   },
   td: {
     padding: "0",
+      overflow: "visible",
+
     borderBottom: "1px solid #e2e8f0",
     borderRight: "1px solid #e2e8f0",
     height: "auto",
-    verticalAlign: "top",
+    verticalAlign: "middle",
+    background: "#ffffff",
   },
   cellInput: {
     width: "100%",
-    minHeight: "32px",
-    border: "2px solid transparent",
-    padding: "4px 8px",
+    minHeight: "36px",
+    border: "1px solid transparent",
+    padding: "6px 10px",
     fontSize: "12px",
-    fontWeight: "700",
+    fontWeight: "500",
     color: "#1e293b",
     outline: "none",
     background: "transparent",
     boxSizing: "border-box",
-    transition: "border-color 0.2s",
+    transition: "all 0.15s ease",
   },
   uploadCell: {
     padding: "8px",
-    minWidth: "160px",
+    minWidth: "140px",
   },
   rowDeleteBtn: {
     background: "transparent",
@@ -1071,61 +1358,67 @@ const styles = {
     border: "none",
     fontSize: "11px",
     cursor: "pointer",
-    padding: "4px 8px",
+    padding: "6px 10px",
     fontWeight: "600",
-    opacity: 0.8,
-    transition: "opacity 0.2s",
-    marginTop: "6px",
+    opacity: 0.7,
+    transition: "all 0.2s",
   },
   addRowBtn: {
-    background: "transparent",
-    color: "#2563eb",
+    background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+    color: "#ffffff",
     border: "none",
-    fontSize: "12px",
+    fontSize: "13px",
     fontWeight: "600",
     cursor: "pointer",
-    padding: "0",
-    display: "flex",
+    padding: "8px 16px",
+    display: "inline-flex",
     alignItems: "center",
     gap: "6px",
+    borderRadius: "6px",
+    boxShadow: "0 2px 6px rgba(37, 99, 235, 0.2)",
+    transition: "all 0.2s ease",
   },
   statusGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
     gap: "16px",
     padding: "16px",
   },
   statusField: {
     display: "flex",
     flexDirection: "column",
-    gap: "4px",
+    gap: "6px",
   },
   statusLabel: {
     fontSize: "11px",
     fontWeight: "600",
-    color: "#64748b",
+    color: "#475569",
+    textTransform: "uppercase",
+    letterSpacing: "0.3px",
   },
   statusInput: {
-    padding: "6px 10px",
-    border: "1px solid #cbd5e1",
-    borderRadius: "4px",
+    padding: "8px 10px",
+    border: "1px solid #e2e8f0",
+    borderRadius: "6px",
     fontSize: "12px",
+    fontWeight: "500",
     color: "#1e293b",
     outline: "none",
     width: "100%",
     boxSizing: "border-box",
-    transition: "border-color 0.2s",
+    transition: "all 0.15s ease",
+    background: "#ffffff",
   },
   checkboxWrapper: {
-    padding: "6px 10px",
+    padding: "8px 10px",
     border: "1px solid",
-    borderRadius: "4px",
+    borderRadius: "6px",
     fontSize: "12px",
     cursor: "pointer",
     textAlign: "center",
     userSelect: "none",
-    fontWeight: "500",
-    transition: "all 0.2s",
+    fontWeight: "600",
+    transition: "all 0.15s ease",
   },
   emptyContainer: {
     display: "flex",
@@ -1136,23 +1429,23 @@ const styles = {
   },
   emptyContent: {
     textAlign: "center",
-    background: "#fff",
+    background: "#ffffff",
     padding: "32px",
-    borderRadius: "16px",
-    boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
+    borderRadius: "12px",
+    boxShadow: "0 4px 8px rgba(0,0,0,0.06)",
     border: "1px solid #e2e8f0",
   },
   primaryBtn: {
-    background: "#2563eb",
-    color: "#fff",
+    background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+    color: "#ffffff",
     border: "none",
-    padding: "10px 20px",
+    padding: "10px 24px",
     borderRadius: "6px",
-    fontSize: "13px",
+    fontSize: "14px",
     fontWeight: "600",
     cursor: "pointer",
-    boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)",
-    transition: "background 0.2s",
+    boxShadow: "0 2px 8px rgba(37, 99, 235, 0.25)",
+    transition: "all 0.2s ease",
   },
   // --- New Styles for Dropdown ---
   field: {
@@ -1170,47 +1463,48 @@ const styles = {
   },
   input: {
     width: "100%",
-    minHeight: "32px",
-    border: "2px solid transparent",
-    padding: "4px 8px",
-    paddingRight: "20px",
+    minHeight: "36px",
+    border: "1px solid transparent",
+    padding: "6px 10px",
+    paddingRight: "28px",
     fontSize: "12px",
-    fontWeight: "700",
+    fontWeight: "500",
     color: "#1e293b",
     outline: "none",
     background: "transparent",
     boxSizing: "border-box",
-    transition: "border-color 0.2s",
+    transition: "all 0.15s ease",
   },
   acIcon: {
     position: "absolute",
-    right: "6px",
+    right: "10px",
     fontSize: "10px",
     pointerEvents: "none",
     color: "#64748b",
   },
   acMenu: {
-    position: "absolute",
-    top: "100%",
-    left: 0,
-    right: 0,
-    background: "#fff",
+    background: "#ffffff",
     border: "1px solid #cbd5e1",
     borderRadius: "6px",
     marginTop: "4px",
     maxHeight: "200px",
     overflowY: "auto",
-    zIndex: 1000,
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+    overflowX: "visible",
+    zIndex: 100000000,
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
   },
   acItem: (isActive) => ({
-    padding: "8px 12px",
-    fontSize: "12px",
+    padding: "10px 12px",
     cursor: "pointer",
-    background: isActive ? "#f1f5f9" : "transparent",
-    color: "#1e293b",
+    fontSize: "12px",
+    fontWeight: "500",
+    color: isActive ? "#1e293b" : "#475569",
+    background: isActive ? "#f1f5f9" : "#ffffff",
     borderBottom: "1px solid #f1f5f9",
+    transition: "all 0.1s ease",
   }),
 };
 
 export default OperationsTab;
+
+

@@ -31,25 +31,11 @@
               onChange={handleChange}
               aria-label="basic tabs example"
             >
-              [{/* <Tab label="Dashboard" {...a11yProps(0)} key={0} />, */}
-              <Tab label="Jobs" {...a11yProps(2)} key={0} />,
-              {/* <Tab label="View DSR" {...a11yProps(3)} key={2} /> */}
-              <Tab label="New Job" {...a11yProps(4)} key={1} />
-              ,]
+              <Tab label="Jobs" {...a11yProps(0)} key={0} />
             </Tabs>
           </Box>
           <CustomTabPanel value={tabValue} index={0}>
             <ExportJobsTable />
-          </CustomTabPanel>
-          <CustomTabPanel value={tabValue} index={0}>
-            {/* <Dashboard /> */}
-          </CustomTabPanel>
-
-          <CustomTabPanel value={tabValue} index={2}>
-            {/* <ViewDSR /> */}
-          </CustomTabPanel>
-          <CustomTabPanel value={tabValue} index={1}>
-            <AddExJobs />
           </CustomTabPanel>
         </Box>
       </SelectedYearContext.Provider>

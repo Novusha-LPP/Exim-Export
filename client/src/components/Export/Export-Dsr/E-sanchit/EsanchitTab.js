@@ -223,6 +223,7 @@ const ESanchitTab = ({ formik }) => {
           setDoc={setSelectedDoc}
           onClose={() => setIsDialogOpen(false)}
           onSave={handleSave}
+          jobData={formik.values}
         />
       )}
     </div>

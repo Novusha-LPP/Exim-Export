@@ -2,6 +2,15 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { format, parseISO, isValid } from "date-fns";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
+  Tooltip,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import AddExJobs from "./AddExJobs";
 
 // --- Clean Enterprise Styles ---
 const s = {
@@ -256,42 +265,45 @@ const ExportJobsTable = () => {
   const [copyError, setCopyError] = useState("");
   const [suggestedSequence, setSuggestedSequence] = useState("");
 
-  // --- Fetch Jobs ---
-  useEffect(() => {
-    const fetchJobs = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/export-jobs/api/exports`,
-          {
-            params: {
-              status: activeTab,
-              search: searchQuery,
-              year: selectedYear === "all" ? "" : selectedYear,
-              consignmentType: selectedType,
-              branch: selectedBranch,
-              page: page,
-              limit: LIMIT,
-            },
-          }
-        );
-        if (response.data.success) {
-          setJobs(response.data.data.jobs || []);
-          setTotalRecords(
-            response.data.data.total ||
-              response.data.data.pagination?.totalCount ||
-              0
-          );
-        }
-      } catch (err) {
-        console.error(err);
-        setJobs([]);
-        setTotalRecords(0);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Create Job Dialog State
+  const [openAddDialog, setOpenAddDialog] = useState(false);
 
+  // --- Fetch Jobs ---
+  const fetchJobs = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_STRING}/export-jobs/api/exports`,
+        {
+          params: {
+            status: activeTab,
+            search: searchQuery,
+            year: selectedYear === "all" ? "" : selectedYear,
+            consignmentType: selectedType,
+            branch: selectedBranch,
+            page: page,
+            limit: LIMIT,
+          },
+        }
+      );
+      if (response.data.success) {
+        setJobs(response.data.data.jobs || []);
+        setTotalRecords(
+          response.data.data.total ||
+            response.data.data.pagination?.totalCount ||
+            0
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      setJobs([]);
+      setTotalRecords(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     const timer = setTimeout(fetchJobs, 300);
     return () => clearTimeout(timer);
   }, [
@@ -622,8 +634,32 @@ const ExportJobsTable = () => {
       <div style={s.wrapper}>
         <div style={s.container}>
           {/* Title */}
-          <div style={s.headerRow}>
+          <div
+            style={{
+              ...s.headerRow,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <h1 style={s.pageTitle}>Export Jobs</h1>
+            <button
+              style={{
+                ...s.btnPrimary,
+                padding: "8px 20px",
+                height: "auto",
+                backgroundColor: "#2563eb",
+                color: "#fff",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontWeight: "600",
+                fontSize: "13px",
+              }}
+              onClick={() => setOpenAddDialog(true)}
+            >
+              + Create Job
+            </button>
           </div>
 
           {/* Tabs */}
@@ -834,7 +870,7 @@ const ExportJobsTable = () => {
                         <span style={s.chip}>{job.consignmentType || "-"}</span>
                       </td>
                       <td style={s.td}>{safeDate(job.job_date)}</td>
-                      <td style={s.td}>{job.port_of_origin || "-"}</td>
+                      <td style={s.td}>{job.port_of_loading || "-"}</td>
                       <td style={s.td}>{job.port_of_discharge || "-"}</td>
                       <td style={s.td}>{job.discharge_country || "-"}</td>
                       <td style={s.td}>{job.sb_no || "-"}</td>
@@ -1048,6 +1084,51 @@ const ExportJobsTable = () => {
           </div>
         </div>
       )}
+      {/* Add Job Dialog */}
+      <Dialog
+        open={openAddDialog}
+        onClose={() => setOpenAddDialog(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          style: {
+            borderRadius: "8px",
+            backgroundColor: "#f0f2f5",
+          },
+        }}
+      >
+        <DialogTitle
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "15px 20px",
+            borderBottom: "1px solid #e5e7eb",
+            backgroundColor: "#fff",
+            fontSize: "16px",
+            fontWeight: "700",
+          }}
+        >
+          <span>Create New Export Job</span>
+          <IconButton
+            edge="end"
+            color="inherit"
+            onClick={() => setOpenAddDialog(false)}
+            aria-label="close"
+            size="small"
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent style={{ padding: 0 }}>
+          <AddExJobs
+            onJobCreated={() => {
+              setOpenAddDialog(false);
+              fetchJobs();
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

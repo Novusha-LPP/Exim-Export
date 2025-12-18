@@ -347,26 +347,6 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
               />
             </div>
 
-            {/* City / PIN */}
-            <div style={styles.grid2}>
-              <div>
-                <div style={styles.label}>City</div>
-                <input
-                  style={styles.input}
-                  value={tp.city || ""}
-                  onChange={(e) => setThirdParty({ city: e.target.value })}
-                />
-              </div>
-              <div>
-                <div style={styles.label}>PIN</div>
-                <input
-                  style={styles.input}
-                  value={tp.pin || ""}
-                  onChange={(e) => setThirdParty({ pin: e.target.value })}
-                />
-              </div>
-            </div>
-
             {/* Country / State */}
             <div style={styles.grid2}>
               <div>
@@ -375,14 +355,6 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
                   style={styles.input}
                   value={tp.country || ""}
                   onChange={(e) => setThirdParty({ country: e.target.value })}
-                />
-              </div>
-              <div>
-                <div style={styles.label}>State</div>
-                <input
-                  style={styles.input}
-                  value={tp.state || ""}
-                  onChange={(e) => setThirdParty({ state: e.target.value })}
                 />
               </div>
             </div>
@@ -458,32 +430,7 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
               />
             </div>
 
-            <div style={styles.grid2}>
-              <div>
-                <div style={styles.label}>City</div>
-                <input
-                  style={{
-                    ...styles.input,
-                    ...(buyerDisabled ? styles.disabledInput : {}),
-                  }}
-                  value={by.city || ""}
-                  disabled={buyerDisabled}
-                  onChange={(e) => setBuyer({ city: e.target.value })}
-                />
-              </div>
-              <div>
-                <div style={styles.label}>PIN</div>
-                <input
-                  style={{
-                    ...styles.input,
-                    ...(buyerDisabled ? styles.disabledInput : {}),
-                  }}
-                  value={by.pin || ""}
-                  disabled={buyerDisabled}
-                  onChange={(e) => setBuyer({ pin: e.target.value })}
-                />
-              </div>
-            </div>
+
 
             <div style={styles.grid2}>
               <div>
@@ -496,18 +443,6 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
                   value={by.country || ""}
                   disabled={buyerDisabled}
                   onChange={(e) => setBuyer({ country: e.target.value })}
-                />
-              </div>
-              <div>
-                <div style={styles.label}>State</div>
-                <input
-                  style={{
-                    ...styles.input,
-                    ...(buyerDisabled ? styles.disabledInput : {}),
-                  }}
-                  value={by.state || ""}
-                  disabled={buyerDisabled}
-                  onChange={(e) => setBuyer({ state: e.target.value })}
                 />
               </div>
             </div>

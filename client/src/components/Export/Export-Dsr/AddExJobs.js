@@ -11,7 +11,7 @@ const s = {
     fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     backgroundColor: "#f0f2f5",
     padding: "20px",
-    minHeight: "100vh",
+    minHeight: "80vh",
     color: "#1f2937",
     fontSize: "12px",
     fontWeight: "700",
@@ -729,7 +729,7 @@ function GatewayPortDropdown({
   );
 }
 
-const AddExJobs = () => {
+const AddExJobs = ({ onJobCreated }) => {
   const emptyConsignee = {
     consignee_name: "",
     consignee_address: "",
@@ -761,6 +761,14 @@ const AddExJobs = () => {
   const [toast, setToast] = useState(null);
   const wrapperRef = useRef(null);
 
+  // Consignee autocomplete state
+  const [consigneeList, setConsigneeList] = useState([]);
+  const [activeConsigneeIdx, setActiveConsigneeIdx] = useState(-1);
+  const [showConsigneeMenu, setShowConsigneeMenu] = useState(false);
+  const [filteredConsignees, setFilteredConsignees] = useState([]);
+  const [keyboardActive, setKeyboardActive] = useState(-1);
+  const consigneeMenuRef = useRef(null);
+
   // inside AddExJobs.jsx, before component
   const branchOptions = [
     { code: "BRD", label: "BRD - BARODA" },
@@ -774,6 +782,38 @@ const AddExJobs = () => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
+
+  // Fetch consignees for autocomplete
+  useEffect(() => {
+    const fetchConsignees = async () => {
+      try {
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_STRING}/dsr/consignees`
+        );
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setConsigneeList(res.data.data);
+        }
+      } catch (e) {
+        console.error("Error fetching consignees", e);
+      }
+    };
+    fetchConsignees();
+  }, []);
+
+  // Close consignee menu on click outside
+  useEffect(() => {
+    const close = (e) => {
+      if (
+        consigneeMenuRef.current &&
+        !consigneeMenuRef.current.contains(e.target)
+      ) {
+        setShowConsigneeMenu(false);
+        setActiveConsigneeIdx(-1);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -843,6 +883,32 @@ const AddExJobs = () => {
     setFormData({ ...formData, consignees: updated });
   };
 
+  const handleConsigneeNameChange = (idx, e) => {
+    const val = toUpper(e.target.value);
+    handleConsigneeChange(idx, "consignee_name", val);
+
+    // Filter list
+    const filtered = consigneeList.filter((c) =>
+      toUpper(c.consignee_name).includes(val)
+    );
+    setFilteredConsignees(filtered);
+    setActiveConsigneeIdx(idx);
+    setShowConsigneeMenu(true);
+    setKeyboardActive(-1);
+  };
+
+  const handleSelectConsignee = (idx, consignee) => {
+    const updated = [...formData.consignees];
+    updated[idx].consignee_name = toUpper(consignee.consignee_name);
+    updated[idx].consignee_address = toUpper(consignee.consignee_address || "");
+    updated[idx].consignee_country = toUpper(consignee.consignee_country || "");
+    setFormData({ ...formData, consignees: updated });
+
+    setShowConsigneeMenu(false);
+    setActiveConsigneeIdx(-1);
+  };
+
+
   const addConsignee = () =>
     setFormData((p) => ({
       ...p,
@@ -871,6 +937,7 @@ const AddExJobs = () => {
       if (response.data.success) {
         showToast(`Job Created! No: ${response.data.job.job_no}`);
         handleClear();
+        if (onJobCreated) onJobCreated();
       }
     } catch (e) {
       showToast("Failed to create job", "error");
@@ -913,11 +980,6 @@ const AddExJobs = () => {
             {toast.msg}
           </div>
         )}
-
-        <div style={s.pageHeader}>
-          <h1 style={s.pageTitle}>Create Export Job</h1>
-          <p style={s.subTitle}>Create a new job record manually.</p>
-        </div>
 
         <form onSubmit={handleSubmit}>
           {/* 1. Organization */}
@@ -1097,21 +1159,82 @@ const AddExJobs = () => {
             <div style={s.cardBody}>
               {formData.consignees.map((item, idx) => (
                 <div key={idx} style={s.consigneeRow}>
-                  <div style={{ ...s.col, flex: 2 }}>
+                  <div style={{ ...s.col, flex: 2, position: "relative" }} ref={idx === activeConsigneeIdx ? consigneeMenuRef : null}>
                     <label style={s.label}>Consignee Name *</label>
                     <input
                       style={s.input}
                       placeholder="Name"
                       value={item.consignee_name}
-                      onChange={(e) =>
-                        handleConsigneeChange(
-                          idx,
-                          "consignee_name",
-                          e.target.value
-                        )
-                      }
+                      onChange={(e) => handleConsigneeNameChange(idx, e)}
+                      onFocus={() => {
+                        const val = toUpper(item.consignee_name);
+                        const filtered = consigneeList.filter((c) =>
+                          toUpper(c.consignee_name).includes(val)
+                        );
+                        setFilteredConsignees(filtered);
+                        setActiveConsigneeIdx(idx);
+                        setShowConsigneeMenu(true);
+                      }}
+                      onKeyDown={(e) => {
+                        if (activeConsigneeIdx !== idx || !showConsigneeMenu) return;
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setKeyboardActive((a) =>
+                            Math.min(filteredConsignees.length - 1, a + 1)
+                          );
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setKeyboardActive((a) => Math.max(0, a - 1));
+                        } else if (e.key === "Enter" && keyboardActive >= 0) {
+                          e.preventDefault();
+                          handleSelectConsignee(
+                            idx,
+                            filteredConsignees[keyboardActive]
+                          );
+                        } else if (e.key === "Escape") {
+                          setShowConsigneeMenu(false);
+                        }
+                      }}
                       required
                     />
+                    {showConsigneeMenu &&
+                      activeConsigneeIdx === idx &&
+                      filteredConsignees.length > 0 && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: 0,
+                            right: 0,
+                            top: "100%",
+                            background: "#fff",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 3,
+                            zIndex: 9999,
+                            maxHeight: 150,
+                            overflow: "auto",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                            marginTop: 2,
+                          }}
+                        >
+                          {filteredConsignees.map((c, i) => (
+                            <div
+                              key={i}
+                              style={{
+                                padding: "4px 8px",
+                                cursor: "pointer",
+                                fontSize: 11,
+                                background: keyboardActive === i ? "#e5edff" : "#fff",
+                                fontWeight: keyboardActive === i ? 600 : 400,
+                                borderBottom: "1px solid #f3f4f6",
+                              }}
+                              onMouseDown={() => handleSelectConsignee(idx, c)}
+                              onMouseEnter={() => setKeyboardActive(i)}
+                            >
+                              {toUpper(c.consignee_name)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                   </div>
                   <div style={{ ...s.col, flex: 3 }}>
                     <label style={s.label}>Address</label>
@@ -1180,7 +1303,7 @@ const AddExJobs = () => {
             <div style={s.cardBody}>
               <div style={s.row}>
                 <div style={{ ...s.col, maxWidth: "120px" }}>
-                  <label style={s.label}>Movement</label>
+                  <label style={s.label}>Consignment Type</label>
                   <select
                     style={s.select}
                     value={formData.consignmentType}
@@ -1190,6 +1313,8 @@ const AddExJobs = () => {
                   >
                     <option value="FCL">FCL</option>
                     <option value="LCL">LCL</option>
+                    <option value="AIR">AIR</option>
+                    <option value="Break Bulk">Break Bulk</option>
                   </select>
                 </div>
 
@@ -1210,7 +1335,7 @@ const AddExJobs = () => {
 
                 {/* Port of Loading from Gateway Port Directory */}
                 <GatewayPortDropdown
-                  label="Port of Loading"
+                  label="Loading Port"
                   value={formData.port_of_loading}
                   onChange={(val) => handleInputChange("port_of_loading", val)}
                 />

@@ -416,7 +416,7 @@ function NatureOfCargoDropdownField({
   fieldName,
   formik,
   natureOptions,
-  placeholder = "C - CONTAINERISED",
+  placeholder = "",
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(formik.values[fieldName] || "");
@@ -1034,6 +1034,9 @@ function ShippingLineDropdownField({
 }
 
 function ShipmentMainTab({ formik, onUpdate }) {
+  const transportMode = toUpper(formik.values.transportMode || "");
+  const isAir = transportMode === "AIR";
+
   const saveTimeoutRef = useRef(null);
 
   // Compact auto-save
@@ -1076,7 +1079,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   placeholder="ENTER LINE"
                 />
 
-                <div style={styles.field}>
+               {!isAir && <div style={styles.field}>
                   <div style={styles.label}>VOYAGE NO</div>
                   <input
                     style={styles.input}
@@ -1088,9 +1091,9 @@ function ShipmentMainTab({ formik, onUpdate }) {
                       )
                     }
                   />
-                </div>
+                </div>}
                 <div style={styles.field}>
-                  <div style={styles.label}>MBL NO</div>
+                  <div style={styles.label}>{isAir ? "MAWB NO" : "MBL NO"}</div>
                   <input
                     style={styles.input}
                     value={toUpper(formik.values.mbl_no || "")}
@@ -1100,7 +1103,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   />
                 </div>
                 <div style={styles.field}>
-                  <div style={styles.label}>HBL NO</div>
+                  <div style={styles.label}>{isAir ? "HAWB NO" : "HBL NO"}</div>
                   <input
                     style={styles.input}
                     value={toUpper(formik.values.hbl_no || "")}
@@ -1181,16 +1184,61 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   placeholder="Enter Port"
                   formik={formik}
                 />
-                <div style={styles.field}>
-                  <div style={styles.label}>VESSEL/SAILING DATE</div>
-                  <DateInput
-                    style={styles.input}
-                    value={formik.values.vessel_sailing_date || ""}
-                    onChange={(e) =>
-                      handleFieldChange("vessel_sailing_date", e.target.value)
-                    }
-                  />
-                </div>
+                {isAir ? (
+                  <>
+                    <div style={styles.field}>
+                      <div style={styles.label}>FLIGHT NO</div>
+                      <input
+                        style={styles.input}
+                        placeholder="ENTER FLIGHT NO"
+                        value={toUpper(formik.values.flight_no || "")}
+                        onChange={(e) =>
+                          handleFieldChange(
+                            "flight_no",
+                            e.target.value.toUpperCase()
+                          )
+                        }
+                      />
+                    </div>
+                    <div style={styles.field}>
+                      <div style={styles.label}>FLIGHT DATE</div>
+                      <DateInput
+                        style={styles.input}
+                        value={formik.values.flight_date || ""}
+                        onChange={(e) =>
+                          handleFieldChange("flight_date", e.target.value)
+                        }
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={styles.field}>
+                      <div style={styles.label}>VESSEL NAME</div>
+                      <input
+                        style={styles.input}
+                        placeholder="Enter Vessel Name"
+                        value={toUpper(formik.values.vessel_name || "")}
+                        onChange={(e) =>
+                          handleFieldChange(
+                            "vessel_name",
+                            e.target.value.toUpperCase()
+                          )
+                        }
+                      />
+                    </div>
+                    <div style={styles.field}>
+                      <div style={styles.label}>SAILING DATE</div>
+                      <DateInput
+                        style={styles.input}
+                        value={formik.values.sailing_date || ""}
+                        onChange={(e) =>
+                          handleFieldChange("sailing_date", e.target.value)
+                        }
+                      />
+                    </div>
+                  </>
+                )}
                 <div style={styles.field}>
                   <div style={styles.label}>EGM NO</div>
                   <input
@@ -1212,7 +1260,9 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   />
                 </div>
                 <div style={styles.field}>
-                  <div style={styles.label}>MBL DATE</div>
+                  <div style={styles.label}>
+                    {isAir ? "MAWB DATE" : "MBL DATE"}
+                  </div>
                   <DateInput
                     style={styles.input}
                     value={formik.values.mbl_date || ""}
@@ -1222,7 +1272,9 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   />
                 </div>
                 <div style={styles.field}>
-                  <div style={styles.label}>HBL DATE</div>
+                  <div style={styles.label}>
+                    {isAir ? "HAWB DATE" : "HBL DATE"}
+                  </div>
                   <DateInput
                     style={styles.input}
                     value={formik.values.hbl_date || ""}

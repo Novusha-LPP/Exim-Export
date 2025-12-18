@@ -154,7 +154,8 @@ const productDetailsSchema = new Schema(
     socunit: { type: String },
     unitPrice: { type: String },
     priceUnit: { type: String },
-    per: { type: String, ref: "UQC" },
+    per: { type: String },
+    perUnit: { type: String },
     amount: { type: String },
     amountUnit: { type: String },
 
@@ -636,7 +637,7 @@ const exportJobSchema = new mongoose.Schema(
     sb_no: { type: String, trim: true },
     consignmentType: {
       type: String,
-      enum: ["FCL", "LCL", "Break Bulk"],
+      enum: ["FCL", "LCL", "AIR", "Break Bulk"],
     },
     shipping_line_airline: { type: String, trim: true },
     branchSrNo: { type: String, trim: true },
@@ -683,8 +684,11 @@ const exportJobSchema = new mongoose.Schema(
     gateway_port: { type: String, trim: true },
     state_of_origin: { type: String, trim: true },
 
-    vessel_sailing_date: { type: String, trim: true },
+    sailing_date: { type: String, trim: true },
     voyage_no: { type: String, trim: true },
+    vessel_name: { type: String, trim: true },
+    flight_no: { type: String, trim: true },
+    flight_date: { type: String, trim: true },
     nature_of_cargo: { type: String, trim: true },
     loose_pkgs: { type: String, trim: true },
     no_of_containers: { type: String, trim: true },
@@ -794,7 +798,8 @@ const exportJobSchema = new mongoose.Schema(
 
     // Other Information
     otherInfo: {
-      exportContractNoDate: String,
+      exportContractNo: String,
+      exportContractDate: String,
       natureOfPayment: {
         type: String,
         enum: [
@@ -977,6 +982,8 @@ const exportJobSchema = new mongoose.Schema(
     },
     masterblno: { type: String, trim: true }, // Master BL Number
     houseblno: { type: String, trim: true }, // House BL Number
+    lockedBy: { type: String, trim: true, default: null }, // User who currently has the job open
+    lockedAt: { type: Date, default: null }, // Timestamp when the job was locked
   },
 
   {

@@ -1,6 +1,6 @@
-// OtherInfoTab.jsx
 import React, { useRef, useState, useEffect } from "react";
 import { styles as commonStyles } from "../Product/commonStyles";
+import DateInput from "../../../common/DateInput.js";
 
 const apiBase = import.meta.env.VITE_API_STRING;
 
@@ -197,10 +197,10 @@ const styles = {
   },
   grid2: {
     display: "grid",
-    gridTemplateColumns: "1.2fr 1.1fr",
+    gridTemplateColumns: "1fr 1fr",
     columnGap: 18,
     rowGap: 6,
-    alignItems: "center",
+    alignItems: "end",
   },
   field: {
     ...commonStyles.field,
@@ -238,19 +238,32 @@ const OtherInfoTab = ({ formik }) => {
       <div style={styles.card}>
         <div style={styles.title}>Other Info</div>
 
-        {/* Row 1: Export Contract / Nature of Payment */}
+        {/* Row 1: Export Contract */}
         <div style={styles.grid2}>
           <div style={styles.field}>
-            <div style={styles.label}>Export Contract No / Dt.</div>
+            <div style={styles.label}>Export Contract No</div>
             <input
               style={styles.input}
-              value={otherInfo.exportContractNoDate || ""}
+              value={otherInfo.exportContractNo || ""}
               onChange={(e) =>
-                handleFieldChange("exportContractNoDate", e.target.value)
+                handleFieldChange("exportContractNo", e.target.value)
               }
             />
           </div>
+          <div style={styles.field}>
+            <div style={styles.label}>Export Contract Date</div>
+            <DateInput
+              style={styles.input}
+              value={otherInfo.exportContractDate || ""}
+              onChange={(e) =>
+                handleFieldChange("exportContractDate", e.target.value)
+              }
+            />
+          </div>
+        </div>
 
+        {/* Row 2: Nature of Payment / Payment Period */}
+        <div style={styles.grid2}>
           <div style={styles.field}>
             <div style={styles.label}>Nature Of Payment</div>
             <select
@@ -267,10 +280,6 @@ const OtherInfoTab = ({ formik }) => {
               ))}
             </select>
           </div>
-        </div>
-
-        {/* Row 2: Payment Period */}
-        <div style={styles.grid2}>
           <div style={styles.field}>
             <div style={styles.label}>Payment Period (days)</div>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -285,7 +294,6 @@ const OtherInfoTab = ({ formik }) => {
               <span style={{ fontSize: 11, color: "#555" }}>days</span>
             </div>
           </div>
-          <div style={styles.field}>{/* reserved column */}</div>
         </div>
 
         {/* AEO header */}

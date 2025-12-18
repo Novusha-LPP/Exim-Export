@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import FileUpload from "../../../gallery/FileUpload.js";
 import ImagePreview from "../../../gallery/ImagePreview.js";
@@ -9,6 +9,275 @@ import DateInput from "../../../common/DateInput.js";
 function toUpper(val) {
   return (typeof val === "string" ? val : "")?.toUpperCase() || "";
 }
+
+// Searchable Organization Dropdown Component
+function SearchableOrganizationDropdown({ value, options, onChange, placeholder }) {
+  const [query, setQuery] = useState(value || "");
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    setQuery(value || "");
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filtered = options.filter((org) =>
+    toUpper(org.organization || "").includes(toUpper(query))
+  );
+
+  const handleSelect = (org) => {
+    setQuery(toUpper(org.organization || ""));
+    setOpen(false);
+    setActive(-1);
+    onChange(org);
+  };
+
+  return (
+    <div style={{ position: "relative", flex: 1 }} ref={wrapperRef}>
+      <input
+        type="text"
+        value={toUpper(query)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (!open || filtered.length === 0) return;
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setActive((a) => Math.min(filtered.length - 1, a + 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActive((a) => Math.max(0, a - 1));
+          } else if (e.key === "Enter" && active >= 0) {
+            e.preventDefault();
+            handleSelect(filtered[active]);
+          } else if (e.key === "Escape") {
+            setOpen(false);
+          }
+        }}
+        placeholder={placeholder}
+        style={{
+          flex: 1,
+          width: "100%",
+          padding: "3px 6px",
+          border: "1px solid #cbd5e1",
+          borderRadius: 3,
+          fontSize: 11,
+          outline: "none",
+          height: 24,
+          backgroundColor: "#ffffff",
+          boxSizing: "border-box",
+          fontWeight: 700,
+          paddingRight: "28px",
+        }}
+      />
+      <span
+        style={{
+          position: "absolute",
+          right: "8px",
+          top: "50%",
+          transform: "translateY(-50%)",
+          fontSize: "10px",
+          color: "#64748b",
+          pointerEvents: "none",
+        }}
+      >
+        ▼
+      </span>
+      {open && filtered.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            background: "#fff",
+            border: "1px solid #cbd5e1",
+            borderRadius: "4px",
+            marginTop: "2px",
+            maxHeight: "200px",
+            overflowY: "auto",
+            zIndex: 9999,
+            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+          }}
+        >
+          {filtered.map((org, idx) => (
+            <div
+              key={org._id || idx}
+              style={{
+                padding: "8px 12px",
+                cursor: "pointer",
+                background: active === idx ? "#f1f5f9" : "#fff",
+                fontSize: "11px",
+                fontWeight: active === idx ? "700" : "600",
+                borderBottom: "1px solid #f3f4f6",
+              }}
+              onMouseDown={() => handleSelect(org)}
+              onMouseEnter={() => setActive(idx)}
+            >
+              {toUpper(org.organization || "")}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Searchable Consignee Dropdown Component
+function SearchableConsigneeDropdown({ value, options, onChange, placeholder }) {
+  const [query, setQuery] = useState(value || "");
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    setQuery(value || "");
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filtered = options.filter((consignee) =>
+    toUpper(consignee.consignee_name || "").includes(toUpper(query))
+  );
+
+  const handleSelect = (consignee) => {
+    setQuery(toUpper(consignee.consignee_name || ""));
+    setOpen(false);
+    setActive(-1);
+    onChange(consignee);
+  };
+
+  return (
+    <div style={{ position: "relative", flex: 1 }} ref={wrapperRef}>
+      <input
+        type="text"
+        value={toUpper(query)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (!open || filtered.length === 0) return;
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setActive((a) => Math.min(filtered.length - 1, a + 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActive((a) => Math.max(0, a - 1));
+          } else if (e.key === "Enter" && active >= 0) {
+            e.preventDefault();
+            handleSelect(filtered[active]);
+          } else if (e.key === "Escape") {
+            setOpen(false);
+          }
+        }}
+        placeholder={placeholder}
+        style={{
+          flex: 1,
+          padding: "3px 6px",
+          width: "100%",
+          border: "1px solid #cbd5e1",
+          borderRadius: 3,
+          fontSize: 11,
+          outline: "none",
+          height: 24,
+          backgroundColor: "#ffffff",
+          boxSizing: "border-box",
+          fontWeight: 700,
+          paddingRight: "28px",
+        }}
+      />
+      <span
+        style={{
+          position: "absolute",
+          right: "8px",
+          top: "50%",
+          transform: "translateY(-50%)",
+          fontSize: "10px",
+          color: "#64748b",
+          pointerEvents: "none",
+        }}
+      >
+        ▼
+      </span>
+      {open && filtered.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            background: "#fff",
+            border: "1px solid #cbd5e1",
+            borderRadius: "4px",
+            marginTop: "2px",
+            maxHeight: "200px",
+            overflowY: "auto",
+            zIndex: 9999,
+            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+          }}
+        >
+          {filtered.map((consignee, idx) => (
+            <div
+              key={consignee._id || idx}
+              style={{
+                padding: "8px 12px",
+                cursor: "pointer",
+                background: active === idx ? "#f1f5f9" : "#fff",
+                fontSize: "11px",
+                fontWeight: active === idx ? "700" : "600",
+                borderBottom: "1px solid #f3f4f6",
+              }}
+              onMouseDown={() => handleSelect(consignee)}
+              onMouseEnter={() => setActive(idx)}
+            >
+              {toUpper(consignee.consignee_name || "")}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Small field helper
+const Field = ({ label, value, onChange, type = "text", disabled = false }) => (
+  <div style={s.fieldGroup}>
+    <span style={s.label}>{label}</span>
+    <input
+      type={type}
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      style={{
+        ...s.input,
+        backgroundColor: disabled ? "#e5e7eb" : "#ffffff",
+      }}
+    />
+  </div>
+);
 
 // Enterprise styles
 const s = {
@@ -157,26 +426,10 @@ const s = {
   },
 };
 
-// Small field helper
-const Field = ({ label, value, onChange, type = "text", disabled = false }) => (
-  <div style={s.fieldGroup}>
-    <span style={s.label}>{label}</span>
-    <input
-      type={type}
-      value={value || ""}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={disabled}
-      style={{
-        ...s.input,
-        backgroundColor: disabled ? "#e5e7eb" : "#ffffff",
-      }}
-    />
-  </div>
-);
-
-const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
+const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [organizations, setOrganizations] = useState([]);
+  const [consigneeList, setConsigneeList] = useState([]);
   const [orgLoading, setOrgLoading] = useState(false);
 
   const safeDoc = doc || {};
@@ -184,24 +437,6 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
   useEffect(() => {
     if (setDoc && doc) setDoc(doc);
   }, [doc, setDoc]);
-
-  useEffect(() => {
-    if (!open) return;
-    const fetchOrgs = async () => {
-      try {
-        setOrgLoading(true);
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/directory`
-        );
-        if (res.data?.success) setOrganizations(res.data.data || []);
-      } catch (e) {
-        console.error("Error fetching organizations for eSanchit", e);
-      } finally {
-        setOrgLoading(false);
-      }
-    };
-    fetchOrgs();
-  }, [open]);
 
   const issuingParty = safeDoc.issuingParty || {};
   const beneficiaryParty = safeDoc.beneficiaryParty || {};
@@ -228,6 +463,98 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
     }));
   };
 
+  // Fetch organizations for Issuing Party
+  useEffect(() => {
+    if (!open) return;
+    const fetchOrgs = async () => {
+      try {
+        setOrgLoading(true);
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_STRING}/directory`
+        );
+        if (res.data?.success) setOrganizations(res.data.data || []);
+      } catch (e) {
+        console.error("Error fetching organizations for eSanchit", e);
+      } finally {
+        setOrgLoading(false);
+      }
+    };
+    fetchOrgs();
+  }, [open]);
+
+  // Fetch consignees for Beneficiary Party
+  useEffect(() => {
+    if (!open) return;
+    const fetchConsignees = async () => {
+      try {
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_STRING}/dsr/consignees`
+        );
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setConsigneeList(res.data.data);
+        }
+      } catch (e) {
+        console.error("Error fetching consignees for eSanchit", e);
+      }
+    };
+    fetchConsignees();
+  }, [open]);
+
+  // Auto-populate Issuing Party and Beneficiary Party from job data
+  useEffect(() => {
+    if (!open || !jobData) return;
+    
+    // Only auto-populate if the fields are currently empty (for new documents)
+    const isIssuingPartyEmpty = !safeDoc.issuingParty?.name;
+    const isBeneficiaryPartyEmpty = !safeDoc.beneficiaryParty?.name;
+
+    // Auto-populate Issuing Party from exporter
+    if (isIssuingPartyEmpty && jobData.exporter && organizations.length > 0) {
+      const exporterName = toUpper(jobData.exporter);
+      
+      // Find and populate exporter details
+      const org = organizations.find(
+        (o) => toUpper(o.organization || "") === exporterName
+      );
+      
+      if (org) {
+        const branch = org.branchInfo?.[0] || {};
+        handleIssuingPartyChange("name", exporterName);
+        handleIssuingPartyChange("code", toUpper(branch.branchCode || ""));
+        handleIssuingPartyChange("addressLine1", toUpper(branch.address || ""));
+        handleIssuingPartyChange("addressLine2", "");
+        handleIssuingPartyChange("city", toUpper(branch.city || ""));
+        handleIssuingPartyChange("pinCode", toUpper(branch.postalCode || ""));
+      }
+    }
+
+    // Auto-populate Beneficiary Party from first consignee
+    if (isBeneficiaryPartyEmpty && jobData.consignees && jobData.consignees.length > 0 && consigneeList.length > 0) {
+      const firstConsignee = jobData.consignees[0];
+      const consigneeName = toUpper(firstConsignee.consignee_name || "");
+      
+      // Try to find full consignee details from the consignee list
+      const fullConsignee = consigneeList.find(
+        (c) => toUpper(c.consignee_name || "") === consigneeName
+      );
+      
+      if (fullConsignee) {
+        handleBeneficiaryPartyChange("name", toUpper(fullConsignee.consignee_name || ""));
+        handleBeneficiaryPartyChange("addressLine1", toUpper(fullConsignee.consignee_address || ""));
+        handleBeneficiaryPartyChange("addressLine2", "");
+        handleBeneficiaryPartyChange("city", "");
+        handleBeneficiaryPartyChange("pinCode", "");
+      } else {
+        // Fallback to job data if not found in consignee list
+        handleBeneficiaryPartyChange("name", consigneeName);
+        handleBeneficiaryPartyChange("addressLine1", toUpper(firstConsignee.consignee_address || ""));
+        handleBeneficiaryPartyChange("addressLine2", "");
+        handleBeneficiaryPartyChange("city", "");
+        handleBeneficiaryPartyChange("pinCode", "");
+      }
+    }
+  }, [open, jobData, organizations, consigneeList]);
+
   const onSelectIssuingParty = (e) => {
     const val = toUpper(e.target.value);
     handleIssuingPartyChange("name", val);
@@ -246,16 +573,18 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
   const onSelectBeneficiaryParty = (e) => {
     const val = toUpper(e.target.value);
     handleBeneficiaryPartyChange("name", val);
-    const org = organizations.find(
-      (o) => toUpper(o.organization || "") === val
+    
+    // Find consignee and populate details
+    const consignee = consigneeList.find(
+      (c) => toUpper(c.consignee_name || "") === val
     );
-    if (!org) return;
-    const branch = org.branchInfo?.[0] || {};
-    handleBeneficiaryPartyChange("code", toUpper(branch.branchCode || ""));
-    handleBeneficiaryPartyChange("addressLine1", toUpper(branch.address || ""));
+    if (!consignee) return;
+    
+    handleBeneficiaryPartyChange("code", "");
+    handleBeneficiaryPartyChange("addressLine1", toUpper(consignee.consignee_address || ""));
     handleBeneficiaryPartyChange("addressLine2", "");
-    handleBeneficiaryPartyChange("city", toUpper(branch.city || ""));
-    handleBeneficiaryPartyChange("pinCode", toUpper(branch.postalCode || ""));
+    handleBeneficiaryPartyChange("city", "");
+    handleBeneficiaryPartyChange("pinCode", "");
   };
 
   const handleConfirmDelete = () => {
@@ -422,21 +751,22 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
               <div style={s.sectionTitleLink}>Issuing Party Details</div>
               <div style={s.fieldGroup}>
                 <span style={s.label}>Name {orgLoading ? "(...)" : ""}</span>
-                <select
-                  style={s.select}
+                <SearchableOrganizationDropdown
                   value={issuingParty.name || ""}
-                  onChange={onSelectIssuingParty}
-                >
-                  <option value="">-- Select --</option>
-                  {organizations.map((o) => (
-                    <option
-                      key={o._id || o.organization}
-                      value={toUpper(o.organization || "")}
-                    >
-                      {toUpper(o.organization || "")}
-                    </option>
-                  ))}
-                </select>
+                  options={organizations}
+                  onChange={(selectedOrg) => {
+                    if (selectedOrg) {
+                      const branch = selectedOrg.branchInfo?.[0] || {};
+                      handleIssuingPartyChange("name", toUpper(selectedOrg.organization || ""));
+                      handleIssuingPartyChange("code", toUpper(branch.branchCode || ""));
+                      handleIssuingPartyChange("addressLine1", toUpper(branch.address || ""));
+                      handleIssuingPartyChange("addressLine2", "");
+                      handleIssuingPartyChange("city", toUpper(branch.city || ""));
+                      handleIssuingPartyChange("pinCode", toUpper(branch.postalCode || ""));
+                    }
+                  }}
+                  placeholder="TYPE TO SEARCH ORGANIZATION"
+                />
               </div>
               <Field
                 label="Code"
@@ -468,22 +798,22 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc }) => {
             <div style={s.col}>
               <div style={s.sectionTitleLink}>Beneficiary Party Details</div>
               <div style={s.fieldGroup}>
-                <span style={s.label}>Name {orgLoading ? "(...)" : ""}</span>
-                <select
-                  style={s.select}
+                <span style={s.label}>Name</span>
+                <SearchableConsigneeDropdown
                   value={beneficiaryParty.name || ""}
-                  onChange={onSelectBeneficiaryParty}
-                >
-                  <option value="">-- Select --</option>
-                  {organizations.map((o) => (
-                    <option
-                      key={o._id || o.organization}
-                      value={toUpper(o.organization || "")}
-                    >
-                      {toUpper(o.organization || "")}
-                    </option>
-                  ))}
-                </select>
+                  options={consigneeList}
+                  onChange={(selectedConsignee) => {
+                    if (selectedConsignee) {
+                      handleBeneficiaryPartyChange("name", toUpper(selectedConsignee.consignee_name || ""));
+                      handleBeneficiaryPartyChange("code", "");
+                      handleBeneficiaryPartyChange("addressLine1", toUpper(selectedConsignee.consignee_address || ""));
+                      handleBeneficiaryPartyChange("addressLine2", "");
+                      handleBeneficiaryPartyChange("city", "");
+                      handleBeneficiaryPartyChange("pinCode", "");
+                    }
+                  }}
+                  placeholder="TYPE TO SEARCH CONSIGNEE"
+                />
               </div>
               <Field
                 label="Code"

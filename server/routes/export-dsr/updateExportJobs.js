@@ -179,8 +179,9 @@ router.post("/exports", async (req, res) => {
 
 router.get("/:job_no*", async (req, res) => {
   try {
-    const raw = req.params.job_no || ""; // "AMD/EXP/SEA/00002/25-26"
+    const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
+    const username = req.headers["username"]; // Identify who is requesting
 
     const exportJob = await ExJobModel.findOne({
       job_no: { $regex: `^${job_no}$`, $options: "i" },
@@ -190,10 +191,97 @@ router.get("/:job_no*", async (req, res) => {
       return res.status(404).json({ message: "Export job not found" });
     }
 
+    // Check for stale locks (e.g., older than 30 minutes)
+    const LOCK_TIMEOUT = 30 * 60 * 1000;
+    if (
+      exportJob.lockedBy &&
+      exportJob.lockedAt &&
+      new Date() - new Date(exportJob.lockedAt) > LOCK_TIMEOUT
+    ) {
+      exportJob.lockedBy = null;
+      exportJob.lockedAt = null;
+      await exportJob.save();
+    }
+
+    // If locked by someone else, return localized info
+    if (exportJob.lockedBy && exportJob.lockedBy !== username) {
+      return res.status(423).json({
+        message: `Job is currently locked by ${exportJob.lockedBy}`,
+        lockedBy: exportJob.lockedBy,
+        job: exportJob, // Still send data if they just want to "view" (optional, but 423 is standard for locked)
+      });
+    }
+
     res.json(exportJob);
   } catch (error) {
     console.error("Error fetching export job:", error);
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Lock a job
+router.put("/:job_no*/lock", async (req, res) => {
+  try {
+    const raw = req.params.job_no || "";
+    const job_no = decodeURIComponent(raw);
+    const { username } = req.body;
+
+    if (!username) {
+      return res.status(400).json({ message: "Username is required to lock" });
+    }
+
+    const job = await ExJobModel.findOne({
+      job_no: { $regex: `^${job_no}$`, $options: "i" },
+    });
+
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    // Check if already locked by someone else
+    const LOCK_TIMEOUT = 30 * 60 * 1000;
+    const isStale =
+      job.lockedAt && new Date() - new Date(job.lockedAt) > LOCK_TIMEOUT;
+
+    if (job.lockedBy && job.lockedBy !== username && !isStale) {
+      return res.status(423).json({
+        message: `Already locked by ${job.lockedBy}`,
+        lockedBy: job.lockedBy,
+      });
+    }
+
+    job.lockedBy = username;
+    job.lockedAt = new Date();
+    await job.save();
+
+    res.json({ message: "Job locked successfully", lockedBy: username });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// Unlock a job
+router.put("/:job_no*/unlock", async (req, res) => {
+  try {
+    const raw = req.params.job_no || "";
+    const job_no = decodeURIComponent(raw);
+    const { username } = req.body;
+
+    const job = await ExJobModel.findOne({
+      job_no: { $regex: `^${job_no}$`, $options: "i" },
+    });
+
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    // Only let the owner or an admin unlock? For now, if username matches
+    if (job.lockedBy === username) {
+      job.lockedBy = null;
+      job.lockedAt = null;
+      await job.save();
+      return res.json({ message: "Job unlocked successfully" });
+    }
+
+    res.status(403).json({ message: "Not authorized to unlock this job" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 

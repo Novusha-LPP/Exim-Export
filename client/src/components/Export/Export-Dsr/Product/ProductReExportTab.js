@@ -3,6 +3,7 @@ import { styles } from "./commonStyles";
 import { unitCodes } from "../../../../utils/masterList";
 import { toUpperVal } from "./commonStyles.js";
 import DateInput from "../../../common/DateInput.js";
+import SearchableDropdown from "../../../common/SearchableDropdown.js";
 const ProductReExportTab = ({ formik, idx = 0 }) => {
   const product = formik.values.products?.[idx] || {};
   const reExport = product.reExport || {};
@@ -148,22 +149,16 @@ const ProductReExportTab = ({ formik, idx = 0 }) => {
             </div>
             <div style={styles.field}>
               <span style={styles.label}>Unit</span>
-              <select
-                style={styles.input}
+              <SearchableDropdown
+                options={unitCodes}
                 value={reExport.qtyImportedUnit || ""}
                 onChange={(e) =>
                   handleChange("qtyImportedUnit", e.target.value)
                 }
                 disabled={!isEnabled}
-              >
-                <option value="">Select Unit</option>
-                {unitCodes &&
-                  unitCodes.map((unit) => (
-                    <option key={unit.code || unit} value={unit.code || unit}>
-                      {unit.code || unit}
-                    </option>
-                  ))}
-              </select>
+                placeholder="Unit"
+                style={{ fontSize: 11, height: 24 }}
+              />
             </div>
           </div>
 
@@ -223,21 +218,16 @@ const ProductReExportTab = ({ formik, idx = 0 }) => {
             </div>
             <div style={styles.field}>
               <span style={styles.label}>Unit</span>
-              <select
-                style={styles.input}
+              <SearchableDropdown
+                options={unitCodes}
                 value={reExport.qtyExportedUnit || ""}
                 onChange={(e) =>
                   handleChange("qtyExportedUnit", e.target.value)
                 }
                 disabled={!isEnabled}
-              >
-                <option value="">Select Unit</option>
-                {unitCodes.map((unit) => (
-                  <option key={unit.code} value={unit.code}>
-                    {unit.code} - {unit.name}
-                  </option>
-                ))}
-              </select>
+                placeholder="Unit"
+                style={{ fontSize: 11, height: 24 }}
+              />
             </div>
           </div>
 

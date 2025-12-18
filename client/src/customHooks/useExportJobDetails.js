@@ -5,6 +5,7 @@ import { useFormik } from "formik";
 function useExportJobDetails(params, setFileSnackbar) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lockError, setLockError] = useState(null);
 
   const emptyConsignee = {
     consignee_name: "",
@@ -19,10 +20,16 @@ function useExportJobDetails(params, setFileSnackbar) {
     async function getExportJobDetails() {
       try {
         setLoading(true);
+        const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
+        const headers = {
+          username: user.username || "unknown",
+        };
+
         const response = await axios.get(
           `${import.meta.env.VITE_API_STRING}/export-jobs/${encodeURIComponent(
             params.job_no
-          )}`
+          )}`,
+          { headers }
         );
         let jobData = null;
 
@@ -43,8 +50,15 @@ function useExportJobDetails(params, setFileSnackbar) {
           setData(null);
         }
       } catch (error) {
-        console.error("Error fetching export job details:", error);
-        setData(null);
+        if (error.response && error.response.status === 423) {
+          setLockError(error.response.data.message);
+          if (error.response.data.job) {
+            setData(error.response.data.job);
+          }
+        } else {
+          console.error("Error fetching export job details:", error);
+          setData(null);
+        }
       } finally {
         setLoading(false);
       }
@@ -116,7 +130,10 @@ function useExportJobDetails(params, setFileSnackbar) {
       pre_carriage_by: "",
       gateway_port: "",
       state_of_origin: "",
-      vessel_sailing_date: "",
+      sailing_date: "",
+      vessel_name: "",
+      flight_no: "",
+      flight_date: "",
       voyage_no: "",
       nature_of_cargo: "",
       total_no_of_pkgs: "",
@@ -261,7 +278,7 @@ function useExportJobDetails(params, setFileSnackbar) {
 
       // Other Information
       otherInfo: {
-        exportContractNoDate: "",
+        exportContractNo: "",
         natureOfPayment: "Letter Of Credit",
         paymentPeriod: 0,
         aeoCode: "",
@@ -456,6 +473,7 @@ function useExportJobDetails(params, setFileSnackbar) {
           unitPrice: "",
           priceUnit: "",
           per: "",
+          perUnit: "",
           amount: "",
           amountUnit: "",
           eximCode: "",
@@ -810,7 +828,10 @@ function useExportJobDetails(params, setFileSnackbar) {
         pre_carriage_by: safeValue(data.pre_carriage_by),
         gateway_port: safeValue(data.gateway_port),
         state_of_origin: safeValue(data.state_of_origin),
-        vessel_sailing_date: safeValue(data.vessel_sailing_date),
+        sailing_date: safeValue(data.sailing_date),
+        vessel_name: safeValue(data.vessel_name),
+        flight_no: safeValue(data.flight_no),
+        flight_date: safeValue(data.flight_date),
         voyage_no: safeValue(data.voyage_no),
         nature_of_cargo: safeValue(data.nature_of_cargo),
         total_no_of_pkgs: safeValue(data.total_no_of_pkgs),
@@ -1013,6 +1034,8 @@ function useExportJobDetails(params, setFileSnackbar) {
   return {
     data,
     loading,
+    lockError,
+    setLockError,
     formik,
     setData,
   };

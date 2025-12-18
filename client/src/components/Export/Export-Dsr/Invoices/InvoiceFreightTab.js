@@ -138,7 +138,28 @@ const InvoiceFreightTab = ({ formik }) => {
   const charges = formik.values.freightInsuranceCharges || {};
   const invoice = formik.values.invoices?.[0] || {};
   const invoiceCurrency = (invoice.currency || "USD").toUpperCase();
-  const invoiceExchangeRate = Number(formik.values.exchange_rate || 1); // invoiceCur → INR
+
+  // Helper: get rate for a currency; INR defaults to 1 if missing in API
+  const getRateForCurrency = (code) => {
+    if (!code) return undefined;
+    const upper = code.toUpperCase();
+    if (upper === "INR") return 1;
+    const r = rateMap[upper];
+    return typeof r === "number" && r > 0 ? r : undefined;
+  };
+
+  const invoiceExchangeRate = (() => {
+    // Prefer explicit exchange_rate, else fallback to rate map (INR defaults to 1), else 1
+    if (
+      formik.values.exchange_rate !== undefined &&
+      formik.values.exchange_rate !== null &&
+      formik.values.exchange_rate !== ""
+    ) {
+      return Number(formik.values.exchange_rate) || 1;
+    }
+    const rm = getRateForCurrency(invoiceCurrency);
+    return rm || 1;
+  })(); // invoiceCur → INR
   const termsOfInvoice =
     invoice.termsOfInvoice || formik.values.termsOfInvoice || "FOB";
 
@@ -184,11 +205,18 @@ const InvoiceFreightTab = ({ formik }) => {
     return valueInRowCurrency;
   };
 
-  // amount = baseValue * rate / 100 (for non-FOB)
+  // amount helper
+  // - For FOB row: always take explicit amount
+  // - For other rows: if user entered amount, use it; otherwise compute = baseValue * rate / 100
   const getAmount = (rowKey, data, baseValue) => {
     if (rowKey === "fobValue") {
       return Number(data.amount || 0);
     }
+
+    if (data.amount !== undefined && data.amount !== null && data.amount !== "") {
+      return Number(data.amount || 0);
+    }
+
     const rate = Number(data.rate || 0);
     return (Number(baseValue || 0) * rate) / 100;
   };
@@ -196,7 +224,8 @@ const InvoiceFreightTab = ({ formik }) => {
   // Compute FOB in INR from all other row amounts
   const computeFOBCharges = () => {
     const inv = formik.values.invoices?.[0] || {};
-    const invoiceVal = Number(inv.invoiceValue || 0); // in invoice currency
+    // Use productValue, falling back to invoiceValue so FOB works even if only invoiceValue is filled
+    const invoiceVal = Number(inv.productValue || inv.invoiceValue || 0); // in invoice currency
     if (!invoiceVal || !invoiceExchangeRate) return charges;
 
     let totalNonFOBInInvoice = 0;
@@ -209,7 +238,11 @@ const InvoiceFreightTab = ({ formik }) => {
       "commission",
     ].forEach((k) => {
       const row = charges[k] || {};
-      const rowAmount = Number(row.amount || 0);
+
+      // Recompute the non-FOB row amount the same way the UI does,
+      // instead of relying on row.amount (which is not stored for non-FOB rows)
+      const baseValue = getBaseValue(k, row);
+      const rowAmount = getAmount(k, row, baseValue);
       if (!rowAmount) return;
 
       const rowRate = Number(row.exchangeRate || 0); // rowCur → INR
@@ -221,11 +254,43 @@ const InvoiceFreightTab = ({ formik }) => {
     const fobInINR = fobInInvoice * invoiceExchangeRate;
 
     const nextCharges = { ...charges };
+    const existingFob = nextCharges.fobValue || {};
+    const fobCurrency = (existingFob.currency || "INR").toUpperCase();
+
+    // Determine exchange rate for FOB currency → INR
+    const fallbackRate =
+      fobCurrency === invoiceCurrency
+        ? invoiceExchangeRate
+        : getRateForCurrency(fobCurrency);
+
+    const fobRate =
+      existingFob.exchangeRate !== undefined &&
+      existingFob.exchangeRate !== null &&
+      existingFob.exchangeRate !== ""
+        ? Number(existingFob.exchangeRate)
+        : fallbackRate !== undefined && fallbackRate !== null
+        ? Number(fallbackRate)
+        : fobCurrency === "INR"
+        ? 1
+        : 0;
+
+    // If no valid rate, default to invoiceExchangeRate as a last resort
+    const effectiveFobRate =
+      Number.isFinite(fobRate) && fobRate > 0 ? fobRate : invoiceExchangeRate;
+
+    // Convert FOB value from INR into selected currency for UI display
+    const fobAmountInSelected =
+      effectiveFobRate > 0 ? fobInINR / effectiveFobRate : fobInINR;
+
     nextCharges.fobValue = {
-      ...(nextCharges.fobValue || {}),
-      currency: "INR",
-      exchangeRate: 1,
-      amount: Number.isFinite(fobInINR) ? Number(fobInINR.toFixed(2)) : 0,
+      ...existingFob,
+      currency: fobCurrency,
+      exchangeRate: effectiveFobRate,
+      amount: Number.isFinite(fobAmountInSelected)
+        ? Number(fobAmountInSelected.toFixed(2))
+        : 0,
+      // keep INR reference for downstream calculations
+      amountINR: Number.isFinite(fobInINR) ? Number(fobInINR.toFixed(2)) : 0,
     };
 
     return nextCharges;
@@ -234,20 +299,20 @@ const InvoiceFreightTab = ({ formik }) => {
   // Compute FOB in USD from FOB (which is in INR)
 const computeFOBInUSD = (chargesObj) => {
   const fobRow = chargesObj?.fobValue || {};
-  const fobAmountINR = Number(fobRow.amount || 0); // you already store FOB in INR
+  // Prefer stored INR reference; fall back to converting displayed amount using exchangeRate
+  const fobAmountINR =
+    Number(fobRow.amountINR || 0) ||
+    (Number(fobRow.amount || 0) *
+      Number(fobRow.exchangeRate || invoiceExchangeRate || 0));
   if (!fobAmountINR || !invoiceExchangeRate) return 0;
 
   // invoiceExchangeRate is invoiceCurrency → INR
-  // So 1 invoiceCurrency = invoiceExchangeRate INR
-  // 1 INR = 1 / invoiceExchangeRate invoiceCurrency
   const fobInInvoiceCurrency = fobAmountINR / invoiceExchangeRate;
 
   // If invoiceCurrency is already USD, you're done
   if (invoiceCurrency === "USD") return fobInInvoiceCurrency;
 
   // Otherwise convert invoice currency → USD using rateMap (INR pivot)
-  // invoiceCurrency → INR = invoiceExchangeRate
-  // USD → INR = rateMap.USD
   const usdRateInINR = Number(rateMap["USD"] || 0);
   if (!usdRateInINR) return 0;
 
@@ -296,9 +361,15 @@ useEffect(() => {
     // if currency changed, auto-set exchangeRate from rateMap
     if (field === "currency") {
       const code = String(value || "").toUpperCase();
-      const rate = rateMap[code];
+      const rate = getRateForCurrency(code);
       if (typeof rate === "number") {
         currentSection.exchangeRate = rate;
+      } else if (code === invoiceCurrency) {
+        currentSection.exchangeRate = invoiceExchangeRate;
+      } else if (code === "INR") {
+        currentSection.exchangeRate = 1;
+      } else {
+        currentSection.exchangeRate = "";
       }
     }
 
@@ -346,13 +417,14 @@ useEffect(() => {
           ).toUpperCase();
 
           const exchangeRate = (() => {
-            if (isFOB) return 1;
             if (data.exchangeRate != null && data.exchangeRate !== "") {
               return Number(data.exchangeRate || 0);
             }
-            const rate = rateMap[effectiveCurrency];
+            const rate = getRateForCurrency(effectiveCurrency);
             if (typeof rate === "number") return rate;
-            return 0;
+            if (effectiveCurrency === invoiceCurrency) return invoiceExchangeRate;
+            if (effectiveCurrency === "INR") return 1;
+            return "";
           })();
 
           const baseValue = row.hasBase
@@ -379,7 +451,7 @@ useEffect(() => {
                       ...(disabled ? styles.disabled : {}),
                     }}
                     value={effectiveCurrency}
-                    disabled={disabled || isFOB}
+                    disabled={disabled}
                     onChange={(e) =>
                       handleChange(row.key, "currency", e.target.value)
                     }
@@ -401,16 +473,14 @@ useEffect(() => {
                       ...(disabled ? styles.disabled : {}),
                     }}
                     value={exchangeRate}
-                    readOnly={disabled || isFOB}
-                    onChange={(e) =>
-                      !disabled &&
-                      !isFOB &&
-                      handleChange(
-                        row.key,
-                        "exchangeRate",
-                        parseFloat(e.target.value || 0)
-                      )
-                    }
+                    readOnly={disabled}
+                    onChange={(e) => {
+                      if (disabled) return;
+                      const raw = e.target.value;
+                      const nextVal =
+                        raw === "" ? "" : parseFloat(raw || "0");
+                      handleChange(row.key, "exchangeRate", nextVal);
+                    }}
                   />
                 </div>
 
@@ -429,15 +499,23 @@ useEffect(() => {
                         ...styles.input,
                         ...(disabled ? styles.disabled : {}),
                       }}
-                      value={disabled ? 0 : data.rate || 0}
-                      disabled={disabled}
-                      onChange={(e) =>
-                        handleChange(
-                          row.key,
-                          "rate",
-                          parseFloat(e.target.value || 0)
-                        )
+                      value={
+                        disabled
+                          ? ""
+                          : data.rate !== undefined &&
+                            data.rate !== null &&
+                            data.rate !== ""
+                          ? data.rate
+                          : ""
                       }
+                      disabled={disabled}
+                      onChange={(e) => {
+                        if (disabled) return;
+                        const raw = e.target.value;
+                        const nextVal =
+                          raw === "" ? "" : parseFloat(raw || "0");
+                        handleChange(row.key, "rate", nextVal);
+                      }}
                     />
                   )}
                 </div>
@@ -467,22 +545,36 @@ useEffect(() => {
                       ...styles.input,
                       ...(disabled ? styles.disabled : {}),
                     }}
-                    value={
-                      isFOB
-                        ? data.amount ?? 0
-                        : disabled
-                        ? 0
-                        : Number.isFinite(computedAmount)
-                        ? computedAmount.toFixed(2)
-                        : 0
-                    }
-                    disabled={!isFOB}
+                    value={(() => {
+                      if (disabled) return "";
+                      if (
+                        data.amount !== undefined &&
+                        data.amount !== null &&
+                        data.amount !== ""
+                      ) {
+                        // For FOB row, always show 2 decimal places
+                        if (isFOB && typeof data.amount === "number") {
+                          return data.amount.toFixed(2);
+                        }
+                        return data.amount;
+                      }
+                      if (
+                        Number.isFinite(computedAmount) &&
+                        computedAmount !== 0
+                      ) {
+                        return computedAmount.toFixed(2);
+                      }
+                      return "";
+                    })()}
+                    disabled={disabled}
                     onChange={(e) =>
-                      isFOB &&
+                      !disabled &&
                       handleChange(
                         row.key,
                         "amount",
-                        parseFloat(e.target.value || 0)
+                        e.target.value === ""
+                          ? ""
+                          : parseFloat(e.target.value || "0")
                       )
                     }
                   />
