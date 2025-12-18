@@ -492,7 +492,7 @@ function useExportJobDetails(params, setFileSnackbar) {
           labGrownDiamond: "",
 
           pmvInfo: {
-            currency: "",
+            currency: "INR",
             calculationMethod: "percentage",
             percentage: "",
             pmvPerUnit: "0",
@@ -913,13 +913,13 @@ function useExportJobDetails(params, setFileSnackbar) {
         ),
         verified_by_examining_officer: safeValue(
           data.verified_by_examining_officer ||
-            data.annexC1Details?.verifiedByExaminingOfficer,
+          data.annexC1Details?.verifiedByExaminingOfficer,
           false
         ),
         annex_seal_number: safeValue(
           data.annex_seal_number ||
-            data.annexC1Details?.sealNumber ||
-            data.stuffing_seal_no
+          data.annexC1Details?.sealNumber ||
+          data.stuffing_seal_no
         ), // Reference stuffing_seal_no
         annex_designation: safeValue(
           data.annex_designation || data.annexC1Details?.designation
@@ -961,13 +961,13 @@ function useExportJobDetails(params, setFileSnackbar) {
           ),
           verifiedByExaminingOfficer: safeValue(
             data.verified_by_examining_officer ||
-              data.annexC1Details?.verifiedByExaminingOfficer,
+            data.annexC1Details?.verifiedByExaminingOfficer,
             false
           ),
           sealNumber: safeValue(
             data.stuffing_seal_no ||
-              data.annex_seal_number ||
-              data.annexC1Details?.sealNumber
+            data.annex_seal_number ||
+            data.annexC1Details?.sealNumber
           ), // Sync from main seal number
           documents: safeValue(
             data.annex_c1_documents || data.annexC1Details?.documents,
@@ -994,6 +994,10 @@ function useExportJobDetails(params, setFileSnackbar) {
         milestones: safeValue(data.milestones, []),
         products: safeValue(data.products, []).map((product) => ({
           ...product,
+          pmvInfo: {
+            ...safeValue(product.pmvInfo, {}),
+            currency: product.pmvInfo?.currency || "INR",
+          },
           deecDetails: safeValue(product.deecDetails, {
             isDeecItem: false,
             deecItems: [],

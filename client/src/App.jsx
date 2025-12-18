@@ -13,6 +13,18 @@ function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (user) {
+      const interceptor = axios.interceptors.request.use((config) => {
+        config.headers["username"] = user.username || "unknown";
+        config.headers["user-id"] = user._id || "unknown";
+        config.headers["user-role"] = user.role || "unknown";
+        return config;
+      });
+      return () => axios.interceptors.request.eject(interceptor);
+    }
+  }, [user]);
+
+  useEffect(() => {
     const handleKeyDown = (event) => {
       const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
       const ctrlShiftLeftArrow =

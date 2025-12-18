@@ -36,6 +36,22 @@ const sanitizeFilename = (s) => {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const parseDate = (dateStr) => {
+  if (!dateStr) return new Date(0);
+  // Handle DD-MM-YYYY or DD/MM/YYYY
+  const parts = dateStr.split(/[-/]/);
+  if (parts.length === 3) {
+    const d = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const y = parseInt(parts[2], 10);
+    if (!isNaN(d) && !isNaN(m) && !isNaN(y)) {
+      return new Date(y, m, d);
+    }
+  }
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? new Date(0) : d;
+};
+
 const findHeaderIndices = async (page) => {
   try {
     let headerCells = await page.$$("table thead th");
@@ -335,86 +351,102 @@ export const scrapeAndSaveCurrencyRates = async () => {
     if (!rows || rows.length === 0) rows = await page.$$("tbody tr");
     if (!rows || rows.length === 0) rows = await page.$$("tr");
 
+    const candidates = [];
     for (const [row_i, row] of rows.entries()) {
-      const rowNum = row_i + 1;
+      const cells = await row.$$("td");
+      if (cells.length === 0) continue;
+
+      let notifText = "";
+      let dateText = "";
 
       try {
-        let downloadEl = await row.$("text=Download PDF");
-        if (!downloadEl) {
-          downloadEl = await row.$(
-            "a:has-text('Download PDF'), button:has-text('Download PDF')"
-          );
+        if (notifIdx < cells.length) {
+          notifText = (await cells[notifIdx].innerText()).trim();
         }
-
-        if (!downloadEl) {
-          continue;
+        if (dateIdx < cells.length) {
+          dateText = (await cells[dateIdx].innerText()).trim();
         }
+      } catch (e) { }
 
-        const cells = await row.$$("td");
-        let notifText = null;
-        let dateText = null;
+      if (!notifText && !dateText) continue;
 
-        if (cells.length > 0) {
-          if (notifIdx < cells.length) {
-            try {
-              notifText = (await cells[notifIdx].innerText()).trim();
-            } catch (e) {}
-          }
-          if (dateIdx < cells.length) {
-            try {
-              dateText = (await cells[dateIdx].innerText()).trim();
-            } catch (e) {}
-          }
-        }
+      candidates.push({
+        row,
+        notifText,
+        dateText,
+        rowNum: row_i + 1,
+        parsedDate: parseDate(dateText),
+      });
+    }
 
-        const notifSafe = sanitizeFilename(notifText || `row${rowNum}`);
-        const dateSafe = sanitizeFilename(dateText || "unknown-date");
-        const pdfName = `${notifSafe}-${dateSafe}.pdf`;
-        let outPath = path.join(TEMP_DIR, pdfName);
+    if (candidates.length === 0) {
+      console.warn("⚠️ No notifications found in the table.");
+      return results;
+    }
 
-        let counter = 1;
-        const { dir, name: base, ext } = path.parse(outPath);
-        while (existsSync(outPath)) {
-          outPath = path.join(dir, `${base}_${counter}${ext}`);
-          counter++;
-        }
+    // Sort by date descending and pick the latest one
+    candidates.sort((a, b) => b.parsedDate - a.parsedDate);
+    const latest = candidates[0];
+    const rowNum = latest.rowNum;
+    const row = latest.row;
 
-        let download;
-        try {
-          const downloadPromise = page.waitForEvent("download", {
-            timeout: CLICK_TIMEOUT,
-          });
-          try {
-            await downloadEl.scrollIntoViewIfNeeded({ timeout: 2000 });
-          } catch (e) {}
-          await downloadEl.click({ timeout: CLICK_TIMEOUT });
-          download = await downloadPromise;
-        } catch (e) {
-          results.errors.push({ row: rowNum, error: e.message });
-          continue;
-        }
+    console.log(`🚀 Processing latest notification: ${latest.notifText} (${latest.dateText})`);
 
-        await download.saveAs(outPath);
-        results.total_scraped++;
+    try {
+      let downloadEl = await row.$("text=Download PDF");
+      if (!downloadEl) {
+        downloadEl = await row.$(
+          "a:has-text('Download PDF'), button:has-text('Download PDF')"
+        );
+      }
 
-        // Parse PDF
-        const parsed = await parseExchangePdf(outPath);
+      if (!downloadEl) {
+        throw new Error("Download button not found in row");
+      }
 
-        if (parsed.error) {
-          results.errors.push({ row: rowNum, error: parsed.error });
-          continue;
-        }
+      const notifSafe = sanitizeFilename(latest.notifText || `row${rowNum}`);
+      const dateSafe = sanitizeFilename(latest.dateText || "unknown-date");
+      const pdfName = `${notifSafe}-${dateSafe}.pdf`;
+      let outPath = path.join(TEMP_DIR, pdfName);
 
-        // Check if already exists in database
+      let download;
+      try {
+        const downloadPromise = page.waitForEvent("download", {
+          timeout: CLICK_TIMEOUT,
+        });
+        await downloadEl.scrollIntoViewIfNeeded({ timeout: 2000 });
+        await downloadEl.click({ timeout: CLICK_TIMEOUT });
+        download = await downloadPromise;
+      } catch (e) {
+        results.errors.push({ row: rowNum, error: e.message });
+        return results;
+      }
+
+      await download.saveAs(outPath);
+      results.total_scraped++;
+
+      // Parse PDF
+      const parsed = await parseExchangePdf(outPath);
+
+      if (parsed.error) {
+        results.errors.push({ row: rowNum, error: parsed.error });
+      } else {
+        // Check if this EXACT record already exists
         const existing = await CurrencyRate.findOne({
           notification_number: parsed.notification_number,
           effective_date: parsed.effective_date,
         });
 
         if (existing) {
+          console.log(`✅ Latest notification ${parsed.notification_number} already in database.`);
           results.total_skipped++;
         } else {
-          // Save to MongoDB
+          // It's a NEW notification. Since we only want the LATEST one, 
+          // we delete all old records and save this one.
+          console.log(`✨ New notification found: ${parsed.notification_number}. Updating database...`);
+
+          await CurrencyRate.deleteMany({}); // Clear collection to keep only ONE latest record
+
           const currencyRate = new CurrencyRate({
             ...parsed,
             scraped_at: new Date(),
@@ -423,20 +455,17 @@ export const scrapeAndSaveCurrencyRates = async () => {
           await currencyRate.save();
           results.total_saved++;
         }
-
-        // Clean up PDF file
-        try {
-          await fs.unlink(outPath);
-        } catch (e) {
-          console.log(`  ⚠️ Could not delete PDF: ${e.message}`);
-        }
-
-        await sleep(SLEEP_BETWEEN);
-      } catch (e) {
-        console.log(`❌ Error processing row ${rowNum}: ${e.message}`);
-        results.errors.push({ row: rowNum, error: e.message });
-        continue;
       }
+
+      // Clean up PDF file
+      try {
+        await fs.unlink(outPath);
+      } catch (e) {
+        console.log(`  ⚠️ Could not delete PDF: ${e.message}`);
+      }
+    } catch (e) {
+      console.error(`❌ Error processing row ${rowNum}: ${e.message}`);
+      results.errors.push({ row: rowNum, error: e.message });
     }
   } catch (e) {
     console.error("❌ Main process error:", e);

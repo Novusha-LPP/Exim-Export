@@ -212,6 +212,7 @@ function UnitDropdownField({
   unitOptions,
   placeholder,
   onSelect,
+  disabled = false,
 }) {
   const [open, setOpen] = useState(false);
 
@@ -236,6 +237,10 @@ function UnitDropdownField({
   const [active, setActive] = useState(-1);
   const wrapperRef = useRef();
 
+  useEffect(() => {
+    if (disabled && open) setOpen(false);
+  }, [disabled]);
+
   const filtered = (unitOptions || [])
     .filter((opt) => opt.toUpperCase().includes(query.toUpperCase()))
     .slice(0, 15);
@@ -251,6 +256,7 @@ function UnitDropdownField({
   }, []);
 
   function handleSelect(index) {
+    if (disabled) return;
     const selectedValue = filtered[index].toUpperCase();
     setQuery(selectedValue);
     formik.setFieldValue(fieldName, selectedValue);
@@ -264,22 +270,28 @@ function UnitDropdownField({
       {label && <div style={styles.label}>{label}</div>}
       <div style={styles.acWrap}>
         <input
-          style={styles.input}
+          style={{
+            ...styles.input,
+            ...(disabled ? { background: "#e6eef7", cursor: "not-allowed", opacity: 0.8 } : {}),
+          }}
           placeholder={placeholder}
           autoComplete="off"
+          disabled={disabled}
           value={query.toUpperCase()}
           onChange={(e) => {
+            if (disabled) return;
             const val = e.target.value.toUpperCase();
             setQuery(val);
             formik.setFieldValue(fieldName, val);
             setOpen(true);
           }}
           onFocus={() => {
+            if (disabled) return;
             setOpen(true);
             setActive(-1);
           }}
           onKeyDown={(e) => {
-            if (!open) return;
+            if (disabled || !open) return;
             if (e.key === "ArrowDown") {
               setActive((a) =>
                 Math.min(filtered.length - 1, a < 0 ? 0 : a + 1)
@@ -295,13 +307,13 @@ function UnitDropdownField({
           }}
         />
         <span style={styles.acIcon}>▼</span>
-        {open && filtered.length > 0 && (
+        {open && !disabled && filtered.length > 0 && (
           <div style={styles.acMenu}>
             {filtered.map((val, i) => (
               <div
                 key={val}
                 style={styles.acItem(active === i)}
-                onMouseDown={() => handleSelect(i)}
+                onMouseDown={() => !disabled && handleSelect(i)}
                 onMouseEnter={() => setActive(i)}
               >
                 {val.toUpperCase()}
@@ -1255,13 +1267,15 @@ function ProductRow({
           <label style={styles.label}>Currency</label>
           <select
             style={styles.select}
-            value={product.pmvInfo?.currency}
+            value={product.pmvInfo?.currency || "INR"}
             onChange={(e) =>
               handleProductChange(index, "pmvInfo.currency", e.target.value)
             }
           >
             <option value="INR">INR</option>
-            <option value="USD">{invoice.currency}</option>
+            {invoice?.currency && invoice.currency !== "INR" && (
+              <option value={invoice.currency}>{invoice.currency}</option>
+            )}
           </select>
         </div>
 
@@ -1282,21 +1296,22 @@ function ProductRow({
               <option value="percentage">%age</option>
               <option value="manual">Manual</option>
             </select>
-            {/* Only show percentage input in percentage mode */}
-            {product.pmvInfo?.calculationMethod === "percentage" && (
-              <input
-                style={{ ...styles.input, width: "40%" }}
-                type="number"
-                value={product.pmvInfo?.percentage || 110.0}
-                onChange={(e) =>
-                  handleProductChange(
-                    index,
-                    "pmvInfo.percentage",
-                    parseFloat(e.target.value)
-                  )
-                }
-              />
-            )}
+            {/* Only show percentage input in percentage mode (default to percentage) */}
+            {(product.pmvInfo?.calculationMethod ?? "percentage") ===
+              "percentage" && (
+                <input
+                  style={{ ...styles.input, width: "40%" }}
+                  type="number"
+                  value={product.pmvInfo?.percentage ?? 110.0}
+                  onChange={(e) =>
+                    handleProductChange(
+                      index,
+                      "pmvInfo.percentage",
+                      parseFloat(e.target.value)
+                    )
+                  }
+                />
+              )}
           </div>
         </div>
 
@@ -1308,12 +1323,13 @@ function ProductRow({
                 ...styles.input,
                 paddingRight: 35,
                 backgroundColor:
-                  product.pmvInfo?.calculationMethod === "percentage"
+                  (product.pmvInfo?.calculationMethod ?? "percentage") ===
+                    "percentage"
                     ? "#e2e8f0"
                     : "#f7fafc",
               }}
               type="number"
-              value={product.pmvInfo?.pmvPerUnit || 0}
+              value={product.pmvInfo?.pmvPerUnit ?? 0}
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1321,8 +1337,10 @@ function ProductRow({
                   parseFloat(e.target.value)
                 )
               }
-              disabled={product.pmvInfo?.calculationMethod === "percentage"}
-              readOnly={product.pmvInfo?.calculationMethod === "percentage"}
+              disabled={(product.pmvInfo?.calculationMethod ?? "percentage") ===
+                "percentage"}
+              readOnly={(product.pmvInfo?.calculationMethod ?? "percentage") ===
+                "percentage"}
             />
             <span
               style={{
@@ -1333,7 +1351,7 @@ function ProductRow({
                 color: "#666",
               }}
             >
-              INR
+              {product.pmvInfo?.currency || "INR"}
             </span>
           </div>
         </div>
@@ -1346,12 +1364,13 @@ function ProductRow({
                 ...styles.input,
                 paddingRight: 35,
                 backgroundColor:
-                  product.pmvInfo?.calculationMethod === "percentage"
+                  (product.pmvInfo?.calculationMethod ?? "percentage") ===
+                    "percentage"
                     ? "#e2e8f0"
                     : "#f7fafc",
               }}
               type="number"
-              value={product.pmvInfo?.totalPMV || 0}
+              value={product.pmvInfo?.totalPMV ?? 0}
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1359,8 +1378,10 @@ function ProductRow({
                   parseFloat(e.target.value)
                 )
               }
-              disabled={product.pmvInfo?.calculationMethod === "percentage"}
-              readOnly={product.pmvInfo?.calculationMethod === "percentage"}
+              disabled={(product.pmvInfo?.calculationMethod ?? "percentage") ===
+                "percentage"}
+              readOnly={(product.pmvInfo?.calculationMethod ?? "percentage") ===
+                "percentage"}
             />
             <span
               style={{
@@ -1371,7 +1392,7 @@ function ProductRow({
                 color: "#666",
               }}
             >
-              INR
+              {product.pmvInfo?.currency || "INR"}
             </span>
           </div>
         </div>
@@ -1412,7 +1433,7 @@ function ProductRow({
             <input
               style={styles.input}
               type="number"
-              value={product.igstCompensationCess?.igstRate || 0}
+              value={product.igstCompensationCess?.igstRate ?? 0}
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1427,7 +1448,7 @@ function ProductRow({
             <input
               style={styles.input}
               type="number"
-              value={product.igstCompensationCess?.compensationCessRate || 0}
+              value={product.igstCompensationCess?.compensationCessRate ?? 0}
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1444,7 +1465,7 @@ function ProductRow({
             <input
               style={styles.input}
               type="number"
-              value={product.igstCompensationCess?.taxableValueINR || 0}
+              value={product.igstCompensationCess?.taxableValueINR ?? 0}
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1459,7 +1480,7 @@ function ProductRow({
             <input
               style={styles.input}
               type="number"
-              value={product.igstCompensationCess?.igstAmountINR || 0}
+              value={product.igstCompensationCess?.igstAmountINR ?? 0}
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1475,7 +1496,7 @@ function ProductRow({
               style={styles.input}
               type="number"
               value={
-                product.igstCompensationCess?.compensationCessAmountINR || 0
+                product.igstCompensationCess?.compensationCessAmountINR ?? 0
               }
               onChange={(e) =>
                 handleProductChange(
@@ -1512,7 +1533,7 @@ function ProductRow({
             <input
               style={{ ...styles.input, width: "65%" }}
               type="number"
-              value={product.rodtepInfo?.quantity || 0}
+              value={product.rodtepInfo?.quantity ?? 0}
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1529,6 +1550,7 @@ function ProductRow({
                 unitOptions={unitCodes}
                 placeholder="UNIT"
                 onSelect={(value) => handleUnitChange(index, "unit", value)}
+                disabled={true}
               />
             </div>
           </div>
@@ -1539,7 +1561,7 @@ function ProductRow({
           <input
             style={styles.input}
             type="number"
-            value={product.rodtepInfo?.ratePercent || 0}
+            value={product.rodtepInfo?.ratePercent ?? 0}
             onChange={(e) =>
               handleProductChange(
                 index,
@@ -1555,7 +1577,7 @@ function ProductRow({
           <input
             style={styles.input}
             type="number"
-            value={product.rodtepInfo?.capValue || 0}
+            value={product.rodtepInfo?.capValue ?? 0}
             onChange={(e) =>
               handleProductChange(
                 index,
@@ -1572,7 +1594,7 @@ function ProductRow({
             <input
               style={{ ...styles.input, width: "65%" }}
               type="number"
-              value={product.rodtepInfo?.capValuePerUnits || 0}
+              value={product.rodtepInfo?.capValuePerUnits ?? 0}
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1589,6 +1611,7 @@ function ProductRow({
                 unitOptions={unitCodes}
                 placeholder="UNIT"
                 onSelect={(value) => handleUnitChange(index, "capUnit", value)}
+                disabled={true}
               />
             </div>
           </div>
@@ -1599,7 +1622,7 @@ function ProductRow({
           <input
             style={styles.input}
             type="number"
-            value={product.rodtepInfo?.amountINR || 0}
+            value={product.rodtepInfo?.amountINR ?? 0}
             onChange={(e) =>
               handleProductChange(
                 index,
@@ -1639,18 +1662,30 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
   const [exchangeRates, setExchangeRates] = useState([]);
   const [ratesLoading, setRatesLoading] = useState(true);
 
+  const getTodayFormatted = () => {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, "0");
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const yyyy = today.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  };
+
   useEffect(() => {
     const fetchRates = async () => {
       try {
+        const todayDate = getTodayFormatted(); // DD-MM-YYYY format
         setRatesLoading(true);
-        const res = await fetch(`${apiBase}/currency-rates/`);
+        const res = await fetch(`${apiBase}/currency-rates/by-date/${todayDate}`);
         const data = await res.json();
-        if (data.success && Array.isArray(data.data)) {
-          const latestRates = data.data[0]?.exchange_rates || [];
+        if (data && data.success && data.data) {
+          const latestRates = data.data.exchange_rates || [];
           setExchangeRates(latestRates);
+        } else if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+          const latestEntry = data.data[0];
+          setExchangeRates(latestEntry.exchange_rates || []);
         }
       } catch (error) {
-        console.error("Error fetching exchange rates:", error);
+        // quiet error
       } finally {
         setRatesLoading(false);
       }
@@ -1661,22 +1696,28 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
   const getExportRate = useCallback(
     (currencyCode) => {
       if (!currencyCode || currencyCode === "INR") return 1;
-      const rate = exchangeRates.find(
-        (r) => r.currency_code === currencyCode.toUpperCase()
+      const code = currencyCode.toString().toUpperCase();
+      const rateObj = exchangeRates.find(
+        (r) => (r.currency_code || r.code || "").toString().toUpperCase() === code
       );
-      return rate ? rate.export_rate : 1;
+      if (!rateObj) return 1;
+      const raw = rateObj.export_rate ?? rateObj.exportRate ?? rateObj.rate ?? 0;
+      const unit = parseFloat(rateObj.unit) || 1;
+      const num = parseFloat(raw);
+      if (isNaN(num) || unit <= 0) return 1;
+      return num / unit;
     },
     [exchangeRates]
   );
 
   const convertToINR = useCallback(
     (amount, fromCurrency) => {
-      if (!amount || !fromCurrency) return 0;
-      if (fromCurrency === "INR") return parseFloat(amount) || 0;
+      if (!amount) return 0;
+      if (!fromCurrency || fromCurrency === "INR") return parseFloat(amount) || 0;
 
       const rate = getExportRate(fromCurrency);
       const total = parseFloat(amount) * rate;
-      return isNaN(total) ? 0 : total;
+      return Number.isFinite(total) ? total : 0;
     },
     [getExportRate]
   );
@@ -1684,28 +1725,41 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
   // Calculate PMV values
   const calculatePMV = useCallback(
     (prod, inv) => {
+      const pmvCurrency = prod.pmvInfo?.currency || "INR";
       const amount = parseFloat(prod.amount) || 0;
       const quantity = parseFloat(prod.quantity) || 1;
       const amountCurrency = inv?.currency || "INR";
 
       const amountInINR = convertToINR(amount, amountCurrency);
-      if (prod.pmvInfo?.calculationMethod === "percentage") {
+      const method = prod.pmvInfo?.calculationMethod || "percentage";
+
+      if (method === "percentage") {
         const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
-        const totalPMV = (amountInINR * percentage) / 100;
-        const pmvPerUnit = totalPMV / quantity;
+        let totalPMV_INR = (amountInINR * percentage) / 100;
+        let pmvPerUnit_INR = totalPMV_INR / quantity;
+
+        let totalPMV = totalPMV_INR;
+        let pmvPerUnit = pmvPerUnit_INR;
+
+        if (pmvCurrency !== "INR") {
+          const rate = getExportRate(pmvCurrency);
+          if (rate > 0) {
+            totalPMV = totalPMV_INR / rate;
+            pmvPerUnit = pmvPerUnit_INR / rate;
+          }
+        }
 
         return {
           pmvPerUnit: pmvPerUnit.toFixed(2),
           totalPMV: totalPMV.toFixed(2),
         };
       }
-      // manual mode: keep existing
       return {
         pmvPerUnit: prod.pmvInfo?.pmvPerUnit || 0,
         totalPMV: prod.pmvInfo?.totalPMV || 0,
       };
     },
-    [convertToINR]
+    [convertToINR, getExportRate]
   );
 
   const handleProductChange = useCallback(
@@ -1726,7 +1780,8 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
 
       // Auto-calculate PMV if in percentage mode
       const prod = updatedProducts[index];
-      if (prod.pmvInfo?.calculationMethod === "percentage") {
+      const method = prod.pmvInfo?.calculationMethod || "percentage";
+      if (method === "percentage") {
         const calculated = calculatePMV(prod, invoice);
         updatedProducts[index].pmvInfo = {
           ...updatedProducts[index].pmvInfo,
@@ -1823,7 +1878,8 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
     const currentProducts = formik.values.products || [];
     let changed = false;
     const updatedProducts = currentProducts.map((prod) => {
-      if (prod.pmvInfo?.calculationMethod !== "percentage") return prod;
+      const method = prod.pmvInfo?.calculationMethod || "percentage";
+      if (method !== "percentage") return prod;
 
       const calculated = calculatePMV(prod, invoice);
       const nextPmv = {

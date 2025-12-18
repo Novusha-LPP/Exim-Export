@@ -269,7 +269,7 @@ const AuditTrailViewer = ({ job_no, year }) => {
   // Fetch user list for admin filter
   useEffect(() => {
     if (user.role === "Admin") {
-      fetch("/api/audit/user-mappings")
+      fetch(`${import.meta.env.VITE_API_STRING}/api/audit/user-mappings`)
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -314,10 +314,6 @@ const AuditTrailViewer = ({ job_no, year }) => {
         params.set("username", userFilter);
         filterUser = userFilter;
       }
-      console.log(
-        "Fetching audit trail for user:",
-        filterUser || "All Users (admin)"
-      );
       const response = await axios.get(`${url}?${params}`);
       setAuditData(response.data.auditTrail || []);
       setPagination(response.data.pagination || {});
@@ -803,9 +799,9 @@ const AuditTrailViewer = ({ job_no, year }) => {
                           >
                             {user.lastActivity
                               ? new Date(user.lastActivity).toLocaleString(
-                                  "en-IN",
-                                  { hour12: true }
-                                )
+                                "en-IN",
+                                { hour12: true }
+                              )
                               : "-"}
                           </td>
                         </tr>

@@ -234,7 +234,7 @@ const DrawbackTab = ({ formik }) => {
                   <input
                     style={styles.input}
                     type="number"
-                    value={item.quantity || 0}
+                    value={item.quantity ?? ""}
                     onChange={(e) =>
                       handleDrawbackFieldChange(idx, "quantity", e.target.value)
                     }
@@ -270,7 +270,7 @@ const DrawbackTab = ({ formik }) => {
                   <input
                     style={styles.input}
                     type="number"
-                    value={item.dbkRate}
+                    value={item.dbkRate ?? ""}
                     onChange={(e) =>
                       handleDrawbackFieldChange(idx, "dbkRate", e.target.value)
                     }
@@ -280,7 +280,7 @@ const DrawbackTab = ({ formik }) => {
                   <input
                     style={styles.input}
                     type="number"
-                    value={item.dbkCap}
+                    value={item.dbkCap ?? ""}
                     onChange={(e) =>
                       handleDrawbackFieldChange(idx, "dbkCap", e.target.value)
                     }
@@ -290,7 +290,7 @@ const DrawbackTab = ({ formik }) => {
                   <input
                     style={styles.input}
                     type="number"
-                    value={item.dbkAmount}
+                    value={item.dbkAmount ?? ""}
                     onChange={(e) =>
                       handleDrawbackFieldChange(
                         idx,

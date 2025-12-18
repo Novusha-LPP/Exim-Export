@@ -16,6 +16,7 @@ import ExportViewJob from "../components/Export/Export-Dsr/ExportViewJob.js";
 
 // import auditrail
 import AllUsersPage from "./AllUsersPage.js";
+import AuditTrailPage from "./AuditTrailPage.js";
 
 import AppbarComponent from "../components/home/AppbarComponent.js";
 import DrawerComponent from "../components/home/DrawerComponent.js";
@@ -100,6 +101,15 @@ function HomePage() {
               element={
                 <ProtectedRoute requiredModule="Export - Jobs">
                   <ExportViewJob />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/export-audit-trail"
+              element={
+                <ProtectedRoute requiredModule="Export - Audit Trail">
+                  <AuditTrailPage />
                 </ProtectedRoute>
               }
             />

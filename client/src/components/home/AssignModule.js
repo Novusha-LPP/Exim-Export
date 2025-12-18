@@ -35,6 +35,7 @@ const allModules = [
   "Screen3",
   "Screen4",
   "Export - Jobs",
+  "Export - Audit Trail",
   "Directories",
 ];
 

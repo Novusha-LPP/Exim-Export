@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import compression from "compression";
 import bodyParser from "body-parser";
 import logger from "./logger.js";
+import { auditMiddleware } from "./middleware/auditTrail.mjs";
 
 import getAllUsers from "./routes/getAllUsers.mjs";
 import getUser from "./routes/getUser.mjs";
@@ -128,24 +129,24 @@ app.use(handleS3Deletation);
 app.use(auditTrail);
 
 //directories
-app.use(directory);
-app.use("/api/states", state);
-app.use("/api/airlines", airline);
-app.use("/api/countries", Country);
-app.use("/api/tariffHeads", TarrifHead);
-app.use("/api/shippingLines", ShippingLine);
-app.use("/api/ediLocations", edilocations);
-app.use("/api/nonEdiLocations", nonedilocations);
-app.use("/api/ports", ports);
-app.use("/api/airPorts", airports);
-app.use("/api/uqcs", uqcs);
-app.use("/api/currencies", Currency);
-app.use("/api/packages", Packages);
-app.use("/api/supportingDocumentCodes", SupportingDocuments);
+app.use(auditMiddleware("Directory"), directory);
+app.use("/api/states", auditMiddleware("Directory"), state);
+app.use("/api/airlines", auditMiddleware("Directory"), airline);
+app.use("/api/countries", auditMiddleware("Directory"), Country);
+app.use("/api/tariffHeads", auditMiddleware("Directory"), TarrifHead);
+app.use("/api/shippingLines", auditMiddleware("Directory"), ShippingLine);
+app.use("/api/ediLocations", auditMiddleware("Directory"), edilocations);
+app.use("/api/nonEdiLocations", auditMiddleware("Directory"), nonedilocations);
+app.use("/api/ports", auditMiddleware("Directory"), ports);
+app.use("/api/airPorts", auditMiddleware("Directory"), airports);
+app.use("/api/uqcs", auditMiddleware("Directory"), uqcs);
+app.use("/api/currencies", auditMiddleware("Directory"), Currency);
+app.use("/api/packages", auditMiddleware("Directory"), Packages);
+app.use("/api/supportingDocumentCodes", auditMiddleware("Directory"), SupportingDocuments);
 app.use(genrateExportChecklist);
 app.use(getExpJob);
-app.use("/api/gateway-ports", gatwayPort);
-app.use("/api/districts", district);
+app.use("/api/gateway-ports", auditMiddleware("Directory"), gatwayPort);
+app.use("/api/districts", auditMiddleware("Directory"), district);
 // app.set("trust proxy", 1); // Trust first proxy (NGINX, AWS ELB, etc.)
 
 //============== EXPORT DSR =========================
@@ -157,7 +158,7 @@ app.use("/api/export-jobs", updateExportJobs);
 app.use("/api/getRodtep", getRodtep);
 app.use("/api/getCthsExport", getCthsExport);
 app.use(currencyRate);
-app.use("/api",feedback);
+app.use("/api", feedback);
 app.use(getConsignees);
 
 // s3 route

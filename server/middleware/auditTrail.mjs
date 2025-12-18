@@ -2,6 +2,15 @@ import AuditTrailModel from "../model/auditTrailModel.mjs";
 import mongoose from "mongoose";
 import { getOrCreateUserId } from "../utils/userIdManager.mjs";
 import ExJobModel from "../model/export/ExJobModel.mjs";
+import Directory from "../model/Directorties/Directory.js";
+import UserModel from "../model/userModel.mjs";
+
+const documentTypeToModel = {
+  Job: ExJobModel,
+  ExportJob: ExJobModel,
+  Directory: Directory,
+  User: UserModel,
+};
 /**
  * Audit Trail Middleware
  * Tracks all changes made to database documents
@@ -301,10 +310,10 @@ export const auditMiddleware = (documentType = "Unknown") => {
 
     const userInfo = req.currentUser ||
       req.user || {
-        _id: req.headers["user-id"] || req.body.userId || "unknown",
-        username: req.headers["username"] || req.body.username || "unknown",
-        role: req.headers["user-role"] || req.body.userRole || "unknown",
-      };
+      _id: req.headers["user-id"] || req.body.userId || "unknown",
+      username: req.headers["username"] || req.body.username || "unknown",
+      role: req.headers["user-role"] || req.body.userRole || "unknown",
+    };
 
     // Get or create unique user ID for this username
     const uniqueUserId = await getOrCreateUserId(userInfo.username);
@@ -332,46 +341,34 @@ export const auditMiddleware = (documentType = "Unknown") => {
       documentId = req.jobInfo.documentId || documentId;
     }
 
+    const Model = documentTypeToModel[documentType];
+
     // For job-related operations
-    if (job_no && year && documentType === "Job") {
+    if ((job_no && year) && (documentType === "Job" || documentType === "ExportJob")) {
       try {
         originalDocument = await ExJobModel.findOne({ job_no, year }).lean();
         if (originalDocument) {
           documentId = originalDocument._id;
-        } else {
         }
       } catch (error) {
         console.error("❌ Error fetching original job document:", error);
       }
-    } else if (
-      id &&
-      mongoose.Types.ObjectId.isValid(id) &&
-      documentType === "Job"
-    ) {
-      // Handle ObjectId-based job routes
+    } else if (id && mongoose.Types.ObjectId.isValid(id) && Model) {
       try {
-        originalDocument = await ExJobModel.findById(id).lean();
+        originalDocument = await Model.findById(id).lean();
         if (originalDocument) {
           documentId = originalDocument._id;
-          // Extract job_no and year from the document itself
-          job_no = originalDocument.job_no;
-          year = originalDocument.year;
-        } else {
-          console.log(`❌ No original document found for ID: ${id}`);
+          if (documentType === "Job" || documentType === "ExportJob") {
+            job_no = originalDocument.job_no;
+            year = originalDocument.year;
+          }
         }
       } catch (error) {
-        console.error("❌ Error fetching original job document by ID:", error);
+        console.error(`❌ Error fetching original ${documentType} document by ID:`, error);
       }
     } else if (id && mongoose.Types.ObjectId.isValid(id)) {
       documentId = new mongoose.Types.ObjectId(id);
-      // You can add logic here to fetch original document for other models
-    } else {
-      console.log(
-        `ℹ️ No matching params for audit: job_no=${job_no}, year=${year}, id=${id}, documentType=${documentType}`
-      );
     }
-
-    // Log final values we'll use for audit trail (after potential extraction from document)
 
     // Override res.json to capture the response and log audit trail
     const originalJson = res.json;
@@ -379,19 +376,13 @@ export const auditMiddleware = (documentType = "Unknown") => {
       if (res.statusCode >= 200 && res.statusCode < 300) {
         // Handle different HTTP methods
         let action = "UPDATE";
-        // POST can be either CREATE or UPDATE depending on context
         if (req.method === "POST") {
-          // If we're updating an existing document (has pre-extracted job info or _id in request), treat as UPDATE
-          if (req.jobInfo || req.body._id) {
-            action = "UPDATE";
-          } else {
-            action = "CREATE";
-          }
+          action = (req.jobInfo || req.body._id || id) ? "UPDATE" : "CREATE";
+        } else if (req.method === "DELETE") {
+          action = "DELETE";
+        } else if (req.method === "GET") {
+          action = "VIEW";
         }
-        if (req.method === "DELETE") action = "DELETE";
-
-        // Use setImmediate to handle async operations
-        // Replace the entire setImmediate block (around line 312-600) with this:
 
         setImmediate(async () => {
           try {
@@ -412,22 +403,13 @@ export const auditMiddleware = (documentType = "Unknown") => {
                 try {
                   let updatedDocument = null;
 
-                  if (documentType === "Job") {
+                  if (Model) {
                     if (documentId) {
-                      try {
-                        updatedDocument = await ExJobModel.findById(
-                          documentId
-                        ).lean();
-                      } catch (findError) {
-                        console.error(`❌ Error in findById:`, findError);
-                      }
-                    } else if (job_no && year) {
-                      updatedDocument = await ExJobModel.findOne({
-                        job_no,
-                        year,
-                      }).lean();
+                      updatedDocument = await Model.findById(documentId).lean();
+                    } else if (job_no && year && (documentType === "Job" || documentType === "ExportJob")) {
+                      updatedDocument = await ExJobModel.findOne({ job_no, year }).lean();
                     } else if (id && mongoose.Types.ObjectId.isValid(id)) {
-                      updatedDocument = await ExJobModel.findById(id).lean();
+                      updatedDocument = await Model.findById(id).lean();
                     }
                   }
 
@@ -564,49 +546,42 @@ export const auditMiddleware = (documentType = "Unknown") => {
                 return; // Early return for bulk operations
               }
 
-              // Try to extract job info from different response structures
+              // Try to extract document info from response
               if (data._id) {
-                // Direct document response
                 createdDocumentId = data._id;
-                createdJobNo = data.job_no;
-                createdYear = data.year;
+                if (documentType === "Job" || documentType === "ExportJob") {
+                  createdJobNo = data.job_no;
+                  createdYear = data.year;
+                }
               } else if (data.job && data.job.job_no) {
-                // Response with nested job object
                 createdJobNo = data.job.job_no;
-                // Get year from request body since it's not in the response
                 createdYear = req.body.year;
 
-                // Try to find the created document to get its _id
-                if (createdJobNo && createdYear) {
+                if (createdJobNo && createdYear && Model) {
                   try {
-                    createdJob = await ExJobModel.findOne({
+                    createdJob = await Model.findOne({
                       job_no: createdJobNo,
                       year: createdYear,
                     }).lean();
                     if (createdJob) {
                       createdDocumentId = createdJob._id;
-                    } else {
-                      console.log(
-                        `❌ Could not find created job: ${createdYear}/${createdJobNo}`
-                      );
                     }
                   } catch (error) {
-                    console.error(
-                      "❌ Error fetching created job for audit:",
-                      error
-                    );
+                    console.error("❌ Error fetching created job for audit:", error);
                   }
-                } else {
-                  console.log(
-                    `⚠️ Missing job info for CREATE audit: job_no=${createdJobNo}, year=${createdYear}`
-                  );
+                }
+              } else if (data.data && data.data._id) {
+                createdDocumentId = data.data._id;
+                if (documentType === "Job" || documentType === "ExportJob") {
+                  createdJobNo = data.data.job_no;
+                  createdYear = data.data.year;
                 }
               }
 
-              if (createdDocumentId && createdJobNo && createdYear) {
+              if (createdDocumentId && Model) {
                 // Get the created document to log detailed changes
                 try {
-                  const createdDoc = await ExJobModel.findById(
+                  const createdDoc = await Model.findById(
                     createdDocumentId
                   ).lean();
 
@@ -618,42 +593,39 @@ export const auditMiddleware = (documentType = "Unknown") => {
                         field: "document",
                         fieldPath: "",
                         oldValue: null,
-                        newValue: "Document created",
-                        changeType: "ADDED",
-                      },
-                      {
-                        field: "job_no",
-                        fieldPath: "job_no",
-                        oldValue: null,
-                        newValue: createdDoc.job_no,
-                        changeType: "ADDED",
-                      },
-                      {
-                        field: "year",
-                        fieldPath: "year",
-                        oldValue: null,
-                        newValue: createdDoc.year,
+                        newValue: `${documentType} created`,
                         changeType: "ADDED",
                       },
                     ];
 
-                    // Add other important fields if they exist
-                    if (createdDoc.importer) {
-                      changes.push({
-                        field: "importer",
-                        fieldPath: "importer",
-                        oldValue: null,
-                        newValue: createdDoc.importer,
-                        changeType: "ADDED",
-                      });
+                    if (documentType === "Job" || documentType === "ExportJob") {
+                      if (createdDoc.job_no) {
+                        changes.push({
+                          field: "job_no",
+                          fieldPath: "job_no",
+                          oldValue: null,
+                          newValue: createdDoc.job_no,
+                          changeType: "ADDED",
+                        });
+                      }
+                      if (createdDoc.year) {
+                        changes.push({
+                          field: "year",
+                          fieldPath: "year",
+                          oldValue: null,
+                          newValue: createdDoc.year,
+                          changeType: "ADDED",
+                        });
+                      }
                     }
 
-                    if (createdDoc.custom_house) {
+                    // Add other important fields if they exist
+                    if (createdDoc.organization) {
                       changes.push({
-                        field: "custom_house",
-                        fieldPath: "custom_house",
+                        field: "organization",
+                        fieldPath: "organization",
                         oldValue: null,
-                        newValue: createdDoc.custom_house,
+                        newValue: createdDoc.organization,
                         changeType: "ADDED",
                       });
                     }
@@ -681,7 +653,7 @@ export const auditMiddleware = (documentType = "Unknown") => {
                 }
               } else {
                 console.log(
-                  `⚠️ Could not extract job info for CREATE audit: documentId=${createdDocumentId}, job_no=${createdJobNo}, year=${createdYear}`
+                  `⚠️ Could not extract document info for CREATE audit: documentId=${createdDocumentId}`
                 );
               }
             }
@@ -697,7 +669,7 @@ export const auditMiddleware = (documentType = "Unknown") => {
               await new Promise((resolve) => setTimeout(resolve, 100));
               try {
                 let updatedDocument = null;
-                if (documentType === "Job") {
+                if (Model && (documentType === "Job" || documentType === "ExportJob")) {
                   const pipeline = [
                     { $match: { _id: documentId } },
                     {
@@ -708,28 +680,22 @@ export const auditMiddleware = (documentType = "Unknown") => {
                       },
                     },
                   ];
-                  const [aggDoc] = await ExJobModel.aggregate(pipeline);
+                  const [aggDoc] = await Model.aggregate(pipeline);
                   updatedDocument = aggDoc;
-                  // Also project out fields from originalDocument for fair comparison
                   const {
                     detailed_status,
                     updatedAt,
                     __v,
                     ...origDocFiltered
                   } = originalDocument || {};
-                  // If only detailed_status/system fields changed, skip audit
                   if (
                     JSON.stringify(origDocFiltered) ===
                     JSON.stringify(updatedDocument)
                   ) {
-                    console.log(
-                      `ℹ️ [Aggregation] Only detailed_status/system fields changed, skipping audit trail`
-                    );
                     return;
                   }
-                } else {
-                  // Fallback for other document types
-                  updatedDocument = await ExJobModel.findById(
+                } else if (Model) {
+                  updatedDocument = await Model.findById(
                     documentId
                   ).lean();
                   if (
@@ -738,9 +704,6 @@ export const auditMiddleware = (documentType = "Unknown") => {
                       updatedDocument
                     )
                   ) {
-                    console.log(
-                      `ℹ️ [General path] Only detailed_status and system fields changed, skipping audit trail entirely`
-                    );
                     return;
                   }
                 }

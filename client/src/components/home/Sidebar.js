@@ -9,6 +9,7 @@ import FeedbackIcon from "@mui/icons-material/Feedback";
 import LockResetIcon from "@mui/icons-material/LockReset";
 import DescriptionIcon from '@mui/icons-material/Description';
 import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
+import HistoryIcon from '@mui/icons-material/History';
 import { UserContext } from "../../contexts/UserContext";
 import CurrencyRateDialog from "./CurrencyRateDialog.js"; // Import the dialog
 
@@ -65,7 +66,7 @@ function Sidebar() {
         </Tooltip>
       )}
 
-       {/* NEW: Currency Exchange Rates Icon */}
+      {/* NEW: Currency Exchange Rates Icon */}
       <Tooltip title="Currency Exchange Rates" enterDelay={0} placement="right">
         <ListItemButton
           sx={{ textAlign: "left" }}
@@ -79,7 +80,21 @@ function Sidebar() {
         </ListItemButton>
       </Tooltip>
 
-     
+      {(user.role === "Admin" || user.export_modules?.includes("Audit Trail")) && (
+        <Tooltip title="Audit Trail" enterDelay={0} placement="right">
+          <ListItemButton
+            className="appbar-links"
+            aria-label="list-item"
+            onClick={() => navigate("/audit-trail")}
+          >
+            <IconButton sx={{ color: "#ffffff9f" }} aria-label="icon">
+              <HistoryIcon />
+            </IconButton>
+          </ListItemButton>
+        </Tooltip>
+      )}
+
+
 
       <Tooltip title="Release Notes" enterDelay={0} placement="right">
         <ListItemButton

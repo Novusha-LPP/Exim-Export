@@ -23,6 +23,6 @@ const CthExportSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const CthExportModel = new mongoose.model("CthExport", CthExportSchema);
+const CthExportModel = new mongoose.model("Cth", CthExportSchema);
 
 export default CthExportModel;

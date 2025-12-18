@@ -20,6 +20,7 @@ export const moduleCategories = {
   // Export: "Export",
   Directories: "Export",
   "Export - Jobs": "Export",
+  "Export - Audit Trail": "Export",
   Screen1: "Screens",
   Screen2: "Screens",
   Screen3: "Screens",

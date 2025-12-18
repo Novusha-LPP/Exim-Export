@@ -1333,13 +1333,6 @@ const AddExJobs = ({ onJobCreated }) => {
                   </select>
                 </div>
 
-                {/* Port of Loading from Gateway Port Directory */}
-                <GatewayPortDropdown
-                  label="Loading Port"
-                  value={formData.port_of_loading}
-                  onChange={(val) => handleInputChange("port_of_loading", val)}
-                />
-
                 {/* Custom House using SAME directory */}
                 <GatewayPortDropdown
                   label="Custom House"
