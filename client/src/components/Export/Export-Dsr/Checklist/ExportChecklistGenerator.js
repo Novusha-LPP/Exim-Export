@@ -613,8 +613,8 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
         pdf.text(product.amount || "", col5, itemY);
         pdf.text(
           product.igstPaymentStatus ||
-            product.igstCompensationCess?.igstPaymentStatus ||
-            "",
+          product.igstCompensationCess?.igstPaymentStatus ||
+          "",
           col5,
           itemY + 20
         );
@@ -627,8 +627,8 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
         );
         pdf.text(
           product.taxableValueINR ||
-            product.igstCompensationCess?.taxableValueINR ||
-            "",
+          product.igstCompensationCess?.taxableValueINR ||
+          "",
           col6,
           itemY + 20
         );
@@ -641,8 +641,8 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
         );
         pdf.text(
           product.igstAmountINR ||
-            product.igstCompensationCess?.igstAmountINR ||
-            "",
+          product.igstCompensationCess?.igstAmountINR ||
+          "",
           col7,
           itemY + 20
         );
@@ -1259,9 +1259,9 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
       };
 
       try {
-        const invoiceDateRaw =
-          exportJob.invoices?.[0]?.invoiceDate || exportJob.sb_date || new Date();
-        const dt = new Date(invoiceDateRaw);
+        const dateRaw =
+          exportJob.job_date || exportJob.invoices?.[0]?.invoiceDate || exportJob.sb_date || new Date();
+        const dt = new Date(dateRaw);
         const dd = String(dt.getDate()).padStart(2, "0");
         const mm = String(dt.getMonth() + 1).padStart(2, "0");
         const yyyy = dt.getFullYear();
@@ -1305,11 +1305,11 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
         exporterAddress1: exportJob.exporter_address || "",
         exporterAddress2: "", // Parse from exporter_address if multi-line
         exporterAddress3: "", // Parse from exporter_address if multi-line
-// Consignee Details
-consigneeName:    exportJob.consignees?.[0]?.consignee_name,
-consigneeAddress: exportJob.consignees?.[0]?.consignee_address,
-consigneeCountry1: exportJob.consignees?.[0]?.consignee_country,
-consigneeCountry2: exportJob.dischargecountry,
+        // Consignee Details
+        consigneeName: exportJob.consignees?.[0]?.consignee_name,
+        consigneeAddress: exportJob.consignees?.[0]?.consignee_address,
+        consigneeCountry1: exportJob.consignees?.[0]?.consignee_country,
+        consigneeCountry2: exportJob.dischargecountry,
 
 
         // Shipping Details
@@ -1325,8 +1325,8 @@ consigneeCountry2: exportJob.dischargecountry,
         houseBlNo: exportJob.hbl_no || exportJob.houseblno || "",
         rotationNo: exportJob.voyage_no
           ? `${exportJob.voyage_no} dt ${formatDate(
-              exportJob.sailing_date
-            )}`
+            exportJob.sailing_date
+          )}`
           : "",
         stateOfOrigin:
           exportJob.state_of_origin || exportJob.exporter_state || "",
@@ -1338,17 +1338,16 @@ consigneeCountry2: exportJob.dischargecountry,
 
         // Weight calculation from products or containers
         grossWeight: exportJob.gross_weight_kg
-          ? `${exportJob.gross_weight_kg} ${
-              exportJob.gross_weight_unit || "KGS"
-            }`
+          ? `${exportJob.gross_weight_kg} ${exportJob.gross_weight_unit || "KGS"
+          }`
           : exportJob.containers
-              ?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0)
-              .toFixed(3) + " KGS" || "0.000 KGS",
+            ?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0)
+            .toFixed(3) + " KGS" || "0.000 KGS",
         netWeight: exportJob.net_weight_kg
           ? `${exportJob.net_weight_kg} ${exportJob.net_weight_unit || "KGS"}`
           : exportJob.products
-              ?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
-              .toFixed(3) + " KGS" || "0.000 KGS",
+            ?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
+            .toFixed(3) + " KGS" || "0.000 KGS",
 
         // Financial Details - Calculate from products and invoices
         totalFobInr:
@@ -1443,21 +1442,19 @@ consigneeCountry2: exportJob.dischargecountry,
 
           const usdPart =
             usdRaw !== null && usdRaw !== undefined && usdRaw !== ""
-              ? `USD ${
-                  typeof usdRaw === "number" ? usdRaw.toFixed(2) : usdRaw
-                }`
+              ? `USD ${typeof usdRaw === "number" ? usdRaw.toFixed(2) : usdRaw
+              }`
               : "";
 
           const inrPart =
             inrRaw !== null && inrRaw !== undefined && inrRaw !== ""
-              ? `INR ${
-                  typeof inrRaw === "number" ? inrRaw.toFixed(2) : inrRaw
-                }`
+              ? `INR ${typeof inrRaw === "number" ? inrRaw.toFixed(2) : inrRaw
+              }`
               : "";
 
           // If we have both, show both
           if (usdPart && inrPart) return `${usdPart} / ${inrPart}`;
-          
+
           // If we only have INR but have exchange rate, calculate USD
           if (!usdPart && inrPart && exportJob.exchange_rate) {
             const inrNum = typeof inrRaw === "number" ? inrRaw : parseFloat(inrRaw);
@@ -1466,7 +1463,7 @@ consigneeCountry2: exportJob.dischargecountry,
               return `USD ${calculatedUSD} / ${inrPart}`;
             }
           }
-          
+
           // If we only have USD but have exchange rate, calculate INR
           if (usdPart && !inrPart && exportJob.exchange_rate) {
             const usdNum = typeof usdRaw === "number" ? usdRaw : parseFloat(usdRaw);
@@ -1475,7 +1472,7 @@ consigneeCountry2: exportJob.dischargecountry,
               return `${usdPart} / INR ${calculatedINR}`;
             }
           }
-          
+
           // Fallback to whatever we have
           if (usdPart) return usdPart;
           if (inrPart) return inrPart;
@@ -1496,8 +1493,8 @@ consigneeCountry2: exportJob.dischargecountry,
           const rate = exportJob.freightInsuranceCharges?.insurance?.rate || 0;
           const amount = exportJob.freightInsuranceCharges?.insurance?.amount;
           const baseValue = exportJob.invoices?.[0]?.productValue || exportJob.invoices?.[0]?.invoiceValue || 0;
-          const calculatedAmount = amount !== undefined && amount !== null && amount !== "" 
-            ? amount 
+          const calculatedAmount = amount !== undefined && amount !== null && amount !== ""
+            ? amount
             : rate ? ((baseValue * rate) / 100).toFixed(2) : "";
           return {
             rate: rate || "",
@@ -1509,8 +1506,8 @@ consigneeCountry2: exportJob.dischargecountry,
           const rate = exportJob.freightInsuranceCharges?.freight?.rate || 0;
           const amount = exportJob.freightInsuranceCharges?.freight?.amount;
           const baseValue = exportJob.invoices?.[0]?.productValue || exportJob.invoices?.[0]?.invoiceValue || 0;
-          const calculatedAmount = amount !== undefined && amount !== null && amount !== "" 
-            ? amount 
+          const calculatedAmount = amount !== undefined && amount !== null && amount !== ""
+            ? amount
             : rate ? ((baseValue * rate) / 100).toFixed(2) : "";
           return {
             rate: rate || "",
@@ -1522,8 +1519,8 @@ consigneeCountry2: exportJob.dischargecountry,
           const rate = exportJob.freightInsuranceCharges?.discount?.rate || 0;
           const amount = exportJob.freightInsuranceCharges?.discount?.amount;
           const baseValue = exportJob.invoices?.[0]?.productValue || exportJob.invoices?.[0]?.invoiceValue || 0;
-          const calculatedAmount = amount !== undefined && amount !== null && amount !== "" 
-            ? amount 
+          const calculatedAmount = amount !== undefined && amount !== null && amount !== ""
+            ? amount
             : rate ? ((baseValue * rate) / 100).toFixed(2) : "";
           return {
             rate: rate || "",
@@ -1535,8 +1532,8 @@ consigneeCountry2: exportJob.dischargecountry,
           const rate = exportJob.freightInsuranceCharges?.commission?.rate || 0;
           const amount = exportJob.freightInsuranceCharges?.commission?.amount;
           const baseValue = exportJob.invoices?.[0]?.productValue || exportJob.invoices?.[0]?.invoiceValue || 0;
-          const calculatedAmount = amount !== undefined && amount !== null && amount !== "" 
-            ? amount 
+          const calculatedAmount = amount !== undefined && amount !== null && amount !== ""
+            ? amount
             : rate ? ((baseValue * rate) / 100).toFixed(2) : "";
           return {
             rate: rate || "",
@@ -1548,8 +1545,8 @@ consigneeCountry2: exportJob.dischargecountry,
           const rate = exportJob.freightInsuranceCharges?.otherDeduction?.rate || 0;
           const amount = exportJob.freightInsuranceCharges?.otherDeduction?.amount;
           const baseValue = exportJob.invoices?.[0]?.productValue || exportJob.invoices?.[0]?.invoiceValue || 0;
-          const calculatedAmount = amount !== undefined && amount !== null && amount !== "" 
-            ? amount 
+          const calculatedAmount = amount !== undefined && amount !== null && amount !== ""
+            ? amount
             : rate ? ((baseValue * rate) / 100).toFixed(2) : "";
           return {
             rate: rate || "",
@@ -1565,33 +1562,33 @@ consigneeCountry2: exportJob.dischargecountry,
             exportJob.invoices?.[0]?.packingFOB ||
             "",
         },
-        
+
         // Keep legacy string versions for backward compatibility
         insurance: exportJob.freightInsuranceCharges?.insurance?.amount
           ? exportJob.freightInsuranceCharges.insurance.amount.toString()
           : exportJob.freightInsuranceCharges?.insurance?.rate
-          ? `${exportJob.freightInsuranceCharges.insurance.rate}%`
-          : "Not entered",
+            ? `${exportJob.freightInsuranceCharges.insurance.rate}%`
+            : "Not entered",
         freight: exportJob.freightInsuranceCharges?.freight?.amount
           ? exportJob.freightInsuranceCharges.freight.amount.toString()
           : exportJob.freightInsuranceCharges?.freight?.rate
-          ? `${exportJob.freightInsuranceCharges.freight.rate}%`
-          : "Not entered",
+            ? `${exportJob.freightInsuranceCharges.freight.rate}%`
+            : "Not entered",
         discount: exportJob.freightInsuranceCharges?.discount?.amount
           ? exportJob.freightInsuranceCharges.discount.amount.toString()
           : exportJob.freightInsuranceCharges?.discount?.rate
-          ? `${exportJob.freightInsuranceCharges.discount.rate}%`
-          : "Not entered",
+            ? `${exportJob.freightInsuranceCharges.discount.rate}%`
+            : "Not entered",
         commission: exportJob.freightInsuranceCharges?.commission?.amount
           ? exportJob.freightInsuranceCharges.commission.amount.toString()
           : exportJob.freightInsuranceCharges?.commission?.rate
-          ? `${exportJob.freightInsuranceCharges.commission.rate}%`
-          : "Not entered",
+            ? `${exportJob.freightInsuranceCharges.commission.rate}%`
+            : "Not entered",
         otherDeduction: exportJob.freightInsuranceCharges?.otherDeduction?.amount
           ? exportJob.freightInsuranceCharges.otherDeduction.amount.toString()
           : exportJob.freightInsuranceCharges?.otherDeduction?.rate
-          ? `${exportJob.freightInsuranceCharges.otherDeduction.rate}%`
-          : "Not entered",
+            ? `${exportJob.freightInsuranceCharges.otherDeduction.rate}%`
+            : "Not entered",
         packingCharges:
           exportJob.invoices?.[0]?.packing_fob ||
           exportJob.invoices?.[0]?.packingFOB ||
@@ -1776,60 +1773,60 @@ consigneeCountry2: exportJob.dischargecountry,
         // Supporting Documents
         supportingDocs: exportJob.eSanchitDocuments?.[0]
           ? {
-              invItemSrNo:
-                exportJob.eSanchitDocuments[0].invSerialNo || "1/0/1",
-              imageRefNo: exportJob.eSanchitDocuments[0].irn || "",
-              icegateId: exportJob.eSanchitDocuments[0].otherIcegateId || "",
-              issuingPartyName:
-                exportJob.eSanchitDocuments[0].issuingParty?.name ||
-                exportJob.exporter ||
-                "",
-              beneficiaryPartyName:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.name ||
-                exportJob.consignees?.[0]?.consignee_name ||
-                "",
-              docIssueDate:
-                formatDate(exportJob.eSanchitDocuments[0].dateOfIssue) || "",
-              docRefNo:
-                exportJob.eSanchitDocuments[0].documentReferenceNo || "",
-              fileType:
-                exportJob.eSanchitDocuments[0].icegateFilename
-                  ?.split(".")
-                  .pop() || "",
-              issuingPartyAdd1:
-                exportJob.eSanchitDocuments[0].issuingParty?.addressLine1 ||
-                exportJob.exporter_address ||
-                "",
-              beneficiaryPartyAdd1:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine1 ||
-                exportJob.consignees?.[0]?.consignee_address ||
-                "",
-              docExpiryDate:
-                formatDate(exportJob.eSanchitDocuments[0].expiryDate) || "",
-              docUploadedOn:
-                formatDate(exportJob.eSanchitDocuments[0].dateTimeOfUpload) ||
-                "",
-              placeOfIssue: exportJob.eSanchitDocuments[0].placeOfIssue || "",
-              issuingPartyAdd2:
-                exportJob.eSanchitDocuments[0].issuingParty?.addressLine2 || "",
-              beneficiaryPartyAdd2:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine2 ||
-                "",
-              docTypeCode: exportJob.eSanchitDocuments[0].documentType || "",
-              docName: exportJob.eSanchitDocuments[0].icegateFilename || "",
-              issuingPartyCode:
-                exportJob.eSanchitDocuments[0].issuingParty?.code || "",
-              issuingPartyCity:
-                exportJob.eSanchitDocuments[0].issuingParty?.city || "",
-              beneficiaryPartyCity:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.city || "",
-              beneficiaryPartyCode:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.code || "",
-              issuingPartyPinCode:
-                exportJob.eSanchitDocuments[0].issuingParty?.pinCode || "",
-              beneficiaryPartyPinCode:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.pinCode || "",
-            }
+            invItemSrNo:
+              exportJob.eSanchitDocuments[0].invSerialNo || "1/0/1",
+            imageRefNo: exportJob.eSanchitDocuments[0].irn || "",
+            icegateId: exportJob.eSanchitDocuments[0].otherIcegateId || "",
+            issuingPartyName:
+              exportJob.eSanchitDocuments[0].issuingParty?.name ||
+              exportJob.exporter ||
+              "",
+            beneficiaryPartyName:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.name ||
+              exportJob.consignees?.[0]?.consignee_name ||
+              "",
+            docIssueDate:
+              formatDate(exportJob.eSanchitDocuments[0].dateOfIssue) || "",
+            docRefNo:
+              exportJob.eSanchitDocuments[0].documentReferenceNo || "",
+            fileType:
+              exportJob.eSanchitDocuments[0].icegateFilename
+                ?.split(".")
+                .pop() || "",
+            issuingPartyAdd1:
+              exportJob.eSanchitDocuments[0].issuingParty?.addressLine1 ||
+              exportJob.exporter_address ||
+              "",
+            beneficiaryPartyAdd1:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine1 ||
+              exportJob.consignees?.[0]?.consignee_address ||
+              "",
+            docExpiryDate:
+              formatDate(exportJob.eSanchitDocuments[0].expiryDate) || "",
+            docUploadedOn:
+              formatDate(exportJob.eSanchitDocuments[0].dateTimeOfUpload) ||
+              "",
+            placeOfIssue: exportJob.eSanchitDocuments[0].placeOfIssue || "",
+            issuingPartyAdd2:
+              exportJob.eSanchitDocuments[0].issuingParty?.addressLine2 || "",
+            beneficiaryPartyAdd2:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine2 ||
+              "",
+            docTypeCode: exportJob.eSanchitDocuments[0].documentType || "",
+            docName: exportJob.eSanchitDocuments[0].icegateFilename || "",
+            issuingPartyCode:
+              exportJob.eSanchitDocuments[0].issuingParty?.code || "",
+            issuingPartyCity:
+              exportJob.eSanchitDocuments[0].issuingParty?.city || "",
+            beneficiaryPartyCity:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.city || "",
+            beneficiaryPartyCode:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.code || "",
+            issuingPartyPinCode:
+              exportJob.eSanchitDocuments[0].issuingParty?.pinCode || "",
+            beneficiaryPartyPinCode:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.pinCode || "",
+          }
           : {},
 
         // Final Declaration

@@ -99,33 +99,37 @@ function toUpper(v) {
   return (typeof v === "string" ? v : "").toUpperCase();
 }
 
-// ✅ Helper function to get today's date in DD-MM-YYYY format
-const getTodayFormatted = () => {
-  const today = new Date();
-  const dd = String(today.getDate()).padStart(2, "0");
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
-  const yyyy = today.getFullYear();
-  return `${dd}-${mm}-${yyyy}`;
+const getJobDateFormatted = (jobDate) => {
+  if (!jobDate) {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, "0");
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const yyyy = today.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  }
+  const parts = jobDate.split("-");
+  if (parts.length === 3 && parts[0].length === 4) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return jobDate;
 };
 
 const InvoiceMainTab = ({ formik }) => {
   const saveTimeoutRef = useRef(null);
   const [rateMap, setRateMap] = useState({});
 
-  // ✅ fetch currency rates for today's date
+  // ✅ fetch currency rates for job_date
   useEffect(() => {
     const fetchRates = async () => {
       try {
-        const todayDate = getTodayFormatted(); // DD-MM-YYYY format
+        const dateStr = getJobDateFormatted(formik.values.job_date);
         const res = await fetch(
-          `${
-            import.meta.env.VITE_API_STRING
-          }/currency-rates/by-date/${todayDate}`
+          `${import.meta.env.VITE_API_STRING
+          }/currency-rates/by-date/${dateStr}`
         );
         const json = await res.json();
 
         if (!json?.success || !json?.data) {
-          console.warn("No currency rates found for today");
           return;
         }
 
@@ -136,13 +140,12 @@ const InvoiceMainTab = ({ formik }) => {
           }
         });
         setRateMap(map);
-        console.log("Currency rates loaded for", todayDate, map);
       } catch (e) {
         console.error("Failed to load currency rates", e);
       }
     };
     fetchRates();
-  }, []);
+  }, [formik.values.job_date]);
 
   const mapTOIToPriceIncludes = (toi) => {
     switch (toi?.toUpperCase()) {

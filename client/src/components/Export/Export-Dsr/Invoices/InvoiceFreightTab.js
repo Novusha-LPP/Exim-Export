@@ -91,29 +91,33 @@ const InvoiceFreightTab = ({ formik }) => {
   const saveTimeoutRef = useRef(null);
   const [rateMap, setRateMap] = useState({});
 
-  // Helper function to get today's date in DD-MM-YYYY format
-  const getTodayFormatted = () => {
-    const today = new Date();
-    const dd = String(today.getDate()).padStart(2, "0");
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const yyyy = today.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
+  const getJobDateFormatted = (jobDate) => {
+    if (!jobDate) {
+      const today = new Date();
+      const dd = String(today.getDate()).padStart(2, "0");
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const yyyy = today.getFullYear();
+      return `${dd}-${mm}-${yyyy}`;
+    }
+    const parts = jobDate.split("-");
+    if (parts.length === 3 && parts[0].length === 4) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return jobDate;
   };
 
-  // Fetch currency rates for today's date
+  // Fetch currency rates for job_date
   useEffect(() => {
     const fetchRates = async () => {
       try {
-        const todayDate = getTodayFormatted();
+        const dateStr = getJobDateFormatted(formik.values.job_date);
         const res = await fetch(
-          `${
-            import.meta.env.VITE_API_STRING
-          }/currency-rates/by-date/${todayDate}`
+          `${import.meta.env.VITE_API_STRING
+          }/currency-rates/by-date/${dateStr}`
         );
         const json = await res.json();
 
         if (!json?.success || !json?.data) {
-          console.warn("No currency rates found for today");
           return;
         }
 
@@ -129,7 +133,7 @@ const InvoiceFreightTab = ({ formik }) => {
       }
     };
     fetchRates();
-  }, []);
+  }, [formik.values.job_date]);
 
   const autoSave = useCallback((values) => {
     // debounce-save hook if needed
@@ -265,14 +269,14 @@ const InvoiceFreightTab = ({ formik }) => {
 
     const fobRate =
       existingFob.exchangeRate !== undefined &&
-      existingFob.exchangeRate !== null &&
-      existingFob.exchangeRate !== ""
+        existingFob.exchangeRate !== null &&
+        existingFob.exchangeRate !== ""
         ? Number(existingFob.exchangeRate)
         : fallbackRate !== undefined && fallbackRate !== null
-        ? Number(fallbackRate)
-        : fobCurrency === "INR"
-        ? 1
-        : 0;
+          ? Number(fallbackRate)
+          : fobCurrency === "INR"
+            ? 1
+            : 0;
 
     // If no valid rate, default to invoiceExchangeRate as a last resort
     const effectiveFobRate =
@@ -297,49 +301,49 @@ const InvoiceFreightTab = ({ formik }) => {
   };
 
   // Compute FOB in USD from FOB (which is in INR)
-const computeFOBInUSD = (chargesObj) => {
-  const fobRow = chargesObj?.fobValue || {};
-  // Prefer stored INR reference; fall back to converting displayed amount using exchangeRate
-  const fobAmountINR =
-    Number(fobRow.amountINR || 0) ||
-    (Number(fobRow.amount || 0) *
-      Number(fobRow.exchangeRate || invoiceExchangeRate || 0));
-  if (!fobAmountINR || !invoiceExchangeRate) return 0;
+  const computeFOBInUSD = (chargesObj) => {
+    const fobRow = chargesObj?.fobValue || {};
+    // Prefer stored INR reference; fall back to converting displayed amount using exchangeRate
+    const fobAmountINR =
+      Number(fobRow.amountINR || 0) ||
+      (Number(fobRow.amount || 0) *
+        Number(fobRow.exchangeRate || invoiceExchangeRate || 0));
+    if (!fobAmountINR || !invoiceExchangeRate) return 0;
 
-  // invoiceExchangeRate is invoiceCurrency → INR
-  const fobInInvoiceCurrency = fobAmountINR / invoiceExchangeRate;
+    // invoiceExchangeRate is invoiceCurrency → INR
+    const fobInInvoiceCurrency = fobAmountINR / invoiceExchangeRate;
 
-  // If invoiceCurrency is already USD, you're done
-  if (invoiceCurrency === "USD") return fobInInvoiceCurrency;
+    // If invoiceCurrency is already USD, you're done
+    if (invoiceCurrency === "USD") return fobInInvoiceCurrency;
 
-  // Otherwise convert invoice currency → USD using rateMap (INR pivot)
-  const usdRateInINR = Number(rateMap["USD"] || 0);
-  if (!usdRateInINR) return 0;
+    // Otherwise convert invoice currency → USD using rateMap (INR pivot)
+    const usdRateInINR = Number(rateMap["USD"] || 0);
+    if (!usdRateInINR) return 0;
 
-  const fobInUSD = fobAmountINR / usdRateInINR; // INR → USD
-  return Number.isFinite(fobInUSD) ? Number(fobInUSD.toFixed(2)) : 0;
-};
+    const fobInUSD = fobAmountINR / usdRateInINR; // INR → USD
+    return Number.isFinite(fobInUSD) ? Number(fobInUSD.toFixed(2)) : 0;
+  };
 
   const effectiveCharges = computeFOBCharges();
 
-// Derive FOB in USD and store it as a separate field in Formik
-const fobValueUSD = computeFOBInUSD(effectiveCharges);
-useEffect(() => {
-  formik.setFieldValue(
-    "freightInsuranceCharges",
-    {
-      ...effectiveCharges,
-      fobValueUSD, // new variable stored in Formik
-    },
-    false
-  );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [fobValueUSD]);
+  // Derive FOB in USD and store it as a separate field in Formik
+  const fobValueUSD = computeFOBInUSD(effectiveCharges);
+  useEffect(() => {
+    formik.setFieldValue(
+      "freightInsuranceCharges",
+      {
+        ...effectiveCharges,
+        fobValueUSD, // new variable stored in Formik
+      },
+      false
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fobValueUSD]);
 
-useEffect(() => {
-  formik.setFieldValue("fobValueUSD", fobValueUSD, false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [fobValueUSD]);
+  useEffect(() => {
+    formik.setFieldValue("fobValueUSD", fobValueUSD, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fobValueUSD]);
 
 
   const getRow = (key) => effectiveCharges[key] || {};
@@ -505,8 +509,8 @@ useEffect(() => {
                           : data.rate !== undefined &&
                             data.rate !== null &&
                             data.rate !== ""
-                          ? data.rate
-                          : ""
+                            ? data.rate
+                            : ""
                       }
                       disabled={disabled}
                       onChange={(e) => {
@@ -531,8 +535,8 @@ useEffect(() => {
                       isFOB
                         ? ""
                         : Number.isFinite(baseValue)
-                        ? baseValue.toFixed(2)
-                        : ""
+                          ? baseValue.toFixed(2)
+                          : ""
                     }
                     readOnly
                   />

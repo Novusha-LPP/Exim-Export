@@ -1662,20 +1662,28 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
   const [exchangeRates, setExchangeRates] = useState([]);
   const [ratesLoading, setRatesLoading] = useState(true);
 
-  const getTodayFormatted = () => {
-    const today = new Date();
-    const dd = String(today.getDate()).padStart(2, "0");
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const yyyy = today.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
+  const getJobDateFormatted = () => {
+    const jobDate = formik.values.job_date;
+    if (!jobDate) {
+      const today = new Date();
+      const dd = String(today.getDate()).padStart(2, "0");
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const yyyy = today.getFullYear();
+      return `${dd}-${mm}-${yyyy}`;
+    }
+    const parts = jobDate.split("-");
+    if (parts.length === 3 && parts[0].length === 4) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return jobDate;
   };
 
   useEffect(() => {
     const fetchRates = async () => {
       try {
-        const todayDate = getTodayFormatted(); // DD-MM-YYYY format
+        const dateStr = getJobDateFormatted();
         setRatesLoading(true);
-        const res = await fetch(`${apiBase}/currency-rates/by-date/${todayDate}`);
+        const res = await fetch(`${apiBase}/currency-rates/by-date/${dateStr}`);
         const data = await res.json();
         if (data && data.success && data.data) {
           const latestRates = data.data.exchange_rates || [];
@@ -1691,7 +1699,7 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
       }
     };
     fetchRates();
-  }, []);
+  }, [apiBase, formik.values.job_date]);
 
   const getExportRate = useCallback(
     (currencyCode) => {
