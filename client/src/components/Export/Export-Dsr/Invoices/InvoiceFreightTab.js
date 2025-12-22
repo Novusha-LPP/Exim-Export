@@ -112,8 +112,7 @@ const InvoiceFreightTab = ({ formik }) => {
       try {
         const dateStr = getJobDateFormatted(formik.values.job_date);
         const res = await fetch(
-          `${import.meta.env.VITE_API_STRING
-          }/currency-rates/by-date/${dateStr}`
+          `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`
         );
         const json = await res.json();
 
@@ -217,7 +216,11 @@ const InvoiceFreightTab = ({ formik }) => {
       return Number(data.amount || 0);
     }
 
-    if (data.amount !== undefined && data.amount !== null && data.amount !== "") {
+    if (
+      data.amount !== undefined &&
+      data.amount !== null &&
+      data.amount !== ""
+    ) {
       return Number(data.amount || 0);
     }
 
@@ -269,14 +272,14 @@ const InvoiceFreightTab = ({ formik }) => {
 
     const fobRate =
       existingFob.exchangeRate !== undefined &&
-        existingFob.exchangeRate !== null &&
-        existingFob.exchangeRate !== ""
+      existingFob.exchangeRate !== null &&
+      existingFob.exchangeRate !== ""
         ? Number(existingFob.exchangeRate)
         : fallbackRate !== undefined && fallbackRate !== null
-          ? Number(fallbackRate)
-          : fobCurrency === "INR"
-            ? 1
-            : 0;
+        ? Number(fallbackRate)
+        : fobCurrency === "INR"
+        ? 1
+        : 0;
 
     // If no valid rate, default to invoiceExchangeRate as a last resort
     const effectiveFobRate =
@@ -306,8 +309,8 @@ const InvoiceFreightTab = ({ formik }) => {
     // Prefer stored INR reference; fall back to converting displayed amount using exchangeRate
     const fobAmountINR =
       Number(fobRow.amountINR || 0) ||
-      (Number(fobRow.amount || 0) *
-        Number(fobRow.exchangeRate || invoiceExchangeRate || 0));
+      Number(fobRow.amount || 0) *
+        Number(fobRow.exchangeRate || invoiceExchangeRate || 0);
     if (!fobAmountINR || !invoiceExchangeRate) return 0;
 
     // invoiceExchangeRate is invoiceCurrency → INR
@@ -329,22 +332,24 @@ const InvoiceFreightTab = ({ formik }) => {
   // Derive FOB in USD and store it as a separate field in Formik
   const fobValueUSD = computeFOBInUSD(effectiveCharges);
   useEffect(() => {
-    formik.setFieldValue(
-      "freightInsuranceCharges",
-      {
-        ...effectiveCharges,
-        fobValueUSD, // new variable stored in Formik
-      },
-      false
-    );
+    const nextVal = {
+      ...effectiveCharges,
+      fobValueUSD, // new variable stored in Formik
+    };
+    // Deep comparison to allow updates when effectiveCharges changes
+    if (
+      JSON.stringify(formik.values.freightInsuranceCharges) !==
+      JSON.stringify(nextVal)
+    ) {
+      formik.setFieldValue("freightInsuranceCharges", nextVal, false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fobValueUSD]);
+  }, [effectiveCharges, fobValueUSD, formik.values.freightInsuranceCharges]);
 
   useEffect(() => {
     formik.setFieldValue("fobValueUSD", fobValueUSD, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fobValueUSD]);
-
 
   const getRow = (key) => effectiveCharges[key] || {};
 
@@ -426,7 +431,8 @@ const InvoiceFreightTab = ({ formik }) => {
             }
             const rate = getRateForCurrency(effectiveCurrency);
             if (typeof rate === "number") return rate;
-            if (effectiveCurrency === invoiceCurrency) return invoiceExchangeRate;
+            if (effectiveCurrency === invoiceCurrency)
+              return invoiceExchangeRate;
             if (effectiveCurrency === "INR") return 1;
             return "";
           })();
@@ -481,8 +487,7 @@ const InvoiceFreightTab = ({ formik }) => {
                     onChange={(e) => {
                       if (disabled) return;
                       const raw = e.target.value;
-                      const nextVal =
-                        raw === "" ? "" : parseFloat(raw || "0");
+                      const nextVal = raw === "" ? "" : parseFloat(raw || "0");
                       handleChange(row.key, "exchangeRate", nextVal);
                     }}
                   />
@@ -509,8 +514,8 @@ const InvoiceFreightTab = ({ formik }) => {
                           : data.rate !== undefined &&
                             data.rate !== null &&
                             data.rate !== ""
-                            ? data.rate
-                            : ""
+                          ? data.rate
+                          : ""
                       }
                       disabled={disabled}
                       onChange={(e) => {
@@ -535,8 +540,8 @@ const InvoiceFreightTab = ({ formik }) => {
                       isFOB
                         ? ""
                         : Number.isFinite(baseValue)
-                          ? baseValue.toFixed(2)
-                          : ""
+                        ? baseValue.toFixed(2)
+                        : ""
                     }
                     readOnly
                   />

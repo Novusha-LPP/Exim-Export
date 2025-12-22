@@ -302,6 +302,7 @@ const drawbackDetailsSchema = new Schema(
     dbkSrNo: { type: String },
     fobValue: { type: String, min: 0 },
     quantity: { type: Number, min: 0 },
+    unit: { type: String, trim: true },
     dbkUnder: {
       type: String,
       enum: ["Actual", "Provisional"],
@@ -310,6 +311,7 @@ const drawbackDetailsSchema = new Schema(
     dbkDescription: { type: String, maxlength: 500 },
     dbkRate: { type: Number, default: 0, min: 0 },
     dbkCap: { type: Number, default: 0, min: 0 },
+    dbkCapunit: { type: String, trim: true },
     dbkAmount: { type: Number, default: 0, min: 0 },
     percentageOfFobValue: { type: String },
   },

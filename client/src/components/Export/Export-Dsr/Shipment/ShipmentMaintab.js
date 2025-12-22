@@ -1092,6 +1092,16 @@ function ShipmentMainTab({ formik, onUpdate }) {
                     }
                   />
                 </div>}
+                 <div style={styles.field}>
+                  <div style={styles.label}>EGM NO</div>
+                  <input
+                    style={styles.input}
+                    value={toUpper(formik.values.egm_no || "")}
+                    onChange={(e) =>
+                      handleFieldChange("egm_no", e.target.value.toUpperCase())
+                    }
+                  />
+                </div>
                 <div style={styles.field}>
                   <div style={styles.label}>{isAir ? "MAWB NO" : "MBL NO"}</div>
                   <input
@@ -1239,16 +1249,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                     </div>
                   </>
                 )}
-                <div style={styles.field}>
-                  <div style={styles.label}>EGM NO</div>
-                  <input
-                    style={styles.input}
-                    value={toUpper(formik.values.egm_no || "")}
-                    onChange={(e) =>
-                      handleFieldChange("egm_no", e.target.value.toUpperCase())
-                    }
-                  />
-                </div>
+                
                 <div style={styles.field}>
                   <div style={styles.label}>EGM DATE</div>
                   <DateInput

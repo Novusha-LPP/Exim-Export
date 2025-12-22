@@ -687,16 +687,16 @@ function useExportJobDetails(params, setFileSnackbar) {
       // Drawback Details
       drawbackDetails: [
         {
-          dbkitem: false,
           dbkSrNo: "",
           fobValue: "",
           quantity: 0,
+          unit: "",
           dbkUnder: "Actual",
           dbkDescription: "",
           dbkRate: 1.5,
           dbkCap: 0,
+          dbkCapunit: "",
           dbkAmount: 0,
-          percentageOfFobValue: "1.5% of FOB Value",
         },
       ],
 
@@ -735,6 +735,18 @@ function useExportJobDetails(params, setFileSnackbar) {
 
         const syncedValues = {
           ...values,
+          drawbackDetails: (values.drawbackDetails || []).map((dbk, i) => {
+            const product = values.products?.[i];
+            if (product) {
+              return {
+                ...dbk,
+                quantity: product.quantity || 0,
+                unit: product.qtyUnit || "",
+                dbkCapunit: product.qtyUnit || "",
+              };
+            }
+            return dbk;
+          }),
           annexC1Details: {
             ...values.annexC1Details,
             sealNumber:
@@ -913,13 +925,13 @@ function useExportJobDetails(params, setFileSnackbar) {
         ),
         verified_by_examining_officer: safeValue(
           data.verified_by_examining_officer ||
-          data.annexC1Details?.verifiedByExaminingOfficer,
+            data.annexC1Details?.verifiedByExaminingOfficer,
           false
         ),
         annex_seal_number: safeValue(
           data.annex_seal_number ||
-          data.annexC1Details?.sealNumber ||
-          data.stuffing_seal_no
+            data.annexC1Details?.sealNumber ||
+            data.stuffing_seal_no
         ), // Reference stuffing_seal_no
         annex_designation: safeValue(
           data.annex_designation || data.annexC1Details?.designation
@@ -961,13 +973,13 @@ function useExportJobDetails(params, setFileSnackbar) {
           ),
           verifiedByExaminingOfficer: safeValue(
             data.verified_by_examining_officer ||
-            data.annexC1Details?.verifiedByExaminingOfficer,
+              data.annexC1Details?.verifiedByExaminingOfficer,
             false
           ),
           sealNumber: safeValue(
             data.stuffing_seal_no ||
-            data.annex_seal_number ||
-            data.annexC1Details?.sealNumber
+              data.annex_seal_number ||
+              data.annexC1Details?.sealNumber
           ), // Sync from main seal number
           documents: safeValue(
             data.annex_c1_documents || data.annexC1Details?.documents,
@@ -1017,7 +1029,21 @@ function useExportJobDetails(params, setFileSnackbar) {
             cenvat: safeValue(product.cessExpDuty?.cenvat, {}),
           },
         })),
-        drawbackDetails: safeValue(data.drawbackDetails, []),
+        drawbackDetails: safeValue(data.drawbackDetails, []).map((d) => ({
+          ...d,
+          dbkitem: d.dbkitem ?? false,
+          dbkSrNo: d.dbkSrNo || "",
+          fobValue: d.fobValue || "",
+          quantity: d.quantity || 0,
+          unit: d.unit || "",
+          dbkUnder: d.dbkUnder || "Actual",
+          dbkDescription: d.dbkDescription || "",
+          dbkRate: d.dbkRate ?? 1.5,
+          dbkCap: d.dbkCap || 0,
+          dbkCapunit: d.dbkCapunit || "",
+          dbkAmount: d.dbkAmount || 0,
+          percentageOfFobValue: d.percentageOfFobValue || "1.5% of FOB Value",
+        })),
         documents: safeValue(data.documents, {}),
         stuffing_date: safeValue(data.stuffing_date),
         stuffing_supervisor: safeValue(data.stuffing_supervisor),

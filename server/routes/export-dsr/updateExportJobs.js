@@ -279,7 +279,8 @@ router.put("/:job_no*/unlock", async (req, res) => {
       return res.json({ message: "Job unlocked successfully" });
     }
 
-    res.status(403).json({ message: "Not authorized to unlock this job" });
+    // Explicitly allow non-lockers to "succeed" during cleanup to prevent frontend errors
+    return res.json({ message: "Job released" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -290,6 +291,29 @@ router.put("/:job_no*", auditMiddleware("Job"), async (req, res) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
+    const username = req.headers["username"];
+
+    // Enforce lock check
+    const existingJob = await ExJobModel.findOne({
+      job_no: { $regex: `^${job_no}$`, $options: "i" },
+    });
+    if (
+      existingJob &&
+      existingJob.lockedBy &&
+      existingJob.lockedBy !== username
+    ) {
+      const LOCK_TIMEOUT = 30 * 60 * 1000;
+      if (
+        existingJob.lockedAt &&
+        new Date() - new Date(existingJob.lockedAt) < LOCK_TIMEOUT
+      ) {
+        return res
+          .status(403)
+          .json({
+            message: `Update blocked: Job is locked by ${existingJob.lockedBy}`,
+          });
+      }
+    }
 
     const updateData = { ...req.body, updatedAt: new Date() };
 
