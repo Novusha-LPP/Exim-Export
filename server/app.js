@@ -50,12 +50,14 @@ import getExpJob from "./routes/export-dsr/getExpJob.mjs";
 import updateExportJobs from "./routes/export-dsr/updateExportJobs.js";
 import currencyRate from "./routes/currencyRate.js";
 import deleteFromS3Routes from "./routes/deleteFromS3.js";
-import getRodtep from "./routes/export-dsr/getRodtep.js";
+
+import getRodtep_R from "./routes/export-dsr/getRodtep_R.js";
 import getCthsExport from "./routes/export-dsr/getCthsExport.js";
+import getDrawback from "./routes/export-dsr/getDrawback.js";
 import feedback from "./routes/feedbackRoutes.js";
 
-
 import getConsignees from "./routes/export-dsr/getConsignees.js";
+import rodtepReRoutes from "./routes/export-dsr/rodtepReRoutes.js";
 
 process.on("uncaughtException", (error) => {
   logger.error(`Uncaught Exception: ${error.message}`, { stack: error.stack });
@@ -142,7 +144,11 @@ app.use("/api/airPorts", auditMiddleware("Directory"), airports);
 app.use("/api/uqcs", auditMiddleware("Directory"), uqcs);
 app.use("/api/currencies", auditMiddleware("Directory"), Currency);
 app.use("/api/packages", auditMiddleware("Directory"), Packages);
-app.use("/api/supportingDocumentCodes", auditMiddleware("Directory"), SupportingDocuments);
+app.use(
+  "/api/supportingDocumentCodes",
+  auditMiddleware("Directory"),
+  SupportingDocuments
+);
 app.use(genrateExportChecklist);
 app.use(getExpJob);
 app.use("/api/gateway-ports", auditMiddleware("Directory"), gatwayPort);
@@ -155,11 +161,13 @@ app.use(getExporterList);
 // app.use(getExporterJobs);
 app.use(addJobs);
 app.use("/api/export-jobs", updateExportJobs);
-app.use("/api/getRodtep", getRodtep);
+app.use("/api", getRodtep_R);
 app.use("/api/getCthsExport", getCthsExport);
+app.use("/api/getDrawback", getDrawback);
 app.use(currencyRate);
 app.use("/api", feedback);
 app.use(getConsignees);
+app.use("/api", rodtepReRoutes);
 
 // s3 route
 

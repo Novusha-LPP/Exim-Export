@@ -272,7 +272,9 @@ function UnitDropdownField({
         <input
           style={{
             ...styles.input,
-            ...(disabled ? { background: "#e6eef7", cursor: "not-allowed", opacity: 0.8 } : {}),
+            ...(disabled
+              ? { background: "#e6eef7", cursor: "not-allowed", opacity: 0.8 }
+              : {}),
           }}
           placeholder={placeholder}
           autoComplete="off"
@@ -506,8 +508,8 @@ function useDistrictApiDropdown(
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-              ? data
-              : []
+            ? data
+            : []
         );
       } catch {
         setOpts([]);
@@ -1019,7 +1021,183 @@ function ProductRow({
   formik,
   handleProductChange,
   handleUnitChange,
+  convertToINR,
 }) {
+  const [rodtepLoading, setRodtepLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchRodtepData = async () => {
+      if (!product.ritc || product.ritc.length < 4) return; // Need at least some digits
+
+      const eximCode = product.eximCode || "";
+      // User requested: for eximCode 03 use rodtep-re, else use rodtep_r
+      const useReApi = eximCode.includes("03");
+
+      const endpoint = useReApi
+        ? `${apiBase}/rodtep-re/search?q=${product.ritc}`
+        : `${apiBase}/getRodtep_R?tariff_item=${product.ritc}`;
+
+      try {
+        setRodtepLoading(true);
+        const res = await fetch(endpoint);
+        const data = await res.json();
+
+        let entry = null;
+        if (data.success) {
+          // Handle different response structures
+          if (Array.isArray(data.data) && data.data.length > 0) {
+            // Find exact match if possible, or take first
+            entry =
+              data.data.find(
+                (e) =>
+                  (e.tariff_line || e.tariff_item || "").toString() ===
+                  product.ritc.toString()
+              ) || data.data[0];
+          }
+        }
+
+        if (entry) {
+          // Map fields based on which API was used or normalize them
+          const rate = entry.rate_percentage_fob ?? entry.rate ?? 0;
+          // API RE uses 'cap_rs_per_uqc', R uses 'cap_per_uqc'
+          const cap =
+            entry.cap_rs_per_uqc ?? entry.cap_per_uqc ?? entry.cap ?? 0;
+          const uqc = entry.uqc || "";
+
+          console.log("RoDTEP Fetch Success:", { rate, cap, uqc, entry });
+
+          // Update fields
+          // Note: changing fields will trigger formik update
+          // ratePercent
+          handleProductChange(
+            index,
+            "rodtepInfo.ratePercent",
+            parseFloat(rate)
+          );
+
+          // capValuePerUnits
+          handleProductChange(
+            index,
+            "rodtepInfo.capValuePerUnits",
+            parseFloat(cap)
+          );
+
+          // If UQC is available, attempt to set it (optional, logic might be complex with dropdowns)
+          if (uqc) {
+            // Try to match uqc with unit list if needed, or just set it
+            handleProductChange(index, "rodtepInfo.capUnit", toUpper(uqc));
+          }
+
+          // CALCULATE AMOUNT
+          // 1. Get FOB in INR
+          const fobINR = convertToINR(product.amount, invoice?.currency);
+
+          // 2. Calculate Rate Based Amount
+          const rateAmount = fobINR * (parseFloat(rate) / 100);
+
+          // 3. Calculate Cap Based Amount (Quantity * Cap)
+          // If cap is 0, it might mean "No Cap" (Unlimited) or 0.
+          // In Exim context, usually 0 cap with rate means unlimited OR strictly 0?
+          // The user said: "whicherver value is smaller"
+          // If Cap is 0 and we treat it as 0, then amount is 0.
+          // Getting clarification from context: usually Cap 0 means no cap. But user said Cap (Rs Per UQC) : 0.
+          // Let's assume if Cap is 0, we use RateAmount (Unlimited).
+          // UNLESS the rate is also 0.
+
+          let capAmount = Infinity;
+          if (parseFloat(cap) > 0) {
+            capAmount = (parseFloat(product.quantity) || 0) * parseFloat(cap);
+          }
+
+          const finalAmount = Math.min(
+            rateAmount,
+            capAmount === Infinity ? rateAmount : capAmount
+          );
+
+          handleProductChange(
+            index,
+            "rodtepInfo.amountINR",
+            parseFloat(finalAmount.toFixed(2))
+          );
+        }
+      } catch (err) {
+        console.error("Error fetching RoDTEP:", err);
+      } finally {
+        setRodtepLoading(false);
+      }
+    };
+
+    // Trigger on ritc, eximCode, quantity, amount, or invoice currency change
+    // Debounce or specific trigger?
+    // Let's rely on standard useEffect but guard against loops.
+    // Ideally we only fetch if RITC/EximCode changes. Calculation updates if others change.
+
+    // Using a timeout to debounce slightly
+    const t = setTimeout(() => {
+      if (product.rodtepInfo?.claim === "Yes") {
+        fetchRodtepData();
+      }
+    }, 500);
+
+    return () => clearTimeout(t);
+  }, [
+    product.ritc,
+    product.eximCode,
+    // product.quantity,
+    // product.amount,
+    // invoice?.currency,
+    // product.rodtepInfo?.claim
+  ]);
+
+  // Separate effect for calculation only to avoid re-fetching?
+  // Combined for now to ensure consistency with the fetched rate/cap.
+  // Actually, fetching should only happen on RITC/EximCode change.
+  // Calculation should happen on Qty/Amount change using *existing* rate/cap.
+
+  useEffect(() => {
+    if (product.rodtepInfo?.claim !== "Yes") return;
+
+    const rate = parseFloat(product.rodtepInfo?.ratePercent) || 0;
+    const cap = parseFloat(product.rodtepInfo?.capValuePerUnits) || 0;
+
+    const fobINR = convertToINR(product.amount, invoice?.currency);
+    const rateAmount = fobINR * (rate / 100);
+
+    let capAmount = Infinity;
+    if (cap > 0) {
+      capAmount = (parseFloat(product.quantity) || 0) * cap;
+    } else {
+      // If cap is 0, assume unlimited for now unless rate is 0?
+      // If rate is > 0 and cap is 0 in DB, it implies no cap.
+      capAmount = Infinity;
+    }
+
+    if (rateAmount === 0 && capAmount === Infinity) {
+      // If rate is 0, amount is 0
+      if (product.rodtepInfo?.amountINR !== 0)
+        handleProductChange(index, "rodtepInfo.amountINR", 0);
+      return;
+    }
+
+    const finalAmount = Math.min(rateAmount, capAmount);
+    // Only update if changed significantly
+    if (Math.abs((product.rodtepInfo?.amountINR || 0) - finalAmount) > 0.01) {
+      handleProductChange(
+        index,
+        "rodtepInfo.amountINR",
+        parseFloat(finalAmount.toFixed(2))
+      );
+    }
+  }, [
+    product.quantity,
+    product.amount,
+    invoice?.currency,
+    product.rodtepInfo?.ratePercent,
+    product.rodtepInfo?.capValuePerUnits,
+    product.rodtepInfo?.claim,
+    convertToINR, // added dependency
+  ]);
+
   const stateData = useStateDropdown(
     "originState",
     index,
@@ -1299,19 +1477,19 @@ function ProductRow({
             {/* Only show percentage input in percentage mode (default to percentage) */}
             {(product.pmvInfo?.calculationMethod ?? "percentage") ===
               "percentage" && (
-                <input
-                  style={{ ...styles.input, width: "40%" }}
-                  type="number"
-                  value={product.pmvInfo?.percentage ?? 110.0}
-                  onChange={(e) =>
-                    handleProductChange(
-                      index,
-                      "pmvInfo.percentage",
-                      parseFloat(e.target.value)
-                    )
-                  }
-                />
-              )}
+              <input
+                style={{ ...styles.input, width: "40%" }}
+                type="number"
+                value={product.pmvInfo?.percentage ?? 110.0}
+                onChange={(e) =>
+                  handleProductChange(
+                    index,
+                    "pmvInfo.percentage",
+                    parseFloat(e.target.value)
+                  )
+                }
+              />
+            )}
           </div>
         </div>
 
@@ -1324,7 +1502,7 @@ function ProductRow({
                 paddingRight: 35,
                 backgroundColor:
                   (product.pmvInfo?.calculationMethod ?? "percentage") ===
-                    "percentage"
+                  "percentage"
                     ? "#e2e8f0"
                     : "#f7fafc",
               }}
@@ -1337,10 +1515,14 @@ function ProductRow({
                   parseFloat(e.target.value)
                 )
               }
-              disabled={(product.pmvInfo?.calculationMethod ?? "percentage") ===
-                "percentage"}
-              readOnly={(product.pmvInfo?.calculationMethod ?? "percentage") ===
-                "percentage"}
+              disabled={
+                (product.pmvInfo?.calculationMethod ?? "percentage") ===
+                "percentage"
+              }
+              readOnly={
+                (product.pmvInfo?.calculationMethod ?? "percentage") ===
+                "percentage"
+              }
             />
             <span
               style={{
@@ -1365,7 +1547,7 @@ function ProductRow({
                 paddingRight: 35,
                 backgroundColor:
                   (product.pmvInfo?.calculationMethod ?? "percentage") ===
-                    "percentage"
+                  "percentage"
                     ? "#e2e8f0"
                     : "#f7fafc",
               }}
@@ -1378,10 +1560,14 @@ function ProductRow({
                   parseFloat(e.target.value)
                 )
               }
-              disabled={(product.pmvInfo?.calculationMethod ?? "percentage") ===
-                "percentage"}
-              readOnly={(product.pmvInfo?.calculationMethod ?? "percentage") ===
-                "percentage"}
+              disabled={
+                (product.pmvInfo?.calculationMethod ?? "percentage") ===
+                "percentage"
+              }
+              readOnly={
+                (product.pmvInfo?.calculationMethod ?? "percentage") ===
+                "percentage"
+              }
             />
             <span
               style={{
@@ -1688,7 +1874,12 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
         if (data && data.success && data.data) {
           const latestRates = data.data.exchange_rates || [];
           setExchangeRates(latestRates);
-        } else if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+        } else if (
+          data &&
+          data.success &&
+          Array.isArray(data.data) &&
+          data.data.length > 0
+        ) {
           const latestEntry = data.data[0];
           setExchangeRates(latestEntry.exchange_rates || []);
         }
@@ -1706,10 +1897,12 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
       if (!currencyCode || currencyCode === "INR") return 1;
       const code = currencyCode.toString().toUpperCase();
       const rateObj = exchangeRates.find(
-        (r) => (r.currency_code || r.code || "").toString().toUpperCase() === code
+        (r) =>
+          (r.currency_code || r.code || "").toString().toUpperCase() === code
       );
       if (!rateObj) return 1;
-      const raw = rateObj.export_rate ?? rateObj.exportRate ?? rateObj.rate ?? 0;
+      const raw =
+        rateObj.export_rate ?? rateObj.exportRate ?? rateObj.rate ?? 0;
       const unit = parseFloat(rateObj.unit) || 1;
       const num = parseFloat(raw);
       if (isNaN(num) || unit <= 0) return 1;
@@ -1721,7 +1914,8 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
   const convertToINR = useCallback(
     (amount, fromCurrency) => {
       if (!amount) return 0;
-      if (!fromCurrency || fromCurrency === "INR") return parseFloat(amount) || 0;
+      if (!fromCurrency || fromCurrency === "INR")
+        return parseFloat(amount) || 0;
 
       const rate = getExportRate(fromCurrency);
       const total = parseFloat(amount) * rate;
@@ -1924,7 +2118,7 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
               {[
                 "S.No",
                 "Description",
-                "RITC/Tariff",
+                "RITC",
                 "Qty",
                 "Qty Unit",
                 "Unit Price",
@@ -2052,6 +2246,7 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
           formik={formik}
           handleProductChange={handleProductChange}
           handleUnitChange={handleUnitChange}
+          convertToINR={convertToINR}
         />
       )}
     </div>
