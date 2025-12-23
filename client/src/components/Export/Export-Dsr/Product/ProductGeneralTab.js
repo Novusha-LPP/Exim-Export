@@ -1025,6 +1025,19 @@ function ProductRow({
 }) {
   const [rodtepLoading, setRodtepLoading] = useState(false);
 
+  // Sync rodtepInfo.unit with product.qtyUnit (from Product Main Tab)
+  // User requested this to be matching and disabled.
+  useEffect(() => {
+    const mainUnit = product.qtyUnit;
+    const currentRodtepUnit = product.rodtepInfo?.unit;
+
+    // Only update if they differ (and mainUnit is defined to avoid clearing if not intended,
+    // though usually we want exact sync)
+    if (mainUnit !== undefined && currentRodtepUnit !== mainUnit) {
+      handleUnitChange(index, "unit", mainUnit);
+    }
+  }, [product.qtyUnit, product.rodtepInfo?.unit, handleUnitChange, index]);
+
   useEffect(() => {
     const fetchRodtepData = async () => {
       if (!product.ritc || product.ritc.length < 4) return; // Need at least some digits

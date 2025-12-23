@@ -40,6 +40,7 @@ import SupportingDocuments from "./routes/Directories/supportingdocumentcodes.js
 import genrateExportChecklist from "./routes/export-dsr/generateExportChecklist.mjs";
 import gatwayPort from "./routes/Directories/gatwayPort.js"; //gatwatPort
 import district from "./routes/Directories/districts.js"; //gatwatPort
+import license from "./routes/Directories/license.js";
 
 //============== EXPORT DSR =========================
 import getExJobsOverview from "./routes/export-dsr/getExJobsOverview.mjs";
@@ -99,8 +100,14 @@ app.use(
 );
 app.use(compression({ level: 9 }));
 
+const MONGODB_URI =
+  process.env.NODE_ENV === "production"
+    ? process.env.PROD_MONGODB_URI
+    : process.env.NODE_ENV === "server"
+    ? process.env.SERVER_MONGODB_URI
+    : process.env.DEV_MONGODB_URI;
+
 // MongoDB connection
-const MONGODB_URI = process.env.MONGO_URI;
 mongoose.set("strictQuery", true);
 
 mongoose
@@ -153,6 +160,7 @@ app.use(genrateExportChecklist);
 app.use(getExpJob);
 app.use("/api/gateway-ports", auditMiddleware("Directory"), gatwayPort);
 app.use("/api/districts", auditMiddleware("Directory"), district);
+app.use("/api/licenses", auditMiddleware("Directory"), license);
 // app.set("trust proxy", 1); // Trust first proxy (NGINX, AWS ELB, etc.)
 
 //============== EXPORT DSR =========================
