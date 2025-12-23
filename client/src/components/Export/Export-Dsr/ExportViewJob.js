@@ -145,8 +145,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -672,8 +672,7 @@ function LogisysExportViewJob() {
     const lockJob = async () => {
       try {
         await axios.put(
-          `${
-            import.meta.env.VITE_API_STRING
+          `${import.meta.env.VITE_API_STRING
           }/export-jobs/${encodeURIComponent(decodedJobNo)}/lock`,
           { username: user.username }
         );
@@ -685,8 +684,7 @@ function LogisysExportViewJob() {
     const unlockJob = async () => {
       try {
         await axios.put(
-          `${
-            import.meta.env.VITE_API_STRING
+          `${import.meta.env.VITE_API_STRING
           }/export-jobs/${encodeURIComponent(decodedJobNo)}/unlock`,
           { username: user.username }
         );
@@ -846,7 +844,6 @@ function LogisysExportViewJob() {
         <TabPanel value={activeTab} index={9}>
           <TrackingCompletedTab formik={formik} />
         </TabPanel>
-
         {lockError && (
           <Box
             sx={{

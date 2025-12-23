@@ -81,13 +81,28 @@ function findChanges(oldDoc, newDoc, parentPath = "", changes = []) {
     ) {
       return changes;
     }
-    changes.push({
-      field: parentPath || "document",
-      fieldPath: parentPath,
-      oldValue: null,
-      newValue: newDoc,
-      changeType: "ADDED",
-    });
+
+    if (typeof newDoc === "object" && newDoc !== null) {
+      if (Array.isArray(newDoc)) {
+        newDoc.forEach((item, i) => {
+          findChanges(undefined, item, parentPath ? `${parentPath}.${i}` : `${i}`, changes);
+        });
+      } else {
+        Object.keys(newDoc).forEach((key) => {
+          if (key.startsWith("_") || key === "__v" || key === "updatedAt") return;
+          if (key === "detailed_status") return;
+          findChanges(undefined, newDoc[key], parentPath ? `${parentPath}.${key}` : key, changes);
+        });
+      }
+    } else {
+      changes.push({
+        field: parentPath.split(".").pop() || "document",
+        fieldPath: parentPath,
+        oldValue: null,
+        newValue: newDoc,
+        changeType: "ADDED",
+      });
+    }
     return changes;
   }
 
@@ -99,13 +114,28 @@ function findChanges(oldDoc, newDoc, parentPath = "", changes = []) {
     ) {
       return changes;
     }
-    changes.push({
-      field: parentPath || "document",
-      fieldPath: parentPath,
-      oldValue: oldDoc,
-      newValue: null,
-      changeType: "REMOVED",
-    });
+
+    if (typeof oldDoc === "object" && oldDoc !== null) {
+      if (Array.isArray(oldDoc)) {
+        oldDoc.forEach((item, i) => {
+          findChanges(item, undefined, parentPath ? `${parentPath}.${i}` : `${i}`, changes);
+        });
+      } else {
+        Object.keys(oldDoc).forEach((key) => {
+          if (key.startsWith("_") || key === "__v" || key === "updatedAt") return;
+          if (key === "detailed_status") return;
+          findChanges(oldDoc[key], undefined, parentPath ? `${parentPath}.${key}` : key, changes);
+        });
+      }
+    } else {
+      changes.push({
+        field: parentPath.split(".").pop() || "document",
+        fieldPath: parentPath,
+        oldValue: oldDoc,
+        newValue: null,
+        changeType: "REMOVED",
+      });
+    }
     return changes;
   }
 
@@ -124,23 +154,35 @@ function findChanges(oldDoc, newDoc, parentPath = "", changes = []) {
         continue;
 
       if (i >= oldDoc.length) {
-        // New item added
-        changes.push({
-          field: currentPath,
-          fieldPath: currentPath,
-          oldValue: undefined,
-          newValue: newDoc[i],
-          changeType: "ADDED",
-        });
+        // New item added - recursively find all fields in the new item
+        if (typeof newDoc[i] === "object" && newDoc[i] !== null && !Array.isArray(newDoc[i])) {
+          // It's an object, drill down to individual fields
+          findChanges(undefined, newDoc[i], currentPath, changes);
+        } else {
+          // It's a primitive or array, log it directly
+          changes.push({
+            field: currentPath,
+            fieldPath: currentPath,
+            oldValue: undefined,
+            newValue: newDoc[i],
+            changeType: "ADDED",
+          });
+        }
       } else if (i >= newDoc.length) {
-        // Item removed
-        changes.push({
-          field: currentPath,
-          fieldPath: currentPath,
-          oldValue: oldDoc[i],
-          newValue: undefined,
-          changeType: "REMOVED",
-        });
+        // Item removed - recursively find all fields in the removed item
+        if (typeof oldDoc[i] === "object" && oldDoc[i] !== null && !Array.isArray(oldDoc[i])) {
+          // It's an object, drill down to individual fields
+          findChanges(oldDoc[i], undefined, currentPath, changes);
+        } else {
+          // It's a primitive or array, log it directly
+          changes.push({
+            field: currentPath,
+            fieldPath: currentPath,
+            oldValue: oldDoc[i],
+            newValue: undefined,
+            changeType: "REMOVED",
+          });
+        }
       } else {
         // Compare existing items
         findChanges(oldDoc[i], newDoc[i], currentPath, changes);
@@ -331,24 +373,30 @@ export const auditMiddleware = (documentType = "Unknown") => {
 
     // Extract document ID from params (common patterns)
     const id = req.params.id || req.params._id || req.params.documentId;
-    let job_no = req.params.jobNo || req.params.job_no; // Support both jobNo and job_no - use let for reassignment
-    let year = req.params.year; // Use let for reassignment
+    let job_no = req.params.jobNo || req.params.job_no; // Support both jobNo and job_no
+    let year = req.params.year || req.body.year; // Also check body for year
 
     // Check for pre-extracted job info first
-    if (req.jobInfo && documentType === "Job") {
+    if (req.jobInfo && (documentType === "Job" || documentType === "ExportJob")) {
       job_no = req.jobInfo.job_no || job_no;
       year = req.jobInfo.year || year;
       documentId = req.jobInfo.documentId || documentId;
     }
 
+    // For updates, we might have job_no in the body but not in params (though usually it's both)
+    if (!job_no && req.body.job_no) job_no = req.body.job_no;
+
     const Model = documentTypeToModel[documentType];
 
-    // For job-related operations
-    if ((job_no && year) && (documentType === "Job" || documentType === "ExportJob")) {
+    // Fetch original document
+    if (job_no && (documentType === "Job" || documentType === "ExportJob")) {
       try {
-        originalDocument = await ExJobModel.findOne({ job_no, year }).lean();
+        const query = { job_no };
+        if (year) query.year = year;
+        originalDocument = await ExJobModel.findOne(query).lean();
         if (originalDocument) {
-          documentId = originalDocument._id;
+          documentId = documentId || originalDocument._id;
+          if (!year) year = originalDocument.year; // Ensure we have the year for later lookups
         }
       } catch (error) {
         console.error("❌ Error fetching original job document:", error);
@@ -406,8 +454,10 @@ export const auditMiddleware = (documentType = "Unknown") => {
                   if (Model) {
                     if (documentId) {
                       updatedDocument = await Model.findById(documentId).lean();
-                    } else if (job_no && year && (documentType === "Job" || documentType === "ExportJob")) {
-                      updatedDocument = await ExJobModel.findOne({ job_no, year }).lean();
+                    } else if (job_no && (documentType === "Job" || documentType === "ExportJob")) {
+                      const query = { job_no };
+                      if (year) query.year = year;
+                      updatedDocument = await ExJobModel.findOne(query).lean();
                     } else if (id && mongoose.Types.ObjectId.isValid(id)) {
                       updatedDocument = await Model.findById(id).lean();
                     }

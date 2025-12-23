@@ -163,7 +163,7 @@ router.get("/api/exports/:status?", async (req, res) => {
 });
 
 // POST /api/exports - Create new export job
-router.post("/exports", async (req, res) => {
+router.post("/exports", auditMiddleware("Job"), async (req, res) => {
   try {
     const newJob = new ExportJobModel(req.body);
     const savedJob = await newJob.save();

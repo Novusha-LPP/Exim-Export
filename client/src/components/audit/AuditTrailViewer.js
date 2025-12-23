@@ -434,16 +434,36 @@ const AuditTrailViewer = ({ job_no, year }) => {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
+  // Helper function to format values for display
+  const formatValue = (value) => {
+    if (value === null || value === undefined) {
+      return "null";
+    }
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch (e) {
+        return String(value);
+      }
+    }
+    return String(value);
+  };
+
   const formatChangeDescription = (change, timestamp) => {
     const time = format(new Date(timestamp), "HH:mm");
-    const fieldName = change.field || change.fieldPath;
+    // Use fieldPath for more detailed path information, fallback to field
+    const fieldName = change.fieldPath || change.field;
+
+    const oldValueFormatted = formatValue(change.oldValue);
+    const newValueFormatted = formatValue(change.newValue);
+
     switch (change.changeType) {
       case "ADDED":
-        return `${fieldName} was set to "${change.newValue}" at ${time}`;
+        return `${fieldName} was set to "${newValueFormatted}" at ${time}`;
       case "MODIFIED":
-        return `${fieldName} was updated from "${change.oldValue}" to "${change.newValue}" at ${time}`;
+        return `${fieldName} was updated from "${oldValueFormatted}" to "${newValueFormatted}" at ${time}`;
       case "REMOVED":
-        return `${fieldName} was removed (previous value: "${change.oldValue}") at ${time}`;
+        return `${fieldName} was removed (previous value: "${oldValueFormatted}") at ${time}`;
       case "VIEWED":
         return `${fieldName} was viewed at ${time}`;
       default:
