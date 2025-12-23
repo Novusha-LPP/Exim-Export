@@ -1,6 +1,8 @@
 import React, { useCallback, useRef, useState, useEffect } from "react";
+import axios from "axios";
 import { unitCodes } from "../../../../utils/masterList";
 import DateInput from "../../../common/DateInput.js";
+import LicenseDialog from "./LicenseDialog.js";
 
 // IMPORTANT: import the same `styles` you use in ProductGeneralTab,
 // or copy the styles object from paste.txt into a shared file and import here.
@@ -327,6 +329,9 @@ const ProductDEECTab = ({ formik, productIndex }) => {
   const saveTimeoutRef = useRef(null);
   const product = formik.values.products[productIndex];
 
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogIndex, setDialogIndex] = useState(null);
+
   const deecDetails = product?.deecDetails || {
     isDeecItem: false,
     deecItems: [getDefaultDeecItem(1)],
@@ -433,15 +438,116 @@ const ProductDEECTab = ({ formik, productIndex }) => {
     }
   };
 
+  const API_URL = import.meta.env.VITE_API_STRING;
+
+  // Function to fetch license details
+  const fetchLicenseDetails = async (licRefNo, idx) => {
+    if (!licRefNo) return;
+    try {
+      const response = await axios.get(`${API_URL}/licenses`, {
+        params: { lic_ref_no: licRefNo, type: "DEEC" },
+      });
+
+      if (response.data.success && response.data.data.length > 0) {
+        const license = response.data.data[0];
+
+        // Convert date "15-Dec-2023" to "DD-MM-YYYY" if needed,
+        // assuming DateInput expects "DD-MM-YYYY".
+        // Or if DateInput handles strings well.
+        // Let's ensure standard format if possible or just pass the string if DateInput is flexible.
+        // Based on DateInput code, it just validates numbers and hyphens.
+        // "15-Dec-2023" has letters, so DateInput regex /^[0-9-]*$/ will fail if user tries to type it.
+        // But setting it programmatically might be fine or might break validation on next edit.
+        // Best to convert to DD-MM-YYYY.
+
+        let formattedDate = "";
+        if (license.lic_date) {
+          const d = new Date(license.lic_date);
+          if (!isNaN(d.getTime())) {
+            const day = String(d.getDate()).padStart(2, "0");
+            const month = String(d.getMonth() + 1).padStart(2, "0");
+            const year = d.getFullYear();
+            formattedDate = `${day}-${month}-${year}`;
+          } else {
+            formattedDate = license.lic_date; // Fallback
+          }
+        }
+
+        const updatedProducts = [...formik.values.products];
+        const regItems = [
+          ...(updatedProducts[productIndex].deecDetails?.deec_reg_obj || []),
+        ];
+
+        // Ensure we don't index out of bounds (though addRegItem logic handles init)
+        if (!regItems[idx]) return;
+
+        regItems[idx].regnNo = license.lic_no || "";
+        regItems[idx].licDate = formattedDate;
+
+        updatedProducts[productIndex].deecDetails.deec_reg_obj = regItems;
+        formik.setFieldValue("products", updatedProducts);
+      }
+    } catch (error) {
+      console.error("Error fetching license details:", error);
+    }
+  };
+
+  // Function to handle selection from dialog
+  const handleLicenseSelect = (license) => {
+    if (dialogIndex === null) return;
+
+    // Format date if needed
+    let formattedDate = "";
+    if (license.lic_date) {
+      const d = new Date(license.lic_date);
+      if (!isNaN(d.getTime())) {
+        const day = String(d.getDate()).padStart(2, "0");
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const year = d.getFullYear();
+        formattedDate = `${day}-${month}-${year}`;
+      } else {
+        formattedDate = license.lic_date;
+      }
+    }
+
+    const updatedProducts = [...formik.values.products];
+    const regItems = [
+      ...(updatedProducts[productIndex].deecDetails?.deec_reg_obj || []),
+    ];
+
+    if (!regItems[dialogIndex]) return;
+
+    regItems[dialogIndex].licRefNo = license.lic_ref_no || "";
+    regItems[dialogIndex].regnNo = license.lic_no || "";
+    regItems[dialogIndex].licDate = formattedDate;
+
+    updatedProducts[productIndex].deecDetails.deec_reg_obj = regItems;
+    formik.setFieldValue("products", updatedProducts);
+
+    setDialogOpen(false);
+    setDialogIndex(null);
+  };
+
   return (
     <div style={styles.card}>
+      {dialogOpen && (
+        <LicenseDialog
+          open={dialogOpen}
+          licenseType="DEEC"
+          onClose={() => {
+            setDialogOpen(false);
+            setDialogIndex(null);
+          }}
+          onSelect={handleLicenseSelect}
+        />
+      )}
       <div style={styles.cardTitle}>
         PRODUCT DEEC DETAILS
         <span style={styles.chip}>PART C / LICENSE</span>
       </div>
 
       {/* Checkbox */}
-      <div style={{ marginBottom: 10 }}>
+      {/* <div style={{ marginBottom: 10 }}>
         <label style={styles.inlineCheckbox}>
           <input
             type="checkbox"
@@ -453,7 +559,7 @@ const ProductDEECTab = ({ formik, productIndex }) => {
           />
           THIS IS A DEEC ITEM
         </label>
-      </div>
+      </div> */}
 
       {/* 1. Part E & Quantity Details */}
       <div style={styles.subSectionTitle}>PART E & QUANTITY DETAILS</div>
@@ -510,15 +616,41 @@ const ProductDEECTab = ({ formik, productIndex }) => {
               <tr key={`reg-${idx}`}>
                 <td style={styles.td}>{idx + 1}</td>
                 <td style={styles.td}>
-                  <input
-                    style={styles.input}
-                    type="text"
-                    value={item.licRefNo || ""}
-                    placeholder="LIC REF NO"
-                    onChange={(e) =>
-                      handleRegItemChange(idx, "licRefNo", e.target.value)
-                    }
-                  />
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 4 }}
+                  >
+                    <input
+                      style={{ ...styles.input, flex: 1 }}
+                      type="text"
+                      value={item.licRefNo || ""}
+                      placeholder="LIC REF NO"
+                      onChange={(e) =>
+                        handleRegItemChange(idx, "licRefNo", e.target.value)
+                      }
+                      onBlur={(e) => fetchLicenseDetails(e.target.value, idx)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDialogIndex(idx);
+                        setDialogOpen(true);
+                      }}
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: 4,
+                        border: "1px solid #16408f",
+                        background: "#f1f5ff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                      }}
+                      title="Search License"
+                    >
+                      🔍
+                    </button>
+                  </div>
                 </td>
                 <td style={styles.td}>
                   <input

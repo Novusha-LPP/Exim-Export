@@ -46,8 +46,7 @@ const validationSchema = Yup.object({
 
   registrationDetails: Yup.object({
     ieCode: Yup.string()
-      .matches(/^\d{10}$/, "IE Code must be exactly 10 digits")
-      .required("IE Code is required"),
+    .required("IE Code is required"),
     panNo: Yup.string()
       .matches(
         /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
@@ -529,9 +528,8 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                       value={values.registrationDetails.ieCode}
                       onChange={(e) => {
                         // Only allow numbers and max 10 digits
-                        const value = e.target.value
-                          .replace(/\D/g, "")
-                          .slice(0, 10);
+                        const value = e.target.value;
+
                         setFieldValue("registrationDetails.ieCode", value);
                       }}
                       onBlur={handleBlur}

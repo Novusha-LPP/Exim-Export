@@ -14,6 +14,7 @@ const MONGODB_URI =
     : process.env.DEV_MONGODB_URI;
 
 console.log("NODe_Env====", process.env.NODE_ENV);
+console.log("MONGODB_URI====", MONGODB_URI);
 // Convert the URL to a file path
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
