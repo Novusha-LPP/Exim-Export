@@ -1660,13 +1660,25 @@ function ProductRow({
             <select
               style={styles.select}
               value={product.igstCompensationCess?.igstPaymentStatus || ""}
-              onChange={(e) =>
-                handleProductChange(
-                  index,
-                  "igstCompensationCess.igstPaymentStatus",
-                  e.target.value
-                )
-              }
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "Not Applicable") {
+                  handleProductChange(index, "igstCompensationCess", {
+                    igstPaymentStatus: val,
+                    taxableValueINR: 0,
+                    igstRate: 0,
+                    igstAmountINR: 0,
+                    compensationCessRate: 0,
+                    compensationCessAmountINR: 0,
+                  });
+                } else {
+                  handleProductChange(
+                    index,
+                    "igstCompensationCess.igstPaymentStatus",
+                    val
+                  );
+                }
+              }}
             >
               <option value="">Select Status</option>
               <option value="Not Applicable">Not Applicable</option>
