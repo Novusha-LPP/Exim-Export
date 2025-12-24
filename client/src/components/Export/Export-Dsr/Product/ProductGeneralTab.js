@@ -1218,6 +1218,53 @@ function ProductRow({
     handleProductChange
   );
 
+  // Auto-calculate IGST fields based on payment status
+  useEffect(() => {
+    const status = product.igstCompensationCess?.igstPaymentStatus;
+
+    if (status === "Export Against Payment") {
+      // Auto-calculate Taxable Value
+      const taxableValue = convertToINR(product.amount, invoice?.currency);
+      // Avoid infinite loop by checking if value changed
+      if (
+        Math.abs(
+          (product.igstCompensationCess?.taxableValueINR || 0) - taxableValue
+        ) > 0.01
+      ) {
+        handleProductChange(
+          index,
+          "igstCompensationCess.taxableValueINR",
+          parseFloat(taxableValue.toFixed(2))
+        );
+      }
+
+      // Auto-calculate IGST Amount
+      // rate can be 0, 5, 18
+      const rate = product.igstCompensationCess?.igstRate || 0;
+      const igstAmount = (taxableValue * rate) / 100;
+
+      if (
+        Math.abs(
+          (product.igstCompensationCess?.igstAmountINR || 0) - igstAmount
+        ) > 0.01
+      ) {
+        handleProductChange(
+          index,
+          "igstCompensationCess.igstAmountINR",
+          parseFloat(igstAmount.toFixed(2))
+        );
+      }
+    }
+  }, [
+    product.igstCompensationCess?.igstPaymentStatus,
+    product.igstCompensationCess?.igstRate,
+    product.amount,
+    invoice?.currency,
+    convertToINR,
+    handleProductChange,
+    index,
+  ]);
+
   return (
     <div style={styles.card}>
       <div style={styles.cardTitle}>
@@ -1612,7 +1659,7 @@ function ProductRow({
             <label style={styles.label}>IGST Pymt Status</label>
             <select
               style={styles.select}
-              value={product.igstCompensationCess?.igstPaymentStatus || "LUT"}
+              value={product.igstCompensationCess?.igstPaymentStatus || ""}
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1621,7 +1668,11 @@ function ProductRow({
                 )
               }
             >
-              <option value="LUT">LUT (BOND)</option>
+              <option value="">Select Status</option>
+              <option value="Not Applicable">Not Applicable</option>
+              <option value="Export Under Bond – Not Paid">
+                Export Under Bond – Not Paid
+              </option>
               <option value="Export Against Payment">
                 Export Against Payment
               </option>
@@ -1629,10 +1680,15 @@ function ProductRow({
           </div>
           <div style={styles.field}>
             <label style={styles.label}>IGST Rate (%)</label>
-            <input
-              style={styles.input}
-              type="number"
-              value={product.igstCompensationCess?.igstRate ?? 0}
+            <select
+              style={{
+                ...styles.select,
+                ...(product.igstCompensationCess?.igstPaymentStatus !==
+                "Export Against Payment"
+                  ? { background: "#e9ecef" }
+                  : {}),
+              }}
+              value={product.igstCompensationCess?.igstRate ?? ""}
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1640,12 +1696,26 @@ function ProductRow({
                   parseFloat(e.target.value)
                 )
               }
-            />
+              disabled={
+                product.igstCompensationCess?.igstPaymentStatus !==
+                "Export Against Payment"
+              }
+            >
+              <option value={0}>0%</option>
+              <option value={5}>5%</option>
+              <option value={18}>18%</option>
+            </select>
           </div>
           <div style={styles.field}>
             <label style={styles.label}>Comp. Cess(%)</label>
             <input
-              style={styles.input}
+              style={{
+                ...styles.input,
+                ...(product.igstCompensationCess?.igstPaymentStatus !==
+                "Export Against Payment"
+                  ? { background: "#e9ecef" }
+                  : {}),
+              }}
               type="number"
               value={product.igstCompensationCess?.compensationCessRate ?? 0}
               onChange={(e) =>
@@ -1655,6 +1725,10 @@ function ProductRow({
                   parseFloat(e.target.value)
                 )
               }
+              disabled={
+                product.igstCompensationCess?.igstPaymentStatus !==
+                "Export Against Payment"
+              }
             />
           </div>
         </div>
@@ -1662,7 +1736,13 @@ function ProductRow({
           <div style={styles.field}>
             <label style={styles.label}>Taxable Value (INR)</label>
             <input
-              style={styles.input}
+              style={{
+                ...styles.input,
+                ...(product.igstCompensationCess?.igstPaymentStatus ===
+                "Not Applicable"
+                  ? { background: "#e9ecef" }
+                  : {}),
+              }}
               type="number"
               value={product.igstCompensationCess?.taxableValueINR ?? 0}
               onChange={(e) =>
@@ -1672,12 +1752,22 @@ function ProductRow({
                   parseFloat(e.target.value)
                 )
               }
+              disabled={
+                product.igstCompensationCess?.igstPaymentStatus ===
+                "Not Applicable"
+              }
             />
           </div>
           <div style={styles.field}>
             <label style={styles.label}>IGST Amt (INR)</label>
             <input
-              style={styles.input}
+              style={{
+                ...styles.input,
+                ...(product.igstCompensationCess?.igstPaymentStatus !==
+                "Export Against Payment"
+                  ? { background: "#e9ecef" }
+                  : {}),
+              }}
               type="number"
               value={product.igstCompensationCess?.igstAmountINR ?? 0}
               onChange={(e) =>
@@ -1687,12 +1777,22 @@ function ProductRow({
                   parseFloat(e.target.value)
                 )
               }
+              disabled={
+                product.igstCompensationCess?.igstPaymentStatus !==
+                "Export Against Payment"
+              }
             />
           </div>
           <div style={styles.field}>
             <label style={styles.label}>Comp. Cess Amt(INR)</label>
             <input
-              style={styles.input}
+              style={{
+                ...styles.input,
+                ...(product.igstCompensationCess?.igstPaymentStatus !==
+                "Export Against Payment"
+                  ? { background: "#e9ecef" }
+                  : {}),
+              }}
               type="number"
               value={
                 product.igstCompensationCess?.compensationCessAmountINR ?? 0
@@ -1703,6 +1803,10 @@ function ProductRow({
                   "igstCompensationCess.compensationCessAmountINR",
                   parseFloat(e.target.value)
                 )
+              }
+              disabled={
+                product.igstCompensationCess?.igstPaymentStatus !==
+                "Export Against Payment"
               }
             />
           </div>
