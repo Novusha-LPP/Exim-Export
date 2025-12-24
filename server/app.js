@@ -60,6 +60,7 @@ import feedback from "./routes/feedbackRoutes.js";
 import getConsignees from "./routes/export-dsr/getConsignees.js";
 import getHoToConsoleNames from "./routes/export-dsr/getHoToConsoleNames.js";
 import rodtepReRoutes from "./routes/export-dsr/rodtepReRoutes.js";
+import generateDSRReport from "./routes/export-dsr/generateDSRReport.mjs";
 
 process.on("uncaughtException", (error) => {
   logger.error(`Uncaught Exception: ${error.message}`, { stack: error.stack });
@@ -178,6 +179,7 @@ app.use("/api", feedback);
 app.use(getConsignees);
 app.use(getHoToConsoleNames);
 app.use("/api", rodtepReRoutes);
+app.use(generateDSRReport);
 
 // s3 route
 

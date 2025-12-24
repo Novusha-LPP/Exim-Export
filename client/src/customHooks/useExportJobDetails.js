@@ -162,6 +162,14 @@ function useExportJobDetails(params, setFileSnackbar) {
       chargeable_weight: "",
       chargeable_weight_unit: "",
 
+      // Tracking Fields
+      customerremark: "",
+      workflowlocation: "",
+      shipmenttype: "International",
+      milestoneremarks: "",
+      milestoneviewuploaddocuments: "",
+      milestonehandledby: "",
+
       // Exporter Information
       exporter_address: "",
       exporter_state: "",
@@ -184,6 +192,8 @@ function useExportJobDetails(params, setFileSnackbar) {
       bank_account_number: "",
       bank_ifsc_code: "",
       bank_swift_code: "",
+      bank_dealer: "",
+      ac_number: "",
 
       // Consignee/Importer Information
       consignees: [
@@ -248,10 +258,11 @@ function useExportJobDetails(params, setFileSnackbar) {
         buyer: {
           name: "",
           addressLine1: "",
+          addressLine2: "",
           city: "",
-          pin: "",
-          country: "",
+          pinCode: "",
           state: "",
+          country: "",
         },
         thirdParty: {
           isThirdPartyExport: false,
@@ -274,6 +285,10 @@ function useExportJobDetails(params, setFileSnackbar) {
           sourceState: "",
           transitCountry: "",
         },
+        buyer_name: "",
+        buyer_address: "",
+        buyer_gstin: "",
+        buyer_state: "",
       },
 
       // Other Information
@@ -721,7 +736,6 @@ function useExportJobDetails(params, setFileSnackbar) {
       createdAt: "",
       updatedAt: "",
     },
-
     enableReinitialize: true,
     onSubmit: async (values) => {
       try {
@@ -819,6 +833,12 @@ function useExportJobDetails(params, setFileSnackbar) {
         regn_no: safeValue(data.regn_no),
         gstin: safeValue(data.gstin),
         state: safeValue(data.state),
+        jobStatus: safeValue(data.jobStatus || data.status),
+        panNo: safeValue(data.panNo || data.exporter_pan),
+        pan_no: safeValue(data.pan_no || data.exporter_pan),
+        bank_dealer: safeValue(data.bank_dealer),
+        ac_number: safeValue(data.ac_number || data.bank_account_number),
+        adCode: safeValue(data.adCode || data.ad_code),
         sb_date: safeValue(data.sb_date),
         rbi_app_no: safeValue(data.rbi_app_no),
         gr_waived: safeValue(data.gr_waived, false),
@@ -902,6 +922,11 @@ function useExportJobDetails(params, setFileSnackbar) {
         invoices: safeValue(data.invoices, []),
         buyerThirdPartyInfo: safeValue(data.buyerThirdPartyInfo, {}),
         otherInfo: safeValue(data.otherInfo, {}),
+        buyer_name: safeValue(data.buyer_name),
+        buyer_address: safeValue(data.buyer_address),
+        buyer_gstin: safeValue(data.buyer_gstin),
+        buyer_state: safeValue(data.buyer_state),
+        annexure_c_details: safeValue(data.annexure_c_details, false),
         annexC1Details: safeValue(data.annexC1Details, {}),
         // Individual fields for form handling
         ie_code_of_eou: safeValue(
@@ -925,13 +950,13 @@ function useExportJobDetails(params, setFileSnackbar) {
         ),
         verified_by_examining_officer: safeValue(
           data.verified_by_examining_officer ||
-            data.annexC1Details?.verifiedByExaminingOfficer,
+          data.annexC1Details?.verifiedByExaminingOfficer,
           false
         ),
         annex_seal_number: safeValue(
           data.annex_seal_number ||
-            data.annexC1Details?.sealNumber ||
-            data.stuffing_seal_no
+          data.annexC1Details?.sealNumber ||
+          data.stuffing_seal_no
         ), // Reference stuffing_seal_no
         annex_designation: safeValue(
           data.annex_designation || data.annexC1Details?.designation
@@ -973,13 +998,13 @@ function useExportJobDetails(params, setFileSnackbar) {
           ),
           verifiedByExaminingOfficer: safeValue(
             data.verified_by_examining_officer ||
-              data.annexC1Details?.verifiedByExaminingOfficer,
+            data.annexC1Details?.verifiedByExaminingOfficer,
             false
           ),
           sealNumber: safeValue(
             data.stuffing_seal_no ||
-              data.annex_seal_number ||
-              data.annexC1Details?.sealNumber
+            data.annex_seal_number ||
+            data.annexC1Details?.sealNumber
           ), // Sync from main seal number
           documents: safeValue(
             data.annex_c1_documents || data.annexC1Details?.documents,
@@ -998,12 +1023,18 @@ function useExportJobDetails(params, setFileSnackbar) {
           ),
         }),
         freightInsuranceCharges: safeValue(data.freightInsuranceCharges, {}),
+        milestones: safeValue(data.milestones, []),
+        customerremark: safeValue(data.customerremark),
+        workflowlocation: safeValue(data.workflowlocation),
+        shipmenttype: safeValue(data.shipmenttype, "International"),
+        milestoneremarks: safeValue(data.milestoneremarks),
+        milestoneviewuploaddocuments: safeValue(data.milestoneviewuploaddocuments),
+        milestonehandledby: safeValue(data.milestonehandledby),
+        isJobtrackingEnabled: safeValue(data.isJobtrackingEnabled, false),
+        isJobCanceled: safeValue(data.isJobCanceled, false),
         charges: safeValue(data.charges, []),
         arInvoices: safeValue(data.arInvoices, []),
         eSanchitDocuments: safeValue(data.eSanchitDocuments, []),
-        isJobtrackingEnabled: safeValue(data.isJobtrackingEnabled, false),
-        isJobCanceled: safeValue(data.isJobCanceled, false),
-        milestones: safeValue(data.milestones, []),
         products: safeValue(data.products, []).map((product) => ({
           ...product,
           pmvInfo: {

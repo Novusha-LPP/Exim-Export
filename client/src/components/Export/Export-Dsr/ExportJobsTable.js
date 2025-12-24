@@ -268,6 +268,58 @@ const ExportJobsTable = () => {
   // Create Job Dialog State
   const [openAddDialog, setOpenAddDialog] = useState(false);
 
+  // DSR Report Dialog State
+  const [openDSRDialog, setOpenDSRDialog] = useState(false);
+  const [exporters, setExporters] = useState([]);
+  const [selectedExporter, setSelectedExporter] = useState("");
+  const [dsrLoading, setDSRLoading] = useState(false);
+
+  // Fetch Exporters for DSR
+  useEffect(() => {
+    const fetchExporters = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/exporter-list`);
+        if (response.data.success) {
+          setExporters(response.data.data || []);
+        }
+      } catch (err) {
+        console.error("Error fetching exporters:", err);
+      }
+    };
+    if (openDSRDialog) {
+      fetchExporters();
+    }
+  }, [openDSRDialog]);
+
+  const handleDownloadDSR = async () => {
+    if (!selectedExporter) {
+      alert("Please select an exporter");
+      return;
+    }
+    setDSRLoading(true);
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_STRING}/export-dsr/generate-dsr-report`,
+        {
+          params: { exporter: selectedExporter },
+          responseType: "blob",
+        }
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `DSR_Report_${selectedExporter}_${format(new Date(), "yyyyMMdd")}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      setOpenDSRDialog(false);
+    } catch (err) {
+      console.error("Error downloading DSR:", err);
+      alert("Failed to download DSR report");
+    } finally {
+      setDSRLoading(false);
+    }
+  };
+
   // --- Fetch Jobs ---
   const fetchJobs = async () => {
     setLoading(true);
@@ -290,8 +342,8 @@ const ExportJobsTable = () => {
         setJobs(response.data.data.jobs || []);
         setTotalRecords(
           response.data.data.total ||
-            response.data.data.pagination?.totalCount ||
-            0
+          response.data.data.pagination?.totalCount ||
+          0
         );
       }
     } catch (err) {
@@ -453,8 +505,8 @@ const ExportJobsTable = () => {
           setJobs(refreshResponse.data.data.jobs || []);
           setTotalRecords(
             refreshResponse.data.data.total ||
-              refreshResponse.data.data.pagination?.totalCount ||
-              0
+            refreshResponse.data.data.pagination?.totalCount ||
+            0
           );
         }
 
@@ -473,22 +525,22 @@ const ExportJobsTable = () => {
         if (error.response.status === 409) {
           setCopyError(
             error.response.data.message ||
-              "This job number already exists. Please use a different sequence."
+            "This job number already exists. Please use a different sequence."
           );
         } else if (error.response.status === 404) {
           setCopyError(
             error.response.data.message ||
-              "Source job not found. Please refresh and try again."
+            "Source job not found. Please refresh and try again."
           );
         } else if (error.response.status === 400) {
           setCopyError(
             error.response.data.message ||
-              "Invalid input. Please check your entries."
+            "Invalid input. Please check your entries."
           );
         } else {
           setCopyError(
             error.response.data.message ||
-              "Error copying job. Please try again."
+            "Error copying job. Please try again."
           );
         }
       } else {
@@ -750,12 +802,30 @@ const ExportJobsTable = () => {
             </select>
 
             {/* Search Input */}
-            <input
-              style={s.input}
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+            <div style={{ display: "flex", flex: 1, justifyContent: "flex-end", gap: "10px" }}>
+              <input
+                style={{ ...s.input, minWidth: "250px" }}
+                placeholder="Search by Job No, Exporter, Consignee..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button
+                style={{
+                  padding: "0 15px",
+                  height: "30px",
+                  backgroundColor: "#059669",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "3px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                }}
+                onClick={() => setOpenDSRDialog(true)}
+              >
+                Download DSR
+              </button>
+            </div>
           </div>
 
           {/* Table */}
@@ -769,23 +839,21 @@ const ExportJobsTable = () => {
                   <th
                     style={{
                       ...s.th,
-                      width: "130px",
+                      width: "150px",
                       position: "sticky",
                       left: 0,
                       zIndex: 20,
                     }}
                   >
-                    Job Number
+                    Job No
                   </th>
-                  <th style={s.th}>Exporter</th>
-                  <th style={s.th}>Consignee</th>
-                  <th style={{ ...s.th, width: "60px" }}>Type</th>
-                  <th style={s.th}>Date</th>
-                  <th style={s.th}>POL</th>
-                  <th style={s.th}>POD</th>
-                  <th style={s.th}>Country</th>
+                  <th style={s.th}>Exporter details</th>
+                  <th style={s.th}>handover date</th>
+                  <th style={s.th}>container placement</th>
+                  <th style={s.th}>invoice date</th>
                   <th style={s.th}>SB No</th>
-                  <th style={s.th}>SB Date</th>
+                  <th style={s.th}>no of packages</th>
+                  <th style={s.th}>Port of destination</th>
                   <th style={{ ...s.th, width: "80px" }}>Actions</th>
                 </tr>
               </thead>
@@ -825,7 +893,7 @@ const ExportJobsTable = () => {
                         {(page - 1) * LIMIT + idx + 1}
                       </td>
 
-                      {/* Clickable Job Number */}
+                      {/* Column 1: Job No, Date, Type */}
                       <td
                         style={{
                           ...s.td,
@@ -839,54 +907,111 @@ const ExportJobsTable = () => {
                         }}
                         onClick={(e) => handleJobClick(job, e)}
                       >
-                        <span style={{ textDecoration: "underline" }}>
+                        <div style={{ textDecoration: "underline", marginBottom: "2px" }}>
                           {job.job_no}
-                        </span>
+                        </div>
+                        <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: "normal" }}>
+                          {safeDate(job.job_date)}
+                        </div>
+                        <div style={{ color: "#374151", fontSize: "11px", fontWeight: "600" }}>
+                          {job.consignmentType || "-"}
+                        </div>
                       </td>
 
-                      <td
-                        style={{
-                          ...s.td,
-                          maxWidth: "220px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                        title={job.exporter}
-                      >
-                        {job.exporter}
-                      </td>
-                      <td
-                        style={{
-                          ...s.td,
-                          maxWidth: "220px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                        title={job.consignees[0].consignee_name}
-                      >
-                        {job.consignees[0].consignee_name || "-"}
-                      </td>
+                      {/* Column 2: Exporter, Consignee, Buyer */}
                       <td style={s.td}>
-                        <span style={s.chip}>{job.consignmentType || "-"}</span>
+                        <div style={{ fontWeight: "600", color: "#111", marginBottom: "2px" }}>
+                          {job.exporter}
+                        </div>
+                        <div style={{ color: "#4b5563", fontSize: "11px" }}>
+                          {job.consignees?.[0]?.consignee_name || "-"}
+                        </div>
+                        <div style={{ color: "#6b7280", fontSize: "11px", fontStyle: "italic" }}>
+                          {job.buyerThirdPartyInfo?.buyer?.name || "-"}
+                        </div>
                       </td>
-                      <td style={s.td}>{safeDate(job.job_date)}</td>
-                      <td style={s.td}>{job.port_of_loading || "-"}</td>
-                      <td style={s.td}>{job.port_of_discharge || "-"}</td>
-                      <td style={s.td}>{job.discharge_country || "-"}</td>
-                      <td style={s.td}>{job.sb_no || "-"}</td>
-                      <td style={s.td}>{safeDate(job.sb_no)}</td>
+
+                      {/* Column 3: Handover Dates */}
+                      <td style={s.td}>
+                        <div style={{ marginBottom: "2px" }}>
+                          <span style={{ color: "#6b7280", fontSize: "10px" }}>Fwd:</span> {safeDate(job.operations?.[0]?.statusDetails?.[0]?.handoverForwardingNoteDate)}
+                        </div>
+                        <div>
+                          <span style={{ color: "#6b7280", fontSize: "10px" }}>Rail:</span> {safeDate(job.operations?.[0]?.statusDetails?.[0]?.railOutReachedDate)}
+                        </div>
+                      </td>
+
+                      {/* Column 4: Container Placement & Gate In */}
+                      <td style={s.td}>
+                        <div style={{ marginBottom: "2px" }}>
+                          <span style={{ color: "#6b7280", fontSize: "10px" }}>Place:</span> {safeDate(job.operations?.[0]?.statusDetails?.[0]?.containerPlacementDate)}
+                        </div>
+                        <div>
+                          <span style={{ color: "#6b7280", fontSize: "10px" }}>Gate:</span> {safeDate(job.operations?.[0]?.transporterDetails?.[0]?.gateInDate)}
+                        </div>
+                      </td>
+
+                      {/* Column 5: Invoice No, Date, Value */}
+                      <td style={s.td}>
+                        <div style={{ fontWeight: "600", marginBottom: "2px" }}>
+                          {job.invoices?.[0]?.invoiceNumber || "-"}
+                        </div>
+                        <div style={{ color: "#4b5563", fontSize: "11px" }}>
+                          {safeDate(job.invoices?.[0]?.invoiceDate)}
+                        </div>
+                        <div style={{ color: "#111", fontSize: "11px", fontWeight: "600" }}>
+                          {job.invoices?.[0]?.currency} {job.invoices?.[0]?.invoiceValue?.toLocaleString()}
+                        </div>
+                      </td>
+
+                      {/* Column 6: SB No, Date */}
+                      <td style={s.td}>
+                        <div style={{ fontWeight: "600", color: "#b91c1c", marginBottom: "2px" }}>
+                          {job.sb_no || "-"}
+                        </div>
+                        <div style={{ color: "#4b5563", fontSize: "11px" }}>
+                          {safeDate(job.sb_date)}
+                        </div>
+                      </td>
+
+                      {/* Column 7: Packages, Gross, Net */}
+                      <td style={s.td}>
+                        <div style={{ fontWeight: "600", marginBottom: "2px" }}>
+                          {job.total_no_of_pkgs} {job.package_unit}
+                        </div>
+                        <div style={{ color: "#4b5563", fontSize: "11px" }}>
+                          G: {job.gross_weight_kg} kg
+                        </div>
+                        <div style={{ color: "#4b5563", fontSize: "11px" }}>
+                          N: {job.net_weight_kg} kg
+                        </div>
+                      </td>
+
+                      {/* Column 8: Port, Country */}
+                      <td style={s.td}>
+                        <div style={{ fontWeight: "600", marginBottom: "2px" }}>
+                          {job.destination_port || job.port_of_discharge || "-"}
+                        </div>
+                        <div style={{ color: "#4b5563", fontSize: "11px" }}>
+                          {job.destination_country || job.discharge_country || "-"}
+                        </div>
+                      </td>
+
+                      {/* Column 9: Copy Action */}
                       <td style={s.td}>
                         <button
                           className="copy-btn"
                           onClick={(e) => handleCopyJob(job, e)}
                           style={{
-                            padding: "4px 8px",
+                            padding: "6px 12px",
                             backgroundColor: "#10b981",
                             color: "white",
                             border: "none",
                             borderRadius: "3px",
                             fontSize: "11px",
+                            fontWeight: "600",
                             cursor: "pointer",
+                            width: "100%",
                           }}
                         >
                           Copy
@@ -1065,9 +1190,9 @@ const ExportJobsTable = () => {
                 style={
                   copyLoading
                     ? {
-                        ...modalStyles.submitButton,
-                        ...modalStyles.disabledButton,
-                      }
+                      ...modalStyles.submitButton,
+                      ...modalStyles.disabledButton,
+                    }
                     : modalStyles.submitButton
                 }
                 onClick={handleCopySubmit}
@@ -1127,6 +1252,56 @@ const ExportJobsTable = () => {
               fetchJobs();
             }}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* DSR Report Dialog */}
+      <Dialog
+        open={openDSRDialog}
+        onClose={() => setOpenDSRDialog(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle style={{ borderBottom: "1px solid #e5e7eb", fontSize: "16px", fontWeight: "700" }}>
+          Download DSR Report
+        </DialogTitle>
+        <DialogContent style={{ padding: "20px" }}>
+          <div style={{ marginBottom: "15px" }}>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#374151", marginBottom: "5px" }}>
+              Select Exporter
+            </label>
+            <select
+              style={{ ...s.select, width: "100%", height: "35px" }}
+              value={selectedExporter}
+              onChange={(e) => setSelectedExporter(e.target.value)}
+            >
+              <option value="">-- Choose Exporter --</option>
+              {exporters.map((exp, i) => (
+                <option key={i} value={exp}>
+                  {exp}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+            <button
+              style={{ ...modalStyles.cancelButton, padding: "8px 20px" }}
+              onClick={() => setOpenDSRDialog(false)}
+            >
+              Cancel
+            </button>
+            <button
+              style={{
+                ...modalStyles.submitButton,
+                padding: "8px 20px",
+                backgroundColor: dsrLoading ? "#cbd5e1" : "#059669",
+              }}
+              onClick={handleDownloadDSR}
+              disabled={dsrLoading}
+            >
+              {dsrLoading ? "Generating..." : "Download Excel"}
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

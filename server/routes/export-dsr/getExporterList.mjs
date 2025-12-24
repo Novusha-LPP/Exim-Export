@@ -38,4 +38,14 @@ router.get("/api/get-exporter-list/:year", async (req, res) => {
   }
 });
 
+router.get("/api/exporter-list", async (req, res) => {
+  try {
+    const exporters = await ExJobModel.distinct("exporter");
+    res.status(200).json({ success: true, data: exporters.filter(Boolean) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Failed to fetch exporter list" });
+  }
+});
+
 export default router;

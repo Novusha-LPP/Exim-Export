@@ -554,6 +554,7 @@ const statusDetailsSchema = new Schema(
     concorPrivate: { type: String, trim: true },
     privateTransporterName: { type: String, trim: true },
     hoToConsoleDate: { type: String, trim: true },
+    hoToConsoleDate2: { type: String, trim: true },
     hoToConsoleName: { type: String, trim: true },
     containerPlacementDate: { type: String, trim: true },
     railOutReachedDate: { type: String, trim: true },
@@ -735,6 +736,7 @@ const exportJobSchema = new mongoose.Schema(
     documents: { type: Object, default: {} },
 
     status: { type: String, trim: true },
+    jobStatus: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Exporter Information
     exporter_address: { type: String, trim: true },
@@ -833,6 +835,31 @@ const exportJobSchema = new mongoose.Schema(
       aeoCountry: { type: String, ref: "Country", default: "IN" },
       aeoRole: String,
     },
+    // Missing Global Fields from UI
+    bank_dealer: { type: String, trim: true },
+    ac_number: { type: String, trim: true },
+    adCode: { type: String, trim: true },
+    panNo: { type: String, trim: true },
+    pan_no: { type: String, trim: true },
+    annexure_c_details: { type: Boolean, default: false },
+    annex_additional_notes: { type: String, trim: true },
+    annex_c1_documents: { type: Array, default: [] },
+    ie_code_of_eou: { type: String, trim: true },
+    branch_sr_no: { type: Number, default: 0 },
+    examination_date: { type: String, trim: true },
+    examining_officer: { type: String, trim: true },
+    supervising_officer: { type: String, trim: true },
+    commissionerate: { type: String, trim: true },
+    verified_by_examining_officer: { type: Boolean, default: false },
+    annex_seal_number: { type: String, trim: true },
+    annex_designation: { type: String, trim: true },
+    annex_division: { type: String, trim: true },
+    annex_range: { type: String, trim: true },
+    sample_forwarded: { type: Boolean, default: false },
+    buyer_name: { type: String, trim: true },
+    buyer_address: { type: String, trim: true },
+    buyer_gstin: { type: String, trim: true },
+    buyer_state: { type: String, trim: true },
 
     annexC1Details: {
       ieCodeOfEOU: {
@@ -967,6 +994,12 @@ const exportJobSchema = new mongoose.Schema(
     isJobtrackingEnabled: { type: Boolean, default: false },
     isJobCanceled: { type: Boolean, default: false },
     milestones: [milestoneSchema],
+    customerremark: { type: String, trim: true },
+    workflowlocation: { type: String, trim: true },
+    shipmenttype: { type: String, trim: true },
+    milestoneremarks: { type: String, trim: true },
+    milestoneviewuploaddocuments: { type: String, trim: true },
+    milestonehandledby: { type: String, trim: true },
 
     // System Fields
     createdBy: { type: String },
@@ -1398,7 +1431,7 @@ exportJobSchema.statics.findByDateRange = function (startDate, endDate) {
 };
 
 exportJobSchema.statics.findByStatus = function (status) {
-  return this.find({ jobStatus: status });
+  return this.find({ status: status });
 };
 
 // Virtual population for sealNumber
