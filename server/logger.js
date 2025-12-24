@@ -10,8 +10,8 @@ const MONGODB_URI =
   process.env.NODE_ENV === "production"
     ? process.env.PROD_MONGODB_URI
     : process.env.NODE_ENV === "server"
-    ? process.env.SERVER_MONGODB_URI
-    : process.env.DEV_MONGODB_URI;
+      ? process.env.SERVER_MONGODB_URI
+      : process.env.DEV_MONGODB_URI;
 
 console.log("NODe_Env====", process.env.NODE_ENV);
 console.log("MONGODB_URI====", MONGODB_URI);
@@ -26,15 +26,14 @@ fs.existsSync(logDirectory) || fs.mkdirSync(logDirectory);
 // Custom formatting function including numbering
 let logCounter = 0; // Initialize the counter
 const customFormat = format.printf(({ level, message, stack, timestamp }) => {
-  return `${timestamp} [${level}] ${++logCounter}: ${message}${
-    stack ? "\nStack Trace:\n" + stack : ""
-  }`;
+  return `${timestamp} [${level}] ${++logCounter}: ${message}${stack ? "\nStack Trace:\n" + stack : ""
+    }`;
 });
 
 // Define base format
 const baseFormat = format.combine(
   format.timestamp({
-    format: "YYYY-MM-DD HH:mm:ss",
+    format: "DD-MM-YYYY HH:mm:ss",
   }),
   format.errors({ stack: true }),
   customFormat
@@ -56,10 +55,10 @@ const logger = createLogger({
     }),
     ...(process.env.NODE_ENV !== "production"
       ? [
-          new transports.Console({
-            format: format.combine(format.colorize(), baseFormat),
-          }),
-        ]
+        new transports.Console({
+          format: format.combine(format.colorize(), baseFormat),
+        }),
+      ]
       : []),
     new transports.MongoDB({
       level: "error",

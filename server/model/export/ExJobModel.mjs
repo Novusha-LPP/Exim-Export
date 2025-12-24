@@ -533,6 +533,34 @@ const milestoneSchema = new Schema(
   { _id: true }
 );
 
+const statusDetailsSchema = new Schema(
+  {
+    rms: { type: String, trim: true },
+    goodsRegistrationDate: { type: String, trim: true },
+    leoDate: { type: String, trim: true },
+    leoUpload: [String],
+    stuffingDate: { type: String, trim: true },
+    stuffingSheetUpload: [String],
+    stuffingPhotoUpload: [String],
+    eGatePassCopyDate: { type: String, trim: true },
+    eGatePassUpload: [String],
+    handoverForwardingNoteDate: { type: String, trim: true },
+    handoverImageUpload: [String],
+    handoverConcorTharSanganaRailRoadDate: { type: String, trim: true },
+    billingDocsSentDt: { type: String, trim: true },
+    billingDocsSentUpload: [String],
+    billingDocsStatus: { type: String, trim: true },
+    railRoad: { type: String, trim: true },
+    concorPrivate: { type: String, trim: true },
+    privateTransporterName: { type: String, trim: true },
+    hoToConsoleDate: { type: String, trim: true },
+    hoToConsoleName: { type: String, trim: true },
+    containerPlacementDate: { type: String, trim: true },
+    railOutReachedDate: { type: String, trim: true },
+  },
+  { _id: true }
+);
+
 // Container/Package Schema for Export - FIXED as proper Mongoose Schema
 const exportOperationSchema = new Schema(
   {
@@ -547,6 +575,8 @@ const exportOperationSchema = new Schema(
         netWeightKgs: { type: Number },
         grossWeightKgs: { type: Number },
         images: [String],
+        cartingDate: { type: String, trim: true },
+        gateInDate: { type: String, trim: true },
       },
     ],
 
@@ -568,13 +598,14 @@ const exportOperationSchema = new Schema(
         shippingLineName: { type: String },
         forwarderName: { type: String },
         bookingNo: { type: String },
-        bookingDate: { type: Date },
+        bookingDate: { type: String, trim: true },
         vesselName: { type: String },
         voyageNo: { type: String },
         portOfLoading: { type: String },
         handoverLocation: { type: String },
         validity: { type: String },
         images: [String],
+        containerPlacementDate: { type: String, trim: true },
       },
     ],
 
@@ -582,7 +613,7 @@ const exportOperationSchema = new Schema(
       {
         weighBridgeName: { type: String },
         regNo: { type: String },
-        dateTime: { type: Date },
+        dateTime: { type: String, trim: true },
         vehicleNo: { type: String },
         containerNo: { type: String },
         size: { type: String },
@@ -593,25 +624,7 @@ const exportOperationSchema = new Schema(
       },
     ],
 
-    statusDetails: [
-      {
-        rms: { type: String, trim: true },
-        goodsRegistrationDate: { type: Date },
-        leoDate: { type: Date },
-        leoUpload: [String],
-        stuffingDate: { type: Date },
-        stuffingSheetUpload: [String],
-        stuffingPhotoUpload: [String],
-        eGatePassCopyDate: { type: Date },
-        eGatePassUpload: [String],
-        handoverForwardingNoteDate: { type: Date },
-        handoverImageUpload: [String],
-        handoverConcorTharSanganaRailRoadDate: { type: Date },
-        billingDocsSentDt: { type: Date },
-        billingDocsSentUpload: [String],
-        billingDocsStatus: { type: String, trim: true },
-      },
-    ],
+    statusDetails: [statusDetailsSchema],
   },
   { _id: true }
 );
@@ -1117,7 +1130,7 @@ exportJobSchema.pre("save", function (next) {
         containerNo,
         containerSize: container?.type || "",
         containerType: "",
-        cargoType: "GEN",
+        cargoType: "Gen",
         maxGrossWeightKgs: 0,
         tareWeightKgs: 2250,
         maxPayloadKgs: 28230,
@@ -1136,6 +1149,10 @@ exportJobSchema.pre("save", function (next) {
         netWeight: 0,
         address: "",
       });
+
+      // We also need to add cartingDate and gateInDate if we're creating new transporters here
+      transporterDetails[transporterDetails.length - 1].cartingDate = null;
+      transporterDetails[transporterDetails.length - 1].gateInDate = null;
     });
 
     this.operations = [
@@ -1154,6 +1171,7 @@ exportJobSchema.pre("save", function (next) {
             handoverLocation: "",
             validity: "",
             images: [],
+            containerPlacementDate: null,
           },
         ],
         statusDetails: [
@@ -1173,6 +1191,13 @@ exportJobSchema.pre("save", function (next) {
             billingDocsSentDt: null,
             billingDocsSentUpload: [],
             billingDocsStatus: "",
+            railRoad: "",
+            concorPrivate: "",
+            privateTransporterName: "",
+            hoToConsoleDate: null,
+            hoToConsoleDate2: null,
+            hoToConsoleName: "",
+            containerPlacementDate: null,
           },
         ],
       },
@@ -1210,6 +1235,8 @@ exportJobSchema.pre("save", function (next) {
           netWeightKgs: 0,
           grossWeightKgs: container?.grossWeight || 0,
           images: [],
+          cartingDate: null,
+          gateInDate: null,
         });
 
         // Add to containerDetails
@@ -1218,7 +1245,7 @@ exportJobSchema.pre("save", function (next) {
           containerNo,
           containerSize: container?.type || "",
           containerType: "",
-          cargoType: "",
+          cargoType: "Gen",
           maxGrossWeightKgs: 0,
           tareWeightKgs: 0,
           maxPayloadKgs: 0,
@@ -1241,7 +1268,10 @@ exportJobSchema.pre("save", function (next) {
         });
       });
 
-      // Remove deleted containers from operation
+      // ❌ REMOVED PRUNING LOGIC TO PREVENT DATA LOSS
+      // We only ADD missing containers, we NEVER remove existing rows here
+      // This prevents data loss if a container is renamed or briefly missing from the sync set
+      /*
       operation.transporterDetails = (
         operation.transporterDetails || []
       ).filter((td) => allContainerNos.has(td.containerNo));
@@ -1251,6 +1281,7 @@ exportJobSchema.pre("save", function (next) {
       operation.weighmentDetails = (operation.weighmentDetails || []).filter(
         (wd) => allContainerNos.has(wd.containerNo)
       );
+      */
     });
   }
 

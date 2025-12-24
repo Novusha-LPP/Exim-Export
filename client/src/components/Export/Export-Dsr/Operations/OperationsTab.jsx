@@ -7,6 +7,34 @@ import zIndex from "@mui/material/styles/zIndex";
 // Helper
 const toUpper = (str) => (str ? str.toUpperCase() : "");
 
+const formatDateForInput = (dateVal, type = "date") => {
+  if (!dateVal) return "";
+  
+  // If it's a string and doesn't look like a full ISO string from the server,
+  // just return it as is to allow manual typing without auto-correction.
+  if (typeof dateVal === "string" && !dateVal.includes("T") && !dateVal.includes("Z")) {
+    return dateVal;
+  }
+
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return dateVal;
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+
+    if (type === "datetime-local") {
+      const hours = String(d.getHours()).padStart(2, "0");
+      const minutes = String(d.getMinutes()).padStart(2, "0");
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+    return `${year}-${month}-${day}`;
+  } catch (e) {
+    return dateVal;
+  }
+};
+
 function useShippingOrAirlineDropdown(fieldName, formik) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(
@@ -268,9 +296,9 @@ const OperationsTab = ({ formik }) => {
   const operations = formik.values.operations || [];
   const [activeOpIndex, setActiveOpIndex] = useState(0);
 
-  // Ensure at least one operation exists
+  // Ensure at least one operation exists - but only once the form is truly ready
   useEffect(() => {
-    if (operations.length === 0) {
+    if (formik.values.job_no && operations.length === 0) {
       const newOp = {
         transporterDetails: [getDefaultItem("transporterDetails")],
         containerDetails: [getDefaultItem("containerDetails")],
@@ -280,7 +308,7 @@ const OperationsTab = ({ formik }) => {
       };
       formik.setFieldValue("operations", [newOp]);
     }
-  }, []);
+  }, [formik.values.job_no, operations.length]);
 
   // 1. Collect all unique container numbers from ALL sections of ALL operations
   const allOpContainersSet = new Set();
@@ -312,6 +340,10 @@ const OperationsTab = ({ formik }) => {
 
   // 4. Auto-sync Effect: Keeps operations consistent and updates the main containers array
   useEffect(() => {
+    // SECURITY: Do not run sync logic if the form hasn't loaded its job data yet.
+    // This prevents wiping container lists during the initial render "flicker".
+    if (!formik.values.job_no || operations.length === 0) return;
+
     // Phase A: Intra-operation Sync (Ensure Transporter, Container, and Weighment Details stay in lock-step)
     let opsModified = false;
     const nextOperations = operations.map((op) => {
@@ -376,52 +408,88 @@ const OperationsTab = ({ formik }) => {
       return; // Exit and wait for next render cycle
     }
 
-    // Phase B: Master Containers Sync (Updates formik.values.containers)
-    const currentMaster = formik.values.containers || [];
+    // Phase B: Totals Sync (Sum up all operations)
+    let totalPkgs = 0;
+    let totalGross = 0;
+    let totalNet = 0;
     
-    // Filter: Keep if used in an operation OR if it has meaningful data
-    const nextContainers = currentMaster.filter((c) => {
-      const cNo = (c.containerNo || "").toUpperCase();
-      if (!cNo) return false;
-      
-      const isUsed = allOpContainersSet.has(cNo);
-      const hasData =
-        (c.sealNo && c.sealNo.trim()) ||
-        (c.type && c.type.trim()) ||
-        (c.sealDeviceId && c.sealDeviceId.trim()) ||
-        (c.grossWeight > 0) ||
-        (c.tareWeight > 0);
+    // Also build a map of container details from transporterDetails to sync to master containers
+    const containerDetailsMap = new Map();
 
-      return isUsed || hasData;
+    operations.forEach(op => {
+      (op.transporterDetails || []).forEach(item => {
+        totalPkgs += Number(item.noOfPackages || 0);
+        totalGross += Number(item.grossWeightKgs || 0);
+        totalNet += Number(item.netWeightKgs || 0);
+        
+        if (item.containerNo) {
+          const cNo = item.containerNo.trim().toUpperCase();
+          if (!containerDetailsMap.has(cNo)) {
+             containerDetailsMap.set(cNo, {
+               grossWeight: Number(item.grossWeightKgs || 0),
+               netWeight: Number(item.netWeightKgs || 0),
+               noOfPackages: Number(item.noOfPackages || 0)
+             });
+          } else {
+             // If container appears multiple times, we sum its specific weights
+             const existing = containerDetailsMap.get(cNo);
+             existing.grossWeight += Number(item.grossWeightKgs || 0);
+             existing.netWeight += Number(item.netWeightKgs || 0);
+             existing.noOfPackages += Number(item.noOfPackages || 0);
+          }
+        }
+      });
     });
 
-    // Add missing ones from operations
-    let changed = false;
-    const existingInNext = new Set(nextContainers.map(c => c.containerNo.toUpperCase()));
+    if (Number(formik.values.total_no_of_pkgs) !== totalPkgs) formik.setFieldValue("total_no_of_pkgs", totalPkgs);
+    if (Number(formik.values.gross_weight_kg) !== totalGross) formik.setFieldValue("gross_weight_kg", totalGross);
+    if (Number(formik.values.net_weight_kg) !== totalNet) formik.setFieldValue("net_weight_kg", totalNet);
+
+    // Phase C: Master Containers Sync (Updates formik.values.containers)
+    const currentMaster = formik.values.containers || [];
     
+    // 1. Reconcile existing containers (Filter out those removed from operations)
+    let nextContainers = currentMaster.filter(c => {
+       const uNo = (c.containerNo || "").trim().toUpperCase();
+       return uNo && opContainerNos.includes(uNo);
+    });
+
+    let masterChanged = nextContainers.length !== currentMaster.length;
+
+    // 2. Update existing or add new ones to match Operations
     opContainerNos.forEach(no => {
-      if (!existingInNext.has(no)) {
+      let masterItemIdx = nextContainers.findIndex(c => (c.containerNo || "").trim().toUpperCase() === no);
+      const opInfo = containerDetailsMap.get(no) || { grossWeight: 0, netWeight: 0, noOfPackages: 0 };
+
+      if (masterItemIdx === -1) {
         nextContainers.push({
           containerNo: no,
           type: "",
           sealNo: "",
-          sealType: "",
           sealDate: "",
-          sealDeviceId: "",
-          grossWeight: 0,
-          tareWeight: 0,
-          netWeight: 0,
+          pkgsStuffed: opInfo.noOfPackages,
+          grossWeight: opInfo.grossWeight,
+          netWeight: opInfo.netWeight,
         });
-        changed = true;
+        masterChanged = true;
+      } else {
+        // Sync weights/packages to master item if they differ
+        const m = nextContainers[masterItemIdx];
+        if (Number(m.grossWeight) !== opInfo.grossWeight || 
+            Number(m.netWeight) !== opInfo.netWeight ||
+            Number(m.pkgsStuffed) !== opInfo.noOfPackages) {
+           nextContainers[masterItemIdx] = {
+             ...m,
+             grossWeight: opInfo.grossWeight,
+             netWeight: opInfo.netWeight,
+             pkgsStuffed: opInfo.noOfPackages
+           };
+           masterChanged = true;
+        }
       }
     });
 
-    // Final check for removals to mark 'changed'
-    if (nextContainers.length !== currentMaster.length) {
-      changed = true;
-    }
-
-    if (changed) {
+    if (masterChanged) {
       formik.setFieldValue("containers", nextContainers);
     }
   }, [operations]); // Watch operations to trigger sync
@@ -489,6 +557,7 @@ const OperationsTab = ({ formik }) => {
           }
         );
       }
+
 
       return updatedOp;
     });
@@ -650,6 +719,18 @@ const OperationsTab = ({ formik }) => {
               width: "100px",
             },
             {
+              field: "cartingDate",
+              label: "Carting Date",
+              type: "date",
+              width: "130px",
+            },
+            {
+              field: "gateInDate",
+              label: "Gate In Date",
+              type: "date",
+              width: "130px",
+            },
+            {
               field: "images",
               label: "Images",
               type: "upload",
@@ -673,7 +754,16 @@ const OperationsTab = ({ formik }) => {
             { field: "containerNo", label: "Container No.", width: "140px" },
             { field: "containerSize", label: "Size", width: "80px" },
             { field: "containerType", label: "Type", width: "100px" },
-            { field: "cargoType", label: "Cargo Type", width: "100px" },
+            {
+              field: "cargoType",
+              label: "Cargo Type",
+              width: "100px",
+              type: "select",
+              options: [
+                { value: "Gen", label: "Gen" },
+                { value: "Haz", label: "Haz" },
+              ],
+            },
             {
               field: "maxGrossWeightKgs",
               label: "Max Gross",
@@ -732,12 +822,18 @@ const OperationsTab = ({ formik }) => {
             { field: "portOfLoading", label: "POL", width: "120px" },
             {
               field: "handoverLocation",
-              label: "Handover Loc",
+              label: "Empty container pickup and drop loc",
               width: "140px",
             },
             {
               field: "validity",
               label: "Validity",
+              type: "date",
+              width: "130px",
+            },
+            {
+              field: "containerPlacementDate",
+              label: "Container Placement Date",
               type: "date",
               width: "130px",
             },
@@ -764,6 +860,7 @@ const OperationsTab = ({ formik }) => {
           columns={[
             { field: "weighBridgeName", label: "Weigh Bridge", width: "180px" },
             { field: "regNo", label: "Reg No.", width: "120px" },
+            { field: "address", label: "Address", width: "180px" },
             {
               field: "dateTime",
               label: "Date/Time",
@@ -821,12 +918,8 @@ const TableSection = ({
   // Ensure at least one row exists
   const displayData = data && data.length > 0 ? data : [getDefaultItem(section)];
   
-  // If data was empty, initialize it with one default item
-  useEffect(() => {
-    if (!data || data.length === 0) {
-      onAdd(section);
-    }
-  }, []);
+  // NOTE: Redundant mount effect that was causing race conditions has been removed.
+  // Initialization is now managed by the parent OperationsTab.
 
   return (
     <div style={styles.sectionContainer}>
@@ -882,13 +975,32 @@ const TableSection = ({
                         formik={formik}
                         placeholder={col.placeholder || ""}
                       />
+                    ) : col.type === "select" ? (
+                      <select
+                        value={item[col.field] === undefined ? "" : item[col.field]}
+                        onChange={(e) =>
+                          onUpdate(section, rowIdx, col.field, e.target.value)
+                        }
+                        style={styles.cellInput}
+                      >
+                        <option value="">Select...</option>
+                        {(col.options || []).map((opt) => (
+                          <option
+                            key={typeof opt === "string" ? opt : opt.value}
+                            value={typeof opt === "string" ? opt : opt.value}
+                          >
+                            {typeof opt === "string" ? opt : opt.label}
+                          </option>
+                        ))}
+                      </select>
                     ) : (
                       <input
-                        type={col.type || "text"}
+                        type={col.type === "date" || col.type === "datetime-local" ? "text" : (col.type || "text")}
                         value={
-                          item[col.field] === undefined ||
-                          item[col.field] === null
+                          item[col.field] === undefined || item[col.field] === null
                             ? ""
+                            : col.type === "date" || col.type === "datetime-local"
+                            ? formatDateForInput(item[col.field], col.type)
                             : item[col.field]
                         }
                         onChange={(e) =>
@@ -901,8 +1013,40 @@ const TableSection = ({
                               : e.target.value
                           )
                         }
+                        onDoubleClick={(e) => {
+                          if (col.type === "date" || col.type === "datetime-local") {
+                            e.target.type = col.type;
+                            e.target.showPicker && e.target.showPicker();
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (col.type === "date" || col.type === "datetime-local") {
+                            e.target.type = "text";
+                          }
+                        }}
+                        onFocus={(e) => {
+                          if (
+                            section === "transporterDetails" &&
+                            (col.field === "grossWeightKgs" ||
+                              col.field === "netWeightKgs" ||
+                              col.field === "noOfPackages") &&
+                            !e.target.value
+                          ) {
+                            const shipmentGross = formik.values.gross_weight_kg || "";
+                            const shipmentNet = formik.values.net_weight_kg || "";
+                            const shipmentPkgs = formik.values.total_no_of_pkgs || "";
+
+                            if (col.field === "grossWeightKgs" && shipmentGross) {
+                              onUpdate(section, rowIdx, col.field, shipmentGross);
+                            } else if (col.field === "netWeightKgs" && shipmentNet) {
+                              onUpdate(section, rowIdx, col.field, shipmentNet);
+                            } else if (col.field === "noOfPackages" && shipmentPkgs) {
+                              onUpdate(section, rowIdx, col.field, shipmentPkgs);
+                            }
+                          }
+                        }}
                         style={styles.cellInput}
-                        placeholder={col.placeholder || ""}
+                        placeholder={col.placeholder || (col.type === "date" ? "DD-MM-YYYY" : "")}
                       />
                     )}
                   </td>
@@ -964,6 +1108,11 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
       label: "Rail/Road Date",
       type: "date",
     },
+    {
+      field: "railOutReachedDate",
+      label: "Rail Out Reached Date",
+      type: "date",
+    },
     { field: "billingDocsSentDt", label: "Billing Docs Sent", type: "date" },
     {
       field: "billingDocsSentUpload",
@@ -976,6 +1125,7 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
       type: "select",
       options: ["Pending", "Completed"],
     },
+
   ];
 
   return (
@@ -986,6 +1136,211 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
       {data.map((item, idx) => (
         <div key={idx} style={styles.statusGrid}>
           {fields.map((f) => {
+            if (f.field === "leoUpload") {
+              const currentImages = item[f.field] || [];
+              const bucketPath = "leo_uploads";
+              return (
+                <React.Fragment key={f.field}>
+                  <div style={styles.statusField}>
+                    <label style={styles.statusLabel}>{f.label}</label>
+                    <FileUpload
+                      bucketPath={bucketPath}
+                      multiple={true}
+                      acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
+                      onFilesUploaded={(newUrls) => {
+                        const updatedList = [...currentImages, ...newUrls];
+                        onUpdate(section, idx, f.field, updatedList);
+                      }}
+                    />
+                    <div style={{ marginTop: "4px" }}>
+                      <ImagePreview
+                        images={currentImages}
+                        onDeleteImage={(deleteIndex) => {
+                          const updatedList = currentImages.filter(
+                            (_, i) => i !== deleteIndex
+                          );
+                          onUpdate(section, idx, f.field, updatedList);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div style={styles.statusField}>
+                    <label style={styles.statusLabel}>Container Placement Date</label>
+                    <input
+                      type="text"
+                      value={formatDateForInput(item.containerPlacementDate || "")}
+                      onChange={(e) =>
+                        onUpdate(section, idx, "containerPlacementDate", e.target.value)
+                      }
+                      onDoubleClick={(e) => { e.target.type = 'date'; e.target.showPicker && e.target.showPicker(); }}
+                      onBlur={(e) => { e.target.type = 'text'; }}
+                      style={styles.statusInput}
+                      placeholder="DD-MM-YYYY"
+                    />
+                  </div>
+                </React.Fragment>
+              );
+            }
+
+            if (f.field === "billingDocsSentUpload") {
+              const currentImages = item[f.field] || [];
+              const bucketPath = "billing_uploads";
+              return (
+                <React.Fragment key={f.field}>
+                  <div style={styles.statusField}>
+                    <label style={styles.statusLabel}>{f.label}</label>
+                    <FileUpload
+                      bucketPath={bucketPath}
+                      multiple={true}
+                      acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
+                      onFilesUploaded={(newUrls) => {
+                        const updatedList = [...currentImages, ...newUrls];
+                        onUpdate(section, idx, f.field, updatedList);
+                      }}
+                    />
+                    <div style={{ marginTop: "4px" }}>
+                      <ImagePreview
+                        images={currentImages}
+                        onDeleteImage={(deleteIndex) => {
+                          const updatedList = currentImages.filter(
+                            (_, i) => i !== deleteIndex
+                          );
+                          onUpdate(section, idx, f.field, updatedList);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {/* HO to console section */}
+                  <div style={{ gridColumn: "1 / -1", marginTop: "20px" }}>
+                    <h4 style={{ ...styles.sectionTitle, color: "#2563eb", marginBottom: "12px" }}>HO to console</h4>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "16px" }}>
+                      <div style={styles.statusField}>
+                        <label style={styles.statusLabel}>HO Date</label>
+                        <input
+                          type="text"
+                          value={formatDateForInput(item.hoToConsoleDate || "")}
+                          onChange={(e) => onUpdate(section, idx, "hoToConsoleDate", e.target.value)}
+                          onDoubleClick={(e) => { e.target.type = 'date'; e.target.showPicker && e.target.showPicker(); }}
+                          onBlur={(e) => { e.target.type = 'text'; }}
+                          style={styles.statusInput}
+                          placeholder="DD-MM-YYYY"
+                        />
+                      </div>
+
+                      <div style={styles.statusField}>
+                        <label style={styles.statusLabel}>HO Name</label>
+                        <HoNameAutocomplete
+                          value={item.hoToConsoleName || ""}
+                          onChange={(val) => onUpdate(section, idx, "hoToConsoleName", val)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </React.Fragment>
+              );
+            }
+
+            if (f.field === "handoverConcorTharSanganaRailRoadDate") {
+              return (
+                <React.Fragment key={f.field}>
+                  <div style={styles.statusField}>
+                    <label style={styles.statusLabel}>Transport Mode</label>
+                    <div style={{ display: "flex", gap: "12px", alignItems: "center", height: "36px" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "12px" }}>
+                        <input
+                          type="radio"
+                          name={`railRoad-${idx}`}
+                          value="rail"
+                          checked={item.railRoad === "rail"}
+                          onChange={(e) => onUpdate(section, idx, "railRoad", e.target.value)}
+                        />
+                        Rail
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "12px" }}>
+                        <input
+                          type="radio"
+                          name={`railRoad-${idx}`}
+                          value="road"
+                          checked={item.railRoad === "road"}
+                          onChange={(e) => onUpdate(section, idx, "railRoad", e.target.value)}
+                        />
+                        Road
+                      </label>
+                    </div>
+                  </div>
+
+                  {item.railRoad === "road" && (
+                    <div style={styles.statusField}>
+                      <label style={styles.statusLabel}>Road Transport Type</label>
+                      <div style={{ display: "flex", gap: "12px", alignItems: "center", height: "36px" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "12px" }}>
+                          <input
+                            type="radio"
+                            name={`concorPrivate-${idx}`}
+                            value="concor"
+                            checked={item.concorPrivate === "concor"}
+                            onChange={(e) => onUpdate(section, idx, "concorPrivate", e.target.value)}
+                          />
+                          Concor
+                        </label>
+                        <label style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "12px" }}>
+                          <input
+                            type="radio"
+                            name={`concorPrivate-${idx}`}
+                            value="private"
+                            checked={item.concorPrivate === "private"}
+                            onChange={(e) => onUpdate(section, idx, "concorPrivate", e.target.value)}
+                          />
+                          Private
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {item.railRoad === "road" && item.concorPrivate === "private" && (
+                    <div style={styles.statusField}>
+                      <label style={styles.statusLabel}>Transporter Name</label>
+                      <input
+                        type="text"
+                        value={item.privateTransporterName || ""}
+                        onChange={(e) => onUpdate(section, idx, "privateTransporterName", e.target.value.toUpperCase())}
+                        style={styles.statusInput}
+                        placeholder="ENTER TRANSPORTER NAME"
+                      />
+                    </div>
+                  )}
+
+                  <div key={f.field} style={styles.statusField}>
+                    <label style={styles.statusLabel}>{f.label}</label>
+                    <input
+                      type={f.type === "date" || f.type === "datetime-local" ? "text" : f.type}
+                      value={
+                        f.type === "date" || f.type === "datetime-local" 
+                        ? formatDateForInput(item[f.field] || "", f.type) 
+                        : (item[f.field] || "")
+                      }
+                      onChange={(e) =>
+                        onUpdate(section, idx, f.field, e.target.value)
+                      }
+                      onDoubleClick={(e) => { 
+                         if(f.type === 'date' || f.type === 'datetime-local') {
+                           e.target.type = f.type; 
+                           e.target.showPicker && e.target.showPicker(); 
+                         }
+                      }}
+                      onBlur={(e) => { 
+                        if(f.type === 'date' || f.type === 'datetime-local') {
+                          e.target.type = 'text'; 
+                        }
+                      }}
+                      style={styles.statusInput}
+                      placeholder={f.type === 'date' ? "DD-MM-YYYY" : (f.type === 'datetime-local' ? "YYYY-MM-DDTHH:MM" : "")}
+                    />
+                  </div>
+                </React.Fragment>
+              );
+            }
+
             if (f.type === "upload") {
               const currentImages = item[f.field] || [];
               const bucketPath =
@@ -1062,12 +1417,28 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                   </select>
                 ) : (
                   <input
-                    type={f.type}
-                    value={item[f.field] || ""}
+                    type={f.type === "date" || f.type === "datetime-local" ? "text" : f.type}
+                    value={
+                      f.type === "date" || f.type === "datetime-local"
+                      ? formatDateForInput(item[f.field] || "", f.type)
+                      : (item[f.field] || "")
+                    }
                     onChange={(e) =>
                       onUpdate(section, idx, f.field, e.target.value)
                     }
+                    onDoubleClick={(e) => {
+                       if(f.type === 'date' || f.type === 'datetime-local') {
+                         e.target.type = f.type;
+                         e.target.showPicker && e.target.showPicker();
+                       }
+                    }}
+                    onBlur={(e) => {
+                      if(f.type === 'date' || f.type === 'datetime-local') {
+                        e.target.type = 'text';
+                      }
+                    }}
                     style={styles.statusInput}
+                    placeholder={f.type === 'date' ? "DD-MM-YYYY" : (f.type === 'datetime-local' ? "YYYY-MM-DDTHH:MM" : "")}
                   />
                 )}
               </div>
@@ -1075,6 +1446,98 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
           })}
         </div>
       ))}
+    </div>
+  );
+};
+
+const HoNameAutocomplete = ({ value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const [opts, setOpts] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const wrapperRef = useRef();
+  const apiBase = import.meta.env.VITE_API_STRING;
+
+  useEffect(() => {
+    const fetchNames = async () => {
+      try {
+        const res = await fetch(`${apiBase}/dsr/ho-to-console-names`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setOpts(data.data);
+        }
+      } catch (err) {
+        console.error("Error fetching HO names", err);
+      }
+    };
+    fetchNames();
+  }, [apiBase]);
+
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
+
+  useEffect(() => {
+    const v = (value || "").toUpperCase();
+    setFiltered(opts.filter((o) => o.toUpperCase().includes(v)));
+  }, [value, opts]);
+
+  return (
+    <div style={{ position: "relative" }} ref={wrapperRef}>
+      <input
+        type="text"
+        value={value.toUpperCase()}
+        onChange={(e) => {
+          onChange(e.target.value.toUpperCase());
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        style={styles.statusInput}
+        placeholder="SEARCH OR ENTER NAME"
+      />
+      {open && filtered.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            background: "#fff",
+            border: "1px solid #cbd5e1",
+            borderRadius: "6px",
+            zIndex: 10,
+            maxHeight: "150px",
+            overflowY: "auto",
+            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+            marginTop: "4px",
+          }}
+        >
+          {filtered.map((name, i) => (
+            <div
+              key={i}
+              style={{
+                padding: "8px 12px",
+                cursor: "pointer",
+                fontSize: "12px",
+                borderBottom: "1px solid #f1f5f9",
+              }}
+              onMouseDown={() => {
+                onChange(name.toUpperCase());
+                setOpen(false);
+              }}
+              onMouseEnter={(e) => (e.target.style.background = "#f1f5f9")}
+              onMouseLeave={(e) => (e.target.style.background = "#fff")}
+            >
+              {name.toUpperCase()}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -1118,12 +1581,14 @@ const getDefaultItem = (section) => {
       netWeightKgs: 0,
       grossWeightKgs: 0,
       images: [],
+      cartingDate: "",
+      gateInDate: "",
     },
     containerDetails: {
       containerNo: "",
       containerSize: "",
       containerType: "",
-      cargoType: "GEN",
+      cargoType: "Gen",
       maxGrossWeightKgs: 0,
       tareWeightKgs: 0,
       maxPayloadKgs: 0,
@@ -1140,10 +1605,12 @@ const getDefaultItem = (section) => {
       handoverLocation: "",
       validity: "",
       images: [],
+      containerPlacementDate: "",
     },
     weighmentDetails: {
       weighBridgeName: "",
       regNo: "",
+      address: "",
       dateTime: "",
       vehicleNo: "",
       containerNo: "",
@@ -1151,24 +1618,31 @@ const getDefaultItem = (section) => {
       grossWeight: 0,
       tareWeight: 0,
       netWeight: 0,
-      address: "",
     },
     statusDetails: {
       rms: "RMS", // Default
-      goodsRegistrationDate: null,
-      leoDate: null,
+      goodsRegistrationDate: "",
+      leoDate: "",
       leoUpload: [],
-      stuffingDate: null,
+      containerPlacementDate: "",
+      stuffingDate: "",
       stuffingSheetUpload: [],
       stuffingPhotoUpload: [],
-      eGatePassCopyDate: null,
+      eGatePassCopyDate: "",
       eGatePassUpload: [],
-      handoverForwardingNoteDate: null,
+      handoverForwardingNoteDate: "",
       handoverImageUpload: [],
-      handoverConcorTharSanganaRailRoadDate: null,
-      billingDocsSentDt: null,
+      handoverConcorTharSanganaRailRoadDate: "",
+      billingDocsSentDt: "",
       billingDocsSentUpload: [],
       billingDocsStatus: "Pending",
+      railRoad: "",
+      concorPrivate: "",
+      privateTransporterName: "",
+      hoToConsoleDate: "",
+      hoToConsoleDate2: "",
+      hoToConsoleName: "",
+      railOutReachedDate: "",
     },
   };
   return defaults[section] || {};

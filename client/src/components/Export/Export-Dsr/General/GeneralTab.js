@@ -44,7 +44,7 @@ const GeneralTab = ({ formik, directories }) => {
   function handleFieldChange(field, value) {
     formik.setFieldValue(field, value);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {}, 1000);
+    saveTimeoutRef.current = setTimeout(() => { }, 1000);
   }
 
   // --- Consignee Autocomplete Logic ---
@@ -167,22 +167,21 @@ const GeneralTab = ({ formik, directories }) => {
 
     const shouldUpdate =
       getVal("ieCode") !== toUpper(effectiveIe) ||
-      getVal("gstin") !==
-        toUpper(exp.registrationDetails?.gstinMainBranch || "") ||
+      getVal("gstin") !== toUpper(exp.registrationDetails?.gstinMainBranch || "") ||
+      getVal("exporter_type") !== toUpper(exp.generalInfo?.exporterType || "") ||
       getVal("exporter_address") !==
-        toUpper(
-          `${branch.address || ""}${
-            branch.postalCode ? `, ${branch.postalCode}` : ""
-          }`
-        );
+      toUpper(
+        `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""
+        }`
+      );
 
     if (!shouldUpdate) return;
 
     const updates = {
       exporter: toUpper(exp.organization),
+      exporter_type: toUpper(exp.generalInfo?.exporterType || ""),
       exporter_address: toUpper(
-        `${branch.address || ""}${
-          branch.postalCode ? `, ${branch.postalCode}` : ""
+        `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""
         }`
       ),
       branch_sno: toUpper(branch.branchCode || "0"),
@@ -397,6 +396,34 @@ const GeneralTab = ({ formik, directories }) => {
           </div>
           {exporterInputField()}
           {branchSelectField()}
+          <div>
+            <div style={{ fontSize: 11, color: "#666" }}>Exporter Type</div>
+            <select
+              name="exporter_type"
+              value={getVal("exporter_type")}
+              onChange={(e) =>
+                handleFieldChange("exporter_type", toUpperVal(e))
+              }
+              style={{
+                border: "1px solid #cad3db",
+                borderRadius: 4,
+                fontSize: 13,
+                padding: "2px 7px",
+                height: 28,
+                width: "100%",
+                marginBottom: 3,
+                boxSizing: "border-box",
+              }}
+            >
+              <option value="">-- SELECT --</option>
+              <option value="MANUFACTURER EXPORTER">
+                MANUFACTURER EXPORTER
+              </option>
+              <option value="MERCHANT EXPORTER">MERCHANT EXPORTER</option>
+              <option value="MARCHANT EXPORTER">MARCHANT EXPORTER</option>
+              <option value="SERVICE EXPORTER">SERVICE EXPORTER</option>
+            </select>
+          </div>
           {field("Address", "exporter_address")}
           <div style={{ display: "flex", gap: 10 }}>
             {field("Branch S/No", "branch_sno")}
@@ -468,32 +495,6 @@ const GeneralTab = ({ formik, directories }) => {
             Reference Details
           </div>
           {field("Exporter Ref No.", "exporter_ref_no")}
-          <div>
-            <div style={{ fontSize: 11, color: "#666" }}>Exporter Type</div>
-            <select
-              name="exporter_type"
-              value={getVal("exporter_type")}
-              onChange={(e) =>
-                handleFieldChange("exporter_type", toUpperVal(e))
-              }
-              style={{
-                border: "1px solid #cad3db",
-                borderRadius: 4,
-                fontSize: 13,
-                padding: "2px 7px",
-                height: 28,
-                width: "100%",
-                marginBottom: 3,
-              }}
-            >
-              <option value="">--SELECT--</option>
-              <option value="MANUFACTURER EXPORTER">
-                MANUFACTURER EXPORTER
-              </option>
-              <option value="MERCHANT EXPORTER">MERCHANT EXPORTER</option>
-              <option value="SERVICE EXPORTER">SERVICE EXPORTER</option>
-            </select>
-          </div>
           <div style={{ display: "flex", gap: 10 }}>
             {field("SB Number", "sb_no")}
             <div style={{ flex: 1 }}>

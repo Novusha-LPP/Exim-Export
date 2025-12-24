@@ -58,6 +58,7 @@ import getDrawback from "./routes/export-dsr/getDrawback.js";
 import feedback from "./routes/feedbackRoutes.js";
 
 import getConsignees from "./routes/export-dsr/getConsignees.js";
+import getHoToConsoleNames from "./routes/export-dsr/getHoToConsoleNames.js";
 import rodtepReRoutes from "./routes/export-dsr/rodtepReRoutes.js";
 
 process.on("uncaughtException", (error) => {
@@ -104,8 +105,8 @@ const MONGODB_URI =
   process.env.NODE_ENV === "production"
     ? process.env.PROD_MONGODB_URI
     : process.env.NODE_ENV === "server"
-    ? process.env.SERVER_MONGODB_URI
-    : process.env.DEV_MONGODB_URI;
+      ? process.env.SERVER_MONGODB_URI
+      : process.env.DEV_MONGODB_URI;
 
 // MongoDB connection
 mongoose.set("strictQuery", true);
@@ -175,6 +176,7 @@ app.use("/api/getDrawback", getDrawback);
 app.use(currencyRate);
 app.use("/api", feedback);
 app.use(getConsignees);
+app.use(getHoToConsoleNames);
 app.use("/api", rodtepReRoutes);
 
 // s3 route
