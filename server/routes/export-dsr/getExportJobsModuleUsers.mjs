@@ -57,4 +57,3 @@ router.get("/api/export-jobs-module-users", async (req, res) => {
 });
 
 export default router;
-
