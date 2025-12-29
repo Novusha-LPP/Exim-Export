@@ -227,6 +227,7 @@ function useExportJobDetails(params, setFileSnackbar) {
           sealType: "",
           grWtPlusTrWt: 0,
           sealDeviceId: "",
+          tareWeightKgs: 0,
           rfid: "",
         },
       ],
@@ -761,6 +762,11 @@ function useExportJobDetails(params, setFileSnackbar) {
             }
             return dbk;
           }),
+          // Map tareWeightKgs -> sealDeviceId for backend storage
+          containers: (values.containers || []).map((c) => ({
+            ...c,
+            sealDeviceId: c.tareWeightKgs || c.sealDeviceId,
+          })),
           annexC1Details: {
             ...values.annexC1Details,
             sealNumber:
@@ -916,7 +922,10 @@ function useExportJobDetails(params, setFileSnackbar) {
         place_of_receipt: safeValue(data.place_of_receipt),
         place_of_delivery: safeValue(data.place_of_delivery),
         exchange_rate: safeValue(data.exchange_rate),
-        containers: safeValue(data.containers, []),
+        containers: safeValue(data.containers, []).map((c) => ({
+          ...c,
+          tareWeightKgs: c.tareWeightKgs || c.sealDeviceId || 0,
+        })),
         remarks: safeValue(data.remarks),
         job_owner: safeValue(data.job_owner),
         invoices: safeValue(data.invoices, []),
@@ -950,13 +959,13 @@ function useExportJobDetails(params, setFileSnackbar) {
         ),
         verified_by_examining_officer: safeValue(
           data.verified_by_examining_officer ||
-          data.annexC1Details?.verifiedByExaminingOfficer,
+            data.annexC1Details?.verifiedByExaminingOfficer,
           false
         ),
         annex_seal_number: safeValue(
           data.annex_seal_number ||
-          data.annexC1Details?.sealNumber ||
-          data.stuffing_seal_no
+            data.annexC1Details?.sealNumber ||
+            data.stuffing_seal_no
         ), // Reference stuffing_seal_no
         annex_designation: safeValue(
           data.annex_designation || data.annexC1Details?.designation
@@ -998,13 +1007,13 @@ function useExportJobDetails(params, setFileSnackbar) {
           ),
           verifiedByExaminingOfficer: safeValue(
             data.verified_by_examining_officer ||
-            data.annexC1Details?.verifiedByExaminingOfficer,
+              data.annexC1Details?.verifiedByExaminingOfficer,
             false
           ),
           sealNumber: safeValue(
             data.stuffing_seal_no ||
-            data.annex_seal_number ||
-            data.annexC1Details?.sealNumber
+              data.annex_seal_number ||
+              data.annexC1Details?.sealNumber
           ), // Sync from main seal number
           documents: safeValue(
             data.annex_c1_documents || data.annexC1Details?.documents,
@@ -1028,7 +1037,9 @@ function useExportJobDetails(params, setFileSnackbar) {
         workflowlocation: safeValue(data.workflowlocation),
         shipmenttype: safeValue(data.shipmenttype, "International"),
         milestoneremarks: safeValue(data.milestoneremarks),
-        milestoneviewuploaddocuments: safeValue(data.milestoneviewuploaddocuments),
+        milestoneviewuploaddocuments: safeValue(
+          data.milestoneviewuploaddocuments
+        ),
         milestonehandledby: safeValue(data.milestonehandledby),
         isJobtrackingEnabled: safeValue(data.isJobtrackingEnabled, false),
         isJobCanceled: safeValue(data.isJobCanceled, false),

@@ -214,11 +214,7 @@ const containerTypes = [
   "40 PLATFORM",
 ];
 
-const sealTypes = [
-  "BTSL - BOTTLE",
-  "ES - ELECTRONIC SEAL",
-  "RFID - RADIO FREQUENCY IDENTIFIER",
-];
+const sealTypes = ["RFID - RADIO FREQUENCY IDENTIFIER"];
 
 function ContainerTab({ formik, onUpdate }) {
   const [editingIndex, setEditingIndex] = useState(null);
@@ -242,6 +238,46 @@ function ContainerTab({ formik, onUpdate }) {
     const list = [...(formik.values.containers || [])];
     list[idx][field] = value;
     formik.setFieldValue("containers", list);
+
+    // Sync tareWeightKgs to Operations Tab if changed
+    if (field === "tareWeightKgs") {
+      const containerNo = list[idx].containerNo;
+      if (containerNo) {
+        const operations = formik.values.operations || [];
+        let opsChanged = false;
+
+        const newOps = operations.map((op) => {
+          const cDetails = op.containerDetails || [];
+          const hasContainer = cDetails.some(
+            (d) =>
+              (d.containerNo || "").trim().toUpperCase() ===
+              containerNo.trim().toUpperCase()
+          );
+
+          if (hasContainer) {
+            opsChanged = true;
+            return {
+              ...op,
+              containerDetails: cDetails.map((d) => {
+                if (
+                  (d.containerNo || "").trim().toUpperCase() ===
+                  containerNo.trim().toUpperCase()
+                ) {
+                  return { ...d, tareWeightKgs: value };
+                }
+                return d;
+              }),
+            };
+          }
+          return op;
+        });
+
+        if (opsChanged) {
+          formik.setFieldValue("operations", newOps);
+        }
+      }
+    }
+
     debouncedSave();
   };
 
@@ -256,7 +292,7 @@ function ContainerTab({ formik, onUpdate }) {
       pkgsStuffed: 0,
       grossWeight: 0,
       sealType: "",
-      sealDeviceId: "",
+      tareWeightKgs: 0,
       grWtPlusTrWt: 0,
       rfid: "",
     });
@@ -301,12 +337,13 @@ function ContainerTab({ formik, onUpdate }) {
                 <th style={{ ...styles.headCell, width: 130 }}>CONTAINER NO</th>
                 <th style={{ ...styles.headCell, width: 110 }}>SEAL NO</th>
                 <th style={{ ...styles.headCell, width: 110 }}>SEAL DATE</th>
+                <th style={{ ...styles.headCell, width: 150 }}>SEAL TYPE</th>
                 <th style={{ ...styles.headCell, width: 150 }}>TYPE</th>
                 <th style={{ ...styles.headCell, width: 110 }}>PKGS STUFFED</th>
                 <th style={{ ...styles.headCell, width: 130 }}>GROSS WEIGHT</th>
-                <th style={{ ...styles.headCell, width: 150 }}>SEAL TYPE</th>
+
                 <th style={{ ...styles.headCell, width: 130 }}>
-                  SEAL DEVICE ID
+                  TARE WEIGHT (KGS)
                 </th>
                 <th style={{ ...styles.headCell, width: 130 }}>GR-WT + TR-W</th>
                 <th
@@ -376,6 +413,24 @@ function ContainerTab({ formik, onUpdate }) {
                       />
                     </td>
 
+                    {/* SEAL TYPE */}
+                    <td style={styles.cell}>
+                      <select
+                        style={styles.select}
+                        value={row.sealType || ""}
+                        onChange={(e) =>
+                          handleFieldChange(idx, "sealType", e.target.value)
+                        }
+                      >
+                        <option value="">SELECT</option>
+                        {sealTypes.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
                     {/* TYPE */}
                     <td style={styles.cell}>
                       <select
@@ -413,7 +468,7 @@ function ContainerTab({ formik, onUpdate }) {
                     {/* GROSS WEIGHT */}
                     <td style={styles.cell}>
                       <input
-                        type="number"
+                        type="string"
                         style={styles.inputNumeric}
                         value={row.grossWeight || 0}
                         onChange={(e) =>
@@ -426,34 +481,17 @@ function ContainerTab({ formik, onUpdate }) {
                       />
                     </td>
 
-                    {/* SEAL TYPE */}
-                    <td style={styles.cell}>
-                      <select
-                        style={styles.select}
-                        value={row.sealType || ""}
-                        onChange={(e) =>
-                          handleFieldChange(idx, "sealType", e.target.value)
-                        }
-                      >
-                        <option value="">SELECT</option>
-                        {sealTypes.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-
                     {/* SEAL DEVICE ID */}
                     <td style={styles.cell}>
                       <input
-                        style={styles.input}
-                        value={row.sealDeviceId || ""}
+                        type="string"
+                        style={styles.inputNumeric}
+                        value={row.tareWeightKgs || 0}
                         onChange={(e) =>
                           handleFieldChange(
                             idx,
-                            "sealDeviceId",
-                            e.target.value.toUpperCase()
+                            "tareWeightKgs",
+                            Number(e.target.value || 0)
                           )
                         }
                       />

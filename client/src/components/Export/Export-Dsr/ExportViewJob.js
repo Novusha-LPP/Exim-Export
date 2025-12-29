@@ -145,8 +145,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-              ? data
-              : []
+            ? data
+            : []
         );
       } catch {
         setOpts([]);
@@ -672,8 +672,9 @@ function LogisysExportViewJob() {
     const lockJob = async () => {
       try {
         await axios.put(
-          `${import.meta.env.VITE_API_STRING
-          }/export-jobs/${encodeURIComponent(decodedJobNo)}/lock`,
+          `${import.meta.env.VITE_API_STRING}/export-jobs/${encodeURIComponent(
+            decodedJobNo
+          )}/lock`,
           { username: user.username }
         );
       } catch (err) {
@@ -684,8 +685,9 @@ function LogisysExportViewJob() {
     const unlockJob = async () => {
       try {
         await axios.put(
-          `${import.meta.env.VITE_API_STRING
-          }/export-jobs/${encodeURIComponent(decodedJobNo)}/unlock`,
+          `${import.meta.env.VITE_API_STRING}/export-jobs/${encodeURIComponent(
+            decodedJobNo
+          )}/unlock`,
           { username: user.username }
         );
       } catch (err) {
@@ -791,7 +793,9 @@ function LogisysExportViewJob() {
           >
             <Tab label="General" />
             <Tab label="Shipment" />
-            <Tab label="Container" />
+            {toUpper(formik.values.transportMode) !== "AIR" && (
+              <Tab label="Container" />
+            )}
             <Tab label="Invoice" />
             <Tab label="Product" />
             <Tab label="ESanchit" />
@@ -802,48 +806,78 @@ function LogisysExportViewJob() {
           </Tabs>
         </Box>
 
-        <TabPanel value={activeTab} index={0}>
-          <GeneralTab
-            formik={formik}
-            directories={directories}
-            params={params}
-          />
-        </TabPanel>
-        <TabPanel value={activeTab} index={1}>
-          <ShipmentTab
-            formik={formik}
-            directories={directories}
-            params={params}
-          />
-        </TabPanel>
-        <TabPanel value={activeTab} index={2}>
-          <ContainerTab formik={formik} />
-        </TabPanel>
-        <TabPanel value={activeTab} index={3}>
-          <InvoiceTab
-            formik={formik}
-            directories={directories}
-            params={params}
-          />
-        </TabPanel>
-        <TabPanel value={activeTab} index={4}>
-          <ProductTab formik={formik} />
-        </TabPanel>
-        <TabPanel value={activeTab} index={5}>
-          <ESanchitTab formik={formik} />
-        </TabPanel>
-        <TabPanel value={activeTab} index={6}>
-          <ChargesTab formik={formik} />
-        </TabPanel>
-        <TabPanel value={activeTab} index={7}>
-          <FinancialTab formik={formik} />
-        </TabPanel>
-        <TabPanel value={activeTab} index={8}>
-          <OperationsTab formik={formik} />
-        </TabPanel>
-        <TabPanel value={activeTab} index={9}>
-          <TrackingCompletedTab formik={formik} />
-        </TabPanel>
+        {/* Dynamic Content Rendering */}
+        {(() => {
+          const tabs = [
+            {
+              label: "General",
+              component: (
+                <GeneralTab
+                  formik={formik}
+                  directories={directories}
+                  params={params}
+                />
+              ),
+            },
+            {
+              label: "Shipment",
+              component: (
+                <ShipmentTab
+                  formik={formik}
+                  directories={directories}
+                  params={params}
+                />
+              ),
+            },
+            ...(toUpper(formik.values.transportMode) !== "AIR"
+              ? [
+                  {
+                    label: "Container",
+                    component: (
+                      <ContainerTab
+                        formik={formik}
+                        onUpdate={formik.handleSubmit}
+                      />
+                    ),
+                  },
+                ]
+              : []),
+            {
+              label: "Invoice",
+              component: (
+                <InvoiceTab
+                  formik={formik}
+                  directories={directories}
+                  params={params}
+                />
+              ),
+            },
+            { label: "Product", component: <ProductTab formik={formik} /> },
+            { label: "ESanchit", component: <ESanchitTab formik={formik} /> },
+            {
+              label: "Charges",
+              component: <ChargesTab formik={formik} lockError={lockError} />,
+            },
+            {
+              label: "Financial",
+              component: <FinancialTab formik={formik} />,
+            },
+            {
+              label: "Operations",
+              component: <OperationsTab formik={formik} />,
+            },
+            {
+              label: "Tracking Completed",
+              component: <TrackingCompletedTab formik={formik} />,
+            },
+          ];
+
+          return (
+            <Box sx={{ p: 2 }}>
+              {tabs[activeTab] && tabs[activeTab].component}
+            </Box>
+          );
+        })()}
         {lockError && (
           <Box
             sx={{
@@ -870,7 +904,12 @@ function LogisysExportViewJob() {
                 border: "2px solid #d32f2f",
               }}
             >
-              <Typography variant="h5" color="error" gutterBottom sx={{ fontWeight: 700 }}>
+              <Typography
+                variant="h5"
+                color="error"
+                gutterBottom
+                sx={{ fontWeight: 700 }}
+              >
                 Job Locked
               </Typography>
               <Typography variant="body1" sx={{ mb: 3 }}>

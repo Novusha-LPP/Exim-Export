@@ -133,7 +133,9 @@ function toUpper(val) {
 
 const DBK_LIMIT = 20;
 
-const DrawbackTab = ({ formik }) => {
+const DrawbackTab = ({ formik, selectedProductIndex }) => {
+  const products = formik.values.products || [];
+  const product = products[selectedProductIndex];
   const saveTimeoutRef = useRef(null);
 
   // DBK Search Dialog State
@@ -209,10 +211,12 @@ const DrawbackTab = ({ formik }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbkDialogQuery, dbkDialogOpen, fetchDbkCodes]);
 
-  // Sync Quantity/Unit from Products whenever products change
+  // Sync Quantity/Unit from Products & FOB Value from FreightInsuranceCharges
   useEffect(() => {
     const products = formik.values.products || [];
     const currentDbk = formik.values.drawbackDetails || [];
+    const productAmount = formik.values.freightInsuranceCharges?.fobValue;
+    const fobAmount = parseFloat(productAmount?.amount || 0);
 
     // We only sync if there is at least one product
     if (products.length === 0) return;
@@ -226,19 +230,36 @@ const DrawbackTab = ({ formik }) => {
       const pQty = product.quantity || 0;
       const pUnit = product.qtyUnit || "";
 
-      // If values differ, return new object
+      const currentFob = parseFloat(item.fobValue) || 0;
+      const rate = parseFloat(item.dbkRate) || 0;
+
+      let newItem = { ...item };
+      let changedLocal = false;
+
+      // Sync Quantity/Unit
       if (
         String(item.quantity) !== String(pQty) ||
         String(item.unit) !== String(pUnit) ||
         String(item.dbkCapunit) !== String(pUnit)
       ) {
+        newItem.quantity = pQty;
+        newItem.unit = pUnit;
+        newItem.dbkCapunit = pUnit;
+        changedLocal = true;
+      }
+
+      // Sync FOB Value
+      if (currentFob !== fobAmount) {
+        newItem.fobValue = fobAmount;
+        // Recalculate amount
+        newItem.dbkAmount = ((rate * fobAmount) / 100).toFixed(2);
+        newItem.percentageOfFobValue = `${rate}% of FOB Value`;
+        changedLocal = true;
+      }
+
+      if (changedLocal) {
         hasChanges = true;
-        return {
-          ...item,
-          quantity: pQty,
-          unit: pUnit,
-          dbkCapunit: pUnit,
-        };
+        return newItem;
       }
       return item;
     });
@@ -249,6 +270,7 @@ const DrawbackTab = ({ formik }) => {
   }, [
     formik.values.products,
     formik.values.drawbackDetails,
+    formik.values.freightInsuranceCharges?.fobValue?.amount, // Watch for FOB changes
     formik.setFieldValue,
   ]);
 
@@ -277,10 +299,10 @@ const DrawbackTab = ({ formik }) => {
     }
 
     // Pull FOB Value
-    const fobCharges = formik.values.freightInsuranceCharges?.fobValue;
+    const productAmount = formik.values.freightInsuranceCharges?.fobValue;
     let fobInr = 0;
-    if (fobCharges) {
-      fobInr = fobCharges.amountINR || fobCharges.amount || 0;
+    if (productAmount) {
+      fobInr = productAmount.amountINR || productAmount.amount || 0;
     }
     updated[idx].fobValue = fobInr;
 
@@ -352,10 +374,10 @@ const DrawbackTab = ({ formik }) => {
         // Pull FOB Value (INR) from InvoiceFreightTab
         // We use the Total FOB Value INR for now as per instructions, or we could leave it
         // The user said: "take fob value amount from Invoice frieght tab"
-        const fobCharges = formik.values.freightInsuranceCharges?.fobValue;
+        const productAmount = formik.values.freightInsuranceCharges?.fobValue;
         let fobInr = 0;
-        if (fobCharges) {
-          fobInr = fobCharges.amountINR || fobCharges.amount || 0; // Prefer INR as per column header
+        if (productAmount) {
+          fobInr = productAmount.amountINR || productAmount.amount || 0; // Prefer INR as per column header
         }
         updated[idx].fobValue = fobInr;
 
@@ -549,7 +571,7 @@ const DrawbackTab = ({ formik }) => {
                       ...styles.input,
                       backgroundColor: "#e9ecef",
                       color: "#495057",
-                    }}  
+                    }}
                     value={item.dbkCapunit ?? ""}
                     disabled
                     onChange={(e) =>

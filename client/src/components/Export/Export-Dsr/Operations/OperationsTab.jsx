@@ -9,10 +9,14 @@ const toUpper = (str) => (str ? str.toUpperCase() : "");
 
 const formatDateForInput = (dateVal, type = "date") => {
   if (!dateVal) return "";
-  
+
   // If it's a string and doesn't look like a full ISO string from the server,
   // just return it as is to allow manual typing without auto-correction.
-  if (typeof dateVal === "string" && !dateVal.includes("T") && !dateVal.includes("Z")) {
+  if (
+    typeof dateVal === "string" &&
+    !dateVal.includes("T") &&
+    !dateVal.includes("Z")
+  ) {
     return dateVal;
   }
 
@@ -239,7 +243,8 @@ function ShippingLineDropdownField({ fieldName, formik, placeholder = "" }) {
         <span style={styles.acIcon}>▼</span>
 
         {/* Use Portal to show menu outside table/row clipping */}
-        {d.open && filteredOpts.length > 0 &&
+        {d.open &&
+          filteredOpts.length > 0 &&
           createPortal(
             <div
               ref={d.menuRef}
@@ -354,7 +359,9 @@ const OperationsTab = ({ formik }) => {
 
       // Check if we need to expand any arrays to match lengths
       let opIsDirty =
-        tArr.length !== maxLen || cArr.length !== maxLen || wArr.length !== maxLen;
+        tArr.length !== maxLen ||
+        cArr.length !== maxLen ||
+        wArr.length !== maxLen;
 
       const syncedOp = { ...op };
       ["transporterDetails", "containerDetails", "weighmentDetails"].forEach(
@@ -412,54 +419,84 @@ const OperationsTab = ({ formik }) => {
     let totalPkgs = 0;
     let totalGross = 0;
     let totalNet = 0;
-    
+
     // Also build a map of container details from transporterDetails to sync to master containers
     const containerDetailsMap = new Map();
 
-    operations.forEach(op => {
-      (op.transporterDetails || []).forEach(item => {
+    operations.forEach((op) => {
+      (op.transporterDetails || []).forEach((item) => {
         totalPkgs += Number(item.noOfPackages || 0);
         totalGross += Number(item.grossWeightKgs || 0);
         totalNet += Number(item.netWeightKgs || 0);
-        
+
         if (item.containerNo) {
           const cNo = item.containerNo.trim().toUpperCase();
           if (!containerDetailsMap.has(cNo)) {
-             containerDetailsMap.set(cNo, {
-               grossWeight: Number(item.grossWeightKgs || 0),
-               netWeight: Number(item.netWeightKgs || 0),
-               noOfPackages: Number(item.noOfPackages || 0)
-             });
+            containerDetailsMap.set(cNo, {
+              grossWeight: Number(item.grossWeightKgs || 0),
+              netWeight: Number(item.netWeightKgs || 0),
+              noOfPackages: Number(item.noOfPackages || 0),
+            });
           } else {
-             // If container appears multiple times, we sum its specific weights
-             const existing = containerDetailsMap.get(cNo);
-             existing.grossWeight += Number(item.grossWeightKgs || 0);
-             existing.netWeight += Number(item.netWeightKgs || 0);
-             existing.noOfPackages += Number(item.noOfPackages || 0);
+            // If container appears multiple times, we sum its specific weights
+            const existing = containerDetailsMap.get(cNo);
+            existing.grossWeight += Number(item.grossWeightKgs || 0);
+            existing.netWeight += Number(item.netWeightKgs || 0);
+            existing.noOfPackages += Number(item.noOfPackages || 0);
+          }
+        }
+      });
+
+      // Also grab tareWeightKgs from containerDetails
+      (op.containerDetails || []).forEach((item) => {
+        if (item.containerNo && item.tareWeightKgs) {
+          const cNo = item.containerNo.trim().toUpperCase();
+          if (containerDetailsMap.has(cNo)) {
+            // We take the last available tare weight if multiple
+            containerDetailsMap.get(cNo).tareWeightKgs = Number(
+              item.tareWeightKgs || 0
+            );
+          } else {
+            containerDetailsMap.set(cNo, {
+              grossWeight: 0,
+              netWeight: 0,
+              noOfPackages: 0,
+              tareWeightKgs: Number(item.tareWeightKgs || 0),
+            });
           }
         }
       });
     });
 
-    if (Number(formik.values.total_no_of_pkgs) !== totalPkgs) formik.setFieldValue("total_no_of_pkgs", totalPkgs);
-    if (Number(formik.values.gross_weight_kg) !== totalGross) formik.setFieldValue("gross_weight_kg", totalGross);
-    if (Number(formik.values.net_weight_kg) !== totalNet) formik.setFieldValue("net_weight_kg", totalNet);
+    if (Number(formik.values.total_no_of_pkgs) !== totalPkgs)
+      formik.setFieldValue("total_no_of_pkgs", totalPkgs);
+    if (Number(formik.values.gross_weight_kg) !== totalGross)
+      formik.setFieldValue("gross_weight_kg", totalGross);
+    if (Number(formik.values.net_weight_kg) !== totalNet)
+      formik.setFieldValue("net_weight_kg", totalNet);
 
     // Phase C: Master Containers Sync (Updates formik.values.containers)
     const currentMaster = formik.values.containers || [];
-    
+
     // 1. Reconcile existing containers (Filter out those removed from operations)
-    let nextContainers = currentMaster.filter(c => {
-       const uNo = (c.containerNo || "").trim().toUpperCase();
-       return uNo && opContainerNos.includes(uNo);
+    let nextContainers = currentMaster.filter((c) => {
+      const uNo = (c.containerNo || "").trim().toUpperCase();
+      return uNo && opContainerNos.includes(uNo);
     });
 
     let masterChanged = nextContainers.length !== currentMaster.length;
 
     // 2. Update existing or add new ones to match Operations
-    opContainerNos.forEach(no => {
-      let masterItemIdx = nextContainers.findIndex(c => (c.containerNo || "").trim().toUpperCase() === no);
-      const opInfo = containerDetailsMap.get(no) || { grossWeight: 0, netWeight: 0, noOfPackages: 0 };
+    opContainerNos.forEach((no) => {
+      let masterItemIdx = nextContainers.findIndex(
+        (c) => (c.containerNo || "").trim().toUpperCase() === no
+      );
+      const opInfo = containerDetailsMap.get(no) || {
+        grossWeight: 0,
+        netWeight: 0,
+        noOfPackages: 0,
+        tareWeightKgs: 0,
+      };
 
       if (masterItemIdx === -1) {
         nextContainers.push({
@@ -470,21 +507,26 @@ const OperationsTab = ({ formik }) => {
           pkgsStuffed: opInfo.noOfPackages,
           grossWeight: opInfo.grossWeight,
           netWeight: opInfo.netWeight,
+          tareWeightKgs: opInfo.tareWeightKgs,
         });
         masterChanged = true;
       } else {
         // Sync weights/packages to master item if they differ
         const m = nextContainers[masterItemIdx];
-        if (Number(m.grossWeight) !== opInfo.grossWeight || 
-            Number(m.netWeight) !== opInfo.netWeight ||
-            Number(m.pkgsStuffed) !== opInfo.noOfPackages) {
-           nextContainers[masterItemIdx] = {
-             ...m,
-             grossWeight: opInfo.grossWeight,
-             netWeight: opInfo.netWeight,
-             pkgsStuffed: opInfo.noOfPackages
-           };
-           masterChanged = true;
+        if (
+          Number(m.grossWeight) !== opInfo.grossWeight ||
+          Number(m.netWeight) !== opInfo.netWeight ||
+          Number(m.pkgsStuffed) !== opInfo.noOfPackages ||
+          Number(m.tareWeightKgs || 0) !== opInfo.tareWeightKgs
+        ) {
+          nextContainers[masterItemIdx] = {
+            ...m,
+            grossWeight: opInfo.grossWeight,
+            netWeight: opInfo.netWeight,
+            pkgsStuffed: opInfo.noOfPackages,
+            tareWeightKgs: opInfo.tareWeightKgs,
+          };
+          masterChanged = true;
         }
       }
     });
@@ -557,7 +599,6 @@ const OperationsTab = ({ formik }) => {
           }
         );
       }
-
 
       return updatedOp;
     });
@@ -916,8 +957,9 @@ const TableSection = ({
   activeOpIndex,
 }) => {
   // Ensure at least one row exists
-  const displayData = data && data.length > 0 ? data : [getDefaultItem(section)];
-  
+  const displayData =
+    data && data.length > 0 ? data : [getDefaultItem(section)];
+
   // NOTE: Redundant mount effect that was causing race conditions has been removed.
   // Initialization is now managed by the parent OperationsTab.
 
@@ -977,7 +1019,9 @@ const TableSection = ({
                       />
                     ) : col.type === "select" ? (
                       <select
-                        value={item[col.field] === undefined ? "" : item[col.field]}
+                        value={
+                          item[col.field] === undefined ? "" : item[col.field]
+                        }
                         onChange={(e) =>
                           onUpdate(section, rowIdx, col.field, e.target.value)
                         }
@@ -995,11 +1039,17 @@ const TableSection = ({
                       </select>
                     ) : (
                       <input
-                        type={col.type === "date" || col.type === "datetime-local" ? "text" : (col.type || "text")}
+                        type={
+                          col.type === "date" || col.type === "datetime-local"
+                            ? "text"
+                            : col.type || "text"
+                        }
                         value={
-                          item[col.field] === undefined || item[col.field] === null
+                          item[col.field] === undefined ||
+                          item[col.field] === null
                             ? ""
-                            : col.type === "date" || col.type === "datetime-local"
+                            : col.type === "date" ||
+                              col.type === "datetime-local"
                             ? formatDateForInput(item[col.field], col.type)
                             : item[col.field]
                         }
@@ -1014,13 +1064,19 @@ const TableSection = ({
                           )
                         }
                         onDoubleClick={(e) => {
-                          if (col.type === "date" || col.type === "datetime-local") {
+                          if (
+                            col.type === "date" ||
+                            col.type === "datetime-local"
+                          ) {
                             e.target.type = col.type;
                             e.target.showPicker && e.target.showPicker();
                           }
                         }}
                         onBlur={(e) => {
-                          if (col.type === "date" || col.type === "datetime-local") {
+                          if (
+                            col.type === "date" ||
+                            col.type === "datetime-local"
+                          ) {
                             e.target.type = "text";
                           }
                         }}
@@ -1032,21 +1088,46 @@ const TableSection = ({
                               col.field === "noOfPackages") &&
                             !e.target.value
                           ) {
-                            const shipmentGross = formik.values.gross_weight_kg || "";
-                            const shipmentNet = formik.values.net_weight_kg || "";
-                            const shipmentPkgs = formik.values.total_no_of_pkgs || "";
+                            const shipmentGross =
+                              formik.values.gross_weight_kg || "";
+                            const shipmentNet =
+                              formik.values.net_weight_kg || "";
+                            const shipmentPkgs =
+                              formik.values.total_no_of_pkgs || "";
 
-                            if (col.field === "grossWeightKgs" && shipmentGross) {
-                              onUpdate(section, rowIdx, col.field, shipmentGross);
-                            } else if (col.field === "netWeightKgs" && shipmentNet) {
+                            if (
+                              col.field === "grossWeightKgs" &&
+                              shipmentGross
+                            ) {
+                              onUpdate(
+                                section,
+                                rowIdx,
+                                col.field,
+                                shipmentGross
+                              );
+                            } else if (
+                              col.field === "netWeightKgs" &&
+                              shipmentNet
+                            ) {
                               onUpdate(section, rowIdx, col.field, shipmentNet);
-                            } else if (col.field === "noOfPackages" && shipmentPkgs) {
-                              onUpdate(section, rowIdx, col.field, shipmentPkgs);
+                            } else if (
+                              col.field === "noOfPackages" &&
+                              shipmentPkgs
+                            ) {
+                              onUpdate(
+                                section,
+                                rowIdx,
+                                col.field,
+                                shipmentPkgs
+                              );
                             }
                           }
                         }}
                         style={styles.cellInput}
-                        placeholder={col.placeholder || (col.type === "date" ? "DD-MM-YYYY" : "")}
+                        placeholder={
+                          col.placeholder ||
+                          (col.type === "date" ? "DD-MM-YYYY" : "")
+                        }
                       />
                     )}
                   </td>
@@ -1125,7 +1206,6 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
       type: "select",
       options: ["Pending", "Completed"],
     },
-
   ];
 
   return (
@@ -1165,15 +1245,29 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                     </div>
                   </div>
                   <div style={styles.statusField}>
-                    <label style={styles.statusLabel}>Container Placement Date</label>
+                    <label style={styles.statusLabel}>
+                      Container Placement Date
+                    </label>
                     <input
                       type="text"
-                      value={formatDateForInput(item.containerPlacementDate || "")}
+                      value={formatDateForInput(
+                        item.containerPlacementDate || ""
+                      )}
                       onChange={(e) =>
-                        onUpdate(section, idx, "containerPlacementDate", e.target.value)
+                        onUpdate(
+                          section,
+                          idx,
+                          "containerPlacementDate",
+                          e.target.value
+                        )
                       }
-                      onDoubleClick={(e) => { e.target.type = 'date'; e.target.showPicker && e.target.showPicker(); }}
-                      onBlur={(e) => { e.target.type = 'text'; }}
+                      onDoubleClick={(e) => {
+                        e.target.type = "date";
+                        e.target.showPicker && e.target.showPicker();
+                      }}
+                      onBlur={(e) => {
+                        e.target.type = "text";
+                      }}
                       style={styles.statusInput}
                       placeholder="DD-MM-YYYY"
                     />
@@ -1212,16 +1306,43 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                   </div>
                   {/* HO to console section */}
                   <div style={{ gridColumn: "1 / -1", marginTop: "20px" }}>
-                    <h4 style={{ ...styles.sectionTitle, color: "#2563eb", marginBottom: "12px" }}>HO to console</h4>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "16px" }}>
+                    <h4
+                      style={{
+                        ...styles.sectionTitle,
+                        color: "#2563eb",
+                        marginBottom: "12px",
+                      }}
+                    >
+                      HO to console
+                    </h4>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fill, minmax(200px, 1fr))",
+                        gap: "16px",
+                      }}
+                    >
                       <div style={styles.statusField}>
                         <label style={styles.statusLabel}>HO Date</label>
                         <input
                           type="text"
                           value={formatDateForInput(item.hoToConsoleDate || "")}
-                          onChange={(e) => onUpdate(section, idx, "hoToConsoleDate", e.target.value)}
-                          onDoubleClick={(e) => { e.target.type = 'date'; e.target.showPicker && e.target.showPicker(); }}
-                          onBlur={(e) => { e.target.type = 'text'; }}
+                          onChange={(e) =>
+                            onUpdate(
+                              section,
+                              idx,
+                              "hoToConsoleDate",
+                              e.target.value
+                            )
+                          }
+                          onDoubleClick={(e) => {
+                            e.target.type = "date";
+                            e.target.showPicker && e.target.showPicker();
+                          }}
+                          onBlur={(e) => {
+                            e.target.type = "text";
+                          }}
                           style={styles.statusInput}
                           placeholder="DD-MM-YYYY"
                         />
@@ -1231,7 +1352,9 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                         <label style={styles.statusLabel}>HO Name</label>
                         <HoNameAutocomplete
                           value={item.hoToConsoleName || ""}
-                          onChange={(val) => onUpdate(section, idx, "hoToConsoleName", val)}
+                          onChange={(val) =>
+                            onUpdate(section, idx, "hoToConsoleName", val)
+                          }
                         />
                       </div>
                     </div>
@@ -1245,24 +1368,51 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                 <React.Fragment key={f.field}>
                   <div style={styles.statusField}>
                     <label style={styles.statusLabel}>Transport Mode</label>
-                    <div style={{ display: "flex", gap: "12px", alignItems: "center", height: "36px" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "12px" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "12px",
+                        alignItems: "center",
+                        height: "36px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                        }}
+                      >
                         <input
                           type="radio"
                           name={`railRoad-${idx}`}
                           value="rail"
                           checked={item.railRoad === "rail"}
-                          onChange={(e) => onUpdate(section, idx, "railRoad", e.target.value)}
+                          onChange={(e) =>
+                            onUpdate(section, idx, "railRoad", e.target.value)
+                          }
                         />
                         Rail
                       </label>
-                      <label style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "12px" }}>
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                        }}
+                      >
                         <input
                           type="radio"
                           name={`railRoad-${idx}`}
                           value="road"
                           checked={item.railRoad === "road"}
-                          onChange={(e) => onUpdate(section, idx, "railRoad", e.target.value)}
+                          onChange={(e) =>
+                            onUpdate(section, idx, "railRoad", e.target.value)
+                          }
                         />
                         Road
                       </label>
@@ -1271,25 +1421,64 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
 
                   {item.railRoad === "road" && (
                     <div style={styles.statusField}>
-                      <label style={styles.statusLabel}>Road Transport Type</label>
-                      <div style={{ display: "flex", gap: "12px", alignItems: "center", height: "36px" }}>
-                        <label style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "12px" }}>
+                      <label style={styles.statusLabel}>
+                        Road Transport Type
+                      </label>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "12px",
+                          alignItems: "center",
+                          height: "36px",
+                        }}
+                      >
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                          }}
+                        >
                           <input
                             type="radio"
                             name={`concorPrivate-${idx}`}
                             value="concor"
                             checked={item.concorPrivate === "concor"}
-                            onChange={(e) => onUpdate(section, idx, "concorPrivate", e.target.value)}
+                            onChange={(e) =>
+                              onUpdate(
+                                section,
+                                idx,
+                                "concorPrivate",
+                                e.target.value
+                              )
+                            }
                           />
                           Concor
                         </label>
-                        <label style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "12px" }}>
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                          }}
+                        >
                           <input
                             type="radio"
                             name={`concorPrivate-${idx}`}
                             value="private"
                             checked={item.concorPrivate === "private"}
-                            onChange={(e) => onUpdate(section, idx, "concorPrivate", e.target.value)}
+                            onChange={(e) =>
+                              onUpdate(
+                                section,
+                                idx,
+                                "concorPrivate",
+                                e.target.value
+                              )
+                            }
                           />
                           Private
                         </label>
@@ -1297,44 +1486,64 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                     </div>
                   )}
 
-                  {item.railRoad === "road" && item.concorPrivate === "private" && (
-                    <div style={styles.statusField}>
-                      <label style={styles.statusLabel}>Transporter Name</label>
-                      <input
-                        type="text"
-                        value={item.privateTransporterName || ""}
-                        onChange={(e) => onUpdate(section, idx, "privateTransporterName", e.target.value.toUpperCase())}
-                        style={styles.statusInput}
-                        placeholder="ENTER TRANSPORTER NAME"
-                      />
-                    </div>
-                  )}
+                  {item.railRoad === "road" &&
+                    item.concorPrivate === "private" && (
+                      <div style={styles.statusField}>
+                        <label style={styles.statusLabel}>
+                          Transporter Name
+                        </label>
+                        <input
+                          type="text"
+                          value={item.privateTransporterName || ""}
+                          onChange={(e) =>
+                            onUpdate(
+                              section,
+                              idx,
+                              "privateTransporterName",
+                              e.target.value.toUpperCase()
+                            )
+                          }
+                          style={styles.statusInput}
+                          placeholder="ENTER TRANSPORTER NAME"
+                        />
+                      </div>
+                    )}
 
                   <div key={f.field} style={styles.statusField}>
                     <label style={styles.statusLabel}>{f.label}</label>
                     <input
-                      type={f.type === "date" || f.type === "datetime-local" ? "text" : f.type}
+                      type={
+                        f.type === "date" || f.type === "datetime-local"
+                          ? "text"
+                          : f.type
+                      }
                       value={
-                        f.type === "date" || f.type === "datetime-local" 
-                        ? formatDateForInput(item[f.field] || "", f.type) 
-                        : (item[f.field] || "")
+                        f.type === "date" || f.type === "datetime-local"
+                          ? formatDateForInput(item[f.field] || "", f.type)
+                          : item[f.field] || ""
                       }
                       onChange={(e) =>
                         onUpdate(section, idx, f.field, e.target.value)
                       }
-                      onDoubleClick={(e) => { 
-                         if(f.type === 'date' || f.type === 'datetime-local') {
-                           e.target.type = f.type; 
-                           e.target.showPicker && e.target.showPicker(); 
-                         }
+                      onDoubleClick={(e) => {
+                        if (f.type === "date" || f.type === "datetime-local") {
+                          e.target.type = f.type;
+                          e.target.showPicker && e.target.showPicker();
+                        }
                       }}
-                      onBlur={(e) => { 
-                        if(f.type === 'date' || f.type === 'datetime-local') {
-                          e.target.type = 'text'; 
+                      onBlur={(e) => {
+                        if (f.type === "date" || f.type === "datetime-local") {
+                          e.target.type = "text";
                         }
                       }}
                       style={styles.statusInput}
-                      placeholder={f.type === 'date' ? "DD-MM-YYYY" : (f.type === 'datetime-local' ? "YYYY-MM-DDTHH:MM" : "")}
+                      placeholder={
+                        f.type === "date"
+                          ? "DD-MM-YYYY"
+                          : f.type === "datetime-local"
+                          ? "YYYY-MM-DDTHH:MM"
+                          : ""
+                      }
                     />
                   </div>
                 </React.Fragment>
@@ -1417,28 +1626,38 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                   </select>
                 ) : (
                   <input
-                    type={f.type === "date" || f.type === "datetime-local" ? "text" : f.type}
+                    type={
+                      f.type === "date" || f.type === "datetime-local"
+                        ? "text"
+                        : f.type
+                    }
                     value={
                       f.type === "date" || f.type === "datetime-local"
-                      ? formatDateForInput(item[f.field] || "", f.type)
-                      : (item[f.field] || "")
+                        ? formatDateForInput(item[f.field] || "", f.type)
+                        : item[f.field] || ""
                     }
                     onChange={(e) =>
                       onUpdate(section, idx, f.field, e.target.value)
                     }
                     onDoubleClick={(e) => {
-                       if(f.type === 'date' || f.type === 'datetime-local') {
-                         e.target.type = f.type;
-                         e.target.showPicker && e.target.showPicker();
-                       }
+                      if (f.type === "date" || f.type === "datetime-local") {
+                        e.target.type = f.type;
+                        e.target.showPicker && e.target.showPicker();
+                      }
                     }}
                     onBlur={(e) => {
-                      if(f.type === 'date' || f.type === 'datetime-local') {
-                        e.target.type = 'text';
+                      if (f.type === "date" || f.type === "datetime-local") {
+                        e.target.type = "text";
                       }
                     }}
                     style={styles.statusInput}
-                    placeholder={f.type === 'date' ? "DD-MM-YYYY" : (f.type === 'datetime-local' ? "YYYY-MM-DDTHH:MM" : "")}
+                    placeholder={
+                      f.type === "date"
+                        ? "DD-MM-YYYY"
+                        : f.type === "datetime-local"
+                        ? "YYYY-MM-DDTHH:MM"
+                        : ""
+                    }
                   />
                 )}
               </div>
@@ -1652,7 +1871,8 @@ const getDefaultItem = (section) => {
 
 const styles = {
   container: {
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontFamily:
+      "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     backgroundColor: "#f8fafc",
     padding: "16px",
     minHeight: "100%",
@@ -1773,10 +1993,10 @@ const styles = {
     borderTop: "1px solid #e2e8f0",
     background: "#f8fafc",
   },
-tableWrapper: {
-  overflowX: "auto",
-  overflowY: "visible",
-},
+  tableWrapper: {
+    overflowX: "auto",
+    overflowY: "visible",
+  },
   table: {
     width: "100%",
     borderCollapse: "collapse",
@@ -1801,7 +2021,7 @@ tableWrapper: {
   },
   td: {
     padding: "0",
-      overflow: "visible",
+    overflow: "visible",
 
     borderBottom: "1px solid #e2e8f0",
     borderRight: "1px solid #e2e8f0",
@@ -1980,5 +2200,3 @@ tableWrapper: {
 };
 
 export default OperationsTab;
-
-

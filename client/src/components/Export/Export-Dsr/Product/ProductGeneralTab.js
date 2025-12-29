@@ -203,7 +203,7 @@ function toUpper(v) {
   return (typeof v === "string" ? v : "")?.toUpperCase() || "";
 }
 
-/* ---------- UnitDropdownField (unchanged) ---------- */
+/* ---------- UnitDropdownField ---------- */
 
 function UnitDropdownField({
   label,
@@ -328,7 +328,7 @@ function UnitDropdownField({
   );
 }
 
-/* ---------- Dropdown hooks (unchanged behaviour) ---------- */
+/* ---------- Dropdown hooks ---------- */
 
 function useEximCodeDropdown(
   fieldName,
@@ -754,7 +754,7 @@ function useEndUseDropdown(
   };
 }
 
-/* ---------- Field components using hooks (unchanged) ---------- */
+/* ---------- Field components using hooks ---------- */
 
 const EximCodeField = ({
   label,
@@ -945,6 +945,7 @@ const PtaFtaField = ({
     </div>
   );
 };
+
 const EndUseField = ({
   label,
   fieldName,
@@ -1012,7 +1013,7 @@ const EndUseField = ({
   );
 };
 
-/* ---------- ProductRow component: all hooks per-product here ---------- */
+/* ---------- ProductRow component ---------- */
 
 function ProductRow({
   product,
@@ -1026,24 +1027,23 @@ function ProductRow({
   const [rodtepLoading, setRodtepLoading] = useState(false);
 
   // Sync rodtepInfo.unit with product.qtyUnit (from Product Main Tab)
-  // User requested this to be matching and disabled.
+  const prevRodtepUnitRef = useRef(product.rodtepInfo?.unit);
   useEffect(() => {
     const mainUnit = product.qtyUnit;
-    const currentRodtepUnit = product.rodtepInfo?.unit;
 
-    // Only update if they differ (and mainUnit is defined to avoid clearing if not intended,
-    // though usually we want exact sync)
-    if (mainUnit !== undefined && currentRodtepUnit !== mainUnit) {
+    if (mainUnit !== undefined && prevRodtepUnitRef.current !== mainUnit) {
       handleUnitChange(index, "unit", mainUnit);
+      prevRodtepUnitRef.current = mainUnit;
     }
-  }, [product.qtyUnit, product.rodtepInfo?.unit, handleUnitChange, index]);
+  }, [product.qtyUnit, index]);
 
+  // Fetch RoDTEP data when RITC or eximCode changes
   useEffect(() => {
     const fetchRodtepData = async () => {
-      if (!product.ritc || product.ritc.length < 4) return; // Need at least some digits
+      if (!product.ritc || product.ritc.length < 4) return;
+      if (product.rodtepInfo?.claim !== "Yes") return;
 
       const eximCode = product.eximCode || "";
-      // User requested: for eximCode 03 use rodtep-re, else use rodtep_r
       const useReApi = eximCode.includes("03");
 
       const endpoint = useReApi
@@ -1057,9 +1057,7 @@ function ProductRow({
 
         let entry = null;
         if (data.success) {
-          // Handle different response structures
           if (Array.isArray(data.data) && data.data.length > 0) {
-            // Find exact match if possible, or take first
             entry =
               data.data.find(
                 (e) =>
@@ -1070,68 +1068,28 @@ function ProductRow({
         }
 
         if (entry) {
-          // Map fields based on which API was used or normalize them
           const rate = entry.rate_percentage_fob ?? entry.rate ?? 0;
-          // API RE uses 'cap_rs_per_uqc', R uses 'cap_per_uqc'
           const cap =
             entry.cap_rs_per_uqc ?? entry.cap_per_uqc ?? entry.cap ?? 0;
           const uqc = entry.uqc || "";
 
           console.log("RoDTEP Fetch Success:", { rate, cap, uqc, entry });
 
-          // Update fields
-          // Note: changing fields will trigger formik update
-          // ratePercent
           handleProductChange(
             index,
             "rodtepInfo.ratePercent",
             parseFloat(rate)
           );
 
-          // capValuePerUnits
           handleProductChange(
             index,
             "rodtepInfo.capValuePerUnits",
             parseFloat(cap)
           );
 
-          // If UQC is available, attempt to set it (optional, logic might be complex with dropdowns)
           if (uqc) {
-            // Try to match uqc with unit list if needed, or just set it
             handleProductChange(index, "rodtepInfo.capUnit", toUpper(uqc));
           }
-
-          // CALCULATE AMOUNT
-          // 1. Get FOB in INR
-          const fobINR = convertToINR(product.amount, invoice?.currency);
-
-          // 2. Calculate Rate Based Amount
-          const rateAmount = fobINR * (parseFloat(rate) / 100);
-
-          // 3. Calculate Cap Based Amount (Quantity * Cap)
-          // If cap is 0, it might mean "No Cap" (Unlimited) or 0.
-          // In Exim context, usually 0 cap with rate means unlimited OR strictly 0?
-          // The user said: "whicherver value is smaller"
-          // If Cap is 0 and we treat it as 0, then amount is 0.
-          // Getting clarification from context: usually Cap 0 means no cap. But user said Cap (Rs Per UQC) : 0.
-          // Let's assume if Cap is 0, we use RateAmount (Unlimited).
-          // UNLESS the rate is also 0.
-
-          let capAmount = Infinity;
-          if (parseFloat(cap) > 0) {
-            capAmount = (parseFloat(product.quantity) || 0) * parseFloat(cap);
-          }
-
-          const finalAmount = Math.min(
-            rateAmount,
-            capAmount === Infinity ? rateAmount : capAmount
-          );
-
-          handleProductChange(
-            index,
-            "rodtepInfo.amountINR",
-            parseFloat(finalAmount.toFixed(2))
-          );
         }
       } catch (err) {
         console.error("Error fetching RoDTEP:", err);
@@ -1140,33 +1098,16 @@ function ProductRow({
       }
     };
 
-    // Trigger on ritc, eximCode, quantity, amount, or invoice currency change
-    // Debounce or specific trigger?
-    // Let's rely on standard useEffect but guard against loops.
-    // Ideally we only fetch if RITC/EximCode changes. Calculation updates if others change.
-
-    // Using a timeout to debounce slightly
     const t = setTimeout(() => {
-      if (product.rodtepInfo?.claim === "Yes") {
-        fetchRodtepData();
-      }
+      fetchRodtepData();
     }, 500);
 
     return () => clearTimeout(t);
-  }, [
-    product.ritc,
-    product.eximCode,
-    // product.quantity,
-    // product.amount,
-    // invoice?.currency,
-    // product.rodtepInfo?.claim
-  ]);
+    // Only depend on ritc, eximCode, and rodtepInfo.claim
+    // Remove product.rodtepInfo?.claim from deps to prevent loops
+  }, [product.ritc, product.eximCode, index, handleProductChange]);
 
-  // Separate effect for calculation only to avoid re-fetching?
-  // Combined for now to ensure consistency with the fetched rate/cap.
-  // Actually, fetching should only happen on RITC/EximCode change.
-  // Calculation should happen on Qty/Amount change using *existing* rate/cap.
-
+  // Calculate RoDTEP amount when relevant values change
   useEffect(() => {
     if (product.rodtepInfo?.claim !== "Yes") return;
 
@@ -1179,21 +1120,18 @@ function ProductRow({
     let capAmount = Infinity;
     if (cap > 0) {
       capAmount = (parseFloat(product.quantity) || 0) * cap;
-    } else {
-      // If cap is 0, assume unlimited for now unless rate is 0?
-      // If rate is > 0 and cap is 0 in DB, it implies no cap.
-      capAmount = Infinity;
     }
 
+    let finalAmount = 0;
     if (rateAmount === 0 && capAmount === Infinity) {
-      // If rate is 0, amount is 0
-      if (product.rodtepInfo?.amountINR !== 0)
-        handleProductChange(index, "rodtepInfo.amountINR", 0);
-      return;
+      finalAmount = 0;
+    } else {
+      finalAmount = Math.min(
+        rateAmount,
+        capAmount === Infinity ? rateAmount : capAmount
+      );
     }
 
-    const finalAmount = Math.min(rateAmount, capAmount);
-    // Only update if changed significantly
     if (Math.abs((product.rodtepInfo?.amountINR || 0) - finalAmount) > 0.01) {
       handleProductChange(
         index,
@@ -1201,15 +1139,7 @@ function ProductRow({
         parseFloat(finalAmount.toFixed(2))
       );
     }
-  }, [
-    product.quantity,
-    product.amount,
-    invoice?.currency,
-    product.rodtepInfo?.ratePercent,
-    product.rodtepInfo?.capValuePerUnits,
-    product.rodtepInfo?.claim,
-    convertToINR, // added dependency
-  ]);
+  }, [product.rodtepInfo?.claim, product.quantity, product.amount]);
 
   const stateData = useStateDropdown(
     "originState",
@@ -1223,9 +1153,7 @@ function ProductRow({
     const status = product.igstCompensationCess?.igstPaymentStatus;
 
     if (status === "Export Against Payment") {
-      // Auto-calculate Taxable Value
       const taxableValue = convertToINR(product.amount, invoice?.currency);
-      // Avoid infinite loop by checking if value changed
       if (
         Math.abs(
           (product.igstCompensationCess?.taxableValueINR || 0) - taxableValue
@@ -1238,8 +1166,6 @@ function ProductRow({
         );
       }
 
-      // Auto-calculate IGST Amount
-      // rate can be 0, 5, 18
       const rate = product.igstCompensationCess?.igstRate || 0;
       const igstAmount = (taxableValue * rate) / 100;
 
@@ -1286,12 +1212,12 @@ function ProductRow({
           <label style={styles.label}>NFEI Category</label>
           <input
             style={styles.input}
-            value={toUpperVal(product.nfeiCategory || "")}
+            value={toUpper(product.nfeiCategory || "")}
             onChange={(e) =>
               handleProductChange(
                 index,
                 "nfeiCategory",
-                toUpperVal(e.target.value)
+                e.target.value.toUpperCase()
               )
             }
           />
@@ -1534,7 +1460,6 @@ function ProductRow({
               <option value="percentage">%age</option>
               <option value="manual">Manual</option>
             </select>
-            {/* Only show percentage input in percentage mode (default to percentage) */}
             {(product.pmvInfo?.calculationMethod ?? "percentage") ===
               "percentage" && (
               <input
@@ -1965,13 +1890,9 @@ function ProductRow({
 
 /* ---------- MAIN COMPONENT ---------- */
 
-// ...imports and helper hooks unchanged above
-
-/* ---------- MAIN COMPONENT ---------- */
-
 const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
   const products = formik.values.products || [];
-  const product = products[selectedProductIndex]; // single product
+  const product = products[selectedProductIndex];
   const invoice = formik.values.invoices?.[0];
 
   const [exchangeRates, setExchangeRates] = useState([]);
@@ -2029,6 +1950,7 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
         (r) =>
           (r.currency_code || r.code || "").toString().toUpperCase() === code
       );
+      
       if (!rateObj) return 1;
       const raw =
         rateObj.export_rate ?? rateObj.exportRate ?? rateObj.rate ?? 0;
@@ -2053,22 +1975,63 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
     [getExportRate]
   );
 
-  // Calculate PMV values
-  const calculatePMV = useCallback(
-    (prod, inv) => {
-      const pmvCurrency = prod.pmvInfo?.currency || "INR";
-      const amount = parseFloat(prod.amount) || 0;
-      const quantity = parseFloat(prod.quantity) || 1;
-      const amountCurrency = inv?.currency || "INR";
+  // const calculatePMV = useCallback(
+  //   (prod, inv) => {
+  //     const pmvCurrency = prod.pmvInfo?.currency || "INR";
+  //     const amount = parseFloat(prod.amount) || 0;
+  //     const quantity = parseFloat(prod.quantity) || 1;
+  //     const amountCurrency = inv?.currency || "INR";
 
-      const amountInINR = convertToINR(amount, amountCurrency);
-      const method = prod.pmvInfo?.calculationMethod || "percentage";
+  //     const amountInINR = convertToINR(amount, amountCurrency);
+  //     const method = prod.pmvInfo?.calculationMethod || "percentage";
 
-      if (method === "percentage") {
+  //     if (method === "percentage") {
+  //       const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
+  //       let totalPMV_INR = (amountInINR * percentage) / 100;
+  //       let pmvPerUnit_INR = totalPMV_INR / quantity;
+
+  //       let totalPMV = totalPMV_INR;
+  //       let pmvPerUnit = pmvPerUnit_INR;
+
+  //       if (pmvCurrency !== "INR") {
+  //         const rate = getExportRate(pmvCurrency);
+  //         if (rate > 0) {
+  //           totalPMV = totalPMV_INR / rate;
+  //           pmvPerUnit = pmvPerUnit_INR / rate;
+  //         }
+  //       }
+
+  //       return {
+  //         pmvPerUnit: pmvPerUnit.toFixed(2),
+  //         totalPMV: totalPMV.toFixed(2),
+  //       };
+  //     }
+  //     return {
+  //       pmvPerUnit: prod.pmvInfo?.pmvPerUnit || 0,
+  //       totalPMV: prod.pmvInfo?.totalPMV || 0,
+  //     };
+  //   },
+  //   [convertToINR, getExportRate]
+  // );
+
+  // FIXED: Simplified handleProductChange to avoid circular dependencies
+  // Replace the handleProductChange function:
+  const handleProductChange = useCallback(
+    (index, field, value) => {
+      formik.setFieldValue(`products[${index}].${field}`, value);
+
+      // If PMV calculation method changes to percentage, recalculate PMV
+      if (field === "pmvInfo.calculationMethod" && value === "percentage") {
+        const prod = formik.values.products[index];
+        const amount = parseFloat(prod.amount) || 0;
+        const quantity = parseFloat(prod.quantity) || 1;
         const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
-        let totalPMV_INR = (amountInINR * percentage) / 100;
-        let pmvPerUnit_INR = totalPMV_INR / quantity;
 
+        const amountInINR = convertToINR(amount, invoice?.currency);
+        const totalPMV_INR = (amountInINR * percentage) / 100;
+        const pmvPerUnit_INR = totalPMV_INR / quantity;
+
+        const pmvCurrency = prod.pmvInfo?.currency || "INR";
         let totalPMV = totalPMV_INR;
         let pmvPerUnit = pmvPerUnit_INR;
 
@@ -2080,51 +2043,19 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
           }
         }
 
-        return {
-          pmvPerUnit: pmvPerUnit.toFixed(2),
-          totalPMV: totalPMV.toFixed(2),
-        };
+        formik.setFieldValue(
+          `products[${index}].pmvInfo.pmvPerUnit`,
+          parseFloat(pmvPerUnit.toFixed(2))
+        );
+        formik.setFieldValue(
+          `products[${index}].pmvInfo.totalPMV`,
+          parseFloat(totalPMV.toFixed(2))
+        );
       }
-      return {
-        pmvPerUnit: prod.pmvInfo?.pmvPerUnit || 0,
-        totalPMV: prod.pmvInfo?.totalPMV || 0,
-      };
     },
-    [convertToINR, getExportRate]
+    [formik.setFieldValue, convertToINR, getExportRate, invoice?.currency]
   );
-
-  const handleProductChange = useCallback(
-    (index, field, value) => {
-      const updatedProducts = [...formik.values.products];
-
-      if (field.includes(".")) {
-        const [parent, child] = field.split(".");
-        if (!updatedProducts[index][parent])
-          updatedProducts[index][parent] = {};
-        updatedProducts[index][parent] = {
-          ...updatedProducts[index][parent],
-          [child]: value,
-        };
-      } else {
-        updatedProducts[index][field] = value;
-      }
-
-      // Auto-calculate PMV if in percentage mode
-      const prod = updatedProducts[index];
-      const method = prod.pmvInfo?.calculationMethod || "percentage";
-      if (method === "percentage") {
-        const calculated = calculatePMV(prod, invoice);
-        updatedProducts[index].pmvInfo = {
-          ...updatedProducts[index].pmvInfo,
-          pmvPerUnit: calculated.pmvPerUnit,
-          totalPMV: calculated.totalPMV,
-        };
-      }
-
-      formik.setFieldValue("products", updatedProducts);
-    },
-    [formik, calculatePMV, invoice]
-  );
+  // Removed formik.values.products and calculatePMV from dependencies
 
   const handleUnitChange = useCallback(
     (index, unitField, unitValue) => {
@@ -2132,100 +2063,37 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
         `products[${index}].rodtepInfo.${unitField}`,
         unitValue
       );
-      handleProductChange(index, `rodtepInfo.${unitField}`, unitValue);
     },
-    [formik, handleProductChange]
+    [formik.setFieldValue]
   );
 
-  // const addNewProduct = useCallback(() => {
-  //   const newProduct = {
-  //     serialNumber: formik.values.products.length + 1,
-  //     description: "",
-  //     ritc: "",
-  //     quantity: 0,
-  //     unitPrice: 0,
-  //     per: "",
-  //     amount: 0,
-  //     eximCode: "",
-  //     nfeiCategory: "",
-  //     rewardItem: false,
-  //     strCode: "",
-  //     endUse: "",
-  //     originDistrict: "",
-  //     originState: "",
-  //     ptaFtaInfo: "",
-  //     alternateQty: 0,
-  //     materialCode: "",
-  //     medicinalPlant: "",
-  //     formulation: "",
-  //     surfaceMaterialInContact: "",
-  //     labGrownDiamond: "",
-  //     pmvInfo: {
-  //       currency: "INR",
-  //       calculationMethod: "percentage",
-  //       percentage: 110.0,
-  //       pmvPerUnit: 0,
-  //       totalPMV: 0,
-  //     },
-  //     igstCompensationCess: {
-  //       igstPaymentStatus: "LUT",
-  //       taxableValueINR: 0,
-  //       igstRate: 18.0,
-  //       igstAmountINR: 0,
-  //       compensationCessRate: 0,
-  //       compensationCessAmountINR: 0,
-  //     },
-  //     rodtepInfo: {
-  //       claim: "Yes",
-  //       quantity: 0,
-  //       ratePercent: 0.9,
-  //       capValue: 0,
-  //       capValuePerUnits: 0,
-  //       amountINR: 0,
-  //       unit: "KGS",
-  //     },
-  //   };
-  //   formik.setFieldValue("products", [...formik.values.products, newProduct]);
-  // }, [formik]);
-
-  const removeProduct = useCallback(
-    (index) => {
-      if (formik.values.products.length > 1) {
-        formik.setFieldValue(
-          "products",
-          formik.values.products.filter((_, i) => i !== index)
-        );
-      }
-    },
-    [formik]
-  );
-
-  // Recalculate PMV for all products when invoice currency changes
-  // keep invoice, calculatePMV defined as in your file
-
+  // Sync RoDTEP Quantity & Unit with SQC values
+  // Replace the RoDTEP sync effect:
   useEffect(() => {
-    if (!invoice?.currency) return;
-
     const currentProducts = formik.values.products || [];
     let changed = false;
-    const updatedProducts = currentProducts.map((prod) => {
-      const method = prod.pmvInfo?.calculationMethod || "percentage";
-      if (method !== "percentage") return prod;
+    const updatedProducts = currentProducts.map((prod, idx) => {
+      // Only update if product has changed
+      const sqcQty = parseFloat(prod.socQuantity) || 0;
+      const sqcUnit = (prod.socunit || "").trim();
 
-      const calculated = calculatePMV(prod, invoice);
-      const nextPmv = {
-        ...(prod.pmvInfo || {}),
-        pmvPerUnit: calculated.pmvPerUnit,
-        totalPMV: calculated.totalPMV,
-      };
+      const currentRodtep = prod.rodtepInfo || {};
+      const currentRodtepQty = parseFloat(currentRodtep.quantity) || 0;
+      const currentRodtepUnit = (currentRodtep.unit || "").trim();
 
-      // shallow equality check to avoid useless updates
-      if (
-        nextPmv.pmvPerUnit !== prod.pmvInfo?.pmvPerUnit ||
-        nextPmv.totalPMV !== prod.pmvInfo?.totalPMV
-      ) {
+      const isQtyDifferent = Math.abs(currentRodtepQty - sqcQty) > 0.001;
+      const isUnitDifferent = currentRodtepUnit !== sqcUnit;
+
+      if (isQtyDifferent || isUnitDifferent) {
         changed = true;
-        return { ...prod, pmvInfo: nextPmv };
+        return {
+          ...prod,
+          rodtepInfo: {
+            ...currentRodtep,
+            quantity: sqcQty,
+            unit: sqcUnit,
+          },
+        };
       }
       return prod;
     });
@@ -2233,7 +2101,50 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
     if (changed) {
       formik.setFieldValue("products", updatedProducts);
     }
-  }, [invoice?.currency, calculatePMV]); // ❗ remove formik.values.products, formik, invoice
+  }, [formik.values.products]); // Remove formik.setFieldValue from dependencies if it's causing loops
+  // Recalculate PMV when invoice currency changes - FIXED to avoid infinite loop
+  useEffect(() => {
+    if (!invoice?.currency) return;
+
+    // Calculate PMV inline without creating a dependency on calculatePMV
+    const currentProducts = formik.values.products || [];
+    const updatedProducts = currentProducts.map((prod) => {
+      const method = prod.pmvInfo?.calculationMethod || "percentage";
+      if (method !== "percentage") return prod;
+
+      // Calculate PMV directly here
+      const pmvCurrency = prod.pmvInfo?.currency || "INR";
+      const amount = parseFloat(prod.amount) || 0;
+      const quantity = parseFloat(prod.quantity) || 1;
+
+      const amountInINR = convertToINR(amount, invoice?.currency);
+      const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
+      let totalPMV_INR = (amountInINR * percentage) / 100;
+      let pmvPerUnit_INR = totalPMV_INR / quantity;
+
+      let totalPMV = totalPMV_INR;
+      let pmvPerUnit = pmvPerUnit_INR;
+
+      if (pmvCurrency !== "INR") {
+        const rate = getExportRate(pmvCurrency);
+        if (rate > 0) {
+          totalPMV = totalPMV_INR / rate;
+          pmvPerUnit = pmvPerUnit_INR / rate;
+        }
+      }
+
+      return {
+        ...prod,
+        pmvInfo: {
+          ...prod.pmvInfo,
+          pmvPerUnit: parseFloat(pmvPerUnit.toFixed(2)),
+          totalPMV: parseFloat(totalPMV.toFixed(2)),
+        },
+      };
+    });
+
+    formik.setFieldValue("products", updatedProducts);
+  }, [invoice?.currency, convertToINR, getExportRate]);
 
   return (
     <div style={styles.page}>
@@ -2268,10 +2179,9 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
               const productsLocal = formik.values.products || [];
               const rowProduct = productsLocal[selectedProductIndex] || null;
               if (!rowProduct) return null;
-              const index = selectedProductIndex;
 
               return (
-                <tr key={rowProduct._id || index}>
+                <tr key={rowProduct._id || selectedProductIndex}>
                   <td style={styles.td}>{rowProduct.serialNumber}</td>
 
                   <td style={styles.td}>
@@ -2360,10 +2270,6 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
           </tbody>
         </table>
       </div>
-      {/* 
-      <button style={styles.addBtn} onClick={addNewProduct}>
-        ➕ Add New Product
-      </button> */}
 
       {/* Detailed card for selected product only */}
       {product && (
