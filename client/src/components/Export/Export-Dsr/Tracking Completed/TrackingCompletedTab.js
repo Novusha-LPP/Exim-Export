@@ -388,8 +388,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                             );
                             if (
                               e.target.checked &&
-                              (!m.actualDate ||
-                                m.actualDate === "dd-mmm-yyyy ")
+                              (!m.actualDate || m.actualDate === "dd-mmm-yyyy ")
                             ) {
                               const nowIso = new Date()
                                 .toISOString()
