@@ -252,6 +252,7 @@ const ExportJobsTable = () => {
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedType, setSelectedMovementType] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
+  const [selectedExporterFilter, setSelectedExporterFilter] = useState("");
 
   // Copy Modal State
   const [showCopyModal, setShowCopyModal] = useState(false);
@@ -289,9 +290,8 @@ const ExportJobsTable = () => {
         console.error("Error fetching exporters:", err);
       }
     };
-    if (openDSRDialog) {
-      fetchExporters();
-    }
+
+    fetchExporters();
   }, [openDSRDialog]);
 
   const handleDownloadDSR = async () => {
@@ -331,7 +331,7 @@ const ExportJobsTable = () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_API_STRING}/export-jobs/api/exports`,
+        `${import.meta.env.VITE_API_STRING}/exports`,
         {
           params: {
             status: activeTab,
@@ -339,6 +339,7 @@ const ExportJobsTable = () => {
             year: selectedYear === "all" ? "" : selectedYear,
             consignmentType: selectedType,
             branch: selectedBranch,
+            exporter: selectedExporterFilter,
             page: page,
             limit: LIMIT,
           },
@@ -370,13 +371,21 @@ const ExportJobsTable = () => {
     selectedYear,
     selectedType,
     selectedBranch,
+    selectedExporterFilter,
     page,
   ]);
 
   // Reset page when tab/filters change
   useEffect(() => {
     setPage(1);
-  }, [activeTab, searchQuery, selectedYear, selectedType, selectedBranch]);
+  }, [
+    activeTab,
+    searchQuery,
+    selectedYear,
+    selectedType,
+    selectedBranch,
+    selectedExporterFilter,
+  ]);
 
   const handleJobClick = (job, e) => {
     // Check if the click was on the Copy button
@@ -497,7 +506,7 @@ const ExportJobsTable = () => {
 
         // Refresh the jobs list
         const refreshResponse = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/export-jobs/api/exports`,
+          `${import.meta.env.VITE_API_STRING}/api/exports`,
           {
             params: {
               status: activeTab,
@@ -807,6 +816,20 @@ const ExportJobsTable = () => {
               ))}
             </select>
 
+            {/* Exporter Filter */}
+            <select
+              style={s.select}
+              value={selectedExporterFilter}
+              onChange={(e) => setSelectedExporterFilter(e.target.value)}
+            >
+              <option value="">All Exporters</option>
+              {exporters.map((exp, i) => (
+                <option key={i} value={exp}>
+                  {exp}
+                </option>
+              ))}
+            </select>
+
             {/* Search Input */}
             <div
               style={{
@@ -826,7 +849,7 @@ const ExportJobsTable = () => {
                 style={{
                   padding: "0 15px",
                   height: "30px",
-                  backgroundColor: "#059669",
+                  backgroundColor: "#2563eb",
                   color: "#fff",
                   border: "none",
                   borderRadius: "3px",

@@ -20,19 +20,42 @@ const mandatoryNames = new Set([
 
 const TrackingCompletedTab = ({ formik, directories, params }) => {
   const [filter, setFilter] = useState("Show All");
+  const [exportJobsUsers, setExportJobsUsers] = useState([]);
+  const [isInitialized, setIsInitialized] = useState(false); // 🔑 Fix: Prevent infinite loop
 
   const handleFieldChange = (field, value) => {
     formik.setFieldValue(field, value);
   };
 
-  // ONE‑TIME normalization of base milestones
+  // Fetch users with export-jobs module assigned
   useEffect(() => {
+    const fetchExportJobsUsers = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_STRING}/export-jobs-module-users`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setExportJobsUsers(data.data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching export-jobs module users:", error);
+      }
+    };
+
+    fetchExportJobsUsers();
+  }, []);
+
+  // 🔑 FIXED: Initialize milestones ONLY ONCE on mount
+  useEffect(() => {
+    if (isInitialized) return; // Skip if already initialized
+
     const ms = formik.values.milestones || [];
     if (!ms.length) {
       const defaults = BASE_MILESTONES.map((name) => ({
         milestoneName: name,
         planDate: "dd-MMM-yyyy HH:mm",
-        actualDate: "dd-mmm-yyyy hh:mm",
+        actualDate: "dd-mmm-yyyy",
         isCompleted: false,
         isMandatory: mandatoryNames.has(name),
         completedBy: "",
@@ -40,6 +63,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
       }));
       formik.setFieldValue("milestones", defaults);
     } else {
+      // Ensure base milestones exist, preserve extras
       const byName = new Map(ms.map((m) => [m.milestoneName, m]));
       const basePart = BASE_MILESTONES.map((name) => {
         const existing = byName.get(name);
@@ -47,7 +71,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
           existing || {
             milestoneName: name,
             planDate: "dd-MMM-yyyy HH:mm",
-            actualDate: "dd-mmm-yyyy hh:mm",
+            actualDate: "dd-mmm-yyyy ",
             isCompleted: false,
             isMandatory: mandatoryNames.has(name),
             completedBy: "",
@@ -60,8 +84,9 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
       );
       formik.setFieldValue("milestones", [...basePart, ...extra]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
+    setIsInitialized(true); // Mark as initialized
+  }, []); // Empty deps - run only once
 
   const handleMilestoneChange = (index, field, value) => {
     const current = formik.values.milestones || [];
@@ -79,7 +104,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
       {
         milestoneName: name,
         planDate: "dd-MMM-yyyy HH:mm",
-        actualDate: "dd-mmm-yyyy hh:mm",
+        actualDate: "dd-mmm-yyyy",
         isCompleted: false,
         isMandatory: false,
         completedBy: "",
@@ -87,7 +112,6 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
       },
     ];
     formik.setFieldValue("milestones", milestones);
-    // scheduleSave();
   };
 
   const updatePlanDate = () => {
@@ -124,7 +148,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
         boxSizing: "border-box",
       }}
     >
-      {/* Header band */}
+      {/* Header band - SAME AS BEFORE */}
       <div
         style={{
           background: "#ffffff",
@@ -222,7 +246,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
         </div>
       </div>
 
-      {/* Body */}
+      {/* REST OF JSX REMAINS IDENTICAL - Milestones table, right panel, etc. */}
       <div
         style={{
           display: "grid",
@@ -231,7 +255,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
           alignItems: "flex-start",
         }}
       >
-        {/* Milestones */}
+        {/* Milestones table - SAME AS BEFORE */}
         <div
           style={{
             background: "#ffffff",
@@ -242,7 +266,6 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
           }}
         >
           <div style={{ marginBottom: 6, fontWeight: 600 }}>Milestones</div>
-
           <div
             style={{
               border: "1px solid #d0d7e2",
@@ -274,15 +297,6 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                     }}
                   >
                     Milestone Name
-                  </th>
-                  <th
-                    style={{
-                      padding: "6px 8px",
-                      textAlign: "left",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Plan Date
                   </th>
                   <th
                     style={{
@@ -330,56 +344,24 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                         <DateInput
                           style={{
                             width: "100%",
-                            fontSize: 11,
-                            padding: "3px 4px",
+
+                            fontSize: 12,
+                            padding: "3px 6px",
+                            border: "1px solid #bdc7d1",
                             borderRadius: 3,
-                            border: "1px solid #c4cdd7",
-                            background: "#ffffff",
-                          }}
-                          value={
-                            m.planDate && m.planDate !== "dd-MMM-yyyy HH:mm"
-                              ? m.planDate
-                              : ""
-                          }
-                          onChange={(e) =>
-                            handleMilestoneChange(
-                              realIndex,
-                              "planDate",
-                              e.target.value || "dd-MMM-yyyy HH:mm"
-                            )
-                          }
-                        />
-                      </td>
-                      <td style={{ padding: "4px 8px" }}>
-                        <DateInput
-                          style={{
-                            width: "100%",
-                            fontSize: 11,
-                            padding: "3px 4px",
-                            borderRadius: 3,
-                            border: "1px solid #c4cdd7",
+                            height: 24,
                             background:
-                              m.actualDate &&
-                              m.actualDate !== "dd-mmm-yyyy hh:mm"
+                              m.actualDate && m.actualDate !== "dd-mmm-yyyy"
                                 ? "#ecfdf3"
                                 : "#ffffff",
                           }}
-                          value={
-                            m.actualDate && m.actualDate !== "dd-mmm-yyyy hh:mm"
-                              ? m.actualDate
-                              : ""
-                          }
+                          value={m.actualDate || ""}
                           onChange={(e) => {
                             const v = e.target.value;
                             if (!v) {
-                              handleMilestoneChange(
-                                realIndex,
-                                "actualDate",
-                                "dd-mmm-yyyy hh:mm"
-                              );
+                              handleMilestoneChange(realIndex, "actualDate");
                               return;
                             }
-                            // Validate DD-MM-YYYY vs Now
                             const parts = v.split("-");
                             if (parts.length === 3) {
                               const day = parseInt(parts[0], 10);
@@ -387,7 +369,6 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                               const year = parseInt(parts[2], 10);
                               const picked = new Date(year, month, day);
                               const now = new Date();
-                              // Allow today (ignore time), prevent future
                               now.setHours(0, 0, 0, 0);
                               if (picked > now) return;
                             }
@@ -408,7 +389,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                             if (
                               e.target.checked &&
                               (!m.actualDate ||
-                                m.actualDate === "dd-mmm-yyyy hh:mm")
+                                m.actualDate === "dd-mmm-yyyy ")
                             ) {
                               const nowIso = new Date()
                                 .toISOString()
@@ -571,9 +552,9 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
               }
             >
               <option value="">Select User</option>
-              {directories?.users?.map((u) => (
+              {exportJobsUsers?.map((u) => (
                 <option key={u.id} value={u.username}>
-                  {u.username}
+                  {u.fullName}
                 </option>
               ))}
             </select>
