@@ -41,6 +41,7 @@ import genrateExportChecklist from "./routes/export-dsr/generateExportChecklist.
 import gatwayPort from "./routes/Directories/gatwayPort.js"; //gatwatPort
 import district from "./routes/Directories/districts.js"; //gatwatPort
 import license from "./routes/Directories/license.js";
+import getExportJobsModuleUsers from "./routes/export-dsr/getExportJobsModuleUsers.mjs";
 
 //============== EXPORT DSR =========================
 import getExJobsOverview from "./routes/export-dsr/getExJobsOverview.mjs";
@@ -106,8 +107,8 @@ const MONGODB_URI =
   process.env.NODE_ENV === "production"
     ? process.env.PROD_MONGODB_URI
     : process.env.NODE_ENV === "server"
-      ? process.env.SERVER_MONGODB_URI
-      : process.env.DEV_MONGODB_URI;
+    ? process.env.SERVER_MONGODB_URI
+    : process.env.DEV_MONGODB_URI;
 
 // MongoDB connection
 mongoose.set("strictQuery", true);
@@ -168,16 +169,19 @@ app.use("/api/licenses", auditMiddleware("Directory"), license);
 //============== EXPORT DSR =========================
 app.use(getExJobsOverview);
 app.use(getExporterList);
+
 // app.use(getExporterJobs);
 app.use(addJobs);
-app.use("/api/export-jobs", updateExportJobs);
+app.use(getConsignees);
+app.use(getHoToConsoleNames);
+app.use(getExportJobsModuleUsers);
+app.use(currencyRate);
+
+app.use("/api", updateExportJobs);
 app.use("/api", getRodtep_R);
 app.use("/api/getCthsExport", getCthsExport);
 app.use("/api/getDrawback", getDrawback);
-app.use(currencyRate);
 app.use("/api", feedback);
-app.use(getConsignees);
-app.use(getHoToConsoleNames);
 app.use("/api", rodtepReRoutes);
 app.use(generateDSRReport);
 

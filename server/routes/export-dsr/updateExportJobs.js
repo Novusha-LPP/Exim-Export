@@ -5,10 +5,133 @@ import auditMiddleware from "../../middleware/auditTrail.mjs";
 
 const router = express.Router();
 
-// GET /api/exports - List all exports with pagination & filtering
+// GET /api/dashboard-stats - Get dashboard statistics
+router.get("/dashboard-stats", async (req, res) => {
+  try {
+    const {
+      exporter = "",
+      consignmentType = "",
+      branch = "",
+      year = "",
+    } = req.query;
+
+    const matchStage = {};
+
+    // 1. Build Match Stage (Filtering)
+    if (exporter) matchStage.exporter = { $regex: exporter, $options: "i" };
+    if (consignmentType) matchStage.consignmentType = consignmentType;
+    if (branch)
+      matchStage.branch_code = { $regex: `^${branch}$`, $options: "i" };
+
+    // Year filter - strict matching on the job_no suffix or createdAt
+    if (year) {
+      matchStage.job_no = { $regex: `/${year}$`, $options: "i" };
+    }
+
+    // 2. Run Aggregation
+    const stats = await ExportJobModel.aggregate([
+      { $match: matchStage },
+      {
+        $facet: {
+          // A. Counts (Same logic as before)
+          counts: [
+            {
+              $group: {
+                _id: null,
+                total: { $sum: 1 },
+                pending: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          {
+                            $or: [
+                              { $eq: ["$status", "pending"] },
+                              { $eq: [{ $ifNull: ["$status", ""] }, ""] },
+                            ],
+                          },
+                          { $ne: ["$isJobtrackingEnabled", true] },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+                completed: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $or: [
+                          { $eq: ["$status", "completed"] },
+                          { $eq: ["$isJobtrackingEnabled", true] },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+                cancelled: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $or: [
+                          { $eq: ["$status", "cancelled"] },
+                          { $eq: ["$isJobCanceled", true] },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+          // B. Monthly Trend - Aggregation
+          monthlyTrend: [
+            {
+              $group: {
+                // Ensure we have a valid date, otherwise fallback to null (which we filter out later)
+                _id: { $month: "$createdAt" },
+                count: { $sum: 1 },
+              },
+            },
+            { $sort: { _id: 1 } },
+          ],
+        },
+      },
+    ]);
+
+    const result = stats[0];
+    const counts = result.counts[0] || {
+      total: 0,
+      pending: 0,
+      completed: 0,
+      cancelled: 0,
+    };
+
+    res.json({
+      success: true,
+      data: {
+        ...counts,
+        monthlyTrend: result.monthlyTrend,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching dashboard stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching dashboard statistics",
+    });
+  }
+});
+
+// GET /exports - List all exports with pagination & filtering
 // Updated exports API with status filtering
 // If jobTracking is enabled and all milestones are completed, status is treated as "completed"
-router.get("/api/exports/:status?", async (req, res) => {
+router.get("/exports/:status?", async (req, res) => {
   try {
     const {
       page = 1,
@@ -181,6 +304,13 @@ router.get("/:job_no*", async (req, res) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
+
+    // Validate that this looks like a job_no (contains / or is a known pattern)
+    // This prevents catching requests like /currencies, /consignees, etc.
+    if (!job_no || (typeof job_no === "string" && !job_no.includes("/"))) {
+      return res.status(404).json({ message: "Export job not found" });
+    }
+
     const username = req.headers["username"]; // Identify who is requesting
 
     const exportJob = await ExJobModel.findOne({
@@ -307,11 +437,9 @@ router.put("/:job_no*", auditMiddleware("Job"), async (req, res) => {
         existingJob.lockedAt &&
         new Date() - new Date(existingJob.lockedAt) < LOCK_TIMEOUT
       ) {
-        return res
-          .status(403)
-          .json({
-            message: `Update blocked: Job is locked by ${existingJob.lockedBy}`,
-          });
+        return res.status(403).json({
+          message: `Update blocked: Job is locked by ${existingJob.lockedBy}`,
+        });
       }
     }
 

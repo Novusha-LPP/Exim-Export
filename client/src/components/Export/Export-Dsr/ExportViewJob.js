@@ -281,7 +281,12 @@ function GatewayPortDropdown({
   );
 }
 
-const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
+const LogisysEditableHeader = ({
+  formik,
+  onUpdate,
+  directories,
+  exportJobsUsers = [],
+}) => {
   const [snackbar, setSnackbar] = useState(false);
   const { user } = useContext(UserContext);
   const isNewJob = !formik.values.job_no;
@@ -440,9 +445,9 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
         {/* Job Owner */}
         <div style={{ flex: "1 1 110px", minWidth: 90 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Job Owner</div>
-          <input
+          <select
             name="job_owner"
-            value={formik.values.job_owner}
+            value={formik.values.job_owner || ""}
             onChange={formik.handleChange}
             style={{
               width: "96%",
@@ -452,7 +457,14 @@ const LogisysEditableHeader = ({ formik, onUpdate, directories }) => {
               background: "#fff",
               fontSize: 13,
             }}
-          />
+          >
+            <option value="">Select Job Owner</option>
+            {exportJobsUsers?.map((user) => (
+              <option key={user.id} value={user.username}>
+                {user.fullName}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Shipper */}
@@ -629,6 +641,7 @@ function LogisysExportViewJob() {
   const { user } = useContext(UserContext);
   const [searchParams, setSearchParams] = useSearchParams();
   const [fileSnackbar, setFileSnackbar] = useState(false);
+  const [exportJobsUsers, setExportJobsUsers] = useState([]);
 
   const [directories, setDirectories] = useState({});
   const { jobNo } = useParams();
@@ -662,7 +675,22 @@ function LogisysExportViewJob() {
       }
     };
 
+    const fetchExportJobsUsers = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_STRING}/export-jobs-module-users`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setExportJobsUsers(data.data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching export-jobs module users:", error);
+      }
+    };
+
     fetchDirectories();
+    fetchExportJobsUsers();
   }, []);
 
   // Lock/Unlock lifecycle
@@ -672,7 +700,7 @@ function LogisysExportViewJob() {
     const lockJob = async () => {
       try {
         await axios.put(
-          `${import.meta.env.VITE_API_STRING}/export-jobs/${encodeURIComponent(
+          `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(
             decodedJobNo
           )}/lock`,
           { username: user.username }
@@ -685,7 +713,7 @@ function LogisysExportViewJob() {
     const unlockJob = async () => {
       try {
         await axios.put(
-          `${import.meta.env.VITE_API_STRING}/export-jobs/${encodeURIComponent(
+          `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(
             decodedJobNo
           )}/unlock`,
           { username: user.username }
@@ -762,6 +790,7 @@ function LogisysExportViewJob() {
         <LogisysEditableHeader
           formik={formik}
           directories={directories}
+          exportJobsUsers={exportJobsUsers}
           onUpdate={formik.handleSubmit}
         />
       </Box>

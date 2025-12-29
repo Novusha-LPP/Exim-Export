@@ -26,7 +26,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         };
 
         const response = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/export-jobs/${encodeURIComponent(
+          `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(
             params.job_no
           )}`,
           { headers }
@@ -776,7 +776,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         };
 
         const response = await axios.put(
-          `${import.meta.env.VITE_API_STRING}/export-jobs/${encodeURIComponent(
+          `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(
             params.job_no
           )}`,
           syncedValues,
