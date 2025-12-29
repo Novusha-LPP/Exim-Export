@@ -46,7 +46,7 @@ router.get("/dashboard-stats", async (req, res) => {
                         $and: [
                           {
                             $or: [
-                              { $eq: [{ $toLower: "$status" }, "pending"] },
+                              { $eq: ["$status", "pending"] },
                               { $eq: [{ $ifNull: ["$status", ""] }, ""] },
                             ],
                           },
@@ -63,7 +63,7 @@ router.get("/dashboard-stats", async (req, res) => {
                     $cond: [
                       {
                         $or: [
-                          { $eq: [{ $toLower: "$status" }, "completed"] },
+                          { $eq: ["$status", "completed"] },
                           { $eq: ["$isJobtrackingEnabled", true] },
                         ],
                       },
@@ -77,7 +77,7 @@ router.get("/dashboard-stats", async (req, res) => {
                     $cond: [
                       {
                         $or: [
-                          { $eq: [{ $toLower: "$status" }, "cancelled"] },
+                          { $eq: ["$status", "cancelled"] },
                           { $eq: ["$isJobCanceled", true] },
                         ],
                       },

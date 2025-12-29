@@ -11,6 +11,23 @@ const BASE_MILESTONES = [
   "Billing Done",
 ];
 
+const needsTime = (milestoneName) => {
+  if (!milestoneName) return false;
+  const normalized = String(milestoneName)
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "");
+  const timeMilestones = [
+    "LEO",
+    "CONTAINER",
+    "RAILOUT",
+    "BILLING",
+    "STUFFING",
+    "SB",
+  ];
+  return timeMilestones.some((name) => normalized.includes(name));
+};
+
 const mandatoryNames = new Set([
   "SB Filed",
   "SB Receipt",
@@ -22,7 +39,6 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
   const [filter, setFilter] = useState("Show All");
   const [exportJobsUsers, setExportJobsUsers] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0); // Default to first milestone
-
 
   const handleFieldChange = (field, value) => {
     formik.setFieldValue(field, value);
@@ -58,18 +74,19 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
     const ms = formik.values.milestones || [];
 
     // Check if this is real data from server (has _id) or just initial empty/default
-    const hasRealData = ms.length > 0 && ms.some(m => m._id);
+    const hasRealData = ms.length > 0 && ms.some((m) => m._id);
 
     if (hasRealData) {
       // Data loaded from server - merge with base milestones but preserve all existing values
       const byName = new Map(ms.map((m) => [m.milestoneName, m]));
       const basePart = BASE_MILESTONES.map((name) => {
+        const timeRequired = needsTime(name);
         const existing = byName.get(name);
         return (
           existing || {
             milestoneName: name,
-            planDate: "dd-MMM-yyyy HH:mm",
-            actualDate: "dd-mmm-yyyy",
+            planDate: timeRequired ? "dd-mmm-yyyy hhmm" : "dd-mmm-yyyy",
+            actualDate: timeRequired ? "dd-mmm-yyyy hhmm" : "dd-mmm-yyyy",
             isCompleted: false,
             isMandatory: mandatoryNames.has(name),
             completedBy: "",
@@ -85,15 +102,18 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
     } else if (ms.length === 0) {
       // No data yet and formik is at initial state - create defaults
       // But only if we haven't received data yet (checked by _id above)
-      const defaults = BASE_MILESTONES.map((name) => ({
-        milestoneName: name,
-        planDate: "dd-MMM-yyyy HH:mm",
-        actualDate: "dd-mmm-yyyy",
-        isCompleted: false,
-        isMandatory: mandatoryNames.has(name),
-        completedBy: "",
-        remarks: "",
-      }));
+      const defaults = BASE_MILESTONES.map((name) => {
+        const timeRequired = needsTime(name);
+        return {
+          milestoneName: name,
+          planDate: timeRequired ? "dd-mmm-yyyy hhmm" : "dd-mmm-yyyy",
+          actualDate: timeRequired ? "dd-mmm-yyyy hhmm" : "dd-mmm-yyyy",
+          isCompleted: false,
+          isMandatory: mandatoryNames.has(name),
+          completedBy: "",
+          remarks: "",
+        };
+      });
       formik.setFieldValue("milestones", defaults);
       // Don't mark as initialized yet - wait for real data
     }
@@ -114,8 +134,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
       ...current,
       {
         milestoneName: name,
-        planDate: "dd-MMM-yyyy HH:mm",
-        actualDate: "dd-mmm-yyyy",
+        planDate: "dd-mmm-yyyy hhmm",
+        actualDate: "dd-mmm-yyyy hhmm",
         isCompleted: false,
         isMandatory: false,
         completedBy: "",
@@ -125,14 +145,13 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
     formik.setFieldValue("milestones", milestones);
   };
 
-
   const allMilestones = formik.values.milestones || [];
   const visibleMilestones =
     filter === "Completed Only"
       ? allMilestones.filter((m) => m.isCompleted)
       : filter === "Pending Only"
-        ? allMilestones.filter((m) => !m.isCompleted)
-        : allMilestones;
+      ? allMilestones.filter((m) => !m.isCompleted)
+      : allMilestones;
 
   return (
     <div
@@ -326,7 +345,9 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                       style={{
                         background: isSelected
                           ? "#e0e7ff"
-                          : (idx % 2 === 0 ? "#ffffff" : "#f7f9fc"),
+                          : idx % 2 === 0
+                          ? "#ffffff"
+                          : "#f7f9fc",
                         borderTop: "1px solid #e1e7f0",
                         cursor: "pointer",
                       }}
@@ -351,22 +372,31 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                             borderRadius: 3,
                             height: 24,
                             background:
-                              m.actualDate && m.actualDate !== "dd-mmm-yyyy"
+                              m.actualDate && m.actualDate !== "dd-mm-yyyy"
                                 ? "#ecfdf3"
                                 : "#ffffff",
                           }}
                           value={m.actualDate || ""}
+                          withTime={needsTime(m.milestoneName)}
                           onChange={(e) => {
                             const v = e.target.value;
                             if (!v) {
-                              handleMilestoneChange(realIndex, { actualDate: "dd-mmm-yyyy" });
+                              const timeRequired = needsTime(m.milestoneName);
+                              handleMilestoneChange(realIndex, {
+                                actualDate: timeRequired
+                                  ? "dd-mmm-yyyy hhmm"
+                                  : "dd-mmm-yyyy",
+                              });
                               return;
                             }
                             handleMilestoneChange(realIndex, { actualDate: v });
                           }}
                         />
                       </td>
-                      <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+                      <td
+                        style={{ textAlign: "center" }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <input
                           type="checkbox"
                           checked={!!m.isCompleted}
@@ -375,15 +405,46 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                             const updates = { isCompleted: isChecked };
 
                             if (isChecked) {
-                              if (!m.actualDate || m.actualDate === "dd-mmm-yyyy") {
+                              // Smart detection: If empty or starts with "dd-", it's a placeholder
+                              const isPlaceholder =
+                                !m.actualDate ||
+                                String(m.actualDate)
+                                  .toLowerCase()
+                                  .startsWith("dd-");
+
+                              if (isPlaceholder) {
                                 const d = new Date();
-                                const day = String(d.getDate()).padStart(2, "0");
-                                const month = String(d.getMonth() + 1).padStart(2, "0");
+                                const day = String(d.getDate()).padStart(
+                                  2,
+                                  "0"
+                                );
+                                const month = String(d.getMonth() + 1).padStart(
+                                  2,
+                                  "0"
+                                );
                                 const year = d.getFullYear();
-                                updates.actualDate = `${day}-${month}-${year}`;
+
+                                const timeRequired = needsTime(m.milestoneName);
+
+                                if (timeRequired) {
+                                  const hours = String(d.getHours()).padStart(
+                                    2,
+                                    "0"
+                                  );
+                                  const mins = String(d.getMinutes()).padStart(
+                                    2,
+                                    "0"
+                                  );
+                                  updates.actualDate = `${day}-${month}-${year} ${hours}:${mins}`;
+                                } else {
+                                  updates.actualDate = `${day}-${month}-${year}`;
+                                }
                               }
                             } else {
-                              updates.actualDate = "dd-mmm-yyyy";
+                              const timeRequired = needsTime(m.milestoneName);
+                              updates.actualDate = timeRequired
+                                ? "dd-mmm-yyyy hhmm"
+                                : "dd-mmm-yyyy";
                             }
 
                             handleMilestoneChange(realIndex, updates);
@@ -482,14 +543,18 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
               }}
               value={allMilestones[selectedIndex]?.remarks || ""}
               onChange={(e) =>
-                handleMilestoneChange(selectedIndex, { remarks: e.target.value })
+                handleMilestoneChange(selectedIndex, {
+                  remarks: e.target.value,
+                })
               }
               placeholder="Enter milestone-specific remarks..."
             />
           </div>
 
           <div style={{ marginBottom: 8 }}>
-            <div style={{ marginBottom: 3, fontWeight: 500 }}>Upload Documents Link</div>
+            <div style={{ marginBottom: 3, fontWeight: 500 }}>
+              Upload Documents Link
+            </div>
             <input
               type="text"
               style={{
@@ -501,7 +566,9 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
               }}
               value={allMilestones[selectedIndex]?.documentLink || ""}
               onChange={(e) =>
-                handleMilestoneChange(selectedIndex, { documentLink: e.target.value })
+                handleMilestoneChange(selectedIndex, {
+                  documentLink: e.target.value,
+                })
               }
               placeholder="https://..."
             />
@@ -520,7 +587,9 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
               }}
               value={allMilestones[selectedIndex]?.completedBy || ""}
               onChange={(e) =>
-                handleMilestoneChange(selectedIndex, { completedBy: e.target.value })
+                handleMilestoneChange(selectedIndex, {
+                  completedBy: e.target.value,
+                })
               }
             >
               <option value="">Select User</option>
@@ -532,8 +601,21 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
             </select>
           </div>
 
-          <div style={{ marginTop: 15, paddingTop: 10, borderTop: "1px dashed #d0d7e2" }}>
-            <div style={{ fontWeight: 600, fontSize: 11, marginBottom: 5, color: "#64748b" }}>
+          <div
+            style={{
+              marginTop: 15,
+              paddingTop: 10,
+              borderTop: "1px dashed #d0d7e2",
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 600,
+                fontSize: 11,
+                marginBottom: 5,
+                color: "#64748b",
+              }}
+            >
               Global Job Remarks
             </div>
             <textarea
@@ -545,7 +627,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                 borderRadius: 3,
                 border: "1px solid #e2e8f0",
                 resize: "none",
-                background: "#f8fafc"
+                background: "#f8fafc",
               }}
               value={formik.values.milestoneremarks || ""}
               onChange={(e) =>

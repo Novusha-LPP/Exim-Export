@@ -107,8 +107,8 @@ const MONGODB_URI =
   process.env.NODE_ENV === "production"
     ? process.env.PROD_MONGODB_URI
     : process.env.NODE_ENV === "server"
-      ? process.env.SERVER_MONGODB_URI
-      : process.env.DEV_MONGODB_URI;
+    ? process.env.SERVER_MONGODB_URI
+    : process.env.DEV_MONGODB_URI;
 
 // MongoDB connection
 mongoose.set("strictQuery", true);
@@ -176,6 +176,8 @@ app.use(getConsignees);
 app.use(getHoToConsoleNames);
 app.use(getExportJobsModuleUsers);
 app.use(currencyRate);
+
+app.use("/api", updateExportJobs);
 app.use("/api", getRodtep_R);
 app.use("/api/getCthsExport", getCthsExport);
 app.use("/api/getDrawback", getDrawback);
