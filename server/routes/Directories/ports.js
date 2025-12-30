@@ -22,9 +22,7 @@ router.get('/', async (req, res) => {
     if (search) {
       query.$or = [
         { portCode: { $regex: search, $options: 'i' } },
-        { portName: { $regex: search, $options: 'i' } },
-        { name: { $regex: search, $options: 'i' } },
-        { unece_code: { $regex: search, $options: 'i' } }
+        { portName: { $regex: search, $options: 'i' } }
       ];
     }
 

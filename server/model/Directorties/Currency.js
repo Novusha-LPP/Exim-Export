@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 const CurrencySchema = new mongoose.Schema({
   currencyCode: {
     type: String,
-    required: true,
     unique: true,
     uppercase: true,
     trim: true,

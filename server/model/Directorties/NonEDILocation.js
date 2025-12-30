@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 const NonEDILocationSchema = new mongoose.Schema({
   locationCode: {
     type: String,
-    required: true,
     unique: true,
     uppercase: true,
     trim: true,
@@ -17,19 +16,16 @@ const NonEDILocationSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    required: true,
     trim: true,
     maxlength: 100
   },
   locationName: {
     type: String,
-    required: true,
     trim: true,
     maxlength: 200
   },
   endDate: {
     type: Date,
-    required: true,
     validate: {
       validator: function(v) {
         return v instanceof Date && !isNaN(v);

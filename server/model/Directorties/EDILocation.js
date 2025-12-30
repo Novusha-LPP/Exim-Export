@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 const EDILocationSchema = new mongoose.Schema({
   locationCode: {
     type: String,
-    required: true,
     unique: true,
     uppercase: true,
     trim: true,
@@ -17,19 +16,16 @@ const EDILocationSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    required: true,
     trim: true,
     maxlength: 100  // Allow custom categories up to 100 characters
   },
   locationName: {
     type: String,
-    required: true,
     trim: true,
     maxlength: 200
   },
   ediOnlineDate: {
     type: Date,
-    required: true,
     validate: {
       validator: function(v) {
         return v instanceof Date && !isNaN(v);

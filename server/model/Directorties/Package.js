@@ -3,8 +3,6 @@ import mongoose from 'mongoose';
 const PackageSchema = new mongoose.Schema({
   packageCode: {
     type: String,
-    required: true,
-    unique: true,
     uppercase: true,
     trim: true,
     maxlength: 20,
@@ -17,7 +15,6 @@ const PackageSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: true,
     trim: true,
     maxlength: 500
   }

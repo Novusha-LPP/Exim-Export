@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 const TariffHeadSchema = new mongoose.Schema({
   tariffHead: {
     type: String,
-    required: true,
     unique: true,
     trim: true,
     maxlength: 20,
@@ -16,13 +15,11 @@ const TariffHeadSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: true,
     trim: true,
     maxlength: 500
   },
   uqc: {
     type: String,
-    required: true,
     uppercase: true,
     trim: true,
     maxlength: 10,

@@ -3,8 +3,6 @@ import mongoose from 'mongoose';
 const ShippingLineSchema = new mongoose.Schema({
   shippingLineCode: {
     type: String,
-    unique: true,
-    uppercase: true,
     trim: true,
     maxlength: 10,
     validate: {

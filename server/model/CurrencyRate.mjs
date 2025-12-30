@@ -3,11 +3,9 @@ import mongoose from 'mongoose';
 const exchangeRateSchema = new mongoose.Schema({
   currency_code: {
     type: String,
-    required: true,
   },
   currency_name: {
     type: String,
-    required: true,
   },
   unit: {
     type: Number,
@@ -15,23 +13,19 @@ const exchangeRateSchema = new mongoose.Schema({
   },
   import_rate: {
     type: Number,
-    required: true,
   },
   export_rate: {
     type: Number,
-    required: true,
   }
 });
 
 const currencyRateSchema = new mongoose.Schema({
   notification_number: {
     type: String,
-    required: true,
     index: true,
   },
   effective_date: {
     type: String,
-    required: true,
   },
   exchange_rates: [exchangeRateSchema],
   meta: {

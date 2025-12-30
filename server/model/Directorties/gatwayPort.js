@@ -7,16 +7,16 @@ const GatewayPortSchema = new mongoose.Schema(
       trim: true,
       maxlength: 200,
     },
-unece_code: {
-  type: String,
-  trim: true,
-  uppercase: true,
-  maxlength: 10,
-  sparse: true       // allows multiple documents without this field
-},
+    unece_code: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      maxlength: 10,
+      sparse: true       // allows multiple documents without this field
+    },
 
     port_type: {
- type: String,
+      type: String,
       trim: true,
       uppercase: true,
       maxlength: 10,

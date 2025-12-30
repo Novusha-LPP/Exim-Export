@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 const UQCSchema = new mongoose.Schema({
   uqc: {
     type: String,
-    required: true,
     unique: true,
     uppercase: true,
     trim: true,
@@ -17,13 +16,11 @@ const UQCSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: true,
     trim: true,
     maxlength: 500
   },
   type: {
     type: String,
-    required: true,
     trim: true,
     maxlength: 50
   }

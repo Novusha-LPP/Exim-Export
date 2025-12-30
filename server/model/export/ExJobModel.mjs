@@ -606,7 +606,6 @@ const exportOperationSchema = new Schema(
         handoverLocation: { type: String },
         validity: { type: String },
         images: [String],
-        containerPlacementDate: { type: String, trim: true },
       },
     ],
 
@@ -899,11 +898,9 @@ const exportJobSchema = new mongoose.Schema(
         {
           serialNo: {
             type: Number,
-            required: true,
           },
           documentName: {
             type: String,
-            required: true,
             trim: true,
           },
         },
@@ -1204,7 +1201,6 @@ exportJobSchema.pre("save", function (next) {
             handoverLocation: "",
             validity: "",
             images: [],
-            containerPlacementDate: null,
           },
         ],
         statusDetails: [

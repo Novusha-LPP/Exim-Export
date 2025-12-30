@@ -60,7 +60,7 @@ const AutocompleteSelect = ({
                         boxSizing: "border-box",
                         height: 28,
                         textTransform: "uppercase",
-                        fontWeight: 600,
+                        fontWeight: 300,
                         outline: "none",
                     }}
                     placeholder={placeholder}

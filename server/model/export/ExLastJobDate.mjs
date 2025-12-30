@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 const exJobsLastUpdatedOnSchema = new mongoose.Schema({
   date: {
     type: String,
-    required: true,
     trim: true,
   },
 });
