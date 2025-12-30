@@ -48,54 +48,71 @@ const SearchableDropdown = ({
                 ...style,
             }}
         >
-            <input
-                style={{
-                    width: "100%",
-                    padding: "3px 6px",
-                    border: "1px solid #c4ccd8",
-                    borderRadius: 3,
-                    fontSize: "inherit",
-                    height: "inherit",
-                    background: disabled ? "#e9ecef" : "#f7fafc",
-                    outline: "none",
-                    boxSizing: "border-box",
-                    ...style,
-                }}
-                placeholder={placeholder}
-                value={query}
-                onChange={(e) => {
-                    setQuery(e.target.value.toUpperCase());
-                    setOpen(true);
-                }}
-                onFocus={() => !disabled && setOpen(true)}
-                disabled={disabled}
-                onKeyDown={(e) => {
-                    if (e.key === "ArrowDown") {
+            <div style={{ position: "relative" }}>
+                <input
+                    style={{
+                        width: "100%",
+                        padding: "3px 24px 3px 7px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 3,
+                        fontSize: 12,
+                        height: 25,
+                        background: disabled ? "#f1f5f9" : "#ffffff",
+                        outline: "none",
+                        boxSizing: "border-box",
+                        color: "#1e293b",
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                    }}
+                    placeholder={placeholder}
+                    value={query}
+                    onChange={(e) => {
+                        setQuery(e.target.value.toUpperCase());
                         setOpen(true);
-                        setActive((prev) => Math.min(prev + 1, filteredOptions.length - 1));
-                    } else if (e.key === "ArrowUp") {
-                        setActive((prev) => Math.max(prev - 1, 0));
-                    } else if (e.key === "Enter" && active >= 0) {
-                        handleSelect(filteredOptions[active]);
-                    } else if (e.key === "Escape") {
-                        setOpen(false);
-                    }
-                }}
-            />
+                    }}
+                    onFocus={() => !disabled && setOpen(true)}
+                    disabled={disabled}
+                    onKeyDown={(e) => {
+                        if (e.key === "ArrowDown") {
+                            setOpen(true);
+                            setActive((prev) => Math.min(prev + 1, filteredOptions.length - 1));
+                        } else if (e.key === "ArrowUp") {
+                            setActive((prev) => Math.max(prev - 1, 0));
+                        } else if (e.key === "Enter" && active >= 0) {
+                            handleSelect(filteredOptions[active]);
+                        } else if (e.key === "Escape") {
+                            setOpen(false);
+                        }
+                    }}
+                />
+                <span
+                    style={{
+                        position: "absolute",
+                        right: 8,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        fontSize: 10,
+                        color: "#94a3b8",
+                        pointerEvents: "none",
+                    }}
+                >
+                    ▼
+                </span>
+            </div>
             {open && filteredOptions.length > 0 && (
                 <div
                     style={{
                         position: "absolute",
-                        top: "100%",
+                        top: "calc(100% + 2px)",
                         left: 0,
                         right: 0,
                         zIndex: 1000,
                         background: "#fff",
-                        border: "1px solid #c4ccd8",
-                        borderRadius: 3,
-                        maxHeight: 200,
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 4,
+                        maxHeight: 180,
                         overflowY: "auto",
-                        boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                     }}
                 >
                     {filteredOptions.map((opt, i) => {
@@ -104,11 +121,14 @@ const SearchableDropdown = ({
                             <div
                                 key={i}
                                 style={{
-                                    padding: "6px 8px",
+                                    padding: "6px 10px",
                                     cursor: "pointer",
-                                    background: i === active ? "#e3f2fd" : "#fff",
-                                    borderBottom: "1px solid #f1f1f1",
+                                    background: i === active ? "#f1f5f9" : "#ffffff",
+                                    borderBottom: "1px solid #f1f5f9",
                                     fontSize: 11,
+                                    fontWeight: i === active ? 700 : 600,
+                                    color: i === active ? "#1e3a8a" : "#334155",
+                                    textTransform: "uppercase",
                                 }}
                                 onMouseDown={() => handleSelect(opt)}
                                 onMouseEnter={() => setActive(i)}

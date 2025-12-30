@@ -74,13 +74,14 @@ function SearchableOrganizationDropdown({ value, options, onChange, placeholder 
           padding: "3px 6px",
           border: "1px solid #cbd5e1",
           borderRadius: 3,
-          fontSize: 11,
+          fontSize: 12,
           outline: "none",
-          height: 24,
+          height: 25,
           backgroundColor: "#ffffff",
           boxSizing: "border-box",
-          fontWeight: 700,
+          fontWeight: 600,
           paddingRight: "28px",
+          color: "#1e293b",
         }}
       />
       <span
@@ -200,13 +201,14 @@ function SearchableConsigneeDropdown({ value, options, onChange, placeholder }) 
           width: "100%",
           border: "1px solid #cbd5e1",
           borderRadius: 3,
-          fontSize: 11,
+          fontSize: 12,
           outline: "none",
-          height: 24,
+          height: 25,
           backgroundColor: "#ffffff",
           boxSizing: "border-box",
-          fontWeight: 700,
+          fontWeight: 600,
           paddingRight: "28px",
+          color: "#1e293b",
         }}
       />
       <span
@@ -353,26 +355,28 @@ const s = {
   },
   input: {
     flex: 1,
-    padding: "3px 6px",
+    padding: "3px 7px",
     border: "1px solid #cbd5e1",
     borderRadius: 3,
-    fontSize: 11,
+    fontSize: 12,
     outline: "none",
-    height: 24,
+    height: 25,
     backgroundColor: "#ffffff",
     boxSizing: "border-box",
-    fontWeight: 700,
+    fontWeight: 600,
+    color: "#1e293b",
   },
   select: {
     flex: 1,
-    padding: "0 4px",
+    padding: "0 6px",
     border: "1px solid #cbd5e1",
     borderRadius: 3,
-    fontSize: 11,
-    height: 24,
+    fontSize: 12,
+    height: 25,
     backgroundColor: "#ffffff",
     boxSizing: "border-box",
-    fontWeight: 700,
+    fontWeight: 600,
+    color: "#1e293b",
   },
   sectionTitleLink: {
     fontWeight: 700,
@@ -503,7 +507,7 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
   // Auto-populate Issuing Party and Beneficiary Party from job data
   useEffect(() => {
     if (!open || !jobData) return;
-    
+
     // Only auto-populate if the fields are currently empty (for new documents)
     const isIssuingPartyEmpty = !safeDoc.issuingParty?.name;
     const isBeneficiaryPartyEmpty = !safeDoc.beneficiaryParty?.name;
@@ -511,12 +515,12 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
     // Auto-populate Issuing Party from exporter
     if (isIssuingPartyEmpty && jobData.exporter && organizations.length > 0) {
       const exporterName = toUpper(jobData.exporter);
-      
+
       // Find and populate exporter details
       const org = organizations.find(
         (o) => toUpper(o.organization || "") === exporterName
       );
-      
+
       if (org) {
         const branch = org.branchInfo?.[0] || {};
         handleIssuingPartyChange("name", exporterName);
@@ -532,12 +536,12 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
     if (isBeneficiaryPartyEmpty && jobData.consignees && jobData.consignees.length > 0 && consigneeList.length > 0) {
       const firstConsignee = jobData.consignees[0];
       const consigneeName = toUpper(firstConsignee.consignee_name || "");
-      
+
       // Try to find full consignee details from the consignee list
       const fullConsignee = consigneeList.find(
         (c) => toUpper(c.consignee_name || "") === consigneeName
       );
-      
+
       if (fullConsignee) {
         handleBeneficiaryPartyChange("name", toUpper(fullConsignee.consignee_name || ""));
         handleBeneficiaryPartyChange("addressLine1", toUpper(fullConsignee.consignee_address || ""));
@@ -573,13 +577,13 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
   const onSelectBeneficiaryParty = (e) => {
     const val = toUpper(e.target.value);
     handleBeneficiaryPartyChange("name", val);
-    
+
     // Find consignee and populate details
     const consignee = consigneeList.find(
       (c) => toUpper(c.consignee_name || "") === val
     );
     if (!consignee) return;
-    
+
     handleBeneficiaryPartyChange("code", "");
     handleBeneficiaryPartyChange("addressLine1", toUpper(consignee.consignee_address || ""));
     handleBeneficiaryPartyChange("addressLine2", "");
@@ -724,7 +728,7 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
               <Field
                 label="File Type"
                 value="PDF"
-                onChange={() => {}}
+                onChange={() => { }}
                 disabled
               />
               <Field

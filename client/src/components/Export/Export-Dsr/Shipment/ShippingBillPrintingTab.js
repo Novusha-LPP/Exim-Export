@@ -1,28 +1,16 @@
-// ShippingBillPrintingTab.jsx - Shipping Bill Printing tab component
-import React, { useState, useRef, useCallback } from "react";
-import {
-  Grid,
-  Card,
-  TextField,
-  Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Box,
-} from "@mui/material";
+// ShippingBillPrintingTab.jsx - Shipping Bill Printing tab component refactored for Premium Compact UI
+import React, { useRef, useCallback } from "react";
+import DateInput from "../../../common/DateInput";
+import { styles, toUpperVal } from "../Product/commonStyles";
 
-const ShippingBillPrintingTab = ({ formik, directories, params, onUpdate }) => {
-  const [snackbar, setSnackbar] = useState(false);
+const ShippingBillPrintingTab = ({ formik, onUpdate }) => {
   const saveTimeoutRef = useRef(null);
 
   // Auto-save function
   const autoSave = useCallback(
     async (values) => {
       try {
-        if (onUpdate) {
-          await onUpdate(values);
-        }
+        if (onUpdate) await onUpdate(values);
       } catch (error) {
         console.error("Auto-save failed:", error);
       }
@@ -33,301 +21,204 @@ const ShippingBillPrintingTab = ({ formik, directories, params, onUpdate }) => {
   // Handle field changes with auto-save
   const handleFieldChange = (field, value) => {
     formik.setFieldValue(field, value);
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       autoSave(formik.values);
     }, 1500);
   };
 
-  // Dropdown options
-  const getTypeOfShipmentOptions = () => [
-    { label: "Outright Sale", value: "Outright Sale" },
-    { label: "Consignment", value: "Consignment" },
-    { label: "Branch Transfer", value: "Branch Transfer" },
-    { label: "Others", value: "Others" },
+  const typeOfShipmentOptions = [
+    "Outright Sale",
+    "Consignment",
+    "Branch Transfer",
+    "Others",
   ];
 
-  const getExportUnderOptions = () => [
-    { label: "Other", value: "Other" },
-    { label: "Advance License", value: "Advance License" },
-    { label: "EPCG", value: "EPCG" },
-    { label: "SEZ", value: "SEZ" },
+  const exportUnderOptions = [
+    "Other",
+    "Advance License",
+    "EPCG",
+    "SEZ",
   ];
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h6" fontWeight="bold" gutterBottom>
-        Shipping Bill Printing Details
-      </Typography>
+    <div style={styles.page}>
+      <div style={styles.sectionTitle}>Shipping Bill Printing Details</div>
 
-      <Grid container spacing={3}>
+      <div style={styles.grid2}>
         {/* Left Column - Main Fields */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ p: 2, height: "100%" }}>
-            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-              Shipping Bill Information
-            </Typography>
+        <div style={styles.card}>
+          <div style={styles.cardTitle}>Shipping Bill Information</div>
 
-            <Grid container spacing={2}>
-              {/* O/I-Cert. No./Date/Initiative */}
-              <Grid item xs={12}>
-                <Typography
-                  variant="caption"
-                  display="block"
-                  color="text.secondary"
-                  sx={{ mb: 0.5 }}
-                >
-                  O/I-Cert. No./Date/Initiative
-                </Typography>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={4}
-                  size="small"
-                  value={formik.values.oi_cert_details || ""}
-                  onChange={(e) =>
-                    handleFieldChange("oi_cert_details", e.target.value)
-                  }
-                  placeholder="Enter O/I certificate details..."
-                  sx={{
-                    "& .MuiInputBase-input": {
-                      fontSize: "0.875rem",
-                      lineHeight: 1.4,
-                    },
-                  }}
-                />
-              </Grid>
+          <div style={styles.field}>
+            <label style={styles.label}>O/I-Cert. No./Date/Initiative</label>
+            <textarea
+              style={{ ...styles.textarea, height: 80 }}
+              value={toUpperVal(formik.values.oi_cert_details || "")}
+              onChange={(e) =>
+                handleFieldChange("oi_cert_details", toUpperVal(e.target.value))
+              }
+              placeholder="ENTER O/I CERTIFICATE DETAILS..."
+            />
+          </div>
 
-              {/* Type of Shipment */}
-              <Grid item xs={12}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Type of Shipment</InputLabel>
-                  <Select
-                    value={formik.values.type_of_shipment || ""}
-                    onChange={(e) =>
-                      handleFieldChange("type_of_shipment", e.target.value)
-                    }
-                    label="Type of Shipment"
-                  >
-                    {getTypeOfShipmentOptions().map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
+          <div style={styles.grid2}>
+            <div style={styles.field}>
+              <label style={styles.label}>Type of Shipment</label>
+              <select
+                style={styles.select}
+                value={formik.values.type_of_shipment || ""}
+                onChange={(e) =>
+                  handleFieldChange("type_of_shipment", e.target.value)
+                }
+              >
+                <option value="">-- SELECT --</option>
+                {typeOfShipmentOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={styles.field}>
+              <label style={styles.label}>Specify, if Other</label>
+              <input
+                style={styles.input}
+                value={toUpperVal(formik.values.specify_if_other || "")}
+                onChange={(e) =>
+                  handleFieldChange("specify_if_other", toUpperVal(e.target.value))
+                }
+                disabled={formik.values.type_of_shipment !== "Others"}
+              />
+            </div>
+          </div>
 
-              {/* Specify, if Other */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Specify, if Other"
-                  size="small"
-                  value={formik.values.specify_if_other || ""}
-                  onChange={(e) =>
-                    handleFieldChange("specify_if_other", e.target.value)
-                  }
-                  placeholder="Specify if shipment type is other"
-                  disabled={formik.values.type_of_shipment !== "Others"}
-                />
-              </Grid>
+          <div style={styles.grid2}>
+            <div style={styles.field}>
+              <label style={styles.label}>Permission No.</label>
+              <input
+                style={styles.input}
+                value={toUpperVal(formik.values.permission_no || "")}
+                onChange={(e) =>
+                  handleFieldChange("permission_no", toUpperVal(e.target.value))
+                }
+              />
+            </div>
+            <div style={styles.field}>
+              <label style={styles.label}>Permission Date</label>
+              <DateInput
+                style={styles.input}
+                value={formik.values.permission_date || ""}
+                onChange={(e) =>
+                  handleFieldChange("permission_date", e.target.value)
+                }
+              />
+            </div>
+          </div>
 
-              {/* Permission No. & Date */}
-              <Grid item xs={8}>
-                <TextField
-                  fullWidth
-                  label="Permission No."
-                  size="small"
-                  value={formik.values.permission_no || ""}
-                  onChange={(e) =>
-                    handleFieldChange("permission_no", e.target.value)
-                  }
-                  placeholder="Enter permission number"
-                />
-              </Grid>
-
-              <Grid item xs={4}>
-                <TextField
-                  fullWidth
-                  label="Date"
-                  size="small"
-                  placeholder="DD-MM-YYYY"
-                  value={formik.values.permission_date || ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (/^[0-9-]*$/.test(val) && val.length <= 10) {
-                      handleFieldChange("permission_date", val);
-                    }
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-
-              {/* Export Under */}
-              <Grid item xs={12}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Export Under</InputLabel>
-                  <Select
-                    value={formik.values.export_under || ""}
-                    onChange={(e) =>
-                      handleFieldChange("export_under", e.target.value)
-                    }
-                    label="Export Under"
-                  >
-                    {getExportUnderOptions().map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              {/* S/B Heading */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="S/B Heading"
-                  size="small"
-                  value={formik.values.sb_heading || ""}
-                  onChange={(e) =>
-                    handleFieldChange("sb_heading", e.target.value)
-                  }
-                  placeholder="STAINLESS STEEL BAR"
-                />
-              </Grid>
-            </Grid>
-          </Card>
-        </Grid>
+          <div style={styles.grid2}>
+            <div style={styles.field}>
+              <label style={styles.label}>Export Under</label>
+              <select
+                style={styles.select}
+                value={formik.values.export_under || ""}
+                onChange={(e) =>
+                  handleFieldChange("export_under", e.target.value)
+                }
+              >
+                <option value="">-- SELECT --</option>
+                {exportUnderOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={styles.field}>
+              <label style={styles.label}>S/B Heading</label>
+              <input
+                style={styles.input}
+                value={toUpperVal(formik.values.sb_heading || "")}
+                onChange={(e) =>
+                  handleFieldChange("sb_heading", toUpperVal(e.target.value))
+                }
+                placeholder="E.G. STAINLESS STEEL BAR"
+              />
+            </div>
+          </div>
+        </div>
 
         {/* Right Column - Export Trade Control & Text Area */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ p: 2, height: "100%" }}>
-            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-              Export Trade Control & Additional Details
-            </Typography>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={styles.card}>
+            <div style={styles.cardTitle}>Export Trade Control & Additional Details</div>
 
-            <Grid container spacing={2}>
-              {/* Export Trade Control */}
-              <Grid item xs={12}>
-                <Typography
-                  variant="caption"
-                  display="block"
-                  color="text.secondary"
-                  sx={{ mb: 0.5 }}
-                >
-                  Export Trade Control
-                </Typography>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={6}
-                  size="small"
-                  value={formik.values.export_trade_control || ""}
+            <div style={styles.field}>
+              <label style={styles.label}>Export Trade Control</label>
+              <textarea
+                style={{ ...styles.textarea, height: 100 }}
+                value={toUpperVal(formik.values.export_trade_control || "")}
+                onChange={(e) =>
+                  handleFieldChange("export_trade_control", toUpperVal(e.target.value))
+                }
+                placeholder="ENTER EXPORT TRADE CONTROL DETAILS..."
+              />
+            </div>
+
+            <div style={styles.field}>
+              <label style={styles.label}>Text to be printed on S/B bottom area</label>
+              <textarea
+                style={{ ...styles.textarea, height: 120 }}
+                value={toUpperVal(formik.values.sb_bottom_text || "")}
+                onChange={(e) =>
+                  handleFieldChange("sb_bottom_text", toUpperVal(e.target.value))
+                }
+                placeholder="ENTER TEXT FOR SHIPPING BILL BOTTOM AREA..."
+              />
+            </div>
+          </div>
+
+          <div style={styles.card}>
+            <div style={styles.cardTitle}>Additional Reference Information</div>
+
+            <div style={styles.grid2}>
+              <div style={styles.field}>
+                <label style={styles.label}>Reference Type</label>
+                <input
+                  style={styles.input}
+                  value={toUpperVal(formik.values.sb_reference_type || "")}
                   onChange={(e) =>
-                    handleFieldChange("export_trade_control", e.target.value)
+                    handleFieldChange("sb_reference_type", toUpperVal(e.target.value))
                   }
-                  placeholder="Enter export trade control details..."
-                  sx={{
-                    "& .MuiInputBase-input": {
-                      fontSize: "0.875rem",
-                      lineHeight: 1.4,
-                    },
-                  }}
                 />
-              </Grid>
-
-              {/* Text to be printed on S/B bottom area */}
-              <Grid item xs={12}>
-                <Typography
-                  variant="caption"
-                  display="block"
-                  color="text.secondary"
-                  sx={{ mb: 0.5 }}
-                >
-                  Text to be printed on S/B bottom area
-                </Typography>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={8}
-                  size="small"
-                  value={formik.values.sb_bottom_text || ""}
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>Reference Number</label>
+                <input
+                  style={styles.input}
+                  value={toUpperVal(formik.values.sb_reference_number || "")}
                   onChange={(e) =>
-                    handleFieldChange("sb_bottom_text", e.target.value)
+                    handleFieldChange("sb_reference_number", toUpperVal(e.target.value))
                   }
-                  placeholder="Enter text to be printed on shipping bill bottom area..."
-                  sx={{
-                    "& .MuiInputBase-input": {
-                      fontSize: "0.875rem",
-                      lineHeight: 1.4,
-                    },
-                  }}
                 />
-              </Grid>
+              </div>
+            </div>
 
-              {/* Additional Reference Information */}
-              <Grid item xs={12} sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Additional Reference Information
-                </Typography>
-
-                <Grid container spacing={2}>
-                  {/* Reference Type */}
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Reference Type"
-                      size="small"
-                      value={formik.values.sb_reference_type || ""}
-                      onChange={(e) =>
-                        handleFieldChange("sb_reference_type", e.target.value)
-                      }
-                      placeholder="Enter reference type"
-                    />
-                  </Grid>
-
-                  {/* Reference Number */}
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Reference Number"
-                      size="small"
-                      value={formik.values.sb_reference_number || ""}
-                      onChange={(e) =>
-                        handleFieldChange("sb_reference_number", e.target.value)
-                      }
-                      placeholder="Enter reference number"
-                    />
-                  </Grid>
-
-                  {/* Additional Notes */}
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Additional Notes"
-                      multiline
-                      rows={3}
-                      size="small"
-                      value={formik.values.sb_additional_notes || ""}
-                      onChange={(e) =>
-                        handleFieldChange("sb_additional_notes", e.target.value)
-                      }
-                      placeholder="Enter any additional notes..."
-                    />
-                  </Grid>
-                </Grid>
-              </Grid>
-            </Grid>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
+            <div style={styles.field}>
+              <label style={styles.label}>Additional Notes</label>
+              <textarea
+                style={{ ...styles.textarea, height: 60 }}
+                value={toUpperVal(formik.values.sb_additional_notes || "")}
+                onChange={(e) =>
+                  handleFieldChange("sb_additional_notes", toUpperVal(e.target.value))
+                }
+                placeholder="ENTER ANY ADDITIONAL NOTES..."
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

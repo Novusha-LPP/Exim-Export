@@ -27,7 +27,7 @@ const s = {
   wrapper: {
     fontFamily:
       "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    backgroundColor: "#dfdfdfff",
+    backgroundColor: "#f0f1f7ff",
     padding: "20px",
     minHeight: "100vh",
     color: "#334155",
@@ -80,7 +80,7 @@ const s = {
     height: "38px",
     padding: "0 10px",
     fontSize: "13px",
-    border: "1px solid #cbd5e1",
+    border: "1px solid #c7ced6ff",
     borderRadius: "4px",
     backgroundColor: "#fff",
     color: "#334155",

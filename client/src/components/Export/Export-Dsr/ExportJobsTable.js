@@ -238,7 +238,7 @@ const ExportJobsTable = () => {
   const navigate = useNavigate();
 
   // State
-  const [activeTab, setActiveTab] = useState("pending");
+  const [activeTab, setActiveTab] = useState("Pending");
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -349,8 +349,8 @@ const ExportJobsTable = () => {
         setJobs(response.data.data.jobs || []);
         setTotalRecords(
           response.data.data.total ||
-            response.data.data.pagination?.totalCount ||
-            0
+          response.data.data.pagination?.totalCount ||
+          0
         );
       }
     } catch (err) {
@@ -520,8 +520,8 @@ const ExportJobsTable = () => {
           setJobs(refreshResponse.data.data.jobs || []);
           setTotalRecords(
             refreshResponse.data.data.total ||
-              refreshResponse.data.data.pagination?.totalCount ||
-              0
+            refreshResponse.data.data.pagination?.totalCount ||
+            0
           );
         }
 
@@ -540,22 +540,22 @@ const ExportJobsTable = () => {
         if (error.response.status === 409) {
           setCopyError(
             error.response.data.message ||
-              "This job number already exists. Please use a different sequence."
+            "This job number already exists. Please use a different sequence."
           );
         } else if (error.response.status === 404) {
           setCopyError(
             error.response.data.message ||
-              "Source job not found. Please refresh and try again."
+            "Source job not found. Please refresh and try again."
           );
         } else if (error.response.status === 400) {
           setCopyError(
             error.response.data.message ||
-              "Invalid input. Please check your entries."
+            "Invalid input. Please check your entries."
           );
         } else {
           setCopyError(
             error.response.data.message ||
-              "Error copying job. Please try again."
+            "Error copying job. Please try again."
           );
         }
       } else {
@@ -733,14 +733,14 @@ const ExportJobsTable = () => {
           <div style={s.tabContainer}>
             <button
               style={
-                activeTab === "pending" ? { ...s.tab, ...s.activeTab } : s.tab
+                activeTab === "Pending" ? { ...s.tab, ...s.activeTab } : s.tab
               }
-              onClick={() => setActiveTab("pending")}
+              onClick={() => setActiveTab("Pending")}
             >
               Pending{" "}
               <span
                 style={
-                  activeTab === "pending"
+                  activeTab === "Pending"
                     ? { ...s.badge, ...s.activeBadge }
                     : s.badge
                 }
@@ -748,14 +748,14 @@ const ExportJobsTable = () => {
             </button>
             <button
               style={
-                activeTab === "completed" ? { ...s.tab, ...s.activeTab } : s.tab
+                activeTab === "Completed" ? { ...s.tab, ...s.activeTab } : s.tab
               }
-              onClick={() => setActiveTab("completed")}
+              onClick={() => setActiveTab("Completed")}
             >
               Completed{" "}
               <span
                 style={
-                  activeTab === "completed"
+                  activeTab === "Completed"
                     ? { ...s.badge, ...s.activeBadge }
                     : s.badge
                 }
@@ -763,14 +763,14 @@ const ExportJobsTable = () => {
             </button>
             <button
               style={
-                activeTab === "cancelled" ? { ...s.tab, ...s.activeTab } : s.tab
+                activeTab === "Cancelled" ? { ...s.tab, ...s.activeTab } : s.tab
               }
-              onClick={() => setActiveTab("cancelled")}
+              onClick={() => setActiveTab("Cancelled")}
             >
               Cancelled{" "}
               <span
                 style={
-                  activeTab === "cancelled"
+                  activeTab === "Cancelled"
                     ? { ...s.badge, ...s.activeBadge }
                     : s.badge
                 }
@@ -1088,7 +1088,7 @@ const ExportJobsTable = () => {
                                     {containerNo}
                                     {/* Add line break after every 2 containers, except the last one */}
                                     {index < array.length - 1 &&
-                                    (index + 1) % 2 === 0 ? (
+                                      (index + 1) % 2 === 0 ? (
                                       <br />
                                     ) : index < array.length - 1 ? (
                                       ", "
@@ -1332,9 +1332,9 @@ const ExportJobsTable = () => {
                 style={
                   copyLoading
                     ? {
-                        ...modalStyles.submitButton,
-                        ...modalStyles.disabledButton,
-                      }
+                      ...modalStyles.submitButton,
+                      ...modalStyles.disabledButton,
+                    }
                     : modalStyles.submitButton
                 }
                 onClick={handleCopySubmit}

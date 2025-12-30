@@ -735,7 +735,6 @@ const exportJobSchema = new mongoose.Schema(
     documents: { type: Object, default: {} },
 
     status: { type: String, trim: true },
-    jobStatus: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Exporter Information
     exporter_address: { type: String, trim: true },
@@ -1365,7 +1364,7 @@ exportJobSchema.methods.getOperationDataForContainer = function (containerNo) {
 
 // Remove redundant indexes and add compound indexes
 exportJobSchema.index({ jobNumber: 1 }, { unique: true });
-exportJobSchema.index({ filingMode: 1, jobStatus: 1 }); // Compound index
+exportJobSchema.index({ filingMode: 1, status: 1 }); // Compound index
 exportJobSchema.index({ jobDate: -1, customHouse: 1 }); // Common query pattern
 exportJobSchema.index({ createdAt: -1 }); // For recent jobs
 exportJobSchema.index({ "invoices.invoiceNumber": 1 }, { sparse: true });
@@ -1378,7 +1377,7 @@ exportJobSchema.virtual("totalCharges").get(function () {
 });
 
 exportJobSchema.virtual("isCompleted").get(function () {
-  return this.jobStatus === "Completed";
+  return this.status === "Completed";
 });
 
 // Methods

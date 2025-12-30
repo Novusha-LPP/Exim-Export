@@ -27,7 +27,7 @@ const drawerWidth = 60;
 function HomePage() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [tabValue, setTabValue] = useState(
-    JSON.parse(localStorage.getItem("tab_value") || 0)
+    JSON.parse(localStorage.getItem("tab_value") ?? 1)
   );
 
   return (

@@ -52,16 +52,17 @@ const AutocompleteSelect = ({
                 <input
                     style={{
                         width: "100%",
-                        padding: "3px 24px 3px 6px",
-                        border: "1px solid #d6dae2",
-                        borderRadius: 4,
-                        fontSize: 13,
+                        padding: "3px 24px 3px 7px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 3,
+                        fontSize: 12,
                         background: "#fff",
                         boxSizing: "border-box",
-                        height: 28,
+                        height: 25,
                         textTransform: "uppercase",
-                        fontWeight: 300,
+                        fontWeight: 600,
                         outline: "none",
+                        color: "#1e293b",
                     }}
                     placeholder={placeholder}
                     value={query}
@@ -95,7 +96,7 @@ const AutocompleteSelect = ({
                         top: "50%",
                         transform: "translateY(-50%)",
                         fontSize: 10,
-                        color: "#888",
+                        color: "#94a3b8",
                         pointerEvents: "none",
                     }}
                 >
@@ -109,12 +110,12 @@ const AutocompleteSelect = ({
                         top: "calc(100% + 2px)",
                         left: 0,
                         right: 0,
-                        maxHeight: 200,
+                        maxHeight: 180,
                         overflowY: "auto",
                         background: "#fff",
-                        border: "1px solid #d6dae2",
+                        border: "1px solid #cbd5e1",
                         borderRadius: 4,
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                         zIndex: 9999,
                     }}
                 >
@@ -122,13 +123,13 @@ const AutocompleteSelect = ({
                         <div
                             key={opt.value + i}
                             style={{
-                                padding: "8px 10px",
+                                padding: "6px 10px",
                                 cursor: "pointer",
-                                fontSize: 12,
-                                fontWeight: 500,
-                                background: i === active ? "#e3f2fd" : value === opt.value ? "#f0f7ff" : "#fff",
-                                color: "#111827",
-                                borderBottom: "1px solid #f0f0f0",
+                                fontSize: 11,
+                                fontWeight: i === active ? 700 : 600,
+                                background: i === active ? "#f1f5f9" : value === opt.value ? "#f8fafc" : "#fff",
+                                color: i === active ? "#1e3a8a" : "#334155",
+                                borderBottom: "1px solid #f1f5f9",
                                 textTransform: "uppercase",
                             }}
                             onMouseDown={() => handleSelect(opt)}
