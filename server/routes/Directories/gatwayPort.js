@@ -24,6 +24,8 @@ router.get("/", async (req, res) => {
       query.$or = [
         { name: { $regex: s, $options: "i" } },
         { unece_code: { $regex: s, $options: "i" } },
+        { portName: { $regex: s, $options: "i" } },
+        { portCode: { $regex: s, $options: "i" } },
       ];
     }
 

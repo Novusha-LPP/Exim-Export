@@ -21,7 +21,8 @@ const mandatoryNames = new Set([
 const TrackingCompletedTab = ({ formik, directories, params }) => {
   const [filter, setFilter] = useState("Show All");
   const [exportJobsUsers, setExportJobsUsers] = useState([]);
-  const [isInitialized, setIsInitialized] = useState(false); // 🔑 Fix: Prevent infinite loop
+  const [selectedIndex, setSelectedIndex] = useState(0); // Default to first milestone
+
 
   const handleFieldChange = (field, value) => {
     formik.setFieldValue(field, value);
@@ -46,24 +47,21 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
     fetchExportJobsUsers();
   }, []);
 
-  // 🔑 FIXED: Initialize milestones ONLY ONCE on mount
+  // 🔑 FIXED: Initialize milestones only after data is loaded
+  // We need to detect when real data comes in vs initial empty state
+  const hasInitializedRef = useRef(false);
+
   useEffect(() => {
-    if (isInitialized) return; // Skip if already initialized
+    // Skip if already initialized with real data
+    if (hasInitializedRef.current) return;
 
     const ms = formik.values.milestones || [];
-    if (!ms.length) {
-      const defaults = BASE_MILESTONES.map((name) => ({
-        milestoneName: name,
-        planDate: "dd-MMM-yyyy HH:mm",
-        actualDate: "dd-mmm-yyyy",
-        isCompleted: false,
-        isMandatory: mandatoryNames.has(name),
-        completedBy: "",
-        remarks: "",
-      }));
-      formik.setFieldValue("milestones", defaults);
-    } else {
-      // Ensure base milestones exist, preserve extras
+
+    // Check if this is real data from server (has _id) or just initial empty/default
+    const hasRealData = ms.length > 0 && ms.some(m => m._id);
+
+    if (hasRealData) {
+      // Data loaded from server - merge with base milestones but preserve all existing values
       const byName = new Map(ms.map((m) => [m.milestoneName, m]));
       const basePart = BASE_MILESTONES.map((name) => {
         const existing = byName.get(name);
@@ -71,7 +69,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
           existing || {
             milestoneName: name,
             planDate: "dd-MMM-yyyy HH:mm",
-            actualDate: "dd-mmm-yyyy ",
+            actualDate: "dd-mmm-yyyy",
             isCompleted: false,
             isMandatory: mandatoryNames.has(name),
             completedBy: "",
@@ -83,15 +81,28 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
         (m) => !BASE_MILESTONES.includes(m.milestoneName)
       );
       formik.setFieldValue("milestones", [...basePart, ...extra]);
+      hasInitializedRef.current = true; // Mark as done
+    } else if (ms.length === 0) {
+      // No data yet and formik is at initial state - create defaults
+      // But only if we haven't received data yet (checked by _id above)
+      const defaults = BASE_MILESTONES.map((name) => ({
+        milestoneName: name,
+        planDate: "dd-MMM-yyyy HH:mm",
+        actualDate: "dd-mmm-yyyy",
+        isCompleted: false,
+        isMandatory: mandatoryNames.has(name),
+        completedBy: "",
+        remarks: "",
+      }));
+      formik.setFieldValue("milestones", defaults);
+      // Don't mark as initialized yet - wait for real data
     }
+  }, [formik.values.milestones]); // Watch for milestones changes
 
-    setIsInitialized(true); // Mark as initialized
-  }, []); // Empty deps - run only once
-
-  const handleMilestoneChange = (index, field, value) => {
+  const handleMilestoneChange = (index, updates) => {
     const current = formik.values.milestones || [];
     const milestones = [...current];
-    milestones[index] = { ...milestones[index], [field]: value };
+    milestones[index] = { ...milestones[index], ...updates };
     formik.setFieldValue("milestones", milestones);
   };
 
@@ -114,28 +125,14 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
     formik.setFieldValue("milestones", milestones);
   };
 
-  const updatePlanDate = () => {
-    const now = new Date();
-    const current = formik.values.milestones || [];
-    const milestones = current.map((m, idx) => {
-      if (!m.planDate || m.planDate === "dd-MMM-yyyy HH:mm") {
-        const d = new Date(now);
-        d.setHours(now.getHours() + idx * 2);
-        const iso = d.toISOString().slice(0, 16);
-        return { ...m, planDate: iso };
-      }
-      return m;
-    });
-    formik.setFieldValue("milestones", milestones);
-  };
 
   const allMilestones = formik.values.milestones || [];
   const visibleMilestones =
     filter === "Completed Only"
       ? allMilestones.filter((m) => m.isCompleted)
       : filter === "Pending Only"
-      ? allMilestones.filter((m) => !m.isCompleted)
-      : allMilestones;
+        ? allMilestones.filter((m) => !m.isCompleted)
+        : allMilestones;
 
   return (
     <div
@@ -282,9 +279,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
               }}
             >
               <colgroup>
-                <col style={{ width: "34%" }} />
-                <col style={{ width: "28%" }} />
-                <col style={{ width: "28%" }} />
+                <col style={{ width: "55%" }} />
+                <col style={{ width: "35%" }} />
                 <col style={{ width: "10%" }} />
               </colgroup>
               <thead>
@@ -322,12 +318,17 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                 {visibleMilestones.map((m, idx) => {
                   const realIndex = allMilestones.indexOf(m);
                   const isBase = BASE_MILESTONES.includes(m.milestoneName);
+                  const isSelected = selectedIndex === realIndex;
                   return (
                     <tr
                       key={realIndex}
+                      onClick={() => setSelectedIndex(realIndex)}
                       style={{
-                        background: idx % 2 === 0 ? "#ffffff" : "#f7f9fc",
+                        background: isSelected
+                          ? "#e0e7ff"
+                          : (idx % 2 === 0 ? "#ffffff" : "#f7f9fc"),
                         borderTop: "1px solid #e1e7f0",
+                        cursor: "pointer",
                       }}
                     >
                       <td style={{ padding: "5px 8px", whiteSpace: "nowrap" }}>
@@ -344,7 +345,6 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                         <DateInput
                           style={{
                             width: "100%",
-
                             fontSize: 12,
                             padding: "3px 6px",
                             border: "1px solid #bdc7d1",
@@ -359,46 +359,34 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                           onChange={(e) => {
                             const v = e.target.value;
                             if (!v) {
-                              handleMilestoneChange(realIndex, "actualDate");
+                              handleMilestoneChange(realIndex, { actualDate: "dd-mmm-yyyy" });
                               return;
                             }
-                            const parts = v.split("-");
-                            if (parts.length === 3) {
-                              const day = parseInt(parts[0], 10);
-                              const month = parseInt(parts[1], 10) - 1;
-                              const year = parseInt(parts[2], 10);
-                              const picked = new Date(year, month, day);
-                              const now = new Date();
-                              now.setHours(0, 0, 0, 0);
-                              if (picked > now) return;
-                            }
-                            handleMilestoneChange(realIndex, "actualDate", v);
+                            handleMilestoneChange(realIndex, { actualDate: v });
                           }}
                         />
                       </td>
-                      <td style={{ textAlign: "center" }}>
+                      <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={!!m.isCompleted}
                           onChange={(e) => {
-                            handleMilestoneChange(
-                              realIndex,
-                              "isCompleted",
-                              e.target.checked
-                            );
-                            if (
-                              e.target.checked &&
-                              (!m.actualDate || m.actualDate === "dd-mmm-yyyy ")
-                            ) {
-                              const nowIso = new Date()
-                                .toISOString()
-                                .slice(0, 16);
-                              handleMilestoneChange(
-                                realIndex,
-                                "actualDate",
-                                nowIso
-                              );
+                            const isChecked = e.target.checked;
+                            const updates = { isCompleted: isChecked };
+
+                            if (isChecked) {
+                              if (!m.actualDate || m.actualDate === "dd-mmm-yyyy") {
+                                const d = new Date();
+                                const day = String(d.getDate()).padStart(2, "0");
+                                const month = String(d.getMonth() + 1).padStart(2, "0");
+                                const year = d.getFullYear();
+                                updates.actualDate = `${day}-${month}-${year}`;
+                              }
+                            } else {
+                              updates.actualDate = "dd-mmm-yyyy";
                             }
+
+                            handleMilestoneChange(realIndex, updates);
                           }}
                           style={{ cursor: "pointer" }}
                         />
@@ -420,21 +408,6 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
             }}
           >
             <div style={{ display: "flex", gap: 6 }}>
-              <button
-                type="button"
-                onClick={updatePlanDate}
-                style={{
-                  fontSize: 11,
-                  padding: "4px 10px",
-                  borderRadius: 3,
-                  border: "1px solid #2563eb",
-                  background: "#2563eb",
-                  color: "#ffffff",
-                  cursor: "pointer",
-                }}
-              >
-                Update Plan Date
-              </button>
               <button
                 type="button"
                 onClick={addCustomMilestone}
@@ -489,13 +462,14 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
               borderBottom: "1px solid #e1e7f0",
               paddingBottom: 4,
               marginBottom: 6,
+              color: "#2563eb",
             }}
           >
-            Milestone
+            Milestone: {allMilestones[selectedIndex]?.milestoneName || "None"}
           </div>
 
           <div style={{ marginBottom: 8 }}>
-            <div style={{ marginBottom: 3 }}>Remarks</div>
+            <div style={{ marginBottom: 3, fontWeight: 500 }}>Remarks</div>
             <textarea
               rows={4}
               style={{
@@ -506,15 +480,16 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                 border: "1px solid #c4cdd7",
                 resize: "vertical",
               }}
-              value={formik.values.milestoneremarks || ""}
+              value={allMilestones[selectedIndex]?.remarks || ""}
               onChange={(e) =>
-                handleFieldChange("milestoneremarks", e.target.value)
+                handleMilestoneChange(selectedIndex, { remarks: e.target.value })
               }
+              placeholder="Enter milestone-specific remarks..."
             />
           </div>
 
           <div style={{ marginBottom: 8 }}>
-            <div style={{ marginBottom: 3 }}>View/Upload Documents</div>
+            <div style={{ marginBottom: 3, fontWeight: 500 }}>Upload Documents Link</div>
             <input
               type="text"
               style={{
@@ -524,18 +499,16 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                 borderRadius: 3,
                 border: "1px solid #c4cdd7",
               }}
-              value={formik.values.milestoneviewuploaddocuments || ""}
+              value={allMilestones[selectedIndex]?.documentLink || ""}
               onChange={(e) =>
-                handleFieldChange(
-                  "milestoneviewuploaddocuments",
-                  e.target.value
-                )
+                handleMilestoneChange(selectedIndex, { documentLink: e.target.value })
               }
+              placeholder="https://..."
             />
           </div>
 
           <div>
-            <div style={{ marginBottom: 3 }}>Handled By</div>
+            <div style={{ marginBottom: 3, fontWeight: 500 }}>Handled By</div>
             <select
               style={{
                 width: "100%",
@@ -545,9 +518,9 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                 border: "1px solid #c4cdd7",
                 background: "#ffffff",
               }}
-              value={formik.values.milestonehandledby || ""}
+              value={allMilestones[selectedIndex]?.completedBy || ""}
               onChange={(e) =>
-                handleFieldChange("milestonehandledby", e.target.value)
+                handleMilestoneChange(selectedIndex, { completedBy: e.target.value })
               }
             >
               <option value="">Select User</option>
@@ -557,6 +530,28 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div style={{ marginTop: 15, paddingTop: 10, borderTop: "1px dashed #d0d7e2" }}>
+            <div style={{ fontWeight: 600, fontSize: 11, marginBottom: 5, color: "#64748b" }}>
+              Global Job Remarks
+            </div>
+            <textarea
+              rows={2}
+              style={{
+                width: "100%",
+                fontSize: 10,
+                padding: "4px 6px",
+                borderRadius: 3,
+                border: "1px solid #e2e8f0",
+                resize: "none",
+                background: "#f8fafc"
+              }}
+              value={formik.values.milestoneremarks || ""}
+              onChange={(e) =>
+                handleFieldChange("milestoneremarks", e.target.value)
+              }
+            />
           </div>
         </div>
       </div>

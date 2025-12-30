@@ -1,0 +1,146 @@
+import React, { useState, useEffect, useRef } from "react";
+
+const AutocompleteSelect = ({
+    options,
+    value,
+    onChange,
+    placeholder = "Select Option",
+    style = {},
+    name,
+}) => {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState("");
+    const [active, setActive] = useState(-1);
+    const wrapperRef = useRef(null);
+
+    // Sync query with selected value only when not open or not typing
+    useEffect(() => {
+        const selected = options.find((opt) => opt.value === value);
+        if (!open) setQuery(selected ? selected.label : "");
+    }, [value, options, open]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const filtered = options.filter((opt) =>
+        (opt.label || "").toUpperCase().includes(query.toUpperCase())
+    );
+
+    const handleSelect = (opt) => {
+        onChange({ target: { name, value: opt.value } });
+        setQuery(opt.label);
+        setOpen(false);
+    };
+
+    return (
+        <div
+            ref={wrapperRef}
+            style={{
+                position: "relative",
+                width: "100%",
+                ...style,
+            }}
+        >
+            <div style={{ position: "relative" }}>
+                <input
+                    style={{
+                        width: "100%",
+                        padding: "3px 24px 3px 6px",
+                        border: "1px solid #d6dae2",
+                        borderRadius: 4,
+                        fontSize: 13,
+                        background: "#fff",
+                        boxSizing: "border-box",
+                        height: 28,
+                        textTransform: "uppercase",
+                        fontWeight: 600,
+                        outline: "none",
+                    }}
+                    placeholder={placeholder}
+                    value={query}
+                    onChange={(e) => {
+                        setQuery(e.target.value.toUpperCase());
+                        setOpen(true);
+                    }}
+                    onFocus={() => {
+                        setOpen(true);
+                        setQuery(""); // Clear on focus to show all options
+                        setActive(-1);
+                    }}
+                    onKeyDown={(e) => {
+                        if (e.key === "ArrowDown") {
+                            setOpen(true);
+                            setActive((prev) => Math.min(prev + 1, filtered.length - 1));
+                        } else if (e.key === "ArrowUp") {
+                            setActive((prev) => Math.max(prev - 1, 0));
+                        } else if (e.key === "Enter" && active >= 0) {
+                            e.preventDefault();
+                            handleSelect(filtered[active]);
+                        } else if (e.key === "Escape") {
+                            setOpen(false);
+                        }
+                    }}
+                />
+                <span
+                    style={{
+                        position: "absolute",
+                        right: 8,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        fontSize: 10,
+                        color: "#888",
+                        pointerEvents: "none",
+                    }}
+                >
+                    ▼
+                </span>
+            </div>
+            {open && filtered.length > 0 && (
+                <div
+                    style={{
+                        position: "absolute",
+                        top: "calc(100% + 2px)",
+                        left: 0,
+                        right: 0,
+                        maxHeight: 200,
+                        overflowY: "auto",
+                        background: "#fff",
+                        border: "1px solid #d6dae2",
+                        borderRadius: 4,
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                        zIndex: 9999,
+                    }}
+                >
+                    {filtered.map((opt, i) => (
+                        <div
+                            key={opt.value + i}
+                            style={{
+                                padding: "8px 10px",
+                                cursor: "pointer",
+                                fontSize: 12,
+                                fontWeight: 500,
+                                background: i === active ? "#e3f2fd" : value === opt.value ? "#f0f7ff" : "#fff",
+                                color: "#111827",
+                                borderBottom: "1px solid #f0f0f0",
+                                textTransform: "uppercase",
+                            }}
+                            onMouseDown={() => handleSelect(opt)}
+                            onMouseEnter={() => setActive(i)}
+                        >
+                            {opt.label}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default AutocompleteSelect;

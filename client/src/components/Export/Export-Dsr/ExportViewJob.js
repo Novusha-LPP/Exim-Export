@@ -26,31 +26,8 @@ import ESanchitTab from ".//E-sanchit/EsanchitTab.js";
 import ExportChecklistGenerator from "./Checklist/ExportChecklistGenerator.js";
 import DateInput from "../../common/DateInput.js";
 import OperationsTab from "./Operations/OperationsTab.jsx";
+import AutocompleteSelect from "../../common/AutocompleteSelect.js";
 
-function SimpleSelect({ name, value, options, onChange }) {
-  return (
-    <select
-      name={name}
-      value={value}
-      onChange={onChange}
-      style={{
-        height: 28,
-        width: "98%",
-        borderRadius: 4,
-        border: "1px solid #d6dae2",
-        fontSize: 13,
-        background: "#fff",
-        padding: "2px 7px",
-      }}
-    >
-      {options.map((opt) => (
-        <option value={opt.value} key={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  );
-}
 
 // Helper function
 const toUpper = (str) => (str || "").toUpperCase();
@@ -118,6 +95,7 @@ function useGatewayPortDropdown(fieldName, formik) {
   const [query, setQuery] = useState(formik.values[fieldName] || "");
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
+  const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef();
   const apiBase = import.meta.env.VITE_API_STRING;
   const keepOpen = useRef(false);
@@ -132,7 +110,9 @@ function useGatewayPortDropdown(fieldName, formik) {
       return;
     }
 
-    const searchVal = (query || "").trim();
+    // When dropdown opens, fetch all options (empty search)
+    // Only use query for search if user is actively typing
+    const searchVal = isTyping ? (query || "").trim() : "";
     const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
       searchVal
     )}`;
@@ -145,8 +125,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -154,7 +134,7 @@ function useGatewayPortDropdown(fieldName, formik) {
     }, 220);
 
     return () => clearTimeout(t);
-  }, [open, query, apiBase]);
+  }, [open, query, apiBase, isTyping]);
 
   useEffect(() => {
     function close(e) {
@@ -164,6 +144,7 @@ function useGatewayPortDropdown(fieldName, formik) {
         !wrapperRef.current.contains(e.target)
       ) {
         setOpen(false);
+        setIsTyping(false);
       }
     }
     document.addEventListener("mousedown", close);
@@ -181,6 +162,7 @@ function useGatewayPortDropdown(fieldName, formik) {
     formik.setFieldValue(fieldName, value);
     setOpen(false);
     setActive(-1);
+    setIsTyping(false);
   }
 
   return {
@@ -197,12 +179,14 @@ function useGatewayPortDropdown(fieldName, formik) {
       setQuery(v);
       formik.setFieldValue(fieldName, v);
       setOpen(true);
+      setIsTyping(true);
     },
     select,
     onInputFocus: () => {
       setOpen(true);
       setActive(-1);
       keepOpen.current = true;
+      // Don't set isTyping here - we want to show all options on focus
     },
     onInputBlur: () => {
       setTimeout(() => {
@@ -443,28 +427,21 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Job Owner */}
-        <div style={{ flex: "1 1 110px", minWidth: 90 }}>
+        <div style={{ flex: "1 1 150px", minWidth: 90 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Job Owner</div>
-          <select
+          <AutocompleteSelect
             name="job_owner"
             value={formik.values.job_owner || ""}
+            options={[
+              { value: "", label: "Select Job Owner" },
+              ...(exportJobsUsers?.map((user) => ({
+                value: user.username,
+                label: user.fullName,
+              })) || []),
+            ]}
             onChange={formik.handleChange}
-            style={{
-              width: "96%",
-              padding: "3px 6px",
-              border: "1px solid #d6dae2",
-              borderRadius: 4,
-              background: "#fff",
-              fontSize: 13,
-            }}
-          >
-            <option value="">Select Job Owner</option>
-            {exportJobsUsers?.map((user) => (
-              <option key={user.id} value={user.username}>
-                {user.fullName}
-              </option>
-            ))}
-          </select>
+            placeholder="Select Job Owner"
+          />
         </div>
 
         {/* Shipper */}
@@ -496,7 +473,7 @@ const LogisysEditableHeader = ({
         {/* Transport Mode */}
         <div style={{ flex: "1 1 100px", minWidth: 80 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Transport Mode</div>
-          <SimpleSelect
+          <AutocompleteSelect
             name="transportMode"
             value={formik.values.transportMode}
             options={[
@@ -504,6 +481,7 @@ const LogisysEditableHeader = ({
               { value: "Air", label: "Air" },
             ]}
             onChange={formik.handleChange}
+            placeholder="Select Mode"
           />
         </div>
 
@@ -518,19 +496,19 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Loading Port */}
-        <div style={{ flex: "1 1 120px", minWidth: 110 }}>
+        {/* <div style={{ flex: "1 1 120px", minWidth: 110 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Loading Port</div>
           <GatewayPortDropdown
             fieldName="port_of_loading"
             formik={formik}
             placeholder="Select Loading Port"
           />
-        </div>
+        </div> */}
 
         {/* Consignment Type */}
         <div style={{ flex: "1 1 120px", minWidth: 100 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Consignment Type</div>
-          <SimpleSelect
+          <AutocompleteSelect
             name="consignmentType"
             value={formik.values.consignmentType}
             options={[
@@ -540,13 +518,14 @@ const LogisysEditableHeader = ({
               { value: "Break Bulk", label: "Break Bulk" },
             ]}
             onChange={formik.handleChange}
+            placeholder="Select Type"
           />
         </div>
 
         {/* SB Type */}
         <div style={{ flex: "1 1 120px", minWidth: 100 }}>
           <div style={{ fontSize: 11, color: "#888" }}>SB Type</div>
-          <SimpleSelect
+          <AutocompleteSelect
             name="sb_type"
             value={formik.values.sb_type}
             options={[
@@ -559,13 +538,11 @@ const LogisysEditableHeader = ({
               { value: "Pink - ExBond", label: "Pink - ExBond" },
               { value: "SEZ - Regular", label: "SEZ - Regular" },
               { value: "SEZ - ExBond", label: "SEZ - ExBond" },
-              {
-                value: "SEZ - DTA Procurement",
-                label: "SEZ - DTA Procurement",
-              },
+              { value: "SEZ - DTA Procurement", label: "SEZ - DTA Procurement" },
               { value: "Red", label: "Red" },
             ]}
             onChange={formik.handleChange}
+            placeholder="Select SB Type"
           />
         </div>
 
@@ -860,16 +837,16 @@ function LogisysExportViewJob() {
             },
             ...(toUpper(formik.values.transportMode) !== "AIR"
               ? [
-                  {
-                    label: "Container",
-                    component: (
-                      <ContainerTab
-                        formik={formik}
-                        onUpdate={formik.handleSubmit}
-                      />
-                    ),
-                  },
-                ]
+                {
+                  label: "Container",
+                  component: (
+                    <ContainerTab
+                      formik={formik}
+                      onUpdate={formik.handleSubmit}
+                    />
+                  ),
+                },
+              ]
               : []),
             {
               label: "Invoice",

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import DateInput from "../../../common/DateInput.js";
+import AutocompleteSelect from "../../../common/AutocompleteSelect.js";
+
 
 const apiBase = import.meta.env.VITE_API_STRING;
 
@@ -259,40 +261,27 @@ const GeneralTab = ({ formik, directories }) => {
   }
 
   function exporterInputField() {
-    const handleExporterSelect = (e) => {
-      const val = toUpperVal(e);
-      handleFieldChange("exporter", val);
-      handleFieldChange("branch_index", 0);
-      onExporterInput({ target: { value: val } });
-    };
-
     return (
       <div>
         <div style={{ fontSize: 11, color: "#666" }}>Exporter</div>
-        <select
+        <AutocompleteSelect
           name="exporter"
           value={getVal("exporter")}
-          onChange={handleExporterSelect}
-          style={{
-            border: "1px solid #cad3db",
-            borderRadius: 4,
-            fontSize: 13,
-            padding: "2px 7px",
-            height: 28,
-            width: "100%",
-            marginBottom: 3,
+          options={[
+            { value: "", label: "-- SELECT --" },
+            ...exporters.map((exp) => ({
+              value: toUpper(exp.organization || ""),
+              label: toUpper(exp.organization || ""),
+            })),
+          ]}
+          onChange={(e) => {
+            const val = e.target.value;
+            handleFieldChange("exporter", val);
+            handleFieldChange("branch_index", 0);
+            onExporterInput({ target: { value: val } });
           }}
-        >
-          <option value="">-- SELECT --</option>
-          {exporters.map((exp) => {
-            const name = toUpper(exp.organization || "");
-            return (
-              <option key={exp._id} value={name}>
-                {name}
-              </option>
-            );
-          })}
-        </select>
+          placeholder="Select Exporter"
+        />
       </div>
     );
   }
@@ -398,31 +387,19 @@ const GeneralTab = ({ formik, directories }) => {
           {branchSelectField()}
           <div>
             <div style={{ fontSize: 11, color: "#666" }}>Exporter Type</div>
-            <select
+            <AutocompleteSelect
               name="exporter_type"
               value={getVal("exporter_type")}
-              onChange={(e) =>
-                handleFieldChange("exporter_type", toUpperVal(e))
-              }
-              style={{
-                border: "1px solid #cad3db",
-                borderRadius: 4,
-                fontSize: 13,
-                padding: "2px 7px",
-                height: 28,
-                width: "100%",
-                marginBottom: 3,
-                boxSizing: "border-box",
-              }}
-            >
-              <option value="">-- SELECT --</option>
-              <option value="MANUFACTURER EXPORTER">
-                MANUFACTURER EXPORTER
-              </option>
-              <option value="MERCHANT EXPORTER">MERCHANT EXPORTER</option>
-              <option value="MARCHANT EXPORTER">MARCHANT EXPORTER</option>
-              <option value="SERVICE EXPORTER">SERVICE EXPORTER</option>
-            </select>
+              options={[
+                { value: "", label: "-- SELECT --" },
+                { value: "MANUFACTURER EXPORTER", label: "MANUFACTURER EXPORTER" },
+                { value: "MERCHANT EXPORTER", label: "MERCHANT EXPORTER" },
+                { value: "MARCHANT EXPORTER", label: "MARCHANT EXPORTER" },
+                { value: "SERVICE EXPORTER", label: "SERVICE EXPORTER" },
+              ]}
+              onChange={(e) => handleFieldChange("exporter_type", e.target.value)}
+              placeholder="Select Exporter Type"
+            />
           </div>
           {field("Address", "exporter_address")}
           <div style={{ display: "flex", gap: 10 }}>
@@ -587,11 +564,7 @@ const GeneralTab = ({ formik, directories }) => {
                 placeholder="Consignee Name"
                 onChange={(e) => handleConsigneeNameChange(idx, e)}
                 onFocus={() => {
-                  const val = toUpper(consignee.consignee_name);
-                  const filtered = consigneeList.filter((c) =>
-                    toUpper(c.consignee_name).includes(val)
-                  );
-                  setFilteredConsignees(filtered);
+                  setFilteredConsignees(consigneeList);
                   setActiveIdx(idx);
                   setShowMenu(true);
                 }}
@@ -702,7 +675,7 @@ const GeneralTab = ({ formik, directories }) => {
           </div>
         ))}
       </div>
-    </div>
+    </div >
   );
 };
 
