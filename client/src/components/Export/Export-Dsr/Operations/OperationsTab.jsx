@@ -39,6 +39,85 @@ const formatDateForInput = (dateVal, type = "date") => {
   }
 };
 
+const getDefaultItem = (section) => {
+  const defaults = {
+    transporterDetails: {
+      transporterName: "",
+      vehicleNo: "",
+      containerNo: "",
+      driverName: "",
+      contactNo: "",
+      noOfPackages: 0,
+      netWeightKgs: 0,
+      grossWeightKgs: 0,
+      images: [],
+      cartingDate: "",
+      gateInDate: "",
+    },
+    containerDetails: {
+      containerNo: "",
+      containerSize: "",
+      containerType: "",
+      cargoType: "Gen",
+      maxGrossWeightKgs: 0,
+      tareWeightKgs: 0,
+      maxPayloadKgs: 0,
+      images: [],
+    },
+    bookingDetails: {
+      shippingLineName: "",
+      forwarderName: "",
+      bookingNo: "",
+      bookingDate: "",
+      vesselName: "",
+      voyageNo: "",
+      portOfLoading: "",
+      handoverLocation: "",
+      validity: "",
+      images: [],
+      containerPlacementDate: "",
+    },
+    weighmentDetails: {
+      weighBridgeName: "",
+      regNo: "",
+      address: "",
+      dateTime: "",
+      vehicleNo: "",
+      containerNo: "",
+      size: "",
+      grossWeight: 0,
+      tareWeight: 0,
+      netWeight: 0,
+    },
+    statusDetails: {
+      rms: "RMS", // Default
+      goodsRegistrationDate: "",
+      leoDate: "",
+      leoUpload: [],
+      containerPlacementDate: "",
+      stuffingDate: "",
+      stuffingSheetUpload: [],
+      stuffingPhotoUpload: [],
+      eGatePassCopyDate: "",
+      eGatePassUpload: [],
+      handoverForwardingNoteDate: "",
+      handoverImageUpload: [],
+      handoverConcorTharSanganaRailRoadDate: "",
+      billingDocsSentDt: "",
+      billingDocsSentUpload: [],
+      billingDocsStatus: "Pending",
+      railRoad: "",
+      concorPrivate: "",
+      privateTransporterName: "",
+      hoToConsoleDate: "",
+      hoToConsoleDate2: "",
+      hoToConsoleName: "",
+      railOutReachedDate: "",
+    },
+  };
+  return defaults[section] || {};
+};
+
 function useShippingOrAirlineDropdown(fieldName, formik) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(
@@ -577,11 +656,15 @@ const OperationsTab = ({ formik }) => {
       const currentSection = op[section] || [];
       const finalValue = field === "containerNo" ? toUpper(value) : value;
 
-      // Update the targeted field
-      updatedOp[section] = currentSection.map((item, itemIdx) => {
-        if (itemIdx !== itemIndex) return item;
-        return { ...item, [field]: finalValue };
-      });
+      // Update the targeted field (handling virtual rows if the array is empty)
+      if (currentSection.length === 0 && itemIndex === 0) {
+        updatedOp[section] = [{ ...getDefaultItem(section), [field]: finalValue }];
+      } else {
+        updatedOp[section] = currentSection.map((item, itemIdx) => {
+          if (itemIdx !== itemIndex) return item;
+          return { ...item, [field]: finalValue };
+        });
+      }
 
       // SYNC: If it's a linked container field, update other sections at same index
       if (isLinkedContainerField) {
@@ -1157,7 +1240,7 @@ const TableSection = ({
 };
 
 const StatusSection = ({ title, data, section, onUpdate }) => {
-  if (!data || !data.length) return null;
+  const displayData = data && data.length > 0 ? data : [getDefaultItem(section)];
 
   const fields = [
     {
@@ -1213,7 +1296,7 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
       <div style={styles.sectionHeader}>
         <h3 style={styles.sectionTitle}>{title}</h3>
       </div>
-      {data.map((item, idx) => (
+      {displayData.map((item, idx) => (
         <div key={idx} style={styles.statusGrid}>
           {fields.map((f) => {
             if (f.field === "leoUpload") {
@@ -1788,84 +1871,6 @@ const EmptyState = ({ onAdd }) => (
 
 // --- Data Helpers ---
 
-const getDefaultItem = (section) => {
-  const defaults = {
-    transporterDetails: {
-      transporterName: "",
-      vehicleNo: "",
-      containerNo: "",
-      driverName: "",
-      contactNo: "",
-      noOfPackages: 0,
-      netWeightKgs: 0,
-      grossWeightKgs: 0,
-      images: [],
-      cartingDate: "",
-      gateInDate: "",
-    },
-    containerDetails: {
-      containerNo: "",
-      containerSize: "",
-      containerType: "",
-      cargoType: "Gen",
-      maxGrossWeightKgs: 0,
-      tareWeightKgs: 0,
-      maxPayloadKgs: 0,
-      images: [],
-    },
-    bookingDetails: {
-      shippingLineName: "",
-      forwarderName: "",
-      bookingNo: "",
-      bookingDate: "",
-      vesselName: "",
-      voyageNo: "",
-      portOfLoading: "",
-      handoverLocation: "",
-      validity: "",
-      images: [],
-      containerPlacementDate: "",
-    },
-    weighmentDetails: {
-      weighBridgeName: "",
-      regNo: "",
-      address: "",
-      dateTime: "",
-      vehicleNo: "",
-      containerNo: "",
-      size: "",
-      grossWeight: 0,
-      tareWeight: 0,
-      netWeight: 0,
-    },
-    statusDetails: {
-      rms: "RMS", // Default
-      goodsRegistrationDate: "",
-      leoDate: "",
-      leoUpload: [],
-      containerPlacementDate: "",
-      stuffingDate: "",
-      stuffingSheetUpload: [],
-      stuffingPhotoUpload: [],
-      eGatePassCopyDate: "",
-      eGatePassUpload: [],
-      handoverForwardingNoteDate: "",
-      handoverImageUpload: [],
-      handoverConcorTharSanganaRailRoadDate: "",
-      billingDocsSentDt: "",
-      billingDocsSentUpload: [],
-      billingDocsStatus: "Pending",
-      railRoad: "",
-      concorPrivate: "",
-      privateTransporterName: "",
-      hoToConsoleDate: "",
-      hoToConsoleDate2: "",
-      hoToConsoleName: "",
-      railOutReachedDate: "",
-    },
-  };
-  return defaults[section] || {};
-};
 
 // --- Styles ---
 
