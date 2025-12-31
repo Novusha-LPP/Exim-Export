@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { format, parseISO, isValid } from "date-fns";
 import {
   Dialog,
   DialogTitle,
@@ -11,6 +10,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddExJobs from "./AddExJobs";
+import { formatDate } from "../../../utils/dateUtils";
 
 // --- Clean Enterprise Styles ---
 const s = {
@@ -207,17 +207,6 @@ const s = {
   },
 };
 
-// Helper
-const safeDate = (val) => {
-  if (!val) return "";
-  try {
-    const date = parseISO(val);
-    return isValid(date) ? format(date, "dd/MM/yyyy") : "";
-  } catch (e) {
-    return "";
-  }
-};
-
 // Branch Options
 const branchOptions = [
   { code: "", label: "All Branches" },
@@ -349,8 +338,8 @@ const ExportJobsTable = () => {
         setJobs(response.data.data.jobs || []);
         setTotalRecords(
           response.data.data.total ||
-          response.data.data.pagination?.totalCount ||
-          0
+            response.data.data.pagination?.totalCount ||
+            0
         );
       }
     } catch (err) {
@@ -520,8 +509,8 @@ const ExportJobsTable = () => {
           setJobs(refreshResponse.data.data.jobs || []);
           setTotalRecords(
             refreshResponse.data.data.total ||
-            refreshResponse.data.data.pagination?.totalCount ||
-            0
+              refreshResponse.data.data.pagination?.totalCount ||
+              0
           );
         }
 
@@ -540,22 +529,22 @@ const ExportJobsTable = () => {
         if (error.response.status === 409) {
           setCopyError(
             error.response.data.message ||
-            "This job number already exists. Please use a different sequence."
+              "This job number already exists. Please use a different sequence."
           );
         } else if (error.response.status === 404) {
           setCopyError(
             error.response.data.message ||
-            "Source job not found. Please refresh and try again."
+              "Source job not found. Please refresh and try again."
           );
         } else if (error.response.status === 400) {
           setCopyError(
             error.response.data.message ||
-            "Invalid input. Please check your entries."
+              "Invalid input. Please check your entries."
           );
         } else {
           setCopyError(
             error.response.data.message ||
-            "Error copying job. Please try again."
+              "Error copying job. Please try again."
           );
         }
       } else {
@@ -964,7 +953,7 @@ const ExportJobsTable = () => {
                             fontWeight: "normal",
                           }}
                         >
-                          {safeDate(job.job_date)}
+                          {formatDate(job.job_date)}
                         </div>
                         <div
                           style={{
@@ -1014,7 +1003,7 @@ const ExportJobsTable = () => {
                           {job.invoices?.[0]?.invoiceNumber || "-"}
                         </div>
                         <div style={{ color: "#4b5563", fontSize: "11px" }}>
-                          {safeDate(job.invoices?.[0]?.invoiceDate)}
+                          {formatDate(job.invoices?.[0]?.invoiceDate)}
                         </div>
                         <div
                           style={{
@@ -1040,7 +1029,7 @@ const ExportJobsTable = () => {
                           {job.sb_no || "-"}
                         </div>
                         <div style={{ color: "#4b5563", fontSize: "11px" }}>
-                          {safeDate(job.sb_date)}
+                          {formatDate(job.sb_date)}
                         </div>
                       </td>
 
@@ -1088,7 +1077,7 @@ const ExportJobsTable = () => {
                                     {containerNo}
                                     {/* Add line break after every 2 containers, except the last one */}
                                     {index < array.length - 1 &&
-                                      (index + 1) % 2 === 0 ? (
+                                    (index + 1) % 2 === 0 ? (
                                       <br />
                                     ) : index < array.length - 1 ? (
                                       ", "
@@ -1110,7 +1099,7 @@ const ExportJobsTable = () => {
                         </div>
                         <div style={{ color: "#6b7280", fontSize: "11px" }}>
                           <span style={{ fontSize: "10px" }}>Place:</span>{" "}
-                          {safeDate(
+                          {formatDate(
                             job.operations?.[0]?.statusDetails?.[0]
                               ?.containerPlacementDate
                           )}
@@ -1123,7 +1112,7 @@ const ExportJobsTable = () => {
                           <span style={{ color: "#6b7280", fontSize: "10px" }}>
                             Fwd:
                           </span>{" "}
-                          {safeDate(
+                          {formatDate(
                             job.operations?.[0]?.statusDetails?.[0]
                               ?.handoverForwardingNoteDate
                           )}
@@ -1132,7 +1121,7 @@ const ExportJobsTable = () => {
                           <span style={{ color: "#6b7280", fontSize: "10px" }}>
                             Rail:
                           </span>{" "}
-                          {safeDate(
+                          {formatDate(
                             job.operations?.[0]?.statusDetails?.[0]
                               ?.railOutReachedDate
                           )}
@@ -1332,9 +1321,9 @@ const ExportJobsTable = () => {
                 style={
                   copyLoading
                     ? {
-                      ...modalStyles.submitButton,
-                      ...modalStyles.disabledButton,
-                    }
+                        ...modalStyles.submitButton,
+                        ...modalStyles.disabledButton,
+                      }
                     : modalStyles.submitButton
                 }
                 onClick={handleCopySubmit}

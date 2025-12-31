@@ -1,55 +1,103 @@
 import React, { useState } from "react";
+import {
+  formatDate,
+  handleDateInput,
+  parseDate,
+  toISOString,
+} from "../../utils/dateUtils";
 
 const DateInput = ({
   value,
   onChange,
   name,
-  placeholder = "DD-MM-YYYY",
+  placeholder = "dd/MM/yyyy",
   style,
   ...props
 }) => {
   const [pickerMode, setPickerMode] = useState(false);
 
-  // Convert DD-MM-YYYY to YYYY-MM-DD for native date picker
+  // Convert dd/MM/yyyy to yyyy-MM-dd for native date picker
   const toPickerFormat = (val) => {
-    if (!val || typeof val !== "string") return "";
-    const parts = val.split("-");
-    if (parts.length === 3 && parts[0].length === 2 && parts[2].length === 4) {
-      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    if (!val) return "";
+    try {
+      const parsedDate = parseDate(val);
+      if (parsedDate) {
+        const year = parsedDate.getFullYear();
+        const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
+        const day = String(parsedDate.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+    } catch (e) {
+      console.warn("Date conversion error:", e);
     }
-    return val;
+    return "";
   };
 
-  // Convert YYYY-MM-DD to DD-MM-YYYY from native date picker
+  // Convert yyyy-MM-dd to dd/MM/yyyy from native date picker
   const fromPickerFormat = (val) => {
-    if (!val || typeof val !== "string") return "";
-    const parts = val.split("-");
-    if (parts.length === 3 && parts[0].length === 4 && parts[2].length === 2) {
-      return `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-    return val;
+    if (!val) return "";
+    return formatDate(val);
   };
 
   const handleChange = (e) => {
     const originalVal = e.target.value;
 
     if (pickerMode) {
-      // Brower sends YYYY-MM-DD for type="date"
-      const ddmmVal = fromPickerFormat(originalVal);
+      // Browser sends yyyy-MM-dd for type="date"
+      const formattedDate = fromPickerFormat(originalVal);
       const syntheticEvent = {
         target: {
           name,
-          value: ddmmVal,
+          value: formattedDate,
         },
-        persist: () => { },
+        persist: () => {},
       };
       onChange(syntheticEvent);
     } else {
-      // Regular text mode
-      if (/^[0-9-]*$/.test(originalVal) && originalVal.length <= 10) {
+      // Regular text mode - allow user to type freely
+      // Only restrict to valid date characters
+      if (/^[0-9\/\-\.]*$/.test(originalVal) && originalVal.length <= 10) {
         onChange(e);
       }
     }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData("text");
+
+    // Use the global date utility to format the pasted date
+    const formattedDate = handleDateInput(pastedText);
+
+    const syntheticEvent = {
+      target: {
+        name,
+        value: formattedDate,
+      },
+      persist: () => {},
+    };
+
+    onChange(syntheticEvent);
+  };
+
+  const handleBlurInput = (e) => {
+    setPickerMode(false);
+    e.target.type = "text";
+
+    // Auto-format the date when user blurs the field
+    if (e.target.value) {
+      const formattedDate = handleDateInput(e.target.value);
+      const syntheticEvent = {
+        target: {
+          name,
+          value: formattedDate,
+        },
+        persist: () => {},
+      };
+      onChange(syntheticEvent);
+    }
+
+    if (props.onBlur) props.onBlur(e);
   };
 
   const handleDoubleClick = (e) => {
@@ -66,14 +114,8 @@ const DateInput = ({
     }
   };
 
-  const handleBlur = (e) => {
-    setPickerMode(false);
-    e.target.type = "text";
-    if (props.onBlur) props.onBlur(e);
-  };
-
-  // If in picker mode, input value must be YYYY-MM-DD
-  const displayValue = pickerMode ? toPickerFormat(value) : (value || "");
+  // If in picker mode, input value must be yyyy-MM-dd
+  const displayValue = pickerMode ? toPickerFormat(value) : value || "";
 
   return (
     <input
@@ -81,12 +123,13 @@ const DateInput = ({
       name={name}
       value={displayValue}
       onChange={handleChange}
+      onPaste={handlePaste}
       onDoubleClick={handleDoubleClick}
-      onBlur={handleBlur}
+      onBlur={handleBlurInput}
       placeholder={placeholder}
       maxLength={10}
       autoComplete="off"
-      title="Double click to open date picker"
+      title="Type or paste a date (any format), or double-click to open date picker"
       style={{
         ...style,
         cursor: "pointer",
