@@ -677,7 +677,9 @@ const OperationsTab = ({ formik }) => {
 
       // Update the targeted field (handling virtual rows if the array is empty)
       if (currentSection.length === 0 && itemIndex === 0) {
-        updatedOp[section] = [{ ...getDefaultItem(section), [field]: finalValue }];
+        updatedOp[section] = [
+          { ...getDefaultItem(section), [field]: finalValue },
+        ];
       } else {
         updatedOp[section] = currentSection.map((item, itemIdx) => {
           if (itemIdx !== itemIndex) return item;
@@ -845,7 +847,7 @@ const OperationsTab = ({ formik }) => {
             { field: "contactNo", label: "Contact No.", width: "120px" },
             {
               field: "noOfPackages",
-              label: "Pkgs",
+              label: "Packages",
               type: "number",
               width: "80px",
             },
@@ -869,7 +871,7 @@ const OperationsTab = ({ formik }) => {
             },
             {
               field: "gateInDate",
-              label: "Gate In Date",
+              label: "Gate-In Date",
               type: "date",
               width: "130px",
             },
@@ -895,8 +897,8 @@ const OperationsTab = ({ formik }) => {
           activeOpIndex={activeOpIndex}
           columns={[
             { field: "containerNo", label: "Container No.", width: "140px" },
-            { field: "containerSize", label: "Size", width: "80px" },
-            { field: "containerType", label: "Type", width: "100px" },
+            { field: "containerSize", label: "Size (FT)", width: "80px" },
+            { field: "containerType", label: "Container Type", width: "100px" },
             {
               field: "cargoType",
               label: "Cargo Type",
@@ -909,19 +911,19 @@ const OperationsTab = ({ formik }) => {
             },
             {
               field: "maxGrossWeightKgs",
-              label: "Max Gross",
+              label: "Max Gross (KG)",
               type: "number",
               width: "100px",
             },
             {
               field: "tareWeightKgs",
-              label: "Tare Wt",
+              label: "Tare Wt (KG)",
               type: "number",
               width: "100px",
             },
             {
               field: "maxPayloadKgs",
-              label: "Max Payload",
+              label: "Max Payload (KG)",
               type: "number",
               width: "100px",
             },
@@ -952,7 +954,7 @@ const OperationsTab = ({ formik }) => {
               width: "200px",
               type: "shipping-dropdown",
             },
-            { field: "forwarderName", label: "Forwarder Name", width: "150px" },
+            { field: "forwarderName", label: "Forwarder", width: "150px" },
             { field: "bookingNo", label: "Booking No.", width: "140px" },
             {
               field: "bookingDate",
@@ -960,23 +962,23 @@ const OperationsTab = ({ formik }) => {
               type: "date",
               width: "130px",
             },
-            { field: "vesselName", label: "Vessel Name", width: "150px" },
-            { field: "voyageNo", label: "Voyage No.", width: "100px" },
+            { field: "vesselName", label: "Vessel", width: "150px" },
+            { field: "voyageNo", label: "Voyage", width: "100px" },
             { field: "portOfLoading", label: "POL", width: "120px" },
             {
               field: "handoverLocation",
-              label: "Empty container pickup and drop loc",
+              label: "Empty Pickup / Drop Location",
               width: "140px",
             },
             {
               field: "validity",
-              label: "Validity",
+              label: "Booking Valid Till",
               type: "date",
               width: "130px",
             },
             {
               field: "containerPlacementDate",
-              label: "Container Placement Date",
+              label: "Container Placement Date (CPD)",
               type: "date",
               width: "130px",
             },
@@ -1001,31 +1003,40 @@ const OperationsTab = ({ formik }) => {
           formik={formik}
           activeOpIndex={activeOpIndex}
           columns={[
-            { field: "weighBridgeName", label: "Weigh Bridge", width: "180px" },
+            {
+              field: "weighBridgeName",
+              label: "Weighbridge Name",
+              width: "180px",
+            },
             { field: "regNo", label: "Reg No.", width: "120px" },
-            { field: "address", label: "Address", width: "180px" },
+            { field: "address", label: "Weighbridge Address", width: "180px" },
             {
               field: "dateTime",
-              label: "Date/Time",
+              label: "Weighment Date & Time",
               type: "datetime-local",
               width: "160px",
             },
             { field: "vehicleNo", label: "Vehicle No.", width: "120px" },
             { field: "containerNo", label: "Container No.", width: "140px" },
-            { field: "size", label: "Size", width: "80px" },
+            { field: "size", label: "Cntr Size", width: "80px" },
             {
               field: "grossWeight",
-              label: "Gross",
+              label: "Gross Wt (KG)",
               type: "number",
               width: "90px",
             },
             {
               field: "tareWeight",
-              label: "Tare",
+              label: "Tare Wt (KG)",
               type: "number",
               width: "90px",
             },
-            { field: "netWeight", label: "Net", type: "number", width: "90px" },
+            {
+              field: "netWeight",
+              label: "Net Wt (KG)",
+              type: "number",
+              width: "90px",
+            },
           ]}
           section="weighmentDetails"
           onUpdate={updateField}
@@ -1261,7 +1272,8 @@ const TableSection = ({
 };
 
 const StatusSection = ({ title, data, section, onUpdate }) => {
-  const displayData = data && data.length > 0 ? data : [getDefaultItem(section)];
+  const displayData =
+    data && data.length > 0 ? data : [getDefaultItem(section)];
 
   const fields = [
     {
@@ -1272,36 +1284,44 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
     },
     {
       field: "goodsRegistrationDate",
-      label: "Goods Reg. Date/ Report Date",
+      label: "Goods Registration / Report Date",
       type: "date",
     },
     { field: "leoDate", label: "LEO Date", type: "date" },
-    { field: "leoUpload", label: "LEO Uploaded", type: "upload" },
+    { field: "leoUpload", label: "LEO Document", type: "upload" },
     { field: "stuffingDate", label: "Stuffing Date", type: "date" },
     { field: "stuffingSheetUpload", label: "Stuffing Sheet", type: "upload" },
     { field: "stuffingPhotoUpload", label: "Stuffing Photo", type: "upload" },
     { field: "eGatePassCopyDate", label: "E-Gate Pass Date", type: "date" },
-    { field: "eGatePassUpload", label: "E-Gate Pass", type: "upload" },
+    { field: "eGatePassUpload", label: "E-Gate Pass Copy", type: "upload" },
     {
       field: "handoverForwardingNoteDate",
-      label: "H/O Fwd Note Date",
+      label: "Handover Note Date",
       type: "date",
     },
-    { field: "handoverImageUpload", label: "H/O Image", type: "upload" },
+    {
+      field: "handoverImageUpload",
+      label: "Handover Note Copy",
+      type: "upload",
+    },
     {
       field: "handoverConcorTharSanganaRailRoadDate",
-      label: "Rail/Road Date",
+      label: "Dispatch Date (Rail/Road)",
       type: "date",
     },
     {
       field: "railOutReachedDate",
-      label: "Rail Out Reached Date",
+      label: "Rail-Out Date",
       type: "date",
     },
-    { field: "billingDocsSentDt", label: "Billing Docs Sent", type: "date" },
+    {
+      field: "billingDocsSentDt",
+      label: "Billing Docs Sent Date",
+      type: "date",
+    },
     {
       field: "billingDocsSentUpload",
-      label: "Billing Docs Sent Image",
+      label: "Billing Docs Copy",
       type: "upload",
     },
     {
@@ -1350,7 +1370,7 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                   </div>
                   <div style={styles.statusField}>
                     <label style={styles.statusLabel}>
-                      Container Placement Date
+                      Container Placement Date (CPD)
                     </label>
                     <input
                       type="text"
@@ -1430,7 +1450,9 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                       }}
                     >
                       <div style={styles.statusField}>
-                        <label style={styles.statusLabel}>HO Date</label>
+                        <label style={styles.statusLabel}>
+                          File Handover Date
+                        </label>
                         <input
                           type="text"
                           value={formatDateForInput(item.hoToConsoleDate || "")}
@@ -1457,7 +1479,7 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                       </div>
 
                       <div style={styles.statusField}>
-                        <label style={styles.statusLabel}>HO Name</label>
+                        <label style={styles.statusLabel}>Forwarder Name</label>
                         <HoNameAutocomplete
                           value={item.hoToConsoleName || ""}
                           onChange={(val) =>
@@ -1597,9 +1619,7 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                   {item.railRoad === "road" &&
                     item.concorPrivate === "private" && (
                       <div style={styles.statusField}>
-                        <label style={styles.statusLabel}>
-                          Transporter Name
-                        </label>
+                        <label style={styles.statusLabel}>Transporter</label>
                         <input
                           type="text"
                           value={item.privateTransporterName || ""}
@@ -1899,7 +1919,6 @@ const EmptyState = ({ onAdd }) => (
 );
 
 // --- Data Helpers ---
-
 
 // --- Styles ---
 

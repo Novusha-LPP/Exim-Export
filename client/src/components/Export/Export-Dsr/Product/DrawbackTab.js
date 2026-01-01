@@ -126,11 +126,11 @@ const DrawbackTab = ({
         const pQty = product.quantity || 0;
         const pUnit = product.qtyUnit || "";
 
-      const currentFob = parseFloat(item.fobValue) || 0;
-      const rate = parseFloat(item.dbkRate) || 0;
+        const currentFob = parseFloat(item.fobValue) || 0;
+        const rate = parseFloat(item.dbkRate) || 0;
 
-      let newItem = { ...item };
-      let changedLocal = false;
+        let newItem = { ...item };
+        let changedLocal = false;
 
         if (
           String(item.quantity) !== String(pQty) ||
@@ -150,12 +150,12 @@ const DrawbackTab = ({
           changedLocal = true;
         }
 
-      if (changedLocal) {
-        hasChanges = true;
-        return newItem;
-      }
-      return item;
-    });
+        if (changedLocal) {
+          hasChanges = true;
+          return newItem;
+        }
+        return item;
+      });
 
       if (hasChanges) {
         const updatedInvoices = [...invoices];
@@ -350,51 +350,15 @@ const DrawbackTab = ({
         currentDbk[rowIndex].unit = product.qtyUnit || "";
         currentDbk[rowIndex].dbkCapunit = product.qtyUnit || "";
 
-        // Pull FOB Value and convert to INR
-        const invoiceCurrency = activeInvoice?.currency;
-        let productAmount = parseFloat(product.amount || 0);
-        let fobInr = 0;
+        // Pull FOB Value (INR) using standardized calculation
+        const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+        const fobInr = calculateProductFobINR(
+          product,
+          activeInvoice,
+          invoiceExchangeRate
+        );
 
-        if (
-          productAmount > 0 &&
-          invoiceCurrency &&
-          invoiceCurrency.toUpperCase() !== "INR"
-        ) {
-          try {
-            const dateStr = getJobDateFormatted(formik.values.job_date);
-            const res = await fetch(
-              `${
-                import.meta.env.VITE_API_STRING
-              }/currency-rates/by-date/${dateStr}`
-            );
-            const json = await res.json();
-
-            if (json?.success && json?.data?.exchange_rates) {
-              const currencyRate = json.data.exchange_rates.find(
-                (r) =>
-                  r.currency_code?.toUpperCase() ===
-                  invoiceCurrency.toUpperCase()
-              );
-              if (
-                currencyRate &&
-                typeof currencyRate.export_rate === "number"
-              ) {
-                fobInr = productAmount * currencyRate.export_rate;
-              } else {
-                fobInr = productAmount;
-              }
-            } else {
-              fobInr = productAmount;
-            }
-          } catch (error) {
-            console.error("Error fetching currency rates:", error);
-            fobInr = productAmount;
-          }
-        } else {
-          fobInr = productAmount;
-        }
-
-        currentDbk[rowIndex].fobValue = fobInr;
+        currentDbk[rowIndex].fobValue = fobInr.toFixed(2);
 
         // Calculate Amount
         currentDbk[rowIndex].dbkAmount = (
@@ -472,7 +436,7 @@ const DrawbackTab = ({
               <th style={styles.th}>DBK Sr. No</th>
               <th style={styles.th}>FOB Value (INR)</th>
               <th style={styles.th}>Quantity</th>
-              <th style={styles.th}>Unit</th> {/* New Unit Column */}
+              <th style={styles.th}>Unit</th>
               <th style={styles.th}>DBK Under</th>
               <th style={{ ...styles.th, minWidth: 200 }}>Description</th>
               <th style={styles.th}>Rate (%)</th>

@@ -16,7 +16,7 @@ const DateInput = ({
 }) => {
   const [pickerMode, setPickerMode] = useState(false);
 
-  // Convert dd/MM/yyyy to yyyy-MM-dd for native date picker
+  // Convert dd-MM-yyyy to yyyy-MM-dd for native date picker
   const toPickerFormat = (val) => {
     if (!val) return "";
     try {
@@ -33,7 +33,7 @@ const DateInput = ({
     return "";
   };
 
-  // Convert yyyy-MM-dd to dd/MM/yyyy from native date picker
+  // Convert yyyy-MM-dd to dd-MM-yyyy from native date picker
   const fromPickerFormat = (val) => {
     if (!val) return "";
     return formatDate(val);

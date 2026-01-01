@@ -1171,6 +1171,8 @@ function ProductRow({
     }
   }, [
     product.rodtepInfo?.claim,
+    product.rodtepInfo?.ratePercent,
+    product.rodtepInfo?.capValuePerUnits,
     product.quantity,
     product.amount,
     invoice.freightInsuranceCharges,
@@ -2083,11 +2085,17 @@ const ProductGeneralTab = ({
       // If PMV calculation method changes to percentage, recalculate PMV
       if (field === "pmvInfo.calculationMethod" && value === "percentage") {
         const prod = products[index];
-        const amount = parseFloat(prod.amount) || 0;
         const quantity = parseFloat(prod.quantity) || 1;
         const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
+        const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
 
-        const amountInINR = convertToINR(amount, invoice?.currency);
+        // Use prorated FOB in INR
+        const amountInINR = calculateProductFobINR(
+          prod,
+          invoice,
+          invoiceExchangeRate
+        );
+
         const totalPMV_INR = (amountInINR * percentage) / 100;
         const pmvPerUnit_INR = totalPMV_INR / quantity;
 
@@ -2187,12 +2195,19 @@ const ProductGeneralTab = ({
       if (method !== "percentage") return prod;
 
       const pmvCurrency = prod.pmvInfo?.currency || "INR";
-      const amount = parseFloat(prod.amount) || 0;
       const quantity = parseFloat(prod.quantity) || 1;
+      const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
 
-      const amountInINR = convertToINR(amount, invoice.currency);
+      // Use prorated FOB in INR for PMV calculation instead of raw amount
+      const amountInINR = calculateProductFobINR(
+        prod,
+        invoice,
+        invoiceExchangeRate
+      );
+
       const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
       let totalPMV_INR = (amountInINR * percentage) / 100;
+      console.log("totalPMV_INR", totalPMV_INR);
       let pmvPerUnit_INR = totalPMV_INR / quantity;
 
       let totalPMV = totalPMV_INR;
@@ -2232,7 +2247,15 @@ const ProductGeneralTab = ({
         formik.setFieldValue("invoices", updatedInvoices);
       }
     }
-  }, [invoice?.currency, convertToINR, getExportRate, selectedInvoiceIndex]);
+  }, [
+    invoice.currency,
+    getExportRate,
+    selectedInvoiceIndex,
+    formik.values.exchange_rate,
+    invoice.freightInsuranceCharges,
+    invoice.productValue,
+    invoice.invoiceValue,
+  ]);
 
   return (
     <div style={styles.page}>
