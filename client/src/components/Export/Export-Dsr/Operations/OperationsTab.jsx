@@ -1230,7 +1230,7 @@ const TableSection = ({
                         style={styles.cellInput}
                         placeholder={
                           col.placeholder ||
-                          (col.type === "date" ? "dd-MM-yyyy" : "")
+                          (col.type === "date" ? "dd-mm-yyyy" : "")
                         }
                       />
                     )}
@@ -1375,7 +1375,7 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                         e.target.type = "text";
                       }}
                       style={styles.statusInput}
-                      placeholder="dd-MM-yyyy"
+                      placeholder="dd-mm-yyyy"
                     />
                   </div>
                 </React.Fragment>
@@ -1452,7 +1452,7 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                             e.target.type = "text";
                           }}
                           style={styles.statusInput}
-                          placeholder="dd-MM-yyyy"
+                          placeholder="dd-mm-yyyy"
                         />
                       </div>
 
@@ -1649,9 +1649,9 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                       style={styles.statusInput}
                       placeholder={
                         f.type === "date"
-                          ? "dd-MM-yyyy"
+                          ? "dd-mm-yyyy"
                           : f.type === "datetime-local"
-                          ? "dd-MM-yyyy HH:mm"
+                          ? "dd-mm-yyyy hh:mm"
                           : ""
                       }
                     />
@@ -1765,9 +1765,9 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                     style={styles.statusInput}
                     placeholder={
                       f.type === "date"
-                        ? "dd-MM-yyyy"
+                        ? "dd-mm-yyyy"
                         : f.type === "datetime-local"
-                        ? "dd-MM-yyyy HH:mm"
+                        ? "dd-mm-yyyy HH:mm"
                         : ""
                     }
                   />

@@ -85,8 +85,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
         return (
           existing || {
             milestoneName: name,
-            planDate: "dd-MM-yyyy HH:mm",
-            actualDate: "dd-MM-yyyy",
+            planDate: "dd-mm-yyyy HH:mm",
+            actualDate: "dd-mm-yyyy",
             isCompleted: false,
             isMandatory: mandatoryNames.has(name),
             completedBy: "",
@@ -104,8 +104,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
       // But only if we haven't received data yet (checked by _id above)
       const defaults = BASE_MILESTONES.map((name) => ({
         milestoneName: name,
-        planDate: "dd-MM-yyyy HH:mm",
-        actualDate: "dd-MM-yyyy",
+        planDate: "dd-mm-yyyy HH:mm",
+        actualDate: "dd-mm-yyyy",
         isCompleted: false,
         isMandatory: mandatoryNames.has(name),
         completedBy: "",
@@ -131,8 +131,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
       ...current,
       {
         milestoneName: name,
-        planDate: "dd-MM-yyyy HH:mm",
-        actualDate: "dd-MM-yyyy",
+        planDate: "dd-mm-yyyy hh:mm",
+        actualDate: "dd-mm-yyyy",
         isCompleted: false,
         isMandatory: false,
         completedBy: "",
@@ -369,7 +369,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                             borderRadius: 3,
                             height: 24,
                             background:
-                              m.actualDate && m.actualDate !== "dd-MM-yyyy"
+                              m.actualDate && m.actualDate !== "dd-mm-yyyy"
                                 ? "#ecfdf3"
                                 : "#ffffff",
                           }}
@@ -378,7 +378,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                           onChange={(e) => {
                             const v = e.target.value;
                             if (!v) {
-                              handleMilestoneChange(realIndex, { actualDate: "dd-MM-yyyy" });
+                              handleMilestoneChange(realIndex, { actualDate: "dd-mm-yyyy" });
                               return;
                             }
                             handleMilestoneChange(realIndex, { actualDate: v });
@@ -397,7 +397,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                             const updates = { isCompleted: isChecked };
 
                             if (isChecked) {
-                              if (!m.actualDate || m.actualDate === "dd-MM-yyyy") {
+                              if (!m.actualDate || m.actualDate === "dd-mm-yyyy") {
                                 const d = new Date();
                                 const day = String(d.getDate()).padStart(
                                   2,
@@ -426,7 +426,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                                 }
                               }
                             } else {
-                              updates.actualDate = "dd-MM-yyyy";
+                              updates.actualDate = "dd-mm-yyyy";
                             }
 
                             handleMilestoneChange(realIndex, updates);

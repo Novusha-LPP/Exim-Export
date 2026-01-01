@@ -205,7 +205,7 @@ const CurrencyRateDialog = ({ open, onClose }) => {
                 label="Select Date"
                 value={selectedDate}
                 onChange={handleDateChange}
-                format="dd-MM-yyyy"
+                format="dd-mm-yyyy"
                 slotProps={{
                   textField: {
                     size: 'small',
