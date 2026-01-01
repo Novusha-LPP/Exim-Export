@@ -7,7 +7,7 @@ const areDetailsSchema = new Schema(
   {
     serialNumber: { type: Number },
     areNumber: { type: String, trim: true },
-    areDate: { type: String, trim: true }, // Changed to String for DD-MM-YYYY
+    areDate: { type: String, trim: true }, // Changed to String for dd-mm-yyyy
     commissionerate: { type: String, trim: true },
     division: { type: String, trim: true },
     range: { type: String, trim: true },

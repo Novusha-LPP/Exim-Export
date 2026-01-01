@@ -98,25 +98,25 @@ const CurrencyRateDialog = ({ open, onClose }) => {
   );
 
   const handleManualScrape = async () => {
-  try {
-    setError('');
-    setLoading(true);
+    try {
+      setError('');
+      setLoading(true);
 
-    await axios.post(
-      `${import.meta.env.VITE_API_STRING}/currency-rates/scrape`
-    );
+      await axios.post(
+        `${import.meta.env.VITE_API_STRING}/currency-rates/scrape`
+      );
 
-    // After scrape completes, re-fetch for the selected date
-    await handleDateChange(selectedDate);
-  } catch (err) {
-    console.error('Error scraping currency rates:', err);
-    setError(
-      err.response?.data?.message ||
-      'Failed to manually refresh currency rates'
-    );
-    setLoading(false); // handleDateChange won't run if scrape fails
-  }
-};
+      // After scrape completes, re-fetch for the selected date
+      await handleDateChange(selectedDate);
+    } catch (err) {
+      console.error('Error scraping currency rates:', err);
+      setError(
+        err.response?.data?.message ||
+        'Failed to manually refresh currency rates'
+      );
+      setLoading(false); // handleDateChange won't run if scrape fails
+    }
+  };
 
 
   return (
@@ -205,7 +205,7 @@ const CurrencyRateDialog = ({ open, onClose }) => {
                 label="Select Date"
                 value={selectedDate}
                 onChange={handleDateChange}
-                format="dd/MM/yyyy"
+                format="dd-MM-yyyy"
                 slotProps={{
                   textField: {
                     size: 'small',
@@ -422,47 +422,47 @@ const CurrencyRateDialog = ({ open, onClose }) => {
       </DialogContent>
 
       {/* Footer */}
-{/* Footer */}
-<Box
-  sx={{
-    px: 3,
-    py: 1.5,
-    bgcolor: '#fafafa',
-    borderTop: '1px solid #e0e0e0',
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: 1
-  }}
->
-  <Button
-    onClick={handleManualScrape}
-    variant="contained"
-    size="small"
-    color="primary"
-    disabled={loading}
-    sx={{
-      textTransform: 'none',
-      fontWeight: 600,
-      px: 2
-    }}
-  >
-    {loading ? 'Refreshing…' : 'Refresh Rates'}
-  </Button>
+      {/* Footer */}
+      <Box
+        sx={{
+          px: 3,
+          py: 1.5,
+          bgcolor: '#fafafa',
+          borderTop: '1px solid #e0e0e0',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: 1
+        }}
+      >
+        <Button
+          onClick={handleManualScrape}
+          variant="contained"
+          size="small"
+          color="primary"
+          disabled={loading}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 600,
+            px: 2
+          }}
+        >
+          {loading ? 'Refreshing…' : 'Refresh Rates'}
+        </Button>
 
-  <Button
-    onClick={onClose}
-    variant="outlined"
-    size="small"
-    color="primary"
-    sx={{
-      textTransform: 'none',
-      fontWeight: 600,
-      px: 3
-    }}
-  >
-    Close
-  </Button>
-</Box>
+        <Button
+          onClick={onClose}
+          variant="outlined"
+          size="small"
+          color="primary"
+          sx={{
+            textTransform: 'none',
+            fontWeight: 600,
+            px: 3
+          }}
+        >
+          Close
+        </Button>
+      </Box>
 
     </Dialog>
   );

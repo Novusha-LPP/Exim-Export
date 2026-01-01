@@ -38,7 +38,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const parseDate = (dateStr) => {
   if (!dateStr) return new Date(0);
-  // Handle DD-MM-YYYY or DD/MM/YYYY
+  // Handle dd-mm-yyyy or DD/MM/YYYY
   const parts = dateStr.split(/[-/]/);
   if (parts.length === 3) {
     const d = parseInt(parts[0], 10);

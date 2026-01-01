@@ -31,6 +31,25 @@ const formatDateForInput = (dateVal, type = "date") => {
     if (type === "datetime-local") {
       const hours = String(d.getHours()).padStart(2, "0");
       const minutes = String(d.getMinutes()).padStart(2, "0");
+      return `${day}-${month}-${year} ${hours}:${minutes}`;
+    }
+    return `${day}-${month}-${year}`;
+  } catch (e) {
+    return dateVal;
+  }
+};
+
+const formatDateForPicker = (dateVal, type = "date") => {
+  if (!dateVal) return "";
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return dateVal;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    if (type === "datetime-local") {
+      const hours = String(d.getHours()).padStart(2, "0");
+      const minutes = String(d.getMinutes()).padStart(2, "0");
       return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
     return `${year}-${month}-${day}`;
@@ -1151,6 +1170,8 @@ const TableSection = ({
                             col.type === "date" ||
                             col.type === "datetime-local"
                           ) {
+                            const pickerVal = formatDateForPicker(item[col.field], col.type);
+                            if (pickerVal) e.target.value = pickerVal;
                             e.target.type = col.type;
                             e.target.showPicker && e.target.showPicker();
                           }
@@ -1209,7 +1230,7 @@ const TableSection = ({
                         style={styles.cellInput}
                         placeholder={
                           col.placeholder ||
-                          (col.type === "date" ? "DD-MM-YYYY" : "")
+                          (col.type === "date" ? "dd-MM-yyyy" : "")
                         }
                       />
                     )}
@@ -1345,6 +1366,8 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                         )
                       }
                       onDoubleClick={(e) => {
+                        const pickerVal = formatDateForPicker(item.containerPlacementDate, "date");
+                        if (pickerVal) e.target.value = pickerVal;
                         e.target.type = "date";
                         e.target.showPicker && e.target.showPicker();
                       }}
@@ -1352,7 +1375,7 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                         e.target.type = "text";
                       }}
                       style={styles.statusInput}
-                      placeholder="DD-MM-YYYY"
+                      placeholder="dd-MM-yyyy"
                     />
                   </div>
                 </React.Fragment>
@@ -1420,6 +1443,8 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                             )
                           }
                           onDoubleClick={(e) => {
+                            const pickerVal = formatDateForPicker(item.hoToConsoleDate, "date");
+                            if (pickerVal) e.target.value = pickerVal;
                             e.target.type = "date";
                             e.target.showPicker && e.target.showPicker();
                           }}
@@ -1427,7 +1452,7 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                             e.target.type = "text";
                           }}
                           style={styles.statusInput}
-                          placeholder="DD-MM-YYYY"
+                          placeholder="dd-MM-yyyy"
                         />
                       </div>
 
@@ -1610,6 +1635,8 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                       }
                       onDoubleClick={(e) => {
                         if (f.type === "date" || f.type === "datetime-local") {
+                          const pickerVal = formatDateForPicker(item[f.field], f.type);
+                          if (pickerVal) e.target.value = pickerVal;
                           e.target.type = f.type;
                           e.target.showPicker && e.target.showPicker();
                         }
@@ -1622,9 +1649,9 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                       style={styles.statusInput}
                       placeholder={
                         f.type === "date"
-                          ? "DD-MM-YYYY"
+                          ? "dd-MM-yyyy"
                           : f.type === "datetime-local"
-                          ? "YYYY-MM-DDTHH:MM"
+                          ? "dd-MM-yyyy HH:mm"
                           : ""
                       }
                     />
@@ -1724,6 +1751,8 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                     }
                     onDoubleClick={(e) => {
                       if (f.type === "date" || f.type === "datetime-local") {
+                        const pickerVal = formatDateForPicker(item[f.field], f.type);
+                        if (pickerVal) e.target.value = pickerVal;
                         e.target.type = f.type;
                         e.target.showPicker && e.target.showPicker();
                       }
@@ -1736,9 +1765,9 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                     style={styles.statusInput}
                     placeholder={
                       f.type === "date"
-                        ? "DD-MM-YYYY"
+                        ? "dd-MM-yyyy"
                         : f.type === "datetime-local"
-                        ? "YYYY-MM-DDTHH:MM"
+                        ? "dd-MM-yyyy HH:mm"
                         : ""
                     }
                   />

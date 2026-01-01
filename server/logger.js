@@ -33,7 +33,7 @@ const customFormat = format.printf(({ level, message, stack, timestamp }) => {
 // Define base format
 const baseFormat = format.combine(
   format.timestamp({
-    format: "DD-MM-YYYY HH:mm:ss",
+    format: "dd-mm-yyyy HH:mm:ss",
   }),
   format.errors({ stack: true }),
   customFormat

@@ -1,6 +1,7 @@
 // ESanchitTab.jsx
 import React, { useState } from "react";
 import ESanchitEditDialog from "./ESanchitEditDialog";
+import { formatDate } from "../../../../utils/dateUtils";
 
 // Enterprise styles
 const styles = {
@@ -176,7 +177,7 @@ const ESanchitTab = ({ formik }) => {
                   <td style={styles.td}>{doc.icegateFilename}</td>
                   <td style={styles.td}>
                     {doc.dateOfIssue
-                      ? new Date(doc.dateOfIssue).toLocaleDateString()
+                      ? formatDate(doc.dateOfIssue)
                       : ""}
                   </td>
                   <td style={styles.td}>
