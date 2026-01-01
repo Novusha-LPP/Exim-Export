@@ -317,7 +317,7 @@ router.post(
       delete sourceData.sb_status;
 
       // Reset job-specific fields for new job
-      sourceData.status = "pending";
+      sourceData.status = "Pending";
       sourceData.sb_no = "";
       sourceData.sb_date = "";
       sourceData.sb_submitted_date = "";

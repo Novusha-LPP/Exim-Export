@@ -3,8 +3,6 @@ import mongoose from 'mongoose';
 const AirPortSchema = new mongoose.Schema({
   portCode: {
     type: String,
-    required: true,
-    unique: true,
     uppercase: true,
     trim: true,
     maxlength: 10,
@@ -17,7 +15,6 @@ const AirPortSchema = new mongoose.Schema({
   },
   portName: {
     type: String,
-    required: true,
     trim: true,
     maxlength: 200
   },

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { format, parseISO, isValid } from "date-fns";
 import {
   Dialog,
   DialogTitle,
@@ -11,6 +10,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddExJobs from "./AddExJobs";
+import { formatDate } from "../../../utils/dateUtils";
 
 // --- Clean Enterprise Styles ---
 const s = {
@@ -207,17 +207,6 @@ const s = {
   },
 };
 
-// Helper
-const safeDate = (val) => {
-  if (!val) return "";
-  try {
-    const date = parseISO(val);
-    return isValid(date) ? format(date, "dd/MM/yyyy") : "";
-  } catch (e) {
-    return "";
-  }
-};
-
 // Branch Options
 const branchOptions = [
   { code: "", label: "All Branches" },
@@ -238,7 +227,7 @@ const ExportJobsTable = () => {
   const navigate = useNavigate();
 
   // State
-  const [activeTab, setActiveTab] = useState("pending");
+  const [activeTab, setActiveTab] = useState("Pending");
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -733,14 +722,14 @@ const ExportJobsTable = () => {
           <div style={s.tabContainer}>
             <button
               style={
-                activeTab === "pending" ? { ...s.tab, ...s.activeTab } : s.tab
+                activeTab === "Pending" ? { ...s.tab, ...s.activeTab } : s.tab
               }
-              onClick={() => setActiveTab("pending")}
+              onClick={() => setActiveTab("Pending")}
             >
               Pending{" "}
               <span
                 style={
-                  activeTab === "pending"
+                  activeTab === "Pending"
                     ? { ...s.badge, ...s.activeBadge }
                     : s.badge
                 }
@@ -748,14 +737,14 @@ const ExportJobsTable = () => {
             </button>
             <button
               style={
-                activeTab === "completed" ? { ...s.tab, ...s.activeTab } : s.tab
+                activeTab === "Completed" ? { ...s.tab, ...s.activeTab } : s.tab
               }
-              onClick={() => setActiveTab("completed")}
+              onClick={() => setActiveTab("Completed")}
             >
               Completed{" "}
               <span
                 style={
-                  activeTab === "completed"
+                  activeTab === "Completed"
                     ? { ...s.badge, ...s.activeBadge }
                     : s.badge
                 }
@@ -763,14 +752,14 @@ const ExportJobsTable = () => {
             </button>
             <button
               style={
-                activeTab === "cancelled" ? { ...s.tab, ...s.activeTab } : s.tab
+                activeTab === "Cancelled" ? { ...s.tab, ...s.activeTab } : s.tab
               }
-              onClick={() => setActiveTab("cancelled")}
+              onClick={() => setActiveTab("Cancelled")}
             >
               Cancelled{" "}
               <span
                 style={
-                  activeTab === "cancelled"
+                  activeTab === "Cancelled"
                     ? { ...s.badge, ...s.activeBadge }
                     : s.badge
                 }
@@ -964,7 +953,7 @@ const ExportJobsTable = () => {
                             fontWeight: "normal",
                           }}
                         >
-                          {safeDate(job.job_date)}
+                          {formatDate(job.job_date)}
                         </div>
                         <div
                           style={{
@@ -1014,7 +1003,7 @@ const ExportJobsTable = () => {
                           {job.invoices?.[0]?.invoiceNumber || "-"}
                         </div>
                         <div style={{ color: "#4b5563", fontSize: "11px" }}>
-                          {safeDate(job.invoices?.[0]?.invoiceDate)}
+                          {formatDate(job.invoices?.[0]?.invoiceDate)}
                         </div>
                         <div
                           style={{
@@ -1040,7 +1029,7 @@ const ExportJobsTable = () => {
                           {job.sb_no || "-"}
                         </div>
                         <div style={{ color: "#4b5563", fontSize: "11px" }}>
-                          {safeDate(job.sb_date)}
+                          {formatDate(job.sb_date)}
                         </div>
                       </td>
 
@@ -1110,7 +1099,7 @@ const ExportJobsTable = () => {
                         </div>
                         <div style={{ color: "#6b7280", fontSize: "11px" }}>
                           <span style={{ fontSize: "10px" }}>Place:</span>{" "}
-                          {safeDate(
+                          {formatDate(
                             job.operations?.[0]?.statusDetails?.[0]
                               ?.containerPlacementDate
                           )}
@@ -1123,7 +1112,7 @@ const ExportJobsTable = () => {
                           <span style={{ color: "#6b7280", fontSize: "10px" }}>
                             Fwd:
                           </span>{" "}
-                          {safeDate(
+                          {formatDate(
                             job.operations?.[0]?.statusDetails?.[0]
                               ?.handoverForwardingNoteDate
                           )}
@@ -1132,7 +1121,7 @@ const ExportJobsTable = () => {
                           <span style={{ color: "#6b7280", fontSize: "10px" }}>
                             Rail:
                           </span>{" "}
-                          {safeDate(
+                          {formatDate(
                             job.operations?.[0]?.statusDetails?.[0]
                               ?.railOutReachedDate
                           )}

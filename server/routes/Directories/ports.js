@@ -67,7 +67,7 @@ router.post('/', async (req, res) => {
   try {
     const port = new Port(req.body);
     const savedPort = await port.save();
-    
+
     res.status(201).json({
       success: true,
       message: 'Port created successfully',
@@ -75,8 +75,8 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(400).json({ 
-        message: 'Port Code already exists' 
+      return res.status(400).json({
+        message: 'Port Code already exists'
       });
     }
     res.status(400).json({ message: error.message });
@@ -103,8 +103,8 @@ router.put('/:id', async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(400).json({ 
-        message: 'Port Code already exists' 
+      return res.status(400).json({
+        message: 'Port Code already exists'
       });
     }
     res.status(400).json({ message: error.message });

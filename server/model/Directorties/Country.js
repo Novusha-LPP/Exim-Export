@@ -3,9 +3,6 @@ import mongoose from 'mongoose';
 const CountrySchema = new mongoose.Schema({
   countryCode: {
     type: String,
-    required: true,
-    unique: true,
-    uppercase: true,
     trim: true,
     maxlength: 3,
     validate: {
@@ -17,8 +14,6 @@ const CountrySchema = new mongoose.Schema({
   },
   countryName: {
     type: String,
-    required: true,
-    unique: true,
     trim: true,
     maxlength: 100
   },

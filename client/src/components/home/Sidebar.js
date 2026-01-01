@@ -95,20 +95,6 @@ function Sidebar() {
       )}
 
 
-
-      <Tooltip title="Release Notes" enterDelay={0} placement="right">
-        <ListItemButton
-          sx={{ textAlign: "left" }}
-          className="appbar-links"
-          aria-label="list-item"
-          onClick={() => navigate("/release-notes")}
-        >
-          <IconButton sx={{ color: "#ffffff9f" }} aria-label="icon">
-            <DescriptionIcon />
-          </IconButton>
-        </ListItemButton>
-      </Tooltip>
-
       <Tooltip title="Feedback" enterDelay={0} placement="right">
         <ListItemButton
           sx={{ textAlign: "left" }}

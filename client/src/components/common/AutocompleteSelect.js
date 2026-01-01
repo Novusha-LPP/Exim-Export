@@ -1,21 +1,23 @@
 import React, { useState, useEffect, useRef } from "react";
 
-const SearchableDropdown = ({
+const AutocompleteSelect = ({
     options,
     value,
     onChange,
     placeholder = "Select Option",
     style = {},
-    disabled = false,
+    name,
 }) => {
     const [open, setOpen] = useState(false);
-    const [query, setQuery] = useState(value || "");
+    const [query, setQuery] = useState("");
     const [active, setActive] = useState(-1);
     const wrapperRef = useRef(null);
 
+    // Sync query with selected value only when not open or not typing
     useEffect(() => {
-        setQuery(value || "");
-    }, [value]);
+        const selected = options.find((opt) => opt.value === value);
+        if (!open) setQuery(selected ? selected.label : "");
+    }, [value, options, open]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -27,15 +29,13 @@ const SearchableDropdown = ({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const filteredOptions = options.filter((opt) => {
-        const optVal = typeof opt === "string" ? opt : opt.code || opt.name || "";
-        return optVal.toLowerCase().includes(query.toLowerCase());
-    });
+    const filtered = options.filter((opt) =>
+        (opt.label || "").toUpperCase().includes(query.toUpperCase())
+    );
 
     const handleSelect = (opt) => {
-        const optVal = typeof opt === "string" ? opt : opt.code || opt.name || "";
-        setQuery(optVal);
-        onChange({ target: { value: optVal } });
+        onChange({ target: { name, value: opt.value } });
+        setQuery(opt.label);
         setOpen(false);
     };
 
@@ -56,13 +56,13 @@ const SearchableDropdown = ({
                         border: "1px solid #cbd5e1",
                         borderRadius: 3,
                         fontSize: 12,
-                        height: 25,
-                        background: disabled ? "#f1f5f9" : "#ffffff",
-                        outline: "none",
+                        background: "#fff",
                         boxSizing: "border-box",
-                        color: "#1e293b",
-                        fontWeight: 600,
+                        height: 25,
                         textTransform: "uppercase",
+                        fontWeight: 600,
+                        outline: "none",
+                        color: "#1e293b",
                     }}
                     placeholder={placeholder}
                     value={query}
@@ -70,16 +70,20 @@ const SearchableDropdown = ({
                         setQuery(e.target.value.toUpperCase());
                         setOpen(true);
                     }}
-                    onFocus={() => !disabled && setOpen(true)}
-                    disabled={disabled}
+                    onFocus={() => {
+                        setOpen(true);
+                        setQuery(""); // Clear on focus to show all options
+                        setActive(-1);
+                    }}
                     onKeyDown={(e) => {
                         if (e.key === "ArrowDown") {
                             setOpen(true);
-                            setActive((prev) => Math.min(prev + 1, filteredOptions.length - 1));
+                            setActive((prev) => Math.min(prev + 1, filtered.length - 1));
                         } else if (e.key === "ArrowUp") {
                             setActive((prev) => Math.max(prev - 1, 0));
                         } else if (e.key === "Enter" && active >= 0) {
-                            handleSelect(filteredOptions[active]);
+                            e.preventDefault();
+                            handleSelect(filtered[active]);
                         } else if (e.key === "Escape") {
                             setOpen(false);
                         }
@@ -99,48 +103,45 @@ const SearchableDropdown = ({
                     ▼
                 </span>
             </div>
-            {open && filteredOptions.length > 0 && (
+            {open && filtered.length > 0 && (
                 <div
                     style={{
                         position: "absolute",
                         top: "calc(100% + 2px)",
                         left: 0,
                         right: 0,
-                        zIndex: 1000,
+                        maxHeight: 180,
+                        overflowY: "auto",
                         background: "#fff",
                         border: "1px solid #cbd5e1",
                         borderRadius: 4,
-                        maxHeight: 180,
-                        overflowY: "auto",
                         boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+                        zIndex: 9999,
                     }}
                 >
-                    {filteredOptions.map((opt, i) => {
-                        const optVal = typeof opt === "string" ? opt : opt.code || opt.name || "";
-                        return (
-                            <div
-                                key={i}
-                                style={{
-                                    padding: "6px 10px",
-                                    cursor: "pointer",
-                                    background: i === active ? "#f1f5f9" : "#ffffff",
-                                    borderBottom: "1px solid #f1f5f9",
-                                    fontSize: 11,
-                                    fontWeight: i === active ? 700 : 600,
-                                    color: i === active ? "#1e3a8a" : "#334155",
-                                    textTransform: "uppercase",
-                                }}
-                                onMouseDown={() => handleSelect(opt)}
-                                onMouseEnter={() => setActive(i)}
-                            >
-                                {optVal}
-                            </div>
-                        );
-                    })}
+                    {filtered.map((opt, i) => (
+                        <div
+                            key={opt.value + i}
+                            style={{
+                                padding: "6px 10px",
+                                cursor: "pointer",
+                                fontSize: 11,
+                                fontWeight: i === active ? 700 : 600,
+                                background: i === active ? "#f1f5f9" : value === opt.value ? "#f8fafc" : "#fff",
+                                color: i === active ? "#1e3a8a" : "#334155",
+                                borderBottom: "1px solid #f1f5f9",
+                                textTransform: "uppercase",
+                            }}
+                            onMouseDown={() => handleSelect(opt)}
+                            onMouseEnter={() => setActive(i)}
+                        >
+                            {opt.label}
+                        </div>
+                    ))}
                 </div>
             )}
         </div>
     );
 };
 
-export default SearchableDropdown;
+export default AutocompleteSelect;

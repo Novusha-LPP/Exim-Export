@@ -5,7 +5,6 @@ const feedbackSchema = new mongoose.Schema({
   type: {
     type: String,
     enum: ['bug', 'suggestion', 'improvement', 'feature-request', 'other'],
-    required: true
   },
   module: {
     type: String,
@@ -25,12 +24,10 @@ const feedbackSchema = new mongoose.Schema({
   },
   title: {
     type: String,
-    required: true,
     trim: true
   },
   description: {
     type: String,
-    required: true
   },
   priority: {
     type: String,
@@ -47,7 +44,6 @@ const feedbackSchema = new mongoose.Schema({
   }],
   submittedBy: {
     type: String, // Store username directly
-    required: true
   },
   submittedByEmail: {
     type: String

@@ -106,24 +106,24 @@ function useCompactCountryDropdown(fieldName, formik) {
   const [query, setQuery] = useState(formik.values[fieldName] || "");
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
+  const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef();
-  // To prevent blur focus-loss bug
   const keepOpenOnInput = useRef(false);
 
-  // Keep query in sync with formik
   useEffect(() => {
     setQuery(formik.values[fieldName] || "");
   }, [formik.values[fieldName]]);
 
   useEffect(() => {
-    if (!open || !query?.trim()) {
+    if (!open) {
       setOpts([]);
       return;
     }
+    const searchVal = isTyping ? (query || "").trim() : "";
     const t = setTimeout(async () => {
       try {
         const res = await fetch(
-          `${apiBase}/countries?search=${encodeURIComponent(query.trim())}`
+          `${apiBase}/countries?search=${encodeURIComponent(searchVal)}`
         );
         const data = await res.json();
         setOpts(data?.data || []);
@@ -132,17 +132,18 @@ function useCompactCountryDropdown(fieldName, formik) {
       }
     }, 220);
     return () => clearTimeout(t);
-  }, [open, query]);
+  }, [open, query, isTyping]);
 
-  // Outside click closes only if NOT in input/list
   useEffect(() => {
     function close(e) {
       if (
         !keepOpenOnInput.current &&
         wrapperRef.current &&
         !wrapperRef.current.contains(e.target)
-      )
+      ) {
         setOpen(false);
+        setIsTyping(false);
+      }
     }
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
@@ -161,6 +162,7 @@ function useCompactCountryDropdown(fieldName, formik) {
       setQuery(val);
       formik.setFieldValue(fieldName, val);
       setOpen(true);
+      setIsTyping(true);
     },
     select: (i) => {
       if (opts[i]) {
@@ -171,6 +173,7 @@ function useCompactCountryDropdown(fieldName, formik) {
         );
         setOpen(false);
         setActive(-1);
+        setIsTyping(false);
       }
     },
     onInputFocus: () => {
@@ -246,6 +249,7 @@ function useGatewayPortDropdown(fieldName, formik) {
   const [query, setQuery] = useState(formik.values[fieldName] || "");
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
+  const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef();
   const apiBase = import.meta.env.VITE_API_STRING;
   const keepOpen = useRef(false);
@@ -260,7 +264,7 @@ function useGatewayPortDropdown(fieldName, formik) {
       return;
     }
 
-    const searchVal = (query || "").trim();
+    const searchVal = isTyping ? (query || "").trim() : "";
     const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
       searchVal
     )}`;
@@ -273,8 +277,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -282,7 +286,7 @@ function useGatewayPortDropdown(fieldName, formik) {
     }, 220);
 
     return () => clearTimeout(t);
-  }, [open, query, apiBase]);
+  }, [open, query, apiBase, isTyping]);
 
   useEffect(() => {
     function close(e) {
@@ -292,6 +296,7 @@ function useGatewayPortDropdown(fieldName, formik) {
         !wrapperRef.current.contains(e.target)
       ) {
         setOpen(false);
+        setIsTyping(false);
       }
     }
     document.addEventListener("mousedown", close);
@@ -302,7 +307,6 @@ function useGatewayPortDropdown(fieldName, formik) {
     const item = opts[i];
     if (!item) return;
 
-    // save as UNECE_CODE + " - " + NAME (or just name if you prefer)
     const value = `${(item.unece_code || "").toUpperCase()} - ${(
       item.name || ""
     ).toUpperCase()}`.trim();
@@ -310,6 +314,7 @@ function useGatewayPortDropdown(fieldName, formik) {
     formik.setFieldValue(fieldName, value);
     setOpen(false);
     setActive(-1);
+    setIsTyping(false);
   }
 
   return {
@@ -326,6 +331,7 @@ function useGatewayPortDropdown(fieldName, formik) {
       setQuery(v);
       formik.setFieldValue(fieldName, v);
       setOpen(true);
+      setIsTyping(true);
     },
     select,
     onInputFocus: () => {
@@ -596,6 +602,7 @@ function usePortDropdown(fieldName, formik) {
   const [query, setQuery] = useState(formik.values[fieldName] || "");
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
+  const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef();
   const keepOpen = useRef(false);
 
@@ -603,14 +610,15 @@ function usePortDropdown(fieldName, formik) {
     setQuery(formik.values[fieldName] || "");
   }, [formik.values[fieldName]]);
   useEffect(() => {
-    if (!open || !query.trim()) {
+    if (!open) {
       setOpts([]);
       return;
     }
+    const searchVal = isTyping ? (query || "").trim() : "";
     const t = setTimeout(async () => {
       try {
         const res = await fetch(
-          `${apiBase}/ports?search=${encodeURIComponent(query.trim())}`
+          `${apiBase}/ports?search=${encodeURIComponent(searchVal)}`
         );
         const data = await res.json();
         setOpts(data?.data || []);
@@ -619,7 +627,7 @@ function usePortDropdown(fieldName, formik) {
       }
     }, 220);
     return () => clearTimeout(t);
-  }, [open, query]);
+  }, [open, query, isTyping]);
 
   useEffect(() => {
     function close(e) {
@@ -627,8 +635,10 @@ function usePortDropdown(fieldName, formik) {
         !keepOpen.current &&
         wrapperRef.current &&
         !wrapperRef.current.contains(e.target)
-      )
+      ) {
         setOpen(false);
+        setIsTyping(false);
+      }
     }
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
@@ -637,13 +647,17 @@ function usePortDropdown(fieldName, formik) {
   function select(i) {
     if (opts[i]) {
       const sel = opts[i];
-      // Compose: portCode + '(' + portDetails + ')'
+      const pName = sel.portName || sel.name || "";
+      const pCode = sel.portCode || sel.unece_code || "";
+      const pDetails = sel.portDetails || sel.port_type || "";
+      // Compose: portName + '(' + portDetails + ')'
       const value =
-        toUpper(sel.portName) + "(" + toUpper(sel.portDetails) + ")";
+        toUpper(pName) + (pDetails ? "(" + toUpper(pDetails) + ")" : "");
       setQuery(value);
       formik.setFieldValue(fieldName, value);
       setOpen(false);
       setActive(-1);
+      setIsTyping(false);
     }
   }
 
@@ -660,6 +674,7 @@ function usePortDropdown(fieldName, formik) {
       setQuery(val);
       formik.setFieldValue(fieldName, val);
       setOpen(true);
+      setIsTyping(true);
     },
     select,
     onInputFocus: () => {
@@ -706,24 +721,29 @@ function PortField({ label, fieldName, placeholder, formik }) {
         <span style={styles.acIcon}>▼</span>
         {d.open && d.opts.length > 0 && (
           <div style={styles.acMenu}>
-            {d.opts.map((opt, i) => (
-              <div
-                key={opt._id || opt.portCode || opt.portName || i}
-                style={styles.acItem(d.active === i)}
-                onMouseDown={() => d.select(i)}
-                onMouseEnter={() => d.setActive(i)}
-              >
-                {toUpper(opt.portCode)} ({toUpper(opt.portDetails)}) -{" "}
-                {toUpper(opt.portName)}
-                {opt.country && (
-                  <span
-                    style={{ marginLeft: 8, color: "#668", fontWeight: 400 }}
-                  >
-                    [{toUpper(opt.country)}]
-                  </span>
-                )}
-              </div>
-            ))}
+            {d.opts.map((opt, i) => {
+              const pCode = opt.portCode || opt.unece_code || "";
+              const pName = opt.portName || opt.name || "";
+              const pDetails = opt.portDetails || opt.port_type || "";
+              return (
+                <div
+                  key={opt._id || pCode || pName || i}
+                  style={styles.acItem(d.active === i)}
+                  onMouseDown={() => d.select(i)}
+                  onMouseEnter={() => d.setActive(i)}
+                >
+                  {toUpper(pCode)} {pDetails && `(${toUpper(pDetails)})`} -{" "}
+                  {toUpper(pName)}
+                  {opt.country && (
+                    <span
+                      style={{ marginLeft: 8, color: "#668", fontWeight: 400 }}
+                    >
+                      [{toUpper(opt.country)}]
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -830,6 +850,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
   const [query, setQuery] = useState(formik.values[fieldName] || "");
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
+  const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef();
   const keepOpen = useRef(false);
   const apiBase = import.meta.env.VITE_API_STRING;
@@ -845,16 +866,16 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
       setOpts([]);
       return;
     }
-    const searchVal = (query || "").trim();
+    const searchVal = isTyping ? (query || "").trim() : "";
     const isAir = transportMode === "AIR";
 
     const url = isAir
       ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-          searchVal
-        )}`
+        searchVal
+      )}`
       : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-          searchVal
-        )}`;
+        searchVal
+      )}`;
 
     const t = setTimeout(async () => {
       try {
@@ -864,8 +885,8 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -873,7 +894,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
     }, 220);
 
     return () => clearTimeout(t);
-  }, [open, query, transportMode]);
+  }, [open, query, transportMode, isTyping]);
 
   useEffect(() => {
     function close(e) {
@@ -883,6 +904,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
         !wrapperRef.current.contains(e.target)
       ) {
         setOpen(false);
+        setIsTyping(false);
       }
     }
     document.addEventListener("mousedown", close);
@@ -907,6 +929,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
     formik.setFieldValue(fieldName, value);
     setOpen(false);
     setActive(-1);
+    setIsTyping(false);
   }
 
   return {
@@ -923,6 +946,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
       setQuery(v);
       formik.setFieldValue(fieldName, v);
       setOpen(true);
+      setIsTyping(true);
     },
     select,
     onInputFocus: () => {
@@ -1079,7 +1103,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   placeholder="ENTER LINE"
                 />
 
-               {!isAir && <div style={styles.field}>
+                {!isAir && <div style={styles.field}>
                   <div style={styles.label}>VOYAGE NO</div>
                   <input
                     style={styles.input}
@@ -1092,7 +1116,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                     }
                   />
                 </div>}
-                 <div style={styles.field}>
+                <div style={styles.field}>
                   <div style={styles.label}>EGM NO</div>
                   <input
                     style={styles.input}
@@ -1249,7 +1273,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                     </div>
                   </>
                 )}
-                
+
                 <div style={styles.field}>
                   <div style={styles.label}>EGM DATE</div>
                   <DateInput

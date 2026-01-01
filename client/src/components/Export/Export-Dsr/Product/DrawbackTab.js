@@ -1,114 +1,5 @@
 import React, { useRef, useCallback, useState, useEffect } from "react";
-
-// Shared styles object (same as used in ProductEPCGTab/ProductDEECTab)
-const styles = {
-  page: {
-    fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
-    fontSize: 13,
-    color: "#1e2e38",
-    padding: 16,
-  },
-  sectionTitle: {
-    fontWeight: 700,
-    color: "#16408f",
-    fontSize: 12,
-    marginBottom: 10,
-    letterSpacing: 1.3,
-    textTransform: "uppercase",
-  },
-  tableContainer: {
-    background: "#fff",
-    border: "1.5px solid #e2e8f0",
-    borderRadius: 7,
-    marginBottom: 18,
-    maxHeight: 400,
-    overflow: "auto",
-  },
-  table: { width: "100%", borderCollapse: "collapse", minWidth: 1200 }, // Added minWidth for horizontal scroll
-  th: {
-    background: "#16408f",
-    color: "white",
-    fontWeight: 700,
-    fontSize: 11,
-    padding: "8px 12px",
-    textAlign: "left",
-    position: "sticky",
-    top: 0,
-    zIndex: 10,
-    whiteSpace: "nowrap",
-  },
-  td: {
-    padding: "8px 12px",
-    borderBottom: "1px solid #e2e8f0",
-    verticalAlign: "top",
-  },
-  input: {
-    width: "100%",
-    textTransform: "uppercase",
-    fontWeight: 600,
-    fontSize: 12,
-    padding: "4px 8px",
-    border: "1px solid #bdc7d1",
-    borderRadius: 3,
-    height: 28,
-    background: "#f7fafc",
-    outline: "none",
-    boxSizing: "border-box",
-  },
-  checkbox: { cursor: "pointer" },
-  select: {
-    width: "100%",
-    textTransform: "uppercase",
-    fontWeight: 600,
-    fontSize: 12,
-    padding: "4px 8px",
-    border: "1px solid #bdc7d1",
-    borderRadius: 3,
-    height: 28,
-    background: "#f7fafc",
-    outline: "none",
-    boxSizing: "border-box",
-    cursor: "pointer",
-  },
-  card: {
-    background: "#fff",
-    border: "1.5px solid #e2e8f0",
-    borderRadius: 7,
-    padding: 16,
-    marginBottom: 18,
-  },
-  cardTitle: {
-    fontWeight: 700,
-    color: "#16408f",
-    fontSize: 14,
-    marginBottom: 12,
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-  },
-  chip: {
-    background: "#e2e8f0",
-    color: "#1e2e38",
-    fontSize: 10,
-    fontWeight: 600,
-    padding: "2px 8px",
-    borderRadius: 12,
-    height: 20,
-  },
-  addBtn: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "8px 16px",
-    background: "#16408f",
-    color: "white",
-    border: "none",
-    borderRadius: 4,
-    cursor: "pointer",
-    fontWeight: 600,
-    fontSize: 12,
-  },
-};
+import { styles, toUpperVal } from "./commonStyles";
 
 // Default drawback detail object
 const getDefaultDrawback = (idx = 1) => ({
@@ -130,6 +21,22 @@ const getDefaultDrawback = (idx = 1) => ({
 function toUpper(val) {
   return (typeof val === "string" ? val : "").toUpperCase();
 }
+
+// Helper function to format job date for API call
+const getJobDateFormatted = (jobDate) => {
+  if (!jobDate) {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, "0");
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const yyyy = today.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  }
+  const parts = jobDate.split("-");
+  if (parts.length === 3 && parts[0].length === 4) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return jobDate;
+};
 
 const DBK_LIMIT = 20;
 
@@ -176,8 +83,8 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
       const list = Array.isArray(data?.data)
         ? data.data
         : Array.isArray(data)
-        ? data
-        : [];
+          ? data
+          : [];
 
       setDbkDialogOptions(list);
       if (data?.pagination) {
@@ -211,70 +118,109 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbkDialogQuery, dbkDialogOpen, fetchDbkCodes]);
 
-  // Sync Quantity/Unit from Products & FOB Value from FreightInsuranceCharges
+  // Sync Quantity/Unit from Products & FOB Value (convert product amount to INR)
   useEffect(() => {
-    const products = formik.values.products || [];
-    const currentDbk = formik.values.drawbackDetails || [];
-    const productAmount = formik.values.freightInsuranceCharges?.fobValue;
-    const fobAmount = parseFloat(productAmount?.amount || 0);
+    const syncFobValues = async () => {
+      const products = formik.values.products || [];
+      const currentDbk = formik.values.drawbackDetails || [];
+      const invoiceCurrency = formik.values.invoices?.[0]?.currency;
 
-    // We only sync if there is at least one product
-    if (products.length === 0) return;
+      // We only sync if there is at least one product
+      if (products.length === 0) return;
 
-    let hasChanges = false;
-    const updatedDbk = currentDbk.map((item, idx) => {
-      const product = products[idx];
-      if (!product) return item;
+      // Fetch currency rates once for all products
+      let currencyRate = null;
+      if (invoiceCurrency && invoiceCurrency.toUpperCase() !== "INR") {
+        try {
+          const dateStr = getJobDateFormatted(formik.values.job_date);
+          const res = await fetch(
+            `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`
+          );
+          const json = await res.json();
 
-      // Check fields to sync
-      const pQty = product.quantity || 0;
-      const pUnit = product.qtyUnit || "";
-
-      const currentFob = parseFloat(item.fobValue) || 0;
-      const rate = parseFloat(item.dbkRate) || 0;
-
-      let newItem = { ...item };
-      let changedLocal = false;
-
-      // Sync Quantity/Unit
-      if (
-        String(item.quantity) !== String(pQty) ||
-        String(item.unit) !== String(pUnit) ||
-        String(item.dbkCapunit) !== String(pUnit)
-      ) {
-        newItem.quantity = pQty;
-        newItem.unit = pUnit;
-        newItem.dbkCapunit = pUnit;
-        changedLocal = true;
+          if (json?.success && json?.data?.exchange_rates) {
+            currencyRate = json.data.exchange_rates.find(
+              (r) => r.currency_code?.toUpperCase() === invoiceCurrency.toUpperCase()
+            );
+          }
+        } catch (error) {
+          console.error("Error fetching currency rates:", error);
+        }
       }
 
-      // Sync FOB Value
-      if (currentFob !== fobAmount) {
-        newItem.fobValue = fobAmount;
-        // Recalculate amount
-        newItem.dbkAmount = ((rate * fobAmount) / 100).toFixed(2);
-        newItem.percentageOfFobValue = `${rate}% of FOB Value`;
-        changedLocal = true;
-      }
+      let hasChanges = false;
+      const updatedDbk = currentDbk.map((item, idx) => {
+        const product = products[idx];
+        if (!product) return item;
 
-      if (changedLocal) {
-        hasChanges = true;
-        return newItem;
-      }
-      return item;
-    });
+        // Check fields to sync
+        const pQty = product.quantity || 0;
+        const pUnit = product.qtyUnit || "";
 
-    if (hasChanges) {
-      formik.setFieldValue("drawbackDetails", updatedDbk);
-    }
+        // Get product amount and convert to INR
+        let productAmount = parseFloat(product.amount || 0);
+        let fobAmountInr = 0;
+
+        console.log(`Product ${idx} amount:`, productAmount);
+
+        // Convert to INR if needed
+        if (productAmount > 0 && invoiceCurrency?.toUpperCase() !== "INR" && currencyRate?.export_rate) {
+          fobAmountInr = productAmount * currencyRate.export_rate;
+        } else {
+          fobAmountInr = productAmount;
+        }
+
+        console.log(`Product ${idx} fobAmount in INR:`, fobAmountInr);
+
+        const currentFob = parseFloat(item.fobValue) || 0;
+        const rate = parseFloat(item.dbkRate) || 0;
+
+        let newItem = { ...item };
+        let changedLocal = false;
+
+        // Sync Quantity/Unit
+        if (
+          String(item.quantity) !== String(pQty) ||
+          String(item.unit) !== String(pUnit) ||
+          String(item.dbkCapunit) !== String(pUnit)
+        ) {
+          newItem.quantity = pQty;
+          newItem.unit = pUnit;
+          newItem.dbkCapunit = pUnit;
+          changedLocal = true;
+        }
+
+        // Sync FOB Value (in INR)
+        if (currentFob !== fobAmountInr) {
+          newItem.fobValue = fobAmountInr;
+          // Recalculate amount
+          newItem.dbkAmount = ((rate * fobAmountInr) / 100).toFixed(2);
+          newItem.percentageOfFobValue = `${rate}% of FOB Value`;
+          changedLocal = true;
+        }
+
+        if (changedLocal) {
+          hasChanges = true;
+          return newItem;
+        }
+        return item;
+      });
+
+      if (hasChanges) {
+        formik.setFieldValue("drawbackDetails", updatedDbk);
+      }
+    };
+
+    syncFobValues();
   }, [
     formik.values.products,
     formik.values.drawbackDetails,
-    formik.values.freightInsuranceCharges?.fobValue?.amount, // Watch for FOB changes
+    formik.values.invoices,
+    formik.values.job_date,
     formik.setFieldValue,
   ]);
 
-  const populateDbkRow = (idx, item) => {
+  const populateDbkRow = async (idx, item) => {
     const updated = [...(formik.values.drawbackDetails || [])];
     if (!updated[idx]) updated[idx] = getDefaultDrawback(idx + 1);
 
@@ -298,12 +244,40 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
       updated[idx].dbkCapunit = product.qtyUnit || "";
     }
 
-    // Pull FOB Value
-    const productAmount = formik.values.freightInsuranceCharges?.fobValue;
+    // Pull FOB Value and convert to INR
+    const productData = formik.values.products?.[idx];
+    const invoiceCurrency = formik.values.invoices?.[0]?.currency;
+    let productAmount = parseFloat(productData?.amount || 0);
     let fobInr = 0;
-    if (productAmount) {
-      fobInr = productAmount.amountINR || productAmount.amount || 0;
+
+    if (productAmount > 0 && invoiceCurrency && invoiceCurrency.toUpperCase() !== "INR") {
+      try {
+        const dateStr = getJobDateFormatted(formik.values.job_date);
+        const res = await fetch(
+          `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`
+        );
+        const json = await res.json();
+
+        if (json?.success && json?.data?.exchange_rates) {
+          const currencyRate = json.data.exchange_rates.find(
+            (r) => r.currency_code?.toUpperCase() === invoiceCurrency.toUpperCase()
+          );
+          if (currencyRate && typeof currencyRate.export_rate === "number") {
+            fobInr = productAmount * currencyRate.export_rate;
+          } else {
+            fobInr = productAmount;
+          }
+        } else {
+          fobInr = productAmount;
+        }
+      } catch (error) {
+        console.error("Error fetching currency rates:", error);
+        fobInr = productAmount;
+      }
+    } else {
+      fobInr = productAmount;
     }
+
     updated[idx].fobValue = fobInr;
 
     // Calculate Amount
@@ -337,8 +311,7 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
     if (!dbkSrNo) return;
     try {
       const res = await fetch(
-        `${
-          import.meta.env.VITE_API_STRING
+        `${import.meta.env.VITE_API_STRING
         }/getDrawback?tariff_item=${encodeURIComponent(dbkSrNo)}`
       );
       const data = await res.json();
@@ -371,14 +344,40 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
           updated[idx].dbkCapunit = product.qtyUnit || "";
         }
 
-        // Pull FOB Value (INR) from InvoiceFreightTab
-        // We use the Total FOB Value INR for now as per instructions, or we could leave it
-        // The user said: "take fob value amount from Invoice frieght tab"
-        const productAmount = formik.values.freightInsuranceCharges?.fobValue;
+        // Pull FOB Value and convert to INR
+        const productData = formik.values.products?.[idx];
+        const invoiceCurrency = formik.values.invoices?.[0]?.currency;
+        let productAmount = parseFloat(productData?.amount || 0);
         let fobInr = 0;
-        if (productAmount) {
-          fobInr = productAmount.amountINR || productAmount.amount || 0; // Prefer INR as per column header
+
+        if (productAmount > 0 && invoiceCurrency && invoiceCurrency.toUpperCase() !== "INR") {
+          try {
+            const dateStr = getJobDateFormatted(formik.values.job_date);
+            const res = await fetch(
+              `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`
+            );
+            const json = await res.json();
+
+            if (json?.success && json?.data?.exchange_rates) {
+              const currencyRate = json.data.exchange_rates.find(
+                (r) => r.currency_code?.toUpperCase() === invoiceCurrency.toUpperCase()
+              );
+              if (currencyRate && typeof currencyRate.export_rate === "number") {
+                fobInr = productAmount * currencyRate.export_rate;
+              } else {
+                fobInr = productAmount;
+              }
+            } else {
+              fobInr = productAmount;
+            }
+          } catch (error) {
+            console.error("Error fetching currency rates:", error);
+            fobInr = productAmount;
+          }
+        } else {
+          fobInr = productAmount;
         }
+
         updated[idx].fobValue = fobInr;
 
         // Calculate Amount

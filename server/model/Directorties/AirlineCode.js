@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 const AirlineCodeSchema = new mongoose.Schema({
   alphanumericCode: {
     type: String,
-    required: true,
     unique: true,
     uppercase: true,
     trim: true,
@@ -11,14 +10,12 @@ const AirlineCodeSchema = new mongoose.Schema({
   },
   numericCode: {
     type: String,
-    required: true,
     unique: true,
     trim: true,
     maxlength: 10
   },
   airlineName: {
     type: String,
-    required: true,
     trim: true,
     maxlength: 100
   },
