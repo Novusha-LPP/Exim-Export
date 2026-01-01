@@ -397,7 +397,11 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                             const updates = { isCompleted: isChecked };
 
                             if (isChecked) {
-                              if (!m.actualDate || m.actualDate === "dd-mm-yyyy") {
+                              // Smart detection: If empty or starts with "dd-", it's a placeholder
+                              const isPlaceholder = !m.actualDate ||
+                                String(m.actualDate).toLowerCase().startsWith("dd-");
+
+                              if (isPlaceholder) {
                                 const d = new Date();
                                 const day = String(d.getDate()).padStart(
                                   2,
