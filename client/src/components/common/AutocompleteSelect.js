@@ -60,7 +60,7 @@ const AutocompleteSelect = ({
                         boxSizing: "border-box",
                         height: 25,
                         textTransform: "uppercase",
-                        fontWeight: 600,
+                        fontWeight: 500,
                         outline: "none",
                         color: "#1e293b",
                     }}
