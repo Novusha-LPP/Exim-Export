@@ -130,9 +130,10 @@ const styles = {
 
 const HS_LIMIT = 20; // per-page records in dialog
 
-const ProductMainTab = ({ formik }) => {
-  const products = formik.values.products || [];
-  const invoices = formik.values.invoices?.[0];
+const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
+  const invoices = formik.values.invoices || [];
+  const activeInvoice = invoices[selectedInvoiceIndex] || {};
+  const products = activeInvoice.products || [];
   const inputRefs = useRef({});
 
   // HS dialog state
@@ -146,10 +147,17 @@ const ProductMainTab = ({ formik }) => {
   const [hsTotalPages, setHsTotalPages] = useState(1);
 
   const setProducts = useCallback(
-    (updated) => {
-      formik.setFieldValue("products", updated);
+    (updatedProducts) => {
+      const updatedInvoices = [...invoices];
+      if (updatedInvoices[selectedInvoiceIndex]) {
+        updatedInvoices[selectedInvoiceIndex] = {
+          ...updatedInvoices[selectedInvoiceIndex],
+          products: updatedProducts,
+        };
+        formik.setFieldValue("invoices", updatedInvoices);
+      }
     },
-    [formik]
+    [formik, invoices, selectedInvoiceIndex]
   );
 
   const recalcAmount = useCallback((prod) => {
@@ -225,11 +233,11 @@ const ProductMainTab = ({ formik }) => {
       per: "1",
       amount: "",
       qtyUnit: "",
-      priceUnit: "",
-      amountUnit: "",
+      priceUnit: activeInvoice?.currency || "",
+      amountUnit: activeInvoice?.currency || "",
     });
     setProducts(next);
-  }, [products, setProducts]);
+  }, [products, setProducts, activeInvoice]);
 
   const deleteProduct = useCallback(
     (idx) => {
@@ -273,8 +281,8 @@ const ProductMainTab = ({ formik }) => {
       const list = Array.isArray(data?.data)
         ? data.data
         : Array.isArray(data)
-          ? data
-          : [];
+        ? data
+        : [];
 
       setHsDialogOptions(list);
       if (data?.pagination) {
@@ -312,6 +320,38 @@ const ProductMainTab = ({ formik }) => {
 
   return (
     <div style={styles.page}>
+      {/* Invoice Selector at Top */}
+      <div style={{ ...styles.card, padding: "16px", marginBottom: "16px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div style={styles.cardTitle}>
+            Selected Invoice:{" "}
+            {activeInvoice.invoiceNumber || `#${selectedInvoiceIndex + 1}`}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {/* Invoice selection is handled by parent ProductTab */}
+          </div>
+        </div>
+        {activeInvoice?.currency && (
+          <div
+            style={{
+              fontSize: "11px",
+              color: "#6b7280",
+              marginTop: "4px",
+              fontStyle: "italic",
+            }}
+          >
+            Active Currency: <strong>{activeInvoice.currency}</strong> (Used for
+            unit and total price)
+          </div>
+        )}
+      </div>
+
       <div style={styles.card}>
         <div style={styles.cardTitle}>Product Items</div>
 
@@ -479,7 +519,7 @@ const ProductMainTab = ({ formik }) => {
                   <td style={styles.td}>
                     <select
                       style={styles.input}
-                      value={invoices?.currency || ""}
+                      value={activeInvoice?.currency || ""}
                       onChange={(e) =>
                         handleProductFieldChange(
                           idx,
@@ -487,7 +527,7 @@ const ProductMainTab = ({ formik }) => {
                           e.target.value
                         )
                       }
-                      disabled={invoices?.currency}
+                      disabled={activeInvoice?.currency}
                     >
                       <option value="">Currency</option>
                       {currencyList &&
@@ -549,7 +589,7 @@ const ProductMainTab = ({ formik }) => {
                   <td style={styles.td}>
                     <select
                       style={styles.input}
-                      value={invoices?.currency || ""}
+                      value={activeInvoice?.currency || ""}
                       onChange={(e) =>
                         handleProductFieldChange(
                           idx,
@@ -557,7 +597,7 @@ const ProductMainTab = ({ formik }) => {
                           e.target.value
                         )
                       }
-                      disabled={invoices?.currency}
+                      disabled={activeInvoice?.currency}
                     >
                       <option value="">Currency</option>
                       {currencyList &&

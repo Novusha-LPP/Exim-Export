@@ -320,9 +320,12 @@ function UnitDropdownField({
   );
 }
 
-const ProductEPCGTab = ({ formik, productIndex }) => {
+const ProductEPCGTab = ({ formik, selectedInvoiceIndex, productIndex }) => {
   const saveTimeoutRef = useRef(null);
-  const product = formik.values.products[productIndex];
+  const invoices = formik.values.invoices || [];
+  const activeInvoice = invoices[selectedInvoiceIndex] || {};
+  const products = activeInvoice.products || [];
+  const product = products[productIndex];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogIndex, setDialogIndex] = useState(null);
@@ -338,99 +341,162 @@ const ProductEPCGTab = ({ formik, productIndex }) => {
 
   // Top-level fields (isEpcgItem, etc.)
   const handleEpcgFieldChange = (field, value) => {
-    const updatedProducts = [...formik.values.products];
-    if (!updatedProducts[productIndex].epcgDetails) {
-      updatedProducts[productIndex].epcgDetails = {};
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      if (!updatedProducts[productIndex].epcgDetails) {
+        updatedProducts[productIndex].epcgDetails = {};
+      }
+      updatedProducts[productIndex].epcgDetails[field] = value;
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
     }
-    updatedProducts[productIndex].epcgDetails[field] = value;
-    formik.setFieldValue("products", updatedProducts);
   };
 
   // EPCG items (Part C)
   const handleEpcgItemChange = (itemIndex, field, value) => {
-    const updatedProducts = [...formik.values.products];
-    const epcgItems = [
-      ...(updatedProducts[productIndex].epcgDetails?.epcgItems || []),
-    ];
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const epcgItems = [
+        ...(updatedProducts[productIndex].epcgDetails?.epcgItems || []),
+      ];
 
-    if (!epcgItems[itemIndex]) {
-      epcgItems[itemIndex] = getDefaultEpcgItem(itemIndex + 1);
+      if (!epcgItems[itemIndex]) {
+        epcgItems[itemIndex] = getDefaultEpcgItem(itemIndex + 1);
+      }
+
+      epcgItems[itemIndex][field] = value;
+      updatedProducts[productIndex].epcgDetails.epcgItems = epcgItems;
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
     }
-
-    epcgItems[itemIndex][field] = value;
-    updatedProducts[productIndex].epcgDetails.epcgItems = epcgItems;
-    formik.setFieldValue("products", updatedProducts);
   };
 
   const addEpcgItem = () => {
-    const updatedProducts = [...formik.values.products];
-    const epcgItems = [
-      ...(updatedProducts[productIndex].epcgDetails?.epcgItems || []),
-    ];
-    epcgItems.push(getDefaultEpcgItem(epcgItems.length + 1));
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const epcgItems = [
+        ...(updatedProducts[productIndex].epcgDetails?.epcgItems || []),
+      ];
+      epcgItems.push(getDefaultEpcgItem(epcgItems.length + 1));
 
-    if (!updatedProducts[productIndex].epcgDetails) {
-      updatedProducts[productIndex].epcgDetails = { isEpcgItem: true };
+      if (!updatedProducts[productIndex].epcgDetails) {
+        updatedProducts[productIndex].epcgDetails = { isEpcgItem: true };
+      }
+      updatedProducts[productIndex].epcgDetails.epcgItems = epcgItems;
+
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
     }
-    updatedProducts[productIndex].epcgDetails.epcgItems = epcgItems;
-
-    formik.setFieldValue("products", updatedProducts);
   };
 
   const deleteEpcgItem = (itemIndex) => {
-    const updatedProducts = [...formik.values.products];
-    const epcgItems = [
-      ...(updatedProducts[productIndex].epcgDetails?.epcgItems || []),
-    ];
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const epcgItems = [
+        ...(updatedProducts[productIndex].epcgDetails?.epcgItems || []),
+      ];
 
-    if (epcgItems.length > 1) {
-      epcgItems.splice(itemIndex, 1);
-      epcgItems.forEach((item, idx) => {
-        item.serialNumber = idx + 1;
-      });
-      updatedProducts[productIndex].epcgDetails.epcgItems = epcgItems;
-      formik.setFieldValue("products", updatedProducts);
+      if (epcgItems.length > 1) {
+        epcgItems.splice(itemIndex, 1);
+        epcgItems.forEach((item, idx) => {
+          item.serialNumber = idx + 1;
+        });
+        updatedProducts[productIndex].epcgDetails.epcgItems = epcgItems;
+        updatedInvoices[selectedInvoiceIndex] = {
+          ...updatedInvoices[selectedInvoiceIndex],
+          products: updatedProducts,
+        };
+        formik.setFieldValue("invoices", updatedInvoices);
+      }
     }
   };
 
   // License registration items
   const handleRegItemChange = (itemIndex, field, value) => {
-    const updatedProducts = [...formik.values.products];
-    const regItems = [
-      ...(updatedProducts[productIndex].epcgDetails?.epcg_reg_obj || []),
-    ];
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const regItems = [
+        ...(updatedProducts[productIndex].epcgDetails?.epcg_reg_obj || []),
+      ];
 
-    if (regItems.length === 0) {
-      regItems.push(getDefaultRegItem());
+      if (regItems.length === 0) {
+        regItems.push(getDefaultRegItem());
+      }
+
+      regItems[itemIndex][field] = value;
+      updatedProducts[productIndex].epcgDetails.epcg_reg_obj = regItems;
+
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
     }
-
-    regItems[itemIndex][field] = value;
-    updatedProducts[productIndex].epcgDetails.epcg_reg_obj = regItems;
-
-    formik.setFieldValue("products", updatedProducts);
   };
 
   const addRegItem = () => {
-    const updatedProducts = [...formik.values.products];
-    const regItems = [
-      ...(updatedProducts[productIndex].epcgDetails?.epcg_reg_obj || []),
-    ];
-    regItems.push(getDefaultRegItem());
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const regItems = [
+        ...(updatedProducts[productIndex].epcgDetails?.epcg_reg_obj || []),
+      ];
+      regItems.push(getDefaultRegItem());
 
-    updatedProducts[productIndex].epcgDetails.epcg_reg_obj = regItems;
-    formik.setFieldValue("products", updatedProducts);
+      updatedProducts[productIndex].epcgDetails.epcg_reg_obj = regItems;
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
   };
 
   const deleteRegItem = (itemIndex) => {
-    const updatedProducts = [...formik.values.products];
-    const regItems = [
-      ...(updatedProducts[productIndex].epcgDetails?.epcg_reg_obj || []),
-    ];
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const regItems = [
+        ...(updatedProducts[productIndex].epcgDetails?.epcg_reg_obj || []),
+      ];
 
-    if (regItems.length > 1) {
-      regItems.splice(itemIndex, 1);
-      updatedProducts[productIndex].epcgDetails.epcg_reg_obj = regItems;
-      formik.setFieldValue("products", updatedProducts);
+      if (regItems.length > 1) {
+        regItems.splice(itemIndex, 1);
+        updatedProducts[productIndex].epcgDetails.epcg_reg_obj = regItems;
+        updatedInvoices[selectedInvoiceIndex] = {
+          ...updatedInvoices[selectedInvoiceIndex],
+          products: updatedProducts,
+        };
+        formik.setFieldValue("invoices", updatedInvoices);
+      }
     }
   };
 
@@ -460,18 +526,27 @@ const ProductEPCGTab = ({ formik, productIndex }) => {
           }
         }
 
-        const updatedProducts = [...formik.values.products];
-        const regItems = [
-          ...(updatedProducts[productIndex].epcgDetails?.epcg_reg_obj || []),
-        ];
+        const updatedInvoices = [...invoices];
+        if (updatedInvoices[selectedInvoiceIndex]) {
+          const updatedProducts = [
+            ...(updatedInvoices[selectedInvoiceIndex].products || []),
+          ];
+          const regItems = [
+            ...(updatedProducts[productIndex].epcgDetails?.epcg_reg_obj || []),
+          ];
 
-        if (!regItems[idx]) return;
+          if (!regItems[idx]) return;
 
-        regItems[idx].regnNo = license.lic_no || "";
-        regItems[idx].licDate = formattedDate;
+          regItems[idx].regnNo = license.lic_no || "";
+          regItems[idx].licDate = formattedDate;
 
-        updatedProducts[productIndex].epcgDetails.epcg_reg_obj = regItems;
-        formik.setFieldValue("products", updatedProducts);
+          updatedProducts[productIndex].epcgDetails.epcg_reg_obj = regItems;
+          updatedInvoices[selectedInvoiceIndex] = {
+            ...updatedInvoices[selectedInvoiceIndex],
+            products: updatedProducts,
+          };
+          formik.setFieldValue("invoices", updatedInvoices);
+        }
       }
     } catch (error) {
       console.error("Error fetching license details:", error);
@@ -495,19 +570,28 @@ const ProductEPCGTab = ({ formik, productIndex }) => {
       }
     }
 
-    const updatedProducts = [...formik.values.products];
-    const regItems = [
-      ...(updatedProducts[productIndex].epcgDetails?.epcg_reg_obj || []),
-    ];
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const regItems = [
+        ...(updatedProducts[productIndex].epcgDetails?.epcg_reg_obj || []),
+      ];
 
-    if (!regItems[dialogIndex]) return;
+      if (!regItems[dialogIndex]) return;
 
-    regItems[dialogIndex].licRefNo = license.lic_ref_no || "";
-    regItems[dialogIndex].regnNo = license.lic_no || "";
-    regItems[dialogIndex].licDate = formattedDate;
+      regItems[dialogIndex].licRefNo = license.lic_ref_no || "";
+      regItems[dialogIndex].regnNo = license.lic_no || "";
+      regItems[dialogIndex].licDate = formattedDate;
 
-    updatedProducts[productIndex].epcgDetails.epcg_reg_obj = regItems;
-    formik.setFieldValue("products", updatedProducts);
+      updatedProducts[productIndex].epcgDetails.epcg_reg_obj = regItems;
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
 
     setDialogOpen(false);
     setDialogIndex(null);
@@ -754,12 +838,10 @@ const ProductEPCGTab = ({ formik, productIndex }) => {
                 <td style={styles.td}>
                   <UnitDropdownField
                     label=""
-                    // Correctly format the path for EPCG items
-                    fieldName={`products[${productIndex}].epcgDetails.epcgItems[${idx}].unit`}
+                    fieldName={`invoices[${selectedInvoiceIndex}].products[${productIndex}].epcgDetails.epcgItems[${idx}].unit`}
                     formik={formik}
                     unitOptions={unitCodes}
                     placeholder="UNIT"
-                    // Correctly call the EPCG item handler
                     onSelect={(value) =>
                       handleEpcgItemChange(idx, "unit", value)
                     }

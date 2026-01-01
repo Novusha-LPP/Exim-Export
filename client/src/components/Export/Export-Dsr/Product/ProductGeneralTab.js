@@ -8,6 +8,7 @@ import {
   currencyList,
 } from "../../../../utils/masterList";
 import { toUpperVal } from "./commonStyles.js";
+import { calculateProductFobINR } from "../../../../utils/fobCalculations";
 
 const apiBase = import.meta.env.VITE_API_STRING;
 
@@ -332,6 +333,7 @@ function UnitDropdownField({
 
 function useEximCodeDropdown(
   fieldName,
+  invoiceIndex,
   productIndex,
   formik,
   handleProductChange
@@ -343,8 +345,10 @@ function useEximCodeDropdown(
   const keepOpenOnInput = useRef(false);
 
   useEffect(() => {
-    setQuery(formik.values.products[productIndex]?.[fieldName] || "");
-  }, [formik.values.products, productIndex, fieldName]);
+    const invoices = formik.values.invoices || [];
+    const products = invoices[invoiceIndex]?.products || [];
+    setQuery(products[productIndex]?.[fieldName] || "");
+  }, [formik.values.invoices, invoiceIndex, productIndex, fieldName]);
 
   useEffect(() => {
     const close = (e) => {
@@ -417,6 +421,7 @@ function useEximCodeDropdown(
 
 function useStateDropdown(
   fieldName,
+  invoiceIndex,
   productIndex,
   formik,
   handleProductChange
@@ -427,8 +432,10 @@ function useStateDropdown(
   const wrapperRef = useRef();
 
   useEffect(() => {
-    setQuery(formik.values.products[productIndex]?.[fieldName] || "");
-  }, [formik.values.products, productIndex, fieldName]);
+    const invoices = formik.values.invoices || [];
+    const products = invoices[invoiceIndex]?.products || [];
+    setQuery(products[productIndex]?.[fieldName] || "");
+  }, [formik.values.invoices, invoiceIndex, productIndex, fieldName]);
 
   useEffect(() => {
     const close = (e) => {
@@ -479,6 +486,7 @@ function useStateDropdown(
 
 function useDistrictApiDropdown(
   fieldName,
+  invoiceIndex,
   productIndex,
   formik,
   handleProductChange
@@ -491,8 +499,10 @@ function useDistrictApiDropdown(
   const keepOpenOnInput = useRef(false);
 
   useEffect(() => {
-    setQuery(formik.values.products[productIndex]?.[fieldName] || "");
-  }, [formik.values.products, productIndex, fieldName]);
+    const invoices = formik.values.invoices || [];
+    const products = invoices[invoiceIndex]?.products || [];
+    setQuery(products[productIndex]?.[fieldName] || "");
+  }, [formik.values.invoices, invoiceIndex, productIndex, fieldName]);
 
   useEffect(() => {
     if (!open) return;
@@ -596,6 +606,7 @@ function useDistrictApiDropdown(
 
 function usePtaFtaDropdown(
   fieldName,
+  invoiceIndex,
   productIndex,
   formik,
   handleProductChange
@@ -607,8 +618,10 @@ function usePtaFtaDropdown(
   const keepOpenOnInput = useRef(false);
 
   useEffect(() => {
-    setQuery(formik.values.products[productIndex]?.[fieldName] || "");
-  }, [formik.values.products, productIndex, fieldName]);
+    const invoices = formik.values.invoices || [];
+    const products = invoices[invoiceIndex]?.products || [];
+    setQuery(products[productIndex]?.[fieldName] || "");
+  }, [formik.values.invoices, invoiceIndex, productIndex, fieldName]);
 
   useEffect(() => {
     const close = (e) => {
@@ -674,6 +687,7 @@ function usePtaFtaDropdown(
 
 function useEndUseDropdown(
   fieldName,
+  invoiceIndex,
   productIndex,
   formik,
   handleProductChange
@@ -685,8 +699,10 @@ function useEndUseDropdown(
   const keepOpenOnInput = useRef(false);
 
   useEffect(() => {
-    setQuery(formik.values.products?.[productIndex]?.[fieldName] || "");
-  }, [formik.values.products, productIndex, fieldName]);
+    const invoices = formik.values.invoices || [];
+    const products = invoices[invoiceIndex]?.products || [];
+    setQuery(products[productIndex]?.[fieldName] || "");
+  }, [formik.values.invoices, invoiceIndex, productIndex, fieldName]);
 
   useEffect(() => {
     const close = (e) => {
@@ -759,6 +775,7 @@ function useEndUseDropdown(
 const EximCodeField = ({
   label,
   fieldName,
+  invoiceIndex,
   productIndex,
   placeholder,
   formik,
@@ -766,6 +783,7 @@ const EximCodeField = ({
 }) => {
   const d = useEximCodeDropdown(
     fieldName,
+    invoiceIndex,
     productIndex,
     formik,
     handleProductChange
@@ -826,6 +844,7 @@ const EximCodeField = ({
 const DistrictApiField = ({
   label,
   fieldName,
+  invoiceIndex,
   productIndex,
   placeholder,
   formik,
@@ -833,6 +852,7 @@ const DistrictApiField = ({
 }) => {
   const d = useDistrictApiDropdown(
     fieldName,
+    invoiceIndex,
     productIndex,
     formik,
     handleProductChange
@@ -886,6 +906,7 @@ const DistrictApiField = ({
 const PtaFtaField = ({
   label,
   fieldName,
+  invoiceIndex,
   productIndex,
   placeholder,
   formik,
@@ -893,6 +914,7 @@ const PtaFtaField = ({
 }) => {
   const d = usePtaFtaDropdown(
     fieldName,
+    invoiceIndex,
     productIndex,
     formik,
     handleProductChange
@@ -949,6 +971,7 @@ const PtaFtaField = ({
 const EndUseField = ({
   label,
   fieldName,
+  invoiceIndex,
   productIndex,
   placeholder,
   formik,
@@ -956,6 +979,7 @@ const EndUseField = ({
 }) => {
   const d = useEndUseDropdown(
     fieldName,
+    invoiceIndex,
     productIndex,
     formik,
     handleProductChange
@@ -1018,6 +1042,7 @@ const EndUseField = ({
 function ProductRow({
   product,
   invoice,
+  selectedInvoiceIndex,
   index,
   formik,
   handleProductChange,
@@ -1113,8 +1138,13 @@ function ProductRow({
 
     const rate = parseFloat(product.rodtepInfo?.ratePercent) || 0;
     const cap = parseFloat(product.rodtepInfo?.capValuePerUnits) || 0;
+    const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
 
-    const fobINR = convertToINR(product.amount, invoice?.currency);
+    const fobINR = calculateProductFobINR(
+      product,
+      invoice,
+      invoiceExchangeRate
+    );
     const rateAmount = fobINR * (rate / 100);
 
     let capAmount = Infinity;
@@ -1139,10 +1169,19 @@ function ProductRow({
         parseFloat(finalAmount.toFixed(2))
       );
     }
-  }, [product.rodtepInfo?.claim, product.quantity, product.amount]);
+  }, [
+    product.rodtepInfo?.claim,
+    product.quantity,
+    product.amount,
+    invoice.freightInsuranceCharges,
+    invoice.productValue,
+    invoice.invoiceValue,
+    formik.values.exchange_rate,
+  ]);
 
   const stateData = useStateDropdown(
     "originState",
+    selectedInvoiceIndex,
     index,
     formik,
     handleProductChange
@@ -1153,7 +1192,13 @@ function ProductRow({
     const status = product.igstCompensationCess?.igstPaymentStatus;
 
     if (status === "Export Against Payment") {
-      const taxableValue = convertToINR(product.amount, invoice?.currency);
+      const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+      const taxableValue = calculateProductFobINR(
+        product,
+        invoice,
+        invoiceExchangeRate
+      );
+
       if (
         Math.abs(
           (product.igstCompensationCess?.taxableValueINR || 0) - taxableValue
@@ -1185,8 +1230,10 @@ function ProductRow({
     product.igstCompensationCess?.igstPaymentStatus,
     product.igstCompensationCess?.igstRate,
     product.amount,
-    invoice?.currency,
-    convertToINR,
+    invoice.freightInsuranceCharges,
+    invoice.productValue,
+    invoice.invoiceValue,
+    formik.values.exchange_rate,
     handleProductChange,
     index,
   ]);
@@ -1203,6 +1250,7 @@ function ProductRow({
         <EximCodeField
           label="Exim Code"
           fieldName="eximCode"
+          invoiceIndex={selectedInvoiceIndex}
           productIndex={index}
           placeholder="Select Exim Code"
           formik={formik}
@@ -1273,6 +1321,7 @@ function ProductRow({
         <EndUseField
           label="End Use"
           fieldName="endUse"
+          invoiceIndex={selectedInvoiceIndex}
           productIndex={index}
           placeholder="Select End Use"
           formik={formik}
@@ -1280,10 +1329,11 @@ function ProductRow({
         />
 
         <DistrictApiField
-          label="Origin District"
-          fieldName="originDistrict"
+          label="District of Origin"
+          fieldName="districtOfOrigin"
+          invoiceIndex={selectedInvoiceIndex}
           productIndex={index}
-          placeholder="Type Code/Name"
+          placeholder="Search District"
           formik={formik}
           handleProductChange={handleProductChange}
         />
@@ -1338,10 +1388,11 @@ function ProductRow({
 
         {/* Row 3 */}
         <PtaFtaField
-          label="PTA/FTA Info"
-          fieldName="ptaFtaInfo"
+          label="PTA / FTA Code"
+          fieldName="ptaFtaCode"
+          invoiceIndex={selectedInvoiceIndex}
           productIndex={index}
-          placeholder="Select PTA/FTA"
+          placeholder="Select PTA / FTA"
           formik={formik}
           handleProductChange={handleProductChange}
         />
@@ -1784,12 +1835,12 @@ function ProductRow({
             />
             <div style={{ width: "35%" }}>
               <UnitDropdownField
-                label=""
-                fieldName={`products[${index}].rodtepInfo.unit`}
+                label="Unit"
+                fieldName={`invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.unit`}
                 formik={formik}
                 unitOptions={unitCodes}
-                placeholder="UNIT"
-                onSelect={(value) => handleUnitChange(index, "unit", value)}
+                placeholder="Unit"
+                onSelect={(val) => handleUnitChange(index, "unit", val)}
                 disabled={true}
               />
             </div>
@@ -1845,12 +1896,12 @@ function ProductRow({
             />
             <div style={{ width: "35%" }}>
               <UnitDropdownField
-                label=""
-                fieldName={`products[${index}].rodtepInfo.capUnit`}
+                label="Cap Unit"
+                fieldName={`invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.capUnit`}
                 formik={formik}
                 unitOptions={unitCodes}
-                placeholder="UNIT"
-                onSelect={(value) => handleUnitChange(index, "capUnit", value)}
+                placeholder="Cap Unit"
+                onSelect={(val) => handleUnitChange(index, "capUnit", val)}
                 disabled={true}
               />
             </div>
@@ -1890,10 +1941,16 @@ function ProductRow({
 
 /* ---------- MAIN COMPONENT ---------- */
 
-const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
-  const products = formik.values.products || [];
+const ProductGeneralTab = ({
+  formik,
+  selectedInvoiceIndex,
+  selectedProductIndex,
+}) => {
+  const invoices = formik.values.invoices || [];
+  const activeInvoice = invoices[selectedInvoiceIndex] || {};
+  const products = activeInvoice.products || [];
   const product = products[selectedProductIndex];
-  const invoice = formik.values.invoices?.[0];
+  const invoice = activeInvoice;
 
   const [exchangeRates, setExchangeRates] = useState([]);
   const [ratesLoading, setRatesLoading] = useState(true);
@@ -1950,7 +2007,7 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
         (r) =>
           (r.currency_code || r.code || "").toString().toUpperCase() === code
       );
-      
+
       if (!rateObj) return 1;
       const raw =
         rateObj.export_rate ?? rateObj.exportRate ?? rateObj.rate ?? 0;
@@ -2018,11 +2075,14 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
   // Replace the handleProductChange function:
   const handleProductChange = useCallback(
     (index, field, value) => {
-      formik.setFieldValue(`products[${index}].${field}`, value);
+      formik.setFieldValue(
+        `invoices[${selectedInvoiceIndex}].products[${index}].${field}`,
+        value
+      );
 
       // If PMV calculation method changes to percentage, recalculate PMV
       if (field === "pmvInfo.calculationMethod" && value === "percentage") {
-        const prod = formik.values.products[index];
+        const prod = products[index];
         const amount = parseFloat(prod.amount) || 0;
         const quantity = parseFloat(prod.quantity) || 1;
         const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
@@ -2044,33 +2104,40 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
         }
 
         formik.setFieldValue(
-          `products[${index}].pmvInfo.pmvPerUnit`,
+          `invoices[${selectedInvoiceIndex}].products[${index}].pmvInfo.pmvPerUnit`,
           parseFloat(pmvPerUnit.toFixed(2))
         );
         formik.setFieldValue(
-          `products[${index}].pmvInfo.totalPMV`,
+          `invoices[${selectedInvoiceIndex}].products[${index}].pmvInfo.totalPMV`,
           parseFloat(totalPMV.toFixed(2))
         );
       }
     },
-    [formik.setFieldValue, convertToINR, getExportRate, invoice?.currency]
+    [
+      formik.setFieldValue,
+      convertToINR,
+      getExportRate,
+      invoice?.currency,
+      selectedInvoiceIndex,
+      products,
+    ]
   );
   // Removed formik.values.products and calculatePMV from dependencies
 
   const handleUnitChange = useCallback(
     (index, unitField, unitValue) => {
       formik.setFieldValue(
-        `products[${index}].rodtepInfo.${unitField}`,
+        `invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.${unitField}`,
         unitValue
       );
     },
-    [formik.setFieldValue]
+    [formik.setFieldValue, selectedInvoiceIndex]
   );
 
   // Sync RoDTEP Quantity & Unit with SQC values
   // Replace the RoDTEP sync effect:
   useEffect(() => {
-    const currentProducts = formik.values.products || [];
+    const currentProducts = products || [];
     let changed = false;
     const updatedProducts = currentProducts.map((prod, idx) => {
       // Only update if product has changed
@@ -2099,25 +2166,31 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
     });
 
     if (changed) {
-      formik.setFieldValue("products", updatedProducts);
+      const updatedInvoices = [...invoices];
+      if (updatedInvoices[selectedInvoiceIndex]) {
+        updatedInvoices[selectedInvoiceIndex] = {
+          ...updatedInvoices[selectedInvoiceIndex],
+          products: updatedProducts,
+        };
+        formik.setFieldValue("invoices", updatedInvoices);
+      }
     }
-  }, [formik.values.products]); // Remove formik.setFieldValue from dependencies if it's causing loops
+  }, [products, selectedInvoiceIndex, invoices, formik]); // Remove formik.setFieldValue from dependencies if it's causing loops
   // Recalculate PMV when invoice currency changes - FIXED to avoid infinite loop
   useEffect(() => {
     if (!invoice?.currency) return;
 
-    // Calculate PMV inline without creating a dependency on calculatePMV
-    const currentProducts = formik.values.products || [];
+    const currentProducts = products || [];
+    let changed = false;
     const updatedProducts = currentProducts.map((prod) => {
       const method = prod.pmvInfo?.calculationMethod || "percentage";
       if (method !== "percentage") return prod;
 
-      // Calculate PMV directly here
       const pmvCurrency = prod.pmvInfo?.currency || "INR";
       const amount = parseFloat(prod.amount) || 0;
       const quantity = parseFloat(prod.quantity) || 1;
 
-      const amountInINR = convertToINR(amount, invoice?.currency);
+      const amountInINR = convertToINR(amount, invoice.currency);
       const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
       let totalPMV_INR = (amountInINR * percentage) / 100;
       let pmvPerUnit_INR = totalPMV_INR / quantity;
@@ -2133,18 +2206,33 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
         }
       }
 
-      return {
-        ...prod,
-        pmvInfo: {
-          ...prod.pmvInfo,
-          pmvPerUnit: parseFloat(pmvPerUnit.toFixed(2)),
-          totalPMV: parseFloat(totalPMV.toFixed(2)),
-        },
-      };
+      const isPmvDiff =
+        Math.abs(parseFloat(prod.pmvInfo?.totalPMV || 0) - totalPMV) > 0.01;
+      if (isPmvDiff) {
+        changed = true;
+        return {
+          ...prod,
+          pmvInfo: {
+            ...prod.pmvInfo,
+            pmvPerUnit: parseFloat(pmvPerUnit.toFixed(2)),
+            totalPMV: parseFloat(totalPMV.toFixed(2)),
+          },
+        };
+      }
+      return prod;
     });
 
-    formik.setFieldValue("products", updatedProducts);
-  }, [invoice?.currency, convertToINR, getExportRate]);
+    if (changed) {
+      const updatedInvoices = [...invoices];
+      if (updatedInvoices[selectedInvoiceIndex]) {
+        updatedInvoices[selectedInvoiceIndex] = {
+          ...updatedInvoices[selectedInvoiceIndex],
+          products: updatedProducts,
+        };
+        formik.setFieldValue("invoices", updatedInvoices);
+      }
+    }
+  }, [invoice?.currency, convertToINR, getExportRate, selectedInvoiceIndex]);
 
   return (
     <div style={styles.page}>
@@ -2176,8 +2264,7 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
           </thead>
           <tbody>
             {(() => {
-              const productsLocal = formik.values.products || [];
-              const rowProduct = productsLocal[selectedProductIndex] || null;
+              const rowProduct = products[selectedProductIndex] || null;
               if (!rowProduct) return null;
 
               return (
@@ -2276,6 +2363,7 @@ const ProductGeneralTab = ({ formik, selectedProductIndex }) => {
         <ProductRow
           key={product.id || selectedProductIndex}
           invoice={invoice}
+          selectedInvoiceIndex={selectedInvoiceIndex}
           product={product}
           index={selectedProductIndex}
           formik={formik}

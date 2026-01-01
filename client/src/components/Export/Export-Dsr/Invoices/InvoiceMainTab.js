@@ -7,87 +7,124 @@ const styles = {
   page: {
     fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
     fontSize: 12,
-    color: "#1e2e38",
+    color: "#1f2933",
+    padding: 12,
+    background: "#f5f7fb",
   },
-  row: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: 16,
+  card: {
+    background: "#ffffff",
+    border: "1px solid #d2d8e4",
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 12,
+    boxShadow: "0 0 0 1px rgba(15, 23, 42, 0.02)",
+  },
+  cardTitle: {
+    fontWeight: 700,
+    color: "#16408f",
+    fontSize: 13,
     marginBottom: 8,
-    alignItems: "end",
   },
-  field: { width: "100%" },
-  label: {
+  tableWrapper: {
+    border: "1px solid #d2d8e4",
+    borderRadius: 6,
+    background: "#ffffff",
+    marginBottom: 10,
+    overflowX: "auto",
+    overflowY: "auto",
+    maxHeight: 400,
+  },
+  table: {
+    width: "100%",
+    minWidth: 1600,
+    borderCollapse: "collapse",
+  },
+  th: {
     fontSize: 11,
     fontWeight: 700,
-    color: "#7b8290",
-    textTransform: "uppercase",
-    marginBottom: 2,
+    color: "#f9fafb",
+    background: "#16408f",
+    padding: "8px 6px",
+    textAlign: "left",
+    position: "sticky",
+    top: 0,
+    zIndex: 10,
+    whiteSpace: "nowrap",
+  },
+  td: {
+    padding: "8px 6px",
+    borderBottom: "1px solid #e0e5f0",
+    verticalAlign: "top",
   },
   input: {
     width: "100%",
     fontSize: 12,
     padding: "3px 6px",
-    border: "1px solid #bdc7d1",
+    border: "1px solid #c4ccd8",
     borderRadius: 3,
     height: 24,
     background: "#f7fafc",
     outline: "none",
     boxSizing: "border-box",
-    textTransform: "uppercase",
-    fontWeight: 600,
+    fontWeight: 700,
   },
   inputNumber: {
     width: "100%",
     fontSize: 12,
     padding: "3px 6px",
-    border: "1px solid #bdc7d1",
+    border: "1px solid #c4ccd8",
     borderRadius: 3,
     height: 24,
     background: "#f7fafc",
     outline: "none",
     boxSizing: "border-box",
     textAlign: "right",
-    fontWeight: 600,
+    fontWeight: 700,
   },
   inputDate: {
     width: "100%",
-
     fontSize: 12,
     padding: "3px 6px",
-    border: "1px solid #bdc7d1",
+    border: "1px solid #c4ccd8",
     borderRadius: 3,
     height: 24,
     background: "#f7fafc",
     outline: "none",
     boxSizing: "border-box",
-    textTransform: "none",
-    fontWeight: 600,
+    fontWeight: 700,
   },
   select: {
     width: "100%",
     fontSize: 12,
     padding: "2px 4px",
-    border: "1px solid #bdc7d1",
+    border: "1px solid #c4ccd8",
     borderRadius: 3,
     height: 24,
     background: "#f7fafc",
     outline: "none",
     boxSizing: "border-box",
-    textTransform: "uppercase",
-    fontWeight: 600,
+    fontWeight: 700,
   },
-  pill: {
-    display: "inline-block",
-    textAlign: "center",
-    padding: "2px 6px",
-    borderRadius: 3,
-    border: "1px solid #cbd5e1",
-    background: "#f9fafb",
+  smallButton: {
+    padding: "3px 9px",
     fontSize: 11,
+    borderRadius: 4,
+    border: "1px solid #16408f",
+    background: "#16408f",
+    color: "#ffffff",
+    cursor: "pointer",
     fontWeight: 600,
-    textTransform: "uppercase",
-    textAlign: "center",
+    marginRight: 6,
+  },
+  linkButton: {
+    padding: "2px 7px",
+    fontSize: 11,
+    borderRadius: 4,
+    border: "1px solid #e53e3e",
+    background: "#fff5f5",
+    color: "#c53030",
+    cursor: "pointer",
+    fontWeight: 600,
   },
 };
 
@@ -124,8 +161,7 @@ const InvoiceMainTab = ({ formik }) => {
       try {
         const dateStr = getJobDateFormatted(formik.values.job_date);
         const res = await fetch(
-          `${import.meta.env.VITE_API_STRING
-          }/currency-rates/by-date/${dateStr}`
+          `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`
         );
         const json = await res.json();
 
@@ -165,17 +201,53 @@ const InvoiceMainTab = ({ formik }) => {
     // debounce-save logic here if needed
   }, []);
 
-  const invoice = formik.values.invoices?.[0] || {};
+  // Get all invoices as array
+  const invoices = formik.values.invoices || [];
 
-  const setInvoicesArray = (updatedInvoice) => {
-    const current = formik.values.invoices || [];
-    const next = [...current];
-    next[0] = { ...(next[0] || {}), ...updatedInvoice };
-    formik.setFieldValue("invoices", next);
-  };
+  // Initialize with at least one invoice if empty
+  useEffect(() => {
+    if (invoices.length === 0) {
+      formik.setFieldValue("invoices", [{}]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleInvChange = (field, value) => {
-    const updatedInvoice = { [field]: value };
+  // ✅ Auto-calculate productValue for each invoice
+  // Create a signature of product amounts to trigger recalculation ONLY when amounts change
+  const productsSignature = JSON.stringify(
+    invoices.map((inv) => (inv.products || []).map((p) => p.amount))
+  );
+
+  useEffect(() => {
+    let changed = false;
+    const nextInvoices = invoices.map((inv) => {
+      const products = inv.products || [];
+      // Only enforce sum if there are products. If 0 products, let user edit freely (though effect runs on deletion, setting 0)
+      if (products.length > 0) {
+        const totalAmount = products.reduce(
+          (acc, p) => acc + (parseFloat(p.amount) || 0),
+          0
+        );
+        if (
+          Math.abs((parseFloat(inv.productValue) || 0) - totalAmount) > 0.01
+        ) {
+          changed = true;
+          return { ...inv, productValue: totalAmount };
+        }
+      }
+      return inv;
+    });
+
+    if (changed) {
+      formik.setFieldValue("invoices", nextInvoices);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productsSignature]);
+
+  const handleInvChange = (index, field, value) => {
+    const updatedInvoices = [...invoices];
+    const invoice = updatedInvoices[index] || {};
+    const updatedInvoice = { ...invoice, [field]: value };
 
     // when TOI changes, set priceIncludes + FOB/CIF pill
     if (field === "termsOfInvoice") {
@@ -198,8 +270,8 @@ const InvoiceMainTab = ({ formik }) => {
         formik.setFieldValue("exchange_rate", exportRate);
       }
 
-      // Propagate currency to ALL freight/insurance rows
-      const currentCharges = formik.values.freightInsuranceCharges || {};
+      // Propagate currency to ALL freight/insurance rows for THIS invoice
+      const currentCharges = updatedInvoice.freightInsuranceCharges || {};
       const rowKeys = [
         "freight",
         "insurance",
@@ -220,10 +292,11 @@ const InvoiceMainTab = ({ formik }) => {
         };
       });
 
-      formik.setFieldValue("freightInsuranceCharges", nextCharges);
+      updatedInvoice.freightInsuranceCharges = nextCharges;
     }
 
-    setInvoicesArray(updatedInvoice);
+    updatedInvoices[index] = updatedInvoice;
+    formik.setFieldValue("invoices", updatedInvoices);
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
@@ -239,173 +312,281 @@ const InvoiceMainTab = ({ formik }) => {
     }, 800);
   };
 
-  useEffect(() => {
-    if (invoice.termsOfInvoice && !invoice.priceIncludes) {
-      const priceIncludesValue = mapTOIToPriceIncludes(invoice.termsOfInvoice);
-      handleInvChange("priceIncludes", priceIncludesValue);
+  const addInvoice = () => {
+    const newInvoice = {
+      invoiceNumber: "",
+      invoiceDate: "",
+      termsOfInvoice: "FOB",
+      toiPlace: "",
+      currency: "",
+      invoiceValue: "",
+      productValue: "",
+      priceIncludes: "None",
+      packing_fob: 0,
+      products: [],
+    };
+    formik.setFieldValue("invoices", [...invoices, newInvoice]);
+  };
+
+  const removeInvoice = (index) => {
+    if (invoices.length <= 1) {
+      alert("At least one invoice is required");
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const updatedInvoices = invoices.filter((_, i) => i !== index);
+    formik.setFieldValue("invoices", updatedInvoices);
+  };
 
   const currencyCodes = (currencyList || []).map((c) => c.code || c);
 
   return (
     <div style={styles.page}>
-      {/* Row 1: Invoice No, Date, TOI & Place */}
-      <div style={styles.row}>
-        <div style={styles.field}>
-          <div style={styles.label}>Invoice No</div>
-          <input
-            style={styles.input}
-            value={toUpper(invoice.invoiceNumber || "")}
-            onChange={(e) =>
-              handleInvChange("invoiceNumber", e.target.value.toUpperCase())
-            }
-            placeholder="ENTER INVOICE NO"
-          />
+      <div style={styles.card}>
+        <div style={styles.cardTitle}>Invoice Items</div>
+
+        <div style={styles.tableWrapper}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={{ ...styles.th, width: 50 }}>Sr No</th>
+                <th style={{ ...styles.th, width: 140 }}>Invoice No</th>
+                <th style={{ ...styles.th, width: 120 }}>Invoice Date</th>
+                <th style={{ ...styles.th, width: 100 }}>TOI</th>
+                <th style={{ ...styles.th, width: 120 }}>Place</th>
+                <th style={{ ...styles.th, width: 100 }}>Currency</th>
+                <th style={{ ...styles.th, width: 120 }}>Exchange Rate</th>
+                <th style={{ ...styles.th, width: 130 }}>Price Includes</th>
+                <th style={{ ...styles.th, width: 140 }}>
+                  Taxable Base (IGST)
+                </th>
+                <th style={{ ...styles.th, width: 120 }}>Invoice Value</th>
+                <th style={{ ...styles.th, width: 120 }}>Product Value</th>
+                <th style={{ ...styles.th, width: 120 }}>Packing / FOB</th>
+                <th style={{ ...styles.th, width: 140 }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoices.map((invoice, index) => (
+                <tr key={index}>
+                  <td style={styles.td}>{index + 1}</td>
+
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      value={toUpper(invoice.invoiceNumber || "")}
+                      onChange={(e) =>
+                        handleInvChange(
+                          index,
+                          "invoiceNumber",
+                          e.target.value.toUpperCase()
+                        )
+                      }
+                      placeholder="INVOICE NO"
+                    />
+                  </td>
+
+                  <td style={styles.td}>
+                    <DateInput
+                      style={styles.inputDate}
+                      value={invoice.invoiceDate || ""}
+                      onChange={(e) =>
+                        handleInvChange(index, "invoiceDate", e.target.value)
+                      }
+                    />
+                  </td>
+
+                  <td style={styles.td}>
+                    <select
+                      style={styles.select}
+                      value={invoice.termsOfInvoice || ""}
+                      onChange={(e) =>
+                        handleInvChange(index, "termsOfInvoice", e.target.value)
+                      }
+                    >
+                      <option value="">SELECT</option>
+                      {termsOptions.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      value={toUpper(invoice.toiPlace || "")}
+                      onChange={(e) =>
+                        handleInvChange(index, "toiPlace", e.target.value)
+                      }
+                      placeholder="PLACE"
+                    />
+                  </td>
+
+                  <td style={styles.td}>
+                    <select
+                      style={styles.select}
+                      value={invoice.currency || ""}
+                      onChange={(e) =>
+                        handleInvChange(index, "currency", e.target.value)
+                      }
+                    >
+                      <option value="">SELECT</option>
+                      {currencyCodes.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+
+                  <td style={styles.td}>
+                    <input
+                      type="number"
+                      style={styles.inputNumber}
+                      value={formik.values.exchange_rate || 1}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          "exchange_rate",
+                          parseFloat(e.target.value || 0)
+                        )
+                      }
+                    />
+                  </td>
+
+                  <td style={styles.td}>
+                    <select
+                      style={styles.select}
+                      value={invoice.priceIncludes || "Neither"}
+                      onChange={(e) =>
+                        handleInvChange(index, "priceIncludes", e.target.value)
+                      }
+                    >
+                      {priceIncludesOptions.map((p) => (
+                        <option key={p} value={p}>
+                          {p.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+
+                  <td style={styles.td}>
+                    <select
+                      style={styles.select}
+                      value={formik.values.taxableBase || "Product Value"}
+                      onChange={(e) =>
+                        handleFieldChange("taxableBase", e.target.value)
+                      }
+                    >
+                      {taxableBaseOptions.map((p) => (
+                        <option key={p} value={p}>
+                          {p.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+
+                  <td style={styles.td}>
+                    <input
+                      type="number"
+                      style={styles.inputNumber}
+                      value={
+                        invoice.invoiceValue === 0 ||
+                        invoice.invoiceValue === ""
+                          ? ""
+                          : invoice.invoiceValue
+                      }
+                      onChange={(e) =>
+                        handleInvChange(
+                          index,
+                          "invoiceValue",
+                          e.target.value === ""
+                            ? ""
+                            : parseFloat(e.target.value || 0)
+                        )
+                      }
+                      placeholder="0.00"
+                    />
+                  </td>
+
+                  <td style={styles.td}>
+                    <input
+                      type="string"
+                      style={styles.inputNumber}
+                      value={
+                        invoice.productValue === 0 ||
+                        invoice.productValue === ""
+                          ? ""
+                          : invoice.productValue
+                      }
+                      onChange={(e) =>
+                        handleInvChange(
+                          index,
+                          "productValue",
+                          e.target.value === ""
+                            ? ""
+                            : parseFloat(e.target.value || 0)
+                        )
+                      }
+                      placeholder="0.00"
+                    />
+                  </td>
+
+                  <td style={styles.td}>
+                    <input
+                      type="string"
+                      style={styles.inputNumber}
+                      value={
+                        invoice.packing_fob === 0 || invoice.packing_fob === ""
+                          ? ""
+                          : invoice.packing_fob
+                      }
+                      onChange={(e) =>
+                        handleInvChange(
+                          index,
+                          "packing_fob",
+                          e.target.value === ""
+                            ? ""
+                            : parseFloat(e.target.value || 0)
+                        )
+                      }
+                      placeholder="0.00"
+                    />
+                  </td>
+
+                  <td style={styles.td}>
+                    <button
+                      type="button"
+                      style={styles.smallButton}
+                      onClick={() => {
+                        const newInvoice = { ...invoice };
+                        const updatedInvoices = [...invoices];
+                        updatedInvoices.splice(index + 1, 0, newInvoice);
+                        formik.setFieldValue("invoices", updatedInvoices);
+                      }}
+                    >
+                      Copy
+                    </button>
+                    {invoices.length > 1 && (
+                      <button
+                        type="button"
+                        style={styles.linkButton}
+                        onClick={() => removeInvoice(index)}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        <div style={styles.field}>
-          <div style={styles.label}>Date</div>
-          <DateInput
-            style={styles.inputDate}
-            value={invoice.invoiceDate || ""}
-            onChange={(e) => handleInvChange("invoiceDate", e.target.value)}
-          />
-        </div>
-
-        <div style={styles.field}>
-          <div style={styles.label}>TOI</div>
-          <select
-            style={styles.select}
-            value={invoice.termsOfInvoice || ""}
-            onChange={(e) => handleInvChange("termsOfInvoice", e.target.value)}
-          >
-            <option value="">SELECT</option>
-            {termsOptions.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={styles.field}>
-          <div style={styles.label}>Place</div>
-          <input
-            style={styles.input}
-            value={toUpper(invoice.toiPlace || "")}
-            onChange={(e) => handleInvChange("toiPlace", e.target.value)}
-            placeholder=" ENTER PLACE"
-          />
-        </div>
-      </div>
-
-      {/* Row 2: Currency + rate + Price Includes + Taxable base */}
-      <div style={styles.row}>
-        <div style={styles.field}>
-          <div style={styles.label}>Currency</div>
-          <select
-            style={styles.select}
-            value={invoice.currency || ""}
-            onChange={(e) => handleInvChange("currency", e.target.value)}
-          >
-            <option value="">SELECT</option>
-            {currencyCodes.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={styles.field}>
-          <div style={styles.label}>Exchange Rate</div>
-          <input
-            type="number"
-            style={styles.inputNumber}
-            value={formik.values.exchange_rate || 1}
-            onChange={(e) =>
-              handleFieldChange(
-                "exchange_rate",
-                parseFloat(e.target.value || 0)
-              )
-            }
-          />
-        </div>
-
-        <div style={styles.field}>
-          <div style={styles.label}>Price Includes</div>
-          <select
-            style={styles.select}
-            value={invoice.priceIncludes || "Neither"}
-            onChange={(e) => handleInvChange("priceIncludes", e.target.value)}
-          >
-            {priceIncludesOptions.map((p) => (
-              <option key={p} value={p}>
-                {p.toUpperCase()}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={styles.field}>
-          <div style={styles.label}>Taxable value for IGST</div>
-          <select
-            style={styles.select}
-            value={formik.values.taxableBase || "Product Value"}
-            onChange={(e) => handleFieldChange("taxableBase", e.target.value)}
-          >
-            {taxableBaseOptions.map((p) => (
-              <option key={p} value={p}>
-                {p.toUpperCase()}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Row 3: Invoice Value, Product Value, Packing/FOB */}
-      <div style={styles.row}>
-        <div style={styles.field}>
-          <div style={styles.label}>Invoice Value</div>
-          <input
-            type="number"
-            style={styles.inputNumber}
-            value={invoice.invoiceValue}
-            onChange={(e) =>
-              handleInvChange("invoiceValue", parseFloat(e.target.value || 0))
-            }
-          />
-        </div>
-
-        <div style={styles.field}>
-          <div style={styles.label}>Product Value</div>
-          <div style={{ display: "flex", gap: 4 }}>
-            <input
-              type="number"
-              style={styles.inputNumber}
-              value={invoice.productValue}
-              onChange={(e) =>
-                handleInvChange("productValue", parseFloat(e.target.value || 0))
-              }
-            />
-            <span style={styles.pill}>
-              {invoice.termsOfInvoice === "CIF" ? "CIF" : "FOB"}
-            </span>
-          </div>
-        </div>
-
-        <div style={styles.field}>
-          <div style={styles.label}>Packing / FOB</div>
-          <input
-            type="number"
-            style={styles.inputNumber}
-            value={invoice.packing_fob ?? 0}
-            onChange={(e) =>
-              handleInvChange("packing_fob", parseFloat(e.target.value || 0))
-            }
-          />
+        <div style={{ marginTop: 8 }}>
+          <button type="button" style={styles.smallButton} onClick={addInvoice}>
+            + Add New Invoice
+          </button>
         </div>
       </div>
     </div>

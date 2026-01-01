@@ -325,9 +325,12 @@ function UnitDropdownField({
     </div>
   );
 }
-const ProductDEECTab = ({ formik, productIndex }) => {
+const ProductDEECTab = ({ formik, selectedInvoiceIndex, productIndex }) => {
   const saveTimeoutRef = useRef(null);
-  const product = formik.values.products[productIndex];
+  const invoices = formik.values.invoices || [];
+  const activeInvoice = invoices[selectedInvoiceIndex] || {};
+  const products = activeInvoice.products || [];
+  const product = products[productIndex];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogIndex, setDialogIndex] = useState(null);
@@ -342,99 +345,162 @@ const ProductDEECTab = ({ formik, productIndex }) => {
 
   // Top-level fields
   const handleDeecFieldChange = (field, value) => {
-    const updatedProducts = [...formik.values.products];
-    if (!updatedProducts[productIndex].deecDetails) {
-      updatedProducts[productIndex].deecDetails = {};
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      if (!updatedProducts[productIndex].deecDetails) {
+        updatedProducts[productIndex].deecDetails = {};
+      }
+      updatedProducts[productIndex].deecDetails[field] = value;
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
     }
-    updatedProducts[productIndex].deecDetails[field] = value;
-    formik.setFieldValue("products", updatedProducts);
   };
 
   // DEEC items (Part C)
   const handleDeecItemChange = (itemIndex, field, value) => {
-    const updatedProducts = [...formik.values.products];
-    const deecItems = [
-      ...(updatedProducts[productIndex].deecDetails?.deecItems || []),
-    ];
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const deecItems = [
+        ...(updatedProducts[productIndex].deecDetails?.deecItems || []),
+      ];
 
-    if (!deecItems[itemIndex]) {
-      deecItems[itemIndex] = getDefaultDeecItem(itemIndex + 1);
+      if (!deecItems[itemIndex]) {
+        deecItems[itemIndex] = getDefaultDeecItem(itemIndex + 1);
+      }
+
+      deecItems[itemIndex][field] = value;
+      updatedProducts[productIndex].deecDetails.deecItems = deecItems;
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
     }
-
-    deecItems[itemIndex][field] = value;
-    updatedProducts[productIndex].deecDetails.deecItems = deecItems;
-    formik.setFieldValue("products", updatedProducts);
   };
 
   const addDeecItem = () => {
-    const updatedProducts = [...formik.values.products];
-    const deecItems = [
-      ...(updatedProducts[productIndex].deecDetails?.deecItems || []),
-    ];
-    deecItems.push(getDefaultDeecItem(deecItems.length + 1));
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const deecItems = [
+        ...(updatedProducts[productIndex].deecDetails?.deecItems || []),
+      ];
+      deecItems.push(getDefaultDeecItem(deecItems.length + 1));
 
-    if (!updatedProducts[productIndex].deecDetails) {
-      updatedProducts[productIndex].deecDetails = { isDeecItem: true };
+      if (!updatedProducts[productIndex].deecDetails) {
+        updatedProducts[productIndex].deecDetails = { isDeecItem: true };
+      }
+      updatedProducts[productIndex].deecDetails.deecItems = deecItems;
+
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
     }
-    updatedProducts[productIndex].deecDetails.deecItems = deecItems;
-
-    formik.setFieldValue("products", updatedProducts);
   };
 
   const deleteDeecItem = (itemIndex) => {
-    const updatedProducts = [...formik.values.products];
-    const deecItems = [
-      ...(updatedProducts[productIndex].deecDetails?.deecItems || []),
-    ];
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const deecItems = [
+        ...(updatedProducts[productIndex].deecDetails?.deecItems || []),
+      ];
 
-    if (deecItems.length > 1) {
-      deecItems.splice(itemIndex, 1);
-      deecItems.forEach((item, idx) => {
-        item.serialNumber = idx + 1;
-      });
-      updatedProducts[productIndex].deecDetails.deecItems = deecItems;
-      formik.setFieldValue("products", updatedProducts);
+      if (deecItems.length > 1) {
+        deecItems.splice(itemIndex, 1);
+        deecItems.forEach((item, idx) => {
+          item.serialNumber = idx + 1;
+        });
+        updatedProducts[productIndex].deecDetails.deecItems = deecItems;
+        updatedInvoices[selectedInvoiceIndex] = {
+          ...updatedInvoices[selectedInvoiceIndex],
+          products: updatedProducts,
+        };
+        formik.setFieldValue("invoices", updatedInvoices);
+      }
     }
   };
 
   // License registration items
   const handleRegItemChange = (itemIndex, field, value) => {
-    const updatedProducts = [...formik.values.products];
-    const regItems = [
-      ...(updatedProducts[productIndex].deecDetails?.deec_reg_obj || []),
-    ];
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const regItems = [
+        ...(updatedProducts[productIndex].deecDetails?.deec_reg_obj || []),
+      ];
 
-    if (regItems.length === 0) {
-      regItems.push(getDefaultRegItem());
+      if (regItems.length === 0) {
+        regItems.push(getDefaultRegItem());
+      }
+
+      regItems[itemIndex][field] = value;
+      updatedProducts[productIndex].deecDetails.deec_reg_obj = regItems;
+
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
     }
-
-    regItems[itemIndex][field] = value;
-    updatedProducts[productIndex].deecDetails.deec_reg_obj = regItems;
-
-    formik.setFieldValue("products", updatedProducts);
   };
 
   const addRegItem = () => {
-    const updatedProducts = [...formik.values.products];
-    const regItems = [
-      ...(updatedProducts[productIndex].deecDetails?.deec_reg_obj || []),
-    ];
-    regItems.push(getDefaultRegItem());
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const regItems = [
+        ...(updatedProducts[productIndex].deecDetails?.deec_reg_obj || []),
+      ];
+      regItems.push(getDefaultRegItem());
 
-    updatedProducts[productIndex].deecDetails.deec_reg_obj = regItems;
-    formik.setFieldValue("products", updatedProducts);
+      updatedProducts[productIndex].deecDetails.deec_reg_obj = regItems;
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
   };
 
   const deleteRegItem = (itemIndex) => {
-    const updatedProducts = [...formik.values.products];
-    const regItems = [
-      ...(updatedProducts[productIndex].deecDetails?.deec_reg_obj || []),
-    ];
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const regItems = [
+        ...(updatedProducts[productIndex].deecDetails?.deec_reg_obj || []),
+      ];
 
-    if (regItems.length > 1) {
-      regItems.splice(itemIndex, 1);
-      updatedProducts[productIndex].deecDetails.deec_reg_obj = regItems;
-      formik.setFieldValue("products", updatedProducts);
+      if (regItems.length > 1) {
+        regItems.splice(itemIndex, 1);
+        updatedProducts[productIndex].deecDetails.deec_reg_obj = regItems;
+        updatedInvoices[selectedInvoiceIndex] = {
+          ...updatedInvoices[selectedInvoiceIndex],
+          products: updatedProducts,
+        };
+        formik.setFieldValue("invoices", updatedInvoices);
+      }
     }
   };
 
@@ -451,15 +517,6 @@ const ProductDEECTab = ({ formik, productIndex }) => {
       if (response.data.success && response.data.data.length > 0) {
         const license = response.data.data[0];
 
-        // Convert date "15-Dec-2023" to "DD-MM-YYYY" if needed,
-        // assuming DateInput expects "DD-MM-YYYY".
-        // Or if DateInput handles strings well.
-        // Let's ensure standard format if possible or just pass the string if DateInput is flexible.
-        // Based on DateInput code, it just validates numbers and hyphens.
-        // "15-Dec-2023" has letters, so DateInput regex /^[0-9-]*$/ will fail if user tries to type it.
-        // But setting it programmatically might be fine or might break validation on next edit.
-        // Best to convert to DD-MM-YYYY.
-
         let formattedDate = "";
         if (license.lic_date) {
           const d = new Date(license.lic_date);
@@ -469,23 +526,31 @@ const ProductDEECTab = ({ formik, productIndex }) => {
             const year = d.getFullYear();
             formattedDate = `${day}-${month}-${year}`;
           } else {
-            formattedDate = license.lic_date; // Fallback
+            formattedDate = license.lic_date;
           }
         }
 
-        const updatedProducts = [...formik.values.products];
-        const regItems = [
-          ...(updatedProducts[productIndex].deecDetails?.deec_reg_obj || []),
-        ];
+        const updatedInvoices = [...invoices];
+        if (updatedInvoices[selectedInvoiceIndex]) {
+          const updatedProducts = [
+            ...(updatedInvoices[selectedInvoiceIndex].products || []),
+          ];
+          const regItems = [
+            ...(updatedProducts[productIndex].deecDetails?.deec_reg_obj || []),
+          ];
 
-        // Ensure we don't index out of bounds (though addRegItem logic handles init)
-        if (!regItems[idx]) return;
+          if (!regItems[idx]) return;
 
-        regItems[idx].regnNo = license.lic_no || "";
-        regItems[idx].licDate = formattedDate;
+          regItems[idx].regnNo = license.lic_no || "";
+          regItems[idx].licDate = formattedDate;
 
-        updatedProducts[productIndex].deecDetails.deec_reg_obj = regItems;
-        formik.setFieldValue("products", updatedProducts);
+          updatedProducts[productIndex].deecDetails.deec_reg_obj = regItems;
+          updatedInvoices[selectedInvoiceIndex] = {
+            ...updatedInvoices[selectedInvoiceIndex],
+            products: updatedProducts,
+          };
+          formik.setFieldValue("invoices", updatedInvoices);
+        }
       }
     } catch (error) {
       console.error("Error fetching license details:", error);
@@ -510,19 +575,28 @@ const ProductDEECTab = ({ formik, productIndex }) => {
       }
     }
 
-    const updatedProducts = [...formik.values.products];
-    const regItems = [
-      ...(updatedProducts[productIndex].deecDetails?.deec_reg_obj || []),
-    ];
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      const regItems = [
+        ...(updatedProducts[productIndex].deecDetails?.deec_reg_obj || []),
+      ];
 
-    if (!regItems[dialogIndex]) return;
+      if (!regItems[dialogIndex]) return;
 
-    regItems[dialogIndex].licRefNo = license.lic_ref_no || "";
-    regItems[dialogIndex].regnNo = license.lic_no || "";
-    regItems[dialogIndex].licDate = formattedDate;
+      regItems[dialogIndex].licRefNo = license.lic_ref_no || "";
+      regItems[dialogIndex].regnNo = license.lic_no || "";
+      regItems[dialogIndex].licDate = formattedDate;
 
-    updatedProducts[productIndex].deecDetails.deec_reg_obj = regItems;
-    formik.setFieldValue("products", updatedProducts);
+      updatedProducts[productIndex].deecDetails.deec_reg_obj = regItems;
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
 
     setDialogOpen(false);
     setDialogIndex(null);
@@ -766,7 +840,7 @@ const ProductDEECTab = ({ formik, productIndex }) => {
                   <div style={{ position: "relative" }}>
                     <UnitDropdownField
                       label=""
-                      fieldName={`products[${productIndex}].deecDetails.deecItems[${idx}].unit`}
+                      fieldName={`invoices[${selectedInvoiceIndex}].products[${productIndex}].deecDetails.deecItems[${idx}].unit`}
                       formik={formik}
                       unitOptions={unitCodes}
                       placeholder="UNIT"

@@ -15,8 +15,11 @@ const accessoryOptions = [
   "Accessory Included in other item ",
 ];
 
-const ProductOtherDetailsTab = ({ formik, idx = 0 }) => {
-  const product = formik.values.products?.[idx] || {};
+const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
+  const invoices = formik.values.invoices || [];
+  const activeInvoice = invoices[selectedInvoiceIndex] || {};
+  const products = activeInvoice.products || [];
+  const product = products[idx] || {};
   const otherDetails = product.otherDetails || {};
   const thirdParty = otherDetails.thirdParty || {};
   const manufacturer = otherDetails.manufacturer || {};
@@ -25,10 +28,22 @@ const ProductOtherDetailsTab = ({ formik, idx = 0 }) => {
   const [orgLoading, setOrgLoading] = useState(false);
 
   const handleChange = (field, value) => {
-    const updatedProducts = [...(formik.values.products || [])];
-    if (!updatedProducts[idx]) updatedProducts[idx] = {};
-    updatedProducts[idx].otherDetails = { ...otherDetails, [field]: value };
-    formik.setFieldValue("products", updatedProducts);
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      if (!updatedProducts[idx]) updatedProducts[idx] = {};
+      updatedProducts[idx] = {
+        ...updatedProducts[idx],
+        otherDetails: { ...otherDetails, [field]: value },
+      };
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
   };
 
   const handleThirdPartyChange = (field, value) =>
