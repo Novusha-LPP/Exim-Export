@@ -31,10 +31,6 @@ const FinancialTab = ({ formik, directories, params, onUpdate }) => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h6" fontWeight="bold" gutterBottom>
-        Financial Information
-      </Typography>
-      <Divider sx={{ mb: 3 }} />
 
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
         <Tabs
@@ -65,7 +61,7 @@ const FinancialTab = ({ formik, directories, params, onUpdate }) => {
       <FinancialTabPanel value={activeSubTab} index={1}>
         <APInvoicesTab formik={formik} directories={directories} params={params} />
       </FinancialTabPanel>
-    
+
       <FinancialTabPanel value={activeSubTab} index={2}>
         <PaymentRequestTab formik={formik} directories={directories} params={params} />
       </FinancialTabPanel>

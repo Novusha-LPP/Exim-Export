@@ -86,10 +86,6 @@ const ChargesTab = ({ formik, directories, params }) => {
 
   return (
     <Box sx={{ p: 2 }}>
-      <Typography variant="h6" fontWeight="bold" gutterBottom>
-        Charges
-      </Typography>
-      
       <Card sx={{ p: 2 }}>
         {/* Tabs */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -104,7 +100,7 @@ const ChargesTab = ({ formik, directories, params }) => {
           <Typography variant="body2" sx={{ mb: 1 }}>
             Quotation No: _______________
           </Typography>
-          
+
           <TableContainer component={Paper}>
             <Table size="small">
               <TableHead>
@@ -128,10 +124,10 @@ const ChargesTab = ({ formik, directories, params }) => {
                   </TableRow>
                 ) : (
                   charges.map((charge, index) => (
-                    <TableRow 
+                    <TableRow
                       key={index}
                       onClick={() => handleEditCharge(charge, index)}
-                      sx={{ 
+                      sx={{
                         cursor: 'pointer',
                         '&:hover': { backgroundColor: '#f5f5f5' }
                       }}
@@ -152,25 +148,25 @@ const ChargesTab = ({ formik, directories, params }) => {
 
           {/* Action Buttons */}
           <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-            <Button 
+            <Button
               variant="contained"
-              size="small" 
+              size="small"
               onClick={handleNewCharge}
               sx={{ fontSize: "0.75rem", textTransform: "none" }}
             >
               New
             </Button>
-            <Button 
+            <Button
               variant="outlined"
-              size="small" 
+              size="small"
               disabled={charges.length === 0}
               sx={{ fontSize: "0.75rem", textTransform: "none" }}
             >
               Edit
             </Button>
-            <Button 
+            <Button
               variant="outlined"
-              size="small" 
+              size="small"
               color="error"
               disabled={charges.length === 0}
               onClick={() => handleDeleteCharge(charges.length - 1)}
@@ -178,37 +174,37 @@ const ChargesTab = ({ formik, directories, params }) => {
             >
               Delete
             </Button>
-            <Button 
+            <Button
               variant="outlined"
-              size="small" 
+              size="small"
               sx={{ fontSize: "0.75rem", textTransform: "none" }}
             >
               Cost Sheet
             </Button>
-            <Button 
+            <Button
               variant="outlined"
-              size="small" 
+              size="small"
               sx={{ fontSize: "0.75rem", textTransform: "none" }}
             >
               Book Purchase
             </Button>
-            <Button 
+            <Button
               variant="outlined"
-              size="small" 
+              size="small"
               sx={{ fontSize: "0.75rem", textTransform: "none" }}
             >
               Customize Columns
             </Button>
-            <Button 
+            <Button
               variant="outlined"
-              size="small" 
+              size="small"
               sx={{ fontSize: "0.75rem", textTransform: "none" }}
             >
               Init. from Quotation
             </Button>
-            <Button 
+            <Button
               variant="outlined"
-              size="small" 
+              size="small"
               sx={{ fontSize: "0.75rem", textTransform: "none" }}
             >
               Init Receivable From
@@ -226,8 +222,8 @@ const ChargesTab = ({ formik, directories, params }) => {
       </Card>
 
       {/* Charge Edit Dialog */}
-      <Dialog 
-        open={isFormOpen} 
+      <Dialog
+        open={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         maxWidth="lg"
         fullWidth

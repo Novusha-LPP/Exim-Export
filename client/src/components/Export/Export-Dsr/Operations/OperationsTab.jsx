@@ -1671,7 +1671,7 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                         f.type === "date"
                           ? "dd-mm-yyyy"
                           : f.type === "datetime-local"
-                          ? "dd-mm-yyyy hh:mm"
+                          ? "dd-mm-yyyy HH:mm"
                           : ""
                       }
                     />
