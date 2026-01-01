@@ -219,9 +219,6 @@ const ProductTab = ({ formik, directories, params }) => {
         }}
       >
         <Box>
-          <Typography variant="h6" fontWeight="bold">
-            Product Item Details
-          </Typography>
 
           {/* Invoice Selector */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>

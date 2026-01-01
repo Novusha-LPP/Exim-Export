@@ -306,13 +306,13 @@ const LogisysEditableHeader = ({
           marginBottom: 2,
         }}
       >
-        <div style={{ fontWeight: 700, color: "#1565c0", fontSize: 15 }}>
+        {/* <div style={{ fontWeight: 700, color: "#1565c0", fontSize: 15 }}>
           Export Job
-        </div>
+        </div> */}
       </div>
-      <div
+      {/* <div
         style={{ borderBottom: "1px solid #e9ecef", margin: "8px 0 12px" }}
-      />
+      /> */}
 
       {/* ROWS */}
       <div

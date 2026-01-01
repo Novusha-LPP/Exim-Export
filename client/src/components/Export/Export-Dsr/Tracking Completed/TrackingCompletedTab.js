@@ -114,7 +114,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
       ...current,
       {
         milestoneName: name,
-        planDate: "dd-mm-yyyy hh:mm",
+        planDate: "dd-mm-yyyy HH:mm",
         actualDate: "dd-mm-yyyy",
         isCompleted: false,
         isMandatory: false,

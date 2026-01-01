@@ -37,9 +37,9 @@ export const formatDate = (val) => {
       if (!isValid(date)) {
         // Try dd/MM/yyyy format
         const ddMMyyyyFormats = [
-          "dd/mm/yyyy",
-          "dd-mm-yyyy",
-          "dd.mm.yyyy",
+          "dd/MM/yyyy",
+          "dd-MM-yyyy",
+          "dd.MM.yyyy",
           "d/M/yyyy",
           "d-M-yyyy",
         ];
@@ -118,13 +118,13 @@ export const parseDate = (val) => {
       if (!isValid(date)) {
         const formats = [
           "dd/MM/yyyy",
-          "dd-mm-yyyy",
-          "dd.mm.yyyy",
-          "d/m/yyyy",
-          "mm/dd/yyyy",
-          "m/d/yyyy",
-          "yyyy-mm-dd",
-          "yyyy/mm/dd",
+          "dd-MM-yyyy",
+          "dd.MM.yyyy",
+          "d/M/yyyy",
+          "MM/dd/yyyy",
+          "M/d/yyyy",
+          "yyyy-MM-dd",
+          "yyyy/MM/dd",
         ];
 
         for (const dateFormat of formats) {
@@ -185,7 +185,7 @@ export const handleDateInput = (value) => {
         try {
           const date = parse(trimmedValue, dateFormat, new Date());
           if (isValid(date)) {
-            return format(date, "dd-mm-yyyy");
+            return format(date, "dd-MM-yyyy");
           }
         } catch (e) {
           continue;
@@ -195,7 +195,7 @@ export const handleDateInput = (value) => {
       // Try using native Date parser as fallback for month names
       const nativeDate = new Date(trimmedValue);
       if (isValid(nativeDate)) {
-        return format(nativeDate, "dd-mm-yyyy");
+        return format(nativeDate, "dd-MM-yyyy");
       }
     } catch (e) {
       console.warn("Date parsing with month name failed:", e);

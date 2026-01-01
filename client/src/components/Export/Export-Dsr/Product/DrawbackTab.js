@@ -19,6 +19,21 @@ const getDefaultDrawback = (idx = 1) => ({
   percentageOfFobValue: "1.5% of FOB Value",
 });
 
+const getJobDateFormatted = (jobDate) => {
+  if (!jobDate) {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, "0");
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const yyyy = today.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  }
+  const parts = jobDate.split("-");
+  if (parts.length === 3 && parts[0].length === 4) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return jobDate;
+};
+
 function toUpper(val) {
   return (typeof val === "string" ? val : "").toUpperCase();
 }
@@ -72,8 +87,8 @@ const DrawbackTab = ({
       const list = Array.isArray(data?.data)
         ? data.data
         : Array.isArray(data)
-        ? data
-        : [];
+          ? data
+          : [];
 
       setDbkDialogOptions(list);
       if (data?.pagination) {
@@ -318,8 +333,7 @@ const DrawbackTab = ({
     if (!dbkSrNo) return;
     try {
       const res = await fetch(
-        `${
-          import.meta.env.VITE_API_STRING
+        `${import.meta.env.VITE_API_STRING
         }/getDrawback?tariff_item=${encodeURIComponent(dbkSrNo)}`
       );
       const data = await res.json();

@@ -131,9 +131,7 @@ const ESanchitTab = ({ formik }) => {
 
   return (
     <div style={styles.sectionContainer}>
-      <div style={styles.sectionHeader}>
-        <span style={styles.sectionTitle}>ESANCHIT DOCUMENTS</span>
-      </div>
+
 
       <div style={styles.card}>
         <div style={styles.tableWrapper}>

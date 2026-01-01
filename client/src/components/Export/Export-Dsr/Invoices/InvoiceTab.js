@@ -29,10 +29,7 @@ const InvoiceTab = ({ formik, directories, params, }) => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h6" fontWeight="bold" gutterBottom>
-        Invoice Information
-      </Typography>
-      <Divider sx={{ mb: 3 }} />
+
 
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
         <Tabs
@@ -68,10 +65,10 @@ const InvoiceTab = ({ formik, directories, params, }) => {
         <InvoiceFreightTab formik={formik} />
       </InvoiceTabPanel>
       <InvoiceTabPanel value={activeSubTab} index={2}>
-        <InvoiceBuyerThirdPartyTab formik={formik}  />
+        <InvoiceBuyerThirdPartyTab formik={formik} />
       </InvoiceTabPanel>
       <InvoiceTabPanel value={activeSubTab} index={3}>
-        <OtherInfoTab formik={formik}  />
+        <OtherInfoTab formik={formik} />
       </InvoiceTabPanel>
     </Box>
   );
