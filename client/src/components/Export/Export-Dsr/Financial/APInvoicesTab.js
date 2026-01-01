@@ -104,17 +104,17 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
   const apInvoices = formik.values.ap_invoices?.length
     ? formik.values.ap_invoices
     : [
-        {
-          date: "",
-          bill_no: "",
-          type: "INV",
-          organization: "",
-          currency: "INR",
-          amount: 0,
-          balance: 0,
-          vendor_bill_no: "",
-        },
-      ];
+      {
+        date: "",
+        bill_no: "",
+        type: "INV",
+        organization: "",
+        currency: "INR",
+        amount: 0,
+        balance: 0,
+        vendor_bill_no: "",
+      },
+    ];
 
   return (
     <Box sx={{ p: 2 }}>
@@ -187,7 +187,7 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                       <TableCell>
                         <TextField
                           size="small"
-                          placeholder="DD-MM-YYYY"
+                          placeholder="dd-MM-yyyy"
                           value={invoice.date || ""}
                           onChange={(e) => {
                             const val = e.target.value;

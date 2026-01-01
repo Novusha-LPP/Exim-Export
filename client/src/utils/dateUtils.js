@@ -10,7 +10,7 @@ import { format, parse, parseISO, isValid } from "date-fns";
  * - String dates in various formats
  *
  * @param {string|Date|number} val - The date value to format
- * @returns {string} - Formatted date string in dd/MM/yyyy format or empty string
+ * @returns {string} - Formatted date string in dd-MM-yyyy format or empty string
  */
 export const formatDate = (val) => {
   if (!val) return "";
@@ -80,7 +80,7 @@ export const formatDate = (val) => {
     }
 
     // Return formatted date if valid
-    return isValid(date) ? format(date, "dd/MM/yyyy") : "";
+    return isValid(date) ? format(date, "dd-MM-yyyy") : "";
   } catch (e) {
     console.warn("Date formatting error:", e, "for value:", val);
     return "";
@@ -151,10 +151,10 @@ export const parseDate = (val) => {
 
 /**
  * Formats date input on paste or input change
- * Automatically converts any pasted date to dd/MM/yyyy format
+ * Automatically converts any pasted date to dd-MM-yyyy format
  *
  * @param {string} value - The input value
- * @returns {string} - Formatted date string in dd/MM/yyyy format
+ * @returns {string} - Formatted date string in dd-MM-yyyy format
  */
 export const handleDateInput = (value) => {
   if (!value) return "";
@@ -185,7 +185,7 @@ export const handleDateInput = (value) => {
         try {
           const date = parse(trimmedValue, dateFormat, new Date());
           if (isValid(date)) {
-            return format(date, "dd/MM/yyyy");
+            return format(date, "dd-MM-yyyy");
           }
         } catch (e) {
           continue;
@@ -195,7 +195,7 @@ export const handleDateInput = (value) => {
       // Try using native Date parser as fallback for month names
       const nativeDate = new Date(trimmedValue);
       if (isValid(nativeDate)) {
-        return format(nativeDate, "dd/MM/yyyy");
+        return format(nativeDate, "dd-MM-yyyy");
       }
     } catch (e) {
       console.warn("Date parsing with month name failed:", e);
@@ -209,7 +209,7 @@ export const handleDateInput = (value) => {
   const parsedDate = parseDate(cleanValue);
 
   if (parsedDate && isValid(parsedDate)) {
-    return format(parsedDate, "dd/MM/yyyy");
+    return format(parsedDate, "dd-MM-yyyy");
   }
 
   // If parsing fails, return the cleaned value as-is

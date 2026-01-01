@@ -44,6 +44,7 @@ import {
   ViewList as ViewListIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+import { formatDate } from "../utils/dateUtils";
 
 // Color palette (you can adjust these to match your app's theme)
 const colorPalette = {
@@ -189,9 +190,8 @@ const UserCard = ({ user, index, showAllUsers = false }) => {
                       mb: 0.25,
                     }}
                   >
-                    {`${userDetails.first_name || ""} ${
-                      userDetails.last_name || ""
-                    }`.trim()}
+                    {`${userDetails.first_name || ""} ${userDetails.last_name || ""
+                      }`.trim()}
                   </Typography>
                 )}
               <StatusIndicator
@@ -306,7 +306,7 @@ const UserCard = ({ user, index, showAllUsers = false }) => {
                   >
                     First:{" "}
                     {user.firstActivity
-                      ? new Date(user.firstActivity).toLocaleDateString()
+                      ? formatDate(user.firstActivity)
                       : "N/A"}
                   </Typography>
                   <Typography
@@ -318,7 +318,7 @@ const UserCard = ({ user, index, showAllUsers = false }) => {
                   >
                     Latest:{" "}
                     {user.lastActivity
-                      ? new Date(user.lastActivity).toLocaleDateString()
+                      ? formatDate(user.lastActivity)
                       : "N/A"}
                   </Typography>
                 </Box>
@@ -339,8 +339,8 @@ const UserCard = ({ user, index, showAllUsers = false }) => {
                     {user.count > 10
                       ? "High Activity"
                       : user.count > 5
-                      ? "Medium Activity"
-                      : "Low Activity"}
+                        ? "Medium Activity"
+                        : "Low Activity"}
                   </Typography>
                 </Box>
 
@@ -529,9 +529,8 @@ const UserListItem = ({ user, showAllUsers = false }) => {
                     mb: 0.5,
                   }}
                 >
-                  {`${userDetails.first_name || ""} ${
-                    userDetails.last_name || ""
-                  }`.trim()}
+                  {`${userDetails.first_name || ""} ${userDetails.last_name || ""
+                    }`.trim()}
                 </Typography>
               )}
             {showAllUsers && userDetails.company && (
@@ -559,7 +558,7 @@ const UserListItem = ({ user, showAllUsers = false }) => {
                     variant="caption"
                     sx={{ color: colorPalette.textSecondary }}
                   >
-                    Last: {new Date(user.lastActivity).toLocaleDateString()}
+                    Last: {formatDate(user.lastActivity)}
                   </Typography>
                 )}
               </Box>

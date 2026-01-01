@@ -87,25 +87,25 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
   const arInvoices = formik.values.ar_invoices?.length
     ? formik.values.ar_invoices
     : [
-        {
-          date: "",
-          bill_no: "",
-          type: "",
-          organization: "",
-          currency: "",
-          amount: "",
-          balance: "",
-        },
-        {
-          date: "",
-          bill_no: "",
-          type: "",
-          organization: "",
-          currency: "",
-          amount: "",
-          balance: "",
-        },
-      ];
+      {
+        date: "",
+        bill_no: "",
+        type: "",
+        organization: "",
+        currency: "",
+        amount: "",
+        balance: "",
+      },
+      {
+        date: "",
+        bill_no: "",
+        type: "",
+        organization: "",
+        currency: "",
+        amount: "",
+        balance: "",
+      },
+    ];
 
   const refreshInvoices = () => {
     // Implement refresh logic here
@@ -180,7 +180,7 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                       <TableCell>
                         <TextField
                           size="small"
-                          placeholder="DD-MM-YYYY"
+                          placeholder="dd-MM-yyyy"
                           value={invoice.date || ""}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -398,7 +398,7 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     fullWidth
                     label="Last Updated"
                     size="small"
-                    placeholder="DD-MM-YYYY"
+                    placeholder="dd-MM-yyyy"
                     value={formik.values.ar_last_updated || ""}
                     onChange={(e) => {
                       const val = e.target.value;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { formatDate } from "../../../utils/dateUtils";
 import {
   BarChart,
   Bar,
@@ -270,7 +271,7 @@ const ExportDashboard = () => {
       <div style={s.header}>
         <h1 style={s.title}>Export Overview</h1>
         <span style={s.lastUpdated}>
-          Last updated: {new Date().toLocaleTimeString()}
+          Last updated: {formatDate(new Date())} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
         </span>
       </div>
 

@@ -71,7 +71,7 @@ router.get("/api/currency-rates", async (req, res) => {
 // Get currency rate for a specific date (finds immediate lower date)
 router.get("/api/currency-rates/by-date/:date", async (req, res) => {
   try {
-    const { date } = req.params; // Format: DD-MM-YYYY
+    const { date } = req.params; // Format: dd-mm-yyyy
 
     // Parse the input date
     const [day, month, year] = date.split("-");
@@ -80,7 +80,7 @@ router.get("/api/currency-rates/by-date/:date", async (req, res) => {
     if (isNaN(inputDate.getTime())) {
       return res.status(400).json({
         success: false,
-        message: "Invalid date format. Use DD-MM-YYYY",
+        message: "Invalid date format. Use dd-mm-yyyy",
       });
     }
 

@@ -46,6 +46,7 @@ import {
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import DirectoryForm from "./DirectoryForm.js";
 import DirectoryService from "../Directories/DirectoryService";
+import { formatDate } from "../../../utils/dateUtils";
 
 // Professional Logistics Theme
 const logisticsTheme = createTheme({
@@ -89,11 +90,11 @@ const TABLE_COLUMNS = [
 
 // Helper - Color for Approval Status
 const getStatusColor = (status) =>
-  ({
-    Approved: "success",
-    Rejected: "error",
-    Pending: "warning",
-  }[status] || "info");
+({
+  Approved: "success",
+  Rejected: "error",
+  Pending: "warning",
+}[status] || "info");
 
 // Helper - Entity Type Icon
 const getEntityIcon = (entityType) => {
@@ -153,8 +154,8 @@ const DirectoryDetailView = ({ directory }) => (
                     directory.approvalStatus === "Approved"
                       ? "rgba(76, 175, 80, 0.9)"
                       : directory.approvalStatus === "Rejected"
-                      ? "rgba(244, 67, 54, 0.9)"
-                      : "rgba(255, 193, 7, 0.9)",
+                        ? "rgba(244, 67, 54, 0.9)"
+                        : "rgba(255, 193, 7, 0.9)",
                   color: "white",
                   fontWeight: 600,
                 }}
@@ -678,9 +679,7 @@ const ExportDirectory = () => {
                         <TableCell>
                           <Typography variant="body2">
                             {directory.createdAt
-                              ? new Date(
-                                  directory.createdAt
-                                ).toLocaleDateString()
+                              ? formatDate(directory.createdAt)
                               : "-"}
                           </Typography>
                         </TableCell>
@@ -751,8 +750,8 @@ const ExportDirectory = () => {
                 {viewMode
                   ? "View Directory"
                   : selectedDirectory
-                  ? "Edit Directory"
-                  : "Add Directory"}
+                    ? "Edit Directory"
+                    : "Add Directory"}
               </Box>
             </DialogTitle>
             <DialogContent sx={{ p: 0 }}>

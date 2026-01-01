@@ -10,7 +10,7 @@ const DateInput = ({
   value,
   onChange,
   name,
-  placeholder = "dd/MM/yyyy",
+  placeholder = "dd-MM-yyyy",
   style,
   ...props
 }) => {
@@ -50,7 +50,7 @@ const DateInput = ({
           name,
           value: formattedDate,
         },
-        persist: () => {},
+        persist: () => { },
       };
       onChange(syntheticEvent);
     } else {
@@ -74,7 +74,7 @@ const DateInput = ({
         name,
         value: formattedDate,
       },
-      persist: () => {},
+      persist: () => { },
     };
 
     onChange(syntheticEvent);
@@ -92,7 +92,7 @@ const DateInput = ({
           name,
           value: formattedDate,
         },
-        persist: () => {},
+        persist: () => { },
       };
       onChange(syntheticEvent);
     }
