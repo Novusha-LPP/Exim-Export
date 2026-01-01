@@ -142,6 +142,72 @@ const cessExpDutySchema = new Schema(
   },
   { _id: false }
 );
+
+const freightInsuranceChargesSchema = new Schema(
+  {
+    freight: {
+      currency: { type: String, ref: "Currency" },
+      exchangeRate: { type: Number },
+      rate: { type: Number },
+      baseValue: { type: Number },
+      amount: { type: Number },
+    },
+    insurance: {
+      currency: { type: String, ref: "Currency" },
+      exchangeRate: { type: Number },
+      rate: { type: Number },
+      baseValue: { type: Number },
+      amount: { type: Number },
+    },
+    discount: {
+      currency: { type: String, ref: "Currency" },
+      exchangeRate: { type: Number },
+      rate: { type: Number },
+      amount: { type: Number },
+    },
+    otherDeduction: {
+      currency: { type: String, ref: "Currency" },
+      exchangeRate: { type: Number },
+      rate: { type: Number },
+      amount: { type: Number },
+    },
+    commission: {
+      currency: { type: String, ref: "Currency" },
+      exchangeRate: { type: Number },
+      rate: { type: Number },
+      amount: { type: Number },
+    },
+    fobValue: {
+      currency: { type: String, ref: "Currency" },
+      fobValueUSD: { type: Number },
+      amount: { type: Number },
+    },
+  },
+  { _id: false }
+);
+
+// Drawback Details Schema
+const drawbackDetailsSchema = new Schema(
+  {
+    dbkitem: { type: Boolean, default: false },
+    dbkSrNo: { type: String },
+    fobValue: { type: String, min: 0 },
+    quantity: { type: Number, min: 0 },
+    unit: { type: String, trim: true },
+    dbkUnder: {
+      type: String,
+      enum: ["Actual", "Provisional"],
+      default: "Actual",
+    },
+    dbkDescription: { type: String, maxlength: 500 },
+    dbkRate: { type: Number, default: 0, min: 0 },
+    dbkCap: { type: Number, default: 0, min: 0 },
+    dbkCapunit: { type: String, trim: true },
+    dbkAmount: { type: Number, default: 0, min: 0 },
+    percentageOfFobValue: { type: String },
+  },
+  { _id: true }
+);
 // Product/Item Details Schema (for multiple products per invoice)
 const productDetailsSchema = new Schema(
   {
@@ -285,35 +351,13 @@ const productDetailsSchema = new Schema(
     areDetails: [areDetailsSchema],
     deecDetails: deecSchema,
     epcgDetails: epcgSchema,
+    drawbackDetails: [drawbackDetailsSchema],
 
     // --- Legacy / Flat fields (kept for SB Type logic compatibility) ---
     sbTypeDetails: { type: String, trim: true },
     dbkType: { type: String, trim: true },
     cessExciseDuty: { type: String, default: "0" },
     compensationCess: { type: String, default: "0" },
-  },
-  { _id: true }
-);
-
-// Drawback Details Schema
-const drawbackDetailsSchema = new Schema(
-  {
-    dbkitem: { type: Boolean, default: false },
-    dbkSrNo: { type: String },
-    fobValue: { type: String, min: 0 },
-    quantity: { type: Number, min: 0 },
-    unit: { type: String, trim: true },
-    dbkUnder: {
-      type: String,
-      enum: ["Actual", "Provisional"],
-      default: "Actual",
-    },
-    dbkDescription: { type: String, maxlength: 500 },
-    dbkRate: { type: Number, default: 0, min: 0 },
-    dbkCap: { type: Number, default: 0, min: 0 },
-    dbkCapunit: { type: String, trim: true },
-    dbkAmount: { type: Number, default: 0, min: 0 },
-    percentageOfFobValue: { type: String },
   },
   { _id: true }
 );
@@ -343,6 +387,8 @@ const invoiceSchema = new Schema(
       default: "Both",
     },
     packing_fob: { type: Number, default: 0 },
+    products: [productDetailsSchema],
+    freightInsuranceCharges: { type: freightInsuranceChargesSchema },
   },
   { _id: true }
 );
@@ -924,47 +970,6 @@ const exportJobSchema = new mongoose.Schema(
       },
     },
 
-    // Freight, Insurance & Other Charges
-    freightInsuranceCharges: {
-      freight: {
-        currency: { type: String, ref: "Currency" },
-        exchangeRate: { type: Number },
-        rate: { type: Number },
-        baseValue: { type: Number },
-        amount: { type: Number },
-      },
-      insurance: {
-        currency: { type: String, ref: "Currency" },
-        exchangeRate: { type: Number },
-        rate: { type: Number },
-        baseValue: { type: Number },
-        amount: { type: Number },
-      },
-      discount: {
-        currency: { type: String, ref: "Currency" },
-        exchangeRate: { type: Number },
-        rate: { type: Number },
-        amount: { type: Number },
-      },
-      otherDeduction: {
-        currency: { type: String, ref: "Currency" },
-        exchangeRate: { type: Number },
-        rate: { type: Number },
-        amount: { type: Number },
-      },
-      commission: {
-        currency: { type: String, ref: "Currency" },
-        exchangeRate: { type: Number },
-        rate: { type: Number },
-        amount: { type: Number },
-      },
-      fobValue: {
-        currency: { type: String, ref: "Currency" },
-        fobValueUSD: { type: Number },
-        amount: { type: Number },
-      },
-    },
-
     // Charges and Billing
     charges: [chargeSchema],
 
@@ -1000,8 +1005,6 @@ const exportJobSchema = new mongoose.Schema(
     // System Fields
     createdBy: { type: String },
     updatedBy: String,
-    products: [productDetailsSchema],
-    drawbackDetails: [drawbackDetailsSchema],
     ar_invoices: [arInvoiceSchema],
     total_ar_amount: { type: Number, default: 0 },
     outstanding_balance: { type: Number, default: 0 },

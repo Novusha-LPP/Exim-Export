@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useState, useEffect } from "react";
 import { styles, toUpperVal } from "./commonStyles";
+import { calculateProductFobINR } from "../../../../utils/fobCalculations";
 
 // Default drawback detail object
 const getDefaultDrawback = (idx = 1) => ({
@@ -22,27 +23,17 @@ function toUpper(val) {
   return (typeof val === "string" ? val : "").toUpperCase();
 }
 
-// Helper function to format job date for API call
-const getJobDateFormatted = (jobDate) => {
-  if (!jobDate) {
-    const today = new Date();
-    const dd = String(today.getDate()).padStart(2, "0");
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const yyyy = today.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
-  }
-  const parts = jobDate.split("-");
-  if (parts.length === 3 && parts[0].length === 4) {
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  }
-  return jobDate;
-};
-
 const DBK_LIMIT = 20;
 
-const DrawbackTab = ({ formik, selectedProductIndex }) => {
-  const products = formik.values.products || [];
-  const product = products[selectedProductIndex];
+const DrawbackTab = ({
+  formik,
+  selectedInvoiceIndex,
+  selectedProductIndex,
+}) => {
+  const invoices = formik.values.invoices || [];
+  const activeInvoice = invoices[selectedInvoiceIndex] || {};
+  const products = activeInvoice.products || [];
+  const product = products[selectedProductIndex] || {};
   const saveTimeoutRef = useRef(null);
 
   // DBK Search Dialog State
@@ -56,9 +47,7 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
   const [dbkTotalPages, setDbkTotalPages] = useState(1);
 
   // Ensure array exists
-  const drawbackDetails = formik.values.drawbackDetails || [
-    getDefaultDrawback(1),
-  ];
+  const drawbackDetails = product.drawbackDetails || [getDefaultDrawback(1)];
 
   const autoSave = useCallback(() => formik.submitForm(), [formik]);
 
@@ -83,8 +72,8 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
       const list = Array.isArray(data?.data)
         ? data.data
         : Array.isArray(data)
-          ? data
-          : [];
+        ? data
+        : [];
 
       setDbkDialogOptions(list);
       if (data?.pagination) {
@@ -118,67 +107,31 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbkDialogQuery, dbkDialogOpen, fetchDbkCodes]);
 
-  // Sync Quantity/Unit from Products & FOB Value (convert product amount to INR)
+  // Sync Quantity/Unit from Products & FOB Value from FreightInsuranceCharges
   useEffect(() => {
-    const syncFobValues = async () => {
-      const products = formik.values.products || [];
-      const currentDbk = formik.values.drawbackDetails || [];
-      const invoiceCurrency = formik.values.invoices?.[0]?.currency;
+    const syncFobValues = () => {
+      const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
 
-      // We only sync if there is at least one product
-      if (products.length === 0) return;
+      if (!product || !activeInvoice) return;
 
-      // Fetch currency rates once for all products
-      let currencyRate = null;
-      if (invoiceCurrency && invoiceCurrency.toUpperCase() !== "INR") {
-        try {
-          const dateStr = getJobDateFormatted(formik.values.job_date);
-          const res = await fetch(
-            `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`
-          );
-          const json = await res.json();
-
-          if (json?.success && json?.data?.exchange_rates) {
-            currencyRate = json.data.exchange_rates.find(
-              (r) => r.currency_code?.toUpperCase() === invoiceCurrency.toUpperCase()
-            );
-          }
-        } catch (error) {
-          console.error("Error fetching currency rates:", error);
-        }
-      }
+      const fobAmountInr = calculateProductFobINR(
+        product,
+        activeInvoice,
+        invoiceExchangeRate
+      );
 
       let hasChanges = false;
-      const updatedDbk = currentDbk.map((item, idx) => {
-        const product = products[idx];
-        if (!product) return item;
-
-        // Check fields to sync
+      const currentDbk = product.drawbackDetails || [];
+      const updatedDbk = currentDbk.map((item) => {
         const pQty = product.quantity || 0;
         const pUnit = product.qtyUnit || "";
 
-        // Get product amount and convert to INR
-        let productAmount = parseFloat(product.amount || 0);
-        let fobAmountInr = 0;
+      const currentFob = parseFloat(item.fobValue) || 0;
+      const rate = parseFloat(item.dbkRate) || 0;
 
-        console.log(`Product ${idx} amount:`, productAmount);
+      let newItem = { ...item };
+      let changedLocal = false;
 
-        // Convert to INR if needed
-        if (productAmount > 0 && invoiceCurrency?.toUpperCase() !== "INR" && currencyRate?.export_rate) {
-          fobAmountInr = productAmount * currencyRate.export_rate;
-        } else {
-          fobAmountInr = productAmount;
-        }
-
-        console.log(`Product ${idx} fobAmount in INR:`, fobAmountInr);
-
-        const currentFob = parseFloat(item.fobValue) || 0;
-        const rate = parseFloat(item.dbkRate) || 0;
-
-        let newItem = { ...item };
-        let changedLocal = false;
-
-        // Sync Quantity/Unit
         if (
           String(item.quantity) !== String(pQty) ||
           String(item.unit) !== String(pUnit) ||
@@ -190,67 +143,83 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
           changedLocal = true;
         }
 
-        // Sync FOB Value (in INR)
-        if (currentFob !== fobAmountInr) {
-          newItem.fobValue = fobAmountInr;
-          // Recalculate amount
+        if (Math.abs(currentFob - fobAmountInr) > 0.01) {
+          newItem.fobValue = fobAmountInr.toFixed(2);
           newItem.dbkAmount = ((rate * fobAmountInr) / 100).toFixed(2);
           newItem.percentageOfFobValue = `${rate}% of FOB Value`;
           changedLocal = true;
         }
 
-        if (changedLocal) {
-          hasChanges = true;
-          return newItem;
-        }
-        return item;
-      });
+      if (changedLocal) {
+        hasChanges = true;
+        return newItem;
+      }
+      return item;
+    });
 
       if (hasChanges) {
-        formik.setFieldValue("drawbackDetails", updatedDbk);
+        const updatedInvoices = [...invoices];
+        if (updatedInvoices[selectedInvoiceIndex]) {
+          const updatedProducts = [
+            ...(updatedInvoices[selectedInvoiceIndex].products || []),
+          ];
+          updatedProducts[selectedProductIndex] = {
+            ...updatedProducts[selectedProductIndex],
+            drawbackDetails: updatedDbk,
+          };
+          updatedInvoices[selectedInvoiceIndex] = {
+            ...updatedInvoices[selectedInvoiceIndex],
+            products: updatedProducts,
+          };
+          formik.setFieldValue("invoices", updatedInvoices);
+        }
       }
     };
 
     syncFobValues();
   }, [
-    formik.values.products,
-    formik.values.drawbackDetails,
-    formik.values.invoices,
+    product?.quantity,
+    product?.qtyUnit,
+    product?.amount,
+    activeInvoice?.productValue,
+    activeInvoice?.invoiceValue,
+    activeInvoice?.currency,
+    activeInvoice?.freightInsuranceCharges,
     formik.values.job_date,
-    formik.setFieldValue,
+    formik.values.exchange_rate,
+    selectedInvoiceIndex,
+    selectedProductIndex,
   ]);
 
-  const populateDbkRow = async (idx, item) => {
-    const updated = [...(formik.values.drawbackDetails || [])];
-    if (!updated[idx]) updated[idx] = getDefaultDrawback(idx + 1);
+  const populateDbkRow = async (rowIndex, item) => {
+    const currentDbk = [...(product.drawbackDetails || [])];
+    if (!currentDbk[rowIndex])
+      currentDbk[rowIndex] = getDefaultDrawback(rowIndex + 1);
 
-    updated[idx].dbkSrNo = item.tariff_item || "";
-    updated[idx].dbkDescription = item.description_of_goods || "";
+    currentDbk[rowIndex].dbkSrNo = item.tariff_item || "";
+    currentDbk[rowIndex].dbkDescription = item.description_of_goods || "";
 
-    // Parse Rate
     let rateVal = 0;
     if (item.drawback_rate) {
       const match = item.drawback_rate.match(/([\d.]+)%/);
       rateVal = match ? parseFloat(match[1]) : parseFloat(item.drawback_rate);
     }
-    updated[idx].dbkRate = isNaN(rateVal) ? 0 : rateVal;
-    updated[idx].dbkCap = item.drawback_cap || 0;
+    currentDbk[rowIndex].dbkRate = isNaN(rateVal) ? 0 : rateVal;
+    currentDbk[rowIndex].dbkCap = item.drawback_cap || 0;
 
-    // Pull Quantity & Unit from ProductMainTab
-    const product = formik.values.products?.[idx];
-    if (product) {
-      updated[idx].quantity = product.quantity || 0;
-      updated[idx].unit = product.qtyUnit || "";
-      updated[idx].dbkCapunit = product.qtyUnit || "";
-    }
+    currentDbk[rowIndex].quantity = product.quantity || 0;
+    currentDbk[rowIndex].unit = product.qtyUnit || "";
+    currentDbk[rowIndex].dbkCapunit = product.qtyUnit || "";
 
-    // Pull FOB Value and convert to INR
-    const productData = formik.values.products?.[idx];
-    const invoiceCurrency = formik.values.invoices?.[0]?.currency;
-    let productAmount = parseFloat(productData?.amount || 0);
+    const invoiceCurrency = activeInvoice?.currency;
+    let productAmount = parseFloat(product.amount || 0);
     let fobInr = 0;
 
-    if (productAmount > 0 && invoiceCurrency && invoiceCurrency.toUpperCase() !== "INR") {
+    if (
+      productAmount > 0 &&
+      invoiceCurrency &&
+      invoiceCurrency.toUpperCase() !== "INR"
+    ) {
       try {
         const dateStr = getJobDateFormatted(formik.values.job_date);
         const res = await fetch(
@@ -260,7 +229,8 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
 
         if (json?.success && json?.data?.exchange_rates) {
           const currencyRate = json.data.exchange_rates.find(
-            (r) => r.currency_code?.toUpperCase() === invoiceCurrency.toUpperCase()
+            (r) =>
+              r.currency_code?.toUpperCase() === invoiceCurrency.toUpperCase()
           );
           if (currencyRate && typeof currencyRate.export_rate === "number") {
             fobInr = productAmount * currencyRate.export_rate;
@@ -278,51 +248,90 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
       fobInr = productAmount;
     }
 
-    updated[idx].fobValue = fobInr;
+    currentDbk[rowIndex].fobValue = fobInr;
 
     // Calculate Amount
-    updated[idx].dbkAmount = ((updated[idx].dbkRate * fobInr) / 100).toFixed(2);
-    updated[idx].percentageOfFobValue = `${updated[idx].dbkRate}% of FOB Value`;
+    currentDbk[rowIndex].dbkAmount = (
+      (currentDbk[rowIndex].dbkRate * fobInr) /
+      100
+    ).toFixed(2);
+    currentDbk[
+      rowIndex
+    ].percentageOfFobValue = `${currentDbk[rowIndex].dbkRate}% of FOB Value`;
 
-    formik.setFieldValue("drawbackDetails", updated);
-    scheduleSave();
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      updatedProducts[selectedProductIndex] = {
+        ...updatedProducts[selectedProductIndex],
+        drawbackDetails: currentDbk,
+      };
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+      scheduleSave();
+    }
   };
 
-  const handleDrawbackFieldChange = (idx, field, value) => {
-    const updated = [...(formik.values.drawbackDetails || [])];
-    if (!updated[idx]) updated[idx] = getDefaultDrawback(idx + 1);
-    updated[idx][field] = value;
+  const handleDrawbackFieldChange = (rowIndex, field, value) => {
+    const currentDbk = [...(product.drawbackDetails || [])];
+    if (!currentDbk[rowIndex])
+      currentDbk[rowIndex] = getDefaultDrawback(rowIndex + 1);
+    currentDbk[rowIndex][field] = value;
 
-    // Recalculate amount if relevant fields change
     if (field === "dbkRate" || field === "fobValue") {
       const rate =
-        parseFloat(field === "dbkRate" ? value : updated[idx].dbkRate) || 0;
+        parseFloat(
+          field === "dbkRate" ? value : currentDbk[rowIndex].dbkRate
+        ) || 0;
       const fob =
-        parseFloat(field === "fobValue" ? value : updated[idx].fobValue) || 0;
-      updated[idx].dbkAmount = ((rate * fob) / 100).toFixed(2);
-      updated[idx].percentageOfFobValue = `${rate}% of FOB Value`;
+        parseFloat(
+          field === "fobValue" ? value : currentDbk[rowIndex].fobValue
+        ) || 0;
+      currentDbk[rowIndex].dbkAmount = ((rate * fob) / 100).toFixed(2);
+      currentDbk[rowIndex].percentageOfFobValue = `${rate}% of FOB Value`;
     }
 
-    formik.setFieldValue("drawbackDetails", updated);
-    scheduleSave();
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      updatedProducts[selectedProductIndex] = {
+        ...updatedProducts[selectedProductIndex],
+        drawbackDetails: currentDbk,
+      };
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+      scheduleSave();
+    }
   };
 
-  const fetchDrawbackDetails = async (idx, dbkSrNo) => {
+  const fetchDrawbackDetails = async (rowIndex, dbkSrNo) => {
     if (!dbkSrNo) return;
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_STRING
+        `${
+          import.meta.env.VITE_API_STRING
         }/getDrawback?tariff_item=${encodeURIComponent(dbkSrNo)}`
       );
       const data = await res.json();
 
       if (data && data.success && data.data && data.data.length > 0) {
         const item = data.data[0];
-        const updated = [...(formik.values.drawbackDetails || [])];
-        if (!updated[idx]) updated[idx] = getDefaultDrawback(idx + 1);
+        const currentDbk = [...(product.drawbackDetails || [])];
+        if (!currentDbk[rowIndex])
+          currentDbk[rowIndex] = getDefaultDrawback(rowIndex + 1);
 
         // Map API response to fields
-        updated[idx].dbkDescription = item.description_of_goods || "";
+        currentDbk[rowIndex].dbkDescription = item.description_of_goods || "";
 
         // Parse Rate (remove %)
         let rateVal = 0;
@@ -332,37 +341,44 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
             ? parseFloat(match[1])
             : parseFloat(item.drawback_rate);
         }
-        updated[idx].dbkRate = isNaN(rateVal) ? 0 : rateVal;
+        currentDbk[rowIndex].dbkRate = isNaN(rateVal) ? 0 : rateVal;
 
-        updated[idx].dbkCap = item.drawback_cap || 0;
+        currentDbk[rowIndex].dbkCap = item.drawback_cap || 0;
 
         // Pull Quantity & Unit from ProductMainTab (corresponding index)
-        const product = formik.values.products?.[idx];
-        if (product) {
-          updated[idx].quantity = product.quantity || 0;
-          updated[idx].unit = product.qtyUnit || "";
-          updated[idx].dbkCapunit = product.qtyUnit || "";
-        }
+        currentDbk[rowIndex].quantity = product.quantity || 0;
+        currentDbk[rowIndex].unit = product.qtyUnit || "";
+        currentDbk[rowIndex].dbkCapunit = product.qtyUnit || "";
 
         // Pull FOB Value and convert to INR
-        const productData = formik.values.products?.[idx];
-        const invoiceCurrency = formik.values.invoices?.[0]?.currency;
-        let productAmount = parseFloat(productData?.amount || 0);
+        const invoiceCurrency = activeInvoice?.currency;
+        let productAmount = parseFloat(product.amount || 0);
         let fobInr = 0;
 
-        if (productAmount > 0 && invoiceCurrency && invoiceCurrency.toUpperCase() !== "INR") {
+        if (
+          productAmount > 0 &&
+          invoiceCurrency &&
+          invoiceCurrency.toUpperCase() !== "INR"
+        ) {
           try {
             const dateStr = getJobDateFormatted(formik.values.job_date);
             const res = await fetch(
-              `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`
+              `${
+                import.meta.env.VITE_API_STRING
+              }/currency-rates/by-date/${dateStr}`
             );
             const json = await res.json();
 
             if (json?.success && json?.data?.exchange_rates) {
               const currencyRate = json.data.exchange_rates.find(
-                (r) => r.currency_code?.toUpperCase() === invoiceCurrency.toUpperCase()
+                (r) =>
+                  r.currency_code?.toUpperCase() ===
+                  invoiceCurrency.toUpperCase()
               );
-              if (currencyRate && typeof currencyRate.export_rate === "number") {
+              if (
+                currencyRate &&
+                typeof currencyRate.export_rate === "number"
+              ) {
                 fobInr = productAmount * currencyRate.export_rate;
               } else {
                 fobInr = productAmount;
@@ -378,19 +394,33 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
           fobInr = productAmount;
         }
 
-        updated[idx].fobValue = fobInr;
+        currentDbk[rowIndex].fobValue = fobInr;
 
         // Calculate Amount
-        updated[idx].dbkAmount = (
-          (updated[idx].dbkRate * fobInr) /
+        currentDbk[rowIndex].dbkAmount = (
+          (currentDbk[rowIndex].dbkRate * fobInr) /
           100
         ).toFixed(2);
-        updated[
-          idx
-        ].percentageOfFobValue = `${updated[idx].dbkRate}% of FOB Value`;
+        currentDbk[
+          rowIndex
+        ].percentageOfFobValue = `${currentDbk[rowIndex].dbkRate}% of FOB Value`;
 
-        formik.setFieldValue("drawbackDetails", updated);
-        scheduleSave();
+        const updatedInvoices = [...invoices];
+        if (updatedInvoices[selectedInvoiceIndex]) {
+          const updatedProducts = [
+            ...(updatedInvoices[selectedInvoiceIndex].products || []),
+          ];
+          updatedProducts[selectedProductIndex] = {
+            ...updatedProducts[selectedProductIndex],
+            drawbackDetails: currentDbk,
+          };
+          updatedInvoices[selectedInvoiceIndex] = {
+            ...updatedInvoices[selectedInvoiceIndex],
+            products: updatedProducts,
+          };
+          formik.setFieldValue("invoices", updatedInvoices);
+          scheduleSave();
+        }
       }
     } catch (error) {
       console.error("Error fetching drawback details:", error);
@@ -398,16 +428,32 @@ const DrawbackTab = ({ formik, selectedProductIndex }) => {
   };
 
   const addDrawbackDetail = () => {
-    const updated = [...(formik.values.drawbackDetails || [])];
-    updated.push(getDefaultDrawback(updated.length + 1));
-    formik.setFieldValue("drawbackDetails", updated);
+    const currentDbk = [...(product.drawbackDetails || [])];
+    currentDbk.push(getDefaultDrawback(currentDbk.length + 1));
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      updatedProducts[selectedProductIndex].drawbackDetails = currentDbk;
+      updatedInvoices[selectedInvoiceIndex].products = updatedProducts;
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
   };
 
-  const deleteDrawbackDetail = (idx) => {
-    const updated = [...(formik.values.drawbackDetails || [])];
-    if (updated.length > 1) {
-      updated.splice(idx, 1);
-      formik.setFieldValue("drawbackDetails", updated);
+  const deleteDrawbackDetail = (rowIndex) => {
+    const currentDbk = [...(product.drawbackDetails || [])];
+    if (currentDbk.length > 1) {
+      currentDbk.splice(rowIndex, 1);
+      const updatedInvoices = [...invoices];
+      if (updatedInvoices[selectedInvoiceIndex]) {
+        const updatedProducts = [
+          ...(updatedInvoices[selectedInvoiceIndex].products || []),
+        ];
+        updatedProducts[selectedProductIndex].drawbackDetails = currentDbk;
+        updatedInvoices[selectedInvoiceIndex].products = updatedProducts;
+        formik.setFieldValue("invoices", updatedInvoices);
+      }
     }
   };
 

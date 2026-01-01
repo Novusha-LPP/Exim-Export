@@ -111,41 +111,59 @@ const styles = {
   smallLabel: { fontSize: 11, color: "#222" },
 };
 
-const ProductCessDutyTab = ({ formik, idx = 0 }) => {
-  const products = formik.values.products || [];
+const ProductCessDutyTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
+  const invoices = formik.values.invoices || [];
+  const activeInvoice = invoices[selectedInvoiceIndex] || {};
+  const products = activeInvoice.products || [];
   const product = products[idx] || {};
   const cessExpDuty = product.cessExpDuty || {};
   const cenvat = cessExpDuty.cenvat || {};
 
   const setCess = (field, value) => {
-    const currentProducts = formik.values.products || [];
-    const updated = [...currentProducts];
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      if (!updatedProducts[idx]) updatedProducts[idx] = {};
 
-    if (!updated[idx]) updated[idx] = {};
-    if (!updated[idx].cessExpDuty) updated[idx].cessExpDuty = {};
+      updatedProducts[idx] = {
+        ...updatedProducts[idx],
+        cessExpDuty: {
+          ...(updatedProducts[idx].cessExpDuty || {}),
+          [field]: value,
+        },
+      };
 
-    updated[idx].cessExpDuty = {
-      ...updated[idx].cessExpDuty,
-      [field]: value,
-    };
-
-    formik.setFieldValue("products", updated);
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
   };
 
   const setCenvat = (field, value) => {
-    const currentProducts = formik.values.products || [];
-    const updated = [...currentProducts];
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      if (!updatedProducts[idx]) updatedProducts[idx] = {};
+      if (!updatedProducts[idx].cessExpDuty)
+        updatedProducts[idx].cessExpDuty = {};
 
-    if (!updated[idx]) updated[idx] = {};
-    if (!updated[idx].cessExpDuty) updated[idx].cessExpDuty = {};
-    if (!updated[idx].cessExpDuty.cenvat) updated[idx].cessExpDuty.cenvat = {};
+      updatedProducts[idx].cessExpDuty.cenvat = {
+        ...(updatedProducts[idx].cessExpDuty.cenvat || {}),
+        [field]: value,
+      };
 
-    updated[idx].cessExpDuty.cenvat = {
-      ...updated[idx].cessExpDuty.cenvat,
-      [field]: value,
-    };
-
-    formik.setFieldValue("products", updated);
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
   };
 
   return (

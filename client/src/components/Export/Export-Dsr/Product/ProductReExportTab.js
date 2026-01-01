@@ -4,17 +4,32 @@ import { unitCodes } from "../../../../utils/masterList";
 import { toUpperVal } from "./commonStyles.js";
 import DateInput from "../../../common/DateInput.js";
 import SearchableDropdown from "../../../common/SearchableDropdown.js";
-const ProductReExportTab = ({ formik, idx = 0 }) => {
-  const product = formik.values.products?.[idx] || {};
+const ProductReExportTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
+  const invoices = formik.values.invoices || [];
+  const activeInvoice = invoices[selectedInvoiceIndex] || {};
+  const products = activeInvoice.products || [];
+  const product = products[idx] || {};
   const reExport = product.reExport || {};
   const isEnabled = !!reExport.isReExport;
 
   const handleChange = (field, value) => {
-    const updatedProducts = [...(formik.values.products || [])];
-    if (!updatedProducts[idx]) updatedProducts[idx] = {};
-    const currentReExport = updatedProducts[idx].reExport || {};
-    updatedProducts[idx].reExport = { ...currentReExport, [field]: value };
-    formik.setFieldValue("products", updatedProducts);
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      if (!updatedProducts[idx]) updatedProducts[idx] = {};
+      const currentReExport = updatedProducts[idx].reExport || {};
+      updatedProducts[idx] = {
+        ...updatedProducts[idx],
+        reExport: { ...currentReExport, [field]: value },
+      };
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
   };
 
   // const formatDate = (dateStr) => (dateStr ? dateStr.substring(0, 10) : "");

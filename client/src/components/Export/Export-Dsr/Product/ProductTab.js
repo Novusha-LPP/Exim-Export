@@ -91,7 +91,7 @@ const getTabsForEximCode = (eximCode) => {
         "Re-Export",
         "Other Details",
       ];
-    
+
     case "61 - EPCG, DRAWBACK AND ROSCTL": // EPCG, DRAWBACK AND ROSCTL EPCG Drawback
       return [
         "Main",
@@ -118,64 +118,90 @@ const getTabsForEximCode = (eximCode) => {
 
 const ProductTab = ({ formik, directories, params }) => {
   const [activeSubTab, setActiveSubTab] = useState(0);
-  const [selectedProductIndex, setSelectedProductIndex] = useState(0); // Default to first product
+  const [selectedInvoiceIndex, setSelectedInvoiceIndex] = useState(0);
+  const [selectedProductIndex, setSelectedProductIndex] = useState(0);
+
+  const invoices = formik.values.invoices || [];
+  const activeInvoice = invoices[selectedInvoiceIndex] || {};
+  const products = activeInvoice.products || [];
 
   // Get current selected product
-  const currentProduct = formik.values.products?.[selectedProductIndex];
+  const currentProduct = products[selectedProductIndex];
   const eximCode = currentProduct?.eximCode;
 
   // Get tabs based on CURRENT SELECTED product's EXIM code
   const availableTabs = useMemo(() => getTabsForEximCode(eximCode), [eximCode]);
+
   const handleTabChange = (event, newValue) => {
     setActiveSubTab(newValue);
   };
 
+  const handleInvoiceChange = (e) => {
+    setSelectedInvoiceIndex(parseInt(e.target.value));
+    setSelectedProductIndex(0); // Reset product selection when invoice changes
+  };
+
   const renderTabContent = (tabName) => {
+    const commonProps = {
+      formik,
+      selectedInvoiceIndex,
+      selectedProductIndex,
+    };
+
     switch (tabName) {
       case "Main":
-        return (
-          <ProductMainTab
-            formik={formik}
-            selectedProductIndex={selectedProductIndex}
-          />
-        );
+        return <ProductMainTab {...commonProps} />;
       case "General":
-        return (
-          <ProductGeneralTab
-            formik={formik}
-            selectedProductIndex={selectedProductIndex}
-          />
-        );
+        return <ProductGeneralTab {...commonProps} />;
       case "Drawback":
-        return (
-          <DrawbackTab
-            formik={formik}
-            selectedProductIndex={selectedProductIndex}
-          />
-        );
+        return <DrawbackTab {...commonProps} />;
       case "CessExport Duty":
         return (
-          <ProductCessDutyTab formik={formik} idx={selectedProductIndex} />
+          <ProductCessDutyTab
+            formik={formik}
+            selectedInvoiceIndex={selectedInvoiceIndex}
+            idx={selectedProductIndex}
+          />
         );
       case "AreDetails":
         return (
-          <ProductAREDetailsTab formik={formik} idx={selectedProductIndex} />
+          <ProductAREDetailsTab
+            formik={formik}
+            selectedInvoiceIndex={selectedInvoiceIndex}
+            idx={selectedProductIndex}
+          />
         );
       case "Re-Export":
         return (
-          <ProductReExportTab formik={formik} idx={selectedProductIndex} />
+          <ProductReExportTab
+            formik={formik}
+            selectedInvoiceIndex={selectedInvoiceIndex}
+            idx={selectedProductIndex}
+          />
         );
       case "Other Details":
         return (
-          <ProductOtherDetailsTab formik={formik} idx={selectedProductIndex} />
+          <ProductOtherDetailsTab
+            formik={formik}
+            selectedInvoiceIndex={selectedInvoiceIndex}
+            idx={selectedProductIndex}
+          />
         );
       case "DEEC":
         return (
-          <ProductDEECTab formik={formik} productIndex={selectedProductIndex} />
+          <ProductDEECTab
+            formik={formik}
+            selectedInvoiceIndex={selectedInvoiceIndex}
+            productIndex={selectedProductIndex}
+          />
         );
       case "EPCG":
         return (
-          <ProductEPCGTab formik={formik} productIndex={selectedProductIndex} />
+          <ProductEPCGTab
+            formik={formik}
+            selectedInvoiceIndex={selectedInvoiceIndex}
+            productIndex={selectedProductIndex}
+          />
         );
       default:
         return <Typography>Tab content not implemented</Typography>;
@@ -187,43 +213,80 @@ const ProductTab = ({ formik, directories, params }) => {
       <Box
         sx={{
           mb: 2,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
         }}
       >
-        <Typography variant="h6" fontWeight="bold">
-          Product Item Details
-        </Typography>
+        <Box>
+          <Typography variant="h6" fontWeight="bold">
+            Product Item Details
+          </Typography>
 
-        {/* Product Selector - Renders based on selectedProductIndex */}
-        {formik.values.products?.length > 0 && (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="body2">Product</Typography>
-            <Box sx={{ display: "flex", gap: 0.5 }}>
-              {formik.values.products.map((product, index) => (
-                <Chip
-                  key={index}
-                  label={product.serialNumber || index + 1}
-                  onClick={() => setSelectedProductIndex(index)}
-                  color={selectedProductIndex === index ? "primary" : "default"}
-                  variant={
-                    selectedProductIndex === index ? "filled" : "outlined"
-                  }
-                  size="small"
-                />
+          {/* Invoice Selector */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
+            <Typography variant="body2" fontWeight="600">
+              Invoice:
+            </Typography>
+            <select
+              value={selectedInvoiceIndex}
+              onChange={handleInvoiceChange}
+              style={{
+                padding: "4px 8px",
+                borderRadius: "4px",
+                border: "1px solid #ced4da",
+                fontSize: "14px",
+              }}
+            >
+              {invoices.map((inv, idx) => (
+                <option key={idx} value={idx}>
+                  Invoice #{idx + 1}{" "}
+                  {inv.invoiceNumber ? `(${inv.invoiceNumber})` : ""}
+                </option>
               ))}
+            </select>
+          </Box>
+
+          {/* Product Selector */}
+          {products.length > 0 && (
+            <Box
+              sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1.5 }}
+            >
+              <Typography variant="body2" fontWeight="600">
+                Product
+              </Typography>
+              <Box sx={{ display: "flex", gap: 0.5 }}>
+                {products.map((product, index) => (
+                  <Chip
+                    key={index}
+                    label={product.serialNumber || index + 1}
+                    onClick={() => setSelectedProductIndex(index)}
+                    color={
+                      selectedProductIndex === index ? "primary" : "default"
+                    }
+                    variant={
+                      selectedProductIndex === index ? "filled" : "outlined"
+                    }
+                    size="small"
+                  />
+                ))}
+              </Box>
             </Box>
+          )}
+        </Box>
+
+        {/* EXIM Code Indicator */}
+        {eximCode && (
+          <Box sx={{ textAlign: "right" }}>
+            <Chip
+              label={`EXIM: ${eximCode}`}
+              size="small"
+              color="secondary"
+              variant="outlined"
+            />
           </Box>
         )}
       </Box>
-
-      {/* EXIM Code Indicator */}
-      {eximCode && (
-        <Chip
-          label={`EXIM: ${eximCode}`}
-          size="small"
-          color="secondary"
-          variant="outlined"
-        />
-      )}
 
       <Divider sx={{ mb: 2 }} />
 
@@ -248,7 +311,7 @@ const ProductTab = ({ formik, directories, params }) => {
         ))}
       </Tabs>
 
-      {/* Dynamic Tab Content - PASSES selectedProductIndex to child tabs */}
+      {/* Dynamic Tab Content */}
       {availableTabs.map((tabName, index) => (
         <ProductTabPanel key={tabName} value={activeSubTab} index={index}>
           {renderTabContent(tabName)}

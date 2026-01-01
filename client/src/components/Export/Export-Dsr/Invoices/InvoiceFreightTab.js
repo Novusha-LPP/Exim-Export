@@ -14,6 +14,14 @@ const styles = {
     padding: 10,
     background: "#ffffff",
   },
+  card: {
+    background: "#ffffff",
+    border: "1px solid #d2d8e4",
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 12,
+    boxShadow: "0 0 0 1px rgba(15, 23, 42, 0.02)",
+  },
   headerRow: {
     display: "grid",
     gridTemplateColumns: "120px 90px 110px 90px 120px 120px",
@@ -90,6 +98,7 @@ const rowDefs = [
 const InvoiceFreightTab = ({ formik }) => {
   const saveTimeoutRef = useRef(null);
   const [rateMap, setRateMap] = useState({});
+  const [selectedInvoiceIndex, setSelectedInvoiceIndex] = useState(0);
 
   const getJobDateFormatted = (jobDate) => {
     if (!jobDate) {
@@ -138,8 +147,9 @@ const InvoiceFreightTab = ({ formik }) => {
     // debounce-save hook if needed
   }, []);
 
-  const charges = formik.values.freightInsuranceCharges || {};
-  const invoice = formik.values.invoices?.[0] || {};
+  const invoices = formik.values.invoices || [];
+  const invoice = invoices[selectedInvoiceIndex] || {};
+  const charges = invoice.freightInsuranceCharges || {};
   const invoiceCurrency = (invoice.currency || "USD").toUpperCase();
 
   // Helper: get rate for a currency; INR defaults to 1 if missing in API
@@ -193,7 +203,7 @@ const InvoiceFreightTab = ({ formik }) => {
   const getBaseValue = (rowKey, data) => {
     if (rowKey === "fobValue") return 0;
 
-    const inv = formik.values.invoices?.[0] || {};
+    const inv = invoices[selectedInvoiceIndex] || {};
     const productVal = Number(inv.productValue || inv.invoiceValue || 0);
     if (!productVal) return 0;
 
@@ -230,7 +240,7 @@ const InvoiceFreightTab = ({ formik }) => {
 
   // Compute FOB in INR from all other row amounts
   const computeFOBCharges = () => {
-    const inv = formik.values.invoices?.[0] || {};
+    const inv = invoices[selectedInvoiceIndex] || {};
     // Use productValue, falling back to invoiceValue so FOB works even if only invoiceValue is filled
     const invoiceVal = Number(inv.productValue || inv.invoiceValue || 0); // in invoice currency
     if (!invoiceVal || !invoiceExchangeRate) return charges;
@@ -338,16 +348,29 @@ const InvoiceFreightTab = ({ formik }) => {
     };
     // Deep comparison to allow updates when effectiveCharges changes
     if (
-      JSON.stringify(formik.values.freightInsuranceCharges) !==
-      JSON.stringify(nextVal)
+      JSON.stringify(
+        formik.values.invoices[selectedInvoiceIndex]?.freightInsuranceCharges
+      ) !== JSON.stringify(nextVal)
     ) {
-      formik.setFieldValue("freightInsuranceCharges", nextVal, false);
+      formik.setFieldValue(
+        `invoices[${selectedInvoiceIndex}].freightInsuranceCharges`,
+        nextVal,
+        false
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveCharges, fobValueUSD, formik.values.freightInsuranceCharges]);
+  }, [
+    effectiveCharges,
+    fobValueUSD,
+    formik.values.invoices[selectedInvoiceIndex]?.freightInsuranceCharges,
+  ]);
 
   useEffect(() => {
-    formik.setFieldValue("fobValueUSD", fobValueUSD, false);
+    formik.setFieldValue(
+      `invoices[${selectedInvoiceIndex}].fobValueUSD`,
+      fobValueUSD,
+      false
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fobValueUSD]);
 
@@ -384,7 +407,10 @@ const InvoiceFreightTab = ({ formik }) => {
 
     next[sectionKey] = currentSection;
 
-    formik.setFieldValue("freightInsuranceCharges", next);
+    formik.setFieldValue(
+      `invoices[${selectedInvoiceIndex}].freightInsuranceCharges`,
+      next
+    );
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
@@ -394,15 +420,52 @@ const InvoiceFreightTab = ({ formik }) => {
 
   return (
     <div style={styles.page}>
+      <div style={{ ...styles.card, padding: "16px", marginBottom: "16px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "12px",
+          }}
+        >
+          <div style={styles.title}>Invoice Selector</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span
+              style={{ fontSize: "12px", fontWeight: "700", color: "#4b5563" }}
+            >
+              SELECT INVOICE:
+            </span>
+            <select
+              style={{
+                ...styles.select,
+                width: "200px",
+                height: "30px",
+                fontWeight: "700",
+              }}
+              value={selectedInvoiceIndex}
+              onChange={(e) =>
+                setSelectedInvoiceIndex(parseInt(e.target.value))
+              }
+            >
+              {invoices.map((inv, idx) => (
+                <option key={idx} value={idx}>
+                  Invoice #{idx + 1}{" "}
+                  {inv.invoiceNumber ? `- ${inv.invoiceNumber}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div style={styles.title}>Freight, Insurance & Other Charges</div>
 
       {invoiceCurrency && (
         <div style={{ ...styles.conversionInfo, marginBottom: 8 }}>
-          Invoice Currency: {invoiceCurrency} (Rate:{" "}
+          Active Invoice Currency: <strong>{invoiceCurrency}</strong> (Rate:{" "}
           {invoiceExchangeRate.toFixed(2)} INR). Base values are the product /
-          invoice value converted to each row&apos;s currency, and FOB is
-          calculated in INR as (Invoice Value − Total Amount in invoice
-          currency) × {invoiceExchangeRate.toFixed(2)}.
+          invoice value converted to each row&apos;s currency.
         </div>
       )}
 

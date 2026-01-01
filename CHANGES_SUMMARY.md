@@ -229,3 +229,9 @@ To migrate other files to use the global date utility:
 - Consistent dd/MM/yyyy format everywhere
 
 **Result:** ✓ All dates display and accept dd/MM/yyyy format
+<<<<<<< HEAD
+=======
+
+
+Create new hook for fob calculation where the formula is  prod.amount  (of selected product) / 
+>>>>>>> cf3126c (feat: introduce product FOB calculation utility and refactor invoice handling to support multiple invoices with auto-calculated product values.)

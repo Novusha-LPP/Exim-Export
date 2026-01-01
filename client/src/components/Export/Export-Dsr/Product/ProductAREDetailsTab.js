@@ -12,33 +12,65 @@ const defaultAreRow = (idx) => ({
   remark: "",
 });
 
-const ProductAREDetailsTab = ({ formik, idx = 0 }) => {
-  const product = formik.values.products?.[idx] || {};
+const ProductAREDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
+  const invoices = formik.values.invoices || [];
+  const activeInvoice = invoices[selectedInvoiceIndex] || {};
+  const products = activeInvoice.products || [];
+  const product = products[idx] || {};
   const areDetails = product.areDetails || [];
 
   const handleAreChange = (rowIdx, field, value) => {
-    const updatedProducts = [...(formik.values.products || [])];
-    if (!updatedProducts[idx]) updatedProducts[idx] = {};
-    const areRows = [...(updatedProducts[idx].areDetails || [])];
-    areRows[rowIdx] = { ...areRows[rowIdx], [field]: value };
-    updatedProducts[idx].areDetails = areRows;
-    formik.setFieldValue("products", updatedProducts);
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      if (!updatedProducts[idx]) updatedProducts[idx] = {};
+      const areRows = [...(updatedProducts[idx].areDetails || [])];
+      areRows[rowIdx] = { ...areRows[rowIdx], [field]: value };
+      updatedProducts[idx] = { ...updatedProducts[idx], areDetails: areRows };
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
   };
 
   const addAreRow = () => {
-    const updatedProducts = [...(formik.values.products || [])];
-    const areRows = [...(updatedProducts[idx]?.areDetails || [])];
-    areRows.push(defaultAreRow(areRows.length));
-    updatedProducts[idx].areDetails = areRows;
-    formik.setFieldValue("products", updatedProducts);
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      if (!updatedProducts[idx]) updatedProducts[idx] = {};
+      const areRows = [...(updatedProducts[idx].areDetails || [])];
+      areRows.push(defaultAreRow(areRows.length));
+      updatedProducts[idx] = { ...updatedProducts[idx], areDetails: areRows };
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
   };
 
   const deleteAreRow = (i) => {
-    const updatedProducts = [...(formik.values.products || [])];
-    const areRows = [...(updatedProducts[idx]?.areDetails || [])];
-    areRows.splice(i, 1);
-    updatedProducts[idx].areDetails = areRows;
-    formik.setFieldValue("products", updatedProducts);
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      if (!updatedProducts[idx]) updatedProducts[idx] = {};
+      const areRows = [...(updatedProducts[idx].areDetails || [])];
+      areRows.splice(i, 1);
+      updatedProducts[idx] = { ...updatedProducts[idx], areDetails: areRows };
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
   };
 
   return (
