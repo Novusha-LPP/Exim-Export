@@ -155,7 +155,7 @@ const PaymentRequestForm = ({ request, editMode, formik, onClose, onSave }) => {
               label="Date"
               size="small"
               fullWidth
-              placeholder="dd-MM-yyyy"
+              placeholder="dd-mm-yyyy"
               value={formData.date || ""}
               onChange={(e) => {
                 const val = e.target.value;

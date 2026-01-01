@@ -180,7 +180,7 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                       <TableCell>
                         <TextField
                           size="small"
-                          placeholder="dd-MM-yyyy"
+                          placeholder="dd-mm-yyyy"
                           value={invoice.date || ""}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -398,7 +398,7 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                     fullWidth
                     label="Last Updated"
                     size="small"
-                    placeholder="dd-MM-yyyy"
+                    placeholder="dd-mm-yyyy"
                     value={formik.values.ar_last_updated || ""}
                     onChange={(e) => {
                       const val = e.target.value;

@@ -10,7 +10,7 @@ const DateInput = ({
   value,
   onChange,
   name,
-  placeholder = "dd-MM-yyyy",
+  placeholder = "dd-mm-yyyy",
   style,
   ...props
 }) => {

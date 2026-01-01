@@ -187,7 +187,7 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
                       <TableCell>
                         <TextField
                           size="small"
-                          placeholder="dd-MM-yyyy"
+                          placeholder="dd-mm-yyyy"
                           value={invoice.date || ""}
                           onChange={(e) => {
                             const val = e.target.value;
