@@ -56,8 +56,8 @@ const styles = {
     background: "#ffffff",
     marginBottom: 10,
     overflowX: "auto",
-    overflowY: "auto",
-    maxHeight: 400,
+    // overflowY: "auto",
+    // maxHeight: 400,
   },
   table: {
     width: "100%",

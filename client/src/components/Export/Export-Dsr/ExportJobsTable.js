@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
@@ -119,26 +120,31 @@ const s = {
     width: "100%",
     borderCollapse: "collapse",
     fontSize: "12px",
-    whiteSpace: "nowrap",
+    tableLayout: "fixed", // Enforce fixed widths
   },
   th: {
-    padding: "10px 12px",
+    padding: "8px 6px", // Reduced padding
     textAlign: "left",
     fontWeight: "700",
-    fontSize: "14px",
+    fontSize: "13px", // Slightly smaller
     color: "#000000",
     borderBottom: "1px solid #e5e7eb",
     borderRight: "1px solid #f3f4f6",
-    whiteSpace: "nowrap",
+    whiteSpace: "normal", // Allow wrapping
+    wordBreak: "break-word", // Break long words
+    verticalAlign: "top", // Align to top for better readability
     // position: "sticky",
     top: 0,
     zIndex: 10,
   },
   td: {
-    padding: "8px 12px",
+    padding: "6px 6px", // Reduced padding
     borderBottom: "1px solid #f3f4f6",
     borderRight: "1px solid #f9fafb",
     color: "#1f2937",
+    whiteSpace: "normal", // Allow wrapping
+    wordBreak: "break-word", // Break long words
+    verticalAlign: "top",
   },
   rowHover: {
     cursor: "pointer",
@@ -856,48 +862,40 @@ const ExportJobsTable = () => {
           {/* Table */}
           <div style={s.tableContainer}>
             <table style={s.table}>
+              <colgroup>
+                <col style={{ width: "120px" }} /> {/* Job No */}
+                <col style={{ width: "180px" }} /> {/* Exporter */}
+                <col style={{ width: "140px" }} /> {/* Invoice */}
+                <col style={{ width: "100px" }} /> {/* SB */}
+                <col style={{ width: "100px" }} /> {/* Pkgs */}
+                <col style={{ width: "140px" }} /> {/* Port */}
+                <col style={{ width: "140px" }} /> {/* Placement */}
+                <col style={{ width: "100px" }} /> {/* Handover */}
+                <col style={{ width: "80px" }} /> {/* Action */}
+              </colgroup>
               <thead>
                 <tr>
-                  {/* <th style={{ ...s.th, width: "40px", textAlign: "center" }}>
-                    #
-                  </th> */}
-                  <th
-                    style={{
-                      ...s.th,
-                      width: "150px",
-                      // position: "sticky",
-                      left: 0,
-                      zIndex: 20,
-                    }}
-                  >
-                    Job No
-                  </th>
-                  <th style={s.th}>Exporter details</th>
+                  <th style={s.th}>Job No</th>
+                  <th style={s.th}>Exporter</th>
                   <th style={s.th}>Invoice</th>
-                  <th style={s.th}>SB</th>
+                  <th style={s.th}>SB / Date</th>
                   <th style={s.th}>No. of Pkgs</th>
-                  <th style={s.th}>Port of destination</th>
-                  <th
-                    style={{ ...s.th, whiteSpace: "normal", lineHeight: "1.3" }}
-                  >
-                    Container
-                    <br />
-                    Placement
-                  </th>
-                  <th style={s.th}>Handover DATE</th>
-                  <th style={{ ...s.th, width: "80px" }}>Actions</th>
+                  <th style={s.th}>Destination</th>
+                  <th style={s.th}>Plac’t / Container</th>
+                  <th style={s.th}>Handover</th>
+                  <th style={s.th}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="10" style={s.message}>
-                      Loading data...
+                    <td colSpan="9" style={s.message}>
+                      Loading jobs...
                     </td>
                   </tr>
                 ) : jobs.length === 0 ? (
                   <tr>
-                    <td colSpan="10" style={s.message}>
+                    <td colSpan="9" style={s.message}>
                       No jobs found.
                     </td>
                   </tr>
