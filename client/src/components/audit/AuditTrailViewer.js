@@ -269,7 +269,7 @@ const AuditTrailViewer = ({ job_no, year }) => {
   // Fetch user list for admin filter
   useEffect(() => {
     if (user.role === "Admin") {
-      fetch(`${import.meta.env.VITE_API_STRING}/api/audit/user-mappings`)
+      fetch(`${import.meta.env.VITE_API_STRING}/audit/user-mappings`)
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {

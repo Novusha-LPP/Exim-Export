@@ -412,7 +412,7 @@ const ExportDirectory = () => {
   const fetchDirectories = async () => {
     try {
       setLoading(true);
-      const response = await DirectoryService.getAll();
+      const response = await DirectoryService.getAll({ limit: 1000 });
       setDirectories(response.data);
     } catch (error) {
       showSnackbar("Error fetching directories", "error");

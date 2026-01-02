@@ -12,7 +12,7 @@ import { format, parse, parseISO, isValid } from "date-fns";
  * @param {string|Date|number} val - The date value to format
  * @returns {string} - Formatted date string in dd-MM-yyyy format or empty string
  */
-export const formatDate = (val) => {
+export const formatDate = (val, formatStr = "dd-MM-yyyy") => {
   if (!val) return "";
 
   try {
@@ -80,11 +80,23 @@ export const formatDate = (val) => {
     }
 
     // Return formatted date if valid
-    return isValid(date) ? format(date, "dd-MM-yyyy") : "";
+    return isValid(date) ? format(date, formatStr) : "";
   } catch (e) {
     console.warn("Date formatting error:", e, "for value:", val);
     return "";
   }
+};
+
+/**
+ * Formats a date value to dd-MM-yyyy HH:mm format
+ *
+ * @param {string|Date|number} val - The date value to format
+ * @returns {string} - Formatted date string in dd-MM-yyyy HH:mm format or empty string
+ */
+export const formatDateTime = (val) => {
+  if (!val) return "";
+  const date = parseDate(val);
+  return date && isValid(date) ? format(date, "dd-MM-yyyy HH:mm") : "";
 };
 
 /**
@@ -117,6 +129,11 @@ export const parseDate = (val) => {
 
       if (!isValid(date)) {
         const formats = [
+          "dd/MM/yyyy HH:mm",
+          "dd-MM-yyyy HH:mm",
+          "dd.MM.yyyy HH:mm",
+          "dd/MM/yyyy HH:mm:ss",
+          "dd-MM-yyyy HH:mm:ss",
           "dd/MM/yyyy",
           "dd-MM-yyyy",
           "dd.MM.yyyy",
@@ -125,6 +142,8 @@ export const parseDate = (val) => {
           "M/d/yyyy",
           "yyyy-MM-dd",
           "yyyy/MM/dd",
+          "yyyy-MM-dd HH:mm",
+          "yyyy-MM-dd HH:mm:ss",
         ];
 
         for (const dateFormat of formats) {
@@ -165,7 +184,6 @@ export const handleDateInput = (value) => {
   // Check if the value contains letters (potential month name)
   if (/[a-zA-Z]/.test(trimmedValue)) {
     try {
-      // Try various formats with month names
       const monthNameFormats = [
         "dd-MMM-yyyy", // 31-dec-2025
         "dd MMM yyyy", // 31 dec 2025
@@ -181,39 +199,41 @@ export const handleDateInput = (value) => {
         "MMMM dd, yyyy", // December 31, 2025
       ];
 
+      // Check if the original value had time information (HH:mm)
+      const hasTime = /[\s:](\d{2}:?\d{2})$/.test(trimmedValue);
+
       for (const dateFormat of monthNameFormats) {
         try {
-          const date = parse(trimmedValue, dateFormat, new Date());
+          const dts = hasTime ? `${dateFormat} HH:mm` : dateFormat;
+          const date = parse(trimmedValue, dts, new Date());
           if (isValid(date)) {
-            return format(date, "dd-MM-yyyy");
+            return format(date, hasTime ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy");
           }
         } catch (e) {
           continue;
         }
       }
 
-      // Try using native Date parser as fallback for month names
       const nativeDate = new Date(trimmedValue);
       if (isValid(nativeDate)) {
-        return format(nativeDate, "dd-MM-yyyy");
+        return format(nativeDate, hasTime ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy");
       }
     } catch (e) {
       console.warn("Date parsing with month name failed:", e);
     }
   }
 
-  // Remove any non-numeric, non-slash, non-dash characters
-  const cleanValue = trimmedValue.replace(/[^\d\/\-\.]/g, "");
+  // Check if the original value had time information (HH:mm or HHmm)
+  const hasTime = /[\s:](\d{2}:?\d{2})$/.test(trimmedValue) || trimmedValue.toLowerCase().includes("hh");
 
-  // Try to parse and format the date
+  const cleanValue = trimmedValue.replace(/[^\d\/\-\.\s:a-zA-Z]/g, "");
+
   const parsedDate = parseDate(cleanValue);
 
   if (parsedDate && isValid(parsedDate)) {
-    return format(parsedDate, "dd-MM-yyyy");
+    return format(parsedDate, hasTime ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy");
   }
 
-  // If parsing fails, return the cleaned value as-is
-  // This allows users to type in the date
   return cleanValue;
 };
 

@@ -128,6 +128,23 @@ router.get("/dashboard-stats", async (req, res) => {
   }
 });
 
+// GET /api/custom-house-list - Get list of unique custom houses from existing jobs
+router.get("/custom-house-list", async (req, res) => {
+  try {
+    const customHouses = await ExportJobModel.distinct("custom_house");
+    res.json({
+      success: true,
+      data: customHouses.filter(Boolean),
+    });
+  } catch (error) {
+    console.error("Error fetching custom house list:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching custom house list",
+    });
+  }
+});
+
 // GET /exports - List all exports with pagination & filtering
 // Updated exports API with status filtering
 // If jobTracking is enabled and all milestones are completed, status is treated as "completed"
@@ -242,6 +259,12 @@ router.get("/exports/:status?", async (req, res) => {
     if (year) {
       filter.$and.push({
         job_no: { $regex: `/${year}$`, $options: "i" },
+      });
+    }
+
+    if (req.query.customHouse) {
+      filter.$and.push({
+        custom_house: { $regex: req.query.customHouse, $options: "i" },
       });
     }
 

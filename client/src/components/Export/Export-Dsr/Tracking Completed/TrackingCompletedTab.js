@@ -13,19 +13,16 @@ const BASE_MILESTONES = [
 
 const needsTime = (milestoneName) => {
   if (!milestoneName) return false;
-  const normalized = String(milestoneName)
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z]/g, "");
+  const normalized = String(milestoneName).trim().toUpperCase().replace(/[^A-Z]/g, "");
   const timeMilestones = [
     "LEO",
     "CONTAINER",
     "RAILOUT",
     "BILLING",
     "STUFFING",
-    "SB",
+    "SB"
   ];
-  return timeMilestones.some((name) => normalized.includes(name));
+  return timeMilestones.some(name => normalized.includes(name));
 };
 
 const mandatoryNames = new Set([
@@ -85,8 +82,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
         return (
           existing || {
             milestoneName: name,
-            planDate: "dd-mm-yyyy HH:mm",
-            actualDate: "dd-mm-yyyy",
+            planDate: timeRequired ? "dd-mmm-yyyy hhmm" : "dd-mmm-yyyy",
+            actualDate: timeRequired ? "dd-mmm-yyyy hhmm" : "dd-mmm-yyyy",
             isCompleted: false,
             isMandatory: mandatoryNames.has(name),
             completedBy: "",
@@ -102,15 +99,18 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
     } else if (ms.length === 0) {
       // No data yet and formik is at initial state - create defaults
       // But only if we haven't received data yet (checked by _id above)
-      const defaults = BASE_MILESTONES.map((name) => ({
-        milestoneName: name,
-        planDate: "dd-mm-yyyy HH:mm",
-        actualDate: "dd-mm-yyyy",
-        isCompleted: false,
-        isMandatory: mandatoryNames.has(name),
-        completedBy: "",
-        remarks: "",
-      }));
+      const defaults = BASE_MILESTONES.map((name) => {
+        const timeRequired = needsTime(name);
+        return {
+          milestoneName: name,
+          planDate: timeRequired ? "dd-mmm-yyyy hhmm" : "dd-mmm-yyyy",
+          actualDate: timeRequired ? "dd-mmm-yyyy hhmm" : "dd-mmm-yyyy",
+          isCompleted: false,
+          isMandatory: mandatoryNames.has(name),
+          completedBy: "",
+          remarks: "",
+        };
+      });
       formik.setFieldValue("milestones", defaults);
       // Don't mark as initialized yet - wait for real data
     }
@@ -131,8 +131,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
       ...current,
       {
         milestoneName: name,
-        planDate: "dd-mm-yyyy HH:mm",
-        actualDate: "dd-mm-yyyy",
+        planDate: "dd-mmm-yyyy hhmm",
+        actualDate: "dd-mmm-yyyy hhmm",
         isCompleted: false,
         isMandatory: false,
         completedBy: "",
@@ -378,7 +378,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                           onChange={(e) => {
                             const v = e.target.value;
                             if (!v) {
-                              handleMilestoneChange(realIndex, { actualDate: "dd-mm-yyyy" });
+                              const timeRequired = needsTime(m.milestoneName);
+                              handleMilestoneChange(realIndex, { actualDate: timeRequired ? "dd-mmm-yyyy hhmm" : "dd-mmm-yyyy" });
                               return;
                             }
                             handleMilestoneChange(realIndex, { actualDate: v });
@@ -416,21 +417,16 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                                 const timeRequired = needsTime(m.milestoneName);
 
                                 if (timeRequired) {
-                                  const hours = String(d.getHours()).padStart(
-                                    2,
-                                    "0"
-                                  );
-                                  const mins = String(d.getMinutes()).padStart(
-                                    2,
-                                    "0"
-                                  );
+                                  const hours = String(d.getHours()).padStart(2, "0");
+                                  const mins = String(d.getMinutes()).padStart(2, "0");
                                   updates.actualDate = `${day}-${month}-${year} ${hours}:${mins}`;
                                 } else {
                                   updates.actualDate = `${day}-${month}-${year}`;
                                 }
                               }
                             } else {
-                              updates.actualDate = "dd-mm-yyyy";
+                              const timeRequired = needsTime(m.milestoneName);
+                              updates.actualDate = timeRequired ? "dd-mmm-yyyy hhmm" : "dd-mmm-yyyy";
                             }
 
                             handleMilestoneChange(realIndex, updates);

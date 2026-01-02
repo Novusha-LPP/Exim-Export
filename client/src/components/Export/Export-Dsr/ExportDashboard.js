@@ -299,7 +299,7 @@ const ExportDashboard = () => {
             <option value="">All Types</option>
             <option value="FCL">FCL</option>
             <option value="LCL">LCL</option>
-            <option value="AIR">Air Freight</option>
+            <option value="AIR">AIR</option>
           </select>
         </div>
         <div style={s.filterGroup}>

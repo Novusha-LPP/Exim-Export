@@ -474,7 +474,8 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
       try {
         setOrgLoading(true);
         const res = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/directory`
+          `${import.meta.env.VITE_API_STRING}/directory`,
+          { params: { limit: 1000 } }
         );
         if (res.data?.success) setOrganizations(res.data.data || []);
       } catch (e) {
