@@ -2207,7 +2207,6 @@ const ProductGeneralTab = ({
 
       const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
       let totalPMV_INR = (amountInINR * percentage) / 100;
-      console.log("totalPMV_INR", totalPMV_INR);
       let pmvPerUnit_INR = totalPMV_INR / quantity;
 
       let totalPMV = totalPMV_INR;
