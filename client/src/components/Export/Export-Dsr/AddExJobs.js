@@ -578,8 +578,8 @@ function useGatewayPortDropdown(value, onChange) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -829,16 +829,17 @@ const AddExJobs = ({ onJobCreated }) => {
       try {
         setLoading(true);
         const response = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/directory`
+          `${import.meta.env.VITE_API_STRING}/directory`,
+          { params: { limit: 1000 } }
         );
         if (response.data.success) {
           const allOrgs = response.data.data;
           const filtered = formData.exporter
             ? allOrgs.filter((o) =>
-                (o.organization || "")
-                  .toUpperCase()
-                  .includes(formData.exporter.toUpperCase())
-              )
+              (o.organization || "")
+                .toUpperCase()
+                .includes(formData.exporter.toUpperCase())
+            )
             : allOrgs;
           setOrganizations(filtered);
         }
@@ -1032,8 +1033,8 @@ const AddExJobs = ({ onJobCreated }) => {
                               key={i}
                               style={s.dropdownItem}
                               onMouseEnter={(e) =>
-                                (e.currentTarget.style.backgroundColor =
-                                  "#f9fafb")
+                              (e.currentTarget.style.backgroundColor =
+                                "#f9fafb")
                               }
                               onMouseLeave={(e) =>
                                 (e.currentTarget.style.backgroundColor = "#fff")

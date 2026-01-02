@@ -12,6 +12,7 @@ const DateInput = ({
   name,
   placeholder = "dd-mm-yyyy",
   style,
+  withTime = false,
   ...props
 }) => {
   const [pickerMode, setPickerMode] = useState(false);
@@ -25,6 +26,11 @@ const DateInput = ({
         const year = parsedDate.getFullYear();
         const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
         const day = String(parsedDate.getDate()).padStart(2, "0");
+        if (withTime) {
+          const hours = String(parsedDate.getHours()).padStart(2, "0");
+          const minutes = String(parsedDate.getMinutes()).padStart(2, "0");
+          return `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
         return `${year}-${month}-${day}`;
       }
     } catch (e) {
@@ -36,7 +42,7 @@ const DateInput = ({
   // Convert yyyy-MM-dd to dd-MM-yyyy from native date picker
   const fromPickerFormat = (val) => {
     if (!val) return "";
-    return formatDate(val);
+    return formatDate(val, withTime ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy");
   };
 
   const handleChange = (e) => {
@@ -55,8 +61,8 @@ const DateInput = ({
       onChange(syntheticEvent);
     } else {
       // Regular text mode - allow user to type freely
-      // Only restrict to valid date characters
-      if (/^[0-9\/\-\.]*$/.test(originalVal) && originalVal.length <= 10) {
+      // Only restrict to valid date characters (now including space and colon for time)
+      if (/^[0-9\/\-\. :]*$/.test(originalVal) && originalVal.length <= (withTime ? 16 : 10)) {
         onChange(e);
       }
     }
@@ -86,11 +92,18 @@ const DateInput = ({
 
     // Auto-format the date when user blurs the field
     if (e.target.value) {
-      const formattedDate = handleDateInput(e.target.value);
+      // If we expect time, ensure the utility knows even if the user didn't type it perfectly
+      let valToFormat = e.target.value;
+      const formattedDate = handleDateInput(valToFormat);
+
+      const finalFormatted = withTime && !formattedDate.includes(":")
+        ? formatDate(formattedDate, "dd-MM-yyyy") + " 00:00"
+        : formattedDate;
+
       const syntheticEvent = {
         target: {
           name,
-          value: formattedDate,
+          value: finalFormatted,
         },
         persist: () => { },
       };
@@ -102,7 +115,7 @@ const DateInput = ({
 
   const handleDoubleClick = (e) => {
     setPickerMode(true);
-    e.target.type = "date";
+    e.target.type = withTime ? "datetime-local" : "date";
     if (e.target.showPicker) {
       setTimeout(() => {
         try {
@@ -127,7 +140,7 @@ const DateInput = ({
       onDoubleClick={handleDoubleClick}
       onBlur={handleBlurInput}
       placeholder={placeholder}
-      maxLength={10}
+      maxLength={withTime ? 16 : 10}
       autoComplete="off"
       title="Type or paste a date (any format), or double-click to open date picker"
       style={{

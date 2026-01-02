@@ -248,6 +248,8 @@ const ExportJobsTable = () => {
   const [selectedType, setSelectedMovementType] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
   const [selectedExporterFilter, setSelectedExporterFilter] = useState("");
+  const [selectedCustomHouse, setSelectedCustomHouse] = useState("");
+  const [customHouses, setCustomHouses] = useState([]);
 
   // Copy Modal State
   const [showCopyModal, setShowCopyModal] = useState(false);
@@ -288,6 +290,23 @@ const ExportJobsTable = () => {
 
     fetchExporters();
   }, [openDSRDialog]);
+
+  // Fetch Custom Houses list
+  useEffect(() => {
+    const fetchCustomHouses = async () => {
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_STRING}/custom-house-list`
+        );
+        if (response.data.success) {
+          setCustomHouses(response.data.data || []);
+        }
+      } catch (err) {
+        console.error("Error fetching custom houses:", err);
+      }
+    };
+    fetchCustomHouses();
+  }, []);
 
   const handleDownloadDSR = async () => {
     if (!selectedExporter) {
@@ -335,6 +354,7 @@ const ExportJobsTable = () => {
             consignmentType: selectedType,
             branch: selectedBranch,
             exporter: selectedExporterFilter,
+            customHouse: selectedCustomHouse,
             page: page,
             limit: LIMIT,
           },
@@ -344,8 +364,8 @@ const ExportJobsTable = () => {
         setJobs(response.data.data.jobs || []);
         setTotalRecords(
           response.data.data.total ||
-            response.data.data.pagination?.totalCount ||
-            0
+          response.data.data.pagination?.totalCount ||
+          0
         );
       }
     } catch (err) {
@@ -367,6 +387,7 @@ const ExportJobsTable = () => {
     selectedType,
     selectedBranch,
     selectedExporterFilter,
+    selectedCustomHouse,
     page,
   ]);
 
@@ -380,6 +401,7 @@ const ExportJobsTable = () => {
     selectedType,
     selectedBranch,
     selectedExporterFilter,
+    selectedCustomHouse,
   ]);
 
   const handleJobClick = (job, e) => {
@@ -515,8 +537,8 @@ const ExportJobsTable = () => {
           setJobs(refreshResponse.data.data.jobs || []);
           setTotalRecords(
             refreshResponse.data.data.total ||
-              refreshResponse.data.data.pagination?.totalCount ||
-              0
+            refreshResponse.data.data.pagination?.totalCount ||
+            0
           );
         }
 
@@ -535,22 +557,22 @@ const ExportJobsTable = () => {
         if (error.response.status === 409) {
           setCopyError(
             error.response.data.message ||
-              "This job number already exists. Please use a different sequence."
+            "This job number already exists. Please use a different sequence."
           );
         } else if (error.response.status === 404) {
           setCopyError(
             error.response.data.message ||
-              "Source job not found. Please refresh and try again."
+            "Source job not found. Please refresh and try again."
           );
         } else if (error.response.status === 400) {
           setCopyError(
             error.response.data.message ||
-              "Invalid input. Please check your entries."
+            "Invalid input. Please check your entries."
           );
         } else {
           setCopyError(
             error.response.data.message ||
-              "Error copying job. Please try again."
+            "Error copying job. Please try again."
           );
         }
       } else {
@@ -795,7 +817,7 @@ const ExportJobsTable = () => {
               <option value="">All Movement</option>
               <option value="FCL">FCL</option>
               <option value="LCL">LCL</option>
-              <option value="AIR">Air Freight</option>
+              <option value="AIR">AIR</option>
             </select>
 
             {/* Branch Filter */}
@@ -821,6 +843,20 @@ const ExportJobsTable = () => {
               {exporters.map((exp, i) => (
                 <option key={i} value={exp}>
                   {exp}
+                </option>
+              ))}
+            </select>
+
+            {/* Custom House Filter */}
+            <select
+              style={s.select}
+              value={selectedCustomHouse}
+              onChange={(e) => setSelectedCustomHouse(e.target.value)}
+            >
+              <option value="">All Custom Houses</option>
+              {customHouses.map((ch, i) => (
+                <option key={i} value={ch}>
+                  {ch}
                 </option>
               ))}
             </select>
@@ -871,7 +907,7 @@ const ExportJobsTable = () => {
                 <col style={{ width: "140px" }} /> {/* Port */}
                 <col style={{ width: "140px" }} /> {/* Placement */}
                 <col style={{ width: "100px" }} /> {/* Handover */}
-                <col style={{ width: "80px" }} /> {/* Action */}
+                <col style={{ width: "60px" }} /> {/* Action */}
               </colgroup>
               <thead>
                 <tr>
@@ -1010,6 +1046,7 @@ const ExportJobsTable = () => {
                             fontWeight: "600",
                           }}
                         >
+                          {job.invoices?.[0]?.termsOfInvoice}{" "}
                           {job.invoices?.[0]?.currency}{" "}
                           {job.invoices?.[0]?.invoiceValue?.toLocaleString()}
                         </div>
@@ -1075,7 +1112,7 @@ const ExportJobsTable = () => {
                                     {containerNo}
                                     {/* Add line break after every 2 containers, except the last one */}
                                     {index < array.length - 1 &&
-                                    (index + 1) % 2 === 0 ? (
+                                      (index + 1) % 2 === 0 ? (
                                       <br />
                                     ) : index < array.length - 1 ? (
                                       ", "
@@ -1319,9 +1356,9 @@ const ExportJobsTable = () => {
                 style={
                   copyLoading
                     ? {
-                        ...modalStyles.submitButton,
-                        ...modalStyles.disabledButton,
-                      }
+                      ...modalStyles.submitButton,
+                      ...modalStyles.disabledButton,
+                    }
                     : modalStyles.submitButton
                 }
                 onClick={handleCopySubmit}

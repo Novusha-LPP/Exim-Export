@@ -79,22 +79,6 @@ function Sidebar() {
           </IconButton>
         </ListItemButton>
       </Tooltip>
-
-      {(user.role === "Admin" || user.export_modules?.includes("Audit Trail")) && (
-        <Tooltip title="Audit Trail" enterDelay={0} placement="right">
-          <ListItemButton
-            className="appbar-links"
-            aria-label="list-item"
-            onClick={() => navigate("/audit-trail")}
-          >
-            <IconButton sx={{ color: "#ffffff9f" }} aria-label="icon">
-              <HistoryIcon />
-            </IconButton>
-          </ListItemButton>
-        </Tooltip>
-      )}
-
-
       <Tooltip title="Feedback" enterDelay={0} placement="right">
         <ListItemButton
           sx={{ textAlign: "left" }}
