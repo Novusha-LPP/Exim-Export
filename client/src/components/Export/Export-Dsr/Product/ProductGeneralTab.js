@@ -1260,17 +1260,29 @@ function ProductRow({
         />
         <div style={styles.field}>
           <label style={styles.label}>NFEI Category</label>
-          <input
-            style={styles.input}
+          <select
+            style={{
+              ...styles.select,
+              ...(!String(product.eximCode || "").includes("99")
+                ? { background: "#eef2f7", cursor: "not-allowed", opacity: 0.7 }
+                : {}),
+            }}
             value={toUpper(product.nfeiCategory || "")}
+            disabled={!String(product.eximCode || "").includes("99")}
             onChange={(e) =>
-              handleProductChange(
-                index,
-                "nfeiCategory",
-                e.target.value.toUpperCase()
-              )
+              handleProductChange(index, "nfeiCategory", e.target.value)
             }
-          />
+          >
+            <option value="">SELECT CATEGORY</option>
+            <option value="FREE TRADE SAMPLE">FREE TRADE SAMPLE</option>
+            <option value="DIPLOMATIC GOODS">DIPLOMATIC GOODS</option>
+            <option value="WARRANTY REPLACEMENT">WARRANTY REPLACEMENT</option>
+            <option value="CURRENCY CHEST">CURRENCY CHEST</option>
+            <option value="TOURISTS PURCHASES">TOURISTS PURCHASES</option>
+            <option value="DEFENCE GOODS">DEFENCE GOODS</option>
+            <option value="GIFT PARCEL">GIFT PARCEL</option>
+            <option value="OTHERS">OTHERS</option>
+          </select>
         </div>
         <div
           style={{

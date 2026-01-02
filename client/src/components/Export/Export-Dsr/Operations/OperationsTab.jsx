@@ -954,7 +954,10 @@ const OperationsTab = ({ formik }) => {
               width: "200px",
               type: "shipping-dropdown",
             },
-            { field: "forwarderName", label: "Forwarder", width: "150px" },
+            ...(toUpper(formik.values.transportMode) === "AIR" ||
+            toUpper(formik.values.consignmentType) === "LCL" 
+              ? [{ field: "forwarderName", label: "Forwarder", width: "150px" }]
+              : []),
             { field: "bookingNo", label: "Booking No.", width: "140px" },
             {
               field: "bookingDate",
@@ -1050,6 +1053,7 @@ const OperationsTab = ({ formik }) => {
           data={activeOperation.statusDetails || []}
           section="statusDetails"
           onUpdate={updateField}
+          formik={formik}
         />
       </div>
     </div>
@@ -1181,7 +1185,10 @@ const TableSection = ({
                             col.type === "date" ||
                             col.type === "datetime-local"
                           ) {
-                            const pickerVal = formatDateForPicker(item[col.field], col.type);
+                            const pickerVal = formatDateForPicker(
+                              item[col.field],
+                              col.type
+                            );
                             if (pickerVal) e.target.value = pickerVal;
                             e.target.type = col.type;
                             e.target.showPicker && e.target.showPicker();
@@ -1271,7 +1278,7 @@ const TableSection = ({
   );
 };
 
-const StatusSection = ({ title, data, section, onUpdate }) => {
+const StatusSection = ({ title, data, section, onUpdate, formik }) => {
   const displayData =
     data && data.length > 0 ? data : [getDefaultItem(section)];
 
@@ -1294,16 +1301,7 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
     { field: "stuffingPhotoUpload", label: "Stuffing Photo", type: "upload" },
     { field: "eGatePassCopyDate", label: "E-Gate Pass Date", type: "date" },
     { field: "eGatePassUpload", label: "E-Gate Pass Copy", type: "upload" },
-    {
-      field: "handoverForwardingNoteDate",
-      label: "Handover Note Date",
-      type: "date",
-    },
-    {
-      field: "handoverImageUpload",
-      label: "Handover Note Copy",
-      type: "upload",
-    },
+    // Handover fields removed from here as they are now in a conditional block below
     {
       field: "handoverConcorTharSanganaRailRoadDate",
       label: "Dispatch Date (Rail/Road)",
@@ -1386,7 +1384,10 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                         )
                       }
                       onDoubleClick={(e) => {
-                        const pickerVal = formatDateForPicker(item.containerPlacementDate, "date");
+                        const pickerVal = formatDateForPicker(
+                          item.containerPlacementDate,
+                          "date"
+                        );
                         if (pickerVal) e.target.value = pickerVal;
                         e.target.type = "date";
                         e.target.showPicker && e.target.showPicker();
@@ -1430,7 +1431,7 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                       />
                     </div>
                   </div>
-                  {/* HO to console section */}
+                  {/* HO Conditional Section */}
                   <div style={{ gridColumn: "1 / -1", marginTop: "20px" }}>
                     <h4
                       style={{
@@ -1439,7 +1440,10 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                         marginBottom: "12px",
                       }}
                     >
-                      HO to console
+                      {toUpper(formik.values.transportMode) === "AIR" ||
+                      toUpper(formik.values.consignmentType) === "LCL"
+                        ? "HO to console"
+                        : "HO to forworder"}
                     </h4>
                     <div
                       style={{
@@ -1451,7 +1455,10 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                     >
                       <div style={styles.statusField}>
                         <label style={styles.statusLabel}>
-                          File Handover Date
+                          {toUpper(formik.values.transportMode) === "AIR" ||
+                          toUpper(formik.values.consignmentType) === "LCL"
+                            ? "File Handover Date"
+                            : "Handover Note Date"}
                         </label>
                         <input
                           type="text"
@@ -1465,7 +1472,10 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                             )
                           }
                           onDoubleClick={(e) => {
-                            const pickerVal = formatDateForPicker(item.hoToConsoleDate, "date");
+                            const pickerVal = formatDateForPicker(
+                              item.hoToConsoleDate,
+                              "date"
+                            );
                             if (pickerVal) e.target.value = pickerVal;
                             e.target.type = "date";
                             e.target.showPicker && e.target.showPicker();
@@ -1478,14 +1488,53 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                         />
                       </div>
 
+                      {(toUpper(formik.values.transportMode) === "AIR" ||
+                        toUpper(formik.values.consignmentType) === "LCL") && (
+                        <div style={styles.statusField}>
+                          <label style={styles.statusLabel}>
+                            Forwarder Name
+                          </label>
+                          <HoNameAutocomplete
+                            value={item.hoToConsoleName || ""}
+                            onChange={(val) =>
+                              onUpdate(section, idx, "hoToConsoleName", val)
+                            }
+                          />
+                        </div>
+                      )}
+
                       <div style={styles.statusField}>
-                        <label style={styles.statusLabel}>Forwarder Name</label>
-                        <HoNameAutocomplete
-                          value={item.hoToConsoleName || ""}
-                          onChange={(val) =>
-                            onUpdate(section, idx, "hoToConsoleName", val)
-                          }
+                        <label style={styles.statusLabel}>
+                          Handover Note Copy
+                        </label>
+                        <FileUpload
+                          bucketPath="handover_uploads"
+                          multiple={true}
+                          acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
+                          onFilesUploaded={(newUrls) => {
+                            const current = item.handoverImageUpload || [];
+                            onUpdate(section, idx, "handoverImageUpload", [
+                              ...current,
+                              ...newUrls,
+                            ]);
+                          }}
                         />
+                        <div style={{ marginTop: "4px" }}>
+                          <ImagePreview
+                            images={item.handoverImageUpload || []}
+                            onDeleteImage={(deleteIndex) => {
+                              const updatedList = (
+                                item.handoverImageUpload || []
+                              ).filter((_, i) => i !== deleteIndex);
+                              onUpdate(
+                                section,
+                                idx,
+                                "handoverImageUpload",
+                                updatedList
+                              );
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1655,7 +1704,10 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                       }
                       onDoubleClick={(e) => {
                         if (f.type === "date" || f.type === "datetime-local") {
-                          const pickerVal = formatDateForPicker(item[f.field], f.type);
+                          const pickerVal = formatDateForPicker(
+                            item[f.field],
+                            f.type
+                          );
                           if (pickerVal) e.target.value = pickerVal;
                           e.target.type = f.type;
                           e.target.showPicker && e.target.showPicker();
@@ -1771,7 +1823,10 @@ const StatusSection = ({ title, data, section, onUpdate }) => {
                     }
                     onDoubleClick={(e) => {
                       if (f.type === "date" || f.type === "datetime-local") {
-                        const pickerVal = formatDateForPicker(item[f.field], f.type);
+                        const pickerVal = formatDateForPicker(
+                          item[f.field],
+                          f.type
+                        );
                         if (pickerVal) e.target.value = pickerVal;
                         e.target.type = f.type;
                         e.target.showPicker && e.target.showPicker();
