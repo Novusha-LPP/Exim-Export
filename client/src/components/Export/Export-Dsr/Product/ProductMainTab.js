@@ -384,6 +384,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                     <textarea
                       style={styles.textarea}
                       rows={2}
+                      maxLength={120}
                       value={prod.description || ""}
                       onChange={(e) =>
                         handleProductFieldChange(
