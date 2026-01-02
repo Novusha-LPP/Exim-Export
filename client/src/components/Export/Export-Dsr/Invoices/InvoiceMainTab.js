@@ -218,21 +218,39 @@ const InvoiceMainTab = ({ formik }) => {
     invoices.map((inv) => (inv.products || []).map((p) => p.amount))
   );
 
+  const prevSumsRef = useRef(null);
+
   useEffect(() => {
+    const currentSums = invoices.map((inv) =>
+      (inv.products || []).reduce(
+        (acc, p) => acc + (parseFloat(p.amount) || 0),
+        0
+      )
+    );
+
+    // If this is the first time we're seeing these products, just record their sums
+    // and skip the auto-correction. This protects values loaded from the DB.
+    if (prevSumsRef.current === null) {
+      // We only establish a baseline once we see "real" data (e.g. from DB)
+      // or if the user starts adding data to a blank form.
+      // Checking for _id or invoiceNumber to detect populated data.
+      const isPopulated = invoices.some((inv) => inv._id || inv.invoiceNumber);
+      if (isPopulated) {
+        prevSumsRef.current = currentSums;
+      }
+      return;
+    }
+
     let changed = false;
-    const nextInvoices = invoices.map((inv) => {
-      const products = inv.products || [];
-      // Only enforce sum if there are products. If 0 products, let user edit freely (though effect runs on deletion, setting 0)
-      if (products.length > 0) {
-        const totalAmount = products.reduce(
-          (acc, p) => acc + (parseFloat(p.amount) || 0),
-          0
-        );
-        if (
-          Math.abs((parseFloat(inv.productValue) || 0) - totalAmount) > 0.01
-        ) {
+    const nextInvoices = invoices.map((inv, idx) => {
+      const oldSum = prevSumsRef.current[idx] ?? 0;
+      const newSum = currentSums[idx] || 0;
+
+      // ONLY sync if the product total has actually changed in the current session
+      if (Math.abs(oldSum - newSum) > 0.01) {
+        if (Math.abs((parseFloat(inv.productValue) || 0) - newSum) > 0.01) {
           changed = true;
-          return { ...inv, productValue: totalAmount };
+          return { ...inv, productValue: newSum };
         }
       }
       return inv;
@@ -241,6 +259,7 @@ const InvoiceMainTab = ({ formik }) => {
     if (changed) {
       formik.setFieldValue("invoices", nextInvoices);
     }
+    prevSumsRef.current = currentSums;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productsSignature]);
 
@@ -511,7 +530,7 @@ const InvoiceMainTab = ({ formik }) => {
 
                   <td style={styles.td}>
                     <input
-                      type="string"
+                      type="number"
                       style={styles.inputNumber}
                       value={
                         invoice.productValue === 0 ||
