@@ -1,0 +1,11 @@
+node_modules
+logs
+.git
+.gitignore
+Dockerfile
+pm2_logs
+npm-debug.log
+yarn-error.log
+.vscode
+.idea
+*.md

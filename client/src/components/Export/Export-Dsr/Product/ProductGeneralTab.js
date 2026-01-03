@@ -1195,11 +1195,8 @@ function ProductRow({
 
     if (status === "Export Against Payment") {
       const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
-      const taxableValue = calculateProductFobINR(
-        product,
-        invoice,
-        invoiceExchangeRate
-      );
+      const taxableValue =
+        (parseFloat(product.amount) || 0) * invoiceExchangeRate;
 
       if (
         Math.abs(
@@ -1213,8 +1210,8 @@ function ProductRow({
         );
       }
 
-      const rate = product.igstCompensationCess?.igstRate || 0;
-      const igstAmount = (taxableValue * rate) / 100;
+      const rateValue = parseFloat(product.igstCompensationCess?.igstRate) || 0;
+      const igstAmount = (taxableValue * rateValue) / 100;
 
       if (
         Math.abs(
@@ -1228,17 +1225,7 @@ function ProductRow({
         );
       }
     }
-  }, [
-    product.igstCompensationCess?.igstPaymentStatus,
-    product.igstCompensationCess?.igstRate,
-    product.amount,
-    invoice.freightInsuranceCharges,
-    invoice.productValue,
-    invoice.invoiceValue,
-    formik.values.exchange_rate,
-    handleProductChange,
-    index,
-  ]);
+  }, [product.amount, formik.values.exchange_rate, handleProductChange, index]);
 
   return (
     <div style={styles.card}>
@@ -1755,8 +1742,12 @@ function ProductRow({
                 )
               }
               disabled={
+                product.igstCompensationCess?.igstPaymentStatus !==
+                "Export Under Bond – Not Paid"
+              }
+              readOnly={
                 product.igstCompensationCess?.igstPaymentStatus ===
-                "Not Applicable"
+                "Export Against Payment"
               }
             />
           </div>

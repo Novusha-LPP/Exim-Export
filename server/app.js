@@ -177,19 +177,18 @@ app.use(getHoToConsoleNames);
 app.use(getExportJobsModuleUsers);
 app.use(currencyRate);
 
+app.use("/api", feedback);
 app.use("/api", updateExportJobs);
 app.use("/api", getRodtep_R);
 app.use("/api/getCthsExport", getCthsExport);
 app.use("/api/getDrawback", getDrawback);
-app.use("/api", feedback);
+
 app.use("/api", rodtepReRoutes);
 app.use(generateDSRReport);
 
 // s3 route
 
 app.use(deleteFromS3Routes);
-app.use("/api", updateExportJobs);
-
 
 app.get("/", (req, res) => {
   res.send("Export Jobs API Running");

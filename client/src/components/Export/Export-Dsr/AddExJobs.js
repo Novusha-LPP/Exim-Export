@@ -578,8 +578,8 @@ function useGatewayPortDropdown(value, onChange) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-              ? data
-              : []
+            ? data
+            : []
         );
       } catch {
         setOpts([]);
@@ -605,9 +605,9 @@ function useGatewayPortDropdown(value, onChange) {
   function selectIndex(i) {
     const item = opts[i];
     if (!item) return;
-    const val = `${(item.unece_code || "").toUpperCase()} - ${(
-      item.name || ""
-    ).toUpperCase()}`.trim();
+    const code = (item.unece_code || item.uneceCode || "").toUpperCase();
+    const name = (item.name || "").toUpperCase();
+    const val = code ? `${code} - ${name}`.trim() : name;
     setQuery(val);
     onChange(val);
     setOpen(false);
@@ -615,7 +615,7 @@ function useGatewayPortDropdown(value, onChange) {
   }
 
   const filtered = opts.filter((p) => {
-    const code = p.unece_code || "";
+    const code = p.unece_code || p.uneceCode || "";
     const name = p.name || "";
     const haystack = `${code} ${name}`.toUpperCase();
     const needle = (query || "").toUpperCase();
@@ -707,12 +707,12 @@ function GatewayPortDropdown({
                 onMouseEnter={() => d.setActive(i)}
               >
                 <div style={{ fontWeight: 600, color: "#111827" }}>
-                  {(p.unece_code || "").toUpperCase()} -{" "}
+                  {(p.unece_code || p.uneceCode || "").toUpperCase()} -{" "}
                   {(p.name || "").toUpperCase()}
                 </div>
-                {p.port_type && (
+                {(p.port_type || p.portType) && (
                   <div style={{ fontSize: 10, color: "#6b7280" }}>
-                    TYPE: {p.port_type.toUpperCase()}
+                    TYPE: {(p.port_type || p.portType).toUpperCase()}
                   </div>
                 )}
                 {p.location && (
@@ -836,10 +836,10 @@ const AddExJobs = ({ onJobCreated }) => {
           const allOrgs = response.data.data;
           const filtered = formData.exporter
             ? allOrgs.filter((o) =>
-              (o.organization || "")
-                .toUpperCase()
-                .includes(formData.exporter.toUpperCase())
-            )
+                (o.organization || "")
+                  .toUpperCase()
+                  .includes(formData.exporter.toUpperCase())
+              )
             : allOrgs;
           setOrganizations(filtered);
         }
@@ -908,7 +908,6 @@ const AddExJobs = ({ onJobCreated }) => {
     setShowConsigneeMenu(false);
     setActiveConsigneeIdx(-1);
   };
-
 
   const addConsignee = () =>
     setFormData((p) => ({
@@ -1033,8 +1032,8 @@ const AddExJobs = ({ onJobCreated }) => {
                               key={i}
                               style={s.dropdownItem}
                               onMouseEnter={(e) =>
-                              (e.currentTarget.style.backgroundColor =
-                                "#f9fafb")
+                                (e.currentTarget.style.backgroundColor =
+                                  "#f9fafb")
                               }
                               onMouseLeave={(e) =>
                                 (e.currentTarget.style.backgroundColor = "#fff")
@@ -1160,7 +1159,10 @@ const AddExJobs = ({ onJobCreated }) => {
             <div style={s.cardBody}>
               {formData.consignees.map((item, idx) => (
                 <div key={idx} style={s.consigneeRow}>
-                  <div style={{ ...s.col, flex: 2, position: "relative" }} ref={idx === activeConsigneeIdx ? consigneeMenuRef : null}>
+                  <div
+                    style={{ ...s.col, flex: 2, position: "relative" }}
+                    ref={idx === activeConsigneeIdx ? consigneeMenuRef : null}
+                  >
                     <label style={s.label}>Consignee Name *</label>
                     <input
                       style={s.input}
@@ -1177,7 +1179,8 @@ const AddExJobs = ({ onJobCreated }) => {
                         setShowConsigneeMenu(true);
                       }}
                       onKeyDown={(e) => {
-                        if (activeConsigneeIdx !== idx || !showConsigneeMenu) return;
+                        if (activeConsigneeIdx !== idx || !showConsigneeMenu)
+                          return;
                         if (e.key === "ArrowDown") {
                           e.preventDefault();
                           setKeyboardActive((a) =>
@@ -1224,7 +1227,8 @@ const AddExJobs = ({ onJobCreated }) => {
                                 padding: "4px 8px",
                                 cursor: "pointer",
                                 fontSize: 11,
-                                background: keyboardActive === i ? "#e5edff" : "#fff",
+                                background:
+                                  keyboardActive === i ? "#e5edff" : "#fff",
                                 fontWeight: keyboardActive === i ? 600 : 400,
                                 borderBottom: "1px solid #f3f4f6",
                               }}

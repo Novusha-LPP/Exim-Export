@@ -323,7 +323,7 @@ router.post("/exports", auditMiddleware("Job"), async (req, res) => {
   }
 });
 
-router.get("/:job_no*", async (req, res) => {
+router.get("/:job_no*", async (req, res, next) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
@@ -331,7 +331,7 @@ router.get("/:job_no*", async (req, res) => {
     // Validate that this looks like a job_no (contains / or is a known pattern)
     // This prevents catching requests like /currencies, /consignees, etc.
     if (!job_no || (typeof job_no === "string" && !job_no.includes("/"))) {
-      return res.status(404).json({ message: "Export job not found" });
+      return next();
     }
 
     const username = req.headers["username"]; // Identify who is requesting
@@ -440,10 +440,16 @@ router.put("/:job_no*/unlock", async (req, res) => {
 });
 
 // Update export job (full)
-router.put("/:job_no*", auditMiddleware("Job"), async (req, res) => {
+router.put("/:job_no*", auditMiddleware("Job"), async (req, res, next) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
+
+    // Validate that this looks like a job_no
+    if (!job_no || (typeof job_no === "string" && !job_no.includes("/"))) {
+      return next();
+    }
+
     const username = req.headers["username"];
 
     // Enforce lock check
