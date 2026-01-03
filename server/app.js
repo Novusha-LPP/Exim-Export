@@ -62,6 +62,7 @@ import getConsignees from "./routes/export-dsr/getConsignees.js";
 import getHoToConsoleNames from "./routes/export-dsr/getHoToConsoleNames.js";
 import rodtepReRoutes from "./routes/export-dsr/rodtepReRoutes.js";
 import generateDSRReport from "./routes/export-dsr/generateDSRReport.mjs";
+import openPointsRoutes from "./routes/open-points/openPointsRoutes.mjs";
 
 process.on("uncaughtException", (error) => {
   logger.error(`Uncaught Exception: ${error.message}`, { stack: error.stack });
@@ -186,6 +187,7 @@ app.use("/api/getDrawback", getDrawback);
 
 app.use("/api", rodtepReRoutes);
 app.use(generateDSRReport);
+app.use(openPointsRoutes);
 
 // s3 route
 
