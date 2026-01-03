@@ -323,7 +323,7 @@ router.post("/exports", auditMiddleware("Job"), async (req, res) => {
   }
 });
 
-router.get("/:job_no*", async (req, res, next) => {
+router.get("/:job_no", async (req, res, next) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
@@ -373,7 +373,7 @@ router.get("/:job_no*", async (req, res, next) => {
 });
 
 // Lock a job
-router.put("/:job_no*/lock", async (req, res) => {
+router.put("/:job_no/lock", async (req, res) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
@@ -412,7 +412,7 @@ router.put("/:job_no*/lock", async (req, res) => {
 });
 
 // Unlock a job
-router.put("/:job_no*/unlock", async (req, res) => {
+router.put("/:job_no/unlock", async (req, res) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
@@ -440,7 +440,7 @@ router.put("/:job_no*/unlock", async (req, res) => {
 });
 
 // Update export job (full)
-router.put("/:job_no*", auditMiddleware("Job"), async (req, res, next) => {
+router.put("/:job_no", auditMiddleware("Job"), async (req, res, next) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
@@ -496,7 +496,7 @@ router.put("/:job_no*", auditMiddleware("Job"), async (req, res, next) => {
 });
 
 // PATCH fields
-router.patch("/:job_no*/fields", auditMiddleware("Job"), async (req, res) => {
+router.patch("/:job_no/fields", auditMiddleware("Job"), async (req, res) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
@@ -530,7 +530,7 @@ router.patch("/:job_no*/fields", auditMiddleware("Job"), async (req, res) => {
 });
 
 // PUT documents
-router.put("/:job_no*/documents", auditMiddleware("Job"), async (req, res) => {
+router.put("/:job_no/documents", auditMiddleware("Job"), async (req, res) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
@@ -558,7 +558,7 @@ router.put("/:job_no*/documents", auditMiddleware("Job"), async (req, res) => {
 });
 
 // PUT containers
-router.put("/:job_no*/containers", auditMiddleware("Job"), async (req, res) => {
+router.put("/:job_no/containers", auditMiddleware("Job"), async (req, res) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);

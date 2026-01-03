@@ -167,6 +167,7 @@ app.use("/api/licenses", auditMiddleware("Directory"), license);
 // app.set("trust proxy", 1); // Trust first proxy (NGINX, AWS ELB, etc.)
 
 //============== EXPORT DSR =========================
+app.use("/api", updateExportJobs);
 app.use(getExJobsOverview);
 app.use(getExporterList);
 
@@ -178,7 +179,7 @@ app.use(getExportJobsModuleUsers);
 app.use(currencyRate);
 
 app.use("/api", feedback);
-app.use("/api", updateExportJobs);
+
 app.use("/api", getRodtep_R);
 app.use("/api/getCthsExport", getCthsExport);
 app.use("/api/getDrawback", getDrawback);
