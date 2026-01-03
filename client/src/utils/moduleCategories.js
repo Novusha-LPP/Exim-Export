@@ -27,4 +27,5 @@ export const moduleCategories = {
   Screen4: "Screens",
   Screen5: "Screens",
   Screen6: "Screens",
+  "Open Points": "Management",
 };

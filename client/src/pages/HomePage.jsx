@@ -22,6 +22,9 @@ import AppbarComponent from "../components/home/AppbarComponent.js";
 import DrawerComponent from "../components/home/DrawerComponent.js";
 
 import Feedback from "../components/home/FeedBack.js";
+import OpenPointsHome from "../components/open-points/OpenPointsHome.js";
+import ProjectWorkspace from "../components/open-points/ProjectWorkspace.js";
+import AnalyticsDashboard from "../components/open-points/AnalyticsDashboard.js";
 const drawerWidth = 60;
 
 function HomePage() {
@@ -110,6 +113,31 @@ function HomePage() {
               element={
                 <ProtectedRoute requiredModule="Export - Audit Trail">
                   <AuditTrailPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/open-points"
+              element={
+                <ProtectedRoute requiredModule="Open Points">
+                  <OpenPointsHome />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/open-points/project/:projectId"
+              element={
+                <ProtectedRoute requiredModule="Open Points">
+                  <ProjectWorkspace />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/open-points/analytics"
+              element={
+                <ProtectedRoute requiredModule="Open Points">
+                  <AnalyticsDashboard />
                 </ProtectedRoute>
               }
             />

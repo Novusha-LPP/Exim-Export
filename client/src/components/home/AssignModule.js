@@ -37,6 +37,7 @@ const allModules = [
   "Export - Jobs",
   "Export - Audit Trail",
   "Directories",
+  "Open Points",
 ];
 
 function not(a, b) {
