@@ -402,13 +402,20 @@ const OperationsTab = ({ formik }) => {
   // Ensure at least one operation exists - but only once the form is truly ready
   useEffect(() => {
     if (formik.values.job_no && operations.length === 0) {
+      const transportMode = toUpper(formik.values.transportMode || "");
+      const isAir = transportMode === "AIR";
+
       const newOp = {
         transporterDetails: [getDefaultItem("transporterDetails")],
-        containerDetails: [getDefaultItem("containerDetails")],
         bookingDetails: [getDefaultItem("bookingDetails")],
-        weighmentDetails: [getDefaultItem("weighmentDetails")],
         statusDetails: [getDefaultItem("statusDetails")],
       };
+
+      if (!isAir) {
+        newOp.containerDetails = [getDefaultItem("containerDetails")];
+        newOp.weighmentDetails = [getDefaultItem("weighmentDetails")];
+      }
+
       formik.setFieldValue("operations", [newOp]);
     }
   }, [formik.values.job_no, operations.length]);
@@ -450,56 +457,66 @@ const OperationsTab = ({ formik }) => {
     // Phase A: Intra-operation Sync (Ensure Transporter, Container, and Weighment Details stay in lock-step)
     let opsModified = false;
     const nextOperations = operations.map((op) => {
+      const transportMode = toUpper(formik.values.transportMode || "");
+      const isAir = transportMode === "AIR";
+
       const tArr = op.transporterDetails || [];
-      const cArr = op.containerDetails || [];
-      const wArr = op.weighmentDetails || [];
-      const maxLen = Math.max(tArr.length, cArr.length, wArr.length);
-
-      // Check if we need to expand any arrays to match lengths
-      let opIsDirty =
-        tArr.length !== maxLen ||
-        cArr.length !== maxLen ||
-        wArr.length !== maxLen;
-
-      const syncedOp = { ...op };
-      ["transporterDetails", "containerDetails", "weighmentDetails"].forEach(
-        (s) => {
-          const arr = [...(op[s] || [])];
-          while (arr.length < maxLen) {
-            arr.push(getDefaultItem(s));
-          }
-          syncedOp[s] = arr;
-        }
+      const cArr = !isAir ? op.containerDetails || [] : [];
+      const wArr = !isAir ? op.weighmentDetails || [] : [];
+      const maxLen = Math.max(
+        tArr.length,
+        !isAir ? cArr.length : 0,
+        !isAir ? wArr.length : 0
       );
 
-      // Check for missing container numbers at the same index
-      for (let i = 0; i < maxLen; i++) {
-        const nosFound = [
-          syncedOp.transporterDetails[i]?.containerNo,
-          syncedOp.containerDetails[i]?.containerNo,
-          syncedOp.weighmentDetails[i]?.containerNo,
-        ].filter((n) => n && n.trim());
+      // Check if we need to expand any arrays to match lengths
+      const sectionsToSync = isAir
+        ? ["transporterDetails"]
+        : ["transporterDetails", "containerDetails", "weighmentDetails"];
 
-        if (nosFound.length > 0) {
-          const bestNo = nosFound[0].trim().toUpperCase();
-          if (
-            syncedOp.transporterDetails[i].containerNo !== bestNo ||
-            syncedOp.containerDetails[i].containerNo !== bestNo ||
-            syncedOp.weighmentDetails[i].containerNo !== bestNo
-          ) {
-            syncedOp.transporterDetails[i] = {
-              ...syncedOp.transporterDetails[i],
-              containerNo: bestNo,
-            };
-            syncedOp.containerDetails[i] = {
-              ...syncedOp.containerDetails[i],
-              containerNo: bestNo,
-            };
-            syncedOp.weighmentDetails[i] = {
-              ...syncedOp.weighmentDetails[i],
-              containerNo: bestNo,
-            };
-            opIsDirty = true;
+      let opIsDirty = sectionsToSync.some(
+        (s) => (op[s] || []).length !== maxLen
+      );
+
+      const syncedOp = { ...op };
+      sectionsToSync.forEach((s) => {
+        const arr = [...(op[s] || [])];
+        while (arr.length < maxLen) {
+          arr.push(getDefaultItem(s));
+        }
+        syncedOp[s] = arr;
+      });
+
+      // Check for missing container numbers at the same index
+      if (!isAir) {
+        for (let i = 0; i < maxLen; i++) {
+          const nosFound = [
+            syncedOp.transporterDetails[i]?.containerNo,
+            syncedOp.containerDetails[i]?.containerNo,
+            syncedOp.weighmentDetails[i]?.containerNo,
+          ].filter((n) => n && n.trim());
+
+          if (nosFound.length > 0) {
+            const bestNo = nosFound[0].trim().toUpperCase();
+            if (
+              syncedOp.transporterDetails[i].containerNo !== bestNo ||
+              syncedOp.containerDetails[i].containerNo !== bestNo ||
+              syncedOp.weighmentDetails[i].containerNo !== bestNo
+            ) {
+              syncedOp.transporterDetails[i] = {
+                ...syncedOp.transporterDetails[i],
+                containerNo: bestNo,
+              };
+              syncedOp.containerDetails[i] = {
+                ...syncedOp.containerDetails[i],
+                containerNo: bestNo,
+              };
+              syncedOp.weighmentDetails[i] = {
+                ...syncedOp.weighmentDetails[i],
+                containerNo: bestNo,
+              };
+              opIsDirty = true;
+            }
           }
         }
       }
@@ -574,76 +591,86 @@ const OperationsTab = ({ formik }) => {
       formik.setFieldValue("net_weight_kg", totalNet);
 
     // Phase C: Master Containers Sync (Updates formik.values.containers)
-    const currentMaster = formik.values.containers || [];
+    // Only run this if NOT Air mode, as Air doesn't use the master containers list
+    if (!isAir) {
+      const currentMaster = formik.values.containers || [];
 
-    // 1. Reconcile existing containers (Filter out those removed from operations)
-    let nextContainers = currentMaster.filter((c) => {
-      const uNo = (c.containerNo || "").trim().toUpperCase();
-      return uNo && opContainerNos.includes(uNo);
-    });
+      // 1. Reconcile existing containers (Filter out those removed from operations)
+      let nextContainers = currentMaster.filter((c) => {
+        const uNo = (c.containerNo || "").trim().toUpperCase();
+        return uNo && opContainerNos.includes(uNo);
+      });
 
-    let masterChanged = nextContainers.length !== currentMaster.length;
+      let masterChanged = nextContainers.length !== currentMaster.length;
 
-    // 2. Update existing or add new ones to match Operations
-    opContainerNos.forEach((no) => {
-      let masterItemIdx = nextContainers.findIndex(
-        (c) => (c.containerNo || "").trim().toUpperCase() === no
-      );
-      const opInfo = containerDetailsMap.get(no) || {
-        grossWeight: 0,
-        netWeight: 0,
-        noOfPackages: 0,
-        tareWeightKgs: 0,
-      };
+      // 2. Update existing or add new ones to match Operations
+      opContainerNos.forEach((no) => {
+        let masterItemIdx = nextContainers.findIndex(
+          (c) => (c.containerNo || "").trim().toUpperCase() === no
+        );
+        const opInfo = containerDetailsMap.get(no) || {
+          grossWeight: 0,
+          netWeight: 0,
+          noOfPackages: 0,
+          tareWeightKgs: 0,
+        };
 
-      if (masterItemIdx === -1) {
-        nextContainers.push({
-          containerNo: no,
-          type: "",
-          sealNo: "",
-          sealDate: "",
-          pkgsStuffed: opInfo.noOfPackages,
-          grossWeight: opInfo.grossWeight,
-          netWeight: opInfo.netWeight,
-          tareWeightKgs: opInfo.tareWeightKgs,
-        });
-        masterChanged = true;
-      } else {
-        // Sync weights/packages to master item if they differ
-        const m = nextContainers[masterItemIdx];
-        if (
-          Number(m.grossWeight) !== opInfo.grossWeight ||
-          Number(m.netWeight) !== opInfo.netWeight ||
-          Number(m.pkgsStuffed) !== opInfo.noOfPackages ||
-          Number(m.tareWeightKgs || 0) !== opInfo.tareWeightKgs
-        ) {
-          nextContainers[masterItemIdx] = {
-            ...m,
+        if (masterItemIdx === -1) {
+          nextContainers.push({
+            containerNo: no,
+            type: "",
+            sealNo: "",
+            sealDate: "",
+            pkgsStuffed: opInfo.noOfPackages,
             grossWeight: opInfo.grossWeight,
             netWeight: opInfo.netWeight,
-            pkgsStuffed: opInfo.noOfPackages,
             tareWeightKgs: opInfo.tareWeightKgs,
-          };
+          });
           masterChanged = true;
+        } else {
+          // Sync weights/packages to master item if they differ
+          const m = nextContainers[masterItemIdx];
+          if (
+            Number(m.grossWeight) !== opInfo.grossWeight ||
+            Number(m.netWeight) !== opInfo.netWeight ||
+            Number(m.pkgsStuffed) !== opInfo.noOfPackages ||
+            Number(m.tareWeightKgs || 0) !== opInfo.tareWeightKgs
+          ) {
+            nextContainers[masterItemIdx] = {
+              ...m,
+              grossWeight: opInfo.grossWeight,
+              netWeight: opInfo.netWeight,
+              pkgsStuffed: opInfo.noOfPackages,
+              tareWeightKgs: opInfo.tareWeightKgs,
+            };
+            masterChanged = true;
+          }
         }
-      }
-    });
+      });
 
-    if (masterChanged) {
-      formik.setFieldValue("containers", nextContainers);
+      if (masterChanged) {
+        formik.setFieldValue("containers", nextContainers);
+      }
     }
   }, [operations]); // Watch operations to trigger sync
 
   // --- Actions ---
 
   const addOperation = () => {
+    const transportMode = toUpper(formik.values.transportMode || "");
+    const isAir = transportMode === "AIR";
+
     const newOp = {
       transporterDetails: [getDefaultItem("transporterDetails")],
-      containerDetails: [getDefaultItem("containerDetails")],
       bookingDetails: [getDefaultItem("bookingDetails")],
-      weighmentDetails: [getDefaultItem("weighmentDetails")],
       statusDetails: [getDefaultItem("statusDetails")],
     };
+
+    if (!isAir) {
+      newOp.containerDetails = [getDefaultItem("containerDetails")];
+      newOp.weighmentDetails = [getDefaultItem("weighmentDetails")];
+    }
+
     const newOps = [...operations, newOp];
     formik.setFieldValue("operations", newOps);
     setActiveOpIndex(newOps.length - 1);
@@ -662,7 +689,11 @@ const OperationsTab = ({ formik }) => {
 
   const updateField = (section, itemIndex, field, value) => {
     const currentOps = formik.values.operations || [];
+    const transportMode = toUpper(formik.values.transportMode || "");
+    const isAir = transportMode === "AIR";
+
     const isLinkedContainerField =
+      !isAir &&
       field === "containerNo" &&
       ["transporterDetails", "containerDetails", "weighmentDetails"].includes(
         section
@@ -715,11 +746,14 @@ const OperationsTab = ({ formik }) => {
     const op = { ...newOperations[activeOpIndex] };
     if (!op) return;
 
-    const isLinkedSection = [
-      "transporterDetails",
-      "containerDetails",
-      "weighmentDetails",
-    ].includes(section);
+    const transportMode = toUpper(formik.values.transportMode || "");
+    const isAir = transportMode === "AIR";
+
+    const isLinkedSection =
+      !isAir &&
+      ["transporterDetails", "containerDetails", "weighmentDetails"].includes(
+        section
+      );
 
     if (isLinkedSection) {
       // Add row to all 3 linked sections to maintain index alignment
@@ -748,11 +782,14 @@ const OperationsTab = ({ formik }) => {
     const op = { ...newOperations[activeOpIndex] };
     if (!op) return;
 
-    const isLinkedSection = [
-      "transporterDetails",
-      "containerDetails",
-      "weighmentDetails",
-    ].includes(section);
+    const transportMode = toUpper(formik.values.transportMode || "");
+    const isAir = transportMode === "AIR";
+
+    const isLinkedSection =
+      !isAir &&
+      ["transporterDetails", "containerDetails", "weighmentDetails"].includes(
+        section
+      );
 
     if (isLinkedSection) {
       // Delete row from all linked sections to maintain index alignment
@@ -785,6 +822,9 @@ const OperationsTab = ({ formik }) => {
     if (operations.length > 0) setActiveOpIndex(0);
     return null;
   }
+
+  const transportMode = toUpper(formik.values.transportMode || "");
+  const isAir = transportMode === "AIR";
 
   return (
     <div style={styles.container}>
@@ -842,7 +882,11 @@ const OperationsTab = ({ formik }) => {
               width: "110px",
             },
             { field: "vehicleNo", label: "Vehicle No.", width: "10px" },
-            { field: "containerNo", label: "Container No.", width: "140px" },
+            !isAir && {
+              field: "containerNo",
+              label: "Container No.",
+              width: "140px",
+            },
             { field: "driverName", label: "Driver Name", width: "150px" },
             { field: "contactNo", label: "Contact No.", width: "120px" },
             {
@@ -882,7 +926,7 @@ const OperationsTab = ({ formik }) => {
               width: "180px",
               bucketPath: "transporter_images",
             },
-          ]}
+          ].filter(Boolean)}
           section="transporterDetails"
           onUpdate={updateField}
           onAdd={addItem}
@@ -890,56 +934,62 @@ const OperationsTab = ({ formik }) => {
         />
 
         {/* Section: Container Details */}
-        <TableSection
-          title="Container Details"
-          data={activeOperation.containerDetails || []}
-          formik={formik}
-          activeOpIndex={activeOpIndex}
-          columns={[
-            { field: "containerNo", label: "Container No.", width: "140px" },
-            { field: "containerSize", label: "Size (FT)", width: "80px" },
-            { field: "containerType", label: "Container Type", width: "100px" },
-            {
-              field: "cargoType",
-              label: "Cargo Type",
-              width: "100px",
-              type: "select",
-              options: [
-                { value: "Gen", label: "Gen" },
-                { value: "Haz", label: "Haz" },
-              ],
-            },
-            {
-              field: "maxGrossWeightKgs",
-              label: "Max Gross (KG)",
-              type: "number",
-              width: "100px",
-            },
-            {
-              field: "tareWeightKgs",
-              label: "Tare Wt (KG)",
-              type: "number",
-              width: "100px",
-            },
-            {
-              field: "maxPayloadKgs",
-              label: "Max Payload (KG)",
-              type: "number",
-              width: "100px",
-            },
-            {
-              field: "images",
-              label: "Images",
-              type: "upload",
-              width: "180px",
-              bucketPath: "container_images",
-            },
-          ]}
-          section="containerDetails"
-          onUpdate={updateField}
-          onAdd={addItem}
-          onDelete={deleteItem}
-        />
+        {!isAir && (
+          <TableSection
+            title="Container Details"
+            data={activeOperation.containerDetails || []}
+            formik={formik}
+            activeOpIndex={activeOpIndex}
+            columns={[
+              { field: "containerNo", label: "Container No.", width: "140px" },
+              { field: "containerSize", label: "Size (FT)", width: "80px" },
+              {
+                field: "containerType",
+                label: "Container Type",
+                width: "100px",
+              },
+              {
+                field: "cargoType",
+                label: "Cargo Type",
+                width: "100px",
+                type: "select",
+                options: [
+                  { value: "Gen", label: "Gen" },
+                  { value: "Haz", label: "Haz" },
+                ],
+              },
+              {
+                field: "maxGrossWeightKgs",
+                label: "Max Gross (KG)",
+                type: "number",
+                width: "100px",
+              },
+              {
+                field: "tareWeightKgs",
+                label: "Tare Wt (KG)",
+                type: "number",
+                width: "100px",
+              },
+              {
+                field: "maxPayloadKgs",
+                label: "Max Payload (KG)",
+                type: "number",
+                width: "100px",
+              },
+              {
+                field: "images",
+                label: "Images",
+                type: "upload",
+                width: "180px",
+                bucketPath: "container_images",
+              },
+            ]}
+            section="containerDetails"
+            onUpdate={updateField}
+            onAdd={addItem}
+            onDelete={deleteItem}
+          />
+        )}
 
         {/* Section: Booking Details */}
         <TableSection
@@ -950,14 +1000,11 @@ const OperationsTab = ({ formik }) => {
           columns={[
             {
               field: "shippingLineName",
-              label: "Shipping Line",
+              label: isAir ? "Air Line" : "Shipping Line",
               width: "200px",
               type: "shipping-dropdown",
             },
-            ...(toUpper(formik.values.transportMode) === "AIR" ||
-            toUpper(formik.values.consignmentType) === "LCL" 
-              ? [{ field: "forwarderName", label: "Forwarder", width: "150px" }]
-              : []),
+            { field: "forwarderName", label: "Forwarder", width: "150px" },
             { field: "bookingNo", label: "Booking No.", width: "140px" },
             {
               field: "bookingDate",
@@ -965,21 +1012,25 @@ const OperationsTab = ({ formik }) => {
               type: "date",
               width: "130px",
             },
-            { field: "vesselName", label: "Vessel", width: "150px" },
-            { field: "voyageNo", label: "Voyage", width: "100px" },
-            { field: "portOfLoading", label: "POL", width: "120px" },
             {
+              field: "vesselName",
+              label: isAir ? "Flight Name" : "Vessel",
+              width: "150px",
+            },
+            !isAir && { field: "voyageNo", label: "Voyage", width: "100px" },
+            !isAir && { field: "portOfLoading", label: "POL", width: "120px" },
+            !isAir && {
               field: "handoverLocation",
               label: "Empty Pickup / Drop Location",
               width: "140px",
             },
-            {
+            !isAir && {
               field: "validity",
               label: "Booking Valid Till",
               type: "date",
               width: "130px",
             },
-            {
+            !isAir && {
               field: "containerPlacementDate",
               label: "Container Placement Date (CPD)",
               type: "date",
@@ -992,7 +1043,7 @@ const OperationsTab = ({ formik }) => {
               width: "180px",
               bucketPath: "booking_images",
             },
-          ]}
+          ].filter(Boolean)}
           section="bookingDetails"
           onUpdate={updateField}
           onAdd={addItem}
@@ -1000,52 +1051,58 @@ const OperationsTab = ({ formik }) => {
         />
 
         {/* Section: Weighment Details */}
-        <TableSection
-          title="Weighment Details"
-          data={activeOperation.weighmentDetails || []}
-          formik={formik}
-          activeOpIndex={activeOpIndex}
-          columns={[
-            {
-              field: "weighBridgeName",
-              label: "Weighbridge Name",
-              width: "180px",
-            },
-            { field: "regNo", label: "Reg No.", width: "120px" },
-            { field: "address", label: "Weighbridge Address", width: "180px" },
-            {
-              field: "dateTime",
-              label: "Weighment Date & Time",
-              type: "datetime-local",
-              width: "160px",
-            },
-            { field: "vehicleNo", label: "Vehicle No.", width: "120px" },
-            { field: "containerNo", label: "Container No.", width: "140px" },
-            { field: "size", label: "Cntr Size", width: "80px" },
-            {
-              field: "grossWeight",
-              label: "Gross Wt (KG)",
-              type: "number",
-              width: "90px",
-            },
-            {
-              field: "tareWeight",
-              label: "Tare Wt (KG)",
-              type: "number",
-              width: "90px",
-            },
-            {
-              field: "netWeight",
-              label: "Net Wt (KG)",
-              type: "number",
-              width: "90px",
-            },
-          ]}
-          section="weighmentDetails"
-          onUpdate={updateField}
-          onAdd={addItem}
-          onDelete={deleteItem}
-        />
+        {!isAir && (
+          <TableSection
+            title="Weighment Details"
+            data={activeOperation.weighmentDetails || []}
+            formik={formik}
+            activeOpIndex={activeOpIndex}
+            columns={[
+              {
+                field: "weighBridgeName",
+                label: "Weighbridge Name",
+                width: "180px",
+              },
+              { field: "regNo", label: "Reg No.", width: "120px" },
+              {
+                field: "address",
+                label: "Weighbridge Address",
+                width: "180px",
+              },
+              {
+                field: "dateTime",
+                label: "Weighment Date & Time",
+                type: "datetime-local",
+                width: "160px",
+              },
+              { field: "vehicleNo", label: "Vehicle No.", width: "120px" },
+              { field: "containerNo", label: "Container No.", width: "140px" },
+              { field: "size", label: "Cntr Size", width: "80px" },
+              {
+                field: "grossWeight",
+                label: "Gross Wt (KG)",
+                type: "number",
+                width: "90px",
+              },
+              {
+                field: "tareWeight",
+                label: "Tare Wt (KG)",
+                type: "number",
+                width: "90px",
+              },
+              {
+                field: "netWeight",
+                label: "Net Wt (KG)",
+                type: "number",
+                width: "90px",
+              },
+            ]}
+            section="weighmentDetails"
+            onUpdate={updateField}
+            onAdd={addItem}
+            onDelete={deleteItem}
+          />
+        )}
 
         {/* Section: Status Details (Special Layout since it has many dates) */}
         <StatusSection
@@ -1053,7 +1110,7 @@ const OperationsTab = ({ formik }) => {
           data={activeOperation.statusDetails || []}
           section="statusDetails"
           onUpdate={updateField}
-          formik={formik}
+          isAir={isAir}
         />
       </div>
     </div>
@@ -1278,7 +1335,7 @@ const TableSection = ({
   );
 };
 
-const StatusSection = ({ title, data, section, onUpdate, formik }) => {
+const StatusSection = ({ title, data, section, onUpdate, isAir }) => {
   const displayData =
     data && data.length > 0 ? data : [getDefaultItem(section)];
 
@@ -1296,18 +1353,35 @@ const StatusSection = ({ title, data, section, onUpdate, formik }) => {
     },
     { field: "leoDate", label: "LEO Date", type: "date" },
     { field: "leoUpload", label: "LEO Document", type: "upload" },
-    { field: "stuffingDate", label: "Stuffing Date", type: "date" },
-    { field: "stuffingSheetUpload", label: "Stuffing Sheet", type: "upload" },
-    { field: "stuffingPhotoUpload", label: "Stuffing Photo", type: "upload" },
+    !isAir && { field: "stuffingDate", label: "Stuffing Date", type: "date" },
+    !isAir && {
+      field: "stuffingSheetUpload",
+      label: "Stuffing Sheet",
+      type: "upload",
+    },
+    !isAir && {
+      field: "stuffingPhotoUpload",
+      label: "Stuffing Photo",
+      type: "upload",
+    },
     { field: "eGatePassCopyDate", label: "E-Gate Pass Date", type: "date" },
     { field: "eGatePassUpload", label: "E-Gate Pass Copy", type: "upload" },
-    // Handover fields removed from here as they are now in a conditional block below
-    {
+    !isAir && {
+      field: "handoverForwardingNoteDate",
+      label: "Handover Note Date",
+      type: "date",
+    },
+    !isAir && {
+      field: "handoverImageUpload",
+      label: "Handover Note Copy",
+      type: "upload",
+    },
+    !isAir && {
       field: "handoverConcorTharSanganaRailRoadDate",
       label: "Dispatch Date (Rail/Road)",
       type: "date",
     },
-    {
+    !isAir && {
       field: "railOutReachedDate",
       label: "Rail-Out Date",
       type: "date",
@@ -1328,7 +1402,7 @@ const StatusSection = ({ title, data, section, onUpdate, formik }) => {
       type: "select",
       options: ["Pending", "Completed"],
     },
-  ];
+  ].filter(Boolean);
 
   return (
     <div style={styles.sectionContainer}>
@@ -1366,39 +1440,41 @@ const StatusSection = ({ title, data, section, onUpdate, formik }) => {
                       />
                     </div>
                   </div>
-                  <div style={styles.statusField}>
-                    <label style={styles.statusLabel}>
-                      Container Placement Date (CPD)
-                    </label>
-                    <input
-                      type="text"
-                      value={formatDateForInput(
-                        item.containerPlacementDate || ""
-                      )}
-                      onChange={(e) =>
-                        onUpdate(
-                          section,
-                          idx,
-                          "containerPlacementDate",
-                          e.target.value
-                        )
-                      }
-                      onDoubleClick={(e) => {
-                        const pickerVal = formatDateForPicker(
-                          item.containerPlacementDate,
-                          "date"
-                        );
-                        if (pickerVal) e.target.value = pickerVal;
-                        e.target.type = "date";
-                        e.target.showPicker && e.target.showPicker();
-                      }}
-                      onBlur={(e) => {
-                        e.target.type = "text";
-                      }}
-                      style={styles.statusInput}
-                      placeholder="dd-mm-yyyy"
-                    />
-                  </div>
+                  {!isAir && (
+                    <div style={styles.statusField}>
+                      <label style={styles.statusLabel}>
+                        Container Placement Date (CPD)
+                      </label>
+                      <input
+                        type="text"
+                        value={formatDateForInput(
+                          item.containerPlacementDate || ""
+                        )}
+                        onChange={(e) =>
+                          onUpdate(
+                            section,
+                            idx,
+                            "containerPlacementDate",
+                            e.target.value
+                          )
+                        }
+                        onDoubleClick={(e) => {
+                          const pickerVal = formatDateForPicker(
+                            item.containerPlacementDate,
+                            "date"
+                          );
+                          if (pickerVal) e.target.value = pickerVal;
+                          e.target.type = "date";
+                          e.target.showPicker && e.target.showPicker();
+                        }}
+                        onBlur={(e) => {
+                          e.target.type = "text";
+                        }}
+                        style={styles.statusInput}
+                        placeholder="dd-mm-yyyy"
+                      />
+                    </div>
+                  )}
                 </React.Fragment>
               );
             }
@@ -1431,7 +1507,7 @@ const StatusSection = ({ title, data, section, onUpdate, formik }) => {
                       />
                     </div>
                   </div>
-                  {/* HO Conditional Section */}
+                  {/* HO to console section */}
                   <div style={{ gridColumn: "1 / -1", marginTop: "20px" }}>
                     <h4
                       style={{
@@ -1440,10 +1516,7 @@ const StatusSection = ({ title, data, section, onUpdate, formik }) => {
                         marginBottom: "12px",
                       }}
                     >
-                      {toUpper(formik.values.transportMode) === "AIR" ||
-                      toUpper(formik.values.consignmentType) === "LCL"
-                        ? "HO to console"
-                        : "HO to forworder"}
+                      HO to console
                     </h4>
                     <div
                       style={{
@@ -1455,10 +1528,7 @@ const StatusSection = ({ title, data, section, onUpdate, formik }) => {
                     >
                       <div style={styles.statusField}>
                         <label style={styles.statusLabel}>
-                          {toUpper(formik.values.transportMode) === "AIR" ||
-                          toUpper(formik.values.consignmentType) === "LCL"
-                            ? "File Handover Date"
-                            : "Handover Note Date"}
+                          File Handover Date
                         </label>
                         <input
                           type="text"
@@ -1488,53 +1558,14 @@ const StatusSection = ({ title, data, section, onUpdate, formik }) => {
                         />
                       </div>
 
-                      {(toUpper(formik.values.transportMode) === "AIR" ||
-                        toUpper(formik.values.consignmentType) === "LCL") && (
-                        <div style={styles.statusField}>
-                          <label style={styles.statusLabel}>
-                            Forwarder Name
-                          </label>
-                          <HoNameAutocomplete
-                            value={item.hoToConsoleName || ""}
-                            onChange={(val) =>
-                              onUpdate(section, idx, "hoToConsoleName", val)
-                            }
-                          />
-                        </div>
-                      )}
-
                       <div style={styles.statusField}>
-                        <label style={styles.statusLabel}>
-                          Handover Note Copy
-                        </label>
-                        <FileUpload
-                          bucketPath="handover_uploads"
-                          multiple={true}
-                          acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
-                          onFilesUploaded={(newUrls) => {
-                            const current = item.handoverImageUpload || [];
-                            onUpdate(section, idx, "handoverImageUpload", [
-                              ...current,
-                              ...newUrls,
-                            ]);
-                          }}
+                        <label style={styles.statusLabel}>Forwarder Name</label>
+                        <HoNameAutocomplete
+                          value={item.hoToConsoleName || ""}
+                          onChange={(val) =>
+                            onUpdate(section, idx, "hoToConsoleName", val)
+                          }
                         />
-                        <div style={{ marginTop: "4px" }}>
-                          <ImagePreview
-                            images={item.handoverImageUpload || []}
-                            onDeleteImage={(deleteIndex) => {
-                              const updatedList = (
-                                item.handoverImageUpload || []
-                              ).filter((_, i) => i !== deleteIndex);
-                              onUpdate(
-                                section,
-                                idx,
-                                "handoverImageUpload",
-                                updatedList
-                              );
-                            }}
-                          />
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -1543,6 +1574,7 @@ const StatusSection = ({ title, data, section, onUpdate, formik }) => {
             }
 
             if (f.field === "handoverConcorTharSanganaRailRoadDate") {
+              if (isAir) return null;
               return (
                 <React.Fragment key={f.field}>
                   <div style={styles.statusField}>
