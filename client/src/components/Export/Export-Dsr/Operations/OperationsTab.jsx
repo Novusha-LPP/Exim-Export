@@ -107,6 +107,7 @@ const getDefaultItem = (section) => {
       grossWeight: 0,
       tareWeight: 0,
       netWeight: 0,
+      images: [],
     },
     statusDetails: {
       rms: "RMS", // Default
@@ -119,8 +120,10 @@ const getDefaultItem = (section) => {
       stuffingPhotoUpload: [],
       eGatePassCopyDate: "",
       eGatePassUpload: [],
+      icdPort: "",
       handoverForwardingNoteDate: "",
       handoverImageUpload: [],
+      forwarderName: "",
       handoverConcorTharSanganaRailRoadDate: "",
       billingDocsSentDt: "",
       billingDocsSentUpload: [],
@@ -404,11 +407,17 @@ const OperationsTab = ({ formik }) => {
     if (formik.values.job_no && operations.length === 0) {
       const transportMode = toUpper(formik.values.transportMode || "");
       const isAir = transportMode === "AIR";
+      const customHouse = formik.values.custom_house || "";
+
+      const statusDefaults = { ...getDefaultItem("statusDetails") };
+      if (toUpper(formik.values.consignmentType || "") !== "FCL") {
+        statusDefaults.icdPort = toUpper(customHouse);
+      }
 
       const newOp = {
         transporterDetails: [getDefaultItem("transporterDetails")],
         bookingDetails: [getDefaultItem("bookingDetails")],
-        statusDetails: [getDefaultItem("statusDetails")],
+        statusDetails: [statusDefaults],
       };
 
       if (!isAir) {
@@ -419,6 +428,31 @@ const OperationsTab = ({ formik }) => {
       formik.setFieldValue("operations", [newOp]);
     }
   }, [formik.values.job_no, operations.length]);
+
+  // Sync ICD Port with Custom House if currently empty
+  useEffect(() => {
+    const customHouse = toUpper(formik.values.custom_house || "");
+    const consignmentType = toUpper(formik.values.consignmentType || "");
+    if (customHouse && consignmentType !== "FCL") {
+      let changed = false;
+      const updatedOps = operations.map((op) => {
+        const statusDetails = op.statusDetails || [];
+        const updatedStatus = statusDetails.map((s) => {
+          if (!s.icdPort) {
+            changed = true;
+            return { ...s, icdPort: customHouse };
+          }
+          return s;
+        });
+        if (changed) return { ...op, statusDetails: updatedStatus };
+        return op;
+      });
+
+      if (changed) {
+        formik.setFieldValue("operations", updatedOps);
+      }
+    }
+  }, [formik.values.custom_house, formik.values.consignmentType]);
 
   // 1. Collect all unique container numbers from ALL sections of ALL operations
   const allOpContainersSet = new Set();
@@ -659,11 +693,17 @@ const OperationsTab = ({ formik }) => {
   const addOperation = () => {
     const transportMode = toUpper(formik.values.transportMode || "");
     const isAir = transportMode === "AIR";
+    const customHouse = formik.values.custom_house || "";
+
+    const statusDefaults = { ...getDefaultItem("statusDetails") };
+    if (toUpper(formik.values.consignmentType || "") !== "FCL") {
+      statusDefaults.icdPort = toUpper(customHouse);
+    }
 
     const newOp = {
       transporterDetails: [getDefaultItem("transporterDetails")],
       bookingDetails: [getDefaultItem("bookingDetails")],
-      statusDetails: [getDefaultItem("statusDetails")],
+      statusDetails: [statusDefaults],
     };
 
     if (!isAir) {
@@ -909,13 +949,13 @@ const OperationsTab = ({ formik }) => {
             },
             {
               field: "cartingDate",
-              label: "Carting Date",
+              label: "Carting",
               type: "date",
               width: "130px",
             },
             {
               field: "gateInDate",
-              label: "Gate-In Date",
+              label: "Gate-In",
               type: "date",
               width: "130px",
             },
@@ -1008,7 +1048,7 @@ const OperationsTab = ({ formik }) => {
             { field: "bookingNo", label: "Booking No.", width: "140px" },
             {
               field: "bookingDate",
-              label: "Booking Date",
+              label: "Booking",
               type: "date",
               width: "130px",
             },
@@ -1027,12 +1067,6 @@ const OperationsTab = ({ formik }) => {
             !isAir && {
               field: "validity",
               label: "Booking Valid Till",
-              type: "date",
-              width: "130px",
-            },
-            !isAir && {
-              field: "containerPlacementDate",
-              label: "Container Placement Date (CPD)",
               type: "date",
               width: "130px",
             },
@@ -1096,6 +1130,13 @@ const OperationsTab = ({ formik }) => {
                 type: "number",
                 width: "90px",
               },
+              {
+                field: "images",
+                label: "Images",
+                type: "upload",
+                width: "180px",
+                bucketPath: "weighment_images",
+              },
             ]}
             section="weighmentDetails"
             onUpdate={updateField}
@@ -1110,12 +1151,101 @@ const OperationsTab = ({ formik }) => {
           data={activeOperation.statusDetails || []}
           section="statusDetails"
           onUpdate={updateField}
+          onAdd={addItem}
+          onDelete={deleteItem}
+          formik={formik}
+          activeOpIndex={activeOpIndex}
           isAir={isAir}
+          consignmentType={toUpper(formik.values.consignmentType || "")}
+          customHouse={toUpper(formik.values.custom_house || "")}
         />
+
+        {/* New Job Progress Section */}
+        {/* <JobDetailedStatusSection formik={formik} /> */}
       </div>
     </div>
   );
 };
+
+// const JobDetailedStatusSection = ({ formik }) => {
+//   const statuses = [
+//     "SB Filed",
+//     "SB Receipt",
+//     "L.E.O",
+//     "Container HO to Concor",
+//     "Rail Out",
+//     "Ready for Billing",
+//     "Billing Done",
+//   ];
+
+//   const currentStatusArray = formik.values.detailedStatus || [];
+
+//   const handleToggle = (status) => {
+//     let nextStatus;
+//     if (currentStatusArray.includes(status)) {
+//       nextStatus = currentStatusArray.filter((s) => s !== status);
+//     } else {
+//       nextStatus = [...currentStatusArray, status];
+//     }
+//     formik.setFieldValue("detailedStatus", nextStatus);
+//   };
+
+//   return (
+//     <div style={styles.sectionContainer}>
+//       <div style={styles.sectionHeader}>
+//         <h3 style={styles.sectionTitle}>Job Progress Checklist</h3>
+//       </div>
+//       <div
+//         style={{
+//           display: "flex",
+//           flexWrap: "wrap",
+//           gap: "20px",
+//           padding: "20px",
+//           backgroundColor: "#fff",
+//         }}
+//       >
+//         {statuses.map((status) => (
+//           <label
+//             key={status}
+//             style={{
+//               display: "flex",
+//               alignItems: "center",
+//               gap: "10px",
+//               cursor: "pointer",
+//               fontSize: "14px",
+//               fontWeight: "500",
+//               color: currentStatusArray.includes(status)
+//                 ? "#2563eb"
+//                 : "#4b5563",
+//               padding: "8px 12px",
+//               borderRadius: "6px",
+//               border: "1px solid",
+//               borderColor: currentStatusArray.includes(status)
+//                 ? "#bfdbfe"
+//                 : "#e5e7eb",
+//               backgroundColor: currentStatusArray.includes(status)
+//                 ? "#eff6ff"
+//                 : "#f9fafb",
+//               transition: "all 0.2s",
+//             }}
+//           >
+//             <input
+//               type="checkbox"
+//               checked={currentStatusArray.includes(status)}
+//               onChange={() => handleToggle(status)}
+//               style={{
+//                 width: "18px",
+//                 height: "18px",
+//                 cursor: "pointer",
+//               }}
+//             />
+//             {status}
+//           </label>
+//         ))}
+//       </div>
+//     </div>
+//   );
+// };
 
 // --- Sub-Components ---
 
@@ -1335,555 +1465,492 @@ const TableSection = ({
   );
 };
 
-const StatusSection = ({ title, data, section, onUpdate, isAir }) => {
+const StatusSection = ({
+  title,
+  data,
+  section,
+  onUpdate,
+  onAdd,
+  onDelete,
+  formik,
+  activeOpIndex,
+  isAir,
+  consignmentType,
+  customHouse,
+}) => {
   const displayData =
     data && data.length > 0 ? data : [getDefaultItem(section)];
 
-  const fields = [
+  const row1Fields = [
     {
       field: "rms",
       label: "RMS Status",
       type: "select",
       options: ["RMS", "Assessment"],
+      width: 1,
     },
     {
       field: "goodsRegistrationDate",
-      label: "Goods Registration / Report Date",
+      label: "Goods Reg./Report",
       type: "date",
+      width: 1,
     },
-    { field: "leoDate", label: "LEO Date", type: "date" },
-    { field: "leoUpload", label: "LEO Document", type: "upload" },
-    !isAir && { field: "stuffingDate", label: "Stuffing Date", type: "date" },
-    !isAir && {
+    { field: "leoDate", label: "LEO", type: "date", width: 1 },
+    { field: "leoUpload", label: "LEO Copy", type: "upload", width: 1 },
+    {
+      field: "containerPlacementDate",
+      label: "Cnt Placement",
+      type: "date",
+      width: 1,
+      hidden: isAir,
+    },
+    {
+      field: "stuffingDate",
+      label: "Stuffing",
+      type: "date",
+      width: 1,
+      hidden: isAir,
+    },
+    {
       field: "stuffingSheetUpload",
       label: "Stuffing Sheet",
       type: "upload",
+      width: 1,
+      hidden: isAir,
     },
-    !isAir && {
+    {
       field: "stuffingPhotoUpload",
       label: "Stuffing Photo",
       type: "upload",
+      width: 1,
+      hidden: isAir,
     },
-    { field: "eGatePassCopyDate", label: "E-Gate Pass Date", type: "date" },
-    { field: "eGatePassUpload", label: "E-Gate Pass Copy", type: "upload" },
-    !isAir && {
-      field: "handoverForwardingNoteDate",
-      label: "Handover Note Date",
+    {
+      field: "eGatePassCopyDate",
+      label: "Gate Pass",
       type: "date",
+      width: 1,
     },
-    !isAir && {
-      field: "handoverImageUpload",
-      label: "Handover Note Copy",
+    {
+      field: "eGatePassUpload",
+      label: "Gate Pass Copy",
       type: "upload",
+      width: 1,
     },
-    !isAir && {
-      field: "handoverConcorTharSanganaRailRoadDate",
-      label: "Dispatch Date (Rail/Road)",
+  ].filter((f) => !f.hidden);
+
+  const row2Fields = [
+    {
+      field: "icdPort",
+      label: "ICD/Port",
+      type: "icd",
+      width: 1,
+    },
+    {
+      field: "handoverForwardingNoteDate",
+      label: "File HO/DOC",
       type: "date",
+      width: 1,
     },
-    !isAir && {
+    {
+      field: "handoverImageUpload",
+      label: "HO/DOC Copy",
+      type: "upload",
+      width: 1,
+      hidden: isAir,
+    },
+    {
+      field: "forwarderName",
+      label: "Forwarder",
+      type: "text",
+      width: 1,
+      hidden: isAir,
+    },
+    {
+      field: "dispatchDetails",
+      label: "Dispatch Tracking",
+      type: "dispatch",
+      width: 1,
+      hidden: isAir,
+    },
+    {
       field: "railOutReachedDate",
-      label: "Rail-Out Date",
+      label: "Reached",
       type: "date",
+      width: 1,
+      hidden: isAir,
     },
     {
       field: "billingDocsSentDt",
-      label: "Billing Docs Sent Date",
+      label: "Billing",
       type: "date",
+      width: 1,
     },
     {
       field: "billingDocsSentUpload",
-      label: "Billing Docs Copy",
+      label: "Bill Doc Copy",
       type: "upload",
+      width: 1,
     },
     {
       field: "billingDocsStatus",
       label: "Bill Status",
       type: "select",
       options: ["Pending", "Completed"],
+      width: 1,
     },
-  ].filter(Boolean);
+  ].filter((f) => !f.hidden);
+
+  // Calculate grid columns for each row based on visible fields
+  const r1Cols = row1Fields.reduce((sum, f) => sum + (f.width || 1), 0);
+  const r2Cols = row2Fields.reduce((sum, f) => sum + (f.width || 1), 0);
+
+  const renderCell = (f, item, rowIdx) => {
+    return f.type === "upload" ? (
+      <div style={styles.uploadCell}>
+        <FileUpload
+          bucketPath={
+            f.field === "leoUpload"
+              ? "leo_uploads"
+              : f.field === "eGatePassUpload"
+              ? "egate_uploads"
+              : f.field === "stuffingSheetUpload"
+              ? "stuffing_sheet_uploads"
+              : f.field === "stuffingPhotoUpload"
+              ? "stuffing_photo_uploads"
+              : f.field === "billingDocsSentUpload"
+              ? "billing_uploads"
+              : f.field === "handoverImageUpload"
+              ? "job_handover_images"
+              : "general_uploads"
+          }
+          multiple={true}
+          acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
+          onFilesUploaded={(newUrls) => {
+            const currentImages = item[f.field] || [];
+            const updatedList = [...currentImages, ...newUrls];
+            onUpdate(section, rowIdx, f.field, updatedList);
+          }}
+        />
+        <ImagePreview
+          images={item[f.field] || []}
+          onDeleteImage={(deleteIndex) => {
+            const currentImages = item[f.field] || [];
+            const updatedList = currentImages.filter(
+              (_, i) => i !== deleteIndex
+            );
+            onUpdate(section, rowIdx, f.field, updatedList);
+          }}
+        />
+      </div>
+    ) : f.type === "select" ? (
+      <select
+        value={item[f.field] || ""}
+        onChange={(e) => onUpdate(section, rowIdx, f.field, e.target.value)}
+        style={styles.cellInput}
+      >
+        <option value="">Select...</option>
+        {f.options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+    ) : f.type === "icd" ? (
+      <div style={{ padding: "0 4px" }}>
+        <IcdPortAutocomplete
+          value={item.icdPort || ""}
+          onChange={(val) => onUpdate(section, rowIdx, "icdPort", val)}
+        />
+      </div>
+    ) : f.type === "dispatch" ? (
+      <div
+        style={{
+          padding: "8px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+          fontSize: "11px",
+        }}
+      >
+        {/* Transport Mode */}
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="radio"
+              name={`railRoad-${rowIdx}`}
+              value="rail"
+              checked={item.railRoad === "rail"}
+              onChange={() => onUpdate(section, rowIdx, "railRoad", "rail")}
+            />
+            Rail
+          </label>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="radio"
+              name={`railRoad-${rowIdx}`}
+              value="road"
+              checked={item.railRoad === "road"}
+              onChange={() => onUpdate(section, rowIdx, "railRoad", "road")}
+            />
+            Road
+          </label>
+        </div>
+
+        {/* Road Type & Details Inline */}
+        <div
+          style={{
+            display: "flex",
+            gap: "8px",
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          {item.railRoad === "road" && (
+            <>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    cursor: "pointer",
+                    fontSize: "11px",
+                    fontWeight: "600",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={item.concorPrivate === "private"}
+                    onChange={(e) =>
+                      onUpdate(
+                        section,
+                        rowIdx,
+                        "concorPrivate",
+                        e.target.checked ? "private" : "concor"
+                      )
+                    }
+                  />
+                  Private
+                </label>
+              </div>
+
+              {item.concorPrivate === "private" && (
+                <input
+                  type="text"
+                  value={toUpper(item.privateTransporterName || "")}
+                  onChange={(e) =>
+                    onUpdate(
+                      section,
+                      rowIdx,
+                      "privateTransporterName",
+                      e.target.value.toUpperCase()
+                    )
+                  }
+                  style={{
+                    ...styles.cellInput,
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "4px",
+                    height: "28px",
+                    minHeight: "28px",
+                    width: "130px",
+                  }}
+                  placeholder="Transporter"
+                />
+              )}
+            </>
+          )}
+
+          <input
+            type="text"
+            value={formatDateForInput(
+              item.handoverConcorTharSanganaRailRoadDate || "",
+              "date"
+            )}
+            onDoubleClick={(e) => {
+              const pickerVal = formatDateForPicker(
+                item.handoverConcorTharSanganaRailRoadDate,
+                "date"
+              );
+              if (pickerVal) e.target.value = pickerVal;
+              e.target.type = "date";
+              e.target.showPicker && e.target.showPicker();
+            }}
+            onBlur={(e) => (e.target.type = "text")}
+            onChange={(e) =>
+              onUpdate(
+                section,
+                rowIdx,
+                "handoverConcorTharSanganaRailRoadDate",
+                e.target.value
+              )
+            }
+            style={{
+              ...styles.cellInput,
+              border: "1px solid #e2e8f0",
+              borderRadius: "4px",
+              height: "28px",
+              minHeight: "28px",
+              width: "100px",
+            }}
+            placeholder="Date"
+          />
+        </div>
+      </div>
+    ) : (
+      <input
+        type={
+          f.type === "date" || f.type === "datetime-local"
+            ? "text"
+            : f.type || "text"
+        }
+        value={
+          f.type === "date" || f.type === "datetime-local"
+            ? formatDateForInput(item[f.field] || "", f.type)
+            : item[f.field] || ""
+        }
+        onChange={(e) => onUpdate(section, rowIdx, f.field, e.target.value)}
+        onDoubleClick={(e) => {
+          if (f.type === "date" || f.type === "datetime-local") {
+            const pickerVal = formatDateForPicker(item[f.field], f.type);
+            if (pickerVal) e.target.value = pickerVal;
+            e.target.type = f.type;
+            e.target.showPicker && e.target.showPicker();
+          }
+        }}
+        onBlur={(e) => {
+          if (f.type === "date" || f.type === "datetime-local") {
+            e.target.type = "text";
+          }
+        }}
+        style={styles.cellInput}
+        placeholder={f.type === "date" ? "dd-mm-yyyy" : ""}
+      />
+    );
+  };
 
   return (
-    <div style={styles.sectionContainer}>
+    <div style={{ ...styles.sectionContainer, marginBottom: "16px" }}>
       <div style={styles.sectionHeader}>
         <h3 style={styles.sectionTitle}>{title}</h3>
       </div>
-      {displayData.map((item, idx) => (
-        <div key={idx} style={styles.statusGrid}>
-          {fields.map((f) => {
-            if (f.field === "leoUpload") {
-              const currentImages = item[f.field] || [];
-              const bucketPath = "leo_uploads";
-              return (
-                <React.Fragment key={f.field}>
-                  <div style={styles.statusField}>
-                    <label style={styles.statusLabel}>{f.label}</label>
-                    <FileUpload
-                      bucketPath={bucketPath}
-                      multiple={true}
-                      acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
-                      onFilesUploaded={(newUrls) => {
-                        const updatedList = [...currentImages, ...newUrls];
-                        onUpdate(section, idx, f.field, updatedList);
-                      }}
-                    />
-                    <div style={{ marginTop: "4px" }}>
-                      <ImagePreview
-                        images={currentImages}
-                        onDeleteImage={(deleteIndex) => {
-                          const updatedList = currentImages.filter(
-                            (_, i) => i !== deleteIndex
-                          );
-                          onUpdate(section, idx, f.field, updatedList);
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {!isAir && (
-                    <div style={styles.statusField}>
-                      <label style={styles.statusLabel}>
-                        Container Placement Date (CPD)
-                      </label>
-                      <input
-                        type="text"
-                        value={formatDateForInput(
-                          item.containerPlacementDate || ""
-                        )}
-                        onChange={(e) =>
-                          onUpdate(
-                            section,
-                            idx,
-                            "containerPlacementDate",
-                            e.target.value
-                          )
-                        }
-                        onDoubleClick={(e) => {
-                          const pickerVal = formatDateForPicker(
-                            item.containerPlacementDate,
-                            "date"
-                          );
-                          if (pickerVal) e.target.value = pickerVal;
-                          e.target.type = "date";
-                          e.target.showPicker && e.target.showPicker();
-                        }}
-                        onBlur={(e) => {
-                          e.target.type = "text";
-                        }}
-                        style={styles.statusInput}
-                        placeholder="dd-mm-yyyy"
-                      />
-                    </div>
-                  )}
-                </React.Fragment>
-              );
-            }
 
-            if (f.field === "billingDocsSentUpload") {
-              const currentImages = item[f.field] || [];
-              const bucketPath = "billing_uploads";
-              return (
-                <React.Fragment key={f.field}>
-                  <div style={styles.statusField}>
-                    <label style={styles.statusLabel}>{f.label}</label>
-                    <FileUpload
-                      bucketPath={bucketPath}
-                      multiple={true}
-                      acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
-                      onFilesUploaded={(newUrls) => {
-                        const updatedList = [...currentImages, ...newUrls];
-                        onUpdate(section, idx, f.field, updatedList);
-                      }}
-                    />
-                    <div style={{ marginTop: "4px" }}>
-                      <ImagePreview
-                        images={currentImages}
-                        onDeleteImage={(deleteIndex) => {
-                          const updatedList = currentImages.filter(
-                            (_, i) => i !== deleteIndex
-                          );
-                          onUpdate(section, idx, f.field, updatedList);
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {/* HO to console section */}
-                  <div style={{ gridColumn: "1 / -1", marginTop: "20px" }}>
-                    <h4
-                      style={{
-                        ...styles.sectionTitle,
-                        color: "#2563eb",
-                        marginBottom: "12px",
-                      }}
-                    >
-                      HO to console
-                    </h4>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                          "repeat(auto-fill, minmax(200px, 1fr))",
-                        gap: "16px",
-                      }}
-                    >
-                      <div style={styles.statusField}>
-                        <label style={styles.statusLabel}>
-                          File Handover Date
-                        </label>
-                        <input
-                          type="text"
-                          value={formatDateForInput(item.hoToConsoleDate || "")}
-                          onChange={(e) =>
-                            onUpdate(
-                              section,
-                              idx,
-                              "hoToConsoleDate",
-                              e.target.value
-                            )
-                          }
-                          onDoubleClick={(e) => {
-                            const pickerVal = formatDateForPicker(
-                              item.hoToConsoleDate,
-                              "date"
-                            );
-                            if (pickerVal) e.target.value = pickerVal;
-                            e.target.type = "date";
-                            e.target.showPicker && e.target.showPicker();
-                          }}
-                          onBlur={(e) => {
-                            e.target.type = "text";
-                          }}
-                          style={styles.statusInput}
-                          placeholder="dd-mm-yyyy"
-                        />
-                      </div>
-
-                      <div style={styles.statusField}>
-                        <label style={styles.statusLabel}>Forwarder Name</label>
-                        <HoNameAutocomplete
-                          value={item.hoToConsoleName || ""}
-                          onChange={(val) =>
-                            onUpdate(section, idx, "hoToConsoleName", val)
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </React.Fragment>
-              );
-            }
-
-            if (f.field === "handoverConcorTharSanganaRailRoadDate") {
-              if (isAir) return null;
-              return (
-                <React.Fragment key={f.field}>
-                  <div style={styles.statusField}>
-                    <label style={styles.statusLabel}>Transport Mode</label>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "12px",
-                        alignItems: "center",
-                        height: "36px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          name={`railRoad-${idx}`}
-                          value="rail"
-                          checked={item.railRoad === "rail"}
-                          onChange={(e) =>
-                            onUpdate(section, idx, "railRoad", e.target.value)
-                          }
-                        />
-                        Rail
-                      </label>
-                      <label
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          name={`railRoad-${idx}`}
-                          value="road"
-                          checked={item.railRoad === "road"}
-                          onChange={(e) =>
-                            onUpdate(section, idx, "railRoad", e.target.value)
-                          }
-                        />
-                        Road
-                      </label>
-                    </div>
-                  </div>
-
-                  {item.railRoad === "road" && (
-                    <div style={styles.statusField}>
-                      <label style={styles.statusLabel}>
-                        Road Transport Type
-                      </label>
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: "12px",
-                          alignItems: "center",
-                          height: "36px",
-                        }}
-                      >
-                        <label
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                          }}
-                        >
-                          <input
-                            type="radio"
-                            name={`concorPrivate-${idx}`}
-                            value="concor"
-                            checked={item.concorPrivate === "concor"}
-                            onChange={(e) =>
-                              onUpdate(
-                                section,
-                                idx,
-                                "concorPrivate",
-                                e.target.value
-                              )
-                            }
-                          />
-                          Concor
-                        </label>
-                        <label
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                          }}
-                        >
-                          <input
-                            type="radio"
-                            name={`concorPrivate-${idx}`}
-                            value="private"
-                            checked={item.concorPrivate === "private"}
-                            onChange={(e) =>
-                              onUpdate(
-                                section,
-                                idx,
-                                "concorPrivate",
-                                e.target.value
-                              )
-                            }
-                          />
-                          Private
-                        </label>
-                      </div>
-                    </div>
-                  )}
-
-                  {item.railRoad === "road" &&
-                    item.concorPrivate === "private" && (
-                      <div style={styles.statusField}>
-                        <label style={styles.statusLabel}>Transporter</label>
-                        <input
-                          type="text"
-                          value={item.privateTransporterName || ""}
-                          onChange={(e) =>
-                            onUpdate(
-                              section,
-                              idx,
-                              "privateTransporterName",
-                              e.target.value.toUpperCase()
-                            )
-                          }
-                          style={styles.statusInput}
-                          placeholder="ENTER TRANSPORTER NAME"
-                        />
-                      </div>
-                    )}
-
-                  <div key={f.field} style={styles.statusField}>
-                    <label style={styles.statusLabel}>{f.label}</label>
-                    <input
-                      type={
-                        f.type === "date" || f.type === "datetime-local"
-                          ? "text"
-                          : f.type
-                      }
-                      value={
-                        f.type === "date" || f.type === "datetime-local"
-                          ? formatDateForInput(item[f.field] || "", f.type)
-                          : item[f.field] || ""
-                      }
-                      onChange={(e) =>
-                        onUpdate(section, idx, f.field, e.target.value)
-                      }
-                      onDoubleClick={(e) => {
-                        if (f.type === "date" || f.type === "datetime-local") {
-                          const pickerVal = formatDateForPicker(
-                            item[f.field],
-                            f.type
-                          );
-                          if (pickerVal) e.target.value = pickerVal;
-                          e.target.type = f.type;
-                          e.target.showPicker && e.target.showPicker();
-                        }
-                      }}
-                      onBlur={(e) => {
-                        if (f.type === "date" || f.type === "datetime-local") {
-                          e.target.type = "text";
-                        }
-                      }}
-                      style={styles.statusInput}
-                      placeholder={
-                        f.type === "date"
-                          ? "dd-mm-yyyy"
-                          : f.type === "datetime-local"
-                          ? "dd-mm-yyyy HH:mm"
-                          : ""
-                      }
-                    />
-                  </div>
-                </React.Fragment>
-              );
-            }
-
-            if (f.type === "upload") {
-              const currentImages = item[f.field] || [];
-              const bucketPath =
-                f.field === "leoUpload"
-                  ? "leo_uploads"
-                  : f.field === "eGatePassUpload"
-                  ? "egate_uploads"
-                  : f.field === "stuffingSheetUpload"
-                  ? "stuffing_sheet_uploads"
-                  : f.field === "stuffingPhotoUpload"
-                  ? "stuffing_photo_uploads"
-                  : f.field === "billingDocsSentUpload"
-                  ? "billing_uploads"
-                  : "job_handover_images";
-
-              return (
-                <div key={f.field} style={styles.statusField}>
-                  <label style={styles.statusLabel}>{f.label}</label>
-                  <FileUpload
-                    bucketPath={bucketPath}
-                    multiple={true}
-                    acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
-                    onFilesUploaded={(newUrls) => {
-                      const updatedList = [...currentImages, ...newUrls];
-                      onUpdate(section, idx, f.field, updatedList);
-                    }}
-                  />
-                  <div style={{ marginTop: "4px" }}>
-                    <ImagePreview
-                      images={currentImages}
-                      onDeleteImage={(deleteIndex) => {
-                        const updatedList = currentImages.filter(
-                          (_, i) => i !== deleteIndex
-                        );
-                        onUpdate(section, idx, f.field, updatedList);
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <div key={f.field} style={styles.statusField}>
-                <label style={styles.statusLabel}>{f.label}</label>
-                {f.type === "checkbox" ? (
-                  <div
-                    style={{
-                      ...styles.checkboxWrapper,
-                      background: item[f.field] ? "#f0fdf4" : "#fff",
-                      borderColor: item[f.field] ? "#22c55e" : "#cbd5e0",
-                      color: item[f.field] ? "#15803d" : "#64748b",
-                    }}
-                    onClick={() =>
-                      onUpdate(section, idx, f.field, !item[f.field])
-                    }
-                  >
-                    {item[f.field] ? "✓ Uploaded" : "Pending"}
-                  </div>
-                ) : f.type === "select" ? (
-                  <select
-                    value={item[f.field] || ""}
-                    onChange={(e) =>
-                      onUpdate(section, idx, f.field, e.target.value)
-                    }
-                    style={styles.statusInput}
-                  >
-                    <option value="">Select...</option>
-                    {f.options.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type={
-                      f.type === "date" || f.type === "datetime-local"
-                        ? "text"
-                        : f.type
-                    }
-                    value={
-                      f.type === "date" || f.type === "datetime-local"
-                        ? formatDateForInput(item[f.field] || "", f.type)
-                        : item[f.field] || ""
-                    }
-                    onChange={(e) =>
-                      onUpdate(section, idx, f.field, e.target.value)
-                    }
-                    onDoubleClick={(e) => {
-                      if (f.type === "date" || f.type === "datetime-local") {
-                        const pickerVal = formatDateForPicker(
-                          item[f.field],
-                          f.type
-                        );
-                        if (pickerVal) e.target.value = pickerVal;
-                        e.target.type = f.type;
-                        e.target.showPicker && e.target.showPicker();
-                      }
-                    }}
-                    onBlur={(e) => {
-                      if (f.type === "date" || f.type === "datetime-local") {
-                        e.target.type = "text";
-                      }
-                    }}
-                    style={styles.statusInput}
-                    placeholder={
-                      f.type === "date"
-                        ? "dd-mm-yyyy"
-                        : f.type === "datetime-local"
-                        ? "dd-mm-yyyy HH:mm"
-                        : ""
-                    }
-                  />
-                )}
+      {displayData.map((item, rowIdx) => (
+        <div
+          key={rowIdx}
+          style={{ borderBottom: "2px solid #e2e8f0", padding: "10px 0" }}
+        >
+          {/* Row 1 Grid */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${r1Cols}, 1fr)`,
+              border: "1px solid #e2e8f0",
+              borderRadius: "4px 4px 0 0",
+              overflow: "hidden",
+            }}
+          >
+            {/* Headers 1 */}
+            {row1Fields.map((f) => (
+              <div
+                key={`h1-${f.field}`}
+                style={{
+                  ...styles.th,
+                  borderBottom: "1px solid #cbd5e1",
+                  borderRight: "1px solid #e2e8f0",
+                }}
+              >
+                {f.label}
               </div>
-            );
-          })}
+            ))}
+            {/* Data 1 */}
+            {row1Fields.map((f) => (
+              <div
+                key={`d1-${f.field}`}
+                style={{ ...styles.td, borderRight: "1px solid #e2e8f0" }}
+              >
+                {renderCell(f, item, rowIdx)}
+              </div>
+            ))}
+          </div>
+
+          {/* Row 2 Grid */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${r2Cols}, 1fr)`,
+              border: "1px solid #e2e8f0",
+              borderTop: "none",
+              borderRadius: "0 0 4px 4px",
+              overflow: "hidden",
+            }}
+          >
+            {/* Headers 2 */}
+            {row2Fields.map((f) => (
+              <div
+                key={`h2-${f.field}`}
+                style={{
+                  ...styles.th,
+                  gridColumn: `span ${f.width || 1}`,
+                  borderBottom: "1px solid #cbd5e1",
+                  borderRight: "1px solid #e2e8f0",
+                }}
+              >
+                {f.label}
+              </div>
+            ))}
+            {/* Data 2 */}
+            {row2Fields.map((f) => (
+              <div
+                key={`d2-${f.field}`}
+                style={{
+                  ...styles.td,
+                  gridColumn: `span ${f.width || 1}`,
+                  borderRight: "1px solid #e2e8f0",
+                }}
+              >
+                {renderCell(f, item, rowIdx)}
+              </div>
+            ))}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              padding: "6px 0",
+            }}
+          >
+            <button
+              onClick={() => onDelete(section, rowIdx)}
+              style={{ ...styles.rowDeleteBtn, color: "#ef4444" }}
+              disabled={displayData.length === 1}
+            >
+              Remove Tracking Row
+            </button>
+          </div>
         </div>
       ))}
+
+      <div style={styles.sectionFooter}>
+        <button onClick={() => onAdd(section)} style={styles.addRowBtn}>
+          + Add Tracking Entry
+        </button>
+      </div>
     </div>
   );
 };
@@ -1972,6 +2039,112 @@ const HoNameAutocomplete = ({ value, onChange }) => {
               onMouseLeave={(e) => (e.target.style.background = "#fff")}
             >
               {name.toUpperCase()}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const IcdPortAutocomplete = ({ value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const [opts, setOpts] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const [active, setActive] = useState(-1);
+  const wrapperRef = useRef();
+  const apiBase = import.meta.env.VITE_API_STRING;
+
+  useEffect(() => {
+    if (!open) return;
+    const fetchPorts = async () => {
+      try {
+        const res = await fetch(
+          `${apiBase}/gateway-ports/?page=1&status=&type=&search=`
+        );
+        const data = await res.json();
+        const ports = Array.isArray(data?.data) ? data.data : [];
+        setOpts(ports);
+      } catch (err) {
+        console.error("Error fetching gateway ports", err);
+      }
+    };
+    fetchPorts();
+  }, [open, apiBase]);
+
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
+
+  useEffect(() => {
+    const v = (value || "").toUpperCase();
+    const results = opts.filter((p) => {
+      const code = p.unece_code || "";
+      const name = p.name || "";
+      const haystack = `${code} ${name}`.toUpperCase();
+      return !v || haystack.includes(v);
+    });
+    setFiltered(results);
+  }, [value, opts]);
+
+  const select = (port) => {
+    const val = `${(port.unece_code || "").toUpperCase()} - ${(
+      port.name || ""
+    ).toUpperCase()}`.trim();
+    onChange(val);
+    setOpen(false);
+    setActive(-1);
+  };
+
+  return (
+    <div style={{ position: "relative" }} ref={wrapperRef}>
+      <input
+        type="text"
+        value={value.toUpperCase()}
+        onChange={(e) => {
+          onChange(e.target.value.toUpperCase());
+          setOpen(true);
+        }}
+        onFocus={() => {
+          setOpen(true);
+          setActive(-1);
+        }}
+        onKeyDown={(e) => {
+          if (!open) return;
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setActive((a) => Math.min(filtered.length - 1, a + 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActive((a) => Math.max(0, a - 1));
+          } else if (e.key === "Enter" && active >= 0) {
+            e.preventDefault();
+            select(filtered[active]);
+          } else if (e.key === "Escape") {
+            setOpen(false);
+          }
+        }}
+        style={styles.statusInput}
+        placeholder="SELECT PORT"
+        autoComplete="off"
+      />
+      {open && filtered.length > 0 && (
+        <div style={styles.acMenu}>
+          {filtered.map((port, i) => (
+            <div
+              key={port._id || i}
+              style={styles.acItem(active === i)}
+              onMouseDown={() => select(port)}
+              onMouseEnter={() => setActive(i)}
+            >
+              {(port.unece_code || "").toUpperCase()} -{" "}
+              {(port.name || "").toUpperCase()}
             </div>
           ))}
         </div>

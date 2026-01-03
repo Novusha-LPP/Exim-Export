@@ -467,7 +467,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       milestones: [
         {
           milestoneName: "",
-          planDate: "",
+
           actualDate: "",
           isCompleted: false,
           isMandatory: false,

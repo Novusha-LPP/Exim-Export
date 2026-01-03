@@ -410,6 +410,7 @@ const containerDetailsSchema = new Schema(
       type: String,
     },
     grWtPlusTrWt: { type: Number, default: 0 },
+    tareWeightKgs: { type: Number, default: 0 },
     sealDeviceId: String,
     rfid: String, // If needed for RFID field
   },
@@ -569,7 +570,7 @@ const chargeSchema = new Schema(
 const milestoneSchema = new Schema(
   {
     milestoneName: { type: String, trim: true },
-    planDate: { type: String, trim: true }, // Format: dd-MMM-yyyy HH:mm
+
     actualDate: { type: String, trim: true }, // Format: dd-MMM-yyyy HH:mm
     isCompleted: { type: Boolean, default: false },
     isMandatory: { type: Boolean, default: false },
@@ -590,8 +591,10 @@ const statusDetailsSchema = new Schema(
     stuffingPhotoUpload: [String],
     eGatePassCopyDate: { type: String, trim: true },
     eGatePassUpload: [String],
+    icdPort: { type: String, trim: true },
     handoverForwardingNoteDate: { type: String, trim: true },
     handoverImageUpload: [String],
+    forwarderName: { type: String, trim: true },
     handoverConcorTharSanganaRailRoadDate: { type: String, trim: true },
     billingDocsSentDt: { type: String, trim: true },
     billingDocsSentUpload: [String],
@@ -667,6 +670,7 @@ const exportOperationSchema = new Schema(
         tareWeight: { type: Number },
         netWeight: { type: Number },
         address: { type: String },
+        images: [String],
       },
     ],
 
@@ -781,6 +785,7 @@ const exportJobSchema = new mongoose.Schema(
     documents: { type: Object, default: {} },
 
     status: { type: String, trim: true },
+    detailedStatus: { type: [String], default: [] },
 
     ////////////////////////////////////////////////// Exporter Information
     exporter_address: { type: String, trim: true },
@@ -1386,12 +1391,11 @@ exportJobSchema.virtual("isCompleted").get(function () {
 // Methods
 exportJobSchema.methods.addMilestone = function (
   milestoneName,
-  planDate,
+
   actualDate = null
 ) {
   this.milestones.push({
     milestoneName,
-    planDate,
     actualDate,
     status: actualDate ? "Completed" : "Pending",
   });
@@ -1447,6 +1451,59 @@ exportJobSchema.pre("save", function (next) {
   if (this.stuffing_seal_no) {
     this.annexC1Details.sealNumber = this.stuffing_seal_no;
   }
+
+  // 1. Bi-directional sync between detailedStatus and milestones
+  const detailedSet = new Set(this.detailedStatus || []);
+
+  // A. Update detailedStatus based on Milestones (handling unchecks)
+  (this.milestones || []).forEach((m) => {
+    if (m.milestoneName) {
+      if (m.isCompleted) {
+        detailedSet.add(m.milestoneName);
+      } else {
+        detailedSet.delete(m.milestoneName);
+      }
+    }
+  });
+
+  // B. Update Milestones based on detailedStatus (handling unchecks)
+  if (this.milestones && this.milestones.length > 0) {
+    this.milestones.forEach((m) => {
+      if (detailedSet.has(m.milestoneName)) {
+        if (!m.isCompleted) {
+          m.isCompleted = true;
+        }
+        // Auto-fill date if missing or still using old placeholder
+        if (!m.actualDate || m.actualDate.startsWith("dd-")) {
+          const d = new Date();
+          const day = String(d.getDate()).padStart(2, "0");
+          const month = String(d.getMonth() + 1).padStart(2, "0");
+          const year = d.getFullYear();
+          m.actualDate = `${day}-${month}-${year}`;
+        }
+      } else {
+        // If not in detailedStatus, it must not be completed
+        if (m.isCompleted) {
+          m.isCompleted = false;
+        }
+        // Clear date if not completed or reset to empty
+        if (
+          !m.isCompleted ||
+          (m.actualDate && m.actualDate.startsWith("dd-"))
+        ) {
+          m.actualDate = "";
+        }
+      }
+    });
+  }
+
+  this.detailedStatus = Array.from(detailedSet);
+
+  // 2. Business Logic: If Billing Done is selected, mark as Completed
+  if (this.detailedStatus.includes("Billing Done")) {
+    this.status = "Completed";
+  }
+
   next();
 });
 

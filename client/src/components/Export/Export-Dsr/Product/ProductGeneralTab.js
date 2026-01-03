@@ -35,6 +35,7 @@ const styles = {
     marginBottom: 8,
     borderBottom: "1px solid #e2e8f0",
     paddingBottom: 4,
+    // alignItems: "Stretch",
   },
   tableContainer: {
     background: "#fff",
@@ -159,14 +160,14 @@ const styles = {
     gridTemplateColumns: "repeat(3, 1fr)",
     gap: 16,
     marginBottom: 8,
-    alignItems: "end",
+    // alignItems: "end",
   },
   grid4: {
     display: "grid",
     gridTemplateColumns: "repeat(4, 1fr)",
     gap: 16,
     marginBottom: 8,
-    alignItems: "end",
+    // alignItems: "end",
   },
   field: { marginBottom: 8 },
   label: {
@@ -1808,7 +1809,7 @@ function ProductRow({
 
       {/* RODTEP INFO */}
       <div style={styles.subSectionTitle}>RODTEP Info</div>
-      <div style={styles.grid3}>
+      <div style={styles.grid4}>
         <div style={styles.field}>
           <label style={styles.label}>RODTEP Claim</label>
           <select
@@ -1820,36 +1821,37 @@ function ProductRow({
           >
             <option value="Yes">Yes</option>
             <option value="No">No</option>
+            <option value="Not Applicable">Not Applicable</option>
           </select>
         </div>
 
         <div style={styles.field}>
           <label style={styles.label}>Quantity</label>
-          <div style={{ display: "flex", gap: 4 }}>
-            <input
-              style={{ ...styles.input, width: "65%" }}
-              type="number"
-              value={product.rodtepInfo?.quantity ?? 0}
-              onChange={(e) =>
-                handleProductChange(
-                  index,
-                  "rodtepInfo.quantity",
-                  parseFloat(e.target.value)
-                )
-              }
-            />
-            <div style={{ width: "35%" }}>
-              <UnitDropdownField
-                label="Unit"
-                fieldName={`invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.unit`}
-                formik={formik}
-                unitOptions={unitCodes}
-                placeholder="Unit"
-                onSelect={(val) => handleUnitChange(index, "unit", val)}
-                disabled={true}
-              />
-            </div>
-          </div>
+          <input
+            style={styles.input}
+            type="number"
+            value={product.rodtepInfo?.quantity ?? 0}
+            onChange={(e) =>
+              handleProductChange(
+                index,
+                "rodtepInfo.quantity",
+                parseFloat(e.target.value)
+              )
+            }
+            disabled={product.rodtepInfo?.claim === "Not Applicable"}
+          />
+        </div>
+
+        <div style={styles.field}>
+          <UnitDropdownField
+            label="Unit"
+            fieldName={`invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.unit`}
+            formik={formik}
+            unitOptions={unitCodes}
+            placeholder="Unit"
+            onSelect={(val) => handleUnitChange(index, "unit", val)}
+            disabled={true}
+          />
         </div>
 
         <div style={styles.field}>
@@ -1865,6 +1867,7 @@ function ProductRow({
                 parseFloat(e.target.value)
               )
             }
+            disabled={product.rodtepInfo?.claim === "Not Applicable"}
           />
         </div>
 
@@ -1881,36 +1884,37 @@ function ProductRow({
                 parseFloat(e.target.value)
               )
             }
+            disabled={product.rodtepInfo?.claim === "Not Applicable"}
           />
         </div>
 
         <div style={styles.field}>
           <label style={styles.label}>Cap value per units</label>
-          <div style={{ display: "flex", gap: 4 }}>
-            <input
-              style={{ ...styles.input, width: "65%" }}
-              type="number"
-              value={product.rodtepInfo?.capValuePerUnits ?? 0}
-              onChange={(e) =>
-                handleProductChange(
-                  index,
-                  "rodtepInfo.capValuePerUnits",
-                  parseFloat(e.target.value)
-                )
-              }
-            />
-            <div style={{ width: "35%" }}>
-              <UnitDropdownField
-                label="Cap Unit"
-                fieldName={`invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.capUnit`}
-                formik={formik}
-                unitOptions={unitCodes}
-                placeholder="Cap Unit"
-                onSelect={(val) => handleUnitChange(index, "capUnit", val)}
-                disabled={true}
-              />
-            </div>
-          </div>
+          <input
+            style={styles.input}
+            type="number"
+            value={product.rodtepInfo?.capValuePerUnits ?? 0}
+            onChange={(e) =>
+              handleProductChange(
+                index,
+                "rodtepInfo.capValuePerUnits",
+                parseFloat(e.target.value)
+              )
+            }
+            disabled={product.rodtepInfo?.claim === "Not Applicable"}
+          />
+        </div>
+
+        <div style={styles.field}>
+          <UnitDropdownField
+            label="Cap Unit"
+            fieldName={`invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.capUnit`}
+            formik={formik}
+            unitOptions={unitCodes}
+            placeholder="Cap Unit"
+            onSelect={(val) => handleUnitChange(index, "capUnit", val)}
+            disabled={true}
+          />
         </div>
 
         <div style={styles.field}>
@@ -1926,6 +1930,7 @@ function ProductRow({
                 parseFloat(e.target.value)
               )
             }
+            disabled={product.rodtepInfo?.claim === "Not Applicable"}
           />
         </div>
       </div>
@@ -2273,13 +2278,13 @@ const ProductGeneralTab = ({
                 "Description",
                 "RITC",
                 "Qty",
-                "Qty Unit",
+                "Unit",
                 "Unit Price",
                 "Unit Currency",
                 "Per",
-                "Per Unit",
+                "Unit",
                 "Amount",
-                "Amount Unit",
+                "Unit",
               ].map((h) => (
                 <th key={h} style={styles.th}>
                   {h}

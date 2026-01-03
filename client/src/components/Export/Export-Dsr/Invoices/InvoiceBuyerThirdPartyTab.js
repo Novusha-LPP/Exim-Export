@@ -342,7 +342,7 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
               <textarea
                 style={styles.textarea}
                 rows={2}
-                value={tp.address || ""}
+                value={toUpper(tp.address || "")}
                 onChange={(e) => setThirdParty({ address: e.target.value })}
               />
             </div>
@@ -353,7 +353,7 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
                 <div style={styles.label}>Country</div>
                 <input
                   style={styles.input}
-                  value={tp.country || ""}
+                  value={toUpper(tp.country || "")}
                   onChange={(e) => setThirdParty({ country: e.target.value })}
                 />
               </div>
@@ -424,13 +424,11 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
                   ...(buyerDisabled ? styles.disabledInput : {}),
                 }}
                 rows={2}
-                value={by.addressLine1 || ""}
+                value={toUpper(by.addressLine1 || "")}
                 disabled={buyerDisabled}
                 onChange={(e) => setBuyer({ addressLine1: e.target.value })}
               />
             </div>
-
-
 
             <div style={styles.grid2}>
               <div>
@@ -440,7 +438,7 @@ const InvoiceBuyerThirdPartyTab = ({ formik }) => {
                     ...styles.input,
                     ...(buyerDisabled ? styles.disabledInput : {}),
                   }}
-                  value={by.country || ""}
+                  value={toUpper(by.country || "")}
                   disabled={buyerDisabled}
                   onChange={(e) => setBuyer({ country: e.target.value })}
                 />

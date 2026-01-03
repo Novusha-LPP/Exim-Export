@@ -1,0 +1,44 @@
+/* InvoiceMainTab.scss - Add this file and import as: import "./InvoiceMainTab.scss"; */
+
+.invoice-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  @media (max-width: 768px) {
+    thead,
+    tbody,
+    th,
+    td,
+    tr {
+      display: block;
+      width: 100%;
+    }
+
+    .invoice-table-head {
+      display: none; // hide header row on mobile
+    }
+
+    .invoice-row {
+      border-bottom: 1px solid #e0e5f0;
+      margin-bottom: 8px;
+      padding: 8px 6px;
+      background: #ffffff;
+      border-radius: 4px; // slight rounding for card look
+
+      td {
+        border: none;
+        padding: 4px 0;
+
+        &::before {
+          content: attr(data-label);
+          display: block;
+          font-size: 11px;
+          font-weight: 700;
+          color: #16408f;
+          margin-bottom: 2px;
+          text-transform: none;
+        }
+      }
+    }
+  }
+}

@@ -248,6 +248,7 @@ const ExportJobsTable = () => {
   const [selectedType, setSelectedMovementType] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
   const [selectedExporterFilter, setSelectedExporterFilter] = useState("");
+  const [selectedDetailedStatus, setSelectedDetailedStatus] = useState("");
   const [selectedCustomHouse, setSelectedCustomHouse] = useState("");
   const [customHouses, setCustomHouses] = useState([]);
 
@@ -354,6 +355,7 @@ const ExportJobsTable = () => {
             consignmentType: selectedType,
             branch: selectedBranch,
             exporter: selectedExporterFilter,
+            detailedStatus: selectedDetailedStatus,
             customHouse: selectedCustomHouse,
             page: page,
             limit: LIMIT,
@@ -387,6 +389,7 @@ const ExportJobsTable = () => {
     selectedType,
     selectedBranch,
     selectedExporterFilter,
+    selectedDetailedStatus,
     selectedCustomHouse,
     page,
   ]);
@@ -401,6 +404,7 @@ const ExportJobsTable = () => {
     selectedType,
     selectedBranch,
     selectedExporterFilter,
+    selectedDetailedStatus,
     selectedCustomHouse,
   ]);
 
@@ -847,6 +851,24 @@ const ExportJobsTable = () => {
               ))}
             </select>
 
+            {/* Detailed Status Filter */}
+            <select
+              style={s.select}
+              value={selectedDetailedStatus}
+              onChange={(e) => setSelectedDetailedStatus(e.target.value)}
+            >
+              <option value="">All Detailed Status</option>
+              <option value="SB Filed">SB Filed</option>
+              <option value="SB Receipt">SB Receipt</option>
+              <option value="L.E.O">L.E.O</option>
+              <option value="Container HO to Concor">
+                Container HO to Concor
+              </option>
+              <option value="Rail Out">Rail Out</option>
+              <option value="Ready for Billing">Ready for Billing</option>
+              <option value="Billing Done">Billing Done</option>
+            </select>
+
             {/* Custom House Filter */}
             <select
               style={s.select}
@@ -918,7 +940,7 @@ const ExportJobsTable = () => {
                   <th style={s.th}>No. of Pkgs</th>
                   <th style={s.th}>Destination</th>
                   <th style={s.th}>Plac’t / Container</th>
-                  <th style={s.th}>Handover</th>
+                  <th style={s.th}>Ststus</th>
                   <th style={s.th}>Action</th>
                 </tr>
               </thead>

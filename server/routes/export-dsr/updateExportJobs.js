@@ -160,6 +160,7 @@ router.get("/exports/:status?", async (req, res) => {
       branch = "",
       status = "all",
       year = "",
+      detailedStatus = "",
     } = { ...req.params, ...req.query };
 
     const filter = {};
@@ -265,6 +266,22 @@ router.get("/exports/:status?", async (req, res) => {
     if (req.query.customHouse) {
       filter.$and.push({
         custom_house: { $regex: req.query.customHouse, $options: "i" },
+      });
+    }
+
+    if (detailedStatus) {
+      filter.$and.push({
+        $or: [
+          { detailedStatus: detailedStatus },
+          {
+            milestones: {
+              $elemMatch: {
+                milestoneName: detailedStatus,
+                isCompleted: true,
+              },
+            },
+          },
+        ],
       });
     }
 
@@ -474,6 +491,15 @@ router.put("/:job_no", auditMiddleware("Job"), async (req, res, next) => {
 
     const updateData = { ...req.body, updatedAt: new Date() };
 
+    // Business Logic: If "Billing Done" is selected in detailedStatus, mark job as completed
+    if (
+      updateData.detailedStatus &&
+      Array.isArray(updateData.detailedStatus) &&
+      updateData.detailedStatus.includes("Billing Done")
+    ) {
+      updateData.status = "Completed";
+    }
+
     const updatedExportJob = await ExJobModel.findOneAndUpdate(
       { job_no: { $regex: `^${job_no}$`, $options: "i" } },
       { $set: updateData },
@@ -507,6 +533,15 @@ router.patch("/:job_no/fields", auditMiddleware("Job"), async (req, res) => {
       updateObject[field] = value;
     });
     updateObject.updatedAt = new Date();
+
+    // Business Logic: If Billing Done is selected, mark as Completed
+    if (
+      updateObject.detailedStatus &&
+      Array.isArray(updateObject.detailedStatus) &&
+      updateObject.detailedStatus.includes("Billing Done")
+    ) {
+      updateObject.status = "Completed";
+    }
 
     const updatedExportJob = await ExJobModel.findOneAndUpdate(
       { job_no: { $regex: `^${job_no}$`, $options: "i" } },

@@ -3,7 +3,6 @@ import axios from "axios";
 import DateInput from "../../../common/DateInput.js";
 import AutocompleteSelect from "../../../common/AutocompleteSelect.js";
 
-
 const apiBase = import.meta.env.VITE_API_STRING;
 
 function toUpper(val) {
@@ -12,6 +11,171 @@ function toUpper(val) {
 function toUpperVal(e) {
   return e?.target?.value ? e.target.value.toUpperCase() : "";
 }
+
+function useConsigneeCountryDropdown(value, onChange) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value || "");
+  const [opts, setOpts] = useState([]);
+  const [active, setActive] = useState(-1);
+  const wrapRef = useRef(null);
+  const keepOpen = useRef(false);
+
+  useEffect(() => {
+    setQuery(value || "");
+  }, [value]);
+
+  useEffect(() => {
+    if (!open || !query.trim()) {
+      setOpts([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `${apiBase}/countries?search=${encodeURIComponent(query.trim())}`
+        );
+        const data = await res.json();
+        setOpts(data?.data || []);
+      } catch {
+        setOpts([]);
+      }
+    }, 220);
+    return () => clearTimeout(t);
+  }, [open, query]);
+
+  useEffect(() => {
+    const close = (e) => {
+      if (
+        !keepOpen.current &&
+        wrapRef.current &&
+        !wrapRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  function selectIndex(i) {
+    const opt = opts[i];
+    if (!opt) return;
+    const name = toUpper(opt.countryName || opt.country_name || "");
+    const code = (opt.countryCode || opt.iso2 || "").toUpperCase();
+    const val = code ? `${name} (${code})` : name;
+    setQuery(val);
+    onChange(val);
+    setOpen(false);
+    setActive(-1);
+  }
+
+  return {
+    wrapRef,
+    open,
+    setOpen,
+    query,
+    setQuery,
+    active,
+    setActive,
+    opts,
+    handleChange: (val) => {
+      const v = val.toUpperCase();
+      setQuery(v);
+      onChange(v);
+      setOpen(true);
+    },
+    handleFocus: () => {
+      setOpen(true);
+      setActive(-1);
+      keepOpen.current = true;
+    },
+    handleBlur: () => {
+      setTimeout(() => {
+        keepOpen.current = false;
+      }, 100);
+    },
+    selectIndex,
+  };
+}
+
+const ConsigneeCountryAutocomplete = ({ value, onChange }) => {
+  const d = useConsigneeCountryDropdown(value, onChange);
+
+  return (
+    <div style={{ flex: 1, position: "relative" }} ref={d.wrapRef}>
+      <input
+        style={{
+          border: "1px solid #cad3db",
+          borderRadius: 4,
+          fontSize: 13,
+          padding: "2px 7px",
+          width: "100%",
+          boxSizing: "border-box",
+        }}
+        value={toUpper(d.query)}
+        placeholder="Consignee Country"
+        autoComplete="off"
+        onChange={(e) => d.handleChange(e.target.value)}
+        onFocus={d.handleFocus}
+        onBlur={d.handleBlur}
+        onKeyDown={(e) => {
+          if (!d.open) return;
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            d.setActive((a) => Math.min(d.opts.length - 1, a + 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            d.setActive((a) => Math.max(0, a - 1));
+          } else if (e.key === "Enter" && d.active >= 0) {
+            e.preventDefault();
+            d.selectIndex(d.active);
+          } else if (e.key === "Escape") {
+            d.setOpen(false);
+          }
+        }}
+      />
+      {d.open && d.opts.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: "100%",
+            background: "#fff",
+            border: "1px solid #cbd5e1",
+            borderRadius: 3,
+            zIndex: 30,
+            maxHeight: 150,
+            overflow: "auto",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+          }}
+        >
+          {d.opts.map((opt, i) => (
+            <div
+              key={i}
+              style={{
+                padding: "4px 8px",
+                cursor: "pointer",
+                fontSize: 12,
+                background: d.active === i ? "#e5edff" : "#fff",
+                fontWeight: d.active === i ? 600 : 400,
+              }}
+              onMouseDown={() => d.selectIndex(i)}
+              onMouseEnter={() => d.setActive(i)}
+            >
+              {toUpper(opt.countryName || opt.country_name)}
+              {opt.countryCode && (
+                <span style={{ marginLeft: 6, color: "#6b7280", fontSize: 10 }}>
+                  ({opt.countryCode.toUpperCase()})
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const GeneralTab = ({ formik, directories }) => {
   const saveTimeoutRef = useRef(null);
@@ -46,7 +210,7 @@ const GeneralTab = ({ formik, directories }) => {
   function handleFieldChange(field, value) {
     formik.setFieldValue(field, value);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => { }, 1000);
+    saveTimeoutRef.current = setTimeout(() => {}, 1000);
   }
 
   // --- Consignee Autocomplete Logic ---
@@ -169,13 +333,16 @@ const GeneralTab = ({ formik, directories }) => {
 
     const shouldUpdate =
       getVal("ieCode") !== toUpper(effectiveIe) ||
-      getVal("gstin") !== toUpper(exp.registrationDetails?.gstinMainBranch || "") ||
-      getVal("exporter_type") !== toUpper(exp.generalInfo?.exporterType || "") ||
+      getVal("gstin") !==
+        toUpper(exp.registrationDetails?.gstinMainBranch || "") ||
+      getVal("exporter_type") !==
+        toUpper(exp.generalInfo?.exporterType || "") ||
       getVal("exporter_address") !==
-      toUpper(
-        `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""
-        }`
-      );
+        toUpper(
+          `${branch.address || ""}${
+            branch.postalCode ? `, ${branch.postalCode}` : ""
+          }`
+        );
 
     if (!shouldUpdate) return;
 
@@ -183,7 +350,8 @@ const GeneralTab = ({ formik, directories }) => {
       exporter: toUpper(exp.organization),
       exporter_type: toUpper(exp.generalInfo?.exporterType || ""),
       exporter_address: toUpper(
-        `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""
+        `${branch.address || ""}${
+          branch.postalCode ? `, ${branch.postalCode}` : ""
         }`
       ),
       branch_sno: toUpper(branch.branchCode || "0"),
@@ -392,12 +560,17 @@ const GeneralTab = ({ formik, directories }) => {
               value={getVal("exporter_type")}
               options={[
                 { value: "", label: "-- SELECT --" },
-                { value: "MANUFACTURER EXPORTER", label: "MANUFACTURER EXPORTER" },
+                {
+                  value: "MANUFACTURER EXPORTER",
+                  label: "MANUFACTURER EXPORTER",
+                },
                 { value: "MERCHANT EXPORTER", label: "MERCHANT EXPORTER" },
                 { value: "MARCHANT EXPORTER", label: "MARCHANT EXPORTER" },
                 { value: "SERVICE EXPORTER", label: "SERVICE EXPORTER" },
               ]}
-              onChange={(e) => handleFieldChange("exporter_type", e.target.value)}
+              onChange={(e) =>
+                handleFieldChange("exporter_type", e.target.value)
+              }
               placeholder="Select Exporter Type"
             />
           </div>
@@ -638,18 +811,10 @@ const GeneralTab = ({ formik, directories }) => {
                 handleConsigneeChange(idx, "consignee_address", toUpperVal(e))
               }
             />
-            <input
-              style={{
-                border: "1px solid #cad3db",
-                borderRadius: 4,
-                fontSize: 13,
-                padding: "2px 7px",
-                flex: 1,
-              }}
-              value={toUpper(consignee.consignee_country)}
-              placeholder="Consignee Country"
-              onChange={(e) =>
-                handleConsigneeChange(idx, "consignee_country", toUpperVal(e))
+            <ConsigneeCountryAutocomplete
+              value={consignee.consignee_country || ""}
+              onChange={(val) =>
+                handleConsigneeChange(idx, "consignee_country", val)
               }
             />
             <button
@@ -675,7 +840,7 @@ const GeneralTab = ({ formik, directories }) => {
           </div>
         ))}
       </div>
-    </div >
+    </div>
   );
 };
 

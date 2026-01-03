@@ -2,7 +2,7 @@
 import React, { useRef, useCallback, useEffect, useState } from "react";
 import DateInput from "../../../common/DateInput.js";
 import { currencyList } from "../../../../utils/masterList";
-
+import "../../../../styles/InvoiceMainTab.scss";
 const styles = {
   page: {
     fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
@@ -30,13 +30,11 @@ const styles = {
     borderRadius: 6,
     background: "#ffffff",
     marginBottom: 10,
-    overflowX: "auto",
-    overflowY: "auto",
+    overflowY: "auto", // no horizontal scroll
     maxHeight: 400,
   },
   table: {
     width: "100%",
-    minWidth: 1600,
     borderCollapse: "collapse",
   },
   th: {
@@ -155,7 +153,7 @@ const InvoiceMainTab = ({ formik }) => {
   const saveTimeoutRef = useRef(null);
   const [rateMap, setRateMap] = useState({});
 
-  // ✅ fetch currency rates for job_date
+  // fetch currency rates for job_date
   useEffect(() => {
     const fetchRates = async () => {
       try {
@@ -201,10 +199,8 @@ const InvoiceMainTab = ({ formik }) => {
     // debounce-save logic here if needed
   }, []);
 
-  // Get all invoices as array
   const invoices = formik.values.invoices || [];
 
-  // Initialize with at least one invoice if empty
   useEffect(() => {
     if (invoices.length === 0) {
       formik.setFieldValue("invoices", [{}]);
@@ -212,8 +208,6 @@ const InvoiceMainTab = ({ formik }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ Auto-calculate productValue for each invoice
-  // Create a signature of product amounts to trigger recalculation ONLY when amounts change
   const productsSignature = JSON.stringify(
     invoices.map((inv) => (inv.products || []).map((p) => p.amount))
   );
@@ -228,12 +222,7 @@ const InvoiceMainTab = ({ formik }) => {
       )
     );
 
-    // If this is the first time we're seeing these products, just record their sums
-    // and skip the auto-correction. This protects values loaded from the DB.
     if (prevSumsRef.current === null) {
-      // We only establish a baseline once we see "real" data (e.g. from DB)
-      // or if the user starts adding data to a blank form.
-      // Checking for _id or invoiceNumber to detect populated data.
       const isPopulated = invoices.some((inv) => inv._id || inv.invoiceNumber);
       if (isPopulated) {
         prevSumsRef.current = currentSums;
@@ -246,7 +235,6 @@ const InvoiceMainTab = ({ formik }) => {
       const oldSum = prevSumsRef.current[idx] ?? 0;
       const newSum = currentSums[idx] || 0;
 
-      // ONLY sync if the product total has actually changed in the current session
       if (Math.abs(oldSum - newSum) > 0.01) {
         if (Math.abs((parseFloat(inv.productValue) || 0) - newSum) > 0.01) {
           changed = true;
@@ -268,7 +256,6 @@ const InvoiceMainTab = ({ formik }) => {
     const invoice = updatedInvoices[index] || {};
     const updatedInvoice = { ...invoice, [field]: value };
 
-    // when TOI changes, set priceIncludes + FOB/CIF pill
     if (field === "termsOfInvoice") {
       const priceIncludesValue = mapTOIToPriceIncludes(value);
       updatedInvoice.priceIncludes = priceIncludesValue;
@@ -280,7 +267,6 @@ const InvoiceMainTab = ({ formik }) => {
       }
     }
 
-    // when currency changes, set exchange_rate and propagate to freight tab
     if (field === "currency") {
       const code = (value || "").toUpperCase();
       const exportRate = rateMap[code];
@@ -289,7 +275,6 @@ const InvoiceMainTab = ({ formik }) => {
         formik.setFieldValue("exchange_rate", exportRate);
       }
 
-      // Propagate currency to ALL freight/insurance rows for THIS invoice
       const currentCharges = updatedInvoice.freightInsuranceCharges || {};
       const rowKeys = [
         "freight",
@@ -341,7 +326,6 @@ const InvoiceMainTab = ({ formik }) => {
       invoiceValue: "",
       productValue: "",
       priceIncludes: "None",
-      packing_fob: 0,
       products: [],
     };
     formik.setFieldValue("invoices", [...invoices, newInvoice]);
@@ -363,33 +347,33 @@ const InvoiceMainTab = ({ formik }) => {
       <div style={styles.card}>
         <div style={styles.cardTitle}>Invoice Items</div>
 
-        <div style={styles.tableWrapper}>
-          <table style={styles.table}>
-            <thead>
+        <div className="invoice-table-wrapper" style={styles.tableWrapper}>
+          <table className="invoice-table" style={styles.table}>
+            <thead className="invoice-table-head">
               <tr>
                 <th style={{ ...styles.th, width: 50 }}>Sr No</th>
                 <th style={{ ...styles.th, width: 140 }}>Invoice No</th>
                 <th style={{ ...styles.th, width: 120 }}>Invoice Date</th>
                 <th style={{ ...styles.th, width: 100 }}>TOI</th>
-                <th style={{ ...styles.th, width: 120 }}>Place</th>
                 <th style={{ ...styles.th, width: 100 }}>Currency</th>
-                <th style={{ ...styles.th, width: 120 }}>Exchange Rate</th>
+                <th style={{ ...styles.th, width: 50 }}>Exchange Rate</th>
                 <th style={{ ...styles.th, width: 130 }}>Price Includes</th>
                 <th style={{ ...styles.th, width: 140 }}>
                   Taxable Base (IGST)
                 </th>
                 <th style={{ ...styles.th, width: 120 }}>Invoice Value</th>
-                <th style={{ ...styles.th, width: 120 }}>Product Value</th>
-                <th style={{ ...styles.th, width: 120 }}>Packing / FOB</th>
+                <th style={{ ...styles.th, width: 140 }}>Product Value</th>
                 <th style={{ ...styles.th, width: 140 }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {invoices.map((invoice, index) => (
-                <tr key={index}>
-                  <td style={styles.td}>{index + 1}</td>
+                <tr key={index} className="invoice-row">
+                  <td style={styles.td} data-label="Sr No">
+                    {index + 1}
+                  </td>
 
-                  <td style={styles.td}>
+                  <td style={styles.td} data-label="Invoice No">
                     <input
                       style={styles.input}
                       value={toUpper(invoice.invoiceNumber || "")}
@@ -404,7 +388,7 @@ const InvoiceMainTab = ({ formik }) => {
                     />
                   </td>
 
-                  <td style={styles.td}>
+                  <td style={styles.td} data-label="Invoice Date">
                     <DateInput
                       style={styles.inputDate}
                       value={invoice.invoiceDate || ""}
@@ -414,7 +398,7 @@ const InvoiceMainTab = ({ formik }) => {
                     />
                   </td>
 
-                  <td style={styles.td}>
+                  <td style={styles.td} data-label="TOI">
                     <select
                       style={styles.select}
                       value={invoice.termsOfInvoice || ""}
@@ -431,18 +415,7 @@ const InvoiceMainTab = ({ formik }) => {
                     </select>
                   </td>
 
-                  <td style={styles.td}>
-                    <input
-                      style={styles.input}
-                      value={toUpper(invoice.toiPlace || "")}
-                      onChange={(e) =>
-                        handleInvChange(index, "toiPlace", e.target.value)
-                      }
-                      placeholder="PLACE"
-                    />
-                  </td>
-
-                  <td style={styles.td}>
+                  <td style={styles.td} data-label="Currency">
                     <select
                       style={styles.select}
                       value={invoice.currency || ""}
@@ -459,7 +432,7 @@ const InvoiceMainTab = ({ formik }) => {
                     </select>
                   </td>
 
-                  <td style={styles.td}>
+                  <td style={styles.td} data-label="Exchange Rate">
                     <input
                       type="number"
                       style={styles.inputNumber}
@@ -473,7 +446,7 @@ const InvoiceMainTab = ({ formik }) => {
                     />
                   </td>
 
-                  <td style={styles.td}>
+                  <td style={styles.td} data-label="Price Includes">
                     <select
                       style={styles.select}
                       value={invoice.priceIncludes || "Neither"}
@@ -489,7 +462,7 @@ const InvoiceMainTab = ({ formik }) => {
                     </select>
                   </td>
 
-                  <td style={styles.td}>
+                  <td style={styles.td} data-label="Taxable Base (IGST)">
                     <select
                       style={styles.select}
                       value={formik.values.taxableBase || "Product Value"}
@@ -505,7 +478,7 @@ const InvoiceMainTab = ({ formik }) => {
                     </select>
                   </td>
 
-                  <td style={styles.td}>
+                  <td style={styles.td} data-label="Invoice Value">
                     <input
                       type="number"
                       style={styles.inputNumber}
@@ -528,7 +501,7 @@ const InvoiceMainTab = ({ formik }) => {
                     />
                   </td>
 
-                  <td style={styles.td}>
+                  <td style={styles.td} data-label="Product Value">
                     <input
                       type="number"
                       style={styles.inputNumber}
@@ -551,29 +524,7 @@ const InvoiceMainTab = ({ formik }) => {
                     />
                   </td>
 
-                  <td style={styles.td}>
-                    <input
-                      type="string"
-                      style={styles.inputNumber}
-                      value={
-                        invoice.packing_fob === 0 || invoice.packing_fob === ""
-                          ? ""
-                          : invoice.packing_fob
-                      }
-                      onChange={(e) =>
-                        handleInvChange(
-                          index,
-                          "packing_fob",
-                          e.target.value === ""
-                            ? ""
-                            : parseFloat(e.target.value || 0)
-                        )
-                      }
-                      placeholder="0.00"
-                    />
-                  </td>
-
-                  <td style={styles.td}>
+                  <td style={styles.td} data-label="Action">
                     <button
                       type="button"
                       style={styles.smallButton}

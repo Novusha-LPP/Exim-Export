@@ -363,15 +363,15 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                 <th style={{ ...styles.th, width: 200 }}>Description</th>
                 <th style={{ ...styles.th, width: 140 }}>RITC</th>
                 <th style={{ ...styles.th, width: 110 }}>Quantity</th>
-                <th style={{ ...styles.th, width: 100 }}>Qty Unit</th>
+                <th style={{ ...styles.th, width: 100 }}>Unit</th>
                 <th style={{ ...styles.th, width: 110 }}>SOC Qty</th>
-                <th style={{ ...styles.th, width: 110 }}>SOC Qty Unit</th>
+                <th style={{ ...styles.th, width: 110 }}>SOC Unit</th>
                 <th style={{ ...styles.th, width: 110 }}>Unit Price</th>
-                <th style={{ ...styles.th, width: 90 }}>Unit Currency</th>
+                <th style={{ ...styles.th, width: 90 }}>Currency</th>
                 <th style={{ ...styles.th, width: 80 }}>Per</th>
-                <th style={{ ...styles.th, width: 80 }}>Per Unit</th>
+                <th style={{ ...styles.th, width: 80 }}>Unit</th>
                 <th style={{ ...styles.th, width: 110 }}>Amount</th>
-                <th style={{ ...styles.th, width: 100 }}>Amount Unit</th>
+                <th style={{ ...styles.th, width: 100 }}>Currency</th>
                 <th style={{ ...styles.th, width: 180 }}>Action</th>
               </tr>
             </thead>

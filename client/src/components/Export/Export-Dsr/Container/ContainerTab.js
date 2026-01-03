@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import DateInput from "../../../common/DateInput.js";
 import { styles, toUpperVal } from "../Product/commonStyles";
 
@@ -36,16 +36,46 @@ function ContainerTab({ formik, onUpdate }) {
     [onUpdate]
   );
 
-  const debouncedSave = () => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      autoSave(formik.values);
-    }, 900);
-  };
+  // const debouncedSave = () => {
+  //   if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+  //   saveTimeoutRef.current = setTimeout(() => {
+  //     autoSave(formik.values);
+  //   }, 900);
+  // };
+
+  // Sync grWtPlusTrWt for existing rows if it's 0 but weights are present
+  useEffect(() => {
+    const list = formik.values.containers || [];
+    let changed = false;
+    const newList = list.map((c) => {
+      const gw = Number(c.grossWeight || 0);
+      const tw = Number(c.tareWeightKgs || 0);
+      const targetSum = parseFloat((gw + tw).toFixed(3));
+
+      // Only auto-fill if it's 0 and the sum is non-zero
+      if (!c.grWtPlusTrWt && targetSum > 0) {
+        changed = true;
+        return { ...c, grWtPlusTrWt: targetSum };
+      }
+      return c;
+    });
+
+    if (changed) {
+      formik.setFieldValue("containers", newList);
+    }
+  }, [formik.values.containers?.length]); // Run primarily on load or when rows added
 
   const handleFieldChange = (idx, field, value) => {
     const list = [...(formik.values.containers || [])];
     list[idx][field] = value;
+
+    // Auto-calculate sum
+    if (field === "grossWeight" || field === "tareWeightKgs") {
+      const gw = Number(list[idx].grossWeight || 0);
+      const tw = Number(list[idx].tareWeightKgs || 0);
+      list[idx].grWtPlusTrWt = parseFloat((gw + tw).toFixed(3));
+    }
+
     formik.setFieldValue("containers", list);
 
     // Sync tareWeightKgs to Operations Tab if changed
@@ -87,7 +117,7 @@ function ContainerTab({ formik, onUpdate }) {
       }
     }
 
-    debouncedSave();
+    // debouncedSave();
   };
 
   const handleAdd = () => {
@@ -107,7 +137,7 @@ function ContainerTab({ formik, onUpdate }) {
     });
     formik.setFieldValue("containers", list);
     setEditingIndex(list.length - 1);
-    debouncedSave();
+    // debouncedSave();
   };
 
   const handleDelete = (idx) => {
@@ -118,17 +148,25 @@ function ContainerTab({ formik, onUpdate }) {
     formik.setFieldValue("containers", list);
     if (editingIndex === idx) setEditingIndex(null);
     else if (editingIndex > idx) setEditingIndex(editingIndex - 1);
-    debouncedSave();
+    // debouncedSave();
   };
 
   const rows = formik.values.containers || [];
 
   return (
     <div style={styles.page}>
-      <div style={{ ...styles.cardTitle, marginBottom: 8 }}>CONTAINER DETAILS</div>
+      <div style={{ ...styles.cardTitle, marginBottom: 8 }}>
+        CONTAINER DETAILS
+      </div>
 
       <div style={styles.card}>
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginBottom: 10,
+          }}
+        >
           <button type="button" style={styles.addBtn} onClick={handleAdd}>
             ＋ NEW CONTAINER
           </button>
@@ -148,13 +186,23 @@ function ContainerTab({ formik, onUpdate }) {
                 <th style={{ ...styles.th, width: 130 }}>GROSS WT</th>
                 <th style={{ ...styles.th, width: 130 }}>TARE WT</th>
                 <th style={{ ...styles.th, width: 130 }}>GR + TR WT</th>
-                <th style={{ ...styles.th, width: 60, textAlign: "center" }}>ACTION</th>
+                <th style={{ ...styles.th, width: 60, textAlign: "center" }}>
+                  ACTION
+                </th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={11} style={{ ...styles.td, textAlign: "center", padding: 20, color: "#94a3b8" }}>
+                  <td
+                    colSpan={11}
+                    style={{
+                      ...styles.td,
+                      textAlign: "center",
+                      padding: 20,
+                      color: "#94a3b8",
+                    }}
+                  >
                     NO CONTAINERS ADDED. CLICK "NEW CONTAINER" TO START.
                   </td>
                 </tr>
@@ -162,14 +210,26 @@ function ContainerTab({ formik, onUpdate }) {
 
               {rows.map((row, idx) => (
                 <tr key={idx}>
-                  <td style={{ ...styles.td, textAlign: "center", fontWeight: 700 }}>{row.serialNumber}</td>
+                  <td
+                    style={{
+                      ...styles.td,
+                      textAlign: "center",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {row.serialNumber}
+                  </td>
 
                   <td style={styles.td}>
                     <input
                       style={styles.input}
                       value={toUpperVal(row.containerNo || "")}
                       onChange={(e) =>
-                        handleFieldChange(idx, "containerNo", toUpperVal(e.target.value))
+                        handleFieldChange(
+                          idx,
+                          "containerNo",
+                          toUpperVal(e.target.value)
+                        )
                       }
                       placeholder="CONT. NO"
                     />
@@ -180,7 +240,11 @@ function ContainerTab({ formik, onUpdate }) {
                       style={styles.input}
                       value={toUpperVal(row.sealNo || "")}
                       onChange={(e) =>
-                        handleFieldChange(idx, "sealNo", toUpperVal(e.target.value))
+                        handleFieldChange(
+                          idx,
+                          "sealNo",
+                          toUpperVal(e.target.value)
+                        )
                       }
                       placeholder="SEAL NO"
                     />
@@ -236,7 +300,11 @@ function ContainerTab({ formik, onUpdate }) {
                       style={styles.input}
                       value={row.pkgsStuffed || 0}
                       onChange={(e) =>
-                        handleFieldChange(idx, "pkgsStuffed", Number(e.target.value || 0))
+                        handleFieldChange(
+                          idx,
+                          "pkgsStuffed",
+                          Number(e.target.value || 0)
+                        )
                       }
                     />
                   </td>
@@ -247,7 +315,11 @@ function ContainerTab({ formik, onUpdate }) {
                       style={styles.input}
                       value={row.grossWeight || 0}
                       onChange={(e) =>
-                        handleFieldChange(idx, "grossWeight", Number(e.target.value || 0))
+                        handleFieldChange(
+                          idx,
+                          "grossWeight",
+                          Number(e.target.value || 0)
+                        )
                       }
                     />
                   </td>
@@ -258,7 +330,11 @@ function ContainerTab({ formik, onUpdate }) {
                       style={styles.input}
                       value={row.tareWeightKgs || 0}
                       onChange={(e) =>
-                        handleFieldChange(idx, "tareWeightKgs", Number(e.target.value || 0))
+                        handleFieldChange(
+                          idx,
+                          "tareWeightKgs",
+                          Number(e.target.value || 0)
+                        )
                       }
                     />
                   </td>
@@ -269,7 +345,11 @@ function ContainerTab({ formik, onUpdate }) {
                       style={styles.input}
                       value={row.grWtPlusTrWt || 0}
                       onChange={(e) =>
-                        handleFieldChange(idx, "grWtPlusTrWt", Number(e.target.value || 0))
+                        handleFieldChange(
+                          idx,
+                          "grWtPlusTrWt",
+                          Number(e.target.value || 0)
+                        )
                       }
                     />
                   </td>
