@@ -1275,6 +1275,16 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
         console.error("Error fetching currency rates for checklist:", err);
       }
 
+      // Flatten products from all invoices for aggregate calculations
+      const allProducts = (exportJob.invoices || []).flatMap((inv, invIdx) =>
+        (inv.products || []).map((p) => ({
+          ...p,
+          invoiceIndex: invIdx,
+          invoiceCurrency: inv.currency,
+          invoiceNo: inv.invoiceNumber,
+        }))
+      );
+
       // Prepare comprehensive data object with all fields from PDF
       const data = {
         // Basic Information
@@ -1345,29 +1355,49 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
             .toFixed(3) + " KGS" || "0.000 KGS",
         netWeight: exportJob.net_weight_kg
           ? `${exportJob.net_weight_kg} ${exportJob.net_weight_unit || "KGS"}`
-          : exportJob.products
+          : allProducts
             ?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
             .toFixed(3) + " KGS" || "0.000 KGS",
 
         // Financial Details - Calculate from products and invoices
         totalFobInr:
-          exportJob.invoices
-            ?.reduce(
-              (sum, inv) => sum + (parseFloat(inv.invoice_value) || 0),
-              0
-            )
+          (exportJob.invoices || [])
+            .reduce((sum, inv) => {
+              const fob = inv.freightInsuranceCharges?.fobValue;
+              let fobAmount = 0;
+              if (fob) {
+                const currency = fob.currency || inv.currency || "INR";
+                const amount = parseFloat(fob.amount) || 0;
+                if (currency === "INR") {
+                  fobAmount = amount;
+                } else {
+                  const rate = getExportRate(currency) || parseFloat(exportJob.exchange_rate) || 1;
+                  fobAmount = amount * rate;
+                }
+              } else {
+                const currency = inv.currency || "INR";
+                const amount = parseFloat(inv.invoiceValue || inv.invoice_value) || 0;
+                if (currency === "INR") {
+                  fobAmount = amount;
+                } else {
+                  const rate = getExportRate(currency) || parseFloat(exportJob.exchange_rate) || 1;
+                  fobAmount = amount * rate;
+                }
+              }
+              return sum + fobAmount;
+            }, 0)
             .toFixed(2) || "0.00",
         igstTaxableValue:
-          exportJob.products
-            ?.reduce(
-              (sum, p) =>
-                sum +
-                (parseFloat(p.igstCompensationCess?.taxableValueINR) || 0),
-              0
-            )
+          allProducts
+            ?.reduce((sum, p) => {
+              const val = parseFloat(p.igstCompensationCess?.taxableValueINR) || 0;
+              // If for some reason it's not in INR, we convert it (though field name says INR)
+              // Since we don't have a currency field here, we assume it's already converted or in invoice currency
+              return sum + val;
+            }, 0)
             .toFixed(2) || "0.00",
         igstAmount:
-          exportJob.products
+          allProducts
             ?.reduce(
               (sum, p) =>
                 sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0),
@@ -1375,7 +1405,7 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
             )
             .toFixed(2) || "0.00",
         compCess:
-          exportJob.products
+          allProducts
             ?.reduce(
               (sum, p) =>
                 sum +
@@ -1398,7 +1428,7 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
             ?.reduce((sum, d) => sum + (parseFloat(d.dbkAmount) || 0), 0)
             .toFixed(2) || "0.00",
         rodtepAmount:
-          exportJob.products
+          allProducts
             ?.reduce(
               (sum, p) => sum + (parseFloat(p.rodtepInfo?.amountINR) || 0),
               0
@@ -1626,42 +1656,49 @@ const ExportChecklistGenerator = ({ jobNo, renderAsIcon = false }) => {
 
         // Item Details - Map products array
         products:
-          exportJob.products?.map((product, index) => ({
-            ritc: product.ritc,
-            description: product.description,
-            quantity: product.quantity,
-            per: product.per,
-            unitPrice: product.unitPrice
-              ? `${product.unitPrice}/${product.per}`
-              : "",
-            amount: product.amount,
-            pmvPerUnit: product.pmvInfo?.pmvPerUnit,
-            totalPMV: product.pmvInfo?.totalPMV,
-            eximCode: product.eximCode,
-            nfeiCategory: product.nfeiCategory,
-            rewardItem: product.rewardItem,
-            fobValueFC: product.amount, // Assuming amount is in foreign currency
-            fobValueINR: "", // Calculate: amount * exchange_rate
-            igstPaymentStatus: product.igstCompensationCess?.igstPaymentStatus,
-            taxableValueINR: product.igstCompensationCess?.taxableValueINR,
-            igstAmountINR: product.igstCompensationCess?.igstAmountINR,
-          })) || [],
+          allProducts?.map((product, index) => {
+            const currency = product.invoiceCurrency || "INR";
+            const amount = parseFloat(product.amount) || 0;
+            const rate = getExportRate(currency) || parseFloat(exportJob.exchange_rate) || 1;
+            const fobINR = (amount * rate).toFixed(2);
+
+            return {
+              ritc: product.ritc,
+              description: product.description,
+              quantity: product.quantity,
+              per: product.per,
+              unitPrice: product.unitPrice
+                ? `${product.unitPrice}/${product.per}`
+                : "",
+              amount: product.amount,
+              pmvPerUnit: product.pmvInfo?.pmvPerUnit,
+              totalPMV: product.pmvInfo?.totalPMV,
+              eximCode: product.eximCode,
+              nfeiCategory: product.nfeiCategory,
+              rewardItem: product.rewardItem,
+              fobValueFC: product.amount,
+              fobValueINR: fobINR,
+              igstPaymentStatus: product.igstCompensationCess?.igstPaymentStatus,
+              taxableValueINR: product.igstCompensationCess?.taxableValueINR,
+              igstAmountINR: product.igstCompensationCess?.igstAmountINR,
+            };
+          }) || [],
 
         // Totals from products
-        totalPmv: exportJob.products
+        totalPmv: allProducts
           ?.reduce((sum, p) => sum + (parseFloat(p.pmvInfo?.totalPMV) || 0), 0)
           .toFixed(2),
-        totalIgst: exportJob.products
+        totalIgst: allProducts
           ?.reduce(
             (sum, p) =>
               sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0),
             0
           )
           .toFixed(2),
-        totalPmvGross: exportJob.products
+        totalPmvGross: allProducts
           ?.reduce((sum, p) => sum + (parseFloat(p.pmvInfo?.totalPMV) || 0), 0)
           .toFixed(2),
-        totalIgstGross: exportJob.products
+        totalIgstGross: allProducts
           ?.reduce(
             (sum, p) =>
               sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0),
