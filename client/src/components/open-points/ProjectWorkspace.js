@@ -75,6 +75,10 @@ const ProjectWorkspace = () => {
     loadData();
   }, [projectId]);
 
+  useEffect(() => {
+    calculateSummary(points);
+  }, [points]);
+
   // Auto-resize textarea
   const autoResize = (e) => {
     e.target.style.height = "auto";
@@ -106,7 +110,6 @@ const ProjectWorkspace = () => {
       // Handle Points
       if (pointsResult.status === "fulfilled") {
         setPoints(pointsResult.value);
-        calculateSummary(pointsResult.value);
       } else {
         console.error("Failed to fetch points", pointsResult.reason);
         if (pointsResult.reason?.response?.status === 403) {
@@ -230,11 +233,9 @@ const ProjectWorkspace = () => {
 
   const handleUpdate = (pointId, field, value) => {
     // Update local state only
-    const updatedPoints = points.map((p) =>
-      p._id === pointId ? { ...p, [field]: value } : p
+    setPoints((prev) =>
+      prev.map((p) => (p._id === pointId ? { ...p, [field]: value } : p))
     );
-    setPoints(updatedPoints);
-    calculateSummary(updatedPoints);
 
     // Track modification
     setModifiedPoints((prev) => new Set(prev).add(pointId));
@@ -248,11 +249,10 @@ const ProjectWorkspace = () => {
       async () => {
         try {
           await deleteOpenPoint(pointId);
-          const filteredPoints = points.filter((p) => p._id !== pointId);
-          setPoints(filteredPoints);
-          calculateSummary(filteredPoints);
-        } catch (error) {
-          console.error("Delete failed", error);
+          setPoints((prev) => prev.filter((p) => p._id !== pointId));
+          showDialog("Success", "Point deleted", "alert");
+        } catch (err) {
+          console.error("Delete failed", err);
           showDialog("Error", "Failed to delete point", "alert");
         }
       }
@@ -402,7 +402,6 @@ const ProjectWorkspace = () => {
       // Reload specific data to keep UI snappy
       const data = await fetchProjectPoints(projectId);
       setPoints(data);
-      calculateSummary(data);
     } catch (error) {
       console.error(error);
       showDialog(
