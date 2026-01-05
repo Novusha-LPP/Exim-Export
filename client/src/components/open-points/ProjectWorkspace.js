@@ -943,7 +943,7 @@ const ProjectWorkspace = () => {
                       }}
                     >
                       <option value="">Select</option>
-                      {allUsers.map((u) => (
+                      {projectTeam.map((u) => (
                         <option key={u._id} value={u._id}>
                           {u.username}
                         </option>
