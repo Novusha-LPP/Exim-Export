@@ -17,6 +17,14 @@ const getDefaultDrawback = (idx = 1) => ({
   dbkCapunit: "",
   dbkAmount: 0,
   percentageOfFobValue: "1.5% of FOB Value",
+  // ROSCTL fields
+  slRate: 0,
+  slCap: 0,
+  ctlRate: 0,
+  ctlCap: 0,
+  rosctlAmount: 0,
+  rosctlCategory: "", // "B" or "D"
+  showRosctl: false,
 });
 
 const getJobDateFormatted = (jobDate) => {
@@ -66,11 +74,6 @@ const DrawbackTab = ({
 
   const autoSave = useCallback(() => formik.submitForm(), [formik]);
 
-  const scheduleSave = () => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(autoSave, 1200);
-  };
-
   const fetchDbkCodes = useCallback(async (search, page) => {
     try {
       setDbkDialogLoading(true);
@@ -87,8 +90,8 @@ const DrawbackTab = ({
       const list = Array.isArray(data?.data)
         ? data.data
         : Array.isArray(data)
-          ? data
-          : [];
+        ? data
+        : [];
 
       setDbkDialogOptions(list);
       if (data?.pagination) {
@@ -162,6 +165,12 @@ const DrawbackTab = ({
           newItem.fobValue = fobAmountInr.toFixed(2);
           newItem.dbkAmount = ((rate * fobAmountInr) / 100).toFixed(2);
           newItem.percentageOfFobValue = `${rate}% of FOB Value`;
+
+          // Recalculate ROSCTL if applicable
+          if (newItem.showRosctl) {
+            calculateRosctlAmount(newItem);
+          }
+
           changedLocal = true;
         }
 
@@ -274,6 +283,94 @@ const DrawbackTab = ({
       rowIndex
     ].percentageOfFobValue = `${currentDbk[rowIndex].dbkRate}% of FOB Value`;
 
+    // ROSCTL Update Logic
+    const tariffItem = item.tariff_item || "";
+    const prefix = tariffItem.substring(0, 2);
+
+    if (["61", "62", "63"].includes(prefix)) {
+      // Default logic: derive suffix from item or default to B
+      // item.tariff_item might be "610101B"
+      const match = tariffItem.match(/^(\d+)([A-Z])$/);
+      let base = tariffItem;
+      let suffix = "B";
+      if (match) {
+        base = match[1];
+        suffix = match[2];
+      }
+
+      // If user already had a rosctlCategory, maybe preserve it?
+      // But since this is a NEW selection, we should probably reset to the item's suffix
+      // OR default to B if item has no suffix.
+      // Wait, the item selected from DBK search (DrawbackModel) usually has suffix.
+      // If it's a new item, let's use its suffix as category.
+      const category = suffix;
+      const searchItem = `${base}${category}`;
+
+      try {
+        const rosRes = await fetch(
+          `${
+            import.meta.env.VITE_API_STRING
+          }/getRosctl_R?tariff_item=${encodeURIComponent(searchItem)}`
+        );
+        const rosJson = await rosRes.json();
+        if (rosJson.success && rosJson.data && rosJson.data.length > 0) {
+          const slEntry = rosJson.data.find(
+            (d) => d.schedule_category === "SL"
+          );
+          const ctlEntry = rosJson.data.find(
+            (d) => d.schedule_category === "CTL"
+          );
+
+          currentDbk[rowIndex].showRosctl = true;
+          currentDbk[rowIndex].rosctlCategory = category;
+          currentDbk[rowIndex].slRate = slEntry ? slEntry.rate : 0;
+          currentDbk[rowIndex].slCap = slEntry ? slEntry.cap_per_unit : 0;
+          currentDbk[rowIndex].ctlRate = ctlEntry ? ctlEntry.rate : 0;
+          currentDbk[rowIndex].ctlCap = ctlEntry ? ctlEntry.cap_per_unit : 0;
+
+          // Calculate ROSCTL Amount inline
+          const qty = parseFloat(currentDbk[rowIndex].quantity || 0);
+
+          let finalSl = (currentDbk[rowIndex].slRate * fobInr) / 100;
+          const sCap = parseFloat(currentDbk[rowIndex].slCap || 0);
+          if (sCap > 0) {
+            const sCapTotal = sCap * qty;
+            if (finalSl > sCapTotal) finalSl = sCapTotal;
+          }
+
+          let finalCtl = (currentDbk[rowIndex].ctlRate * fobInr) / 100;
+          const cCap = parseFloat(currentDbk[rowIndex].ctlCap || 0);
+          if (cCap > 0) {
+            const cCapTotal = cCap * qty;
+            if (finalCtl > cCapTotal) finalCtl = cCapTotal;
+          }
+          currentDbk[rowIndex].rosctlAmount = (finalSl + finalCtl).toFixed(2);
+        } else {
+          // Reset ROSCTL values but keep show=true so they can toggle if needed?
+          // Or better to hide if not found?
+          // If prefix matches 61/62/63, we should probably show it even if rates 0
+          currentDbk[rowIndex].showRosctl = true;
+          currentDbk[rowIndex].rosctlCategory = category;
+          currentDbk[rowIndex].slRate = 0;
+          currentDbk[rowIndex].slCap = 0;
+          currentDbk[rowIndex].ctlRate = 0;
+          currentDbk[rowIndex].ctlCap = 0;
+          currentDbk[rowIndex].rosctlAmount = 0;
+        }
+      } catch (err) {
+        console.error("Error fetching ROSCTL in populate", err);
+      }
+    } else {
+      // Hide ROSCTL
+      currentDbk[rowIndex].showRosctl = false;
+      currentDbk[rowIndex].rosctlCategory = "";
+      currentDbk[rowIndex].slRate = 0;
+      currentDbk[rowIndex].slCap = 0;
+      currentDbk[rowIndex].ctlRate = 0;
+      currentDbk[rowIndex].ctlCap = 0;
+      currentDbk[rowIndex].rosctlAmount = 0;
+    }
+
     const updatedInvoices = [...invoices];
     if (updatedInvoices[selectedInvoiceIndex]) {
       const updatedProducts = [
@@ -288,7 +385,6 @@ const DrawbackTab = ({
         products: updatedProducts,
       };
       formik.setFieldValue("invoices", updatedInvoices);
-      scheduleSave();
     }
   };
 
@@ -325,7 +421,6 @@ const DrawbackTab = ({
         products: updatedProducts,
       };
       formik.setFieldValue("invoices", updatedInvoices);
-      scheduleSave();
     }
   };
 
@@ -333,7 +428,8 @@ const DrawbackTab = ({
     if (!dbkSrNo) return;
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_STRING
+        `${
+          import.meta.env.VITE_API_STRING
         }/getDrawback?tariff_item=${encodeURIComponent(dbkSrNo)}`
       );
       const data = await res.json();
@@ -397,11 +493,163 @@ const DrawbackTab = ({
             products: updatedProducts,
           };
           formik.setFieldValue("invoices", updatedInvoices);
-          scheduleSave();
         }
       }
     } catch (error) {
       console.error("Error fetching drawback details:", error);
+    }
+  };
+
+  const fetchRosctlDetails = async (
+    rowIndex,
+    tariffItem,
+    overrideCategory = null
+  ) => {
+    if (!tariffItem) return;
+    // Check condition: starts with 61, 62, 63
+    const prefix = tariffItem.substring(0, 2);
+    if (!["61", "62", "63"].includes(prefix)) {
+      // Reset ROSCTL
+      updateRosctlState(rowIndex, false);
+      return;
+    }
+
+    // Determine Base and Suffix
+    const match = tariffItem.match(/^(\d+)([A-Z])$/);
+    let base = tariffItem;
+    let suffix = "B"; // Default
+
+    if (match) {
+      base = match[1];
+      suffix = match[2];
+    }
+
+    // User selected category overrides the item suffix for ROSCTL lookup
+    const searchSuffix = overrideCategory || suffix;
+
+    // Check validation: only B or D allowed for ROSCTL
+    if (searchSuffix !== "B" && searchSuffix !== "D") {
+      // Fallback or keep as is?
+      // For now, if user passes A, maybe we map to D?
+      // But let's assume UI only gives B or D options.
+    }
+
+    const searchItem = `${base}${searchSuffix}`;
+
+    try {
+      const res = await fetch(
+        `${
+          import.meta.env.VITE_API_STRING
+        }/getRosctl_R?tariff_item=${encodeURIComponent(searchItem)}`
+      );
+      const json = await res.json();
+
+      if (json.success && json.data && json.data.length > 0) {
+        const currentDbk = [...(product.drawbackDetails || [])];
+        if (!currentDbk[rowIndex])
+          currentDbk[rowIndex] = getDefaultDrawback(rowIndex + 1);
+
+        const slEntry = json.data.find((d) => d.schedule_category === "SL");
+        const ctlEntry = json.data.find((d) => d.schedule_category === "CTL");
+
+        currentDbk[rowIndex].showRosctl = true;
+        currentDbk[rowIndex].rosctlCategory = searchSuffix;
+        currentDbk[rowIndex].dbkSrNo = searchItem; // Correct dbkSrNo suffix
+
+        currentDbk[rowIndex].slRate = slEntry ? slEntry.rate : 0;
+        currentDbk[rowIndex].slCap = slEntry ? slEntry.cap_per_unit : 0;
+        currentDbk[rowIndex].ctlRate = ctlEntry ? ctlEntry.rate : 0;
+        currentDbk[rowIndex].ctlCap = ctlEntry ? ctlEntry.cap_per_unit : 0;
+
+        // Calculate Amount
+        calculateRosctlAmount(currentDbk[rowIndex]);
+
+        saveUpdatedProducts(currentDbk);
+      } else {
+        // Not found, but maintain state to allow toggling back
+        const currentDbk = [...(product.drawbackDetails || [])];
+        if (currentDbk[rowIndex]) {
+          currentDbk[rowIndex].showRosctl = true;
+          currentDbk[rowIndex].rosctlCategory = searchSuffix;
+          currentDbk[rowIndex].dbkSrNo = searchItem; // Correct dbkSrNo suffix
+          currentDbk[rowIndex].slRate = 0;
+          currentDbk[rowIndex].slCap = 0;
+          currentDbk[rowIndex].ctlRate = 0;
+          currentDbk[rowIndex].ctlCap = 0;
+          currentDbk[rowIndex].rosctlAmount = 0;
+          saveUpdatedProducts(currentDbk);
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching ROSCTL:", e);
+    }
+  };
+
+  const updateRosctlState = (rowIndex, show) => {
+    const currentDbk = [...(product.drawbackDetails || [])];
+    if (currentDbk[rowIndex]) {
+      currentDbk[rowIndex].showRosctl = show;
+      if (!show) {
+        currentDbk[rowIndex].slRate = 0;
+        currentDbk[rowIndex].slCap = 0;
+        currentDbk[rowIndex].ctlRate = 0;
+        currentDbk[rowIndex].ctlCap = 0;
+        currentDbk[rowIndex].rosctlAmount = 0;
+      }
+      saveUpdatedProducts(currentDbk);
+    }
+  };
+
+  const calculateRosctlAmount = (item) => {
+    const fob = parseFloat(item.fobValue || 0);
+    const qty = parseFloat(item.quantity || 0);
+
+    let finalSl = (parseFloat(item.slRate || 0) * fob) / 100;
+    const sCap = parseFloat(item.slCap || 0);
+
+    if (sCap > 0) {
+      const capTotal = sCap * qty;
+      if (finalSl > capTotal) finalSl = capTotal;
+    }
+
+    let finalCtl = (parseFloat(item.ctlRate || 0) * fob) / 100;
+    const cCap = parseFloat(item.ctlCap || 0);
+    if (cCap > 0) {
+      const capTotal = cCap * qty;
+      if (finalCtl > capTotal) finalCtl = capTotal;
+    }
+
+    item.rosctlAmount = (finalSl + finalCtl).toFixed(2);
+  };
+
+  const saveUpdatedProducts = (newDbkDetails) => {
+    const updatedInvoices = [...invoices];
+    if (updatedInvoices[selectedInvoiceIndex]) {
+      const updatedProducts = [
+        ...(updatedInvoices[selectedInvoiceIndex].products || []),
+      ];
+      updatedProducts[selectedProductIndex] = {
+        ...updatedProducts[selectedProductIndex],
+        drawbackDetails: newDbkDetails,
+      };
+      updatedInvoices[selectedInvoiceIndex] = {
+        ...updatedInvoices[selectedInvoiceIndex],
+        products: updatedProducts,
+      };
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
+  };
+
+  const handleDbkSrNoBlur = (rowIndex, val) => {
+    fetchDrawbackDetails(rowIndex, val);
+    fetchRosctlDetails(rowIndex, val);
+  };
+
+  const handleRosctlCategoryChange = (rowIndex, newCategory) => {
+    const currentDbk = product.drawbackDetails || [];
+    const item = currentDbk[rowIndex];
+    if (item && item.dbkSrNo) {
+      fetchRosctlDetails(rowIndex, item.dbkSrNo, newCategory);
     }
   };
 
@@ -464,181 +712,359 @@ const DrawbackTab = ({
           </thead>
           <tbody>
             {drawbackDetails.map((item, idx) => (
-              <tr key={idx}>
-                <td style={styles.td}>{idx + 1}</td>
+              <React.Fragment key={idx}>
+                <tr>
+                  <td style={styles.td}>{idx + 1}</td>
 
-                <td style={styles.td}>
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 4 }}
-                  >
+                  <td style={styles.td}>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 4 }}
+                    >
+                      <input
+                        style={{ ...styles.input, flex: 1 }}
+                        value={item.dbkSrNo || ""}
+                        onChange={(e) =>
+                          handleDrawbackFieldChange(
+                            idx,
+                            "dbkSrNo",
+                            e.target.value
+                          )
+                        }
+                        title="Type DBK Sr No or Search"
+                        onBlur={(e) => handleDbkSrNoBlur(idx, e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDbkDialogIndex(idx);
+                          setDbkDialogQuery("");
+                          setDbkDialogOptions([]);
+                          setDbkDialogActive(-1);
+                          setDbkPage(1);
+                          setDbkDialogOpen(true);
+                        }}
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: 4,
+                          border: "1px solid #16408f",
+                          background: "#f1f5ff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                        title="Search Drawback Code"
+                      >
+                        🔍
+                      </button>
+                    </div>
+                  </td>
+                  <td style={styles.td}>
                     <input
-                      style={{ ...styles.input, flex: 1 }}
-                      value={item.dbkSrNo || ""}
+                      style={styles.input}
+                      type="number"
+                      value={item.fobValue || ""}
                       onChange={(e) =>
                         handleDrawbackFieldChange(
                           idx,
-                          "dbkSrNo",
+                          "fobValue",
                           e.target.value
                         )
                       }
-                      onBlur={(e) => fetchDrawbackDetails(idx, e.target.value)}
-                      placeholder="SR NO"
-                      title="Type DBK Sr No or Search"
                     />
+                  </td>
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      value={item.quantity ?? ""}
+                      onChange={(e) =>
+                        handleDrawbackFieldChange(
+                          idx,
+                          "quantity",
+                          e.target.value
+                        )
+                      }
+                    />
+                  </td>
+                  <td style={styles.td}>
+                    <input
+                      style={{
+                        ...styles.input,
+                        backgroundColor: "#e9ecef",
+                        color: "#495057",
+                      }}
+                      value={item.unit || ""}
+                      disabled
+                    />
+                  </td>
+                  <td style={styles.td}>
+                    <select
+                      style={styles.select}
+                      value={item.dbkUnder || "Actual"}
+                      onChange={(e) =>
+                        handleDrawbackFieldChange(
+                          idx,
+                          "dbkUnder",
+                          e.target.value
+                        )
+                      }
+                    >
+                      <option value="Actual">ACTUAL</option>
+                      <option value="Provisional">PROVISIONAL</option>
+                    </select>
+                  </td>
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      value={item.dbkDescription || ""}
+                      onChange={(e) =>
+                        handleDrawbackFieldChange(
+                          idx,
+                          "dbkDescription",
+                          e.target.value
+                        )
+                      }
+                      placeholder="DESCRIPTION"
+                    />
+                  </td>
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      value={item.dbkRate ?? ""}
+                      onChange={(e) =>
+                        handleDrawbackFieldChange(
+                          idx,
+                          "dbkRate",
+                          e.target.value
+                        )
+                      }
+                    />
+                  </td>
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      value={item.dbkCap ?? ""}
+                      onChange={(e) =>
+                        handleDrawbackFieldChange(idx, "dbkCap", e.target.value)
+                      }
+                    />
+                  </td>
+                  <td style={styles.td}>
+                    <input
+                      style={{
+                        ...styles.input,
+                        backgroundColor: "#e9ecef",
+                        color: "#495057",
+                      }}
+                      value={item.dbkCapunit ?? ""}
+                      disabled
+                      onChange={(e) =>
+                        handleDrawbackFieldChange(
+                          idx,
+                          "dbkCapunit",
+                          e.target.value
+                        )
+                      }
+                    />
+                  </td>
+                  <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      value={item.dbkAmount ?? ""}
+                      onChange={(e) =>
+                        handleDrawbackFieldChange(
+                          idx,
+                          "dbkAmount",
+                          e.target.value
+                        )
+                      }
+                    />
+                  </td>
+
+                  <td style={{ ...styles.td, textAlign: "center" }}>
                     <button
                       type="button"
-                      onClick={() => {
-                        setDbkDialogIndex(idx);
-                        setDbkDialogQuery("");
-                        setDbkDialogOptions([]);
-                        setDbkDialogActive(-1);
-                        setDbkPage(1);
-                        setDbkDialogOpen(true);
-                      }}
+                      onClick={() => deleteDrawbackDetail(idx)}
                       style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 4,
-                        border: "1px solid #16408f",
-                        background: "#f1f5ff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
+                        border: "none",
+                        background: "transparent",
+                        color: "#e53e3e",
+                        cursor:
+                          drawbackDetails.length <= 1
+                            ? "not-allowed"
+                            : "pointer",
+                        fontWeight: 700,
+                        fontSize: 14,
                       }}
-                      title="Search Drawback Code"
                     >
-                      🔍
+                      ✕
                     </button>
-                  </div>
-                </td>
-                <td style={styles.td}>
-                  <input
-                    style={styles.input}
-                    type="number"
-                    value={item.fobValue || ""}
-                    onChange={(e) =>
-                      handleDrawbackFieldChange(idx, "fobValue", e.target.value)
-                    }
-                  />
-                </td>
-                <td style={styles.td}>
-                  <input
-                    style={styles.input}
-                    type="number"
-                    value={item.quantity ?? ""}
-                    onChange={(e) =>
-                      handleDrawbackFieldChange(idx, "quantity", e.target.value)
-                    }
-                  />
-                </td>
-                <td style={styles.td}>
-                  <input
-                    style={{
-                      ...styles.input,
-                      backgroundColor: "#e9ecef",
-                      color: "#495057",
-                    }}
-                    value={item.unit || ""}
-                    disabled
-                  />
-                </td>
-                <td style={styles.td}>
-                  <select
-                    style={styles.select}
-                    value={item.dbkUnder || "Actual"}
-                    onChange={(e) =>
-                      handleDrawbackFieldChange(idx, "dbkUnder", e.target.value)
-                    }
-                  >
-                    <option value="Actual">ACTUAL</option>
-                    <option value="Provisional">PROVISIONAL</option>
-                  </select>
-                </td>
-                <td style={styles.td}>
-                  <input
-                    style={styles.input}
-                    value={item.dbkDescription || ""}
-                    onChange={(e) =>
-                      handleDrawbackFieldChange(
-                        idx,
-                        "dbkDescription",
-                        e.target.value
-                      )
-                    }
-                    placeholder="DESCRIPTION"
-                  />
-                </td>
-                <td style={styles.td}>
-                  <input
-                    style={styles.input}
-                    type="number"
-                    value={item.dbkRate ?? ""}
-                    onChange={(e) =>
-                      handleDrawbackFieldChange(idx, "dbkRate", e.target.value)
-                    }
-                  />
-                </td>
-                <td style={styles.td}>
-                  <input
-                    style={styles.input}
-                    value={item.dbkCap ?? ""}
-                    onChange={(e) =>
-                      handleDrawbackFieldChange(idx, "dbkCap", e.target.value)
-                    }
-                  />
-                </td>
-                <td style={styles.td}>
-                  <input
-                    style={{
-                      ...styles.input,
-                      backgroundColor: "#e9ecef",
-                      color: "#495057",
-                    }}
-                    value={item.dbkCapunit ?? ""}
-                    disabled
-                    onChange={(e) =>
-                      handleDrawbackFieldChange(
-                        idx,
-                        "dbkCapunit",
-                        e.target.value
-                      )
-                    }
-                  />
-                </td>
-                <td style={styles.td}>
-                  <input
-                    style={styles.input}
-                    type="number"
-                    value={item.dbkAmount ?? ""}
-                    onChange={(e) =>
-                      handleDrawbackFieldChange(
-                        idx,
-                        "dbkAmount",
-                        e.target.value
-                      )
-                    }
-                  />
-                </td>
+                  </td>
+                </tr>
+                {item.showRosctl && (
+                  <tr key={`${idx}-rosctl`}>
+                    <td
+                      colSpan={12}
+                      style={{ backgroundColor: "#f8fafc", padding: 10 }}
+                    >
+                      <div
+                        style={{
+                          border: "1px solid #3b82f6",
+                          borderRadius: 4,
+                          padding: 10,
+                          backgroundColor: "#eff6ff",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 20,
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                            fontSize: 13,
+                            fontWeight: 500,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                            }}
+                          >
+                            <select
+                              style={{
+                                padding: 4,
+                                borderRadius: 4,
+                                border: "1px solid #cbd5e1",
+                                fontSize: 13,
+                                fontWeight: "bold",
+                              }}
+                              value={item.rosctlCategory || "B"}
+                              onChange={(e) =>
+                                handleRosctlCategoryChange(idx, e.target.value)
+                              }
+                            >
+                              <option value="B">Sch B (Sch 1/2)</option>
+                              <option value="D">Sch D (Sch 3/4)</option>
+                            </select>
+                          </div>
 
-                <td style={{ ...styles.td, textAlign: "center" }}>
-                  <button
-                    type="button"
-                    onClick={() => deleteDrawbackDetail(idx)}
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      color: "#e53e3e",
-                      cursor:
-                        drawbackDetails.length <= 1 ? "not-allowed" : "pointer",
-                      fontWeight: 700,
-                      fontSize: 14,
-                    }}
-                  >
-                    ✕
-                  </button>
-                </td>
-              </tr>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                            }}
+                          >
+                            <span>SL Rebate Rate</span>
+                            <input
+                              disabled
+                              value={item.slRate || 0}
+                              style={{
+                                width: 60,
+                                padding: 4,
+                                borderRadius: 4,
+                                border: "1px solid #cbd5e1",
+                              }}
+                            />
+                            <span>%</span>
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                            }}
+                          >
+                            <span>Cap</span>
+                            <input
+                              disabled
+                              value={item.slCap || 0}
+                              style={{
+                                width: 60,
+                                padding: 4,
+                                borderRadius: 4,
+                                border: "1px solid #cbd5e1",
+                              }}
+                            />
+                            <span>/ {item.unit || "PCS"}</span>
+                          </div>
+
+                          <div style={{ flex: 1 }}></div>
+
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                            }}
+                          >
+                            <span>CTL Rebate Rate</span>
+                            <input
+                              disabled
+                              value={item.ctlRate || 0}
+                              style={{
+                                width: 60,
+                                padding: 4,
+                                borderRadius: 4,
+                                border: "1px solid #cbd5e1",
+                              }}
+                            />
+                            <span>%</span>
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                            }}
+                          >
+                            <span>Cap</span>
+                            <input
+                              disabled
+                              value={item.ctlCap || 0}
+                              style={{
+                                width: 60,
+                                padding: 4,
+                                borderRadius: 4,
+                                border: "1px solid #cbd5e1",
+                              }}
+                            />
+                            <span>/ {item.unit || "PCS"}</span>
+                          </div>
+
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              marginLeft: 20,
+                            }}
+                          >
+                            <span>ROSCTL Amount</span>
+                            <input
+                              disabled
+                              value={item.rosctlAmount || 0}
+                              style={{
+                                width: 120,
+                                padding: 4,
+                                borderRadius: 4,
+                                border: "1px solid #cbd5e1",
+                                fontWeight: "bold",
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>

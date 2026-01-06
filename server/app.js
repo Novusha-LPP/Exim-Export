@@ -56,6 +56,7 @@ import deleteFromS3Routes from "./routes/deleteFromS3.js";
 import getRodtep_R from "./routes/export-dsr/getRodtep_R.js";
 import getCthsExport from "./routes/export-dsr/getCthsExport.js";
 import getDrawback from "./routes/export-dsr/getDrawback.js";
+import getRosctl_R from "./routes/export-dsr/getRosctl_R.js";
 import feedback from "./routes/feedbackRoutes.js";
 
 import getConsignees from "./routes/export-dsr/getConsignees.js";
@@ -184,6 +185,7 @@ app.use("/api", feedback);
 app.use("/api", getRodtep_R);
 app.use("/api/getCthsExport", getCthsExport);
 app.use("/api/getDrawback", getDrawback);
+app.use("/api", getRosctl_R);
 
 app.use("/api", rodtepReRoutes);
 app.use(generateDSRReport);

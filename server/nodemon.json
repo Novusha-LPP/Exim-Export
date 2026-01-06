@@ -1,6 +1,6 @@
 {
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "server"
   },
   "watch": ["app.js", "routes", "model", ".env"],
   "ext": "js,json,mjs",
