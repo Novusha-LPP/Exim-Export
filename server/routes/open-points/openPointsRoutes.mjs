@@ -187,6 +187,13 @@ router.post(
         return res.status(400).json({ error: "User is not a member" });
 
       await project.save();
+
+      // Unassign points for this user in this project
+      await OpenPoint.updateMany(
+        { project_id: req.params.projectId, responsible_person: user._id },
+        { $unset: { responsible_person: 1 }, $set: { responsibility: "" } }
+      );
+
       res.json({ message: "Member removed", project });
     } catch (error) {
       console.error("Remove Member Error:", error);

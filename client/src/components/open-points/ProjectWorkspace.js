@@ -1106,7 +1106,7 @@ const ProjectWorkspace = () => {
                   }
                 >
                   <option value="">Select</option>
-                  {allUsers.map((u) => (
+                  {projectTeam.map((u) => (
                     <option key={u._id} value={u.username}>
                       {u.username}
                     </option>
@@ -1301,10 +1301,7 @@ const ProjectWorkspace = () => {
                               member._id
                             );
                             showDialog("Success", "Member removed", "alert");
-                            // remove locally
-                            setProjectTeam((prev) =>
-                              prev.filter((p) => p._id !== member._id)
-                            );
+                            loadData(); // Reload to refresh points and summary
                           } catch (err) {
                             console.error("Remove member failed", err);
                             showDialog(
