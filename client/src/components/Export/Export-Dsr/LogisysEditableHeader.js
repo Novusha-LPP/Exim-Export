@@ -5,13 +5,7 @@ import AutocompleteSelect from "../../common/AutocompleteSelect.js";
 import { Menu, MenuItem } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ExportChecklistGenerator from "./StandardDocuments/ExportChecklistGenerator";
-<<<<<<< HEAD
 import ConsignmentNoteGenerator from "./StandardDocuments/ConsignmentNoteGenerator";
-import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
-import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharGenerator";
-import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
-import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
-=======
 import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
 >>>>>>> f16f033 (feat: Implement dedicated modules for Export DSR job details including Documentation, ESanchit, Operation, and Charges.)
 
@@ -594,7 +588,6 @@ const LogisysEditableHeader = ({
                 File Cover
               </MenuItem>
             </FileCoverGenerator>
-<<<<<<< HEAD
 
             <ConsignmentNoteGenerator jobNo={formik.values.job_no}>
               <MenuItem
@@ -605,37 +598,6 @@ const LogisysEditableHeader = ({
                 Consignment Note
               </MenuItem>
             </ConsignmentNoteGenerator>
-
-            <ForwardingNoteTharGenerator jobNo={formik.values.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 13, minWidth: 150 }}
-              >
-                Forwarding Note (THAR)
-              </MenuItem>
-            </ForwardingNoteTharGenerator>
-
-            <AnnexureCGenerator jobNo={formik.values.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 13, minWidth: 150 }}
-              >
-                Annexure C
-              </MenuItem>
-            </AnnexureCGenerator>
-            <ConcorForwardingNoteGenerator jobNo={formik.values.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 13, minWidth: 150 }}
-              >
-                Forwarding Note (CONCOR)
-              </MenuItem>
-            </ConcorForwardingNoteGenerator>
-=======
->>>>>>> f16f033 (feat: Implement dedicated modules for Export DSR job details including Documentation, ESanchit, Operation, and Charges.)
           </Menu>
         </div>
       </div>
