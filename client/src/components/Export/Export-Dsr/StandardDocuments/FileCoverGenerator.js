@@ -5,6 +5,7 @@ import axios from "axios";
 import { IconButton, Button } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import logo from "../../../../assets/images/logo.jpg";
+import logo2 from "../../../../assets/images/aeo-logo.png";
 
 const FileCoverGenerator = ({ jobNo, children }) => {
   const generateFileCover = async (e) => {
@@ -22,13 +23,16 @@ const FileCoverGenerator = ({ jobNo, children }) => {
 
       // ==================== HEADER ====================
       // Logo (Left)
-      // Note: jsPDF addImage supports webp in recent versions, but JPEG/PNG is safer.
-      // If webp fails, we might need to canvas convert. Assuming it works or fail gracefully.
+      // The logo image contains "SURAJ GROUP OF COMPANIES" which we want to hide/replace.
+      // We will render the image, then mask the text part with a white box, then render our own text.
       try {
         doc.addImage(logo, "WEBP", 10, 10, 40, 20);
+        // Masking the text part of the logo (Right side of the image area)
+        // Widen the mask to firmly cover "Group of Companies" and any residue text
+        doc.setFillColor(255, 255, 255);
+        doc.rect(21, 10, 40, 20, "F");
       } catch (err) {
         console.warn("Logo add failed", err);
-        // Fallback or skip
       }
 
       // Job No (Top Center)
@@ -39,16 +43,41 @@ const FileCoverGenerator = ({ jobNo, children }) => {
       doc.text(jobNoText, (pageWidth - jobNoWidth) / 2, 8); // Very top
 
       // Address / Company Info (Right)
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text("SURAJ", 60, 25);
+      // Moved Left to align with the masked logo icon
+      // Moved Left to align with the masked logo icon
+      const textStartX = 23;
 
-      doc.setFontSize(8);
+      doc.setFontSize(22);
+      doc.setTextColor(0, 0, 0);
       doc.setFont("helvetica", "bold");
-      doc.text("FORWARDERS & SHIPPING AGENCIES", 60, 30);
+      doc.text("SURAJ", textStartX + 2, 22);
+
+      // "FORWARDERS & SHIPPING AGENCIES" with Blue Background
+      doc.setFillColor(0, 51, 153); // Blue
+      doc.rect(textStartX + 2, 24, 75, 5, "F");
+
+      doc.setFontSize(9);
+      doc.setTextColor(255, 255, 255); // White Text
+      doc.setFont("helvetica", "bold");
+      doc.text("FORWARDERS & SHIPPING AGENCIES", textStartX + 4, 27.5);
+
+      doc.setTextColor(0, 0, 0); // Reset to Black
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7);
-      doc.text("Clearing - Forwarding - Shipping Agents", 60, 34);
+      doc.text("Clearing - Forwarding - Shipping Agents", textStartX + 2, 33);
+
+      // AEO Logo - Moved further right (x=textStartX + 80 approx)
+      try {
+        doc.addImage(logo2, "PNG", textStartX + 82, 20, 15, 10);
+      } catch (err) {
+        console.warn("AEO Logo add failed", err);
+      }
+
+      // AEO Certificate - moved to be near the header text
+      doc.setFontSize(7);
+      doc.setTextColor(0, 51, 153); // Blue
+      doc.text("Certificate No. INABOFs1766L0F191", textStartX + 42, 22);
+      doc.setTextColor(0, 0, 0);
 
       // Address Block (Right Aligned)
       const rightMargin = 15;
@@ -58,6 +87,8 @@ const FileCoverGenerator = ({ jobNo, children }) => {
       doc.text("Opp. Orient Club, Ellis Bridge,", addressX, 19);
       doc.text("Ahmedabad - 380 006.", addressX, 23);
       doc.text("Phone : (079) 2640 1929 / 2640 2005 / 6", addressX, 27);
+      doc.setTextColor(0, 0, 255); // Blue for Email? No, Email usually black or link blue. keeping black as per prev code unless specified. User said "Certificate No... in blue color"
+      doc.setTextColor(0, 0, 0);
       doc.text("Email : info@surajforwarders.com", addressX, 31);
 
       // CHA License Box (Bottom Right of Header)
@@ -68,9 +99,6 @@ const FileCoverGenerator = ({ jobNo, children }) => {
       doc.text("CHA LICENCE NO : ABOFS1766LCH005", addressX + 2, 36.5);
       doc.setTextColor(0, 0, 0);
 
-      // AEO (Center/Right near logo) - mimicking screenshot layout roughly
-      // (Screenshot had AEO logo, we skip or place text)
-
       let yPos = 45;
 
       // ==================== MAIN TABLE ====================
@@ -79,10 +107,10 @@ const FileCoverGenerator = ({ jobNo, children }) => {
       const sbNo = data.sb_no || "";
       const sbDate = data.sb_date
         ? new Date(data.sb_date).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          })
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
         : "";
       const invoiceNo = invoice.invoiceNumber || "";
       const invoiceDate = invoice.invoiceDate || ""; // Assuming it is formatted or needs formatting
@@ -109,10 +137,10 @@ const FileCoverGenerator = ({ jobNo, children }) => {
         "";
       const leoDate = leoDateRaw
         ? new Date(leoDateRaw).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          })
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
         : "";
       const refNo = data.exporter_ref_no || invoiceNo; // Fallback to invoice if ref missing
 
@@ -232,11 +260,15 @@ const FileCoverGenerator = ({ jobNo, children }) => {
           ? containers
           : [{ containerNo: "", containerSize: "", sealNo: "" }];
 
+      // Booking Details for S/Line Seal No
+      const booking = data.operations?.[0]?.bookingDetails?.[0] || {};
+      const sLineSealNo = booking.shippingLineSealNo || "";
+
       const containerBody = containerRows.map((c) => [
         c.containerNo || "",
         c.containerSize || c.size || "20",
         c.sealNo || "", // Customs Seal
-        "", // S/Line Seal
+        sLineSealNo, // S/Line Seal (Same for all containers usually, or per container if structured differently later)
       ]);
 
       // Add extra empty rows to match screenshot height (approx 10-12 rows)
