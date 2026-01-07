@@ -3,9 +3,9 @@ import ExJobModel from "../../model/export/ExJobModel.mjs";
 
 const router = express.Router();
 
-router.get("/api/get-export-job/:jobNo", async (req, res) => {
+router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
   try {
-    const { jobNo} = req.params;
+    const { jobNo } = req.params;
 
     const job = await ExJobModel.findOne({
       job_no: jobNo,
@@ -21,6 +21,5 @@ router.get("/api/get-export-job/:jobNo", async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 });
-
 
 export default router;

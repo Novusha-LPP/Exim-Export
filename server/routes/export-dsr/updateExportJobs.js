@@ -340,7 +340,7 @@ router.post("/exports", auditMiddleware("Job"), async (req, res) => {
   }
 });
 
-router.get("/:job_no", async (req, res, next) => {
+router.get("/:job_no(.*)", async (req, res, next) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
@@ -390,7 +390,7 @@ router.get("/:job_no", async (req, res, next) => {
 });
 
 // Lock a job
-router.put("/:job_no/lock", async (req, res) => {
+router.put("/:job_no(.*)/lock", async (req, res) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
@@ -429,7 +429,7 @@ router.put("/:job_no/lock", async (req, res) => {
 });
 
 // Unlock a job
-router.put("/:job_no/unlock", async (req, res) => {
+router.put("/:job_no(.*)/unlock", async (req, res) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
@@ -457,7 +457,7 @@ router.put("/:job_no/unlock", async (req, res) => {
 });
 
 // Update export job (full)
-router.put("/:job_no", auditMiddleware("Job"), async (req, res, next) => {
+router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
@@ -522,102 +522,114 @@ router.put("/:job_no", auditMiddleware("Job"), async (req, res, next) => {
 });
 
 // PATCH fields
-router.patch("/:job_no/fields", auditMiddleware("Job"), async (req, res) => {
-  try {
-    const raw = req.params.job_no || "";
-    const job_no = decodeURIComponent(raw);
+router.patch(
+  "/:job_no(.*)/fields",
+  auditMiddleware("Job"),
+  async (req, res) => {
+    try {
+      const raw = req.params.job_no || "";
+      const job_no = decodeURIComponent(raw);
 
-    const { fieldUpdates } = req.body;
-    const updateObject = {};
-    (fieldUpdates || []).forEach(({ field, value }) => {
-      updateObject[field] = value;
-    });
-    updateObject.updatedAt = new Date();
+      const { fieldUpdates } = req.body;
+      const updateObject = {};
+      (fieldUpdates || []).forEach(({ field, value }) => {
+        updateObject[field] = value;
+      });
+      updateObject.updatedAt = new Date();
 
-    // Business Logic: If Billing Done is selected, mark as Completed
-    if (
-      updateObject.detailedStatus &&
-      Array.isArray(updateObject.detailedStatus) &&
-      updateObject.detailedStatus.includes("Billing Done")
-    ) {
-      updateObject.status = "Completed";
+      // Business Logic: If Billing Done is selected, mark as Completed
+      if (
+        updateObject.detailedStatus &&
+        Array.isArray(updateObject.detailedStatus) &&
+        updateObject.detailedStatus.includes("Billing Done")
+      ) {
+        updateObject.status = "Completed";
+      }
+
+      const updatedExportJob = await ExJobModel.findOneAndUpdate(
+        { job_no: { $regex: `^${job_no}$`, $options: "i" } },
+        { $set: updateObject },
+        { new: true }
+      );
+
+      if (!updatedExportJob) {
+        return res.status(404).json({ message: "Export job not found" });
+      }
+
+      res.json({
+        message: "Fields updated successfully",
+        updatedFields: Object.keys(updateObject),
+        data: updatedExportJob,
+      });
+    } catch (error) {
+      console.error("Error updating export job fields:", error);
+      res.status(500).json({ message: "Server error" });
     }
-
-    const updatedExportJob = await ExJobModel.findOneAndUpdate(
-      { job_no: { $regex: `^${job_no}$`, $options: "i" } },
-      { $set: updateObject },
-      { new: true }
-    );
-
-    if (!updatedExportJob) {
-      return res.status(404).json({ message: "Export job not found" });
-    }
-
-    res.json({
-      message: "Fields updated successfully",
-      updatedFields: Object.keys(updateObject),
-      data: updatedExportJob,
-    });
-  } catch (error) {
-    console.error("Error updating export job fields:", error);
-    res.status(500).json({ message: "Server error" });
   }
-});
+);
 
 // PUT documents
-router.put("/:job_no/documents", auditMiddleware("Job"), async (req, res) => {
-  try {
-    const raw = req.params.job_no || "";
-    const job_no = decodeURIComponent(raw);
+router.put(
+  "/:job_no(.*)/documents",
+  auditMiddleware("Job"),
+  async (req, res) => {
+    try {
+      const raw = req.params.job_no || "";
+      const job_no = decodeURIComponent(raw);
 
-    const { export_documents } = req.body;
+      const { export_documents } = req.body;
 
-    const updatedExportJob = await ExJobModel.findOneAndUpdate(
-      { job_no: { $regex: `^${job_no}$`, $options: "i" } },
-      { $set: { export_documents, updatedAt: new Date() } },
-      { new: true }
-    );
+      const updatedExportJob = await ExJobModel.findOneAndUpdate(
+        { job_no: { $regex: `^${job_no}$`, $options: "i" } },
+        { $set: { export_documents, updatedAt: new Date() } },
+        { new: true }
+      );
 
-    if (!updatedExportJob) {
-      return res.status(404).json({ message: "Export job not found" });
+      if (!updatedExportJob) {
+        return res.status(404).json({ message: "Export job not found" });
+      }
+
+      res.json({
+        message: "Documents updated successfully",
+        data: updatedExportJob,
+      });
+    } catch (error) {
+      console.error("Error updating export documents:", error);
+      res.status(500).json({ message: "Server error" });
     }
-
-    res.json({
-      message: "Documents updated successfully",
-      data: updatedExportJob,
-    });
-  } catch (error) {
-    console.error("Error updating export documents:", error);
-    res.status(500).json({ message: "Server error" });
   }
-});
+);
 
 // PUT containers
-router.put("/:job_no/containers", auditMiddleware("Job"), async (req, res) => {
-  try {
-    const raw = req.params.job_no || "";
-    const job_no = decodeURIComponent(raw);
+router.put(
+  "/:job_no(.*)/containers",
+  auditMiddleware("Job"),
+  async (req, res) => {
+    try {
+      const raw = req.params.job_no || "";
+      const job_no = decodeURIComponent(raw);
 
-    const { containers } = req.body;
+      const { containers } = req.body;
 
-    const updatedExportJob = await ExJobModel.findOneAndUpdate(
-      { job_no: { $regex: `^${job_no}$`, $options: "i" } },
-      { $set: { containers, updatedAt: new Date() } },
-      { new: true }
-    );
+      const updatedExportJob = await ExJobModel.findOneAndUpdate(
+        { job_no: { $regex: `^${job_no}$`, $options: "i" } },
+        { $set: { containers, updatedAt: new Date() } },
+        { new: true }
+      );
 
-    if (!updatedExportJob) {
-      return res.status(404).json({ message: "Export job not found" });
+      if (!updatedExportJob) {
+        return res.status(404).json({ message: "Export job not found" });
+      }
+
+      res.json({
+        message: "Containers updated successfully",
+        data: updatedExportJob,
+      });
+    } catch (error) {
+      console.error("Error updating containers:", error);
+      res.status(500).json({ message: "Server error" });
     }
-
-    res.json({
-      message: "Containers updated successfully",
-      data: updatedExportJob,
-    });
-  } catch (error) {
-    console.error("Error updating containers:", error);
-    res.status(500).json({ message: "Server error" });
   }
-});
+);
 
 export default router;
