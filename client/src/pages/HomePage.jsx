@@ -12,7 +12,11 @@ import ChangePassword from "../components/home/ChangePassword.js";
 
 import Directories from "../components/Export/Directories/Directories.js";
 import DsrTabs from "../components/Export/Export-Dsr/DsrTabs.js";
-import ExportViewJob from "../components/Export/Export-Dsr/ExportViewJob.js";
+import ExportJobsModule from "../components/Export/Export-Dsr/ExportJobsModule.js";
+import ExportDocumentationModule from "../components/Export/Export-Dsr/ExportDocumentationModule.js";
+import ExportEsanchitModule from "../components/Export/Export-Dsr/ExportEsanchitModule.js";
+import EximOperationModule from "../components/Export/Export-Dsr/EximOperationModule.js";
+import ExportChargesModule from "../components/Export/Export-Dsr/ExportChargesModule.js";
 
 // import auditrail
 import AllUsersPage from "./AllUsersPage.js";
@@ -90,6 +94,8 @@ function HomePage() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Export - Jobs */}
             <Route
               path="/export-dsr"
               element={
@@ -98,12 +104,83 @@ function HomePage() {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="export-dsr/job/:jobNo"
               element={
                 <ProtectedRoute requiredModule="Export - Jobs">
-                  <ExportViewJob />
+                  <ExportJobsModule />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Export - Documentation */}
+            <Route
+              path="/export-documentation"
+              element={
+                <ProtectedRoute requiredModule="Export - Documentation">
+                  <DsrTabs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/export-documentation/job/:jobNo"
+              element={
+                <ProtectedRoute requiredModule="Export - Documentation">
+                  <ExportDocumentationModule />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Export - ESanchit */}
+            <Route
+              path="/export-esanchit"
+              element={
+                <ProtectedRoute requiredModule="Export - ESanchit">
+                  <DsrTabs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/export-esanchit/job/:jobNo"
+              element={
+                <ProtectedRoute requiredModule="Export - ESanchit">
+                  <ExportEsanchitModule />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Export - Operation */}
+            <Route
+              path="/export-operation"
+              element={
+                <ProtectedRoute requiredModule="Export - Operation">
+                  <DsrTabs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/export-operation/job/:jobNo"
+              element={
+                <ProtectedRoute requiredModule="Export - Operation">
+                  <EximOperationModule />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Export - Charges */}
+            <Route
+              path="/export-charges"
+              element={
+                <ProtectedRoute requiredModule="Export - Charges">
+                  <DsrTabs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/export-charges/job/:jobNo"
+              element={
+                <ProtectedRoute requiredModule="Export - Charges">
+                  <ExportChargesModule />
                 </ProtectedRoute>
               }
             />

@@ -731,23 +731,46 @@ const ExportJobsTable = () => {
             }}
           >
             <h1 style={s.pageTitle}>Export Jobs</h1>
-            <button
-              style={{
-                ...s.btnPrimary,
-                padding: "8px 20px",
-                height: "auto",
-                backgroundColor: "#2563eb",
-                color: "#fff",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontWeight: "600",
-                fontSize: "13px",
-              }}
-              onClick={() => setOpenAddDialog(true)}
-            >
-              + Create Job
-            </button>
+
+            {/* Action Buttons - Only for Export - Jobs */}
+            {window.location.pathname.startsWith("/export-dsr") && (
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  style={{
+                    ...s.btnPrimary,
+                    padding: "8px 20px",
+                    height: "auto",
+                    backgroundColor: "#fff",
+                    color: "#2563eb",
+                    border: "1px solid #2563eb",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                  }}
+                  onClick={() => setOpenDSRDialog(true)}
+                >
+                  Download DSR Report
+                </button>
+                <button
+                  style={{
+                    ...s.btnPrimary,
+                    padding: "8px 20px",
+                    height: "auto",
+                    backgroundColor: "#2563eb",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                  }}
+                  onClick={() => setOpenAddDialog(true)}
+                >
+                  + Create Job
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Tabs */}
@@ -898,7 +921,7 @@ const ExportJobsTable = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <button
+              {/* <button
                 style={{
                   padding: "0 15px",
                   height: "30px",
@@ -913,7 +936,7 @@ const ExportJobsTable = () => {
                 onClick={() => setOpenDSRDialog(true)}
               >
                 Download DSR
-              </button>
+              </button> */}
             </div>
           </div>
 
