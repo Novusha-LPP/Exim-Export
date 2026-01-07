@@ -96,6 +96,7 @@ const getDefaultItem = (section) => {
       images: [],
       containerPlacementDate: "",
       shippingLineSealNo: "",
+      shippingLineSealNo: "",
     },
     weighmentDetails: {
       weighBridgeName: "",
@@ -1325,7 +1326,11 @@ const OperationsTab = ({ formik }) => {
         },
         { field: "forwarderName", label: "Forwarder", width: "150px" },
         { field: "bookingNo", label: "Booking No.", width: "140px" },
-        // removed shippingLineSealNo from here
+        !isAir && {
+          field: "shippingLineSealNo",
+          label: "S/Line Seal No",
+          width: "140px",
+        },
         {
           field: "bookingDate",
           label: "Booking",
@@ -1338,12 +1343,7 @@ const OperationsTab = ({ formik }) => {
           width: "150px",
         },
         !isAir && { field: "voyageNo", label: "Voyage", width: "100px" },
-        !isAir && {
-          field: "portOfLoading",
-          label: "POL",
-          width: "120px",
-          type: "gatewaydropdown",
-        },
+        !isAir && { field: "portOfLoading", label: "POL", width: "120px" },
         !isAir && {
           field: "handoverLocation",
           label: "Empty Pickup / Drop Location",
@@ -1367,7 +1367,6 @@ const OperationsTab = ({ formik }) => {
       onUpdate={updateField}
       onAdd={addItem}
       onDelete={deleteItem}
-      defaultOpen={true}
     />
   );
 
@@ -1649,244 +1648,195 @@ const TableSection = ({
           {isOpen ? "▲" : "▼"}
         </span>
       </div>
-      {isOpen && (
-        <>
-          <div style={styles.tableWrapper}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  {columns.map((col) => (
-                    <th
-                      key={col.field}
-                      style={{ ...styles.th, width: col.width }}
-                    >
-                      {col.label}
-                    </th>
-                  ))}
-                  <th
-                    style={{ ...styles.th, width: "60px", textAlign: "center" }}
-                  >
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayData.map((item, rowIdx) => (
-                  <tr key={rowIdx} style={styles.tr}>
-                    {columns.map((col) => (
-                      <td key={col.field} style={styles.td}>
-                        {col.type === "upload" ? (
-                          <div style={styles.uploadCell}>
-                            <FileUpload
-                              bucketPath={col.bucketPath || "general_uploads"}
-                              multiple={true}
-                              acceptedFileTypes={[
-                                ".pdf",
-                                ".jpg",
-                                ".png",
-                                ".jpeg",
-                              ]}
-                              onFilesUploaded={(newUrls) => {
-                                const currentImages = item[col.field] || [];
-                                const updatedList = [
-                                  ...currentImages,
-                                  ...newUrls,
-                                ];
-                                onUpdate(
-                                  section,
-                                  rowIdx,
-                                  col.field,
-                                  updatedList
-                                );
-                              }}
-                            />
-                            <ImagePreview
-                              images={item[col.field] || []}
-                              readOnly={false}
-                              onDeleteImage={(deleteIndex) => {
-                                const currentImages = item[col.field] || [];
-                                const updatedList = currentImages.filter(
-                                  (_, i) => i !== deleteIndex
-                                );
-                                onUpdate(
-                                  section,
-                                  rowIdx,
-                                  col.field,
-                                  updatedList
-                                );
-                              }}
-                            />
-                          </div>
-                        ) : col.type === "shipping-dropdown" ? (
-                          <ShippingLineDropdownField
-                            fieldName={`operations.${activeOpIndex}.${section}.${rowIdx}.${col.field}`}
-                            formik={formik}
-                            placeholder={col.placeholder || ""}
-                          />
-                        ) : col.type === "gatewaydropdown" ||
-                          col.type === "gateway-dropdown" ? (
-                          <GatewayPortDropdown
-                            fieldName={`operations.${activeOpIndex}.${section}.${rowIdx}.${col.field}`}
-                            formik={formik}
-                            placeholder={col.placeholder || ""}
-                          />
-                        ) : col.type === "select" ? (
-                          <select
-                            value={
-                              item[col.field] === undefined
-                                ? ""
-                                : item[col.field]
-                            }
-                            onChange={(e) =>
-                              onUpdate(
-                                section,
-                                rowIdx,
-                                col.field,
-                                e.target.value
-                              )
-                            }
-                            style={styles.cellInput}
-                          >
-                            <option value="">Select...</option>
-                            {(col.options || []).map((opt) => (
-                              <option
-                                key={typeof opt === "string" ? opt : opt.value}
-                                value={
-                                  typeof opt === "string" ? opt : opt.value
-                                }
-                              >
-                                {typeof opt === "string" ? opt : opt.label}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            type={
-                              col.type === "date" ||
-                              col.type === "datetime-local"
-                                ? "text"
-                                : col.type || "text"
-                            }
-                            value={
-                              item[col.field] === undefined ||
-                              item[col.field] === null
-                                ? ""
-                                : col.type === "date" ||
-                                  col.type === "datetime-local"
-                                ? formatDateForInput(item[col.field], col.type)
-                                : item[col.field]
-                            }
-                            onChange={(e) =>
-                              onUpdate(
-                                section,
-                                rowIdx,
-                                col.field,
-                                col.type === "number"
-                                  ? e.target.value
-                                  : e.target.value
-                              )
-                            }
-                            onDoubleClick={(e) => {
-                              if (
-                                col.type === "date" ||
-                                col.type === "datetime-local"
-                              ) {
-                                const pickerVal = formatDateForPicker(
-                                  item[col.field],
-                                  col.type
-                                );
-                                if (pickerVal) e.target.value = pickerVal;
-                                e.target.type = col.type;
-                                e.target.showPicker && e.target.showPicker();
-                              }
-                            }}
-                            onBlur={(e) => {
-                              if (
-                                col.type === "date" ||
-                                col.type === "datetime-local"
-                              ) {
-                                e.target.type = "text";
-                              }
-                            }}
-                            onFocus={(e) => {
-                              if (
-                                section === "transporterDetails" &&
-                                (col.field === "grossWeightKgs" ||
-                                  col.field === "netWeightKgs" ||
-                                  col.field === "noOfPackages") &&
-                                !e.target.value
-                              ) {
-                                const shipmentGross =
-                                  formik.values.gross_weight_kg || "";
-                                const shipmentNet =
-                                  formik.values.net_weight_kg || "";
-                                const shipmentPkgs =
-                                  formik.values.total_no_of_pkgs || "";
-
-                                if (
-                                  col.field === "grossWeightKgs" &&
-                                  shipmentGross
-                                ) {
-                                  onUpdate(
-                                    section,
-                                    rowIdx,
-                                    col.field,
-                                    shipmentGross
-                                  );
-                                } else if (
-                                  col.field === "netWeightKgs" &&
-                                  shipmentNet
-                                ) {
-                                  onUpdate(
-                                    section,
-                                    rowIdx,
-                                    col.field,
-                                    shipmentNet
-                                  );
-                                } else if (
-                                  col.field === "noOfPackages" &&
-                                  shipmentPkgs
-                                ) {
-                                  onUpdate(
-                                    section,
-                                    rowIdx,
-                                    col.field,
-                                    shipmentPkgs
-                                  );
-                                }
-                              }
-                            }}
-                            style={styles.cellInput}
-                            placeholder={
-                              col.placeholder ||
-                              (col.type === "date" ? "dd-mm-yyyy" : "")
-                            }
-                          />
-                        )}
-                      </td>
-                    ))}
-                    <td style={{ ...styles.td, textAlign: "center" }}>
-                      <button
-                        onClick={() => onDelete(section, rowIdx)}
-                        style={styles.rowDeleteBtn}
-                        title="Delete Row"
-                        disabled={displayData.length === 1}
+      <div style={styles.tableWrapper}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              {columns.map((col) => (
+                <th key={col.field} style={{ ...styles.th, width: col.width }}>
+                  {col.label}
+                </th>
+              ))}
+              <th style={{ ...styles.th, width: "60px", textAlign: "center" }}>
+                Action
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayData.map((item, rowIdx) => (
+              <tr key={rowIdx} style={styles.tr}>
+                {columns.map((col) => (
+                  <td key={col.field} style={styles.td}>
+                    {col.type === "upload" ? (
+                      <div style={styles.uploadCell}>
+                        <FileUpload
+                          bucketPath={col.bucketPath || "general_uploads"}
+                          multiple={true}
+                          acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
+                          onFilesUploaded={(newUrls) => {
+                            const currentImages = item[col.field] || [];
+                            const updatedList = [...currentImages, ...newUrls];
+                            onUpdate(section, rowIdx, col.field, updatedList);
+                          }}
+                        />
+                        <ImagePreview
+                          images={item[col.field] || []}
+                          readOnly={false}
+                          onDeleteImage={(deleteIndex) => {
+                            const currentImages = item[col.field] || [];
+                            const updatedList = currentImages.filter(
+                              (_, i) => i !== deleteIndex
+                            );
+                            onUpdate(section, rowIdx, col.field, updatedList);
+                          }}
+                        />
+                      </div>
+                    ) : col.type === "shipping-dropdown" ? (
+                      <ShippingLineDropdownField
+                        fieldName={`operations.${activeOpIndex}.${section}.${rowIdx}.${col.field}`}
+                        formik={formik}
+                        placeholder={col.placeholder || ""}
+                      />
+                    ) : col.type === "select" ? (
+                      <select
+                        value={
+                          item[col.field] === undefined ? "" : item[col.field]
+                        }
+                        onChange={(e) =>
+                          onUpdate(section, rowIdx, col.field, e.target.value)
+                        }
+                        style={styles.cellInput}
                       >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
+                        <option value="">Select...</option>
+                        {(col.options || []).map((opt) => (
+                          <option
+                            key={typeof opt === "string" ? opt : opt.value}
+                            value={typeof opt === "string" ? opt : opt.value}
+                          >
+                            {typeof opt === "string" ? opt : opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type={
+                          col.type === "date" || col.type === "datetime-local"
+                            ? "text"
+                            : col.type || "text"
+                        }
+                        value={
+                          item[col.field] === undefined ||
+                          item[col.field] === null
+                            ? ""
+                            : col.type === "date" ||
+                              col.type === "datetime-local"
+                            ? formatDateForInput(item[col.field], col.type)
+                            : item[col.field]
+                        }
+                        onChange={(e) =>
+                          onUpdate(
+                            section,
+                            rowIdx,
+                            col.field,
+                            col.type === "number"
+                              ? e.target.value
+                              : e.target.value
+                          )
+                        }
+                        onDoubleClick={(e) => {
+                          if (
+                            col.type === "date" ||
+                            col.type === "datetime-local"
+                          ) {
+                            const pickerVal = formatDateForPicker(
+                              item[col.field],
+                              col.type
+                            );
+                            if (pickerVal) e.target.value = pickerVal;
+                            e.target.type = col.type;
+                            e.target.showPicker && e.target.showPicker();
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (
+                            col.type === "date" ||
+                            col.type === "datetime-local"
+                          ) {
+                            e.target.type = "text";
+                          }
+                        }}
+                        onFocus={(e) => {
+                          if (
+                            section === "transporterDetails" &&
+                            (col.field === "grossWeightKgs" ||
+                              col.field === "netWeightKgs" ||
+                              col.field === "noOfPackages") &&
+                            !e.target.value
+                          ) {
+                            const shipmentGross =
+                              formik.values.gross_weight_kg || "";
+                            const shipmentNet =
+                              formik.values.net_weight_kg || "";
+                            const shipmentPkgs =
+                              formik.values.total_no_of_pkgs || "";
+
+                            if (
+                              col.field === "grossWeightKgs" &&
+                              shipmentGross
+                            ) {
+                              onUpdate(
+                                section,
+                                rowIdx,
+                                col.field,
+                                shipmentGross
+                              );
+                            } else if (
+                              col.field === "netWeightKgs" &&
+                              shipmentNet
+                            ) {
+                              onUpdate(section, rowIdx, col.field, shipmentNet);
+                            } else if (
+                              col.field === "noOfPackages" &&
+                              shipmentPkgs
+                            ) {
+                              onUpdate(
+                                section,
+                                rowIdx,
+                                col.field,
+                                shipmentPkgs
+                              );
+                            }
+                          }
+                        }}
+                        style={styles.cellInput}
+                        placeholder={
+                          col.placeholder ||
+                          (col.type === "date" ? "dd-mm-yyyy" : "")
+                        }
+                      />
+                    )}
+                  </td>
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={styles.sectionFooter}>
-            <button onClick={() => onAdd(section)} style={styles.addRowBtn}>
-              + Add Row
-            </button>
-          </div>
-        </>
-      )}
+                <td style={{ ...styles.td, textAlign: "center" }}>
+                  <button
+                    onClick={() => onDelete(section, rowIdx)}
+                    style={styles.rowDeleteBtn}
+                    title="Delete Row"
+                    disabled={displayData.length === 1}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={styles.sectionFooter}>
+        <button onClick={() => onAdd(section)} style={styles.addRowBtn}>
+          + Add Row
+        </button>
+      </div>
     </div>
   );
 };
@@ -2799,6 +2749,7 @@ const styles = {
     minHeight: "36px",
     border: "1px solid transparent",
     padding: "6px 10px",
+    paddingRight: "28px",
     fontSize: "12px",
     fontWeight: "500",
     color: "#1e293b",
