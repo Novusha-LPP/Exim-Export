@@ -97,12 +97,15 @@ function useGatewayPortDropdown(fieldName, formik) {
   const [active, setActive] = useState(-1);
   const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef();
-  const apiBase = import.meta.env.VITE_API_STRING;
   const keepOpen = useRef(false);
+  const apiBase = import.meta.env.VITE_API_STRING;
 
+  // Sync internal query state with formik values when they change externally (e.g. on load)
   useEffect(() => {
-    setQuery(formik.values[fieldName] || "");
-  }, [formik.values[fieldName], fieldName]);
+    if (!isTyping) {
+      setQuery(formik.values[fieldName] || "");
+    }
+  }, [formik.values[fieldName], isTyping, fieldName]);
 
   useEffect(() => {
     if (!open) {
@@ -496,14 +499,14 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Loading Port */}
-        {/* <div style={{ flex: "1 1 120px", minWidth: 110 }}>
+        <div style={{ flex: "1 1 120px", minWidth: 110 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Loading Port</div>
           <GatewayPortDropdown
             fieldName="port_of_loading"
             formik={formik}
             placeholder="Select Loading Port"
           />
-        </div> */}
+        </div>
 
         {/* Consignment Type */}
         <div style={{ flex: "1 1 120px", minWidth: 100 }}>
