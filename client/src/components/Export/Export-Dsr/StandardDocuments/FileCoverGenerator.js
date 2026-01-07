@@ -4,8 +4,7 @@ import "jspdf-autotable";
 import axios from "axios";
 import { IconButton, Button } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
-import logo from "../../../../assets/images/logo.jpg";
-import logo2 from "../../../../assets/images/aeo-logo.png";
+import logo from "../../../../assets/images/logo.png";
 
 const FileCoverGenerator = ({ jobNo, children }) => {
   const generateFileCover = async (e) => {
@@ -21,82 +20,62 @@ const FileCoverGenerator = ({ jobNo, children }) => {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
+      // Helper to parse dates like "DD-MM-YYYY" or ISO strings
+      const parseDateSafe = (dateStr) => {
+        if (!dateStr) return null;
+        if (dateStr instanceof Date) return dateStr;
+
+        // Handle DD-MM-YYYY
+        if (typeof dateStr === 'string' && /^\d{1,2}-\d{1,2}-\d{4}/.test(dateStr)) {
+          const [d, m, y] = dateStr.split('-');
+          return new Date(y, m - 1, d);
+        }
+
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? null : d;
+      };
+
+      const formatDate = (date, options = { day: "2-digit", month: "short", year: "numeric" }) => {
+        const d = parseDateSafe(date);
+        if (!d) return "Invalid Date";
+        return d.toLocaleDateString("en-GB", options);
+      };
+
       // ==================== HEADER ====================
-      // Logo (Left)
-      // The logo image contains "SURAJ GROUP OF COMPANIES" which we want to hide/replace.
-      // We will render the image, then mask the text part with a white box, then render our own text.
+      // Composite Header Logo (Branding + Subtext + AEO)
       try {
-        doc.addImage(logo, "WEBP", 10, 10, 40, 20);
-        // Masking the text part of the logo (Right side of the image area)
-        // Widen the mask to firmly cover "Group of Companies" and any residue text
-        doc.setFillColor(255, 255, 255);
-        doc.rect(21, 10, 40, 20, "F");
+        // Adjusted dimensions (wider) to fit the new full-header logo
+        doc.addImage(logo, "PNG", 8, 10, 110, 26);
       } catch (err) {
         console.warn("Logo add failed", err);
       }
 
       // Job No (Top Center)
-      doc.setFontSize(10);
+      doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
       const jobNoText = `JOB NO. ${data.job_no || ""}`;
       const jobNoWidth = doc.getTextWidth(jobNoText);
-      doc.text(jobNoText, (pageWidth - jobNoWidth) / 2, 8); // Very top
+      doc.text(jobNoText, (pageWidth - jobNoWidth) / 2, 8);
 
-      // Address / Company Info (Right)
-      // Moved Left to align with the masked logo icon
-      // Moved Left to align with the masked logo icon
-      const textStartX = 23;
-
-      doc.setFontSize(22);
-      doc.setTextColor(0, 0, 0);
-      doc.setFont("helvetica", "bold");
-      doc.text("SURAJ", textStartX + 2, 22);
-
-      // "FORWARDERS & SHIPPING AGENCIES" with Blue Background
-      doc.setFillColor(0, 51, 153); // Blue
-      doc.rect(textStartX + 2, 24, 75, 5, "F");
-
-      doc.setFontSize(9);
-      doc.setTextColor(255, 255, 255); // White Text
-      doc.setFont("helvetica", "bold");
-      doc.text("FORWARDERS & SHIPPING AGENCIES", textStartX + 4, 27.5);
-
-      doc.setTextColor(0, 0, 0); // Reset to Black
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7);
-      doc.text("Clearing - Forwarding - Shipping Agents", textStartX + 2, 33);
-
-      // AEO Logo - Moved further right (x=textStartX + 80 approx)
-      try {
-        doc.addImage(logo2, "PNG", textStartX + 82, 20, 15, 10);
-      } catch (err) {
-        console.warn("AEO Logo add failed", err);
-      }
-
-      // AEO Certificate - moved to be near the header text
-      doc.setFontSize(7);
-      doc.setTextColor(0, 51, 153); // Blue
-      doc.text("Certificate No. INABOFs1766L0F191", textStartX + 42, 22);
-      doc.setTextColor(0, 0, 0);
 
       // Address Block (Right Aligned)
       const rightMargin = 15;
       const addressX = 130;
-      doc.setFontSize(8);
+      doc.setFontSize(10);
       doc.text("A-204 to 207, Wall Street - II,", addressX, 15);
       doc.text("Opp. Orient Club, Ellis Bridge,", addressX, 19);
       doc.text("Ahmedabad - 380 006.", addressX, 23);
       doc.text("Phone : (079) 2640 1929 / 2640 2005 / 6", addressX, 27);
-      doc.setTextColor(0, 0, 255); // Blue for Email? No, Email usually black or link blue. keeping black as per prev code unless specified. User said "Certificate No... in blue color"
       doc.setTextColor(0, 0, 0);
       doc.text("Email : info@surajforwarders.com", addressX, 31);
 
       // CHA License Box (Bottom Right of Header)
       doc.setFillColor(0, 0, 139); // Dark Blue
-      doc.rect(addressX, 33, 65, 5, "F");
+      doc.rect(addressX, 33, 72, 6, "F");
       doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
-      doc.text("CHA LICENCE NO : ABOFS1766LCH005", addressX + 2, 36.5);
+      doc.text("CHA LICENCE NO : ABOFS1766LCH005", addressX + 2, 37.2);
       doc.setTextColor(0, 0, 0);
 
       let yPos = 45;
@@ -105,15 +84,9 @@ const FileCoverGenerator = ({ jobNo, children }) => {
       // Mapping Data
       const invoice = data.invoices?.[0] || {};
       const sbNo = data.sb_no || "";
-      const sbDate = data.sb_date
-        ? new Date(data.sb_date).toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })
-        : "";
+      const sbDate = formatDate(data.sb_date);
       const invoiceNo = invoice.invoiceNumber || "";
-      const invoiceDate = invoice.invoiceDate || ""; // Assuming it is formatted or needs formatting
+      const invoiceDate = formatDate(invoice.invoiceDate);
       const pod = data.port_of_discharge || "";
 
       // Packages
@@ -126,47 +99,35 @@ const FileCoverGenerator = ({ jobNo, children }) => {
       const grossWeight = `${data.gross_weight_kg || "0"} KGS`;
       const netWeight = `${data.net_weight_kg || "0"} KGS`;
 
-      // LEO Date & Ref No
-      // LEO Date lookup in milestones or statusDetails
-      const leoMilestone = data.milestones?.find(
-        (m) => m.milestoneName === "L.E.O"
-      );
-      const leoDateRaw =
-        leoMilestone?.actualDate ||
-        data.operations?.[0]?.statusDetails?.[0]?.leoDate ||
-        "";
-      const leoDate = leoDateRaw
-        ? new Date(leoDateRaw).toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })
-        : "";
+      // LEO Date lookup in operations -> statusDetails
+      const activeOp = data.operations?.[0] || {};
+      const statusDetails = activeOp.statusDetails?.[0] || {};
+
+      const leoDateRaw = statusDetails.leoDate || "";
+      const leoDate = formatDate(leoDateRaw);
       const refNo = data.exporter_ref_no || invoiceNo; // Fallback to invoice if ref missing
 
       // EGM
       const egmNo = data.egm_no || "";
-      const egmDate = data.egm_date
-        ? new Date(data.egm_date).toLocaleDateString("en-GB")
-        : "";
+      const egmDate = formatDate(data.egm_date, { day: "2-digit", month: "2-digit", year: "numeric" }).replace(/\//g, '-');
 
       // Port Loading
       const pol = data.port_of_loading || "";
 
       // LCL/FCL and Rail/Road
       const mode = data.consignmentType || "";
-      const railing = ""; // Determine if Rail or Road provided? data.operations[0].statusDetails[0].railRoad?
+      const railing = statusDetails.railRoad || statusDetails.concorPrivate || "";
 
       doc.autoTable({
         startY: yPos,
         theme: "grid",
         styles: {
           lineColor: [255, 0, 0], // Red borders as per screenshot
-          lineWidth: 0.5,
+          lineWidth: 0.8,
           textColor: [0, 0, 0],
           font: "helvetica",
-          fontSize: 9,
-          cellPadding: 1.5, // Compact
+          fontSize: 11,
+          cellPadding: 2.5, // Compact
         },
         headStyles: {
           fillColor: [255, 255, 255],
@@ -185,7 +146,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
             {
               content: data.exporter || "",
               colSpan: 3,
-              styles: { fontStyle: "bold", fontSize: 11, textColor: [0, 0, 0] },
+              styles: { fontStyle: "bold", fontSize: 13, textColor: [0, 0, 0] },
             },
           ],
           [
@@ -211,14 +172,14 @@ const FileCoverGenerator = ({ jobNo, children }) => {
             {
               content: description,
               colSpan: 3,
-              styles: { fontStyle: "bold", fontSize: 10 },
+              styles: { fontStyle: "bold", fontSize: 12 },
             },
           ],
           [
             "Gross Weight",
             { content: grossWeight, styles: { fontStyle: "bold" } },
-            "Net Weigth",
-            { content: netWeight, styles: { fontStyle: "bold" } }, // "Net Weigth" typo in screenshot maintained? Or fixed? Let's fix it: Weight
+            "Net Weight",
+            { content: netWeight, styles: { fontStyle: "bold" } },
           ],
           [
             "LEO Date :",
@@ -238,11 +199,17 @@ const FileCoverGenerator = ({ jobNo, children }) => {
             {
               content: "LCL/FCL-SS/ICD",
               styles: { fontStyle: "boldItalic", halign: "center" },
-            }, // Static Header?
+            },
             {
               content: "Rail / Road",
               styles: { fontStyle: "boldItalic", halign: "center" },
-            }, // Static Header?
+            },
+          ],
+          [
+            "",
+            "",
+            { content: mode, styles: { fontStyle: "bold", halign: "center" } },
+            { content: railing, styles: { fontStyle: "bold", halign: "center" } },
           ],
         ],
       });
@@ -253,7 +220,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
 
       // Prepare container data
       const containers =
-        data.operations?.[0]?.containerDetails || data.containers || [];
+        data.containers?.length > 0 ? data.containers : (data.operations?.[0]?.containerDetails || []);
       // If containers empty, add one empty row
       const containerRows =
         containers.length > 0
@@ -266,28 +233,22 @@ const FileCoverGenerator = ({ jobNo, children }) => {
 
       const containerBody = containerRows.map((c) => [
         c.containerNo || "",
-        c.containerSize || c.size || "20",
+        c.containerSize || c.type || c.size || "20",
         c.sealNo || "", // Customs Seal
         sLineSealNo, // S/Line Seal (Same for all containers usually, or per container if structured differently later)
       ]);
-
-      // Add extra empty rows to match screenshot height (approx 10-12 rows)
-      const emptyRowCount = Math.max(0, 15 - containerBody.length);
-      for (let i = 0; i < emptyRowCount; i++) {
-        containerBody.push(["", "", "", ""]);
-      }
 
       doc.autoTable({
         startY: yPos,
         theme: "grid",
         styles: {
           lineColor: [255, 0, 0],
-          lineWidth: 0.5,
+          lineWidth: 0.8,
           textColor: [0, 0, 0],
           font: "helvetica",
-          fontSize: 10,
-          cellPadding: 2,
-          minCellHeight: 8,
+          fontSize: 12,
+          cellPadding: 2.5,
+          minCellHeight: 10,
         },
         head: [["Container No", "Size", "Customs Seal No", "S/Line Seal No"]],
         headStyles: {
@@ -295,7 +256,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
           textColor: [0, 0, 0], // Black text
           fontStyle: "boldItalic",
           lineColor: [255, 0, 0],
-          lineWidth: 0.5,
+          lineWidth: 0.8,
         },
         body: containerBody,
         columnStyles: {
