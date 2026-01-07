@@ -13,12 +13,6 @@ import GeneralTab from "./General/GeneralTab.js";
 import ShipmentTab from "./Shipment/ShipmentTab.js";
 import ContainerTab from "./Container/ContainerTab.js";
 import TrackingCompletedTab from "./Tracking Completed/TrackingCompletedTab.js";
-import InvoiceTab from "./Invoices/InvoiceTab.js";
-import ProductTab from "./Product/ProductTab.js";
-import ESanchitTab from "./E-sanchit/EsanchitTab.js";
-import ChargesTab from "./Charges/ChargesTab.js";
-import FinancialTab from "./Financial/FinancialTab.js";
-import OperationsTab from "./Operations/OperationsTab.jsx";
 
 // Tab Panel Component
 function TabPanel(props) {
@@ -187,85 +181,30 @@ function ExportJobsModule() {
             <Tab label="General" />
             <Tab label="Shipment" />
             {!isAir && <Tab label="Container" />}
-            <Tab label="Invoice" />
-            <Tab label="Product" />
-            <Tab label="ESanchit" />
-            <Tab label="Charges" />
-            <Tab label="Financial" />
-            <Tab label="Operations" />
             <Tab label="Tracking Completed" />
           </Tabs>
         </Box>
 
-        {/* Dynamic Content Rendering */}
-        {(() => {
-          const tabs = [
-            {
-              label: "General",
-              component: (
-                <GeneralTab
-                  job={data}
-                  formik={formik}
-                  directories={directories}
-                />
-              ),
-            },
-            {
-              label: "Shipment",
-              component: (
-                <ShipmentTab
-                  job={data}
-                  formik={formik}
-                  directories={directories}
-                />
-              ),
-            },
-            ...(!isAir
-              ? [
-                  {
-                    label: "Container",
-                    component: (
-                      <ContainerTab
-                        job={data}
-                        formik={formik}
-                        onUpdate={formik.handleSubmit}
-                      />
-                    ),
-                  },
-                ]
-              : []),
-            {
-              label: "Invoice",
-              component: (
-                <InvoiceTab formik={formik} directories={directories} />
-              ),
-            },
-            { label: "Product", component: <ProductTab formik={formik} /> },
-            { label: "ESanchit", component: <ESanchitTab formik={formik} /> },
-            {
-              label: "Charges",
-              component: <ChargesTab formik={formik} />,
-            },
-            {
-              label: "Financial",
-              component: <FinancialTab formik={formik} />,
-            },
-            {
-              label: "Operations",
-              component: <OperationsTab formik={formik} />,
-            },
-            {
-              label: "Tracking Completed",
-              component: <TrackingCompletedTab job={data} formik={formik} />,
-            },
-          ];
-
-          return (
-            <Box sx={{ p: 2 }}>
-              {tabs[activeTab] && tabs[activeTab].component}
-            </Box>
-          );
-        })()}
+        <TabPanel value={activeTab} index={0}>
+          <GeneralTab job={data} formik={formik} />
+        </TabPanel>
+        <TabPanel value={activeTab} index={1}>
+          <ShipmentTab job={data} formik={formik} />
+        </TabPanel>
+        {!isAir ? (
+          <>
+            <TabPanel value={activeTab} index={2}>
+              <ContainerTab job={data} formik={formik} />
+            </TabPanel>
+            <TabPanel value={activeTab} index={3}>
+              <TrackingCompletedTab job={data} formik={formik} />
+            </TabPanel>
+          </>
+        ) : (
+          <TabPanel value={activeTab} index={2}>
+            <TrackingCompletedTab job={data} formik={formik} />
+          </TabPanel>
+        )}
 
         <ExportJobFooter
           onUpdate={formik.handleSubmit}
