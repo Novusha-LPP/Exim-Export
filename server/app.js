@@ -90,6 +90,7 @@ app.use(
       "http://localhost:5173",
       "http://test-ssl-exim.s3-website.ap-south-1.amazonaws.com",
       "http://exim-export.s3-website.ap-south-1.amazonaws.com",
+      "https://export.alvision.in",
     ],
     credentials: true,
     // Allow custom headers for audit trail
