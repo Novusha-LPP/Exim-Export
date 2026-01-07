@@ -215,8 +215,8 @@ const FileCoverGenerator = ({ jobNo, children }) => {
       });
 
       // Second Table: Container Details
-      // Need to adjust startY
-      yPos = doc.lastAutoTable.finalY + 0.5; // connect tables? screenshot shows connected.
+      // Need to adjust startY with a prominent gap
+      yPos = doc.lastAutoTable.finalY + 6;
 
       // Prepare container data
       const containers =
@@ -238,6 +238,25 @@ const FileCoverGenerator = ({ jobNo, children }) => {
         sLineSealNo, // S/Line Seal (Same for all containers usually, or per container if structured differently later)
       ]);
 
+      // Dynamic scaling logic to fit everything on one A4 page properly
+      const containerCount = containerBody.length;
+      let dynamicFontSize = 12;
+      let dynamicPadding = 3;
+      let dynamicMinHeight = 10;
+
+      if (containerCount > 20) {
+        dynamicFontSize = 8;
+        dynamicPadding = 1;
+        dynamicMinHeight = 6;
+      } else if (containerCount > 12) {
+        dynamicFontSize = 9.5;
+        dynamicPadding = 1.5;
+        dynamicMinHeight = 7.5;
+      } else if (containerCount < 5) {
+        // Stretch slightly more for very few containers
+        dynamicMinHeight = 12;
+      }
+
       doc.autoTable({
         startY: yPos,
         theme: "grid",
@@ -246,14 +265,14 @@ const FileCoverGenerator = ({ jobNo, children }) => {
           lineWidth: 0.8,
           textColor: [0, 0, 0],
           font: "helvetica",
-          fontSize: 12,
-          cellPadding: 2.5,
-          minCellHeight: 10,
+          fontSize: dynamicFontSize,
+          cellPadding: dynamicPadding,
+          minCellHeight: dynamicMinHeight,
         },
         head: [["Container No", "Size", "Customs Seal No", "S/Line Seal No"]],
         headStyles: {
           fillColor: [255, 255, 255],
-          textColor: [0, 0, 0], // Black text
+          textColor: [0, 0, 0],
           fontStyle: "boldItalic",
           lineColor: [255, 0, 0],
           lineWidth: 0.8,
@@ -265,6 +284,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
           2: { width: 60, fontStyle: "bold" },
           3: { width: 60 },
         },
+        margin: { bottom: 10 },
       });
 
       // Instead of saving directly, create a blob and open a preview window
