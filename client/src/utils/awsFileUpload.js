@@ -1,4 +1,6 @@
-import AWS from "aws-sdk";
+import axios from "axios";
+
+const API_URL = import.meta.env.VITE_API_STRING;
 
 export const handleFileUpload = async (
   e,
@@ -13,28 +15,21 @@ export const handleFileUpload = async (
   }
 
   try {
-    const s3 = new AWS.S3({
-      accessKeyId: import.meta.env.VITE_ACCESS_KEY,
-      secretAccessKey: import.meta.env.VITE_SECRET_ACCESS_KEY,
-      region: "ap-south-1",
+    const formData = new FormData();
+    formData.append("folderName", folderName);
+
+    // Append all files
+    for (let i = 0; i < e.target.files.length; i++) {
+      formData.append("files", e.target.files[i]);
+    }
+
+    const response = await axios.post(`${API_URL}/upload`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     });
 
-    const uploadedFiles = [];
-
-    for (let i = 0; i < e.target.files.length; i++) {
-      const file = e.target.files[i];
-      const params = {
-        Bucket: import.meta.env.VITE_S3_BUCKET,
-        Key: `${folderName}/${file.name}`,
-        Body: file,
-      };
-
-      // Upload the file to S3 and wait for the promise to resolve
-      const data = await s3.upload(params).promise();
-
-      // Store the S3 URL in the uploadedFiles array
-      uploadedFiles.push(data.Location);
-    }
+    const uploadedFiles = response.data.locations;
 
     // Update formik values with the uploaded file URLs
     formik.setValues((values) => ({
@@ -49,30 +44,34 @@ export const handleFileUpload = async (
     }, 3000);
   } catch (err) {
     console.error("Error uploading files:", err);
+    // Optional: show user error
+    if (err.response) {
+      console.error("Server Error:", err.response.data);
+    }
   }
 };
 
-export const uploadFileToS3 = (file, folderName) => {
-  AWS.config.update({
-    region: "ap-south-1",
-    accessKeyId: import.meta.env.VITE_ACCESS_KEY,
-    secretAccessKey: import.meta.env.VITE_SECRET_ACCESS_KEY,
+export const uploadFileToS3 = async (file, folderName) => {
+  // Kept for compatibility with other components that might use this specific function
+  // It mimics the AWS SDK v2 behavior of returning a promise that resolves to file data
+
+  const formData = new FormData();
+  formData.append("files", file);
+  formData.append("folderName", folderName);
+
+  const response = await axios.post(`${API_URL}/upload`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
   });
 
-  const s3 = new AWS.S3();
+  const location = response.data.locations[0];
 
-  const timestamp = Date.now(); // Unix timestamp in milliseconds
-  const fileExtension = file.name.substring(file.name.lastIndexOf(".")); // Get the file extension
-  const baseFileName = file.name.substring(0, file.name.lastIndexOf(".")); // Get base name without extension
-
-  const uniqueFileName = `${baseFileName}-${timestamp}${fileExtension}`;
-
-  const params = {
-    Bucket: import.meta.env.VITE_S3_BUCKET,
-    Key: `${folderName}/${uniqueFileName}`,
-    Body: file,
-    ContentType: file.type,
+  // Return structure compatible with AWS SDK .promise() result
+  return {
+    Location: location,
+    Key: location.split(".com/")[1] || `${folderName}/${file.name}`,
+    Bucket: "exim-export", // Dummy or extract if needed
+    Etag: "mock-etag",
   };
-
-  return s3.upload(params).promise();
 };
