@@ -95,6 +95,7 @@ const getDefaultItem = (section) => {
       validity: "",
       images: [],
       containerPlacementDate: "",
+      shippingLineSealNo: "",
     },
     weighmentDetails: {
       weighBridgeName: "",
@@ -145,7 +146,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
   const [query, setQuery] = useState(
     (formik.values[fieldName.split(".")[0]] &&
       getNestedValue(formik.values, fieldName)) ||
-      ""
+    ""
   );
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
@@ -177,11 +178,11 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
 
     const url = isAir
       ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-          searchVal
-        )}`
+        searchVal
+      )}`
       : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-          searchVal
-        )}`;
+        searchVal
+      )}`;
 
     const t = setTimeout(async () => {
       try {
@@ -191,8 +192,8 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -1046,6 +1047,11 @@ const OperationsTab = ({ formik }) => {
             },
             { field: "forwarderName", label: "Forwarder", width: "150px" },
             { field: "bookingNo", label: "Booking No.", width: "140px" },
+            !isAir && {
+              field: "shippingLineSealNo",
+              label: "S/Line Seal No",
+              width: "140px",
+            },
             {
               field: "bookingDate",
               label: "Booking",
@@ -1350,12 +1356,12 @@ const TableSection = ({
                         }
                         value={
                           item[col.field] === undefined ||
-                          item[col.field] === null
+                            item[col.field] === null
                             ? ""
                             : col.type === "date" ||
                               col.type === "datetime-local"
-                            ? formatDateForInput(item[col.field], col.type)
-                            : item[col.field]
+                              ? formatDateForInput(item[col.field], col.type)
+                              : item[col.field]
                         }
                         onChange={(e) =>
                           onUpdate(
@@ -1613,16 +1619,16 @@ const StatusSection = ({
             f.field === "leoUpload"
               ? "leo_uploads"
               : f.field === "eGatePassUpload"
-              ? "egate_uploads"
-              : f.field === "stuffingSheetUpload"
-              ? "stuffing_sheet_uploads"
-              : f.field === "stuffingPhotoUpload"
-              ? "stuffing_photo_uploads"
-              : f.field === "billingDocsSentUpload"
-              ? "billing_uploads"
-              : f.field === "handoverImageUpload"
-              ? "job_handover_images"
-              : "general_uploads"
+                ? "egate_uploads"
+                : f.field === "stuffingSheetUpload"
+                  ? "stuffing_sheet_uploads"
+                  : f.field === "stuffingPhotoUpload"
+                    ? "stuffing_photo_uploads"
+                    : f.field === "billingDocsSentUpload"
+                      ? "billing_uploads"
+                      : f.field === "handoverImageUpload"
+                        ? "job_handover_images"
+                        : "general_uploads"
           }
           multiple={true}
           acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
