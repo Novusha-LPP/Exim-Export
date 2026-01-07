@@ -94,8 +94,8 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         goodsFallback: [
           {
             sNo: 1,
-            containerNo: "See Container List",
-            size: "",
+            containerNo: transporter.containerNo || "See Container List",
+            size: exportJob.containers?.[0]?.size || "20/40",
             pkgs: exportJob.total_packets || "",
             description:
               productValues
@@ -328,13 +328,13 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       // Value: Shipping Bill
       doc.text(
         `${data.shippingBillNo} / ${data.shippingBillDate}`,
-        col1X + 38,
+        col1X + 42,
         yPos + 6,
         { maxWidth: col1W - 40 }
       );
 
       // Value: Port of Discharge
-      doc.text(data.portOfDischarge || "", col2X + 28, yPos + 6, {
+      doc.text(data.portOfDischarge || "", col2X + 30, yPos + 6, {
         maxWidth: col2W - 30,
       });
 
@@ -352,11 +352,27 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       doc.text("Stuffing", col1X + 1, yPos + 7);
 
       doc.setFont("helvetica", "normal");
-      doc.text("(Please Tick) : FACTORY (FS)/ICD(CFS)", col1X + 13, yPos + 7);
-      if (data.stuffingType && data.stuffingType.includes("FACTORY"))
-        doc.circle(col1X + 58, yPos + 7, 1);
-      else if (data.stuffingType && data.stuffingType.includes("ICD"))
-        doc.circle(col1X + 75, yPos + 7, 1); // Mock circle for ICD if needed
+      doc.text("(Please Tick) : FACTORY (FS)/ICD(CFS)", col1X + 14, yPos + 7);
+
+      // Circles - Adjusted positions to not overlap text
+      // Factory circle
+      if (data.stuffingType && data.stuffingType.includes("FACTORY")) {
+        doc.setLineWidth(0.5);
+        doc.circle(col1X + 70, yPos + 6, 2);
+      } else {
+        doc.setLineWidth(0.2);
+        doc.circle(col1X + 70, yPos + 6, 2);
+      }
+
+      // ICD Circle
+      if (data.stuffingType && data.stuffingType.includes("ICD")) {
+        doc.setLineWidth(0.5);
+        doc.circle(col1X + 80, yPos + 6, 2);
+      } else {
+        doc.setLineWidth(0.2);
+        doc.circle(col1X + 80, yPos + 6, 2);
+      }
+      doc.setLineWidth(0.2);
 
       const halfH = standardRowH / 2;
       doc.rect(col2X, yPos, col2W, halfH);
@@ -368,12 +384,12 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       doc.text("LEO Date :", col2X + 1, yPos + standardRowH - 1);
 
       doc.setFont("helvetica", "normal");
-      doc.text(String(data.fobValue || ""), col2X + 28, yPos + halfH - 1);
-      doc.text(data.leoDate || "", col2X + 28, yPos + standardRowH - 1);
+      doc.text(String(data.fobValue || ""), col2X + 40, yPos + halfH - 1);
+      doc.text(data.leoDate || "", col2X + 40, yPos + standardRowH - 1);
 
       yPos += standardRowH;
 
-      // --- ROW 6: Vessel / CutOff / Special ---
+      // --- ROW 6: Vessel / CutOff / Special (ADJUSTED Y) ---
       const w1 = contentWidth * 0.35;
       const w2 = contentWidth * 0.25;
       const w3 = contentWidth * 0.4;
@@ -386,17 +402,19 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       doc.rect(x3, yPos, w3, standardRowH);
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.text("VESSEL NAME AND VOYAGE", x1 + 1, yPos + 6);
-      doc.text("CUT OFF DATE & TIME", x2 + 1, yPos + 6);
-      doc.text("SPECIAL INSTRUCTIONS", x3 + 1, yPos + 6);
+      doc.setFontSize(7);
+      // HEADERS TOP
+      doc.text("VESSEL NAME AND VOYAGE", x1 + 1, yPos + 3);
+      doc.text("CUT OFF DATE & TIME", x2 + 1, yPos + 3);
+      doc.text("SPECIAL INSTRUCTIONS", x3 + 1, yPos + 3);
 
       doc.setFont("helvetica", "normal");
-      doc.text(data.vesselNameVoyage || "", x1 + 1, yPos + 6, {
+      // VALUES BOTTOM
+      doc.text(data.vesselNameVoyage || "", x1 + 1, yPos + 8, {
         maxWidth: w1 - 2,
       });
-      doc.text(data.cutOffDate || "", x2 + 1, yPos + 6, { maxWidth: w2 - 2 });
-      doc.text(data.specialInstructions || "", x3 + 1, yPos + 6, {
+      doc.text(data.cutOffDate || "", x2 + 1, yPos + 8, { maxWidth: w2 - 2 });
+      doc.text(data.specialInstructions || "", x3 + 1, yPos + 8, {
         maxWidth: w3 - 2,
       });
 
@@ -409,23 +427,28 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       doc.setFontSize(7);
       doc.text("Factory stuffing arranged by", leftMargin, yPos);
       if (data.stuffingArrangedBy) {
-        doc.text(data.stuffingArrangedBy, leftMargin, yPos + 3);
+        doc.setFont("helvetica", "bold");
+        doc.text(data.stuffingArrangedBy, leftMargin, yPos + 4);
+        doc.setFont("helvetica", "normal");
       }
 
-      doc.text("HPCSL SHIPPER", leftMargin + 32, yPos);
+      doc.text("HPCSL SHIPPER", leftMargin + 45, yPos);
       if (data.hpcslShipper) {
-        doc.text(data.hpcslShipper, leftMargin + 32, yPos + 3);
+        doc.text(data.hpcslShipper, leftMargin + 45, yPos + 4);
       }
 
-      doc.text("Type:LCL/FCL/ODC:Yes/No", leftMargin + 75, yPos);
+      doc.text("Type:LCL/FCL/ODC:Yes/No", leftMargin + 85, yPos);
       // Try to mark Type?
 
-      doc.text("Payment Type PD ACCOUNT", leftMargin + 125, yPos);
+      // Payment Type overlap fix: Move label/value apart
+      doc.text("Payment Type PD ACCOUNT", leftMargin + 130, yPos);
       if (data.paymentType) {
-        doc.text(data.paymentType, leftMargin + 155, yPos);
+        doc.setFont("helvetica", "bold");
+        doc.text(data.paymentType, leftMargin + 165, yPos);
+        doc.setFont("helvetica", "normal");
       }
 
-      yPos += 4;
+      yPos += 5;
       doc.line(leftMargin, yPos, pageWidth - rightMargin, yPos);
       yPos += 5;
 
@@ -478,16 +501,21 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
           lineColor: [0, 0, 0],
           cellPadding: 1,
         },
+        // BOLD BODY TEXT
+        bodyStyles: {
+          fontStyle: "bold",
+          textColor: 0,
+        },
         columnStyles: {
-          0: { cellWidth: 10, halign: "center" },
+          0: { cellWidth: 8, halign: "center" },
           1: { cellWidth: 32, halign: "center" },
-          2: { cellWidth: 12, halign: "center" },
-          3: { cellWidth: 28, halign: "center" },
+          2: { cellWidth: 10, halign: "center" },
+          3: { cellWidth: 15, halign: "center" },
           4: { cellWidth: "auto", halign: "left" },
-          5: { cellWidth: 18, halign: "center" },
-          6: { cellWidth: 18, halign: "center" },
+          5: { cellWidth: 15, halign: "center" },
+          6: { cellWidth: 15, halign: "center" },
           7: { cellWidth: 18, halign: "center" },
-          8: { cellWidth: 20, halign: "center" },
+          8: { cellWidth: 18, halign: "center" },
         },
       });
 
@@ -527,7 +555,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         });
       }
 
-      yPos += 18;
+      yPos += 30;
 
       // Signatures
       doc.setFont("helvetica", "bold");
@@ -548,7 +576,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         yPos + 1
       );
 
-      yPos += 10;
+      yPos += 30;
 
       // Bottom Box
       doc.rect(leftMargin, yPos, contentWidth, 12);
