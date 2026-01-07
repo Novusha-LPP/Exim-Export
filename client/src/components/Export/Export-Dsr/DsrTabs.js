@@ -21,24 +21,28 @@ function DsrTabs() {
 
   return (
     <SelectedYearContext.Provider value={{ selectedYear, setSelectedYear }}>
-      <Box sx={{ width: "100%" }}>
-        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-          <Tabs
-            value={tabValue}
-            onChange={handleChange}
-            aria-label="basic tabs example"
-          >
-            <Tab label="Dashboard" {...a11yProps(0)} key={0} />
-            <Tab label="Jobs" {...a11yProps(1)} key={1} />
-          </Tabs>
+      {window.location.pathname.startsWith("/export-dsr") ? (
+        <Box sx={{ width: "100%" }}>
+          <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+            <Tabs
+              value={tabValue}
+              onChange={handleChange}
+              aria-label="basic tabs example"
+            >
+              <Tab label="Dashboard" {...a11yProps(0)} key={0} />
+              <Tab label="Jobs" {...a11yProps(1)} key={1} />
+            </Tabs>
+          </Box>
+          <CustomTabPanel value={tabValue} index={0}>
+            <ExportDashboard />
+          </CustomTabPanel>
+          <CustomTabPanel value={tabValue} index={1}>
+            <ExportJobsTable />
+          </CustomTabPanel>
         </Box>
-        <CustomTabPanel value={tabValue} index={0}>
-          <ExportDashboard />
-        </CustomTabPanel>
-        <CustomTabPanel value={tabValue} index={1}>
-          <ExportJobsTable />
-        </CustomTabPanel>
-      </Box>
+      ) : (
+        <ExportJobsTable />
+      )}
     </SelectedYearContext.Provider>
   );
 }
