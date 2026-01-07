@@ -5,11 +5,15 @@ import AutocompleteSelect from "../../common/AutocompleteSelect.js";
 import { Menu, MenuItem } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ExportChecklistGenerator from "./StandardDocuments/ExportChecklistGenerator";
+<<<<<<< HEAD
 import ConsignmentNoteGenerator from "./StandardDocuments/ConsignmentNoteGenerator";
 import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
 import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharGenerator";
 import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
 import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
+=======
+import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
+>>>>>>> f16f033 (feat: Implement dedicated modules for Export DSR job details including Documentation, ESanchit, Operation, and Charges.)
 
 // Helper function
 const toUpper = (str) => (str || "").toUpperCase();
@@ -107,8 +111,13 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
+<<<<<<< HEAD
               ? data
               : []
+=======
+            ? data
+            : []
+>>>>>>> f16f033 (feat: Implement dedicated modules for Export DSR job details including Documentation, ESanchit, Operation, and Charges.)
         );
       } catch {
         setOpts([]);
@@ -471,6 +480,7 @@ const LogisysEditableHeader = ({
           />
         </div>
 
+<<<<<<< HEAD
         {/* Loading Port */}
         <div style={{ flex: "1 1 120px", minWidth: 110 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Port Of Loading</div>
@@ -481,6 +491,8 @@ const LogisysEditableHeader = ({
           />
         </div>
 
+=======
+>>>>>>> f16f033 (feat: Implement dedicated modules for Export DSR job details including Documentation, ESanchit, Operation, and Charges.)
         {/* Consignment Type */}
         <div style={{ flex: "1 1 120px", minWidth: 100 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Consignment Type</div>
@@ -582,6 +594,7 @@ const LogisysEditableHeader = ({
                 File Cover
               </MenuItem>
             </FileCoverGenerator>
+<<<<<<< HEAD
 
             <ConsignmentNoteGenerator jobNo={formik.values.job_no}>
               <MenuItem
@@ -621,6 +634,8 @@ const LogisysEditableHeader = ({
                 Forwarding Note (CONCOR)
               </MenuItem>
             </ConcorForwardingNoteGenerator>
+=======
+>>>>>>> f16f033 (feat: Implement dedicated modules for Export DSR job details including Documentation, ESanchit, Operation, and Charges.)
           </Menu>
         </div>
       </div>
