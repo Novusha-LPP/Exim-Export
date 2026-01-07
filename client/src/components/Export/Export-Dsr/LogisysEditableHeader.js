@@ -5,6 +5,7 @@ import AutocompleteSelect from "../../common/AutocompleteSelect.js";
 import { Menu, MenuItem } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ExportChecklistGenerator from "./StandardDocuments/ExportChecklistGenerator";
+import ConsignmentNoteGenerator from "./StandardDocuments/ConsignmentNoteGenerator";
 import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
 
 // Helper function
@@ -568,6 +569,16 @@ const LogisysEditableHeader = ({
                 File Cover
               </MenuItem>
             </FileCoverGenerator>
+
+            <ConsignmentNoteGenerator jobNo={formik.values.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => setAnchorEl(null)}
+                sx={{ fontSize: 13, minWidth: 150 }}
+              >
+                Consignment Note
+              </MenuItem>
+            </ConsignmentNoteGenerator>
           </Menu>
         </div>
       </div>
