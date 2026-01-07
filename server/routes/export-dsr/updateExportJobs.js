@@ -345,9 +345,29 @@ router.get("/:job_no(.*)", async (req, res, next) => {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
 
-    // Validate that this looks like a job_no (contains / or is a known pattern)
-    // This prevents catching requests like /currencies, /consignees, etc.
-    if (!job_no || (typeof job_no === "string" && !job_no.includes("/"))) {
+    // List of prefixes that are certainly NOT job numbers
+    const apiPrefixes = [
+      "dsr",
+      "currency-rates",
+      "gateway-ports",
+      "districts",
+      "licenses",
+      "exports",
+      "dashboard-stats",
+      "custom-house-list",
+      "feedback",
+      "getDrawback",
+      "getCthsExport",
+      "upload",
+    ];
+
+    const firstSegment = (job_no.split("/")[0] || "").toLowerCase();
+
+    if (
+      !job_no ||
+      apiPrefixes.includes(firstSegment) ||
+      (typeof job_no === "string" && !job_no.includes("/"))
+    ) {
       return next();
     }
 
@@ -462,8 +482,27 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
 
-    // Validate that this looks like a job_no
-    if (!job_no || (typeof job_no === "string" && !job_no.includes("/"))) {
+    const apiPrefixes = [
+      "dsr",
+      "currency-rates",
+      "gateway-ports",
+      "districts",
+      "licenses",
+      "exports",
+      "dashboard-stats",
+      "custom-house-list",
+      "feedback",
+      "getDrawback",
+      "getCthsExport",
+      "upload",
+    ];
+    const firstSegment = (job_no.split("/")[0] || "").toLowerCase();
+
+    if (
+      !job_no ||
+      apiPrefixes.includes(firstSegment) ||
+      (typeof job_no === "string" && !job_no.includes("/"))
+    ) {
       return next();
     }
 
