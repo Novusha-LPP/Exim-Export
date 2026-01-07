@@ -64,6 +64,7 @@ import getHoToConsoleNames from "./routes/export-dsr/getHoToConsoleNames.js";
 import rodtepReRoutes from "./routes/export-dsr/rodtepReRoutes.js";
 import generateDSRReport from "./routes/export-dsr/generateDSRReport.mjs";
 import openPointsRoutes from "./routes/open-points/openPointsRoutes.mjs";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 process.on("uncaughtException", (error) => {
   logger.error(`Uncaught Exception: ${error.message}`, { stack: error.stack });
@@ -190,6 +191,7 @@ app.use("/api", getRosctl_R);
 app.use("/api", rodtepReRoutes);
 app.use(generateDSRReport);
 app.use(openPointsRoutes);
+app.use("/api", uploadRoutes);
 
 // s3 route
 
