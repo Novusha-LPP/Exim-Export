@@ -111,8 +111,8 @@ const MONGODB_URI =
   process.env.NODE_ENV === "production"
     ? process.env.PROD_MONGODB_URI
     : process.env.NODE_ENV === "server"
-    ? process.env.SERVER_MONGODB_URI
-    : process.env.DEV_MONGODB_URI;
+      ? process.env.SERVER_MONGODB_URI
+      : process.env.DEV_MONGODB_URI;
 
 // MongoDB connection
 mongoose.set("strictQuery", true);
@@ -201,6 +201,8 @@ app.use("/api", updateExportJobs);
 app.get("/", (req, res) => {
   res.send("Export Jobs API Running");
 });
+
+app.use("/api", updateExportJobs);
 
 // Graceful shutdown
 process.on("SIGINT", async () => {
