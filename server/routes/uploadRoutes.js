@@ -29,7 +29,13 @@ const secretAccessKey =
   process.env.REACT_APP_SECRET_ACCESS_KEY || process.env.SECRET_ACCESS_KEY;
 const bucketName = process.env.REACT_APP_S3_BUCKET || process.env.S3_BUCKET;
 
-
+// Debugging output (masked)
+console.log("AWS Setup:", {
+  region,
+  bucketName: bucketName ? bucketName : "MISSING",
+  accessKeyId: accessKeyId ? "****" : "MISSING",
+  secretAccessKey: secretAccessKey ? "****" : "MISSING",
+});
 
 const s3Client = new S3Client({
   region: region,
