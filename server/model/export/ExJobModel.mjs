@@ -1032,11 +1032,7 @@ const exportJobSchema = new mongoose.Schema(
     // Export Checklist Additional Fields - Missing Fields Added
     cha: {
       type: String,
-<<<<<<< HEAD
       default: "SURAJ FORWARDERS & SHIPPING AGENCIES",
-=======
-      default: "Suraj Forwarders",
->>>>>>> be8e330 (consignment dome)
       trim: true,
     },
     masterblno: { type: String, trim: true }, // Master BL Number

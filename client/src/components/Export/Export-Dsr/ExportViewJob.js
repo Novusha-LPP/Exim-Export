@@ -130,8 +130,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-              ? data
-              : []
+            ? data
+            : []
         );
       } catch {
         setOpts([]);
@@ -278,6 +278,16 @@ function GatewayPortDropdown({
   );
 }
 
+const LogisysEditableHeader = ({
+  formik,
+  onUpdate,
+  directories,
+  exportJobsUsers = [],
+  onDocsMenuOpen,
+}) => {
+  const [snackbar, setSnackbar] = useState(false);
+  const { user } = useContext(UserContext);
+  const isNewJob = !formik.values.job_no;
 
   const handleCopyText = (text) => {
     navigator.clipboard.writeText(text || "");
@@ -542,7 +552,10 @@ function GatewayPortDropdown({
               { value: "Pink - ExBond", label: "Pink - ExBond" },
               { value: "SEZ - Regular", label: "SEZ - Regular" },
               { value: "SEZ - ExBond", label: "SEZ - ExBond" },
-              { value: "SEZ - DTA Procurement", label: "SEZ - DTA Procurement" },
+              {
+                value: "SEZ - DTA Procurement",
+                label: "SEZ - DTA Procurement",
+              },
               { value: "Red", label: "Red" },
             ]}
             onChange={formik.handleChange}
@@ -573,6 +586,7 @@ function GatewayPortDropdown({
               cursor: "pointer",
             }}
             type="button"
+            onClick={onDocsMenuOpen}
           >
             Standard Documents
           </button>
@@ -851,16 +865,16 @@ function LogisysExportViewJob() {
             },
             ...(toUpper(formik.values.transportMode) !== "AIR"
               ? [
-                {
-                  label: "Container",
-                  component: (
-                    <ContainerTab
-                      formik={formik}
-                      onUpdate={formik.handleSubmit}
-                    />
-                  ),
-                },
-              ]
+                  {
+                    label: "Container",
+                    component: (
+                      <ContainerTab
+                        formik={formik}
+                        onUpdate={formik.handleSubmit}
+                      />
+                    ),
+                  },
+                ]
               : []),
             {
               label: "Invoice",

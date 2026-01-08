@@ -129,26 +129,13 @@ const AnnexureCGenerator = ({ jobNo, children }) => {
         const lineLength = rightX - valueX;
         const dateCenterX = valueX + lineLength / 2;
 
-        const valueStr = String(value || "");
-        const splitValue = pdf.splitTextToSize(valueStr, lineLength);
+        pdf.text(String(value || ""), dateCenterX, yPos, { align: "center" });
 
-        pdf.text(splitValue, dateCenterX, yPos, { align: "center" });
-
-        // Calculate height increase
-        const lineSpacing = FONT_SIZES.body * 1.2;
-        const extraLines = Math.max(0, splitValue.length - 1);
-        const extraHeight = extraLines * lineSpacing;
-
-        // Draw Underline starting exactly after the label, under the LAST line
+        // Draw Underline starting exactly after the label
         pdf.setLineWidth(0.5);
-        pdf.line(
-          valueX,
-          yPos + extraHeight + 2,
-          rightX,
-          yPos + extraHeight + 2
-        );
+        pdf.line(valueX, yPos + 2, rightX, yPos + 2);
 
-        yPos += 25 + extraHeight; // Standard Spacing + Extra
+        yPos += 25; // Standard Spacing
       };
 
       // 1. S/B No

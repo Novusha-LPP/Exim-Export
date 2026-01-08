@@ -306,7 +306,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       doc.text("Final Destination :", col2X + 1, yPos + row2H / 2, { baseline: 'middle' });
 
       doc.setFont("helvetica", "normal");
-      doc.text(data.cha || "Suraj Forwarders", col1X + 25, yPos + row2H / 2, {
+      doc.text(data.cha || "SURAJ FORWARDERS & SHIPPING AGENCIES", col1X + 25, yPos + 6, {
         maxWidth: col1W - 26,
         baseline: 'middle'
       });
