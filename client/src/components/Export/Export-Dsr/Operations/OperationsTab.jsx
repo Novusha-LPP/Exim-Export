@@ -1524,7 +1524,271 @@ const OperationsTab = ({ formik }) => {
       </div>
 
       {/* Main Content Area */}
-      <div style={styles.contentArea}>{renderedContent}</div>
+      <div style={styles.contentArea}>
+        {/* Section: Transporter Details */}
+        <TableSection
+          title="Transporter Details"
+          data={activeOperation.transporterDetails || []}
+          formik={formik}
+          activeOpIndex={activeOpIndex}
+          columns={[
+            {
+              field: "transporterName",
+              label: "Transporter Name",
+              width: "110px",
+            },
+            { field: "vehicleNo", label: "Vehicle No.", width: "10px" },
+            !isAir && {
+              field: "containerNo",
+              label: "Container No.",
+              width: "140px",
+            },
+            { field: "driverName", label: "Driver Name", width: "150px" },
+            { field: "contactNo", label: "Contact No.", width: "120px" },
+            {
+              field: "noOfPackages",
+              label: "Packages",
+              type: "number",
+              width: "80px",
+            },
+            {
+              field: "grossWeightKgs",
+              label: "Gross Wt (KG)",
+              type: "number",
+              width: "100px",
+            },
+            {
+              field: "netWeightKgs",
+              label: "Net Wt (KG)",
+              type: "number",
+              width: "100px",
+            },
+            {
+              field: "cartingDate",
+              label: "Carting",
+              type: "date",
+              width: "130px",
+            },
+            {
+              field: "gateInDate",
+              label: "Gate-In",
+              type: "date",
+              width: "130px",
+            },
+            {
+              field: "images",
+              label: "Images",
+              type: "upload",
+              width: "180px",
+              bucketPath: "transporter_images",
+            },
+          ].filter(Boolean)}
+          section="transporterDetails"
+          onUpdate={updateField}
+          onAdd={addItem}
+          onDelete={deleteItem}
+        />
+
+        {/* Section: Container Details */}
+        {!isAir && (
+          <TableSection
+            title="Container Details"
+            data={activeOperation.containerDetails || []}
+            formik={formik}
+            activeOpIndex={activeOpIndex}
+            columns={[
+              { field: "containerNo", label: "Container No.", width: "140px" },
+              { field: "containerSize", label: "Size (FT)", width: "80px" },
+              {
+                field: "containerType",
+                label: "Container Type",
+                width: "100px",
+              },
+              {
+                field: "cargoType",
+                label: "Cargo Type",
+                width: "100px",
+                type: "select",
+                options: [
+                  { value: "Gen", label: "Gen" },
+                  { value: "Haz", label: "Haz" },
+                ],
+              },
+              {
+                field: "maxGrossWeightKgs",
+                label: "Max Gross (KG)",
+                type: "number",
+                width: "100px",
+              },
+              {
+                field: "tareWeightKgs",
+                label: "Tare Wt (KG)",
+                type: "number",
+                width: "100px",
+              },
+              {
+                field: "maxPayloadKgs",
+                label: "Max Payload (KG)",
+                type: "number",
+                width: "100px",
+              },
+              {
+                field: "images",
+                label: "Images",
+                type: "upload",
+                width: "180px",
+                bucketPath: "container_images",
+              },
+            ]}
+            section="containerDetails"
+            onUpdate={updateField}
+            onAdd={addItem}
+            onDelete={deleteItem}
+          />
+        )}
+
+        {/* Section: Booking Details */}
+        <TableSection
+          title="Booking Details"
+          data={activeOperation.bookingDetails || []}
+          formik={formik}
+          activeOpIndex={activeOpIndex}
+          columns={[
+            {
+              field: "shippingLineName",
+              label: isAir ? "Air Line" : "Shipping Line",
+              width: "200px",
+              type: "shipping-dropdown",
+            },
+            { field: "forwarderName", label: "Forwarder", width: "150px" },
+            { field: "bookingNo", label: "Booking No.", width: "140px" },
+            !isAir && {
+              field: "shippingLineSealNo",
+              label: "S/Line Seal No",
+              width: "140px",
+            },
+            {
+              field: "bookingDate",
+              label: "Booking",
+              type: "date",
+              width: "130px",
+            },
+            {
+              field: "vesselName",
+              label: isAir ? "Flight Name" : "Vessel",
+              width: "150px",
+            },
+            !isAir && { field: "voyageNo", label: "Voyage", width: "100px" },
+            !isAir && {
+              field: "portOfLoading",
+              label: "POL",
+              width: "120px",
+              type: "gatewaydropdown",
+            },
+            !isAir && {
+              field: "handoverLocation",
+              label: "Empty Pickup / Drop Location",
+              width: "140px",
+            },
+            !isAir && {
+              field: "validity",
+              label: "Booking Valid Till",
+              type: "date",
+              width: "130px",
+            },
+            {
+              field: "images",
+              label: "Images",
+              type: "upload",
+              width: "180px",
+              bucketPath: "booking_images",
+            },
+          ].filter(Boolean)}
+          section="bookingDetails"
+          onUpdate={updateField}
+          onAdd={addItem}
+          onDelete={deleteItem}
+        />
+
+        {/* Section: Weighment Details */}
+        {!isAir && (
+          <TableSection
+            title="Weighment Details"
+            data={activeOperation.weighmentDetails || []}
+            formik={formik}
+            activeOpIndex={activeOpIndex}
+            columns={[
+              {
+                field: "weighBridgeName",
+                label: "Weighbridge Name",
+                width: "180px",
+              },
+              { field: "regNo", label: "Reg No.", width: "120px" },
+              {
+                field: "address",
+                label: "Weighbridge Address",
+                width: "180px",
+              },
+              {
+                field: "dateTime",
+                label: "Weighment Date & Time",
+                type: "datetime-local",
+                width: "160px",
+              },
+              { field: "vehicleNo", label: "Vehicle No.", width: "120px" },
+              { field: "containerNo", label: "Container No.", width: "140px" },
+              { field: "size", label: "Cntr Size", width: "80px" },
+              {
+                field: "grossWeight",
+                label: "Gross Wt (KG)",
+                type: "number",
+                width: "90px",
+              },
+              {
+                field: "tareWeight",
+                label: "Tare Wt (KG)",
+                type: "number",
+                width: "90px",
+              },
+              {
+                field: "netWeight",
+                label: "Net Wt (KG)",
+                type: "number",
+                width: "90px",
+              },
+              {
+                field: "images",
+                label: "Images",
+                type: "upload",
+                width: "180px",
+                bucketPath: "weighment_images",
+              },
+            ]}
+            section="weighmentDetails"
+            onUpdate={updateField}
+            onAdd={addItem}
+            onDelete={deleteItem}
+          />
+        )}
+
+        {/* Section: Status Details (Special Layout since it has many dates) */}
+        <StatusSection
+          title="Status Tracking"
+          data={activeOperation.statusDetails || []}
+          section="statusDetails"
+          onUpdate={updateField}
+          onAdd={addItem}
+          onDelete={deleteItem}
+          formik={formik}
+          activeOpIndex={activeOpIndex}
+          isAir={isAir}
+          consignmentType={toUpper(formik.values.consignmentType || "")}
+          customHouse={toUpper(formik.values.custom_house || "")}
+        />
+
+        {/* New Job Progress Section */}
+        {/* <JobDetailedStatusSection formik={formik} /> */}
+      </div>
     </div>
   );
 };
@@ -1693,6 +1957,13 @@ const TableSection = ({
                       </div>
                     ) : col.type === "shipping-dropdown" ? (
                       <ShippingLineDropdownField
+                        fieldName={`operations.${activeOpIndex}.${section}.${rowIdx}.${col.field}`}
+                        formik={formik}
+                        placeholder={col.placeholder || ""}
+                      />
+                    ) : col.type === "gatewaydropdown" ||
+                      col.type === "gateway-dropdown" ? (
+                      <GatewayPortDropdown
                         fieldName={`operations.${activeOpIndex}.${section}.${rowIdx}.${col.field}`}
                         formik={formik}
                         placeholder={col.placeholder || ""}

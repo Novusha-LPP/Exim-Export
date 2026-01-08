@@ -27,11 +27,29 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       const exportJob = response.data;
 
       // Calculate/Extract values
+      // Calculate/Extract values
       const invoice = exportJob.invoices?.[0] || {};
-      const productValues = exportJob.products || [];
+      const productValues = invoice.products || exportJob.products || [];
       const containerDetails = exportJob.containers || [];
       const operations = exportJob.operations?.[0] || {};
       const transporter = operations.transporterDetails?.[0] || {};
+      const booking = operations.bookingDetails?.[0] || {};
+      const consignee = exportJob.consignees?.[0] || {};
+      const statusDetails = operations.statusDetails?.[0] || {};
+
+      // Calculate Total Invoice Value (FOB/CIF)
+      // Calculate Total Invoice Value (FOB/CIF)
+      const totalInvoiceValue = (exportJob.invoices || []).reduce(
+        (sum, inv) => {
+          const val = parseFloat(inv.invoiceValue) || 0;
+          return sum + val;
+        },
+        0
+      );
+
+      // Helper to get total pkgs if not in container
+      const totalPkgs = exportJob.total_no_of_pkgs || 0;
+      const pkgUnit = exportJob.package_unit || "PKG";
 
       // Prepare Data Object
       const data = {
@@ -42,13 +60,17 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         exporterNameAddress: `${exportJob.exporter || ""}\n${
           exportJob.exporter_address || ""
         }`,
-        consigneeNameAddress: `${exportJob.consignees.consignee_name || ""}\n${
-          exportJob.consignees.consignee_address || ""
+        consigneeNameAddress: `${consignee.consignee_name || ""}\n${
+          consignee.consignee_address || ""
         }`,
-        agentCha: exportJob.cha_name || "",
-        finalDestination: exportJob.country_of_final_destination || "",
-        finalDestCountry: exportJob.country_of_destination || "",
-        gatewayPort: exportJob.gateway_port || "",
+        agentCha: exportJob.cha || exportJob.cha_name || "",
+        finalDestination:
+          exportJob.final_destination || exportJob.destination_port || "",
+        finalDestCountry:
+          exportJob.destination_country ||
+          exportJob.country_of_destination ||
+          "",
+        gatewayPort: booking.portOfLoading || exportJob.gateway_port || "",
         shippingBillNo: exportJob.sb_no || "",
         shippingBillDate: formatDate(exportJob.sb_date),
         portOfDischarge: exportJob.port_of_discharge || "",
@@ -57,8 +79,8 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
           (exportJob.goods_stuffed_at === "Factory"
             ? "FACTORY (FS)"
             : "ICD(CFS)"),
-        fobValue: invoice.fobValueINR || exportJob.fob_value_inr || "",
-        leoDate: formatDate(exportJob.leo_date),
+        fobValue: totalInvoiceValue || "",
+        leoDate: formatDate(statusDetails.leoDate || exportJob.leo_date),
         vesselNameVoyage: `${exportJob.vessel_name || ""} ${
           exportJob.voyage_no ? "/" + exportJob.voyage_no : ""
         }`,
@@ -66,7 +88,8 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         specialInstructions: exportJob.remarks || "",
 
         // --- Extra Mapped Fields ---
-        transportMode: exportJob.transport_mode || "",
+        transportMode:
+          exportJob.transportMode || exportJob.transport_mode || "",
         ccnNo: exportJob.ccn_no || "",
         railOperator: transporter.transporterName || transporter.name || "",
         paymentType:
@@ -74,36 +97,31 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         hpcslShipper: exportJob.hpcsl_shipper || "",
         stuffingArrangedBy: exportJob.stuffing_arranged_by || "",
         remarks: exportJob.remarks || "",
-        bookingTime: formatDate(exportJob.job_date), // Or booking date/time if available
+        bookingTime: formatDate(exportJob.job_date),
 
         goods: containerDetails.map((cnt, i) => ({
           sNo: i + 1,
           containerNo: cnt.containerNo || "",
           size: cnt.size || cnt.type?.match(/\d+/)?.[0] || "",
-          pkgs: `${cnt.packetCount || ""} ${cnt.packetType || ""}`,
-          description: productValues
-            .map((p) => p.description)
-            .join(", ")
-            .substring(0, 100),
-          tareWt: cnt.tareWeight || "",
-          grossWt: cnt.grossWeight || "",
+          pkgs: `${exportJob.total_no_of_pkgs || ""} ${
+            exportJob.package_unit || "PKG"
+          }`,
+          description: cnt.type || "",
+          tareWt: cnt.tareWeightKgs || cnt.tareWeight || "",
+          grossWt: exportJob.gross_weight_kg || "",
           customsSeal: cnt.sealNo || "",
-          shipperSeal: cnt.agentSealNo || "",
+          shipperSeal: booking.shippingLineSealNo || cnt.agentSealNo || "",
         })),
 
         goodsFallback: [
           {
             sNo: 1,
             containerNo: transporter.containerNo || "See Container List",
-            size: exportJob.containers?.[0]?.size || "20/40",
-            pkgs: exportJob.total_packets || "",
-            description:
-              productValues
-                .map((p) => p.description)
-                .join(", ")
-                .substring(0, 50) + "...",
+            size: exportJob.containers?.[0]?.type?.match(/\d+/)?.[0] || "20/40",
+            pkgs: `${totalPkgs} ${pkgUnit}`,
+            description: exportJob.containers?.[0]?.type || "Container",
             tareWt: "",
-            grossWt: exportJob.gross_weight || "",
+            grossWt: exportJob.gross_weight_kg || exportJob.gross_weight || "",
             customsSeal: "",
             shipperSeal: "",
           },
@@ -277,18 +295,19 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       doc.text("Final Destination :", col2X + 1, yPos + 6);
 
       doc.setFont("helvetica", "normal");
-      doc.text(data.agentCha || "", col1X + 25, yPos + 6, {
+      doc.text(data.cha || "Suraj Forwarders", col1X + 25, yPos + 6, {
         maxWidth: col1W - 26,
       });
       doc.text(data.finalDestination || "", col2X + 28, yPos + 6, {
         maxWidth: col2W - 65,
       });
 
+      // Moved Country to Left to avoid overlap
       doc.setFont("helvetica", "bold");
-      doc.text("Country :", col2X + col2W - 20, yPos + 6);
+      doc.text("Country :", col2X + col2W - 35, yPos + 6);
       doc.setFont("helvetica", "normal");
-      doc.text(data.finalDestCountry || "", col2X + col2W - 2, yPos + 6, {
-        align: "right",
+      doc.text(data.finalDestCountry || "", col2X + col2W - 22, yPos + 6, {
+        maxWidth: 20,
       });
 
       yPos += standardRowH;
@@ -560,20 +579,20 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       // Signatures
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
-      doc.text("DATE", leftMargin, yPos);
-      doc.line(leftMargin + 10, yPos + 1, leftMargin + 40, yPos + 1);
+      doc.text("DATE", leftMargin, yPos + 20);
+      doc.line(leftMargin + 10, yPos + 20, leftMargin + 40, yPos + 20);
 
+      doc.line(
+        pageWidth - rightMargin - 70,
+        yPos + 20,
+        pageWidth - rightMargin,
+        yPos + 20
+      );
       doc.text(
         "STAMP AND SIGNATURE OF SHIPPER OR AGENT (CHA)",
         pageWidth - rightMargin,
-        yPos,
+        yPos + 25,
         { align: "right" }
-      );
-      doc.line(
-        pageWidth - rightMargin - 70,
-        yPos + 1,
-        pageWidth - rightMargin,
-        yPos + 1
       );
 
       yPos += 30;
