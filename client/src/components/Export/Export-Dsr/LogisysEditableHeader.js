@@ -8,6 +8,8 @@ import ExportChecklistGenerator from "./StandardDocuments/ExportChecklistGenerat
 import ConsignmentNoteGenerator from "./StandardDocuments/ConsignmentNoteGenerator";
 import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
 import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharGenerator";
+import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
+import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
 
 // Helper function
 const toUpper = (str) => (str || "").toUpperCase();
@@ -105,8 +107,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-              ? data
-              : []
+            ? data
+            : []
         );
       } catch {
         setOpts([]);
@@ -590,6 +592,25 @@ const LogisysEditableHeader = ({
                 Forwarding Note (THAR)
               </MenuItem>
             </ForwardingNoteTharGenerator>
+
+            <AnnexureCGenerator jobNo={formik.values.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => setAnchorEl(null)}
+                sx={{ fontSize: 13, minWidth: 150 }}
+              >
+                Annexure C
+              </MenuItem>
+            </AnnexureCGenerator>
+            <ConcorForwardingNoteGenerator jobNo={formik.values.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => setAnchorEl(null)}
+                sx={{ fontSize: 13, minWidth: 150 }}
+              >
+                Forwarding Note (CONCOR)
+              </MenuItem>
+            </ConcorForwardingNoteGenerator>
           </Menu>
         </div>
       </div>

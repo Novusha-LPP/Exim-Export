@@ -9,6 +9,8 @@ import {
   Tab,
   Snackbar,
   Divider,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { UserContext } from "../../../contexts/UserContext";
@@ -23,11 +25,11 @@ import ProductTab from "./Product/ProductTab.js";
 import TrackingCompletedTab from "./Tracking Completed/TrackingCompletedTab.js";
 import ChargesTab from "./Charges/ChargesTab.js";
 import ESanchitTab from ".//E-sanchit/EsanchitTab.js";
-import ExportChecklistGenerator from "./Checklist/ExportChecklistGenerator.js";
+import ExportChecklistGenerator from "./StandardDocuments/ExportChecklistGenerator.js";
+import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator.js";
 import DateInput from "../../common/DateInput.js";
 import OperationsTab from "./Operations/OperationsTab.jsx";
 import AutocompleteSelect from "../../common/AutocompleteSelect.js";
-
 
 // Helper function
 const toUpper = (str) => (str || "").toUpperCase();
@@ -128,8 +130,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-              ? data
-              : []
+            ? data
+            : []
         );
       } catch {
         setOpts([]);
@@ -273,6 +275,7 @@ const LogisysEditableHeader = ({
   onUpdate,
   directories,
   exportJobsUsers = [],
+  onDocsMenuOpen,
 }) => {
   const [snackbar, setSnackbar] = useState(false);
   const { user } = useContext(UserContext);
@@ -541,7 +544,10 @@ const LogisysEditableHeader = ({
               { value: "Pink - ExBond", label: "Pink - ExBond" },
               { value: "SEZ - Regular", label: "SEZ - Regular" },
               { value: "SEZ - ExBond", label: "SEZ - ExBond" },
-              { value: "SEZ - DTA Procurement", label: "SEZ - DTA Procurement" },
+              {
+                value: "SEZ - DTA Procurement",
+                label: "SEZ - DTA Procurement",
+              },
               { value: "Red", label: "Red" },
             ]}
             onChange={formik.handleChange}
@@ -572,6 +578,7 @@ const LogisysEditableHeader = ({
               cursor: "pointer",
             }}
             type="button"
+            onClick={onDocsMenuOpen}
           >
             Standard Documents
           </button>
@@ -622,6 +629,15 @@ function LogisysExportViewJob() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [fileSnackbar, setFileSnackbar] = useState(false);
   const [exportJobsUsers, setExportJobsUsers] = useState([]);
+  const [docsAnchorEl, setDocsAnchorEl] = useState(null);
+
+  const handleDocsMenuOpen = (event) => {
+    setDocsAnchorEl(event.currentTarget);
+  };
+
+  const handleDocsMenuClose = () => {
+    setDocsAnchorEl(null);
+  };
 
   const [directories, setDirectories] = useState({});
   const { jobNo } = useParams();
@@ -772,6 +788,7 @@ function LogisysExportViewJob() {
           directories={directories}
           exportJobsUsers={exportJobsUsers}
           onUpdate={formik.handleSubmit}
+          onDocsMenuOpen={handleDocsMenuOpen}
         />
       </Box>
 
@@ -840,16 +857,16 @@ function LogisysExportViewJob() {
             },
             ...(toUpper(formik.values.transportMode) !== "AIR"
               ? [
-                {
-                  label: "Container",
-                  component: (
-                    <ContainerTab
-                      formik={formik}
-                      onUpdate={formik.handleSubmit}
-                    />
-                  ),
-                },
-              ]
+                  {
+                    label: "Container",
+                    component: (
+                      <ContainerTab
+                        formik={formik}
+                        onUpdate={formik.handleSubmit}
+                      />
+                    ),
+                  },
+                ]
               : []),
             {
               label: "Invoice",
@@ -1005,7 +1022,36 @@ function LogisysExportViewJob() {
         autoHideDuration={3000}
         onClose={() => setFileSnackbar(false)}
       />
-      <ExportChecklistGenerator jobNo={formik.values.job_no} />
+      <Menu
+        anchorEl={docsAnchorEl}
+        open={Boolean(docsAnchorEl)}
+        onClose={handleDocsMenuClose}
+        PaperProps={{
+          style: {
+            maxHeight: 48 * 4.5,
+            width: "20ch",
+          },
+        }}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+      >
+        <MenuItem onClick={handleDocsMenuClose}>
+          <ExportChecklistGenerator jobNo={formik.values.job_no}>
+            <Typography variant="body2">Export Checklist</Typography>
+          </ExportChecklistGenerator>
+        </MenuItem>
+        <MenuItem onClick={handleDocsMenuClose}>
+          <AnnexureCGenerator data={formik.values}>
+            <Typography variant="body2">Annexure C</Typography>
+          </AnnexureCGenerator>
+        </MenuItem>
+      </Menu>
     </>
   );
 }
