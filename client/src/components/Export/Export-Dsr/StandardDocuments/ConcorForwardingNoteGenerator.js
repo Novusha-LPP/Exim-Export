@@ -237,7 +237,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       doc.setFontSize(9 * rowScale);
       doc.setFont("helvetica", "bold");
       doc.text(
-        exportJob.branch_code || "",
+        exportJob.branchCode || "KHDB",
         leftMargin + col1 / 2,
         boxY + rowH * 0.75,
         { align: "center" }
@@ -284,7 +284,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       doc.rect(leftMargin, boxY, contentWidth, rowH + 1);
       doc.setFontSize(10 * rowScale);
       doc.text(
-        `CHA NAME & CODE:  ${exportJob.cha || ""}`,
+        "CHA NAME & CODE:  SURAJ FORWARDERS AND SHIPPING AGENCIES",
         leftMargin + 3,
         boxY + (rowH + 1) * 0.7
       );
@@ -364,7 +364,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       doc.rect(leftMargin, boxY, contentWidth, rowH);
       doc.setFontSize(7 * rowScale);
       doc.text(
-        `PAYMENT MODE (PDA) & NO.: ${exportJob.cha || ""}`,
+        "PAYMENT MODE (PDA) & NO.: SURAJ FORWARDERS PVT. LTD.",
         leftMargin + 3,
         boxY + rowH * 0.7
       );
@@ -470,6 +470,34 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
           ]);
         }
       }
+
+      // Calculate totals for packages and cargo weight
+      const totalPackages = containers.reduce(
+        (sum, cnt) => sum + (Number(cnt.pkgsStuffed) || 0),
+        0
+      );
+      const totalCargoWeight = containers.reduce(
+        (sum, cnt) => sum + parseFloat(cnt.grossWeight || 0) / 1000,
+        0
+      );
+
+      // Add TOTAL row
+      tableBody.push([
+        "",
+        "",
+        "",
+        "",
+        "",
+        totalPackages || "",
+        "",
+        "",
+        totalCargoWeight ? totalCargoWeight.toFixed(1) : "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ]);
 
       // Calculate column widths to fit exactly in content width
       const totalWidth = contentWidth;
