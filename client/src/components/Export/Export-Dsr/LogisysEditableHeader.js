@@ -7,7 +7,7 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ExportChecklistGenerator from "./StandardDocuments/ExportChecklistGenerator";
 import ConsignmentNoteGenerator from "./StandardDocuments/ConsignmentNoteGenerator";
 import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
->>>>>>> f16f033 (feat: Implement dedicated modules for Export DSR job details including Documentation, ESanchit, Operation, and Charges.)
+import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharGenerator";
 
 // Helper function
 const toUpper = (str) => (str || "").toUpperCase();
@@ -105,13 +105,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-<<<<<<< HEAD
               ? data
               : []
-=======
-            ? data
-            : []
->>>>>>> f16f033 (feat: Implement dedicated modules for Export DSR job details including Documentation, ESanchit, Operation, and Charges.)
         );
       } catch {
         setOpts([]);
@@ -598,6 +593,16 @@ const LogisysEditableHeader = ({
                 Consignment Note
               </MenuItem>
             </ConsignmentNoteGenerator>
+
+            <ForwardingNoteTharGenerator jobNo={formik.values.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => setAnchorEl(null)}
+                sx={{ fontSize: 13, minWidth: 150 }}
+              >
+                Forwarding Note (THAR)
+              </MenuItem>
+            </ForwardingNoteTharGenerator>
           </Menu>
         </div>
       </div>

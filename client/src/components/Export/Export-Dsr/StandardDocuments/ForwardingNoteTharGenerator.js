@@ -6,493 +6,298 @@ import { MenuItem } from "@mui/material";
 import thatLogo from "../../../../assets/images/that-logo.png";
 
 const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      if (
-        typeof dateString === "string" &&
-        /^\d{1,2}-\d{1,2}-\d{4}/.test(dateString)
-      ) {
-        return dateString;
-      }
-      return dateString;
-    }
-    return date
-      .toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-      .replace(/\//g, ".");
-  };
-
-  const formatDateForApi = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "";
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  };
-
-  const generatePDF = async (e) => {
-    if (e) e.stopPropagation();
-    const encodedJobNo = encodeURIComponent(jobNo);
-    try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`
-      );
-      const data = response.data;
-      const invoice = data.invoices?.[0] || {};
-      const booking = data.operations?.[0]?.bookingDetails?.[0] || {};
-      const containers = data.containers || [];
-      const products = invoice.products || [];
-
-      // Fetch Currency Rates
-      let exchangeRate = 1;
-      try {
-        const jobDateFormatted = formatDateForApi(data.job_date || new Date());
-        const currencyResponse = await axios.get(
-          `${
-            import.meta.env.VITE_API_STRING
-          }/currency-rates/by-date/${jobDateFormatted}`
-        );
-        if (
-          currencyResponse.data.success &&
-          currencyResponse.data.data.exchange_rates
-        ) {
-          const rateObj = currencyResponse.data.data.exchange_rates.find(
-            (r) => r.currency_code === (invoice.currency || "USD")
-          );
-          if (rateObj) {
-            exchangeRate = rateObj.export_rate || rateObj.import_rate || 1;
-          }
+    const formatDate = (dateString) => {
+        if (!dateString) return "";
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            if (typeof dateString === 'string' && /^\d{1,2}-\d{1,2}-\d{4}/.test(dateString)) {
+                return dateString;
+            }
+            return dateString;
         }
-      } catch (err) {
-        console.warn("Currency rate fetch failed", err);
-      }
+        return date.toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+        }).replace(/\//g, '.');
+    };
 
-      const doc = new jsPDF({ unit: "mm", format: "a4" });
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 10;
-      const contentWidth = pageWidth - 2 * margin;
+    const generatePDF = async (e) => {
+        if (e) e.stopPropagation();
+        const encodedJobNo = encodeURIComponent(jobNo);
+        try {
+            const response = await axios.get(
+                `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`
+            );
+            const data = response.data;
+            const invoice = data.invoices?.[0] || {};
+            const booking = data.operations?.[0]?.bookingDetails?.[0] || {};
+            const containers = data.containers || [];
+            const products = invoice.products || [];
 
-      // Shorten description
-      const rawDescription = products[0]?.description || "";
-      const shortenedDescription =
-        rawDescription.length > 50
-          ? rawDescription.substring(0, 47) + "..."
-          : rawDescription;
+            const doc = new jsPDF({ unit: "mm", format: "a4" });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const margin = 10;
+            const contentWidth = pageWidth - 2 * margin;
 
-      // ========== HEADER RIGHT BOX (CWC USE) ==========
-      const boxW = 85; // Wider as requested
-      const boxX = pageWidth - margin - boxW;
-      const boxY = 8;
-      const boxH = 30;
-      doc.setDrawColor(0);
-      doc.setLineWidth(0.4);
-      doc.rect(boxX, boxY, boxW, boxH);
+            // ========== HEADER RIGHT BOX (HPCSL USE) ==========
+            const boxX = pageWidth - margin - 60;
+            const boxY = 5;
+            doc.setDrawColor(0);
+            doc.setLineWidth(0.3);
+            doc.rect(boxX, boxY, 60, 28);
+            // Internal lines
+            doc.line(boxX, boxY + 7, boxX + 60, boxY + 7);
+            doc.line(boxX, boxY + 14, boxX + 60, boxY + 14);
+            doc.line(boxX, boxY + 21, boxX + 60, boxY + 21);
 
-      // Internal lines
-      doc.line(boxX, boxY + 7, boxX + boxW, boxY + 7);
-      doc.line(boxX, boxY + 13, boxX + boxW, boxY + 13);
-      doc.line(boxX, boxY + 19, boxX + boxW, boxY + 19);
-      doc.line(boxX, boxY + 25, boxX + boxW, boxY + 25);
-      doc.line(boxX + 55, boxY + 25, boxX + 55, boxY + boxH); // Adjusted vertical line for Rail Operator
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "bold");
+            doc.text("HPCSL USE", boxX + 2, boxY + 5);
+            doc.setFont("helvetica", "normal");
+            doc.text("CCN No. & Date :", boxX + 2, boxY + 12);
+            doc.text("To :", boxX + 2, boxY + 19);
+            doc.text("Rail Operator (Please Specify)", boxX + 2, boxY + 26);
 
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.text("CWC (NS) PVT. LTD. USE", boxX + boxW / 2, boxY + 5, {
-        align: "center",
-      });
+            // ========== LOGO ==========
+            try {
+                doc.addImage(thatLogo, "PNG", margin, 5, 50, 20);
+            } catch (err) {
+                console.warn("Logo add failed", err);
+            }
 
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.text("CCN No. & Date :", boxX + 1, boxY + 11);
-      doc.text("To :", boxX + 1, boxY + 17);
-      doc.text("Rail Operator", boxX + 1, boxY + 23); // Label only
+            // ========== TITLE ==========
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text("HPCSL CONSIGNMENT NOTE", pageWidth / 2, 45, { align: "center" });
 
-      doc.setFont("helvetica", "bold");
-      // values handled by manual stamps
+            doc.setFontSize(10);
+            doc.text("Mode By : RAIL", pageWidth / 2, 50, { align: "center" });
 
-      // ========== LOGO ==========
-      try {
-        doc.addImage(thatLogo, "PNG", margin, 8, 55, 22);
-      } catch (err) {
-        console.warn("Logo add failed", err);
-      }
+            let yPos = 54;
 
-      // ========== TITLE ==========
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      const title = "FORWARDING NOTE";
-      doc.text(title, pageWidth / 2, 45, { align: "center" });
-      const titleW = doc.getTextWidth(title);
-      doc.line(pageWidth / 2 - titleW / 2, 46, pageWidth / 2 + titleW / 2, 46);
+            // ========== TO SECTION ==========
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "normal");
+            doc.text("To,", margin, yPos);
+            doc.text("The Terminal Manager,", margin, yPos + 5);
+            doc.text("HPCSL, The Thar Dry Port, ICD-Sanand", margin, yPos + 10);
 
-      doc.setFontSize(11);
-      doc.text("Mode By : RAIL", pageWidth / 2, 51, { align: "center" });
+            // Invoice on right side - aligned with To section
+            const invoiceNos = data.invoices?.map(inv => inv.invoiceNumber).join(", ") || "";
+            doc.setFont("helvetica", "bold");
+            doc.text(`INVOICE NO:- ${invoiceNos}`, pageWidth - margin, yPos, { align: "right" });
 
-      const invoiceNoText = `INVOICE NO:- ${
-        data.invoices?.map((inv) => inv.invoiceNumber).join(", ") || ""
-      }`;
-      doc.setFontSize(10);
-      doc.text(invoiceNoText, pageWidth / 2, 56, { align: "center" });
+            yPos += 18;
 
-      let yPos = 60;
+            // ========== DISCLAIMER ==========
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            const disclaimer = "Please receive the under mentioned container stuffed at ICD/Factory. We accept the all Transportation and/or provision of Containers of business incidental there to have been under taken by HPSCL-THE THAR DRY PORT on the basis of their standard terms and conditions which have been read by us and understood. No servant or agent of the company has any authority to vary or waive conditions or any part there of.";
+            const splitDisclaimer = doc.splitTextToSize(disclaimer, contentWidth);
+            doc.text(splitDisclaimer, margin, yPos);
+            yPos += splitDisclaimer.length * 2.5 + 3;
 
-      // ========== TO SECTION ==========
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.text("To,", margin, yPos);
-      doc.text("The Terminal Manager,", margin, yPos + 5);
-      doc.text("CWC, The Thar Dry Port, ICD-Sanand", margin, yPos + 10);
+            // ========== FORM GRID ==========
+            doc.setFontSize(9);
+            doc.setLineWidth(0.3);
+            const col1W = contentWidth * 0.5;
+            const col2W = contentWidth * 0.5;
 
-      doc.text("Cargo : Non Hazardous", pageWidth - margin, yPos + 10, {
-        align: "right",
-      });
+            // Row 1: Consignor / Vessel
+            doc.rect(margin, yPos, col1W, 14);
+            doc.rect(margin + col1W, yPos, col2W, 14);
+            doc.setFont("helvetica", "bold");
+            doc.text("Name of Consignor (S/Line):", margin + 2, yPos + 5);
+            doc.text("VESSEL NAME / VOY. NO:", margin + col1W + 2, yPos + 5);
+            doc.text(booking.shippingLineName || "", margin + 2, yPos + 10);
+            doc.text(`${booking.vesselName || ""} / ${booking.voyageNo || ""}`, margin + col1W + 2, yPos + 10);
+            yPos += 14;
 
-      yPos += 16;
+            // Row 2: Agent/CHA / Cut Off & Country
+            doc.rect(margin, yPos, col1W, 14);
+            doc.rect(margin + col1W, yPos, col2W * 0.6, 14);
+            doc.rect(margin + col1W + col2W * 0.6, yPos, col2W * 0.4, 14);
+            doc.setFont("helvetica", "bold");
+            doc.text("Agent/CHA:", margin + 2, yPos + 5);
+            doc.text("CUT OFF:", margin + col1W + 2, yPos + 5);
+            doc.text("Country:", margin + col1W + col2W * 0.6 + 2, yPos + 5);
+            doc.text("SURAJ FORWARDERS & SHIPPING AGENCIES", margin + 2, yPos + 10);
+            doc.text(booking.validity ? formatDate(booking.validity) : "", margin + col1W + 2, yPos + 10);
+            doc.text(data.destination_country || data.discharge_country || "", margin + col1W + col2W * 0.6 + 2, yPos + 10);
+            yPos += 14;
 
-      // ========== DISCLAIMER ==========
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8.5);
-      const disclaimer =
-        "Please receive the under mentioned container stuffed at ICD/Factory. We accept the all Transportation and/or provision of Containers of business incidental there to have been under taken by CWC-THE THAR DRY PORT on the basis of their standard terms and conditions which have been read by us and understood. No servant or agent of the company has any authority to vary or waive conditions or any part there of.";
-      const splitDisclaimer = doc.splitTextToSize(disclaimer, contentWidth);
-      doc.text(splitDisclaimer, margin, yPos);
-      yPos += splitDisclaimer.length * 3.5 + 4;
+            // Row 3: Exporter / Gateway Port
+            doc.rect(margin, yPos, col1W, 14);
+            doc.rect(margin + col1W, yPos, col2W, 14);
+            doc.setFont("helvetica", "bold");
+            doc.text("Name and Address of Exporter:", margin + 2, yPos + 5);
+            doc.text("Gateway Port:", margin + col1W + 2, yPos + 5);
+            doc.text(data.exporter || "", margin + 2, yPos + 10);
+            doc.text(data.gateway_port || booking.portOfLoading || "", margin + col1W + 2, yPos + 10);
+            yPos += 14;
 
-      // ================= FORM GRID (DYNAMIC HEIGHTS) =================
-      const drawDynamicRow = (y, cols, minHeight = 10) => {
-        let maxHeight = minHeight;
-        const processedCols = cols.map((col) => {
-          doc.setFontSize(8.5);
-          doc.setFont("helvetica", "normal");
-          const valueLines = doc.splitTextToSize(
-            String(col.value || ""),
-            col.width - 2
-          );
-          // Approximate height: Label(4) + Gap(2) + Lines * LineHeight(3.5) + Padding(2)
-          const contentHeight = 6 + valueLines.length * 3.5 + 2;
-          if (contentHeight > maxHeight) maxHeight = contentHeight;
-          return { ...col, valueLines };
-        });
+            // Row 4: SB No & Date / Port of Discharge
+            doc.rect(margin, yPos, col1W, 10);
+            doc.rect(margin + col1W, yPos, col2W, 10);
+            doc.setFont("helvetica", "bold");
+            doc.text("Shipping Bill No & Date:", margin + 2, yPos + 6);
+            doc.text("Port of Discharge:", margin + col1W + 2, yPos + 6);
+            doc.text(`${data.sb_no || ""} / ${formatDate(data.sb_date)}`, margin + 50, yPos + 6);
+            doc.text(data.port_of_discharge || "", margin + col1W + 35, yPos + 6);
+            yPos += 10;
 
-        let currentX = margin;
-        processedCols.forEach((col) => {
-          doc.rect(currentX, y, col.width, maxHeight);
+            // Row 5: Stuffing / FOB Value
+            doc.rect(margin, yPos, col1W, 10);
+            doc.rect(margin + col1W, yPos, col2W, 10);
+            doc.setFont("helvetica", "bold");
+            doc.text("Stuffing (Please Tick):", margin + 2, yPos + 6);
+            doc.text("F.O.B./C.I.F. Value (Rs.):", margin + col1W + 2, yPos + 6);
+            doc.text(data.goods_stuffed_at === "Factory" ? "FACTORY STUFFING" : "ICD STUFFING", margin + 40, yPos + 6);
+            const fobValue = invoice.freightInsuranceCharges?.fobValue?.amount || invoice.productValue || "";
+            doc.text(String(fobValue), margin + col1W + 45, yPos + 6);
+            yPos += 10;
 
-          // Label
-          doc.setFontSize(7);
-          doc.setFont("helvetica", "bold");
-          doc.text(col.label, currentX + 1, y + 3);
+            // Row 6: Factory shifting info
+            doc.rect(margin, yPos, contentWidth, 8);
+            doc.setFont("helvetica", "normal");
+            doc.text("Factory shifting arranged by: HPCSL / SHIPPER    Type: LCL/FCL/ODC: Yes/No    Payment Type: PAID / TO PAY", margin + 2, yPos + 5);
+            yPos += 12;
 
-          // Value
-          doc.setFontSize(8.5);
-          doc.setFont("helvetica", col.valueStyle || "normal"); // Allow bold values (like FOB)
-          doc.text(col.valueLines, currentX + 1, y + 7.5);
+            // ========== CONTAINER TABLE ==========
+            const containerHead = [
+                ["Sr No", "Container No", "Size", "No & Type\nof Pkgs.", "Description of Goods\n& H.S CODE", "Cargo Weight\n(kgs)", "Customs\nSeal No.", "Shipping Line\nSeal No.", "SB NO.", "SB DATE"]
+            ];
 
-          currentX += col.width;
-        });
+            const containerBody = containers.map((c, idx) => {
+                const desc = products[0]?.description || "";
+                const ritc = products[0]?.ritc || "";
+                return [
+                    idx + 1,
+                    c.containerNo || "",
+                    c.type?.match(/\d+/)?.[0] || "20",
+                    `${c.pkgsStuffed || data.total_no_of_pkgs || ""}`,
+                    `${desc.substring(0, 30)} ${ritc}`,
+                    c.grossWeight || "",
+                    c.sealNo || "",
+                    booking.shippingLineSealNo || "",
+                    data.sb_no || "",
+                    formatDate(data.sb_date)
+                ];
+            });
 
-        return maxHeight;
-      };
+            if (containerBody.length === 0) {
+                containerBody.push([1, "", "20", "", "", "", "", "", "", ""]);
+            }
 
-      doc.setLineWidth(0.4);
-      doc.setFontSize(8); // Slightly smaller to prevent overlap
-      // Row 1: Consignor / Consignee
-      yPos += drawDynamicRow(yPos, [
-        {
-          width: contentWidth * 0.4,
-          label: "Name of Consignor (S/Line)",
-          value: booking.shippingLineName,
-        },
-        {
-          width: contentWidth * 0.6,
-          label: "Name and address of consignee (S/Line)",
-          value:
-            data.consignees?.[0]?.consignee_name +
-            "\n" +
-            (data.consignees?.[0]?.consignee_address || ""),
-        },
-      ]);
+            // Add totals row
+            const totalPkgs = containers.reduce((sum, c) => sum + (Number(c.pkgsStuffed) || 0), 0) || data.total_no_of_pkgs || "";
+            const totalWeight = containers.reduce((sum, c) => sum + (Number(c.grossWeight) || 0), 0) || data.gross_weight_kg || "";
+            containerBody.push(["", "", "", totalPkgs, "", totalWeight, "", "", "", ""]);
 
-      // Row 2: Agent/CHA / Destination / Country
-      yPos += drawDynamicRow(yPos, [
-        {
-          width: contentWidth * 0.4,
-          label: "Agent / CHA",
-          value: data.cha || "SURAJ FORWARDERS & SHIPPING AGENCIES",
-        },
-        {
-          width: contentWidth * 0.35,
-          label: "Final Destination",
-          value: data.destination_port,
-        },
-        {
-          width: contentWidth * 0.25,
-          label: "Country",
-          value: data.destination_country,
-        },
-      ]);
+            doc.autoTable({
+                startY: yPos,
+                margin: { left: margin, right: margin },
+                head: containerHead,
+                body: containerBody,
+                theme: "grid",
+                pageBreak: "auto",
+                showHead: "everyPage",
+                headStyles: {
+                    fillColor: [255, 255, 255],
+                    textColor: [0, 0, 0],
+                    fontStyle: "bold",
+                    fontSize: 7,
+                    halign: "center",
+                    valign: "middle",
+                    lineWidth: 0.3,
+                },
+                styles: {
+                    fontSize: 7,
+                    fontStyle: "bold",
+                    halign: "center",
+                    valign: "middle",
+                    lineWidth: 0.3,
+                    cellPadding: 1.5,
+                    overflow: 'linebreak',
+                },
+                columnStyles: {
+                    0: { cellWidth: 10 },  // Sr No
+                    1: { cellWidth: 24 },  // Container No
+                    2: { cellWidth: 12 },  // Size
+                    3: { cellWidth: 16 },  // No & Type of Pkgs
+                    4: { cellWidth: 34, halign: "left" },  // Description
+                    5: { cellWidth: 18 },  // Cargo Weight
+                    6: { cellWidth: 18 },  // Customs Seal No
+                    7: { cellWidth: 20 },  // Shipping Line Seal No
+                    8: { cellWidth: 18 },  // SB NO
+                    9: { cellWidth: 20 },  // SB DATE
+                },
+            });
 
-      // Row 3: Exporter / Gateway
-      yPos += drawDynamicRow(yPos, [
-        {
-          width: contentWidth * 0.4,
-          label: "Name & Address of Exporter",
-          value: (data.exporter || "") + "\n" + (data.exporter_address || ""),
-        },
-        {
-          width: contentWidth * 0.6,
-          label: "Gateway Port",
-          value: data.gateway_port || booking.portOfLoading || "",
-        },
-      ]);
+            yPos = doc.lastAutoTable.finalY + 5;
 
-      // Row 4: SB No / Port of Discharge
-      yPos += drawDynamicRow(yPos, [
-        {
-          width: contentWidth * 0.4,
-          label: "Shipping Bill No. & Date",
-          value: (data.sb_no || "") + " / " + formatDate(data.sb_date),
-        },
-        {
-          width: contentWidth * 0.6,
-          label: "Port of Discharge",
-          value: data.port_of_discharge || "",
-        },
-      ]);
+            // Check if we need a new page for footer content
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const footerContentHeight = 70; // Approximate height needed for declarations + remarks + signatures
+            if (yPos + footerContentHeight > pageHeight - margin) {
+                doc.addPage();
+                yPos = margin + 10;
+            }
 
-      // Row 5: Stuffing / FOB
-      const totalFobVal = (data.invoices || []).reduce((sum, inv) => {
-        const val =
-          inv.freightInsuranceCharges?.fobValue?.amount ||
-          inv.productValue ||
-          0;
-        return sum + (Number(val) || 0);
-      }, 0);
-      const totalInvoiceVal = (data.invoices || []).reduce((sum, inv) => {
-        return sum + (Number(inv.invoiceValue) || 0);
-      }, 0);
+            // ========== DECLARATIONS ==========
+            const declarations = [
+                "1. I do hereby certify that I have satisfied by self description, marks, quantity, measurement and weight of goods consigned by me have been correctly entered in the note.",
+                "2. I hereby certify that the goods described above are in goods order and condition at the time of dispatch.",
+                "3. I hereby certify that goods are not classified as dangerous in Indian Railway. Road Tariff of my IMO regulations.",
+                "4. It is certify that rated tonnage of the commitment (5) has been exceeded.",
+                "5. IF THE CONTAINER WEIGHT, IS NOT SPECIFIED THEIR TARE WEIGHT, IT WILL BE TAKEN AS 2.3 TONS FOR 20' & 4.6 TONS FOR 40'",
+                "6. I understand that the principal terms and conditions applying to the carriage of above containers are subject to the conditions and liabilities as specified in the Indian Railway Act 1989, as amended from time to time."
+            ];
 
-      const fobInInr = (totalFobVal * exchangeRate).toFixed(2);
-      const invInInr = (totalInvoiceVal * exchangeRate).toFixed(2);
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "normal");
+            declarations.forEach((d) => {
+                const lines = doc.splitTextToSize(d, contentWidth);
+                doc.text(lines, margin, yPos);
+                yPos += lines.length * 3;
+            });
 
-      yPos += drawDynamicRow(yPos, [
-        {
-          width: contentWidth * 0.4,
-          label: "Stuffing",
-          value:
-            data.goods_stuffed_at === "Factory" ? "FACTORY (FS)" : "ICD (CFS)",
-        },
-        {
-          width: contentWidth * 0.6,
-          label: "F.O.B./C.I.F. Value",
-          value: `FOB: ${fobInInr} INR\nINVVAL: ${invInInr} INR`,
-          valueStyle: "bold",
-        },
-      ]);
 
-      // Row 6: Vessel / LEO
-      yPos += drawDynamicRow(yPos, [
-        {
-          width: contentWidth * 0.4,
-          label: "VESSEL NAME AND VOYAGE",
-          value: (booking.vesselName || "") + " " + (booking.voyageNo || ""),
-        },
-        {
-          width: contentWidth * 0.6,
-          label: "LEO Date",
-          value: formatDate(data.statusDetails?.[0]?.leoDate),
-        },
-      ]);
+            yPos += 3;
 
-      // ========== CONTAINER TABLE ==========
-      const tableHead = [
-        [
-          "Sr\nNo",
-          "Container No",
-          "Size",
-          "No &\nType\nof\nPkgs.",
-          "Description of Goods",
-          "Cargo\nWeight\n(MT)",
-          "Customs\nSeal No.",
-          "S.Line/Agent\nSeal No.",
-          "SB NO.:",
-          "SB DATE",
-        ],
-      ];
+            // ========== REMARKS ==========
+            doc.setLineWidth(0.5);
+            doc.rect(margin, yPos, contentWidth, 12);
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "bold");
+            doc.text("Remarks, if any (PDA A/C/Cheque No):", margin + 2, yPos + 5);
+            doc.text(`PDA/PDC OF ${booking.shippingLineName || "SHIPPING LINE"}`, pageWidth - margin - 50, yPos + 8);
+            yPos += 17;
 
-      let totalPkgs = 0;
-      let totalWeight = 0;
+            // ========== SIGNATURES ==========
+            doc.setFont("helvetica", "bold");
+            doc.text(booking.shippingLineName || "SHIPPING LINE", margin, yPos);
+            doc.text("STAMP AND SIGNATURE", pageWidth - margin - 40, yPos);
+            yPos += 6;
+            doc.text(`DATE : ${formatDate(new Date())}`, margin, yPos);
+            doc.text("OF SHIPPER OR AGENT (CHA)", pageWidth - margin - 45, yPos);
 
-      const tableBody = containers.map((c, idx) => {
-        const pkgs = Number(c.pkgsStuffed) || 0;
-        const weight = Number(c.grossWeight) || 0;
-        const weightMT = (weight / 1000).toFixed(3);
-        totalPkgs += pkgs;
-        totalWeight += weight;
+            yPos += 10;
+            // HPCSL USE ONLY
+            doc.rect(margin, yPos, contentWidth, 10);
+            doc.text("(HPCSL USE ONLY)", margin + 2, yPos + 5);
+            doc.text("DATE & TIME OF BOOKING OR (EA) :", margin + 2, yPos + 9);
 
-        return [
-          idx + 1,
-          c.containerNo || "",
-          c.type?.match(/\d+/)?.[0] || "20",
-          pkgs || "",
-          shortenedDescription,
-          weightMT || "",
-          c.sealNo || "",
-          booking.shippingLineSealNo || "",
-          data.sb_no || "",
-          formatDate(data.sb_date),
-        ];
-      });
+            // ========== OPEN PDF ==========
+            const filename = `HPCSL_ConsignmentNote_${data.job_no?.replace(/\//g, "_") || "Draft"}.pdf`;
+            const pdfBlob = doc.output("blob");
+            const blobUrl = URL.createObjectURL(pdfBlob);
 
-      tableBody.push([
-        "",
-        "TOTAL",
-        "",
-        totalPkgs || "",
-        "",
-        (totalWeight / 1000).toFixed(3),
-        "",
-        "",
-        "",
-        "",
-      ]);
-
-      doc.autoTable({
-        startY: yPos,
-        margin: { left: margin, right: margin },
-        head: tableHead,
-        body: tableBody,
-        theme: "grid",
-        styles: {
-          fontSize: 8,
-          fontStyle: "bold",
-          textColor: [0, 0, 0],
-          halign: "center",
-          valign: "middle",
-          lineWidth: 0.4,
-          cellPadding: 1,
-          overflow: "linebreak",
-        },
-        headStyles: {
-          fillColor: [255, 255, 255],
-          lineWidth: 0.4,
-        },
-        columnStyles: {
-          0: { cellWidth: 8 },
-          1: { cellWidth: 25 },
-          2: { cellWidth: 10 },
-          3: { cellWidth: 15 },
-          4: { cellWidth: 35, halign: "center" },
-          5: { cellWidth: 20 },
-          6: { cellWidth: 20 },
-          7: { cellWidth: 22 },
-          8: { cellWidth: 18 },
-          9: { cellWidth: 17 },
-        },
-        didParseCell: function (info) {
-          if (info.row.index === tableBody.length - 1) {
-            info.cell.styles.fillColor = [255, 255, 255];
-          }
-        },
-      });
-
-      yPos = doc.lastAutoTable.finalY + 3;
-
-      // ========== DECLARATIONS ==========
-      const decals = [
-        "1  I do hereby certify that I have satisfied by self description, marks, quantity, measurement and weight of goods consigned by me have been correctly entered in the note.",
-        "2  I hereby certify that the goods described above are in goods order and condition at the time of dispatch.",
-        "3  I hereby certify that goods are not classified as dangerous in Indian Railway. Road Tariff of my IMO regulations.",
-        "4  It is certify that rated tonnage of the commitment (5) has been exceeded.",
-        "5  IF THE CONTAINER WEIGHT, IS NOT SPECIFIED THEIR TARE WEIGHT, IT WILL BE TAKEN AS 2.3 TONS FOR 20' & 4.6 TONS FOR 40'",
-        "6  I understand that the principal terms and conditions applying to the carriage of above containers are subject to the conditions and liabilities as specified in the Indian Railway Act 1989, as amended from time to time.",
-      ];
-
-      doc.setFontSize(8.5);
-      doc.setFont("helvetica", "bold");
-      doc.setLineWidth(0.4);
-
-      decals.forEach((text, i) => {
-        const lines = doc.splitTextToSize(text, contentWidth - 8);
-        const rectH = lines.length * 3.5 + 2;
-
-        const pageHeight = doc.internal.pageSize.getHeight();
-        if (yPos + rectH > pageHeight - margin) {
-          doc.addPage();
-          yPos = margin + 5;
-        }
-
-        doc.rect(margin, yPos, 6, rectH);
-        doc.text(String(i + 1), margin + 3, yPos + 4, { align: "center" });
-
-        doc.rect(margin + 6, yPos, contentWidth - 6, rectH);
-        doc.text(lines, margin + 8, yPos + 4);
-
-        yPos += rectH;
-      });
-
-      yPos += 3;
-
-      if (yPos + 55 > doc.internal.pageSize.getHeight() - margin) {
-        // Increased gap from 45 to 55
-        doc.addPage();
-        yPos = margin + 5;
-      }
-
-      // ========== REMARKS ==========
-      const remarksY = yPos;
-      const remarksBoxH = 12;
-      doc.rect(margin, remarksY, contentWidth, remarksBoxH);
-      doc.setFontSize(9);
-      doc.text(
-        "Remarks, if any (PDA A/C/Cheque No):",
-        margin + 1,
-        remarksY + 5
-      );
-      yPos += remarksBoxH + 15; // Increased margin as requested
-
-      // ========== FOOTER (Signatures) ==========
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.text("DATE ________________________", margin, yPos);
-
-      doc.setFontSize(9);
-      doc.text(
-        "STAMP AND SIGNATURE OF SHIPPER OR AGENT (CHA)",
-        pageWidth - margin,
-        yPos,
-        { align: "right" }
-      );
-
-      yPos += 12;
-      // doc.text(`DATE : ${formatDate(new Date())}`, margin, yPos); // Removed for manual date line above
-
-      yPos += 8;
-      doc.setLineWidth(0.4);
-      const bottomBoxH = 12;
-      doc.rect(margin, yPos, contentWidth, bottomBoxH);
-      doc.setFontSize(9);
-      doc.text("CES (NS) PVT. LTD.", margin + 1, yPos + 5);
-      doc.text("DATE & TIME OF BOOKING OR (EA) :", margin + 1, yPos + 10);
-
-      // ========== OPEN PDF ==========
-      const filename = `Forwarding_Note_${
-        data.job_no?.replace(/\//g, "_") || "Draft"
-      }.pdf`;
-      const pdfBlob = doc.output("blob");
-      const blobUrl = URL.createObjectURL(pdfBlob);
-
-      const newTab = window.open("", "_blank");
-      if (newTab) {
-        newTab.document.write(
-          `<html>
+            const newTab = window.open("", "_blank");
+            if (newTab) {
+                newTab.document.write(
+                    `<html>
             <head>
               <title>${filename}</title>
               <style>
@@ -515,22 +320,20 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
               </div>
             </body>
           </html>`
-        );
-        setTimeout(() => {
-          URL.revokeObjectURL(blobUrl);
-        }, 300000);
-      }
-    } catch (err) {
-      console.error("Error generating Forwarding Note:", err);
-      alert("Failed to generate Forwarding Note");
-    }
-  };
+                );
+                setTimeout(() => { URL.revokeObjectURL(blobUrl); }, 300000);
+            }
+        } catch (err) {
+            console.error("Error generating HPCSL Consignment Note:", err);
+            alert("Failed to generate HPCSL Consignment Note");
+        }
+    };
 
-  return children ? (
-    React.cloneElement(children, { onClick: generatePDF })
-  ) : (
-    <MenuItem onClick={generatePDF}>Forwarding Note (THAR)</MenuItem>
-  );
+    return children ? (
+        React.cloneElement(children, { onClick: generatePDF })
+    ) : (
+        <MenuItem onClick={generatePDF}>Forwarding Note (THAR)</MenuItem>
+    );
 };
 
 export default ForwardingNoteTharGenerator;
