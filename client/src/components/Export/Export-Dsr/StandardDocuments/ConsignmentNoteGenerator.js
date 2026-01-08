@@ -57,12 +57,10 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
           exportJob.duties_taxes_payable_by === "Exporter"
             ? exportJob.exporter
             : exportJob.consignor_name || exportJob.exporter,
-        exporterNameAddress: `${exportJob.exporter || ""}\n${
-          exportJob.exporter_address || ""
-        }`,
-        consigneeNameAddress: `${consignee.consignee_name || ""}\n${
-          consignee.consignee_address || ""
-        }`,
+        exporterNameAddress: `${exportJob.exporter || ""}\n${exportJob.exporter_address || ""
+          }`,
+        consigneeNameAddress: `${consignee.consignee_name || ""}\n${consignee.consignee_address || ""
+          }`,
         agentCha: exportJob.cha || exportJob.cha_name || "",
         finalDestination:
           exportJob.final_destination || exportJob.destination_port || "",
@@ -70,7 +68,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
           exportJob.destination_country ||
           exportJob.country_of_destination ||
           "",
-        gatewayPort: booking.portOfLoading || exportJob.gateway_port || "",
+        gatewayPort: exportJob.gateway_port || "",
         shippingBillNo: exportJob.sb_no || "",
         shippingBillDate: formatDate(exportJob.sb_date),
         portOfDischarge: exportJob.port_of_discharge || "",
@@ -81,9 +79,8 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
             : "ICD(CFS)"),
         fobValue: totalInvoiceValue || "",
         leoDate: formatDate(statusDetails.leoDate || exportJob.leo_date),
-        vesselNameVoyage: `${exportJob.vessel_name || ""} ${
-          exportJob.voyage_no ? "/" + exportJob.voyage_no : ""
-        }`,
+        vesselNameVoyage: `${exportJob.vessel_name || ""} ${exportJob.voyage_no ? "/" + exportJob.voyage_no : ""
+          }`,
         cutOffDate: formatDate(exportJob.cut_off_date),
         specialInstructions: exportJob.remarks || "",
 
@@ -103,9 +100,8 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
           sNo: i + 1,
           containerNo: cnt.containerNo || "",
           size: cnt.size || cnt.type?.match(/\d+/)?.[0] || "",
-          pkgs: `${exportJob.total_no_of_pkgs || ""} ${
-            exportJob.package_unit || "PKG"
-          }`,
+          pkgs: `${exportJob.total_no_of_pkgs || ""} ${exportJob.package_unit || "PKG"
+            }`,
           description: cnt.type || "",
           tareWt: cnt.tareWeightKgs || cnt.tareWeight || "",
           grossWt: exportJob.gross_weight_kg || "",
@@ -255,19 +251,34 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       doc.text(splitPara, leftMargin, yPos);
       yPos += splitPara.length * 3 + 3;
 
-      // ================= FORM GRID =================
+      // ================= FORM GRID (DYNAMIC HEIGHTS) =================
       const col1X = leftMargin;
       const col1W = 85;
       const col2X = leftMargin + col1W;
       const col2W = contentWidth - col1W;
-      const standardRowH = 11;
-      const addressRowH = 13;
+
+      const getRowHeight = (texts, widths, fontSize, minHeight = 11) => {
+        doc.setFontSize(fontSize);
+        let maxHeight = minHeight;
+        texts.forEach((text, i) => {
+          const splitText = doc.splitTextToSize(String(text || ""), widths[i] - 2);
+          const height = (splitText.length * (fontSize * 0.45)) + 5;
+          if (height > maxHeight) maxHeight = height;
+        });
+        return maxHeight;
+      };
 
       doc.setLineWidth(0.2);
 
       // --- ROW 1: Consignor / Consignee ---
-      doc.rect(col1X, yPos, col1W, addressRowH);
-      doc.rect(col2X, yPos, col2W, addressRowH);
+      const row1H = getRowHeight(
+        [data.consignorName, data.consigneeNameAddress],
+        [col1W, col2W],
+        8,
+        13
+      );
+      doc.rect(col1X, yPos, col1W, row1H);
+      doc.rect(col2X, yPos, col2W, row1H);
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
@@ -275,95 +286,97 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       doc.text("Name and address of consignee (S/Line)", col2X + 1, yPos + 4);
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.text(data.consignorName || "", col1X + 1, yPos + 8, {
-        maxWidth: col1W - 2,
-      });
-      doc.text(data.consigneeNameAddress || "", col2X + 1, yPos + 8, {
-        maxWidth: col2W - 2,
-      });
+      doc.text(data.consignorName || "", col1X + 1, yPos + 8, { maxWidth: col1W - 2 });
+      doc.text(data.consigneeNameAddress || "", col2X + 1, yPos + 8, { maxWidth: col2W - 2 });
 
-      yPos += addressRowH;
+      yPos += row1H;
 
       // --- ROW 2: Agent / Final Destination ---
-      doc.rect(col1X, yPos, col1W, standardRowH);
-      doc.rect(col2X, yPos, col2W, standardRowH);
+      const row2H = getRowHeight(
+        [data.cha || "Suraj Forwarders", data.finalDestination],
+        [col1W - 26, col2W - 65],
+        8,
+        11
+      );
+      doc.rect(col1X, yPos, col1W, row2H);
+      doc.rect(col2X, yPos, col2W, row2H);
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.text("Agent / CHA", col1X + 1, yPos + 6);
-      doc.text("Final Destination :", col2X + 1, yPos + 6);
+      doc.text("Agent / CHA", col1X + 1, yPos + row2H / 2, { baseline: 'middle' });
+      doc.text("Final Destination :", col2X + 1, yPos + row2H / 2, { baseline: 'middle' });
 
       doc.setFont("helvetica", "normal");
-      doc.text(data.cha || "Suraj Forwarders", col1X + 25, yPos + 6, {
+      doc.text(data.cha || "Suraj Forwarders", col1X + 25, yPos + row2H / 2, {
         maxWidth: col1W - 26,
+        baseline: 'middle'
       });
-      doc.text(data.finalDestination || "", col2X + 28, yPos + 6, {
+      doc.text(data.finalDestination || "", col2X + 28, yPos + row2H / 2, {
         maxWidth: col2W - 65,
+        baseline: 'middle'
       });
 
-      // Moved Country to Left to avoid overlap
       doc.setFont("helvetica", "bold");
-      doc.text("Country :", col2X + col2W - 35, yPos + 6);
+      doc.text("Country :", col2X + col2W - 35, yPos + row2H / 2, { baseline: 'middle' });
       doc.setFont("helvetica", "normal");
-      doc.text(data.finalDestCountry || "", col2X + col2W - 22, yPos + 6, {
+      doc.text(data.finalDestCountry || "", col2X + col2W - 22, yPos + row2H / 2, {
         maxWidth: 20,
+        baseline: 'middle'
       });
 
-      yPos += standardRowH;
+      yPos += row2H;
 
       // --- ROW 3: Exporter / Gateway Port ---
-      const exporterRowHeight = 25;
-      doc.rect(col1X, yPos, col1W, exporterRowHeight);
-      doc.rect(col2X, yPos, col2W, exporterRowHeight);
+      const row3H = getRowHeight(
+        [data.exporterNameAddress, data.gatewayPort],
+        [col1W, col2W - 28],
+        8,
+        25
+      );
+      doc.rect(col1X, yPos, col1W, row3H);
+      doc.rect(col2X, yPos, col2W, row3H);
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
       doc.text("Name & Address of Exporter", col1X + 1, yPos + 4);
       doc.text("Gateway Port :", col2X + 1, yPos + 6);
 
       doc.setFont("helvetica", "normal");
-      // Split exporter address if too long
-      doc.text(data.exporterNameAddress || "", col1X + 1, yPos + 8, {
-        maxWidth: col1W - 2,
-      });
-      doc.text(data.gatewayPort || "", col2X + 28, yPos + 6);
+      doc.text(data.exporterNameAddress || "", col1X + 1, yPos + 8, { maxWidth: col1W - 2 });
+      doc.text(data.gatewayPort || "", col2X + 1, yPos + 10, { maxWidth: col2W - 2 });
 
-      yPos += exporterRowHeight;
+      yPos += row3H;
 
-      // --- ROW 4: Shipping Bill / Port Discharge (UPDATED) ---
-      doc.rect(col1X, yPos, col1W, standardRowH);
-      doc.rect(col2X, yPos, col2W, standardRowH);
+      // --- ROW 4: Shipping Bill / Port Discharge ---
+      const row4H = getRowHeight(
+        [`${data.shippingBillNo} / ${data.shippingBillDate}`, data.portOfDischarge],
+        [col1W - 40, col2W - 30],
+        8,
+        11
+      );
+      doc.rect(col1X, yPos, col1W, row4H);
+      doc.rect(col2X, yPos, col2W, row4H);
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-
-      // Labels centered at yPos + 6 (Middle of 11mm)
-      doc.text("Shipping Bill No. & Date :", col1X + 1, yPos + 6);
-      doc.text("Port of Discharge :", col2X + 1, yPos + 6);
+      doc.text("Shipping Bill No. & Date :", col1X + 1, yPos + row4H / 2, { baseline: 'middle' });
+      doc.text("Port of Discharge :", col2X + 1, yPos + row4H / 2, { baseline: 'middle' });
 
       doc.setFont("helvetica", "normal");
-
-      // Value: Shipping Bill
-      doc.text(
-        `${data.shippingBillNo} / ${data.shippingBillDate}`,
-        col1X + 42,
-        yPos + 6,
-        { maxWidth: col1W - 40 }
-      );
-
-      // Value: Port of Discharge
-      doc.text(data.portOfDischarge || "", col2X + 30, yPos + 6, {
-        maxWidth: col2W - 30,
+      doc.text(`${data.shippingBillNo} / ${data.shippingBillDate}`, col1X + 42, yPos + row4H / 2, {
+        maxWidth: col1W - 41,
+        baseline: 'middle'
+      });
+      doc.text(data.portOfDischarge || "", col2X + 30, yPos + row4H / 2, {
+        maxWidth: col2W - 31,
+        baseline: 'middle'
       });
 
-      yPos += standardRowH;
+      yPos += row4H;
 
       // --- ROW 5: Stuffing / FOB-LEO ---
-      doc.rect(col1X, yPos, col1W, standardRowH);
+      const row5H = 12;
+      doc.rect(col1X, yPos, col1W, row5H);
 
       doc.setFillColor(220, 220, 220);
-      doc.rect(col1X, yPos, 12, standardRowH, "F");
+      doc.rect(col1X, yPos, 12, row5H, "F");
       doc.setFillColor(255, 255, 255);
 
       doc.setFont("helvetica", "bold");
@@ -373,71 +386,65 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       doc.setFont("helvetica", "normal");
       doc.text("(Please Tick) : FACTORY (FS)/ICD(CFS)", col1X + 14, yPos + 7);
 
-      // Circles - Adjusted positions to not overlap text
-      // Factory circle
       if (data.stuffingType && data.stuffingType.includes("FACTORY")) {
-        doc.setLineWidth(0.5);
-        doc.circle(col1X + 70, yPos + 6, 2);
+        doc.setLineWidth(0.5); doc.circle(col1X + 70, yPos + 6, 2);
       } else {
-        doc.setLineWidth(0.2);
-        doc.circle(col1X + 70, yPos + 6, 2);
+        doc.setLineWidth(0.2); doc.circle(col1X + 70, yPos + 6, 2);
       }
 
-      // ICD Circle
       if (data.stuffingType && data.stuffingType.includes("ICD")) {
-        doc.setLineWidth(0.5);
-        doc.circle(col1X + 80, yPos + 6, 2);
+        doc.setLineWidth(0.5); doc.circle(col1X + 80, yPos + 6, 2);
       } else {
-        doc.setLineWidth(0.2);
-        doc.circle(col1X + 80, yPos + 6, 2);
+        doc.setLineWidth(0.2); doc.circle(col1X + 80, yPos + 6, 2);
       }
       doc.setLineWidth(0.2);
 
-      const halfH = standardRowH / 2;
+      const halfH = row5H / 2;
       doc.rect(col2X, yPos, col2W, halfH);
       doc.rect(col2X, yPos + halfH, col2W, halfH);
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
       doc.text("F.O.B./C.I.F. Value", col2X + 1, yPos + halfH - 1);
-      doc.text("LEO Date :", col2X + 1, yPos + standardRowH - 1);
+      doc.text("LEO Date :", col2X + 1, yPos + row5H - 1);
 
       doc.setFont("helvetica", "normal");
       doc.text(String(data.fobValue || ""), col2X + 40, yPos + halfH - 1);
-      doc.text(data.leoDate || "", col2X + 40, yPos + standardRowH - 1);
+      doc.text(data.leoDate || "", col2X + 40, yPos + row5H - 1);
 
-      yPos += standardRowH;
+      yPos += row5H;
 
-      // --- ROW 6: Vessel / CutOff / Special (ADJUSTED Y) ---
+      // --- ROW 6: Vessel / CutOff / Special ---
       const w1 = contentWidth * 0.35;
       const w2 = contentWidth * 0.25;
       const w3 = contentWidth * 0.4;
-      const x1 = col1X;
-      const x2 = col1X + w1;
-      const x3 = col1X + w1 + w2;
+      const x1Value = col1X;
+      const x2Value = col1X + w1;
+      const x3Value = col1X + w1 + w2;
 
-      doc.rect(x1, yPos, w1, standardRowH);
-      doc.rect(x2, yPos, w2, standardRowH);
-      doc.rect(x3, yPos, w3, standardRowH);
+      const row6H = getRowHeight(
+        [data.vesselNameVoyage, data.cutOffDate, data.specialInstructions],
+        [w1, w2, w3],
+        7,
+        11
+      );
+
+      doc.rect(x1Value, yPos, w1, row6H);
+      doc.rect(x2Value, yPos, w2, row6H);
+      doc.rect(x3Value, yPos, w3, row6H);
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(7);
-      // HEADERS TOP
-      doc.text("VESSEL NAME AND VOYAGE", x1 + 1, yPos + 3);
-      doc.text("CUT OFF DATE & TIME", x2 + 1, yPos + 3);
-      doc.text("SPECIAL INSTRUCTIONS", x3 + 1, yPos + 3);
+      doc.text("VESSEL NAME AND VOYAGE", x1Value + 1, yPos + 3);
+      doc.text("CUT OFF DATE & TIME", x2Value + 1, yPos + 3);
+      doc.text("SPECIAL INSTRUCTIONS", x3Value + 1, yPos + 3);
 
       doc.setFont("helvetica", "normal");
-      // VALUES BOTTOM
-      doc.text(data.vesselNameVoyage || "", x1 + 1, yPos + 8, {
-        maxWidth: w1 - 2,
-      });
-      doc.text(data.cutOffDate || "", x2 + 1, yPos + 8, { maxWidth: w2 - 2 });
-      doc.text(data.specialInstructions || "", x3 + 1, yPos + 8, {
-        maxWidth: w3 - 2,
-      });
+      doc.text(data.vesselNameVoyage || "", x1Value + 1, yPos + 8, { maxWidth: w1 - 2 });
+      doc.text(data.cutOffDate || "", x2Value + 1, yPos + 8, { maxWidth: w2 - 2 });
+      doc.text(data.specialInstructions || "", x3Value + 1, yPos + 8, { maxWidth: w3 - 2 });
 
-      yPos += standardRowH;
+      yPos += row6H;
 
       // ================= PRE-TABLE TEXT =================
       yPos += 4;
@@ -475,6 +482,8 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       doc.autoTable({
         startY: yPos,
         margin: { left: leftMargin, right: rightMargin, top: 10 },
+        pageBreak: "auto",
+        showHead: "everyPage",
         head: [
           [
             "S.No.",
@@ -540,6 +549,12 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
 
       yPos = doc.lastAutoTable.finalY + 5;
 
+      // Check for available space for footer (approx 65mm needed)
+      if (yPos + 60 > pageHeight - 10) {
+        doc.addPage();
+        yPos = 15;
+      }
+
       // ================= FOOTER =================
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7);
@@ -555,11 +570,25 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
 
       points.forEach((p) => {
         const lines = doc.splitTextToSize(p, contentWidth);
+        const pointHeight = lines.length * 3.5;
+
+        // Check for page break
+        if (yPos + pointHeight > pageHeight - 10) {
+          doc.addPage();
+          yPos = 15;
+        }
+
         doc.text(lines, leftMargin, yPos);
-        yPos += lines.length * 3.5;
+        yPos += pointHeight;
       });
 
       yPos += 3;
+
+      // Check if there is enough space for remarks and signatures (approx 40mm)
+      if (yPos + 40 > pageHeight - 10) {
+        doc.addPage();
+        yPos = 15;
+      }
 
       // Remarks Box
       doc.setLineWidth(0.2);
@@ -574,38 +603,38 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         });
       }
 
-      yPos += 30;
+      yPos += 15;
 
       // Signatures
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
-      doc.text("DATE", leftMargin, yPos + 20);
-      doc.line(leftMargin + 10, yPos + 20, leftMargin + 40, yPos + 20);
+      doc.text("DATE", leftMargin, yPos);
+      doc.line(leftMargin + 10, yPos, leftMargin + 40, yPos);
 
       doc.line(
         pageWidth - rightMargin - 70,
-        yPos + 20,
+        yPos,
         pageWidth - rightMargin,
-        yPos + 20
+        yPos
       );
       doc.text(
         "STAMP AND SIGNATURE OF SHIPPER OR AGENT (CHA)",
         pageWidth - rightMargin,
-        yPos + 25,
+        yPos + 5,
         { align: "right" }
       );
 
-      yPos += 30;
+      yPos += 12;
 
       // Bottom Box
-      doc.rect(leftMargin, yPos, contentWidth, 12);
+      doc.rect(leftMargin, yPos, contentWidth, 10);
       doc.setFont("helvetica", "bold");
-      doc.text("CES (NS) PVT. LTD.", leftMargin + 2, yPos + 5);
+      doc.text("CES (NS) PVT. LTD.", leftMargin + 2, yPos + 4);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
-      doc.text("DATE & TIME OF BOOKING OR (EA) :", leftMargin + 2, yPos + 9);
+      doc.text("DATE & TIME OF BOOKING OR (EA) :", leftMargin + 2, yPos + 8);
       if (data.bookingTime) {
-        doc.text(data.bookingTime, leftMargin + 55, yPos + 9);
+        doc.text(data.bookingTime, leftMargin + 55, yPos + 8);
       }
 
       // Open PDF with Preview and Download option
