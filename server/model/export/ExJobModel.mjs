@@ -1031,6 +1031,7 @@ const exportJobSchema = new mongoose.Schema(
     // Export Checklist Additional Fields - Missing Fields Added
     cha: {
       type: String,
+      default: "Suraj Forwarders",
       trim: true,
     },
     masterblno: { type: String, trim: true }, // Master BL Number
