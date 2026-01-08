@@ -58,63 +58,6 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
 
       let yPos = topMargin;
 
-      // Helper to draw dynamic content boxes with text wrapping
-      const drawContentBox = (startY, columns, minHeight) => {
-        let maxLines = 1;
-
-        // 1. Process columns to wrap text and determine max height
-        const processedCols = columns.map((col) => {
-          const fontSize = col.fontSize || 9 * rowScale;
-          doc.setFontSize(fontSize);
-          doc.setFont(col.font || "helvetica", col.style || "normal");
-
-          const padding = 1.5;
-          const availableWidth = col.width - padding * 2;
-          const text = String(col.text || "");
-
-          const textLines = doc.splitTextToSize(text, availableWidth);
-          if (textLines.length > maxLines) maxLines = textLines.length;
-
-          return { ...col, textLines, fontSize };
-        });
-
-        // 2. Calculate dynamic height
-        // Estimate line height (approx 1.2 * fontSize converted to mm)
-        const refFontSize = processedCols[0]?.fontSize || 9 * rowScale;
-        const lineHeightMm = refFontSize * 0.3527 * 1.2;
-
-        const dynamicHeight = Math.max(minHeight, maxLines * lineHeightMm + 3);
-
-        let currentX = leftMargin;
-
-        // 3. Draw boxes and text
-        processedCols.forEach((col) => {
-          // Draw cell border
-          doc.rect(currentX, startY, col.width, dynamicHeight);
-
-          // Configure font
-          doc.setFontSize(col.fontSize);
-          doc.setFont(col.font || "helvetica", col.style || "normal");
-
-          const textX =
-            col.align === "center" ? currentX + col.width / 2 : currentX + 2;
-
-          // Vertical centering
-          const colLineHeight = col.fontSize * 0.3527 * 1.2;
-          const textBlockHeight = col.textLines.length * colLineHeight;
-          const textY = startY + (dynamicHeight - textBlockHeight) / 2;
-
-          doc.text(col.textLines, textX, textY, {
-            align: col.align || "left",
-            baseline: "top",
-          });
-
-          currentX += col.width;
-        });
-
-        return dynamicHeight;
-      };
-
       // ==========================================
       // HEADER SECTION - White background with logos
       // ==========================================
@@ -285,41 +228,46 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       boxY += rowH;
 
       // VALUES ROW
-      const valueCols = [
-        {
-          width: col1,
-          text: exportJob.branchCode || "KHDB",
-          align: "center",
-          style: "bold",
-        },
-        {
-          width: col2,
-          text: exportJob.gateway_port || booking.portOfLoading || "",
-          align: "center",
-          style: "bold",
-        },
-        {
-          width: col3,
-          text: booking.shippingLineName || "",
-          align: "center",
-          style: "bold",
-        },
-        {
-          width: col4,
-          text: exportJob.port_of_discharge || "",
-          align: "center",
-          style: "bold",
-        },
-        {
-          width: col5,
-          text: exportJob.discharge_country || "",
-          align: "center",
-          style: "bold",
-        },
-      ];
+      doc.rect(leftMargin, boxY, col1, rowH);
+      doc.rect(leftMargin + col1, boxY, col2, rowH);
+      doc.rect(leftMargin + fromWidth, boxY, col3, rowH);
+      doc.rect(leftMargin + fromWidth + col3, boxY, col4, rowH);
+      doc.rect(leftMargin + fromWidth + col3 + col4, boxY, col5, rowH);
 
-      const valuesHeight = drawContentBox(boxY, valueCols, rowH);
-      boxY += valuesHeight;
+      doc.setFontSize(9 * rowScale);
+      doc.setFont("helvetica", "bold");
+      doc.text(
+        exportJob.branch_code || "",
+        leftMargin + col1 / 2,
+        boxY + rowH * 0.75,
+        { align: "center" }
+      );
+      doc.text(
+        exportJob.gateway_port || booking.portOfLoading || "",
+        leftMargin + col1 + col2 / 2,
+        boxY + rowH * 0.75,
+        { align: "center" }
+      );
+      doc.text(
+        booking.shippingLineName || "",
+        leftMargin + fromWidth + col3 / 2,
+        boxY + rowH * 0.75,
+        { align: "center" }
+      );
+      doc.text(
+        exportJob.port_of_discharge || "",
+        leftMargin + fromWidth + col3 + col4 / 2,
+        boxY + rowH * 0.75,
+        { align: "center" }
+      );
+      doc.text(
+        exportJob.discharge_country || "",
+        leftMargin + fromWidth + col3 + col4 + col5 / 2,
+        boxY + rowH * 0.75,
+        { align: "center" }
+      );
+
+      boxY += rowH;
 
       // CUSTOMER TYPE ROW
       doc.rect(leftMargin, boxY, contentWidth, rowH);
@@ -336,7 +284,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       doc.rect(leftMargin, boxY, contentWidth, rowH + 1);
       doc.setFontSize(10 * rowScale);
       doc.text(
-        "CHA NAME & CODE:  SURAJ FORWARDERS AND SHIPPING AGENCIES",
+        `CHA NAME & CODE:  ${exportJob.cha || ""}`,
         leftMargin + 3,
         boxY + (rowH + 1) * 0.7
       );
@@ -364,14 +312,14 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       boxY += smallRowH;
 
       // PICK UP POINT
-      const pickupCols = [
-        {
-          width: contentWidth,
-          text: `PICK UP POINT/KM:    ${exportJob.factory_address || ""}`,
-          fontSize: 7 * rowScale, // Ensure legible size
-        },
-      ];
-      boxY += drawContentBox(boxY, pickupCols, smallRowH);
+      doc.rect(leftMargin, boxY, contentWidth, smallRowH);
+      doc.text(
+        `PICK UP POINT/KM:    ${exportJob.factory_address || ""}`,
+        leftMargin + 3,
+        boxY + smallRowH * 0.75
+      );
+
+      boxY += smallRowH;
 
       // DELIVER POINT
       doc.rect(leftMargin, boxY, contentWidth, smallRowH);
@@ -380,40 +328,43 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       boxY += smallRowH;
 
       // SHIPPING BILL NO
-      const sbCols = [
-        {
-          width: contentWidth,
-          text: `SHIPPING BILL NO.${exportJob.sb_no || ""} DATE ${formatDate(
-            exportJob.sb_date
-          )}`,
-          fontSize: 12 * rowScale,
-          style: "bold",
-        },
-      ];
-      boxY += drawContentBox(boxY, sbCols, rowH + 2);
+      doc.rect(leftMargin, boxY, contentWidth, rowH + 2);
+      doc.setFontSize(12 * rowScale);
+      doc.setFont("helvetica", "bold");
+      doc.text(
+        `SHIPPING BILL NO.${exportJob.sb_no || ""} DATE ${formatDate(
+          exportJob.sb_date
+        )}`,
+        leftMargin + 3,
+        boxY + (rowH + 2) * 0.7
+      );
+
+      boxY += rowH + 2;
 
       // STUFFING TYPE / GST IN INVOICE NAME
-      const stuffingCols = [
-        {
-          width: contentWidth / 2,
-          text: `STUFFING TYPE [FACTORY (FS)/ ICD (CFS)]:  ${
-            exportJob.goods_stuffed_at === "Factory" ? "FCL" : "ICD"
-          }`,
-          fontSize: 7 * rowScale,
-        },
-        {
-          width: contentWidth / 2,
-          text: `GST IN INVOICE NAME OF : ${exportJob.exporter || ""}`,
-          fontSize: 7 * rowScale,
-        },
-      ];
-      boxY += drawContentBox(boxY, stuffingCols, rowH);
+      doc.rect(leftMargin, boxY, contentWidth / 2, rowH);
+      doc.rect(leftMargin + contentWidth / 2, boxY, contentWidth / 2, rowH);
+      doc.setFontSize(7 * rowScale);
+      doc.text(
+        `STUFFING TYPE [FACTORY (FS)/ ICD (CFS)]:  ${
+          exportJob.goods_stuffed_at === "Factory" ? "FCL" : "ICD"
+        }`,
+        leftMargin + 3,
+        boxY + rowH * 0.7
+      );
+      doc.text(
+        `GST IN INVOICE NAME OF : ${exportJob.exporter || ""}`,
+        leftMargin + contentWidth / 2 + 3,
+        boxY + rowH * 0.7
+      );
+
+      boxY += rowH;
 
       // PAYMENT MODE
       doc.rect(leftMargin, boxY, contentWidth, rowH);
       doc.setFontSize(7 * rowScale);
       doc.text(
-        "PAYMENT MODE (PDA) & NO.: SURAJ FORWARDERS PVT. LTD.",
+        `PAYMENT MODE (PDA) & NO.: ${exportJob.cha || ""}`,
         leftMargin + 3,
         boxY + rowH * 0.7
       );
@@ -421,29 +372,25 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       boxY += rowH;
 
       // EXPORTER NAME
-      const exporterCols = [
-        {
-          width: contentWidth,
-          text: `EXPORTER NAME : ${exportJob.exporter || ""}`,
-          fontSize: 12 * rowScale,
-          style: "bold",
-        },
-      ];
-      // Note: Original had rowH + 1
-      boxY += drawContentBox(boxY, exporterCols, rowH + 1);
+      doc.rect(leftMargin, boxY, contentWidth, rowH + 1);
+      doc.setFontSize(12 * rowScale);
+      doc.setFont("helvetica", "bold");
+      doc.text(
+        `EXPORTER NAME : ${exportJob.exporter || ""}`,
+        leftMargin + 3,
+        boxY + (rowH + 1) * 0.7
+      );
+
+      boxY += rowH + 1;
 
       // NAME IN INVOICE GSTIN NO
-      // NAME IN INVOICE GSTIN NO
-      const gstinCols = [
-        {
-          width: contentWidth,
-          text: `NAME IN INVOICE  GSTIN  NO : ${
-            exportJob.exporter_gstin || ""
-          }`,
-          fontSize: 10 * rowScale,
-        },
-      ];
-      boxY += drawContentBox(boxY, gstinCols, rowH + 1);
+      doc.rect(leftMargin, boxY, contentWidth, rowH + 1);
+      doc.setFontSize(10 * rowScale);
+      doc.text(
+        `NAME IN INVOICE  GSTIN  NO : ${exportJob.exporter_gstin || ""}`,
+        leftMargin + 3,
+        boxY + (rowH + 1) * 0.7
+      );
 
       boxY += rowH + 3;
 
@@ -523,34 +470,6 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
           ]);
         }
       }
-
-      // Calculate totals for packages and cargo weight
-      const totalPackages = containers.reduce(
-        (sum, cnt) => sum + (Number(cnt.pkgsStuffed) || 0),
-        0
-      );
-      const totalCargoWeight = containers.reduce(
-        (sum, cnt) => sum + parseFloat(cnt.grossWeight || 0) / 1000,
-        0
-      );
-
-      // Add TOTAL row
-      tableBody.push([
-        "",
-        "",
-        "",
-        "",
-        "",
-        totalPackages || "",
-        "",
-        "",
-        totalCargoWeight ? totalCargoWeight.toFixed(1) : "",
-        "",
-        "",
-        "",
-        "",
-        "",
-      ]);
 
       // Calculate column widths to fit exactly in content width
       const totalWidth = contentWidth;
