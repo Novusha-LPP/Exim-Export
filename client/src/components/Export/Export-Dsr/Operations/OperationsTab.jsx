@@ -146,7 +146,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
   const [query, setQuery] = useState(
     (formik.values[fieldName.split(".")[0]] &&
       getNestedValue(formik.values, fieldName)) ||
-    ""
+      ""
   );
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
@@ -178,11 +178,11 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
 
     const url = isAir
       ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-        searchVal
-      )}`
+          searchVal
+        )}`
       : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-        searchVal
-      )}`;
+          searchVal
+        )}`;
 
     const t = setTimeout(async () => {
       try {
@@ -192,8 +192,8 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-              ? data
-              : []
+            ? data
+            : []
         );
       } catch {
         setOpts([]);
@@ -394,6 +394,255 @@ function ShippingLineDropdownField({ fieldName, formik, placeholder = "" }) {
             </div>,
             document.body
           )}
+      </div>
+    </div>
+  );
+}
+
+// Hook for Gateway Port Dropdown
+function useGatewayPortDropdown(fieldName, formik) {
+  const [open, setOpen] = useState(false);
+
+  // Helper to get nested value
+  const getNestedValue = (obj, path) =>
+    path.split(".").reduce((acc, part) => acc && acc[part], obj);
+
+  const [query, setQuery] = useState(
+    getNestedValue(formik.values, fieldName) || ""
+  );
+  const [opts, setOpts] = useState([]);
+  const [active, setActive] = useState(-1);
+  const [isTyping, setIsTyping] = useState(false);
+  const wrapperRef = useRef();
+  const apiBase = import.meta.env.VITE_API_STRING;
+  const keepOpen = useRef(false);
+
+  const fieldValue = getNestedValue(formik.values, fieldName);
+
+  useEffect(() => {
+    setQuery(fieldValue || "");
+  }, [fieldValue]);
+
+  useEffect(() => {
+    if (!open) {
+      setOpts([]);
+      return;
+    }
+
+    // When dropdown opens, fetch all options (empty search)
+    // Only use query for search if user is actively typing
+    const searchVal = isTyping ? (query || "").trim() : "";
+    const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
+      searchVal
+    )}`;
+
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        setOpts(
+          Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data)
+            ? data
+            : []
+        );
+      } catch {
+        setOpts([]);
+      }
+    }, 220);
+
+    return () => clearTimeout(t);
+  }, [open, query, apiBase, isTyping]);
+
+  useEffect(() => {
+    function close(e) {
+      if (
+        !keepOpen.current &&
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+        setIsTyping(false);
+      }
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  function select(i) {
+    const item = opts[i];
+    if (!item) return;
+
+    const value = `${(item.unece_code || "").toUpperCase()} - ${(
+      item.name || ""
+    ).toUpperCase()}`.trim();
+    setQuery(value);
+    formik.setFieldValue(fieldName, value);
+    setOpen(false);
+    setActive(-1);
+    setIsTyping(false);
+  }
+
+  return {
+    wrapperRef,
+    open,
+    setOpen,
+    query,
+    setQuery,
+    opts,
+    active,
+    setActive,
+    handle: (val) => {
+      const v = val.toUpperCase();
+      setQuery(v);
+      formik.setFieldValue(fieldName, v);
+      setOpen(true);
+      setIsTyping(true);
+    },
+    select,
+    onInputFocus: () => {
+      setOpen(true);
+      setActive(-1);
+      keepOpen.current = true;
+    },
+    onInputBlur: () => {
+      setTimeout(() => {
+        keepOpen.current = false;
+      }, 100);
+    },
+  };
+}
+
+// GatewayPortDropdown with inline styles
+function GatewayPortDropdown({
+  fieldName,
+  formik,
+  placeholder = "ENTER GATEWAY PORT",
+}) {
+  const d = useGatewayPortDropdown(fieldName, formik);
+
+  const filtered = d.opts.filter((p) => {
+    const code = p.unece_code || "";
+    const name = p.name || "";
+    const haystack = `${code} ${name}`.toUpperCase();
+    const needle = (d.query || "").toUpperCase();
+    return !needle || haystack.includes(needle);
+  });
+
+  return (
+    <div style={{ position: "relative", width: "100%" }} ref={d.wrapperRef}>
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          width: "100%",
+          height: "100%",
+        }}
+      >
+        <input
+          style={{
+            width: "100%",
+            minHeight: "36px",
+            border: "1px solid transparent",
+            padding: "6px 10px",
+            paddingRight: "28px",
+            fontSize: "12px",
+            fontWeight: "500",
+            color: "#1e293b",
+            outline: "none",
+            background: "transparent",
+            boxSizing: "border-box",
+            transition: "all 0.15s ease",
+          }}
+          placeholder={placeholder}
+          autoComplete="off"
+          value={toUpper(d.query)}
+          onChange={(e) => d.handle(e.target.value)}
+          onFocus={d.onInputFocus}
+          onBlur={d.onInputBlur}
+          onKeyDown={(e) => {
+            if (!d.open) return;
+            if (e.key === "ArrowDown")
+              d.setActive((a) =>
+                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1)
+              );
+            else if (e.key === "ArrowUp")
+              d.setActive((a) => Math.max(0, a - 1));
+            else if (e.key === "Enter" && d.active >= 0) {
+              e.preventDefault();
+              d.select(d.active);
+            } else if (e.key === "Escape") d.setOpen(false);
+          }}
+        />
+        <span
+          style={{
+            position: "absolute",
+            right: "10px",
+            fontSize: "10px",
+            pointerEvents: "none",
+            color: "#64748b",
+          }}
+        >
+          ▼
+        </span>
+        {d.open && filtered.length > 0 && (
+          <div
+            style={{
+              position: "fixed",
+              background: "#ffffff",
+              border: "1px solid #cbd5e1",
+              borderRadius: "6px",
+              marginTop: "4px",
+              maxHeight: "200px",
+              overflowY: "auto",
+              overflowX: "visible",
+              zIndex: 100000000,
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+              width: d.wrapperRef.current
+                ? d.wrapperRef.current.getBoundingClientRect().width
+                : "auto",
+              top: d.wrapperRef.current
+                ? d.wrapperRef.current.getBoundingClientRect().bottom + 5
+                : 0,
+              left: d.wrapperRef.current
+                ? d.wrapperRef.current.getBoundingClientRect().left
+                : 0,
+            }}
+          >
+            {filtered.map((port, i) => (
+              <div
+                key={port._id || port.unece_code || port.name || i}
+                style={{
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: "500",
+                  color: d.active === i ? "#1e293b" : "#475569",
+                  background: d.active === i ? "#f1f5f9" : "#ffffff",
+                  borderBottom: "1px solid #f1f5f9",
+                  transition: "all 0.1s ease",
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  d.select(i);
+                }}
+                onMouseEnter={() => d.setActive(i)}
+              >
+                {(port.unece_code || "").toUpperCase()} -{" "}
+                {(port.name || "").toUpperCase()}
+                {port.port_type && (
+                  <span
+                    style={{ marginLeft: 6, color: "#667", fontWeight: 400 }}
+                  >
+                    ({port.port_type.toUpperCase()})
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1064,7 +1313,12 @@ const OperationsTab = ({ formik }) => {
               width: "150px",
             },
             !isAir && { field: "voyageNo", label: "Voyage", width: "100px" },
-            !isAir && { field: "portOfLoading", label: "POL", width: "120px" },
+            !isAir && {
+              field: "portOfLoading",
+              label: "POL",
+              width: "120px",
+              type: "gatewaydropdown",
+            },
             !isAir && {
               field: "handoverLocation",
               label: "Empty Pickup / Drop Location",
@@ -1327,6 +1581,13 @@ const TableSection = ({
                         formik={formik}
                         placeholder={col.placeholder || ""}
                       />
+                    ) : col.type === "gatewaydropdown" ||
+                      col.type === "gateway-dropdown" ? (
+                      <GatewayPortDropdown
+                        fieldName={`operations.${activeOpIndex}.${section}.${rowIdx}.${col.field}`}
+                        formik={formik}
+                        placeholder={col.placeholder || ""}
+                      />
                     ) : col.type === "select" ? (
                       <select
                         value={
@@ -1356,12 +1617,12 @@ const TableSection = ({
                         }
                         value={
                           item[col.field] === undefined ||
-                            item[col.field] === null
+                          item[col.field] === null
                             ? ""
                             : col.type === "date" ||
                               col.type === "datetime-local"
-                              ? formatDateForInput(item[col.field], col.type)
-                              : item[col.field]
+                            ? formatDateForInput(item[col.field], col.type)
+                            : item[col.field]
                         }
                         onChange={(e) =>
                           onUpdate(
@@ -1619,16 +1880,16 @@ const StatusSection = ({
             f.field === "leoUpload"
               ? "leo_uploads"
               : f.field === "eGatePassUpload"
-                ? "egate_uploads"
-                : f.field === "stuffingSheetUpload"
-                  ? "stuffing_sheet_uploads"
-                  : f.field === "stuffingPhotoUpload"
-                    ? "stuffing_photo_uploads"
-                    : f.field === "billingDocsSentUpload"
-                      ? "billing_uploads"
-                      : f.field === "handoverImageUpload"
-                        ? "job_handover_images"
-                        : "general_uploads"
+              ? "egate_uploads"
+              : f.field === "stuffingSheetUpload"
+              ? "stuffing_sheet_uploads"
+              : f.field === "stuffingPhotoUpload"
+              ? "stuffing_photo_uploads"
+              : f.field === "billingDocsSentUpload"
+              ? "billing_uploads"
+              : f.field === "handoverImageUpload"
+              ? "job_handover_images"
+              : "general_uploads"
           }
           multiple={true}
           acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
@@ -1667,6 +1928,14 @@ const StatusSection = ({
         <IcdPortAutocomplete
           value={item.icdPort || ""}
           onChange={(val) => onUpdate(section, rowIdx, "icdPort", val)}
+        />
+      </div>
+    ) : f.type === "gateway-dropdown" ? (
+      <div style={{ padding: "0 4px", width: "100%", height: "100%" }}>
+        <GatewayPortDropdown
+          fieldName={`operations.${activeOpIndex}.${section}.${rowIdx}.${f.field}`}
+          formik={formik}
+          placeholder={f.placeholder || ""}
         />
       </div>
     ) : f.type === "dispatch" ? (
