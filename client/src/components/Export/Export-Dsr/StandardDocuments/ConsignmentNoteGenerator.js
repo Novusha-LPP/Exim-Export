@@ -42,8 +42,8 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         exporterNameAddress: `${exportJob.exporter || ""}\n${
           exportJob.exporter_address || ""
         }`,
-        consigneeNameAddress: `${exportJob.consignee_name || ""}\n${
-          exportJob.consignee_address || ""
+        consigneeNameAddress: `${exportJob.consignees.consignee_name || ""}\n${
+          exportJob.consignees.consignee_address || ""
         }`,
         agentCha: exportJob.cha_name || "",
         finalDestination: exportJob.country_of_final_destination || "",
