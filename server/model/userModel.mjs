@@ -8,11 +8,14 @@ const USER_MONGODB_URI =
   process.env.NODE_ENV === "production"
     ? process.env.USER_MONGODB_URI_PROD
     : process.env.NODE_ENV === "server"
-      ? process.env.USER_MONGODB_URI_SERVER
-      : process.env.USER_MONGODB_URI;
+    ? process.env.USER_MONGODB_URI_SERVER
+    : process.env.USER_MONGODB_URI;
 
 // Create dedicated connection for user database
-const userDbConnection = mongoose.createConnection(USER_MONGODB_URI);
+const userDbConnection = mongoose.createConnection(USER_MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
 userDbConnection.on("connected", () => {
   console.log(
