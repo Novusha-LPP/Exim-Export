@@ -1,4 +1,32 @@
 import mongoose from "mongoose";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+// Create a separate connection for user database
+const USER_MONGODB_URI =
+  process.env.NODE_ENV === "production"
+    ? process.env.USER_MONGODB_URI_PROD
+    : process.env.NODE_ENV === "server"
+    ? process.env.USER_MONGODB_URI_SERVER
+    : process.env.USER_MONGODB_URI;
+
+// Create dedicated connection for user database
+const userDbConnection = mongoose.createConnection(USER_MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+userDbConnection.on("connected", () => {
+  console.log(
+    "🟢 User Database connected to:",
+    USER_MONGODB_URI?.split("@")[1]?.split("/")[0] || "User DB"
+  );
+});
+
+userDbConnection.on("error", (err) => {
+  console.error("❌ User Database connection error:", err);
+});
 
 const Schema = mongoose.Schema;
 
@@ -212,5 +240,6 @@ const userSchema = new Schema({
   ],
 });
 
-const UserModel = mongoose.model("User", userSchema);
+// Use the dedicated user database connection for the User model
+const UserModel = userDbConnection.model("User", userSchema);
 export default UserModel;
