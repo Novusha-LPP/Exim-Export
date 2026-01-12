@@ -277,28 +277,39 @@ const ExportChecklistGenerator = ({
     let rightY = yPos;
 
     // Draw both columns of main data
+    // Draw both columns of main data
     const maxRows = Math.max(leftFields.length, rightFields.length);
     for (let i = 0; i < maxRows; i++) {
+      let rowHeight = 12;
+
       if (leftFields[i]) {
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldLabel);
         pdf.text(leftFields[i].label, leftColX, leftY);
+
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(FONT_SIZES.fieldValue);
-        pdf.text(String(leftFields[i].value || ""), leftColX + 100, leftY);
+        const val = String(leftFields[i].value || "");
+        const splitVal = pdf.splitTextToSize(val, 140);
+        pdf.text(splitVal, leftColX + 100, leftY);
+        rowHeight = Math.max(rowHeight, splitVal.length * 10 + 2);
       }
 
       if (rightFields[i]) {
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldLabel);
         pdf.text(rightFields[i].label, rightColX, rightY);
+
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(FONT_SIZES.fieldValue);
-        pdf.text(String(rightFields[i].value || ""), rightColX + 100, rightY);
+        const val = String(rightFields[i].value || "");
+        const splitVal = pdf.splitTextToSize(val, 140);
+        pdf.text(splitVal, rightColX + 100, rightY);
+        rowHeight = Math.max(rowHeight, splitVal.length * 10 + 2);
       }
 
-      leftY += 12;
-      rightY += 12;
+      leftY += rowHeight;
+      rightY += rowHeight;
     }
 
     yPos = leftY + 8;
@@ -330,28 +341,32 @@ const ExportChecklistGenerator = ({
     let invoiceRightY = yPos;
 
     for (let i = 0; i < 5; i++) {
+      let rowHeight = 12;
+
+      // Left Side
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.fieldLabel);
       pdf.text(invoiceLeftFields[i].label, leftColX, invoiceLeftY);
+
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(FONT_SIZES.fieldValue);
-      pdf.text(
-        String(invoiceLeftFields[i].value || ""),
-        leftColX + 80,
-        invoiceLeftY
-      );
+      const leftVal = String(invoiceLeftFields[i].value || "");
+      const leftSplit = pdf.splitTextToSize(leftVal, 160);
+      pdf.text(leftSplit, leftColX + 80, invoiceLeftY);
+      rowHeight = Math.max(rowHeight, leftSplit.length * 10 + 2);
 
+      // Right Side
       pdf.setFont("helvetica", "bold");
       pdf.text(invoiceRightFields[i].label, rightColX, invoiceRightY);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(
-        String(invoiceRightFields[i].value || ""),
-        rightColX + 80,
-        invoiceRightY
-      );
 
-      invoiceLeftY += 12;
-      invoiceRightY += 12;
+      pdf.setFont("helvetica", "normal");
+      const rightVal = String(invoiceRightFields[i].value || "");
+      const rightSplit = pdf.splitTextToSize(rightVal, 160);
+      pdf.text(rightSplit, rightColX + 80, invoiceRightY);
+      rowHeight = Math.max(rowHeight, rightSplit.length * 10 + 2);
+
+      invoiceLeftY += rowHeight;
+      invoiceRightY += rowHeight;
     }
 
     yPos = invoiceLeftY + 8;
