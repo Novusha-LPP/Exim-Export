@@ -354,21 +354,14 @@ const ExportChecklistGenerator = ({
 
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(FONT_SIZES.fieldValue);
-      pdf.text(
-        String(invoiceLeftFields[i].value || ""),
-        leftColX + 80,
-        invoiceLeftY
-      );
+      const leftVal = String(invoiceLeftFields[i].value || "");
+      const leftSplit = pdf.splitTextToSize(leftVal, 160);
+      pdf.text(leftSplit, leftColX + 80, invoiceLeftY);
+      rowHeight = Math.max(rowHeight, leftSplit.length * 10 + 2);
 
       // Right Side
       pdf.setFont("helvetica", "bold");
       pdf.text(invoiceRightFields[i].label, rightColX, invoiceRightY);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(
-        String(invoiceRightFields[i].value || ""),
-        rightColX + 80,
-        invoiceRightY
-      );
 
       pdf.setFont("helvetica", "normal");
       const rightVal = String(invoiceRightFields[i].value || "");

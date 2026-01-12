@@ -9,19 +9,21 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
     if (!dateString) return "";
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
-    return date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }).replace(/\//g, '.');
+    return date
+      .toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+      .replace(/\//g, ".");
   };
 
   const formatDateForApi = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return "";
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
   };
@@ -45,9 +47,18 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       let exchangeRate = 1;
       try {
         const jobDateFormatted = formatDateForApi(data.job_date || new Date());
-        const currencyResponse = await axios.get(`${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${jobDateFormatted}`);
-        if (currencyResponse.data.success && currencyResponse.data.data.exchange_rates) {
-          const rateObj = currencyResponse.data.data.exchange_rates.find(r => r.currency_code === (invoice.currency || "USD"));
+        const currencyResponse = await axios.get(
+          `${
+            import.meta.env.VITE_API_STRING
+          }/currency-rates/by-date/${jobDateFormatted}`
+        );
+        if (
+          currencyResponse.data.success &&
+          currencyResponse.data.data.exchange_rates
+        ) {
+          const rateObj = currencyResponse.data.data.exchange_rates.find(
+            (r) => r.currency_code === (invoice.currency || "USD")
+          );
           if (rateObj) {
             exchangeRate = rateObj.export_rate || rateObj.import_rate || 1;
           }
@@ -63,7 +74,10 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
 
       // Shorten description
       const rawDescription = products[0]?.description || "";
-      const shortenedDescription = rawDescription.length > 50 ? rawDescription.substring(0, 47) + "..." : rawDescription;
+      const shortenedDescription =
+        rawDescription.length > 50
+          ? rawDescription.substring(0, 47) + "..."
+          : rawDescription;
 
       let yPos = 10;
 
@@ -83,7 +97,8 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7);
-      const address = "Near Nirma Factory, Opposite Jakhwada Railway Station, Village Sachana, Viramgam Taluka, Ahmedabad - 382 150, Gujarat, India.";
+      const address =
+        "Near Nirma Factory, Opposite Jakhwada Railway Station, Village Sachana, Viramgam Taluka, Ahmedabad - 382 150, Gujarat, India.";
       doc.text(address, pageWidth / 2, yPos, { align: "center" });
       yPos += 5;
 
@@ -108,7 +123,9 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
 
       doc.setFontSize(9);
       doc.setFont("helvetica", "bold");
-      doc.text("CWC (NS) PVT. LTD. USE", boxX + boxW / 2, boxY + 5, { align: "center" });
+      doc.text("CWC (NS) PVT. LTD. USE", boxX + boxW / 2, boxY + 5, {
+        align: "center",
+      });
 
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
@@ -124,7 +141,9 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       doc.setFontSize(10);
       doc.text("Mode By : RAIL", margin, yPos + 12);
 
-      const invoiceNoText = `INVOICE NO:- ${data.invoices?.map(inv => inv.invoiceNumber).join(", ") || ""}`;
+      const invoiceNoText = `INVOICE NO:- ${
+        data.invoices?.map((inv) => inv.invoiceNumber).join(", ") || ""
+      }`;
       doc.text(invoiceNoText, margin, yPos + 18);
 
       yPos += 24;
@@ -135,54 +154,129 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       doc.text("To,", margin, yPos);
       doc.text("The Terminal Manager,", margin, yPos + 5);
       doc.text("CWC (NS) PVT. LTD. Sachana", margin, yPos + 10);
-      doc.text("Cargo : Non Hazardous", pageWidth - margin, yPos + 10, { align: "right" });
+      doc.text("Cargo : Non Hazardous", pageWidth - margin, yPos + 10, {
+        align: "right",
+      });
 
       yPos += 16;
 
-      const disclaimer = "Please receive the under mentioned container stuffed at ICD/Factory. We accept the all Transportation and/or provision of Containers of business incidental there to have been under taken by CWC(NS) PVT. LTD. on the basis of their standard terms and conditions which have been read by us and understood. No servant or agent of the company has any authority to vary or waive conditions or any part there of.";
+      const disclaimer =
+        "Please receive the under mentioned container stuffed at ICD/Factory. We accept the all Transportation and/or provision of Containers of business incidental there to have been under taken by CWC(NS) PVT. LTD. on the basis of their standard terms and conditions which have been read by us and understood. No servant or agent of the company has any authority to vary or waive conditions or any part there of.";
       const splitDisclaimer = doc.splitTextToSize(disclaimer, contentWidth);
       doc.setFontSize(8.5);
       doc.text(splitDisclaimer, margin, yPos);
       yPos += splitDisclaimer.length * 3.5 + 4;
 
       // ================= FORM GRID =================
-      const drawCell = (x, y, w, h, label, value) => {
-        doc.rect(x, y, w, h);
-        doc.setFontSize(7);
-        doc.setFont("helvetica", "bold");
-        doc.text(label, x + 1, y + 3);
-        doc.setFontSize(8.5);
-        doc.setFont("helvetica", "normal");
-        const splitValue = doc.splitTextToSize(String(value || ""), w - 2);
-        doc.text(splitValue, x + 1, y + 7.5);
+      // ================= FORM GRID =================
+      const drawDynamicRow = (y, cols, minHeight = 10) => {
+        let maxHeight = minHeight;
+        const processedCols = cols.map((col) => {
+          doc.setFontSize(8.5);
+          doc.setFont("helvetica", "normal");
+          const valueLines = doc.splitTextToSize(
+            String(col.value || ""),
+            col.width - 2
+          );
+          // Approximate height: Label(4) + Gap(2) + Lines * LineHeight(3.5) + Padding(2)
+          const contentHeight = 6 + valueLines.length * 3.5 + 2;
+          if (contentHeight > maxHeight) maxHeight = contentHeight;
+          return { ...col, valueLines };
+        });
+
+        let currentX = margin;
+        processedCols.forEach((col) => {
+          doc.rect(currentX, y, col.width, maxHeight);
+
+          // Label
+          doc.setFontSize(7);
+          doc.setFont("helvetica", "bold");
+          doc.text(col.label, currentX + 1, y + 3);
+
+          // Value
+          doc.setFontSize(8.5);
+          doc.setFont("helvetica", col.valueStyle || "normal");
+          doc.text(col.valueLines, currentX + 1, y + 7.5);
+
+          currentX += col.width;
+        });
+
+        return maxHeight;
       };
 
       doc.setLineWidth(0.4);
       doc.setFont("helvetica", "bold");
 
-      const r1H = 15;
-      drawCell(margin, yPos, contentWidth * 0.4, r1H, "Name of Consignor (S/Line)", booking.shippingLineName);
-      drawCell(margin + contentWidth * 0.4, yPos, contentWidth * 0.6, r1H, "Name and address of consignee (S/Line)", data.consignees?.[0]?.consignee_name + "\n" + (data.consignees?.[0]?.consignee_address || ""));
-      yPos += r1H;
+      // Row 1
+      yPos += drawDynamicRow(yPos, [
+        {
+          width: contentWidth * 0.4,
+          label: "Name of Consignor (S/Line)",
+          value: booking.shippingLineName,
+        },
+        {
+          width: contentWidth * 0.6,
+          label: "Name and address of consignee (S/Line)",
+          value:
+            data.consignees?.[0]?.consignee_name +
+            "\n" +
+            (data.consignees?.[0]?.consignee_address || ""),
+        },
+      ]);
 
-      const r2H = 15;
-      drawCell(margin, yPos, contentWidth * 0.4, r2H, "Agent / CHA", data.cha || "SURAJ FORWARDERS & SHIPPING AGENCIES");
-      drawCell(margin + contentWidth * 0.4, yPos, contentWidth * 0.35, r2H, "Final Destination", data.destination_port);
-      drawCell(margin + contentWidth * 0.75, yPos, contentWidth * 0.25, r2H, "Country", data.destination_country);
-      yPos += r2H;
+      // Row 2
+      yPos += drawDynamicRow(yPos, [
+        {
+          width: contentWidth * 0.4,
+          label: "Agent / CHA",
+          value: data.cha || "SURAJ FORWARDERS & SHIPPING AGENCIES",
+        },
+        {
+          width: contentWidth * 0.35,
+          label: "Final Destination",
+          value: data.destination_port,
+        },
+        {
+          width: contentWidth * 0.25,
+          label: "Country",
+          value: data.destination_country,
+        },
+      ]);
 
-      const r3H = 18;
-      drawCell(margin, yPos, contentWidth * 0.4, r3H, "Name & Address of Exporter", (data.exporter || "") + "\n" + (data.exporter_address || ""));
-      drawCell(margin + contentWidth * 0.4, yPos, contentWidth * 0.6, r3H, "Gateway Port", data.gateway_port || booking.portOfLoading || "");
-      yPos += r3H;
+      // Row 3
+      yPos += drawDynamicRow(yPos, [
+        {
+          width: contentWidth * 0.4,
+          label: "Name & Address of Exporter",
+          value: (data.exporter || "") + "\n" + (data.exporter_address || ""),
+        },
+        {
+          width: contentWidth * 0.6,
+          label: "Gateway Port",
+          value: data.gateway_port || booking.portOfLoading || "",
+        },
+      ]);
 
-      const r4H = 12;
-      drawCell(margin, yPos, contentWidth * 0.4, r4H, "Shipping Bill No. & Date", (data.sb_no || "") + " / " + formatDate(data.sb_date));
-      drawCell(margin + contentWidth * 0.4, yPos, contentWidth * 0.6, r4H, "Port of Discharge", data.port_of_discharge || "");
-      yPos += r4H;
+      // Row 4
+      yPos += drawDynamicRow(yPos, [
+        {
+          width: contentWidth * 0.4,
+          label: "Shipping Bill No. & Date",
+          value: (data.sb_no || "") + " / " + formatDate(data.sb_date),
+        },
+        {
+          width: contentWidth * 0.6,
+          label: "Port of Discharge",
+          value: data.port_of_discharge || "",
+        },
+      ]);
 
+      // Row 5
       const totalFobVal = (data.invoices || []).reduce((sum, inv) => {
-        const val = inv.freightInsuranceCharges?.fobValue?.amount || inv.productValue || 0;
+        const val =
+          inv.freightInsuranceCharges?.fobValue?.amount ||
+          inv.productValue ||
+          0;
         return sum + (Number(val) || 0);
       }, 0);
       const totalInvoiceVal = (data.invoices || []).reduce((sum, inv) => {
@@ -192,23 +286,34 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       const fobInInr = (totalFobVal * exchangeRate).toFixed(2);
       const invInInr = (totalInvoiceVal * exchangeRate).toFixed(2);
 
-      const r5H = 15;
-      drawCell(margin, yPos, contentWidth * 0.4, r5H, "Stuffing", (data.goods_stuffed_at === "Factory" ? "FACTORY (FS)" : "ICD (CFS)"));
+      yPos += drawDynamicRow(yPos, [
+        {
+          width: contentWidth * 0.4,
+          label: "Stuffing",
+          value:
+            data.goods_stuffed_at === "Factory" ? "FACTORY (FS)" : "ICD (CFS)",
+        },
+        {
+          width: contentWidth * 0.6,
+          label: "F.O.B./C.I.F. Value",
+          value: `FOB: ${fobInInr} INR\nINVVAL: ${invInInr} INR`,
+          valueStyle: "bold",
+        },
+      ]);
 
-      doc.rect(margin + contentWidth * 0.4, yPos, contentWidth * 0.6, r5H);
-      doc.setFontSize(7);
-      doc.setFont("helvetica", "bold");
-      doc.text("F.O.B./C.I.F. Value", margin + contentWidth * 0.4 + 1, yPos + 3);
-      doc.setFontSize(8.5);
-      doc.setFont("helvetica", "bold");
-      doc.text(`FOB: ${fobInInr} INR`, margin + contentWidth * 0.4 + 1, yPos + 7.5);
-      doc.text(`INVVAL: ${invInInr} INR`, margin + contentWidth * 0.4 + 1, yPos + 11.5);
-      yPos += r5H;
-
-      const r6H = 8;
-      drawCell(margin, yPos, contentWidth * 0.4, r6H, "VESSEL NAME AND VOYAGE", (booking.vesselName || "") + " " + (booking.voyageNo || ""));
-      drawCell(margin + contentWidth * 0.4, yPos, contentWidth * 0.6, r6H, "LEO Date", formatDate(data.statusDetails?.[0]?.leoDate));
-      yPos += r6H;
+      // Row 6
+      yPos += drawDynamicRow(yPos, [
+        {
+          width: contentWidth * 0.4,
+          label: "VESSEL NAME AND VOYAGE",
+          value: (booking.vesselName || "") + " " + (booking.voyageNo || ""),
+        },
+        {
+          width: contentWidth * 0.6,
+          label: "LEO Date",
+          value: formatDate(data.statusDetails?.[0]?.leoDate),
+        },
+      ]);
 
       yPos += 4;
 
@@ -222,7 +327,18 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
 
       // ================= GOODS TABLE =================
       const tableHead = [
-        ["Sr\nNo", "Container No", "Size", "No &\nType\nof\nPkgs.", "Description of Goods", "Cargo\nWeight\n(MT)", "Customs\nSeal No.", "S.Line/Agent\nSeal No.", "SB NO.:", "SB DATE"]
+        [
+          "Sr\nNo",
+          "Container No",
+          "Size",
+          "No &\nType\nof\nPkgs.",
+          "Description of Goods",
+          "Cargo\nWeight\n(MT)",
+          "Customs\nSeal No.",
+          "S.Line/Agent\nSeal No.",
+          "SB NO.:",
+          "SB DATE",
+        ],
       ];
 
       let totalPkgs = 0;
@@ -245,12 +361,21 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
           c.sealNo || "",
           booking.shippingLineSealNo || "",
           data.sb_no || "",
-          formatDate(data.sb_date)
+          formatDate(data.sb_date),
         ];
       });
 
       tableBody.push([
-        "", "TOTAL", "", totalPkgs || "", "", (totalWeight / 1000).toFixed(3), "", "", "", ""
+        "",
+        "TOTAL",
+        "",
+        totalPkgs || "",
+        "",
+        (totalWeight / 1000).toFixed(3),
+        "",
+        "",
+        "",
+        "",
       ]);
 
       doc.autoTable({
@@ -267,7 +392,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
           valign: "middle",
           lineWidth: 0.4,
           cellPadding: 1,
-          overflow: 'linebreak',
+          overflow: "linebreak",
         },
         headStyles: {
           fillColor: [255, 255, 255],
@@ -296,7 +421,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         "3  I hereby certify that goods are not classified as dangerous in Indian Railway. Road Tariff of my IMO regulations.",
         "4  It is certify that rated tonnage of the commitment (5) has been exceeded.",
         "5  IF THE CONTAINER WEIGHT, IS NOT SPECIFIED THEIR TARE WEIGHT, IT WILL BE TAKEN AS 2.3 TONS FOR 20' & 4.6 TONS FOR 40'",
-        "6  I understand that the principal terms and conditions applying to the carriage of above containers are subject to the conditions and liabilities as specified in the Indian Railway Act 1989, as amended from time to time."
+        "6  I understand that the principal terms and conditions applying to the carriage of above containers are subject to the conditions and liabilities as specified in the Indian Railway Act 1989, as amended from time to time.",
       ];
 
       doc.setFontSize(8.5);
@@ -333,7 +458,12 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       // ========== FOOTER ==========
       doc.setFontSize(8);
       doc.text("DATE ________________________", margin, yPos);
-      doc.text("STAMP AND SIGNATURE OF SHIPPER OR AGENT (CHA)", pageWidth - margin, yPos, { align: "right" });
+      doc.text(
+        "STAMP AND SIGNATURE OF SHIPPER OR AGENT (CHA)",
+        pageWidth - margin,
+        yPos,
+        { align: "right" }
+      );
 
       yPos += 12;
       doc.rect(margin, yPos, contentWidth, 12);
@@ -342,7 +472,9 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       doc.text("DATE & TIME OF BOOKING OR (EA) :", margin + 1, yPos + 10);
 
       // Open PDF
-      const filename = `Consignment_Note_${data.job_no?.replace(/\//g, "_") || "Draft"}.pdf`;
+      const filename = `Consignment_Note_${
+        data.job_no?.replace(/\//g, "_") || "Draft"
+      }.pdf`;
       const pdfBlob = doc.output("blob");
       const blobUrl = URL.createObjectURL(pdfBlob);
       const newTab = window.open("", "_blank");
@@ -371,7 +503,9 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
             </body>
           </html>`
         );
-        setTimeout(() => { URL.revokeObjectURL(blobUrl); }, 300000);
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 300000);
       }
     } catch (err) {
       console.error("Error generating Consignment Note:", err);
