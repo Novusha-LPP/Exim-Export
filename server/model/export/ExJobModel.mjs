@@ -633,6 +633,7 @@ const exportOperationSchema = new Schema(
     containerDetails: [
       {
         containerNo: { type: String },
+        shippingLineSealNo: { type: String },
         containerSize: { type: String },
         containerType: { type: String },
         cargoType: { type: String },
@@ -654,7 +655,6 @@ const exportOperationSchema = new Schema(
         portOfLoading: { type: String },
         handoverLocation: { type: String },
         validity: { type: String },
-        shippingLineSealNo: { type: String }, // NEW FIELD
         images: [String],
       },
     ],
@@ -1055,13 +1055,36 @@ exportJobSchema.pre("save", function (next) {
     this.operations?.length || 0
   );
 
+  // CLEANUP: If Dock (FCL or LCL), remove containerNo from all Transporter (Carting) Details
+  // This ensures that Carting Details are treated as independent "Gate In" entries for loose goods,
+  // not tied 1:1 to the output containers.
+  const isDock =
+    this.goods_stuffed_at?.toUpperCase() === "DOCK" ||
+    this.goods_stuffed_at?.toUpperCase() === "DOCKS";
+
+  if (isDock) {
+    (this.operations || []).forEach((op) => {
+      (op.transporterDetails || []).forEach((td) => {
+        if (td.containerNo) {
+          console.log(
+            `🧹 Clearing containerNo from Carting Detail (Dock Mode): ${td.containerNo}`
+          );
+          td.containerNo = "";
+        }
+      });
+    });
+  }
+
   // ========================================
   // COLLECT ALL UNIQUE CONTAINER NUMBERS FROM BOTH SOURCES
   // ========================================
 
   // From containers array
   const containerNosFromContainers = new Set(
-    (this.containers || []).map((c) => c.containerNo).filter(Boolean)
+    (this.containers || [])
+      .map((c) => c.containerNo)
+      .filter((c) => c && typeof c === "string" && c.trim().length > 0)
+      .map((c) => c.trim().toUpperCase())
   );
 
   // From operations - CHECK ALL ARRAYS (transporterDetails, containerDetails, weighmentDetails)
@@ -1069,15 +1092,18 @@ exportJobSchema.pre("save", function (next) {
   (this.operations || []).forEach((op) => {
     // Get from transporterDetails array
     (op.transporterDetails || []).forEach((td) => {
-      if (td.containerNo) containerNosFromOperations.add(td.containerNo);
+      if (td.containerNo && td.containerNo.trim().length > 0)
+        containerNosFromOperations.add(td.containerNo.trim().toUpperCase());
     });
     // Get from containerDetails array
     (op.containerDetails || []).forEach((cd) => {
-      if (cd.containerNo) containerNosFromOperations.add(cd.containerNo);
+      if (cd.containerNo && cd.containerNo.trim().length > 0)
+        containerNosFromOperations.add(cd.containerNo.trim().toUpperCase());
     });
     // Get from weighmentDetails array
     (op.weighmentDetails || []).forEach((wd) => {
-      if (wd.containerNo) containerNosFromOperations.add(wd.containerNo);
+      if (wd.containerNo && wd.containerNo.trim().length > 0)
+        containerNosFromOperations.add(wd.containerNo.trim().toUpperCase());
     });
   });
 
@@ -1148,22 +1174,30 @@ exportJobSchema.pre("save", function (next) {
     const containerDetails = [];
     const weighmentDetails = [];
 
+    // IsDock check is already defined above
+
     allContainerNos.forEach((containerNo) => {
       const container = syncedContainers.find(
         (c) => c.containerNo === containerNo
       );
 
-      transporterDetails.push({
-        containerNo,
-        transporterName: "",
-        vehicleNo: "",
-        driverName: "",
-        contactNo: "",
-        noOfPackages: 0,
-        netWeightKgs: 0,
-        grossWeightKgs: container?.grossWeight || 0,
-        images: [],
-      });
+      // Only add per-container carting/transporter row if NOT Dock
+      // Because Dock jobs have independent carting rows (Gate In) not tied 1:1 to containers
+      if (!isDock) {
+        transporterDetails.push({
+          containerNo,
+          transporterName: "",
+          vehicleNo: "",
+          driverName: "",
+          contactNo: "",
+          noOfPackages: 0,
+          netWeightKgs: 0,
+          grossWeightKgs: container?.grossWeight || 0,
+          images: [],
+          cartingDate: null,
+          gateInDate: null,
+        });
+      }
 
       containerDetails.push({
         containerNo,
@@ -1188,11 +1222,24 @@ exportJobSchema.pre("save", function (next) {
         netWeight: 0,
         address: "",
       });
-
-      // We also need to add cartingDate and gateInDate if we're creating new transporters here
-      transporterDetails[transporterDetails.length - 1].cartingDate = null;
-      transporterDetails[transporterDetails.length - 1].gateInDate = null;
     });
+
+    // If Dock, ensure at least one empty row exists so the UI isn't broken
+    if (isDock && transporterDetails.length === 0) {
+      transporterDetails.push({
+        containerNo: "",
+        transporterName: "",
+        vehicleNo: "",
+        driverName: "",
+        contactNo: "",
+        noOfPackages: 0,
+        netWeightKgs: 0,
+        grossWeightKgs: 0,
+        images: [],
+        cartingDate: null,
+        gateInDate: null,
+      });
+    }
 
     this.operations = [
       {
@@ -1243,83 +1290,98 @@ exportJobSchema.pre("save", function (next) {
   } else {
     // Update existing operation(s)
     this.operations.forEach((operation) => {
-      // Get existing container numbers in this operation
-      const existingOpContainerNos = new Set();
-      (operation.transporterDetails || []).forEach((td) => {
-        if (td.containerNo) existingOpContainerNos.add(td.containerNo);
-      });
-
-      // Find new containers to add
-      const newContainerNos = Array.from(allContainerNos).filter(
-        (cn) => !existingOpContainerNos.has(cn)
-      );
-
-      // Add missing containers to operation
-      newContainerNos.forEach((containerNo) => {
+      // Iterate over ALL valid containers to Upsert (Update or Insert) details
+      allContainerNos.forEach((containerNo) => {
         const container = syncedContainers.find(
           (c) => c.containerNo === containerNo
         );
-        console.log(`🆕 Adding ${containerNo} to operation`);
 
-        // Add to transporterDetails
-        operation.transporterDetails = operation.transporterDetails || [];
-        operation.transporterDetails.push({
-          containerNo,
-          transporterName: "",
-          vehicleNo: "",
-          driverName: "",
-          contactNo: "",
-          noOfPackages: 0,
-          netWeightKgs: 0,
-          grossWeightKgs: container?.grossWeight || 0,
-          images: [],
-          cartingDate: null,
-          gateInDate: null,
-        });
+        // 1. Transporter (Carting) Details
+        // Only if NOT Dock, as Dock has independent carting rows
+        if (!isDock) {
+          operation.transporterDetails = operation.transporterDetails || [];
+          let td = operation.transporterDetails.find(
+            (t) => t.containerNo === containerNo
+          );
 
-        // Add to containerDetails
+          if (!td) {
+            // Insert new
+            operation.transporterDetails.push({
+              containerNo,
+              transporterName: "",
+              vehicleNo: "",
+              driverName: "",
+              contactNo: "",
+              noOfPackages: 0,
+              netWeightKgs: 0,
+              grossWeightKgs: container?.grossWeight || 0,
+              images: [],
+              cartingDate: null,
+              gateInDate: null,
+            });
+          } else {
+            // Optional: Update existing fields if needed
+            if (container?.grossWeight && !td.grossWeightKgs) {
+              td.grossWeightKgs = container.grossWeight;
+            }
+          }
+        }
+
+        // 2. Container Details
         operation.containerDetails = operation.containerDetails || [];
-        operation.containerDetails.push({
-          containerNo,
-          containerSize: container?.type || "",
-          containerType: "",
-          cargoType: "Gen",
-          maxGrossWeightKgs: 0,
-          tareWeightKgs: 0,
-          maxPayloadKgs: 0,
-          images: [],
-        });
+        let cd = operation.containerDetails.find(
+          (c) => c.containerNo === containerNo
+        );
 
-        // Add to weighmentDetails
+        if (!cd) {
+          // Insert new
+          operation.containerDetails.push({
+            containerNo,
+            containerSize: container?.type || "",
+            containerType: "",
+            cargoType: "Gen",
+            maxGrossWeightKgs: 0,
+            tareWeightKgs: 0,
+            maxPayloadKgs: 0,
+            images: [],
+          });
+        } else {
+          // Update existing: Sync Size logic from main Container list
+          if (container?.type) {
+            cd.containerSize = container.type;
+          }
+        }
+
+        // 3. Weighment Details
         operation.weighmentDetails = operation.weighmentDetails || [];
-        operation.weighmentDetails.push({
-          containerNo,
-          weighBridgeName: "",
-          regNo: "",
-          dateTime: new Date(),
-          vehicleNo: "",
-          size: container?.type || "",
-          grossWeight: container?.grossWeight || 0,
-          tareWeight: 0,
-          netWeight: 0,
-          address: "",
-        });
-      });
+        let wd = operation.weighmentDetails.find(
+          (w) => w.containerNo === containerNo
+        );
 
-      // ❌ REMOVED PRUNING LOGIC TO PREVENT DATA LOSS
-      // We only ADD missing containers, we NEVER remove existing rows here
-      // This prevents data loss if a container is renamed or briefly missing from the sync set
-      /*
-      operation.transporterDetails = (
-        operation.transporterDetails || []
-      ).filter((td) => allContainerNos.has(td.containerNo));
-      operation.containerDetails = (operation.containerDetails || []).filter(
-        (cd) => allContainerNos.has(cd.containerNo)
-      );
-      operation.weighmentDetails = (operation.weighmentDetails || []).filter(
-        (wd) => allContainerNos.has(wd.containerNo)
-      );
-      */
+        if (!wd) {
+          // Insert new
+          operation.weighmentDetails.push({
+            containerNo,
+            weighBridgeName: "",
+            regNo: "",
+            dateTime: new Date(),
+            vehicleNo: "",
+            size: container?.type || "",
+            grossWeight: container?.grossWeight || 0,
+            tareWeight: 0,
+            netWeight: 0,
+            address: "",
+          });
+        } else {
+          // Update existing
+          if (container?.type) {
+            wd.size = container.type;
+          }
+          if (container?.grossWeight && !wd.grossWeight) {
+            wd.grossWeight = container.grossWeight;
+          }
+        }
+      });
     });
   }
 
