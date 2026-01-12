@@ -655,7 +655,6 @@ const exportOperationSchema = new Schema(
         portOfLoading: { type: String },
         handoverLocation: { type: String },
         validity: { type: String },
-        shippingLineSealNo: { type: String }, // NEW FIELD
         images: [String],
       },
     ],
