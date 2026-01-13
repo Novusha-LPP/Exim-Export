@@ -350,12 +350,43 @@ export const auditMiddleware = (documentType = "Unknown") => {
     let originalDocument = null;
     let documentId = null;
 
+    // Normalize headers to lowercase for case-insensitive access
+    const normalizedHeaders = {};
+    Object.keys(req.headers).forEach(key => {
+      normalizedHeaders[key.toLowerCase()] = req.headers[key];
+    });
+
     const userInfo = req.currentUser ||
       req.user || {
-      _id: req.headers["user-id"] || req.body.userId || "unknown",
-      username: req.headers["username"] || req.body.username || "unknown",
-      role: req.headers["user-role"] || req.body.userRole || "unknown",
+      _id: normalizedHeaders["user-id"] || req.body.userId || "unknown",
+      username: normalizedHeaders["username"] || normalizedHeaders["x-username"] || req.body.username || "unknown",
+      role: normalizedHeaders["user-role"] || normalizedHeaders["x-user-role"] || req.body.userRole || "unknown",
     };
+
+    // Debug logging to see what we're receiving (only log when username is unknown)
+    if (userInfo.username === "unknown") {
+      console.log('🔍 Audit Middleware Debug (Unknown User):', {
+        endpoint: req.originalUrl,
+        method: req.method,
+        hasCurrentUser: !!req.currentUser,
+        hasReqUser: !!req.user,
+        allHeaders: Object.keys(req.headers),
+        relevantHeaders: {
+          'user-id': normalizedHeaders["user-id"],
+          'username': normalizedHeaders["username"],
+          'x-username': normalizedHeaders["x-username"],
+          'user-role': normalizedHeaders["user-role"],
+          'x-user-role': normalizedHeaders["x-user-role"]
+        },
+        bodyHasUserId: !!req.body.userId,
+        bodyHasUsername: !!req.body.username,
+        userInfo: {
+          _id: userInfo._id,
+          username: userInfo.username,
+          role: userInfo.role
+        }
+      });
+    }
 
     // Get or create unique user ID for this username
     const uniqueUserId = await getOrCreateUserId(userInfo.username);
@@ -367,7 +398,12 @@ export const auditMiddleware = (documentType = "Unknown") => {
 
     if (!user.uniqueUserId || user.uniqueUserId === "UNKNOWN_USER") {
       console.warn(
-        "⚠️ Audit middleware: Using fallback user ID for unknown user"
+        "⚠️ Audit middleware: Using fallback user ID for unknown user",
+        {
+          endpoint: req.originalUrl,
+          username: userInfo.username,
+          uniqueUserId: user.uniqueUserId
+        }
       );
     }
 

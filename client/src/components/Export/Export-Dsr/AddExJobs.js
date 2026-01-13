@@ -578,8 +578,8 @@ function useGatewayPortDropdown(value, onChange) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -745,7 +745,6 @@ const AddExJobs = ({ onJobCreated }) => {
     consignmentType: "FCL",
     discharge_country: "",
     custom_house: "",
-    port_of_loading: "",
     total_no_of_pkgs: "",
     gross_weight_kg: "",
     net_weight_kg: "",
@@ -836,10 +835,10 @@ const AddExJobs = ({ onJobCreated }) => {
           const allOrgs = response.data.data;
           const filtered = formData.exporter
             ? allOrgs.filter((o) =>
-                (o.organization || "")
-                  .toUpperCase()
-                  .includes(formData.exporter.toUpperCase())
-              )
+              (o.organization || "")
+                .toUpperCase()
+                .includes(formData.exporter.toUpperCase())
+            )
             : allOrgs;
           setOrganizations(filtered);
         }
@@ -955,7 +954,6 @@ const AddExJobs = ({ onJobCreated }) => {
       consignmentType: "FCL",
       discharge_country: "",
       custom_house: "", // 👈 reset
-      port_of_loading: "",
       gross_weight_kg: "",
       net_weight_kg: "",
       status: "Pending",
@@ -1032,8 +1030,8 @@ const AddExJobs = ({ onJobCreated }) => {
                               key={i}
                               style={s.dropdownItem}
                               onMouseEnter={(e) =>
-                                (e.currentTarget.style.backgroundColor =
-                                  "#f9fafb")
+                              (e.currentTarget.style.backgroundColor =
+                                "#f9fafb")
                               }
                               onMouseLeave={(e) =>
                                 (e.currentTarget.style.backgroundColor = "#fff")

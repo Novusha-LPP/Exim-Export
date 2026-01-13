@@ -130,8 +130,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -270,356 +270,7 @@ function GatewayPortDropdown({
   );
 }
 
-const LogisysEditableHeader = ({
-  formik,
-  onUpdate,
-  directories,
-  exportJobsUsers = [],
-  onDocsMenuOpen,
-}) => {
-  const [snackbar, setSnackbar] = useState(false);
-  const { user } = useContext(UserContext);
-  const isNewJob = !formik.values.job_no;
 
-  const handleCopyText = (text) => {
-    navigator.clipboard.writeText(text || "");
-    setSnackbar(true);
-    setTimeout(() => setSnackbar(false), 2000);
-  };
-
-  const shipperOpts = (directories?.exporters || []).map((exp) => ({
-    label: `${exp.organization} (${exp.registrationDetails?.ieCode || ""})`,
-    value: exp.organization,
-  }));
-
-  // console.log("shipperOpts", shipperOpts);
-  return (
-    <div
-      style={{
-        marginBottom: 20,
-        background: "linear-gradient(90deg, #f7fafc 85%, #e3f2fd 100%)",
-        border: "1px solid #e3e7ee",
-        borderRadius: 8,
-        boxShadow: "0 2px 6px 0 rgba(60,72,100,0.08)",
-        padding: "17px 23px",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-          marginBottom: 2,
-        }}
-      >
-        {/* <div style={{ fontWeight: 700, color: "#1565c0", fontSize: 15 }}>
-          Export Job
-        </div> */}
-      </div>
-      {/* <div
-        style={{ borderBottom: "1px solid #e9ecef", margin: "8px 0 12px" }}
-      /> */}
-
-      {/* ROWS */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "10px 18px",
-          alignItems: "flex-end",
-        }}
-      >
-        {/* Job Number */}
-        <div style={{ flex: "1 1 210px", minWidth: 120 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Job Number</div>
-          {isNewJob ? (
-            <input
-              style={{
-                width: "97%",
-                padding: "3px 6px",
-                border: "1px solid #d6dae2",
-                borderRadius: 4,
-                fontSize: 12,
-                background: "#fff",
-              }}
-              name="job_no"
-              value={formik.values.job_no}
-              onChange={formik.handleChange}
-              placeholder="Auto-generated if empty"
-            />
-          ) : (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                background: "#eef4fa",
-                border: "1px solid #e0e0e0",
-                borderRadius: 4,
-                padding: "2px 9px",
-                fontSize: 12,
-              }}
-            >
-              <span>{formik.values.job_no}</span>
-              <button
-                title="Copy"
-                onClick={() => handleCopyText(formik.values.job_no)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  marginLeft: 8,
-                  cursor: "pointer",
-                  fontSize: 15,
-                  color: "#666",
-                }}
-              >
-                📋
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Job Date */}
-        <div style={{ flex: "1 1 110px", minWidth: 100 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Job Date</div>
-          <DateInput
-            name="job_date"
-            value={formik.values.job_date}
-            onChange={formik.handleChange}
-            style={{
-              width: "98%",
-              padding: "3px 6px",
-              border: "1px solid #d6dae2",
-              borderRadius: 4,
-              background: "#fff",
-              fontSize: 13,
-            }}
-          />
-        </div>
-
-        {/* SB No */}
-        <div style={{ flex: "1 1 90px", minWidth: 80 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>SB No</div>
-          <input
-            name="sb_no"
-            value={formik.values.sb_no}
-            onChange={formik.handleChange}
-            style={{
-              width: "97%",
-              padding: "3px 6px",
-              border: "1px solid #d6dae2",
-              borderRadius: 4,
-              fontSize: 13,
-              background: "#fff",
-            }}
-          />
-        </div>
-
-        {/* SB Date */}
-        <div style={{ flex: "1 1 150px", minWidth: 120 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>SB Date</div>
-          <DateInput
-            name="sb_date"
-            value={formik.values.sb_date}
-            onChange={formik.handleChange}
-            style={{
-              width: "97%",
-              padding: "3px 6px",
-              border: "1px solid #d6dae2",
-              borderRadius: 4,
-              fontSize: 13,
-              background: "#fff",
-            }}
-          />
-        </div>
-
-        {/* Job Owner */}
-        <div style={{ flex: "1 1 150px", minWidth: 90 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Job Owner</div>
-          <AutocompleteSelect
-            name="job_owner"
-            value={formik.values.job_owner || ""}
-            options={[
-              { value: "", label: "Select Job Owner" },
-              ...(exportJobsUsers?.map((user) => ({
-                value: user.username,
-                label: user.fullName,
-              })) || []),
-            ]}
-            onChange={formik.handleChange}
-            placeholder="Select Job Owner"
-          />
-        </div>
-
-        {/* Shipper */}
-        <div style={{ flex: "1 1 170px", minWidth: 130 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Shipper</div>
-          <input
-            name="shipper"
-            list="shipper-list"
-            value={formik.values.exporter}
-            onChange={formik.handleChange}
-            style={{
-              width: "98%",
-              padding: "3px 6px",
-              border: "1px solid #d6dae2",
-              borderRadius: 4,
-              fontSize: 13,
-              background: "#fff",
-            }}
-          />
-          <datalist id="shipper-list">
-            {shipperOpts.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </datalist>
-        </div>
-
-        {/* Transport Mode */}
-        <div style={{ flex: "1 1 100px", minWidth: 80 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Transport Mode</div>
-          <AutocompleteSelect
-            name="transportMode"
-            value={formik.values.transportMode}
-            options={[
-              { value: "Sea", label: "Sea" },
-              { value: "Air", label: "Air" },
-            ]}
-            onChange={formik.handleChange}
-            placeholder="Select Mode"
-          />
-        </div>
-
-        {/* Custom House - Now with Gateway Port Dropdown */}
-        <div style={{ flex: "1 1 120px", minWidth: 110 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Custom House</div>
-          <GatewayPortDropdown
-            fieldName="custom_house"
-            formik={formik}
-            placeholder="Select Custom House"
-          />
-        </div>
-
-        {/* Loading Port */}
-        <div style={{ flex: "1 1 120px", minWidth: 110 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Loading Port</div>
-          <GatewayPortDropdown
-            fieldName="port_of_loading"
-            formik={formik}
-            placeholder="Select Loading Port"
-          />
-        </div>
-
-        {/* Consignment Type */}
-        <div style={{ flex: "1 1 120px", minWidth: 100 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Consignment Type</div>
-          <AutocompleteSelect
-            name="consignmentType"
-            value={formik.values.consignmentType}
-            options={[
-              { value: "FCL", label: "FCL" },
-              { value: "LCL", label: "LCL" },
-              { value: "AIR", label: "AIR" },
-              { value: "Break Bulk", label: "Break Bulk" },
-            ]}
-            onChange={formik.handleChange}
-            placeholder="Select Type"
-          />
-        </div>
-
-        {/* SB Type */}
-        <div style={{ flex: "1 1 120px", minWidth: 100 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>SB Type</div>
-          <AutocompleteSelect
-            name="sb_type"
-            value={formik.values.sb_type}
-            options={[
-              { value: "", label: "All" },
-              { value: "White - Free/DEEC", label: "White - Free/DEEC" },
-              { value: "Green - Drawback", label: "Green - Drawback" },
-              { value: "Green - RODTEP", label: "Green - RODTEP" },
-              { value: "Blue - DEPB", label: "Blue - DEPB" },
-              { value: "Yellow - Dutiable", label: "Yellow - Dutiable" },
-              { value: "Pink - ExBond", label: "Pink - ExBond" },
-              { value: "SEZ - Regular", label: "SEZ - Regular" },
-              { value: "SEZ - ExBond", label: "SEZ - ExBond" },
-              {
-                value: "SEZ - DTA Procurement",
-                label: "SEZ - DTA Procurement",
-              },
-              { value: "Red", label: "Red" },
-            ]}
-            onChange={formik.handleChange}
-            placeholder="Select SB Type"
-          />
-        </div>
-
-        {/* Standard Documents Button */}
-        <div
-          style={{
-            flex: "1 1 105px",
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "flex-end",
-            minWidth: 25,
-          }}
-        >
-          <button
-            style={{
-              background: "#fff",
-              border: "1.2px solid #1976d2",
-              color: "#1976d2",
-              marginLeft: 7,
-              padding: "3px 12px",
-              borderRadius: 4,
-              fontWeight: 500,
-              fontSize: 12,
-              cursor: "pointer",
-            }}
-            type="button"
-            onClick={onDocsMenuOpen}
-          >
-            Standard Documents
-          </button>
-        </div>
-      </div>
-
-      {snackbar && (
-        <div
-          style={{
-            background: "#1976d2",
-            color: "#fff",
-            padding: "3px 16px",
-            fontSize: 13,
-            position: "fixed",
-            right: 20,
-            top: 76,
-            borderRadius: 4,
-          }}
-        >
-          Copied to clipboard
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Tab Panel Component
-function TabPanel(props) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`logisys-tabpanel-${index}`}
-      aria-labelledby={`logisys-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 0 }}>{children}</Box>}
-    </div>
-  );
-}
 
 // Main Export View Job Component
 function LogisysExportViewJob() {
@@ -857,16 +508,16 @@ function LogisysExportViewJob() {
             },
             ...(toUpper(formik.values.transportMode) !== "AIR"
               ? [
-                  {
-                    label: "Container",
-                    component: (
-                      <ContainerTab
-                        formik={formik}
-                        onUpdate={formik.handleSubmit}
-                      />
-                    ),
-                  },
-                ]
+                {
+                  label: "Container",
+                  component: (
+                    <ContainerTab
+                      formik={formik}
+                      onUpdate={formik.handleSubmit}
+                    />
+                  ),
+                },
+              ]
               : []),
             {
               label: "Invoice",
@@ -1057,3 +708,6 @@ function LogisysExportViewJob() {
 }
 
 export default LogisysExportViewJob;
+
+// Force reload - Loading Port field added
+
