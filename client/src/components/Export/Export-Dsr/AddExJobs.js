@@ -574,38 +574,13 @@ function useGatewayPortDropdown(value, onChange, priorityList = []) {
       try {
         const res = await fetch(url);
         const data = await res.json();
-        let options = Array.isArray(data?.data)
-          ? data.data
-          : Array.isArray(data)
-          ? data
-          : [];
-
-        // Apply Priority Sorting
-        if (priorityList.length > 0) {
-          options.sort((a, b) => {
-            const nameA = (a.name || "").toUpperCase();
-            const nameB = (b.name || "").toUpperCase();
-
-            // Find index in priority list (checking if name INCLUDES priority keyword)
-            const pIndexA = priorityList.findIndex((p) =>
-              nameA.includes(p.toUpperCase())
-            );
-            const pIndexB = priorityList.findIndex((p) =>
-              nameB.includes(p.toUpperCase())
-            );
-
-            // Both in priority list -> sort by order in priority list
-            if (pIndexA !== -1 && pIndexB !== -1) return pIndexA - pIndexB;
-            // Only A in priority -> A first
-            if (pIndexA !== -1) return -1;
-            // Only B in priority -> B first
-            if (pIndexB !== -1) return 1;
-            // Neither -> keep original order
-            return 0;
-          });
-        }
-
-        setOpts(options);
+        setOpts(
+          Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data)
+              ? data
+              : []
+        );
       } catch {
         setOpts([]);
       }

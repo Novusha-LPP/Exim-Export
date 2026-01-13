@@ -107,8 +107,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -471,7 +471,6 @@ const LogisysEditableHeader = ({
           />
         </div>
 
-<<<<<<< HEAD
         {/* Loading Port */}
         <div style={{ flex: "1 1 120px", minWidth: 110 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Port Of Loading</div>
@@ -482,8 +481,6 @@ const LogisysEditableHeader = ({
           />
         </div>
 
-=======
->>>>>>> f16f033 (feat: Implement dedicated modules for Export DSR job details including Documentation, ESanchit, Operation, and Charges.)
         {/* Consignment Type */}
         <div style={{ flex: "1 1 120px", minWidth: 100 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Consignment Type</div>
