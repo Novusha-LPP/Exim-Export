@@ -4,6 +4,7 @@ import "jspdf-autotable";
 import axios from "axios";
 import { IconButton, Button } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
+import { calculateProductFobINR } from "../../../../utils/fobCalculations.js";
 
 const ExportChecklistGenerator = ({
   jobNo,
@@ -62,7 +63,7 @@ const ExportChecklistGenerator = ({
       drawField: (label, value, x, y, labelWidth = 90, maxWidth = 250) => {
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldLabel);
-        pdf.text(`${label}:`, x, y);
+        pdf.text(`${label}: `, x, y);
 
         if (value) {
           pdf.setFont("helvetica", "normal");
@@ -100,7 +101,7 @@ const ExportChecklistGenerator = ({
         // Left below firm name, Custom Station
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(FONT_SIZES.fieldLabel);
-        pdf.text(`Custom stn: ${customStation || ""}`, leftX, y + 13);
+        pdf.text(`Custom stn: ${customStation || ""} `, leftX, y + 13);
 
         // Center below firm name, Section Title
         pdf.setFont("helvetica", "bold");
@@ -211,10 +212,14 @@ const ExportChecklistGenerator = ({
     ];
 
     exporterLines.forEach((line) => {
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(FONT_SIZES.fieldValue);
-      pdf.text(line, leftColX, exporterY);
-      exporterY += 9;
+      if (line) {
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(FONT_SIZES.fieldValue);
+        // Wrap text to fit within left column (max width ~250px)
+        const splitLines = pdf.splitTextToSize(line, 250);
+        pdf.text(splitLines, leftColX, exporterY);
+        exporterY += splitLines.length * 9;
+      }
     });
 
     // Right Column: CONSIGNEE details - start from same Y position as exporter
@@ -267,8 +272,7 @@ const ExportChecklistGenerator = ({
       { label: "IGST Taxable Value(INR)", value: data.igstTaxableValue },
       { label: "IGST Amount(INR)", value: data.igstAmount },
       { label: "Comp. Cess (INR)", value: data.compCess },
-      { label: "DBK+STR (INR)", value: data.dbkStr },
-      { label: "STR Amount (INR)", value: data.strAmount },
+      { label: data.dbkStrLabel || "DBK (INR)", value: data.dbkStr },
       { label: "Total DBK (INR)", value: data.totalDbk },
       { label: "RODTEP Amount(INR)", value: data.rodtepAmount },
     ];
@@ -425,9 +429,20 @@ const ExportChecklistGenerator = ({
 
     rateItemsData.forEach((item) => {
       pdf.text(item.label, leftColX, yPos);
-      pdf.text(item.rate.toString(), leftColX + 80, yPos);
-      pdf.text(item.currency.toString(), leftColX + 150, yPos);
-      pdf.text(item.amount.toString(), leftColX + 220, yPos);
+      // Display rate, currency, amount - handle empty values properly
+      const rateText = item.rate !== "" && item.rate !== null && item.rate !== undefined
+        ? String(item.rate)
+        : "";
+      const currencyText = item.currency !== "" && item.currency !== null && item.currency !== undefined
+        ? String(item.currency)
+        : "";
+      const amountText = item.amount !== "" && item.amount !== null && item.amount !== undefined
+        ? String(item.amount)
+        : "";
+
+      pdf.text(rateText, leftColX + 80, yPos);
+      pdf.text(currencyText, leftColX + 150, yPos);
+      pdf.text(amountText, leftColX + 220, yPos);
       yPos += 10;
     });
 
@@ -495,11 +510,11 @@ const ExportChecklistGenerator = ({
       if (detail.value) {
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(FONT_SIZES.fieldValue);
-        const valueLines = pdf.splitTextToSize(detail.value, colWidth - 20);
+        const valueLines = pdf.splitTextToSize(detail.value, colWidth - 130);
         valueLines.forEach((line, index) => {
-          pdf.text(line, rightColX, rightDetailsY + 10 + index * 9);
+          pdf.text(line, rightColX + 120, rightDetailsY + index * 9);
         });
-        rightDetailsY += valueLines.length * 9 + 12;
+        rightDetailsY += Math.max(valueLines.length * 9, 12);
       } else {
         rightDetailsY += 12;
       }
@@ -509,14 +524,9 @@ const ExportChecklistGenerator = ({
 
     // EOU Details - exactly like first image
     pdf.setFont("helvetica", "bold");
-    pdf.text("EOU", leftColX, yPos);
+    pdf.text("EOU IEC", leftColX, yPos);
     pdf.setFont("helvetica", "normal");
-    pdf.text(data.eou, leftColX + 30, yPos);
-
-    pdf.setFont("helvetica", "bold");
-    pdf.text("IEC", leftColX + 100, yPos);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(data.iec, leftColX + 130, yPos);
+    pdf.text(data.eou, leftColX + 50, yPos);
 
     pdf.setFont("helvetica", "bold");
     pdf.text("Branch Sno", leftColX + 200, yPos);
@@ -605,9 +615,9 @@ const ExportChecklistGenerator = ({
         const itemY = yPos;
 
         // Column 1: SI No, Qty, Unit - PURE DATA
-        pdf.text((index + 1).toString(), col1, itemY);
+        pdf.text(product.serialNumber || (index + 1).toString(), col1, itemY);
         pdf.text(product.quantity || "", col1, itemY + 10);
-        pdf.text(product.per || product.unit || "", col1, itemY + 20);
+        pdf.text(product.qtyUnit || product.unit || "", col1, itemY + 20);
 
         // Column 2: RITC, Exim Scheme, NFEI Catg, Reward Item - PURE DATA
         pdf.text(product.ritc || "", col2, itemY);
@@ -623,7 +633,7 @@ const ExportChecklistGenerator = ({
         // Unit Price and FOB ValFC - SAFE (adjust Y based on description height)
         const unitPriceY = itemY + descriptionLines.length * 10;
         pdf.text(
-          `${product.unitPrice || ""}/${product.per || "PCS"}`,
+          `${product.unitPrice || ""}/${product.priceUnit || product.qtyUnit || "PCS"}/${product.per || "1"}`,
           col3,
           unitPriceY
         );
@@ -640,8 +650,8 @@ const ExportChecklistGenerator = ({
         pdf.text(product.amount || "", col5, itemY);
         pdf.text(
           product.igstPaymentStatus ||
-            product.igstCompensationCess?.igstPaymentStatus ||
-            "",
+          product.igstCompensationCess?.igstPaymentStatus ||
+          "",
           col5,
           itemY + 20
         );
@@ -654,8 +664,8 @@ const ExportChecklistGenerator = ({
         );
         pdf.text(
           product.taxableValueINR ||
-            product.igstCompensationCess?.taxableValueINR ||
-            "",
+          product.igstCompensationCess?.taxableValueINR ||
+          "",
           col6,
           itemY + 20
         );
@@ -668,8 +678,8 @@ const ExportChecklistGenerator = ({
         );
         pdf.text(
           product.igstAmountINR ||
-            product.igstCompensationCess?.igstAmountINR ||
-            "",
+          product.igstCompensationCess?.igstAmountINR ||
+          "",
           col7,
           itemY + 20
         );
@@ -731,11 +741,9 @@ const ExportChecklistGenerator = ({
       "Inv No",
       "Item No",
       "DBK SI No",
-      "Custom Rate",
       "DBK Rate",
       "DBK Qty / Unit",
       "DBK Amount",
-      "Custom SPE",
       "DBK SPE",
     ];
 
@@ -747,11 +755,9 @@ const ExportChecklistGenerator = ({
         row.invNo,
         row.itemNo,
         row.dbkSlNo,
-        row.customRate,
         row.dbkRate,
         row.dbkQtyUnit,
         row.dbkAmount,
-        row.customSPE,
         row.dbkSPE,
       ]),
       startY: yPos,
@@ -816,8 +822,6 @@ const ExportChecklistGenerator = ({
     const containerRows = Array.isArray(data.containers)
       ? data.containers
       : [data.containers];
-    console.log(data);
-    console.log(data.containers);
 
     pdf.autoTable({
       head: [containerHeaders],
@@ -1303,6 +1307,7 @@ const ExportChecklistGenerator = ({
         console.error("Error fetching currency rates for checklist:", err);
       }
 
+
       // Flatten products from all invoices for aggregate calculations
       const allProducts = (exportJob.invoices || []).flatMap((inv, invIdx) =>
         (inv.products || []).map((p) => ({
@@ -1373,17 +1378,16 @@ const ExportChecklistGenerator = ({
 
         // Weight calculation from products or containers
         grossWeight: exportJob.gross_weight_kg
-          ? `${exportJob.gross_weight_kg} ${
-              exportJob.gross_weight_unit || "KGS"
-            }`
+          ? `${exportJob.gross_weight_kg} ${exportJob.gross_weight_unit || "KGS"
+          }`
           : exportJob.containers
-              ?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0)
-              .toFixed(3) + " KGS" || "0.000 KGS",
+            ?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0)
+            .toFixed(3) + " KGS" || "0.000 KGS",
         netWeight: exportJob.net_weight_kg
           ? `${exportJob.net_weight_kg} ${exportJob.net_weight_unit || "KGS"}`
           : allProducts
-              ?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
-              .toFixed(3) + " KGS" || "0.000 KGS",
+            ?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
+            .toFixed(3) + " KGS" || "0.000 KGS",
 
         // Financial Details - Calculate from products and invoices
         totalFobInr:
@@ -1450,16 +1454,58 @@ const ExportChecklistGenerator = ({
             )
             .toFixed(2) || "0.00",
         forexBankAcNo: exportJob.bank_account_number || "",
-        dbkStr:
-          exportJob.drawbackDetails
-            ?.reduce((sum, d) => sum + (parseFloat(d.dbkAmount) || 0), 0)
-            .toFixed(2) || "0.00",
+        // DBK + RODTEP/ROSCTL - Dynamic label based on what's available
+        dbkStrLabel: (() => {
+          // Check if RODTEP is available
+          const hasRodtep = allProducts?.some(p =>
+            parseFloat(p.rodtepInfo?.amountINR) > 0
+          );
+
+          // Check if ROSCTL is available (you can add this field if needed)
+          const hasRosctl = allProducts?.some(p =>
+            parseFloat(p.rosctlInfo?.amountINR) > 0
+          );
+
+          if (hasRodtep) return "DBK + RODTEP (INR)";
+          if (hasRosctl) return "DBK + ROSCTL (INR)";
+          return "DBK (INR)";
+        })(),
+        dbkStr: (() => {
+          // Calculate total drawback amount
+          const totalDbkAmount = allProducts?.reduce((sum, p) => {
+            const productDbk = (p.drawbackDetails || []).reduce(
+              (dbkSum, d) => dbkSum + (parseFloat(d.dbkAmount) || 0),
+              0
+            );
+            return sum + productDbk;
+          }, 0) || 0;
+
+          // Calculate total RODTEP amount
+          const totalRodtepAmount = allProducts?.reduce(
+            (sum, p) => sum + (parseFloat(p.rodtepInfo?.amountINR) || 0),
+            0
+          ) || 0;
+
+          // Calculate total ROSCTL amount (if available)
+          const totalRosctlAmount = allProducts?.reduce(
+            (sum, p) => sum + (parseFloat(p.rosctlInfo?.amountINR) || 0),
+            0
+          ) || 0;
+
+          // DBK + RODTEP or DBK + ROSCTL (only one can be present)
+          return (totalDbkAmount + totalRodtepAmount + totalRosctlAmount).toFixed(2);
+        })(),
         rbiWaiverNo: exportJob.rbi_waiver_no || "",
-        strAmount: "", // Not found in data structure
         dbkBankAcNo: "", // Not found in data structure
         totalDbk:
-          exportJob.drawbackDetails
-            ?.reduce((sum, d) => sum + (parseFloat(d.dbkAmount) || 0), 0)
+          allProducts
+            ?.reduce((sum, p) => {
+              const productDbk = (p.drawbackDetails || []).reduce(
+                (dbkSum, d) => dbkSum + (parseFloat(d.dbkAmount) || 0),
+                0
+              );
+              return sum + productDbk;
+            }, 0)
             .toFixed(2) || "0.00",
         rodtepAmount:
           allProducts
@@ -1494,62 +1540,27 @@ const ExportChecklistGenerator = ({
           return `${basePart} / INR ${inrAmount}`;
         })(),
         invoiceDate: formatDate(exportJob.invoices?.[0]?.invoiceDate) || "",
-        // FOB Value - use freightInsuranceCharges.fobValue (USD + INR if available)
+        // FOB Value - Use pre-calculated value from freightInsuranceCharges
         fobValue: (() => {
-          const fob = exportJob.freightInsuranceCharges?.fobValue;
-          if (!fob) return "";
+          const invoice = exportJob.invoices?.[0];
+          const fob = invoice?.freightInsuranceCharges?.fobValue;
 
-          // Try to get USD value from multiple possible fields
-          const usdRaw = fob.fobValueUSD ?? fob.fobUSD ?? fob.usd;
-          // Try to get INR value from multiple possible fields
-          const inrRaw = fob.fobValueINR ?? fob.amount ?? fob.inr;
+          if (!fob || !fob.amount) return "";
 
-          const usdPart =
-            usdRaw !== null && usdRaw !== undefined && usdRaw !== ""
-              ? `USD ${typeof usdRaw === "number" ? usdRaw.toFixed(2) : usdRaw}`
-              : "";
+          const currency = fob.currency || invoice?.currency || "USD";
+          const amount = parseFloat(fob.amount);
 
-          const inrPart =
-            inrRaw !== null && inrRaw !== undefined && inrRaw !== ""
-              ? `INR ${typeof inrRaw === "number" ? inrRaw.toFixed(2) : inrRaw}`
-              : "";
+          // Get exchange rate for conversion to INR
+          const rateFromApi = getExportRate(currency);
+          const rate = rateFromApi || parseFloat(exportJob.exchange_rate) || 1;
 
-          // If we have both, show both
-          if (usdPart && inrPart) return `${usdPart} / ${inrPart}`;
-
-          // If we only have INR but have exchange rate, calculate USD
-          if (!usdPart && inrPart && exportJob.exchange_rate) {
-            const inrNum =
-              typeof inrRaw === "number" ? inrRaw : parseFloat(inrRaw);
-            if (!isNaN(inrNum) && exportJob.exchange_rate) {
-              const calculatedUSD = (inrNum / exportJob.exchange_rate).toFixed(
-                2
-              );
-              return `USD ${calculatedUSD} / ${inrPart}`;
-            }
-          }
-
-          // If we only have USD but have exchange rate, calculate INR
-          if (usdPart && !inrPart && exportJob.exchange_rate) {
-            const usdNum =
-              typeof usdRaw === "number" ? usdRaw : parseFloat(usdRaw);
-            if (!isNaN(usdNum) && exportJob.exchange_rate) {
-              const calculatedINR = (usdNum * exportJob.exchange_rate).toFixed(
-                2
-              );
-              return `${usdPart} / INR ${calculatedINR}`;
-            }
-          }
-
-          // Fallback to whatever we have
-          if (usdPart) return usdPart;
-          if (inrPart) return inrPart;
-          return "";
+          const inrAmount = (amount * rate).toFixed(2);
+          return `${currency} ${amount.toFixed(2)} / INR ${inrAmount}`;
         })(),
         natureOfContract: exportJob.invoices?.[0]?.termsOfInvoice || "",
         expContractNo: exportJob.otherInfo?.exportContractNo || "",
         expContractDate:
-          formatDate(exportJob.otherInfo?.exportContractNo) || "",
+          formatDate(exportJob.otherInfo?.exportContractDate) || "",
         unitPriceIncludes: exportJob.invoices?.[0]?.priceIncludes || "",
         invoiceCurrency: exportJob.invoices?.[0]?.currency,
         exchangeRate: exportJob.exchange_rate || "",
@@ -1558,8 +1569,10 @@ const ExportChecklistGenerator = ({
         // Store as objects with rate, currency, amount for proper table display
         // Calculate amount if not present: amount = baseValue × rate / 100
         insuranceData: (() => {
-          const rate = exportJob.freightInsuranceCharges?.insurance?.rate || 0;
-          const amount = exportJob.freightInsuranceCharges?.insurance?.amount;
+          const freightInsurance = exportJob.invoices?.[0]?.freightInsuranceCharges;
+          const rate = freightInsurance?.insurance?.rate || 0;
+          const amount = freightInsurance?.insurance?.amount;
+          const currency = freightInsurance?.insurance?.currency || "";
           const baseValue =
             exportJob.invoices?.[0]?.productValue ||
             exportJob.invoices?.[0]?.invoiceValue ||
@@ -1568,18 +1581,19 @@ const ExportChecklistGenerator = ({
             amount !== undefined && amount !== null && amount !== ""
               ? amount
               : rate
-              ? ((baseValue * rate) / 100).toFixed(2)
-              : "";
+                ? ((baseValue * rate) / 100).toFixed(2)
+                : "";
           return {
-            rate: rate || "",
-            currency:
-              exportJob.freightInsuranceCharges?.insurance?.currency || "",
+            rate: rate !== 0 ? rate : "",  // Show rate if it exists
+            currency: currency,
             amount: calculatedAmount,
           };
         })(),
         freightData: (() => {
-          const rate = exportJob.freightInsuranceCharges?.freight?.rate || 0;
-          const amount = exportJob.freightInsuranceCharges?.freight?.amount;
+          const freightInsurance = exportJob.invoices?.[0]?.freightInsuranceCharges;
+          const rate = freightInsurance?.freight?.rate || 0;
+          const amount = freightInsurance?.freight?.amount;
+          const currency = freightInsurance?.freight?.currency || "";
           const baseValue =
             exportJob.invoices?.[0]?.productValue ||
             exportJob.invoices?.[0]?.invoiceValue ||
@@ -1588,18 +1602,19 @@ const ExportChecklistGenerator = ({
             amount !== undefined && amount !== null && amount !== ""
               ? amount
               : rate
-              ? ((baseValue * rate) / 100).toFixed(2)
-              : "";
+                ? ((baseValue * rate) / 100).toFixed(2)
+                : "";
           return {
-            rate: rate || "",
-            currency:
-              exportJob.freightInsuranceCharges?.freight?.currency || "",
+            rate: rate !== 0 ? rate : "",
+            currency: currency,
             amount: calculatedAmount,
           };
         })(),
         discountData: (() => {
-          const rate = exportJob.freightInsuranceCharges?.discount?.rate || 0;
-          const amount = exportJob.freightInsuranceCharges?.discount?.amount;
+          const freightInsurance = exportJob.invoices?.[0]?.freightInsuranceCharges;
+          const rate = freightInsurance?.discount?.rate || 0;
+          const amount = freightInsurance?.discount?.amount;
+          const currency = freightInsurance?.discount?.currency || "";
           const baseValue =
             exportJob.invoices?.[0]?.productValue ||
             exportJob.invoices?.[0]?.invoiceValue ||
@@ -1608,18 +1623,19 @@ const ExportChecklistGenerator = ({
             amount !== undefined && amount !== null && amount !== ""
               ? amount
               : rate
-              ? ((baseValue * rate) / 100).toFixed(2)
-              : "";
+                ? ((baseValue * rate) / 100).toFixed(2)
+                : "";
           return {
-            rate: rate || "",
-            currency:
-              exportJob.freightInsuranceCharges?.discount?.currency || "",
+            rate: rate !== 0 ? rate : "",
+            currency: currency,
             amount: calculatedAmount,
           };
         })(),
         commissionData: (() => {
-          const rate = exportJob.freightInsuranceCharges?.commission?.rate || 0;
-          const amount = exportJob.freightInsuranceCharges?.commission?.amount;
+          const freightInsurance = exportJob.invoices?.[0]?.freightInsuranceCharges;
+          const rate = freightInsurance?.commission?.rate || 0;
+          const amount = freightInsurance?.commission?.amount;
+          const currency = freightInsurance?.commission?.currency || "";
           const baseValue =
             exportJob.invoices?.[0]?.productValue ||
             exportJob.invoices?.[0]?.invoiceValue ||
@@ -1628,20 +1644,19 @@ const ExportChecklistGenerator = ({
             amount !== undefined && amount !== null && amount !== ""
               ? amount
               : rate
-              ? ((baseValue * rate) / 100).toFixed(2)
-              : "";
+                ? ((baseValue * rate) / 100).toFixed(2)
+                : "";
           return {
-            rate: rate || "",
-            currency:
-              exportJob.freightInsuranceCharges?.commission?.currency || "",
+            rate: rate !== 0 ? rate : "",
+            currency: currency,
             amount: calculatedAmount,
           };
         })(),
         otherDeductionData: (() => {
-          const rate =
-            exportJob.freightInsuranceCharges?.otherDeduction?.rate || 0;
-          const amount =
-            exportJob.freightInsuranceCharges?.otherDeduction?.amount;
+          const freightInsurance = exportJob.invoices?.[0]?.freightInsuranceCharges;
+          const rate = freightInsurance?.otherDeduction?.rate || 0;
+          const amount = freightInsurance?.otherDeduction?.amount;
+          const currency = freightInsurance?.otherDeduction?.currency || "";
           const baseValue =
             exportJob.invoices?.[0]?.productValue ||
             exportJob.invoices?.[0]?.invoiceValue ||
@@ -1650,12 +1665,11 @@ const ExportChecklistGenerator = ({
             amount !== undefined && amount !== null && amount !== ""
               ? amount
               : rate
-              ? ((baseValue * rate) / 100).toFixed(2)
-              : "";
+                ? ((baseValue * rate) / 100).toFixed(2)
+                : "";
           return {
-            rate: rate || "",
-            currency:
-              exportJob.freightInsuranceCharges?.otherDeduction?.currency || "",
+            rate: rate !== 0 ? rate : "",
+            currency: currency,
             amount: calculatedAmount,
           };
         })(),
@@ -1669,32 +1683,32 @@ const ExportChecklistGenerator = ({
         },
 
         // Keep legacy string versions for backward compatibility
-        insurance: exportJob.freightInsuranceCharges?.insurance?.amount
-          ? exportJob.freightInsuranceCharges.insurance.amount.toString()
-          : exportJob.freightInsuranceCharges?.insurance?.rate
-          ? `${exportJob.freightInsuranceCharges.insurance.rate}%`
-          : "Not entered",
-        freight: exportJob.freightInsuranceCharges?.freight?.amount
-          ? exportJob.freightInsuranceCharges.freight.amount.toString()
-          : exportJob.freightInsuranceCharges?.freight?.rate
-          ? `${exportJob.freightInsuranceCharges.freight.rate}%`
-          : "Not entered",
-        discount: exportJob.freightInsuranceCharges?.discount?.amount
-          ? exportJob.freightInsuranceCharges.discount.amount.toString()
-          : exportJob.freightInsuranceCharges?.discount?.rate
-          ? `${exportJob.freightInsuranceCharges.discount.rate}%`
-          : "Not entered",
-        commission: exportJob.freightInsuranceCharges?.commission?.amount
-          ? exportJob.freightInsuranceCharges.commission.amount.toString()
-          : exportJob.freightInsuranceCharges?.commission?.rate
-          ? `${exportJob.freightInsuranceCharges.commission.rate}%`
-          : "Not entered",
-        otherDeduction: exportJob.freightInsuranceCharges?.otherDeduction
+        insurance: exportJob.invoices?.[0]?.freightInsuranceCharges?.insurance?.amount
+          ? exportJob.invoices[0].freightInsuranceCharges.insurance.amount.toString()
+          : exportJob.invoices?.[0]?.freightInsuranceCharges?.insurance?.rate
+            ? `${exportJob.invoices[0].freightInsuranceCharges.insurance.rate}%`
+            : "Not entered",
+        freight: exportJob.invoices?.[0]?.freightInsuranceCharges?.freight?.amount
+          ? exportJob.invoices[0].freightInsuranceCharges.freight.amount.toString()
+          : exportJob.invoices?.[0]?.freightInsuranceCharges?.freight?.rate
+            ? `${exportJob.invoices[0].freightInsuranceCharges.freight.rate}%`
+            : "Not entered",
+        discount: exportJob.invoices?.[0]?.freightInsuranceCharges?.discount?.amount
+          ? exportJob.invoices[0].freightInsuranceCharges.discount.amount.toString()
+          : exportJob.invoices?.[0]?.freightInsuranceCharges?.discount?.rate
+            ? `${exportJob.invoices[0].freightInsuranceCharges.discount.rate}%`
+            : "Not entered",
+        commission: exportJob.invoices?.[0]?.freightInsuranceCharges?.commission?.amount
+          ? exportJob.invoices[0].freightInsuranceCharges.commission.amount.toString()
+          : exportJob.invoices?.[0]?.freightInsuranceCharges?.commission?.rate
+            ? `${exportJob.invoices[0].freightInsuranceCharges.commission.rate}%`
+            : "Not entered",
+        otherDeduction: exportJob.invoices?.[0]?.freightInsuranceCharges?.otherDeduction
           ?.amount
-          ? exportJob.freightInsuranceCharges.otherDeduction.amount.toString()
-          : exportJob.freightInsuranceCharges?.otherDeduction?.rate
-          ? `${exportJob.freightInsuranceCharges.otherDeduction.rate}%`
-          : "Not entered",
+          ? exportJob.invoices[0].freightInsuranceCharges.otherDeduction.amount.toString()
+          : exportJob.invoices?.[0]?.freightInsuranceCharges?.otherDeduction?.rate
+            ? `${exportJob.invoices[0].freightInsuranceCharges.otherDeduction.rate}%`
+            : "Not entered",
         packingCharges:
           exportJob.invoices?.[0]?.packing_fob ||
           exportJob.invoices?.[0]?.packingFOB ||
@@ -1705,10 +1719,11 @@ const ExportChecklistGenerator = ({
         periodOfPayment: exportJob.otherInfo?.paymentPeriod
           ? `${exportJob.otherInfo.paymentPeriod} days`
           : "",
-        buyerName: exportJob.buyerThirdPartyInfo?.buyer?.name || "",
-        buyerAeoCode: "", // Not found in data structure
-        buyerAeoCountry: exportJob.buyerThirdPartyInfo?.buyer?.country || "",
-        buyerAeoRole: "", // Not found in data structure
+        buyerName: exportJob.buyerThirdPartyInfo?.thirdParty?.name || exportJob.buyerThirdPartyInfo?.buyer?.name || "",
+        buyerAddress: exportJob.buyerThirdPartyInfo?.thirdParty?.address || exportJob.buyerThirdPartyInfo?.buyer?.address || "",
+        buyerAeoCode: exportJob.otherInfo?.aeoCode || "",
+        buyerAeoCountry: exportJob.otherInfo?.aeoCountry || exportJob.buyerThirdPartyInfo?.buyer?.country || "",
+        buyerAeoRole: exportJob.otherInfo?.aeoRole || "",
         thirdPartyDetails: exportJob.buyerThirdPartyInfo?.thirdParty
           ?.isThirdPartyExport
           ? `${exportJob.buyerThirdPartyInfo.thirdParty.name}\n${exportJob.buyerThirdPartyInfo.thirdParty.address}`
@@ -1739,24 +1754,36 @@ const ExportChecklistGenerator = ({
               getExportRate(currency) ||
               parseFloat(exportJob.exchange_rate) ||
               1;
-            const fobINR = (amount * rate).toFixed(2);
+            // Calculate proper FOB using the utility function
+            const invoice = exportJob.invoices?.find(inv =>
+              inv.products?.some(p => p.serialNumber === product.serialNumber)
+            ) || exportJob.invoices?.[0];
+
+            const fobINR = calculateProductFobINR(
+              product,
+              invoice,
+              rate
+            );
+
+            const fobFC = fobINR / rate;
 
             return {
+              serialNumber: product.serialNumber,
               ritc: product.ritc,
               description: product.description,
               quantity: product.quantity,
+              qtyUnit: product.qtyUnit,
               per: product.per,
-              unitPrice: product.unitPrice
-                ? `${product.unitPrice}/${product.per}`
-                : "",
+              unitPrice: product.unitPrice,
+              priceUnit: product.priceUnit || product.amountUnit,
               amount: product.amount,
               pmvPerUnit: product.pmvInfo?.pmvPerUnit,
               totalPMV: product.pmvInfo?.totalPMV,
               eximCode: product.eximCode,
               nfeiCategory: product.nfeiCategory,
               rewardItem: product.rewardItem,
-              fobValueFC: product.amount,
-              fobValueINR: fobINR,
+              fobValueFC: fobFC.toFixed(2),
+              fobValueINR: fobINR.toFixed(2),
               igstPaymentStatus:
                 product.igstCompensationCess?.igstPaymentStatus,
               taxableValueINR: product.igstCompensationCess?.taxableValueINR,
@@ -1786,25 +1813,35 @@ const ExportChecklistGenerator = ({
           )
           .toFixed(2),
 
-        // DBK Details
-        dbkData:
-          exportJob.drawbackDetails?.map((dbk, index) => ({
-            invNo: "1", // Assuming single invoice
-            itemNo: (index + 1).toString(),
-            dbkSlNo: dbk.dbkSrNo || "",
-            customRate: "", // Not found in data structure
-            dbkRate: dbk.dbkRate?.toString() || "",
-            dbkQtyUnit: `${dbk.quantity || ""} / ${dbk.dbkDescription || ""}`,
-            dbkAmount: dbk.dbkAmount?.toFixed(2),
-            customSPE: "", // Not found in data structure
-            dbkSPE: "",
-          })) || [],
+        // DBK Details - Extract from all products drawbackDetails
+        dbkData: (() => {
+          const dbkRows = [];
+          allProducts?.forEach((product, productIndex) => {
+            const invoice = exportJob.invoices?.find(inv =>
+              inv.products?.some(p => p.serialNumber === product.serialNumber)
+            ) || exportJob.invoices?.[0];
+            const invNo = invoice?.invoiceNumber || "1";
+
+            product.drawbackDetails?.forEach((dbk, dbkIndex) => {
+              dbkRows.push({
+                invNo: invNo,
+                itemNo: product.serialNumber || (productIndex + 1).toString(),
+                dbkSlNo: dbk.dbkSrNo || "",
+                dbkRate: dbk.dbkRate?.toString() || "",
+                dbkQtyUnit: `${dbk.quantity || ""} / ${dbk.unit || ""}`,
+                dbkAmount: dbk.dbkAmount?.toFixed(2) || "0.00",
+                dbkSPE: (dbk.dbkCap || 0).toFixed(1),
+              });
+            });
+          });
+          return dbkRows;
+        })(),
 
         // Vessel & Container Details
         factoryStuffed: exportJob.goods_stuffed_at === "Factory" ? "Yes" : "No",
         sealType: exportJob.stuffing_seal_type || "",
         sampleAcc: exportJob.sample_accompanied ? "Yes" : "No",
-        vesselName: exportJob.shipping_line_airline || "",
+        vesselName: exportJob.vessel_name || "",
         voyageNumber: exportJob.voyage_no || "",
 
         containers:
@@ -1820,14 +1857,9 @@ const ExportChecklistGenerator = ({
 
         // Additional Details
         invItemSln: "1/1", // Static for single item/invoice
-        sqcQtyUnit: exportJob.products?.[0]?.socQuantity
-          ? `${exportJob.products[0].socQuantity} ${exportJob.products[0].per}`
-          : "",
-        originDistrict: exportJob.products?.[0]?.originDistrict || "",
-        originState:
-          exportJob.products?.[0]?.originState ||
-          exportJob.state_of_origin ||
-          "",
+        sqcQtyUnit: allProducts?.[0]?.socQuantity ? `${allProducts[0].socQuantity} ${allProducts[0].socunit}` : "",
+        originDistrict: allProducts?.[0]?.originDistrict || allProducts?.[0]?.district || "",
+        originState: allProducts?.[0]?.originState || exportJob.state_of_origin || "",
         compCessAmount:
           exportJob.products
             ?.reduce(
@@ -1839,11 +1871,10 @@ const ExportChecklistGenerator = ({
               0
             )
             .toFixed(2) || "0.00",
-        ptaFta: exportJob.products?.[0]?.ptaFtaInfo,
+        ptaFta: allProducts?.[0]?.ptaFtaInfo || allProducts?.[0]?.ptaFta || allProducts?.[0]?.pta || allProducts?.[0]?.fta || "",
 
         // Single Window Data
-        singleWindowData:
-          exportJob.products?.map((product, index) => ({
+        singleWindowData: allProducts?.map((product, index) => ({
             invNo: "",
             itemNo: (index + 1).toString(),
             infoType: "",
@@ -1855,13 +1886,12 @@ const ExportChecklistGenerator = ({
           })) || [],
 
         // End Use Information
-        endUseCode: exportJob.products?.[0]?.endUse || "",
+        endUseCode: allProducts?.[0]?.endUse || "",
         endUseInvItem: "",
         endUseDescription: "", // Not found in data structure
 
         // RODTEP Data
-        rodtepData:
-          exportJob.products?.map((product, index) => ({
+        rodtepData: allProducts?.map((product, index) => ({
             invItemSr: `1/${index + 1}`,
             claimStatus: product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
             quantity: product.rodtepInfo?.quantity,
@@ -1872,8 +1902,7 @@ const ExportChecklistGenerator = ({
           })) || [],
 
         // Declaration Data - Build from products that have declarations
-        declarationData:
-          exportJob.products?.map((product, index) => ({
+        declarationData: allProducts?.map((product, index) => ({
             declType: "DEC",
             declCode: "RD001", // Standard RODTEP declaration
             invItemSrNo: `1/${index + 1}`,
@@ -1890,60 +1919,60 @@ const ExportChecklistGenerator = ({
         // Supporting Documents
         supportingDocs: exportJob.eSanchitDocuments?.[0]
           ? {
-              invItemSrNo:
-                exportJob.eSanchitDocuments[0].invSerialNo || "1/0/1",
-              imageRefNo: exportJob.eSanchitDocuments[0].irn || "",
-              icegateId: exportJob.eSanchitDocuments[0].otherIcegateId || "",
-              issuingPartyName:
-                exportJob.eSanchitDocuments[0].issuingParty?.name ||
-                exportJob.exporter ||
-                "",
-              beneficiaryPartyName:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.name ||
-                exportJob.consignees?.[0]?.consignee_name ||
-                "",
-              docIssueDate:
-                formatDate(exportJob.eSanchitDocuments[0].dateOfIssue) || "",
-              docRefNo:
-                exportJob.eSanchitDocuments[0].documentReferenceNo || "",
-              fileType:
-                exportJob.eSanchitDocuments[0].icegateFilename
-                  ?.split(".")
-                  .pop() || "",
-              issuingPartyAdd1:
-                exportJob.eSanchitDocuments[0].issuingParty?.addressLine1 ||
-                exportJob.exporter_address ||
-                "",
-              beneficiaryPartyAdd1:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine1 ||
-                exportJob.consignees?.[0]?.consignee_address ||
-                "",
-              docExpiryDate:
-                formatDate(exportJob.eSanchitDocuments[0].expiryDate) || "",
-              docUploadedOn:
-                formatDate(exportJob.eSanchitDocuments[0].dateTimeOfUpload) ||
-                "",
-              placeOfIssue: exportJob.eSanchitDocuments[0].placeOfIssue || "",
-              issuingPartyAdd2:
-                exportJob.eSanchitDocuments[0].issuingParty?.addressLine2 || "",
-              beneficiaryPartyAdd2:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine2 ||
-                "",
-              docTypeCode: exportJob.eSanchitDocuments[0].documentType || "",
-              docName: exportJob.eSanchitDocuments[0].icegateFilename || "",
-              issuingPartyCode:
-                exportJob.eSanchitDocuments[0].issuingParty?.code || "",
-              issuingPartyCity:
-                exportJob.eSanchitDocuments[0].issuingParty?.city || "",
-              beneficiaryPartyCity:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.city || "",
-              beneficiaryPartyCode:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.code || "",
-              issuingPartyPinCode:
-                exportJob.eSanchitDocuments[0].issuingParty?.pinCode || "",
-              beneficiaryPartyPinCode:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.pinCode || "",
-            }
+            invItemSrNo:
+              exportJob.eSanchitDocuments[0].invSerialNo || "1/0/1",
+            imageRefNo: exportJob.eSanchitDocuments[0].irn || "",
+            icegateId: exportJob.eSanchitDocuments[0].otherIcegateId || "",
+            issuingPartyName:
+              exportJob.eSanchitDocuments[0].issuingParty?.name ||
+              exportJob.exporter ||
+              "",
+            beneficiaryPartyName:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.name ||
+              exportJob.consignees?.[0]?.consignee_name ||
+              "",
+            docIssueDate:
+              formatDate(exportJob.eSanchitDocuments[0].dateOfIssue) || "",
+            docRefNo:
+              exportJob.eSanchitDocuments[0].documentReferenceNo || "",
+            fileType:
+              exportJob.eSanchitDocuments[0].icegateFilename
+                ?.split(".")
+                .pop() || "",
+            issuingPartyAdd1:
+              exportJob.eSanchitDocuments[0].issuingParty?.addressLine1 ||
+              exportJob.exporter_address ||
+              "",
+            beneficiaryPartyAdd1:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine1 ||
+              exportJob.consignees?.[0]?.consignee_address ||
+              "",
+            docExpiryDate:
+              formatDate(exportJob.eSanchitDocuments[0].expiryDate) || "",
+            docUploadedOn:
+              formatDate(exportJob.eSanchitDocuments[0].dateTimeOfUpload) ||
+              "",
+            placeOfIssue: exportJob.eSanchitDocuments[0].placeOfIssue || "",
+            issuingPartyAdd2:
+              exportJob.eSanchitDocuments[0].issuingParty?.addressLine2 || "",
+            beneficiaryPartyAdd2:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine2 ||
+              "",
+            docTypeCode: exportJob.eSanchitDocuments[0].documentType || "",
+            docName: exportJob.eSanchitDocuments[0].icegateFilename || "",
+            issuingPartyCode:
+              exportJob.eSanchitDocuments[0].issuingParty?.code || "",
+            issuingPartyCity:
+              exportJob.eSanchitDocuments[0].issuingParty?.city || "",
+            beneficiaryPartyCity:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.city || "",
+            beneficiaryPartyCode:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.code || "",
+            issuingPartyPinCode:
+              exportJob.eSanchitDocuments[0].issuingParty?.pinCode || "",
+            beneficiaryPartyPinCode:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.pinCode || "",
+          }
           : {},
 
         // Final Declaration

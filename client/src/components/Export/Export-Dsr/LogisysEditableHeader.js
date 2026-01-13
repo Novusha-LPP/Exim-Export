@@ -107,8 +107,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -468,6 +468,16 @@ const LogisysEditableHeader = ({
             fieldName="custom_house"
             formik={formik}
             placeholder="Select Custom House"
+          />
+        </div>
+
+        {/* Loading Port */}
+        <div style={{ flex: "1 1 120px", minWidth: 110 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>Port Of Loading</div>
+          <GatewayPortDropdown
+            fieldName="port_of_loading"
+            formik={formik}
+            placeholder="Select Loading Port"
           />
         </div>
 
