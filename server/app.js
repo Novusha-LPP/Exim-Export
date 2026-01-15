@@ -118,7 +118,16 @@ const MONGODB_URI =
 mongoose.set("strictQuery", true);
 
 mongoose
-  .connect(MONGODB_URI)
+  .connect(MONGODB_URI, {
+    appName: "Transport", // Identifies this app in Atlas logs
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    minPoolSize: 0,
+    maxPoolSize: 30, // Connection pool size
+    maxIdleTimeMS: 30000,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  })
   .then(() => {
     console.log("MongoDB connected");
   })
