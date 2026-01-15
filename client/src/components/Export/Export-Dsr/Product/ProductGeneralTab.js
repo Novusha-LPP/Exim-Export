@@ -1428,27 +1428,29 @@ function ProductRow({
         <div style={styles.field}>
           <label style={styles.label}>Medicinal Plant</label>
           <input
-            style={styles.input}
+            style={{ ...styles.input, backgroundColor: "#e2e8f0" }}
             value={product.medicinalPlant || ""}
             onChange={(e) =>
               handleProductChange(index, "medicinalPlant", e.target.value)
             }
+            disabled
           />
         </div>
         <div style={styles.field}>
           <label style={styles.label}>Formulation</label>
           <input
-            style={styles.input}
+            style={{ ...styles.input, backgroundColor: "#e2e8f0" }}
             value={product.formulation || ""}
             onChange={(e) =>
               handleProductChange(index, "formulation", e.target.value)
             }
+            disabled
           />
         </div>
         <div style={styles.field}>
           <label style={styles.label}>Surface Material in Contact</label>
           <input
-            style={styles.input}
+            style={{ ...styles.input, backgroundColor: "#e2e8f0" }}
             value={product.surfaceMaterialInContact || ""}
             onChange={(e) =>
               handleProductChange(
@@ -1457,6 +1459,7 @@ function ProductRow({
                 e.target.value
               )
             }
+            disabled
           />
         </div>
 
@@ -1464,11 +1467,12 @@ function ProductRow({
         <div style={styles.field}>
           <label style={styles.label}>Lab Grown Diamond</label>
           <select
-            style={styles.select}
+            style={{ ...styles.select, backgroundColor: "#e2e8f0" }}
             value={product.labGrownDiamond || ""}
             onChange={(e) =>
               handleProductChange(index, "labGrownDiamond", e.target.value)
             }
+            disabled
           >
             <option value="">Select</option>
             <option value="Yes">Yes</option>

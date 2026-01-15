@@ -525,6 +525,18 @@ const GeneralTab = ({ formik, directories }) => {
     );
   }
 
+  const updateDirectoryExporterType = async (organization, type) => {
+    if (!organization || !type) return;
+    try {
+      await axios.patch(`${apiBase}/directory/update-exporter-type`, {
+        organization,
+        exporterType: type,
+      });
+    } catch (err) {
+      console.error("Failed to update directory exporter type", err);
+    }
+  };
+
   return (
     <div
       style={{
@@ -568,9 +580,11 @@ const GeneralTab = ({ formik, directories }) => {
                 { value: "MARCHANT EXPORTER", label: "MARCHANT EXPORTER" },
                 { value: "SERVICE EXPORTER", label: "SERVICE EXPORTER" },
               ]}
-              onChange={(e) =>
-                handleFieldChange("exporter_type", e.target.value)
-              }
+              onChange={(e) => {
+                const val = e.target.value;
+                handleFieldChange("exporter_type", val);
+                updateDirectoryExporterType(getVal("exporter"), val);
+              }}
               placeholder="Select Exporter Type"
             />
           </div>

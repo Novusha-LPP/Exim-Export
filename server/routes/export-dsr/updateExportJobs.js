@@ -161,12 +161,19 @@ router.get("/exports/:status?", async (req, res) => {
       status = "all",
       year = "",
       detailedStatus = "",
+      jobOwner = "",
     } = { ...req.params, ...req.query };
 
     const filter = {};
 
     // Initialize $and array for complex queries
     if (!filter.$and) filter.$and = [];
+
+    if (jobOwner) {
+      filter.$and.push({
+        job_owner: { $regex: jobOwner, $options: "i" },
+      });
+    }
 
     // Status filtering logic with job tracking consideration
     // Job is considered "completed" if:
@@ -346,28 +353,17 @@ router.get("/:job_no(.*)", async (req, res, next) => {
     const job_no = decodeURIComponent(raw);
 
     // List of prefixes that are certainly NOT job numbers
-    const apiPrefixes = [
-      "dsr",
-      "currency-rates",
-      "gateway-ports",
-      "districts",
-      "licenses",
-      "exports",
-      "dashboard-stats",
-      "custom-house-list",
-      "feedback",
-      "getDrawback",
-      "getCthsExport",
-      "upload",
-    ];
+    // Robust check for Export Job Number format (e.g., BRANCH/EXP/MODE/SEQ/YEAR)
+    // This prevents the wildcard route from eating other API request paths.
+    // We require slashes and the presence of "EXP" (case-insensitive) to be considered a job number.
+    const isJobNumber =
+      job_no &&
+      typeof job_no === "string" &&
+      job_no.includes("/") &&
+      /\/EXP\//i.test(job_no) &&
+      job_no.split("/").length >= 3;
 
-    const firstSegment = (job_no.split("/")[0] || "").toLowerCase();
-
-    if (
-      !job_no ||
-      apiPrefixes.includes(firstSegment) ||
-      (typeof job_no === "string" && !job_no.includes("/"))
-    ) {
+    if (!isJobNumber) {
       return next();
     }
 
@@ -482,27 +478,16 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
 
-    const apiPrefixes = [
-      "dsr",
-      "currency-rates",
-      "gateway-ports",
-      "districts",
-      "licenses",
-      "exports",
-      "dashboard-stats",
-      "custom-house-list",
-      "feedback",
-      "getDrawback",
-      "getCthsExport",
-      "upload",
-    ];
-    const firstSegment = (job_no.split("/")[0] || "").toLowerCase();
+    // Robust check for Export Job Number format (e.g., BRANCH/EXP/MODE/SEQ/YEAR)
+    // This prevents the wildcard route from eating other API request paths.
+    const isJobNumber =
+      job_no &&
+      typeof job_no === "string" &&
+      job_no.includes("/") &&
+      /\/EXP\//i.test(job_no) &&
+      job_no.split("/").length >= 3;
 
-    if (
-      !job_no ||
-      apiPrefixes.includes(firstSegment) ||
-      (typeof job_no === "string" && !job_no.includes("/"))
-    ) {
+    if (!isJobNumber) {
       return next();
     }
 

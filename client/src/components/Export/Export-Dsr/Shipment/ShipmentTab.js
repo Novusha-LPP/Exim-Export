@@ -1,16 +1,10 @@
 // ShipmentTab.jsx - Parent component for Shipment with sub-tabs
 import React, { useState } from "react";
-import {
-  Box,
-  Tabs,
-  Tab,
-  Typography,
-  Divider
-} from "@mui/material";
-import ShipmentMainTab from './ShipmentMaintab';
+import { Box, Tabs, Tab, Typography, Divider } from "@mui/material";
+import ShipmentMainTab from "./ShipmentMaintab";
 import StuffingDetailsTab from "./StuffingDetailsTab";
 import ShippingBillPrintingTab from "./ShippingBillPrintingTab";
-import AnnexC1DetailsTab from './AnnexC1DetailsTab';
+import AnnexC1DetailsTab from "./AnnexC1DetailsTab";
 // Tab Panel Component
 function ShipmentTabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -35,9 +29,7 @@ const ShipmentTab = ({ formik, directories, params, onUpdate }) => {
   };
 
   return (
-    <Box sx={{ p: 1}}>
-
-
+    <Box sx={{ p: 1 }}>
       {/* Shipment Sub-Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
         <Tabs
@@ -51,34 +43,39 @@ const ShipmentTab = ({ formik, directories, params, onUpdate }) => {
               fontSize: "0.75rem",
               fontWeight: 500,
               padding: "6px 12px",
-              textTransform: "none"
-            }
+              textTransform: "none",
+            },
           }}
         >
           <Tab label="Main" />
-          <Tab label="Stuffing Details" />
+          {(formik.values.consignmentType || "").toUpperCase() !== "AIR" && (
+            <Tab label="Stuffing Details" />
+          )}
           {/* <Tab label="Shipping Bill Printing" /> */}
-          <Tab label="Annex C1 Details" />
+          {(formik.values.consignmentType || "").toUpperCase() !== "AIR" && (
+            <Tab label="Annex C1 Details" />
+          )}
         </Tabs>
       </Box>
 
       {/* Tab Content */}
       <ShipmentTabPanel value={activeSubTab} index={0}>
-        <ShipmentMainTab 
-          formik={formik} 
-          directories={directories} 
+        <ShipmentMainTab
+          formik={formik}
+          directories={directories}
           params={params}
         />
       </ShipmentTabPanel>
 
-      <ShipmentTabPanel value={activeSubTab} index={1}>
-        <StuffingDetailsTab 
-          formik={formik} 
-          directories={directories} 
-          params={params}
-        />
-      </ShipmentTabPanel>
-
+      {(formik.values.consignmentType || "").toUpperCase() !== "AIR" && (
+        <ShipmentTabPanel value={activeSubTab} index={1}>
+          <StuffingDetailsTab
+            formik={formik}
+            directories={directories}
+            params={params}
+          />
+        </ShipmentTabPanel>
+      )}
 
       {/* <ShipmentTabPanel value={activeSubTab} index={2}>
         <ShippingBillPrintingTab 
@@ -88,14 +85,16 @@ const ShipmentTab = ({ formik, directories, params, onUpdate }) => {
         />
       </ShipmentTabPanel>
        */}
-     <ShipmentTabPanel value={activeSubTab} index={2}>
-  <AnnexC1DetailsTab 
-    formik={formik} 
-    directories={directories} 
-    params={params}
-    onUpdate={onUpdate}
-  />
-</ShipmentTabPanel>
+      {(formik.values.consignmentType || "").toUpperCase() !== "AIR" && (
+        <ShipmentTabPanel value={activeSubTab} index={2}>
+          <AnnexC1DetailsTab
+            formik={formik}
+            directories={directories}
+            params={params}
+            onUpdate={onUpdate}
+          />
+        </ShipmentTabPanel>
+      )}
     </Box>
   );
 };

@@ -277,8 +277,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-              ? data
-              : []
+            ? data
+            : []
         );
       } catch {
         setOpts([]);
@@ -597,7 +597,7 @@ function UnitDropdownField({
   );
 }
 
-function usePortDropdown(fieldName, formik) {
+function usePortDropdown(fieldName, formik, onSelect) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(formik.values[fieldName] || "");
   const [opts, setOpts] = useState([]);
@@ -605,10 +605,12 @@ function usePortDropdown(fieldName, formik) {
   const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef();
   const keepOpen = useRef(false);
+  const apiBase = import.meta.env.VITE_API_STRING;
 
   useEffect(() => {
     setQuery(formik.values[fieldName] || "");
   }, [formik.values[fieldName]]);
+
   useEffect(() => {
     if (!open) {
       setOpts([]);
@@ -621,13 +623,19 @@ function usePortDropdown(fieldName, formik) {
           `${apiBase}/ports?search=${encodeURIComponent(searchVal)}`
         );
         const data = await res.json();
-        setOpts(data?.data || []);
+        setOpts(
+          Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data)
+            ? data
+            : []
+        );
       } catch {
         setOpts([]);
       }
     }, 220);
     return () => clearTimeout(t);
-  }, [open, query, isTyping]);
+  }, [open, query, isTyping, apiBase]);
 
   useEffect(() => {
     function close(e) {
@@ -658,6 +666,10 @@ function usePortDropdown(fieldName, formik) {
       setOpen(false);
       setActive(-1);
       setIsTyping(false);
+
+      if (onSelect) {
+        onSelect(sel);
+      }
     }
   }
 
@@ -690,8 +702,8 @@ function usePortDropdown(fieldName, formik) {
   };
 }
 
-function PortField({ label, fieldName, placeholder, formik }) {
-  const d = usePortDropdown(fieldName, formik);
+function PortField({ label, fieldName, placeholder, formik, onSelect }) {
+  const d = usePortDropdown(fieldName, formik, onSelect);
   return (
     <div style={styles.field} ref={d.wrapperRef}>
       <div style={styles.label}>{label}</div>
@@ -699,7 +711,7 @@ function PortField({ label, fieldName, placeholder, formik }) {
         <input
           style={styles.input}
           placeholder={placeholder}
-          autoComplete="off"
+          autoComplete="on"
           value={toUpper(d.query)}
           onChange={(e) => d.handle(e.target.value.toUpperCase())}
           onFocus={d.onInputFocus}
@@ -871,11 +883,11 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
 
     const url = isAir
       ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-        searchVal
-      )}`
+          searchVal
+        )}`
       : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-        searchVal
-      )}`;
+          searchVal
+        )}`;
 
     const t = setTimeout(async () => {
       try {
@@ -885,8 +897,8 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-              ? data
-              : []
+            ? data
+            : []
         );
       } catch {
         setOpts([]);
@@ -1058,9 +1070,9 @@ function ShippingLineDropdownField({
 }
 
 function ShipmentMainTab({ formik, onUpdate }) {
-  const transportMode = toUpper(formik.values.transportMode || "");
-  const isAir = transportMode === "AIR";
-
+  const consignmentType = toUpper(formik.values.consignmentType || "");
+  const isAir = consignmentType == "AIR";
+  console.log(isAir);
   const saveTimeoutRef = useRef(null);
 
   // Compact auto-save
@@ -1090,6 +1102,14 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   fieldName="port_of_discharge"
                   placeholder="ENTER PORT"
                   formik={formik}
+                  onSelect={(opt) => {
+                    if (opt.country) {
+                      formik.setFieldValue(
+                        "discharge_country",
+                        toUpper(opt.country)
+                      );
+                    }
+                  }}
                 />
                 <CountryField
                   label="DISCHARGE COUNTRY"
@@ -1103,19 +1123,21 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   placeholder="ENTER LINE"
                 />
 
-                {!isAir && <div style={styles.field}>
-                  <div style={styles.label}>VOYAGE NO</div>
-                  <input
-                    style={styles.input}
-                    value={toUpper(formik.values.voyage_no || "")}
-                    onChange={(e) =>
-                      handleFieldChange(
-                        "voyage_no",
-                        e.target.value.toUpperCase()
-                      )
-                    }
-                  />
-                </div>}
+                {!isAir && (
+                  <div style={styles.field}>
+                    <div style={styles.label}>VOYAGE NO</div>
+                    <input
+                      style={styles.input}
+                      value={toUpper(formik.values.voyage_no || "")}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          "voyage_no",
+                          e.target.value.toUpperCase()
+                        )
+                      }
+                    />
+                  </div>
+                )}
                 <div style={styles.field}>
                   <div style={styles.label}>EGM NO</div>
                   <input
@@ -1146,32 +1168,36 @@ function ShipmentMainTab({ formik, onUpdate }) {
                     }
                   />
                 </div>
-                <div style={styles.field}>
-                  <div style={styles.label}>PRE-CARRIAGE BY</div>
-                  <input
-                    style={styles.input}
-                    value={toUpper(formik.values.pre_carriage_by || "")}
-                    onChange={(e) =>
-                      handleFieldChange(
-                        "pre_carriage_by",
-                        e.target.value.toUpperCase()
-                      )
-                    }
-                  />
-                </div>
-                <div style={styles.field}>
-                  <div style={styles.label}>TRANSHIPPER CODE</div>
-                  <input
-                    style={styles.input}
-                    value={toUpper(formik.values.transhipper_code || "")}
-                    onChange={(e) =>
-                      handleFieldChange(
-                        "transhipper_code",
-                        e.target.value.toUpperCase()
-                      )
-                    }
-                  />
-                </div>
+                {!isAir && (
+                  <div style={styles.field}>
+                    <div style={styles.label}>PRE-CARRIAGE BY</div>
+                    <input
+                      style={styles.input}
+                      value={toUpper(formik.values.pre_carriage_by || "")}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          "pre_carriage_by",
+                          e.target.value.toUpperCase()
+                        )
+                      }
+                    />
+                  </div>
+                )}
+                {!isAir && (
+                  <div style={styles.field}>
+                    <div style={styles.label}>TRANSHIPPER CODE</div>
+                    <input
+                      style={styles.input}
+                      value={toUpper(formik.values.transhipper_code || "")}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          "transhipper_code",
+                          e.target.value.toUpperCase()
+                        )
+                      }
+                    />
+                  </div>
+                )}
                 <StateDropdownField
                   label="STATE OF ORIGIN"
                   fieldName="state_of_origin"
@@ -1211,6 +1237,14 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   fieldName="destination_port"
                   placeholder="Enter Port"
                   formik={formik}
+                  onSelect={(opt) => {
+                    if (opt.country) {
+                      formik.setFieldValue(
+                        "destination_country",
+                        toUpper(opt.country)
+                      );
+                    }
+                  }}
                 />
                 <CountryField
                   label="DESTINATION COUNTRY"
@@ -1308,19 +1342,21 @@ function ShipmentMainTab({ formik, onUpdate }) {
                     }
                   />
                 </div>
-                <div style={styles.field}>
-                  <div style={styles.label}>PLACE OF RECEIPT</div>
-                  <input
-                    style={styles.input}
-                    value={toUpper(formik.values.place_of_receipt || "")}
-                    onChange={(e) =>
-                      handleFieldChange(
-                        "place_of_receipt",
-                        e.target.value.toUpperCase()
-                      )
-                    }
-                  />
-                </div>
+                {!isAir && (
+                  <div style={styles.field}>
+                    <div style={styles.label}>PLACE OF RECEIPT</div>
+                    <input
+                      style={styles.input}
+                      value={toUpper(formik.values.place_of_receipt || "")}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          "place_of_receipt",
+                          e.target.value.toUpperCase()
+                        )
+                      }
+                    />
+                  </div>
+                )}
                 <GatewayPortDropdownField
                   label="GATEWAY PORT"
                   fieldName="gateway_port"
@@ -1378,70 +1414,90 @@ function ShipmentMainTab({ formik, onUpdate }) {
                 </button>
               </div>
             </div>
-            <div style={styles.field}>
-              <div style={styles.label}>LOOSE PKGS</div>
-              <input
-                style={styles.input}
-                type="number"
-                value={formik.values.loose_pkgs || ""}
-                onChange={(e) =>
-                  handleFieldChange("loose_pkgs", e.target.value)
-                }
-              />
-            </div>
-            <div style={styles.field}>
-              <div style={styles.label}>NO OF CONTAINERS</div>
-              <input
-                style={styles.input}
-                type="number"
-                value={formik.values.no_of_containers || ""}
-                onChange={(e) =>
-                  handleFieldChange("no_of_containers", e.target.value)
-                }
-              />
-            </div>
-            <div style={styles.split}>
-              <div style={styles.half}>
-                <div style={styles.label}>GROSS WEIGHT</div>
-                <input
-                  style={styles.input}
-                  type="number"
-                  step="0.001"
-                  value={formik.values.gross_weight_kg || ""}
-                  onChange={(e) =>
-                    handleFieldChange("gross_weight_kg", e.target.value)
-                  }
-                />
-              </div>
-              <UnitDropdownField
-                label="UNIT"
-                fieldName="gross_weight_unit" // use your desired formik field
-                formik={formik}
-                unitOptions={unitCodes}
-                placeholder="Enter Unit"
-              />
-            </div>
-            <div style={styles.split}>
-              <div style={styles.half}>
-                <div style={styles.label}>NET WEIGHT</div>
-                <input
-                  style={styles.input}
-                  type="number"
-                  step="0.001"
-                  value={formik.values.net_weight_kg || ""}
-                  onChange={(e) =>
-                    handleFieldChange("net_weight_kg", e.target.value)
-                  }
-                />
-              </div>
-              <UnitDropdownField
-                label="UNIT"
-                fieldName="net_weight_unit" // use your desired formik field
-                formik={formik}
-                unitOptions={unitCodes}
-                placeholder="Enter Unit"
-              />
-            </div>
+            {!isAir && (
+              <>
+                <div style={styles.field}>
+                  <div style={styles.label}>LOOSE PKGS</div>
+                  <input
+                    style={styles.input}
+                    type="number"
+                    value={formik.values.loose_pkgs || ""}
+                    onChange={(e) =>
+                      handleFieldChange("loose_pkgs", e.target.value)
+                    }
+                  />
+                </div>
+                <div style={styles.field}>
+                  <div style={styles.label}>NO OF CONTAINERS</div>
+                  <input
+                    style={styles.input}
+                    type="number"
+                    value={formik.values.no_of_containers || ""}
+                    onChange={(e) =>
+                      handleFieldChange("no_of_containers", e.target.value)
+                    }
+                  />
+                </div>
+              </>
+            )}
+            {!isAir && (
+              <>
+                <div style={styles.split}>
+                  <div style={styles.half}>
+                    <div style={styles.label}>GROSS WEIGHT</div>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      step="0.001"
+                      value={formik.values.gross_weight_kg || ""}
+                      onChange={(e) =>
+                        handleFieldChange("gross_weight_kg", e.target.value)
+                      }
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val)) {
+                          handleFieldChange("gross_weight_kg", val.toFixed(3));
+                        }
+                      }}
+                    />
+                  </div>
+                  <UnitDropdownField
+                    label="UNIT"
+                    fieldName="gross_weight_unit" // use your desired formik field
+                    formik={formik}
+                    unitOptions={unitCodes}
+                    placeholder="Enter Unit"
+                  />
+                </div>
+                <div style={styles.split}>
+                  <div style={styles.half}>
+                    <div style={styles.label}>NET WEIGHT</div>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      step="0.001"
+                      value={formik.values.net_weight_kg || ""}
+                      onChange={(e) =>
+                        handleFieldChange("net_weight_kg", e.target.value)
+                      }
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val)) {
+                          handleFieldChange("net_weight_kg", val.toFixed(3));
+                        }
+                      }}
+                    />
+                  </div>
+                  <UnitDropdownField
+                    label="UNIT"
+                    fieldName="net_weight_unit" // use your desired formik field
+                    formik={formik}
+                    unitOptions={unitCodes}
+                    placeholder="Enter Unit"
+                  />
+                </div>
+              </>
+            )}
             <div style={styles.split}>
               <div style={styles.half}>
                 <div style={styles.label}>VOLUME</div>
@@ -1453,7 +1509,12 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   onChange={(e) =>
                     handleFieldChange("volume_cbm", e.target.value)
                   }
-                  placeholder="0.000"
+                  onBlur={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (!isNaN(val)) {
+                      handleFieldChange("volume_cbm", val.toFixed(3));
+                    }
+                  }}
                 />
               </div>
               <UnitDropdownField
@@ -1475,7 +1536,12 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   onChange={(e) =>
                     handleFieldChange("chargeable_weight", e.target.value)
                   }
-                  placeholder="0.000"
+                  onBlur={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (!isNaN(val)) {
+                      handleFieldChange("chargeable_weight", val.toFixed(3));
+                    }
+                  }}
                 />
               </div>
               <UnitDropdownField

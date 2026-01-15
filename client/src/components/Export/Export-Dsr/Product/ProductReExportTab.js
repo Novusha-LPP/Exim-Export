@@ -146,6 +146,16 @@ const ProductReExportTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
               }
               disabled={!isEnabled}
             />
+            <div
+              style={{
+                fontSize: 9,
+                color: "#666",
+                textAlign: "right",
+                marginTop: 2,
+              }}
+            >
+              {(reExport.beItemDescription || "").length}/120
+            </div>
           </div>
 
           {/* Quantity Imported & Unit */}
