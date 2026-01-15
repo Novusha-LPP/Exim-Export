@@ -1070,8 +1070,8 @@ function ShippingLineDropdownField({
 }
 
 function ShipmentMainTab({ formik, onUpdate }) {
-  const consignmentType = toUpper(formik.values.consignmentType || "");
-  const isAir = consignmentType == "AIR";
+  const transportMode = toUpper(formik.values.transportMode || "");
+  const isAir = transportMode == "AIR";
   console.log(isAir);
   const saveTimeoutRef = useRef(null);
 

@@ -46,8 +46,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
   // We need to detect when real data comes in vs initial empty state
   const hasInitializedRef = useRef(false);
 
-  const consignmentType = (formik.values.consignmentType || "").toUpperCase();
-  const isAir = consignmentType === "AIR";
+  const transportMode = (formik.values.transportMode || "").toUpperCase();
+  const isAir = transportMode === "AIR";
 
   const currentBaseMilestones = getMilestones(isAir);
   const currentMandatory = getMandatoryNames(isAir);
