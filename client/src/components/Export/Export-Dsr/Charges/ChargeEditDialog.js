@@ -21,7 +21,7 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Box
+  Box,
 } from "@mui/material";
 
 const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
@@ -34,20 +34,20 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
   }, [charge]);
 
   const handleFieldChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleRevenueChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      revenue: { ...prev.revenue, [field]: value }
+      revenue: { ...prev.revenue, [field]: value },
     }));
   };
 
   const handleCostChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      cost: { ...prev.cost, [field]: value }
+      cost: { ...prev.cost, [field]: value },
     }));
   };
 
@@ -81,7 +81,7 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
         amountINR: 0,
         curr: "INR",
         ovrd: false,
-        paid: false
+        paid: false,
       },
       cost: {
         basis: "Per S/B",
@@ -91,7 +91,7 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
         amountINR: 0,
         curr: "INR",
         ovrd: false,
-        paid: false
+        paid: false,
       },
       chargeDescription: "",
       overrideAutoRate: false,
@@ -99,18 +99,16 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
       receivableFrom: "",
       receivableFromBranchCode: "",
       copyToCost: false,
-      quotationNo: ""
+      quotationNo: "",
     });
   };
 
   return (
     <Dialog open={true} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>
-        <Typography variant="h6">
-          New Charge
-        </Typography>
+        <Typography variant="h6">New Charge</Typography>
       </DialogTitle>
-      
+
       <DialogContent>
         {/* Header Fields */}
         <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -120,7 +118,7 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
               fullWidth
               size="small"
               value={formData.chargeHead || ""}
-              onChange={(e) => handleFieldChange('chargeHead', e.target.value)}
+              onChange={(e) => handleFieldChange("chargeHead", e.target.value)}
               placeholder="MISC CHARGES"
             />
           </Grid>
@@ -132,16 +130,16 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
               multiline
               rows={2}
               value={formData.remark || ""}
-              onChange={(e) => handleFieldChange('remark', e.target.value)}
+              onChange={(e) => handleFieldChange("remark", e.target.value)}
             />
           </Grid>
-          
+
           <Grid item xs={12} md={3}>
             <FormControl size="small" fullWidth>
               <InputLabel>Category</InputLabel>
               <Select
                 value={formData.category || "Margin"}
-                onChange={(e) => handleFieldChange('category', e.target.value)}
+                onChange={(e) => handleFieldChange("category", e.target.value)}
               >
                 <MenuItem value="Margin">Margin</MenuItem>
                 <MenuItem value="Direct">Direct</MenuItem>
@@ -149,14 +147,14 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12} md={3}>
             <TextField
               label="Cost Center"
               size="small"
               fullWidth
               value={formData.costCenter || "CCL EXP"}
-              onChange={(e) => handleFieldChange('costCenter', e.target.value)}
+              onChange={(e) => handleFieldChange("costCenter", e.target.value)}
             />
           </Grid>
         </Grid>
@@ -167,23 +165,41 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
             <TableHead>
               <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
                 <TableCell></TableCell>
-                <TableCell><strong>Basis</strong></TableCell>
-                <TableCell><strong>Qty/Unit</strong></TableCell>
-                <TableCell><strong>Rate</strong></TableCell>
-                <TableCell><strong>Amount</strong></TableCell>
-                <TableCell><strong>Amount(INR)</strong></TableCell>
-                <TableCell><strong>Ovrd</strong></TableCell>
-                <TableCell><strong>Paid</strong></TableCell>
+                <TableCell>
+                  <strong>Basis</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Qty/Unit</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Rate</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Amount</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Amount(INR)</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Ovrd</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Paid</strong>
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               <TableRow>
-                <TableCell><strong>Revenue</strong></TableCell>
+                <TableCell>
+                  <strong>Revenue</strong>
+                </TableCell>
                 <TableCell>
                   <Select
                     size="small"
                     value={formData.revenue?.basis || "Per S/B"}
-                    onChange={(e) => handleRevenueChange('basis', e.target.value)}
+                    onChange={(e) =>
+                      handleRevenueChange("basis", e.target.value)
+                    }
                   >
                     <MenuItem value="Per S/B">Per S/B</MenuItem>
                     <MenuItem value="Per Container">Per Container</MenuItem>
@@ -195,7 +211,12 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
                     type="number"
                     size="small"
                     value={formData.revenue?.qtyUnit || 0}
-                    onChange={(e) => handleRevenueChange('qtyUnit', parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      handleRevenueChange(
+                        "qtyUnit",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                     sx={{ width: 80 }}
                   />
                 </TableCell>
@@ -204,13 +225,20 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
                     type="number"
                     size="small"
                     value={formData.revenue?.rate || 0}
-                    onChange={(e) => handleRevenueChange('rate', parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      handleRevenueChange(
+                        "rate",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                     sx={{ width: 80 }}
                   />
                   <Select
                     size="small"
                     value={formData.revenue?.curr || "INR"}
-                    onChange={(e) => handleRevenueChange('curr', e.target.value)}
+                    onChange={(e) =>
+                      handleRevenueChange("curr", e.target.value)
+                    }
                     sx={{ width: 60, ml: 1 }}
                   >
                     <MenuItem value="INR">INR</MenuItem>
@@ -222,7 +250,12 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
                     type="number"
                     size="small"
                     value={formData.revenue?.amount || 0}
-                    onChange={(e) => handleRevenueChange('amount', parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      handleRevenueChange(
+                        "amount",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                     sx={{ width: 100 }}
                   />
                 </TableCell>
@@ -231,31 +264,42 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
                     type="number"
                     size="small"
                     value={formData.revenue?.amountINR || 0}
-                    onChange={(e) => handleRevenueChange('amountINR', parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      handleRevenueChange(
+                        "amountINR",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                     sx={{ width: 100 }}
                   />
                 </TableCell>
                 <TableCell>
                   <Checkbox
                     checked={formData.revenue?.ovrd || false}
-                    onChange={(e) => handleRevenueChange('ovrd', e.target.checked)}
+                    onChange={(e) =>
+                      handleRevenueChange("ovrd", e.target.checked)
+                    }
                   />
                 </TableCell>
                 <TableCell>
                   <Checkbox
                     checked={formData.revenue?.paid || false}
-                    onChange={(e) => handleRevenueChange('paid', e.target.checked)}
+                    onChange={(e) =>
+                      handleRevenueChange("paid", e.target.checked)
+                    }
                   />
                 </TableCell>
               </TableRow>
-              
+
               <TableRow>
-                <TableCell><strong>Cost</strong></TableCell>
+                <TableCell>
+                  <strong>Cost</strong>
+                </TableCell>
                 <TableCell>
                   <Select
                     size="small"
                     value={formData.cost?.basis || "Per S/B"}
-                    onChange={(e) => handleCostChange('basis', e.target.value)}
+                    onChange={(e) => handleCostChange("basis", e.target.value)}
                   >
                     <MenuItem value="Per S/B">Per S/B</MenuItem>
                     <MenuItem value="Per Container">Per Container</MenuItem>
@@ -267,7 +311,12 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
                     type="number"
                     size="small"
                     value={formData.cost?.qtyUnit || 0}
-                    onChange={(e) => handleCostChange('qtyUnit', parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      handleCostChange(
+                        "qtyUnit",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                     sx={{ width: 80 }}
                   />
                 </TableCell>
@@ -276,13 +325,15 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
                     type="number"
                     size="small"
                     value={formData.cost?.rate || 0}
-                    onChange={(e) => handleCostChange('rate', parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      handleCostChange("rate", parseFloat(e.target.value) || 0)
+                    }
                     sx={{ width: 80 }}
                   />
                   <Select
                     size="small"
                     value={formData.cost?.curr || "INR"}
-                    onChange={(e) => handleCostChange('curr', e.target.value)}
+                    onChange={(e) => handleCostChange("curr", e.target.value)}
                     sx={{ width: 60, ml: 1 }}
                   >
                     <MenuItem value="INR">INR</MenuItem>
@@ -294,7 +345,12 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
                     type="number"
                     size="small"
                     value={formData.cost?.amount || 0}
-                    onChange={(e) => handleCostChange('amount', parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      handleCostChange(
+                        "amount",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                     sx={{ width: 100 }}
                   />
                 </TableCell>
@@ -303,20 +359,25 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
                     type="number"
                     size="small"
                     value={formData.cost?.amountINR || 0}
-                    onChange={(e) => handleCostChange('amountINR', parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      handleCostChange(
+                        "amountINR",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                     sx={{ width: 100 }}
                   />
                 </TableCell>
                 <TableCell>
                   <Checkbox
                     checked={formData.cost?.ovrd || false}
-                    onChange={(e) => handleCostChange('ovrd', e.target.checked)}
+                    onChange={(e) => handleCostChange("ovrd", e.target.checked)}
                   />
                 </TableCell>
                 <TableCell>
                   <Checkbox
                     checked={formData.cost?.paid || false}
-                    onChange={(e) => handleCostChange('paid', e.target.checked)}
+                    onChange={(e) => handleCostChange("paid", e.target.checked)}
                   />
                 </TableCell>
               </TableRow>
@@ -332,16 +393,21 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
               fullWidth
               size="small"
               value={formData.chargeDescription || ""}
-              onChange={(e) => handleFieldChange('chargeDescription', e.target.value)}
+              onChange={(e) =>
+                handleFieldChange("chargeDescription", e.target.value)
+              }
+              helperText={`${(formData.chargeDescription || "").length}/120`}
             />
           </Grid>
-          
+
           <Grid item xs={12} md={3}>
             <FormControl size="small" fullWidth>
               <InputLabel>Receivable Type</InputLabel>
               <Select
                 value={formData.receivableType || "Customer"}
-                onChange={(e) => handleFieldChange('receivableType', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("receivableType", e.target.value)
+                }
               >
                 <MenuItem value="Customer">Customer</MenuItem>
                 <MenuItem value="Vendor">Vendor</MenuItem>
@@ -349,35 +415,41 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12} md={3}>
             <TextField
               label="Receivable From"
               size="small"
               fullWidth
               value={formData.receivableFrom || ""}
-              onChange={(e) => handleFieldChange('receivableFrom', e.target.value)}
+              onChange={(e) =>
+                handleFieldChange("receivableFrom", e.target.value)
+              }
             />
           </Grid>
-          
+
           <Grid item xs={12} md={4}>
             <FormControlLabel
               control={
                 <Checkbox
                   checked={formData.overrideAutoRate || false}
-                  onChange={(e) => handleFieldChange('overrideAutoRate', e.target.checked)}
+                  onChange={(e) =>
+                    handleFieldChange("overrideAutoRate", e.target.checked)
+                  }
                 />
               }
               label="Override Auto Rate"
             />
           </Grid>
-          
+
           <Grid item xs={12} md={4}>
             <FormControlLabel
               control={
                 <Checkbox
                   checked={formData.copyToCost || false}
-                  onChange={(e) => handleFieldChange('copyToCost', e.target.checked)}
+                  onChange={(e) =>
+                    handleFieldChange("copyToCost", e.target.checked)
+                  }
                 />
               }
               label="Copy to Cost"
@@ -385,7 +457,7 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
           </Grid>
         </Grid>
       </DialogContent>
-      
+
       <DialogActions>
         <Button onClick={handleUpdate} variant="outlined">
           Update

@@ -11,7 +11,12 @@ function toUpper(val) {
 }
 
 // Searchable Organization Dropdown Component
-function SearchableOrganizationDropdown({ value, options, onChange, placeholder }) {
+function SearchableOrganizationDropdown({
+  value,
+  options,
+  onChange,
+  placeholder,
+}) {
   const [query, setQuery] = useState(value || "");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -138,7 +143,12 @@ function SearchableOrganizationDropdown({ value, options, onChange, placeholder 
 }
 
 // Searchable Consignee Dropdown Component
-function SearchableConsigneeDropdown({ value, options, onChange, placeholder }) {
+function SearchableConsigneeDropdown({
+  value,
+  options,
+  onChange,
+  placeholder,
+}) {
   const [query, setQuery] = useState(value || "");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -430,7 +440,14 @@ const s = {
   },
 };
 
-const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => {
+const ESanchitEditDialog = ({
+  open,
+  onClose,
+  onSave,
+  doc,
+  setDoc,
+  jobData,
+}) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [organizations, setOrganizations] = useState([]);
   const [consigneeList, setConsigneeList] = useState([]);
@@ -534,7 +551,12 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
     }
 
     // Auto-populate Beneficiary Party from first consignee
-    if (isBeneficiaryPartyEmpty && jobData.consignees && jobData.consignees.length > 0 && consigneeList.length > 0) {
+    if (
+      isBeneficiaryPartyEmpty &&
+      jobData.consignees &&
+      jobData.consignees.length > 0 &&
+      consigneeList.length > 0
+    ) {
       const firstConsignee = jobData.consignees[0];
       const consigneeName = toUpper(firstConsignee.consignee_name || "");
 
@@ -544,15 +566,24 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
       );
 
       if (fullConsignee) {
-        handleBeneficiaryPartyChange("name", toUpper(fullConsignee.consignee_name || ""));
-        handleBeneficiaryPartyChange("addressLine1", toUpper(fullConsignee.consignee_address || ""));
+        handleBeneficiaryPartyChange(
+          "name",
+          toUpper(fullConsignee.consignee_name || "")
+        );
+        handleBeneficiaryPartyChange(
+          "addressLine1",
+          toUpper(fullConsignee.consignee_address || "")
+        );
         handleBeneficiaryPartyChange("addressLine2", "");
         handleBeneficiaryPartyChange("city", "");
         handleBeneficiaryPartyChange("pinCode", "");
       } else {
         // Fallback to job data if not found in consignee list
         handleBeneficiaryPartyChange("name", consigneeName);
-        handleBeneficiaryPartyChange("addressLine1", toUpper(firstConsignee.consignee_address || ""));
+        handleBeneficiaryPartyChange(
+          "addressLine1",
+          toUpper(firstConsignee.consignee_address || "")
+        );
         handleBeneficiaryPartyChange("addressLine2", "");
         handleBeneficiaryPartyChange("city", "");
         handleBeneficiaryPartyChange("pinCode", "");
@@ -586,7 +617,10 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
     if (!consignee) return;
 
     handleBeneficiaryPartyChange("code", "");
-    handleBeneficiaryPartyChange("addressLine1", toUpper(consignee.consignee_address || ""));
+    handleBeneficiaryPartyChange(
+      "addressLine1",
+      toUpper(consignee.consignee_address || "")
+    );
     handleBeneficiaryPartyChange("addressLine2", "");
     handleBeneficiaryPartyChange("city", "");
     handleBeneficiaryPartyChange("pinCode", "");
@@ -595,6 +629,30 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
   const handleConfirmDelete = () => {
     handleFieldChange("fileUrl", "");
     setDeleteConfirmOpen(false);
+  };
+
+  const handleSave = () => {
+    // 1. Validate Date-Time Upload
+    const dt = safeDoc.dateTimeOfUpload;
+    if (!dt || dt.trim() === "") {
+      alert("Date-Time Upload is mandatory.");
+      return;
+    }
+    // Strict format check for dd-mm-yyyy hh:mm
+    // Regex: ^\d{2}-\d{2}-\d{4} \d{2}:\d{2}$
+    const dtRegex = /^\d{2}-\d{2}-\d{4} \d{2}:\d{2}$/;
+    if (!dtRegex.test(dt.trim())) {
+      alert("Date-Time Upload must be in DD-MM-YYYY HH:MM format.");
+      return;
+    }
+
+    // 2. Validate File Upload
+    if (!safeDoc.fileUrl || safeDoc.fileUrl.trim() === "") {
+      alert("Please upload a document (PDF/Image) before saving.");
+      return;
+    }
+
+    onSave(safeDoc);
   };
 
   const fileArray = safeDoc.fileUrl ? [safeDoc.fileUrl] : [];
@@ -729,7 +787,7 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
               <Field
                 label="File Type"
                 value="PDF"
-                onChange={() => { }}
+                onChange={() => {}}
                 disabled
               />
               <Field
@@ -762,12 +820,27 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
                   onChange={(selectedOrg) => {
                     if (selectedOrg) {
                       const branch = selectedOrg.branchInfo?.[0] || {};
-                      handleIssuingPartyChange("name", toUpper(selectedOrg.organization || ""));
-                      handleIssuingPartyChange("code", toUpper(branch.branchCode || ""));
-                      handleIssuingPartyChange("addressLine1", toUpper(branch.address || ""));
+                      handleIssuingPartyChange(
+                        "name",
+                        toUpper(selectedOrg.organization || "")
+                      );
+                      handleIssuingPartyChange(
+                        "code",
+                        toUpper(branch.branchCode || "")
+                      );
+                      handleIssuingPartyChange(
+                        "addressLine1",
+                        toUpper(branch.address || "")
+                      );
                       handleIssuingPartyChange("addressLine2", "");
-                      handleIssuingPartyChange("city", toUpper(branch.city || ""));
-                      handleIssuingPartyChange("pinCode", toUpper(branch.postalCode || ""));
+                      handleIssuingPartyChange(
+                        "city",
+                        toUpper(branch.city || "")
+                      );
+                      handleIssuingPartyChange(
+                        "pinCode",
+                        toUpper(branch.postalCode || "")
+                      );
                     }
                   }}
                   placeholder="TYPE TO SEARCH ORGANIZATION"
@@ -809,9 +882,15 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
                   options={consigneeList}
                   onChange={(selectedConsignee) => {
                     if (selectedConsignee) {
-                      handleBeneficiaryPartyChange("name", toUpper(selectedConsignee.consignee_name || ""));
+                      handleBeneficiaryPartyChange(
+                        "name",
+                        toUpper(selectedConsignee.consignee_name || "")
+                      );
                       handleBeneficiaryPartyChange("code", "");
-                      handleBeneficiaryPartyChange("addressLine1", toUpper(selectedConsignee.consignee_address || ""));
+                      handleBeneficiaryPartyChange(
+                        "addressLine1",
+                        toUpper(selectedConsignee.consignee_address || "")
+                      );
                       handleBeneficiaryPartyChange("addressLine2", "");
                       handleBeneficiaryPartyChange("city", "");
                       handleBeneficiaryPartyChange("pinCode", "");
@@ -880,11 +959,7 @@ const ESanchitEditDialog = ({ open, onClose, onSave, doc, setDoc, jobData }) => 
 
           {/* Footer buttons */}
           <div style={s.footerActions}>
-            <button
-              type="button"
-              style={s.btnPrimary}
-              onClick={() => onSave(safeDoc)}
-            >
+            <button type="button" style={s.btnPrimary} onClick={handleSave}>
               Save
             </button>
             <button type="button" style={s.btnSecondary} onClick={onClose}>

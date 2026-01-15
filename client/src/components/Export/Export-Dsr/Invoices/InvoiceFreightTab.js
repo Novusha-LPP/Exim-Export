@@ -99,6 +99,7 @@ const InvoiceFreightTab = ({ formik }) => {
   const saveTimeoutRef = useRef(null);
   const [rateMap, setRateMap] = useState({});
   const [selectedInvoiceIndex, setSelectedInvoiceIndex] = useState(0);
+  const [isEditMode, setIsEditMode] = useState(false); // New State
 
   const getJobDateFormatted = (jobDate) => {
     if (!jobDate) {
@@ -186,6 +187,7 @@ const InvoiceFreightTab = ({ formik }) => {
     termsOfInvoice === "C&F" || termsOfInvoice === "FOB";
 
   const isRowDisabled = (rowKey) => {
+    if (!isEditMode) return true; // Disable all if not in edit mode
     if (rowKey === "freight") return isFreightDisabled;
     if (rowKey === "insurance") return isInsuranceDisabled;
     return false;
@@ -455,6 +457,32 @@ const InvoiceFreightTab = ({ formik }) => {
                 </option>
               ))}
             </select>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginLeft: "20px",
+            }}
+          >
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                fontSize: "12px",
+                fontWeight: "700",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isEditMode}
+                onChange={(e) => setIsEditMode(e.target.checked)}
+              />
+              Edit Mode
+            </label>
           </div>
         </div>
       </div>

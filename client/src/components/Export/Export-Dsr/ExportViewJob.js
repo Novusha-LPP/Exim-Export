@@ -229,6 +229,17 @@ function GatewayPortDropdown({
           onFocus={d.onInputFocus}
           onBlur={d.onInputBlur}
           onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              if (d.open && d.active >= 0) {
+                e.preventDefault();
+                d.select(d.active);
+              } else if (props.onEnter) {
+                e.preventDefault();
+                props.onEnter();
+              }
+              return;
+            }
+
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
@@ -236,10 +247,7 @@ function GatewayPortDropdown({
               );
             else if (e.key === "ArrowUp")
               d.setActive((a) => Math.max(0, a - 1));
-            else if (e.key === "Enter" && d.active >= 0) {
-              e.preventDefault();
-              d.select(d.active);
-            } else if (e.key === "Escape") d.setOpen(false);
+            else if (e.key === "Escape") d.setOpen(false);
           }}
         />
         <span style={styles.acIcon}>▼</span>
