@@ -519,8 +519,8 @@ function useDistrictApiDropdown(
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -1332,7 +1332,7 @@ function ProductRow({
 
         <DistrictApiField
           label="District of Origin"
-          fieldName="districtOfOrigin"
+          fieldName="originDistrict"
           invoiceIndex={selectedInvoiceIndex}
           productIndex={index}
           placeholder="Search District"
@@ -1391,7 +1391,7 @@ function ProductRow({
         {/* Row 3 */}
         <PtaFtaField
           label="PTA / FTA Code"
-          fieldName="ptaFtaCode"
+          fieldName="ptaFtaInfo"
           invoiceIndex={selectedInvoiceIndex}
           productIndex={index}
           placeholder="Select PTA / FTA"
@@ -1515,19 +1515,19 @@ function ProductRow({
             </select>
             {(product.pmvInfo?.calculationMethod ?? "percentage") ===
               "percentage" && (
-              <input
-                style={{ ...styles.input, width: "40%" }}
-                type="number"
-                value={product.pmvInfo?.percentage ?? 110.0}
-                onChange={(e) =>
-                  handleProductChange(
-                    index,
-                    "pmvInfo.percentage",
-                    parseFloat(e.target.value)
-                  )
-                }
-              />
-            )}
+                <input
+                  style={{ ...styles.input, width: "40%" }}
+                  type="number"
+                  value={product.pmvInfo?.percentage ?? 110.0}
+                  onChange={(e) =>
+                    handleProductChange(
+                      index,
+                      "pmvInfo.percentage",
+                      parseFloat(e.target.value)
+                    )
+                  }
+                />
+              )}
           </div>
         </div>
 
@@ -1540,7 +1540,7 @@ function ProductRow({
                 paddingRight: 35,
                 backgroundColor:
                   (product.pmvInfo?.calculationMethod ?? "percentage") ===
-                  "percentage"
+                    "percentage"
                     ? "#e2e8f0"
                     : "#f7fafc",
               }}
@@ -1585,7 +1585,7 @@ function ProductRow({
                 paddingRight: 35,
                 backgroundColor:
                   (product.pmvInfo?.calculationMethod ?? "percentage") ===
-                  "percentage"
+                    "percentage"
                     ? "#e2e8f0"
                     : "#f7fafc",
               }}
@@ -1674,7 +1674,7 @@ function ProductRow({
               style={{
                 ...styles.select,
                 ...(product.igstCompensationCess?.igstPaymentStatus !==
-                "Export Against Payment"
+                  "Export Against Payment"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1702,7 +1702,7 @@ function ProductRow({
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus !==
-                "Export Against Payment"
+                  "Export Against Payment"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1729,7 +1729,7 @@ function ProductRow({
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus ===
-                "Not Applicable"
+                  "Not Applicable"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1758,7 +1758,7 @@ function ProductRow({
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus !==
-                "Export Against Payment"
+                  "Export Against Payment"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1783,7 +1783,7 @@ function ProductRow({
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus !==
-                "Export Against Payment"
+                  "Export Against Payment"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
