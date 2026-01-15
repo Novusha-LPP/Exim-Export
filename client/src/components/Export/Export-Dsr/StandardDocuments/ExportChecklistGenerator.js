@@ -945,23 +945,29 @@ const ExportChecklistGenerator = ({
     drawLine(leftX, yPos, rightX);
     yPos += 17;
 
-    yPos = drawField("Code", data.endUseCode, leftX, yPos, 160);
-    yPos += 9;
-    yPos = drawField("Inv / Item Sr.No.", data.endUseInvItem, leftX, yPos, 160);
-    yPos += 15;
+    const endUseHeaders = ["Inv / Item Sr.No.", "Code"];
+    const endUseRows = Array.isArray(data.endUseData)
+      ? data.endUseData
+      : [data.endUseData];
 
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Code Description", leftX, yPos);
-    yPos += 10;
-    pdf.setFont("helvetica", "normal");
-    const codeDesc = data.endUseDescription;
-    const descLines = pdf.splitTextToSize(codeDesc, rightX - leftX);
-    descLines.forEach((line) => {
-      pdf.text(line, leftX, yPos);
-      yPos += 10;
+    pdf.autoTable({
+      head: [endUseHeaders],
+      body: endUseRows.map((row) => [row.invItemSrNo, row.code]),
+      startY: yPos,
+      styles: {
+        fontSize: FONT_SIZES.tableContent,
+        cellPadding: 2,
+      },
+      headStyles: {
+        fillColor: [220, 220, 220],
+        textColor: 0,
+        fontStyle: "bold",
+      },
+      margin: { left: leftX },
+      tableWidth: 250,
     });
 
-    yPos += 10;
+    yPos = pdf.lastAutoTable.finalY + 18;
 
     // RODTEP Info
     pdf.setFont("helvetica", "bold");
@@ -1719,15 +1725,33 @@ const ExportChecklistGenerator = ({
         periodOfPayment: exportJob.otherInfo?.paymentPeriod
           ? `${exportJob.otherInfo.paymentPeriod} days`
           : "",
-        buyerName: exportJob.buyerThirdPartyInfo?.thirdParty?.name || exportJob.buyerThirdPartyInfo?.buyer?.name || "",
-        buyerAddress: exportJob.buyerThirdPartyInfo?.thirdParty?.address || exportJob.buyerThirdPartyInfo?.buyer?.address || "",
+        // Buyer info - should show actual buyer, not third party
+        buyerName: (() => {
+          const buyer = exportJob.buyerThirdPartyInfo?.buyer;
+          const thirdParty = exportJob.buyerThirdPartyInfo?.thirdParty;
+
+          // If third party export, buyer info might be in buyer field
+          // Otherwise, use buyer field if available
+          if (buyer?.name) {
+            return `${buyer.name}\n${buyer.addressLine1 || ""}\n${buyer.country || ""}`;
+          }
+          return "";
+        })(),
+        buyerAddress: exportJob.buyerThirdPartyInfo?.buyer?.addressLine1 || "",
         buyerAeoCode: exportJob.otherInfo?.aeoCode || "",
-        buyerAeoCountry: exportJob.otherInfo?.aeoCountry || exportJob.buyerThirdPartyInfo?.buyer?.country || "",
+        buyerAeoCountry: exportJob.otherInfo?.aeoCountry || "",
         buyerAeoRole: exportJob.otherInfo?.aeoRole || "",
-        thirdPartyDetails: exportJob.buyerThirdPartyInfo?.thirdParty
-          ?.isThirdPartyExport
-          ? `${exportJob.buyerThirdPartyInfo.thirdParty.name}\n${exportJob.buyerThirdPartyInfo.thirdParty.address}`
-          : "",
+        // Third party details - show whenever third party name exists
+        thirdPartyDetails: (() => {
+          const thirdParty = exportJob.buyerThirdPartyInfo?.thirdParty;
+          if (thirdParty?.name) {
+            const parts = [thirdParty.name];
+            if (thirdParty.address) parts.push(thirdParty.address);
+            if (thirdParty.country) parts.push(thirdParty.country);
+            return parts.join("\n");
+          }
+          return "";
+        })(),
 
         // EOU Details
         eou:
@@ -1875,38 +1899,67 @@ const ExportChecklistGenerator = ({
 
         // Single Window Data
         singleWindowData: allProducts?.map((product, index) => ({
-            invNo: "",
-            itemNo: (index + 1).toString(),
-            infoType: "",
-            infoQualifier: "Remission of Duty",
-            infoCode: product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
-            information: product.rodtepInfo?.claim === "Yes" ? "Claimed" : "",
-            measurement: product.rodtepInfo?.quantity,
-            unit: product.rodtepInfo?.unit,
-          })) || [],
+          invNo: "",
+          itemNo: (index + 1).toString(),
+          infoType: "",
+          infoQualifier: "Remission of Duty",
+          infoCode: product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
+          information: product.rodtepInfo?.claim === "Yes" ? "Claimed" : "",
+          measurement: product.rodtepInfo?.quantity,
+          unit: product.rodtepInfo?.unit,
+        })) || [],
 
-        // End Use Information
-        endUseCode: allProducts?.[0]?.endUse || "",
-        endUseInvItem: "",
-        endUseDescription: "", // Not found in data structure
+        // End Use Information - One row per invoice × product
+        endUseData: (() => {
+          const endUseRows = [];
+          exportJob.invoices?.forEach((invoice, invIndex) => {
+            invoice.products?.forEach((product, prodIndex) => {
+              if (product.endUse) {
+                endUseRows.push({
+                  invItemSrNo: `${invIndex + 1}/${prodIndex + 1}`,
+                  code: product.endUse || "",
+                });
+              }
+            });
+          });
+          return endUseRows.length > 0 ? endUseRows : [{ invItemSrNo: "", code: "" }];
+        })(),
 
-        // RODTEP Data
-        rodtepData: allProducts?.map((product, index) => ({
-            invItemSr: `1/${index + 1}`,
-            claimStatus: product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
-            quantity: product.rodtepInfo?.quantity,
-            rate: product.rodtepInfo?.ratePercent,
-            capValue: product.rodtepInfo?.capValue,
-            noOfUnits: "1",
-            rodtepAmount: product.rodtepInfo?.amountINR,
-          })) || [],
+        // RODTEP Data - One row per invoice × product
+        rodtepData: (() => {
+          const rodtepRows = [];
+          exportJob.invoices?.forEach((invoice, invIndex) => {
+            invoice.products?.forEach((product, prodIndex) => {
+              rodtepRows.push({
+                invItemSr: `${invIndex + 1}/${prodIndex + 1}`,
+                claimStatus: product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
+                quantity: product.rodtepInfo?.quantity || "",
+                rate: product.rodtepInfo?.ratePercent || "",
+                capValue: product.rodtepInfo?.capValue || "",
+                noOfUnits: "1",
+                rodtepAmount: product.rodtepInfo?.amountINR || "",
+              });
+            });
+          });
+          return rodtepRows;
+        })(),
 
-        // Declaration Data - Build from products that have declarations
-        declarationData: allProducts?.map((product, index) => ({
-            declType: "DEC",
-            declCode: "RD001", // Standard RODTEP declaration
-            invItemSrNo: `1/${index + 1}`,
-          })) || [],
+        // Declaration Data - One row per invoice × product
+        declarationData: (() => {
+          const declRows = [];
+          exportJob.invoices?.forEach((invoice, invIndex) => {
+            invoice.products?.forEach((product, prodIndex) => {
+              if (product.rodtepInfo?.claim === "Yes") {
+                declRows.push({
+                  declType: "DEC",
+                  declCode: "RD001", // Standard RODTEP declaration
+                  invItemSrNo: `${invIndex + 1}/${prodIndex + 1}`,
+                });
+              }
+            });
+          });
+          return declRows.length > 0 ? declRows : [{ declType: "", declCode: "", invItemSrNo: "" }];
+        })(),
 
         declarationText: `I/We, in regard to my/our claim under RoDTEP scheme made in this Shipping Bill or Bill of Export, hereby declare that:
 
