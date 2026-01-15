@@ -828,6 +828,16 @@ const DrawbackTab = ({
                       }
                       placeholder="DESCRIPTION"
                     />
+                    <div
+                      style={{
+                        fontSize: 9,
+                        color: "#666",
+                        textAlign: "right",
+                        marginTop: 2,
+                      }}
+                    >
+                      {(item.dbkDescription || "").length}/120
+                    </div>
                   </td>
                   <td style={styles.td}>
                     <input

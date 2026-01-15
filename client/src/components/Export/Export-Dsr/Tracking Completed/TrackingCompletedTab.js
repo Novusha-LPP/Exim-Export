@@ -1,24 +1,18 @@
 import React, { useRef, useCallback, useState, useEffect } from "react";
 import DateInput from "../../../common/DateInput.js";
 
-const BASE_MILESTONES = [
+const getMilestones = (isAir) => [
   "SB Filed",
   "SB Receipt",
   "L.E.O",
-  "Container HO to Concor",
-  "Rail Out",
+  isAir ? "File Handover to IATA" : "Container HO to Concor",
+  isAir ? "Departure" : "Rail Out",
   "Ready for Billing",
   "Billing Done",
 ];
 
-// needsTime function removed as per user request to only show date
-
-const mandatoryNames = new Set([
-  "SB Filed",
-  "SB Receipt",
-  "L.E.O",
-  "Ready for Billing",
-]);
+const getMandatoryNames = (isAir) =>
+  new Set(["SB Filed", "SB Receipt", "L.E.O", "Ready for Billing"]);
 
 const TrackingCompletedTab = ({ formik, directories, params }) => {
   const [filter, setFilter] = useState("Show All");
@@ -52,54 +46,120 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
   // We need to detect when real data comes in vs initial empty state
   const hasInitializedRef = useRef(false);
 
+  const consignmentType = (formik.values.consignmentType || "").toUpperCase();
+  const isAir = consignmentType === "AIR";
+
+  const currentBaseMilestones = getMilestones(isAir);
+  const currentMandatory = getMandatoryNames(isAir);
+
+  // Define all possible system milestones to distinguish from custom ones
+  const ALL_SYSTEM_MILESTONES = new Set([
+    "SB Filed",
+    "SB Receipt",
+    "L.E.O",
+    "File Handover to IATA",
+    "Container HO to Concor",
+    "Departure",
+    "Rail Out",
+    "Ready for Billing",
+    "Billing Done",
+  ]);
+
   useEffect(() => {
-    // Skip if already initialized with real data
-    if (hasInitializedRef.current) return;
-
     const ms = formik.values.milestones || [];
+    const currentModeNames = new Set(currentBaseMilestones);
 
-    // Check if this is real data from server (has _id) or just initial empty/default
+    // Check if we need to update:
+    // 1. If not initialized yet (handled by ref check logic below combined with RealData check)
+    // 2. If the current milestones don't match the current mode's requirements (e.g. missing "Departure" when AIR)
+    // 3. If the current milestones contain "invalid" system milestones for this mode (e.g. "Rail Out" when AIR)
+
+    const isMissingRequired = !currentBaseMilestones.every((name) =>
+      ms.some((m) => m.milestoneName === name)
+    );
+
+    const hasInvalidSystem = ms.some(
+      (m) =>
+        ALL_SYSTEM_MILESTONES.has(m.milestoneName) &&
+        !currentModeNames.has(m.milestoneName)
+    );
+
+    // If perfectly aligned, do nothing
+    if (hasInitializedRef.current && !isMissingRequired && !hasInvalidSystem) {
+      return;
+    }
+
+    // Determine if we are loading real data from server
     const hasRealData = ms.length > 0 && ms.some((m) => m._id);
 
-    if (hasRealData) {
-      // Data loaded from server - merge with base milestones but preserve all existing values
-      const byName = new Map(ms.map((m) => [m.milestoneName, m]));
-      const basePart = BASE_MILESTONES.map((name) => {
-        const existing = byName.get(name);
-        return (
-          existing || {
-            milestoneName: name,
+    // If we haven't initialized and there's no real data, set defaults
+    if (!hasInitializedRef.current && ms.length === 0) {
+      const defaults = currentBaseMilestones.map((name) => ({
+        milestoneName: name,
+        actualDate: "",
+        isCompleted: false,
+        isMandatory: currentMandatory.has(name),
+        completedBy: "",
+        remarks: "",
+      }));
+      formik.setFieldValue("milestones", defaults);
+      // We don't set initialized=true here ideally until we are sure data loaded,
+      // but for new jobs this is the init state.
+      // However, to be safe against late-loading data, we usually wait for an ID or explicit 'loaded' flag.
+      // Assuming if no milestones, we just set defaults.
+      return;
+    }
 
-            actualDate: "",
-            isCompleted: false,
-            isMandatory: mandatoryNames.has(name),
-            completedBy: "",
-            remarks: "",
-          }
-        );
-      });
-      const extra = ms.filter(
-        (m) => !BASE_MILESTONES.includes(m.milestoneName)
-      );
-      formik.setFieldValue("milestones", [...basePart, ...extra]);
-      hasInitializedRef.current = true; // Mark as done
-    } else if (ms.length === 0) {
-      // No data yet and formik is at initial state - create defaults
-      // But only if we haven't received data yet (checked by _id above)
-      const defaults = BASE_MILESTONES.map((name) => {
-        return {
+    // Logic for Merging / switching modes
+    // 1. Create Map of existing milestones
+    const byName = new Map(ms.map((m) => [m.milestoneName, m]));
+
+    // 2. Generate the new base list (preserving existing data if name matches)
+    const basePart = currentBaseMilestones.map((name) => {
+      const existing = byName.get(name);
+      return (
+        existing || {
           milestoneName: name,
           actualDate: "",
           isCompleted: false,
-          isMandatory: mandatoryNames.has(name),
+          isMandatory: currentMandatory.has(name),
           completedBy: "",
           remarks: "",
-        };
-      });
-      formik.setFieldValue("milestones", defaults);
-      // Don't mark as initialized yet - wait for real data
-    }
-  }, [formik.values.milestones]); // Watch for milestones changes
+        }
+      );
+    });
+
+    // 3. Keep custom milestones (those not in system list)
+    // We filter out any milestone that is a SYSTEM milestone but NOT in the current mode
+    const extras = ms.filter((m) => {
+      const name = m.milestoneName;
+      // Keep if it is in the current base set (already handled in basePart? No, basePart creates NEW array)
+      // Wait, basePart contains the *system* milestones for current mode.
+      // We want 'extras' to be ONLY non-system milestones.
+
+      // If it's a system milestone, we only keep it if it's in the current mode (which is handled by basePart).
+      // Actually, if we put it in basePart, we don't want it in extras.
+
+      if (currentModeNames.has(name)) return false; // Already in basePart
+
+      // If it is a known system milestone but NOT in current mode (e.g. "Rail Out" when AIR), DROP IT.
+      if (ALL_SYSTEM_MILESTONES.has(name)) return false;
+
+      // Otherwise it's a user-custom milestone, KEEP IT.
+      return true;
+    });
+
+    formik.setFieldValue("milestones", [...basePart, ...extras]);
+    hasInitializedRef.current = true;
+  }, [
+    // Depend on the mode-derived lists
+    currentBaseMilestones,
+    currentMandatory,
+    // And formik values - but be careful of loops.
+    // The checks inside (isMissingRequired, hasInvalidSystem) prevent infinite loops
+    // because once we align, those become false.
+    formik.values.milestones,
+  ]);
 
   const handleMilestoneChange = (index, updates) => {
     const current = formik.values.milestones || [];
@@ -318,7 +378,9 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
               <tbody>
                 {visibleMilestones.map((m, idx) => {
                   const realIndex = allMilestones.indexOf(m);
-                  const isBase = BASE_MILESTONES.includes(m.milestoneName);
+                  const isBase = currentBaseMilestones.includes(
+                    m.milestoneName
+                  );
                   const isSelected = selectedIndex === realIndex;
                   return (
                     <tr

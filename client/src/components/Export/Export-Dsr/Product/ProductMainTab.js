@@ -181,6 +181,12 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
         }
       }
 
+      // Propagate Unit change
+      if (field === "qtyUnit") {
+        current.socunit = rawValue;
+        current.perUnit = rawValue;
+      }
+
       updated[idx] = current;
       setProducts(updated);
     },
@@ -362,14 +368,11 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                 <th style={{ ...styles.th, width: 50 }}>Sr No</th>
                 <th style={{ ...styles.th, width: 200 }}>Description</th>
                 <th style={{ ...styles.th, width: 140 }}>RITC</th>
-                <th style={{ ...styles.th, width: 110 }}>Quantity</th>
-                <th style={{ ...styles.th, width: 100 }}>Unit</th>
-                <th style={{ ...styles.th, width: 110 }}>SOC Qty</th>
-                <th style={{ ...styles.th, width: 110 }}>SOC Unit</th>
+                <th style={{ ...styles.th, width: 170 }}>Quantity</th>
+                <th style={{ ...styles.th, width: 170 }}>SOC Qty</th>
                 <th style={{ ...styles.th, width: 110 }}>Unit Price</th>
                 <th style={{ ...styles.th, width: 90 }}>Currency</th>
-                <th style={{ ...styles.th, width: 80 }}>Per</th>
-                <th style={{ ...styles.th, width: 80 }}>Unit</th>
+                <th style={{ ...styles.th, width: 130 }}>Per</th>
                 <th style={{ ...styles.th, width: 110 }}>Amount</th>
                 <th style={{ ...styles.th, width: 100 }}>Currency</th>
                 <th style={{ ...styles.th, width: 180 }}>Action</th>
@@ -394,6 +397,15 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                         )
                       }
                     />
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "#666",
+                        textAlign: "right",
+                      }}
+                    >
+                      {(prod.description || "").length}/120
+                    </div>
                   </td>
 
                   <td style={styles.td}>
@@ -440,62 +452,69 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                   </td>
 
                   <td style={styles.td}>
-                    <input
-                      ref={(el) => {
-                        inputRefs.current[`${idx}-quantity`] = el;
-                      }}
-                      type="text"
-                      style={styles.input}
-                      value={prod.quantity || ""}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/[^\d.-]/g, "");
-                        handleProductFieldChange(idx, "quantity", value, {
-                          autoRecalc: true,
-                        });
-                      }}
-                      onBlur={() => handleBlur(idx, "quantity")}
-                      placeholder="0.000"
-                    />
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <input
+                        ref={(el) => {
+                          inputRefs.current[`${idx}-quantity`] = el;
+                        }}
+                        type="text"
+                        style={{ ...styles.input, flex: 1 }}
+                        value={prod.quantity || ""}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^\d.-]/g, "");
+                          handleProductFieldChange(idx, "quantity", value, {
+                            autoRecalc: true,
+                          });
+                        }}
+                        onBlur={() => handleBlur(idx, "quantity")}
+                        placeholder="0.000"
+                      />
+                      <SearchableDropdown
+                        options={unitCodes}
+                        value={prod.qtyUnit || ""}
+                        onChange={(e) =>
+                          handleProductFieldChange(
+                            idx,
+                            "qtyUnit",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Unit"
+                        style={{ width: 70, fontSize: 12, height: 24 }}
+                      />
+                    </div>
                   </td>
 
                   <td style={styles.td}>
-                    <SearchableDropdown
-                      options={unitCodes}
-                      value={prod.qtyUnit || ""}
-                      onChange={(e) =>
-                        handleProductFieldChange(idx, "qtyUnit", e.target.value)
-                      }
-                      placeholder="Unit"
-                      style={{ fontSize: 12, height: 24 }}
-                    />
-                  </td>
-
-                  <td style={styles.td}>
-                    <input
-                      ref={(el) => {
-                        inputRefs.current[`${idx}-socQuantity`] = el;
-                      }}
-                      type="text"
-                      style={styles.input}
-                      value={prod.socQuantity || ""}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/[^\d.-]/g, "");
-                        handleProductFieldChange(idx, "socQuantity", value);
-                      }}
-                      onBlur={() => handleBlur(idx, "socQuantity")}
-                      placeholder="0.00000"
-                    />
-                  </td>
-                  <td style={styles.td}>
-                    <SearchableDropdown
-                      options={unitCodes}
-                      value={prod.socunit || ""}
-                      onChange={(e) =>
-                        handleProductFieldChange(idx, "socunit", e.target.value)
-                      }
-                      placeholder="Unit"
-                      style={{ fontSize: 12, height: 24 }}
-                    />
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <input
+                        ref={(el) => {
+                          inputRefs.current[`${idx}-socQuantity`] = el;
+                        }}
+                        type="text"
+                        style={{ ...styles.input, flex: 1 }}
+                        value={prod.socQuantity || ""}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^\d.-]/g, "");
+                          handleProductFieldChange(idx, "socQuantity", value);
+                        }}
+                        onBlur={() => handleBlur(idx, "socQuantity")}
+                        placeholder="0.00000"
+                      />
+                      <SearchableDropdown
+                        options={unitCodes}
+                        value={prod.socunit || ""}
+                        onChange={(e) =>
+                          handleProductFieldChange(
+                            idx,
+                            "socunit",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Unit"
+                        style={{ width: 70, fontSize: 12, height: 24 }}
+                      />
+                    </div>
                   </td>
 
                   <td style={styles.td}>
@@ -541,34 +560,37 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                   </td>
 
                   <td style={styles.td}>
-                    <input
-                      ref={(el) => {
-                        inputRefs.current[`${idx}-per`] = el;
-                      }}
-                      type="text"
-                      style={styles.input}
-                      value={prod.per || ""}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/[^\d.-]/g, "");
-                        handleProductFieldChange(idx, "per", value, {
-                          autoRecalc: true,
-                        });
-                      }}
-                      onBlur={() => handleBlur(idx, "per")}
-                      placeholder="1"
-                    />
-                  </td>
-
-                  <td style={styles.td}>
-                    <SearchableDropdown
-                      options={unitCodes}
-                      value={prod.perUnit || ""}
-                      onChange={(e) =>
-                        handleProductFieldChange(idx, "perUnit", e.target.value)
-                      }
-                      placeholder="Unit"
-                      style={{ fontSize: 12, height: 24 }}
-                    />
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <input
+                        ref={(el) => {
+                          inputRefs.current[`${idx}-per`] = el;
+                        }}
+                        type="text"
+                        style={{ ...styles.input, flex: 1 }}
+                        value={prod.per || ""}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^\d.-]/g, "");
+                          handleProductFieldChange(idx, "per", value, {
+                            autoRecalc: true,
+                          });
+                        }}
+                        onBlur={() => handleBlur(idx, "per")}
+                        placeholder="1"
+                      />
+                      <SearchableDropdown
+                        options={unitCodes}
+                        value={prod.perUnit || ""}
+                        onChange={(e) =>
+                          handleProductFieldChange(
+                            idx,
+                            "perUnit",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Unit"
+                        style={{ width: 70, fontSize: 12, height: 24 }}
+                      />
+                    </div>
                   </td>
                   <td style={styles.td}>
                     <input

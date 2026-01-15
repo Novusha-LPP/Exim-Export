@@ -548,7 +548,7 @@ function CurrencyDropdown({
   );
 }
 
-function useGatewayPortDropdown(value, onChange) {
+function useGatewayPortDropdown(value, onChange, priorityList = []) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value || "");
   const [opts, setOpts] = useState([]);
@@ -574,19 +574,44 @@ function useGatewayPortDropdown(value, onChange) {
       try {
         const res = await fetch(url);
         const data = await res.json();
-        setOpts(
-          Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-              ? data
-              : []
-        );
+        let options = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data)
+          ? data
+          : [];
+
+        // Apply Priority Sorting
+        if (priorityList.length > 0) {
+          options.sort((a, b) => {
+            const nameA = (a.name || "").toUpperCase();
+            const nameB = (b.name || "").toUpperCase();
+
+            // Find index in priority list (checking if name INCLUDES priority keyword)
+            const pIndexA = priorityList.findIndex((p) =>
+              nameA.includes(p.toUpperCase())
+            );
+            const pIndexB = priorityList.findIndex((p) =>
+              nameB.includes(p.toUpperCase())
+            );
+
+            // Both in priority list -> sort by order in priority list
+            if (pIndexA !== -1 && pIndexB !== -1) return pIndexA - pIndexB;
+            // Only A in priority -> A first
+            if (pIndexA !== -1) return -1;
+            // Only B in priority -> B first
+            if (pIndexB !== -1) return 1;
+            // Neither -> keep original order
+            return 0;
+          });
+        }
+
+        setOpts(options);
       } catch {
         setOpts([]);
       }
     }, 220);
     return () => clearTimeout(t);
-  }, [open, query, apiBase]);
+  }, [open, query, apiBase, priorityList]); // added priorityList dependency
 
   useEffect(() => {
     function close(e) {
@@ -656,8 +681,9 @@ function GatewayPortDropdown({
   value,
   onChange,
   placeholder = "SELECT PORT",
+  priorityList = [],
 }) {
-  const d = useGatewayPortDropdown(value, onChange);
+  const d = useGatewayPortDropdown(value, onChange, priorityList);
   return (
     <div style={s.col} ref={d.wrapRef}>
       <label style={s.label}>{label}</label>
@@ -1341,6 +1367,13 @@ const AddExJobs = ({ onJobCreated }) => {
                   label="Custom House"
                   value={formData.custom_house}
                   onChange={(val) => handleInputChange("custom_house", val)}
+                  priorityList={
+                    formData.branch_code === "AMD"
+                      ? ["ICD AHMEDABAD", "SABARMATI", "THAR", "SACHANA"]
+                      : formData.branch_code === "BRD"
+                      ? ["ICD ANKLESHWAR"]
+                      : []
+                  }
                 />
               </div>
             </div>

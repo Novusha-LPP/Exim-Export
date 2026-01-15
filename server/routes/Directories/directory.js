@@ -8,7 +8,7 @@ router.get("/api/directory", async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 100,
+      limit = 300,
       search = "",
       approvalStatus = "",
       entityType = "",
@@ -206,6 +206,46 @@ router.put("/api/directory/:id/reject", async (req, res) => {
       data: directory,
     });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// PATCH /api/directory/update-exporter-type - Update exporter type by organization
+router.patch("/api/directory/update-exporter-type", async (req, res) => {
+  try {
+    const { organization, exporterType } = req.body;
+
+    if (!organization || !exporterType) {
+      return res.status(400).json({
+        message: "Organization and Exporter Type are required",
+      });
+    }
+
+    // Find directory by organization (case-insensitive search)
+    // We use a regex for case-insensitive match on the organization name
+    const directory = await Directory.findOneAndUpdate(
+      { organization: { $regex: new RegExp(`^${organization}$`, "i") } },
+      {
+        $set: {
+          "generalInfo.exporterType": exporterType,
+        },
+      },
+      { new: true }
+    );
+
+    if (!directory) {
+      return res
+        .status(404)
+        .json({ message: "Directory not found for this exporter" });
+    }
+
+    res.json({
+      success: true,
+      message: "Exporter type updated successfully",
+      data: directory,
+    });
+  } catch (error) {
+    console.error("Error updating exporter type:", error);
     res.status(500).json({ message: error.message });
   }
 });
