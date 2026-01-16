@@ -253,6 +253,14 @@ const LogisysEditableHeader = ({
   directories,
   exportJobsUsers = [],
 }) => {
+  useEffect(() => {
+    const type = toUpper(formik.values.consignmentType || "");
+    const mode = type === "AIR" ? "AIR" : "SEA";
+    if (toUpper(formik.values.transportMode) !== mode) {
+      formik.setFieldValue("transportMode", mode);
+    }
+  }, [formik.values.consignmentType, formik.setFieldValue, formik.values.transportMode]);
+
   const [snackbar, setSnackbar] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const { user } = useContext(UserContext);
@@ -449,15 +457,10 @@ const LogisysEditableHeader = ({
         {/* Transport Mode */}
         <div style={{ flex: "1 1 100px", minWidth: 80 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Transport Mode</div>
-          <AutocompleteSelect
-            name="transportMode"
-            value={formik.values.transportMode}
-            options={[
-              { value: "Sea", label: "Sea" },
-              { value: "Air", label: "Air" },
-            ]}
-            onChange={formik.handleChange}
-            placeholder="Select Mode"
+          <input
+            style={{ ...styles.input, background: "#f0f0f0" }}
+            value={toUpper(formik.values.transportMode)}
+            readOnly
           />
         </div>
 

@@ -577,8 +577,8 @@ function useGatewayPortDropdown(value, onChange, priorityList = []) {
         let options = Array.isArray(data?.data)
           ? data.data
           : Array.isArray(data)
-          ? data
-          : [];
+            ? data
+            : [];
 
         // Apply Priority Sorting
         if (priorityList.length > 0) {
@@ -795,6 +795,14 @@ const AddExJobs = ({ onJobCreated }) => {
   const consigneeMenuRef = useRef(null);
 
   // inside AddExJobs.jsx, before component
+  useEffect(() => {
+    const isAir = formData.consignmentType === "AIR";
+    setFormData((prev) => ({
+      ...prev,
+      transportMode: isAir ? "AIR" : "SEA",
+    }));
+  }, [formData.consignmentType]);
+
   const branchOptions = [
     { code: "BRD", label: "BRD - BARODA" },
     { code: "GIM", label: "GIM - GANDHIDHAM" },
@@ -984,7 +992,7 @@ const AddExJobs = ({ onJobCreated }) => {
       net_weight_kg: "",
       status: "Pending",
       year: "25-26",
-      transportMode: "",
+      transportMode: "SEA",
       job_date: new Date().toISOString().split("T")[0],
     });
   };
@@ -1349,17 +1357,11 @@ const AddExJobs = ({ onJobCreated }) => {
 
                 <div style={{ ...s.col, maxWidth: "120px" }}>
                   <label style={s.label}>Transport</label>
-                  <select
-                    style={s.select}
+                  <input
+                    style={{ ...s.input, backgroundColor: "#f9fafb" }}
                     value={formData.transportMode}
-                    onChange={(e) =>
-                      handleInputChange("transportMode", e.target.value)
-                    }
-                  >
-                    <option value="SEA">SEA</option>
-                    <option value="AIR">AIR</option>
-                    <option value="LAND">LAND</option>
-                  </select>
+                    readOnly
+                  />
                 </div>
 
                 {/* Custom House using SAME directory */}
@@ -1371,8 +1373,8 @@ const AddExJobs = ({ onJobCreated }) => {
                     formData.branch_code === "AMD"
                       ? ["ICD AHMEDABAD", "SABARMATI", "THAR", "SACHANA"]
                       : formData.branch_code === "BRD"
-                      ? ["ICD ANKLESHWAR"]
-                      : []
+                        ? ["ICD ANKLESHWAR"]
+                        : []
                   }
                 />
               </div>

@@ -50,7 +50,7 @@ router.post(
       // Check for manual job number
       if (job_no && job_no.length > 0) {
         // If user provides a manual job number, check if it already exists
-        newJobNo = `${branch_code}/EXP/${transportMode}/${job_no}/${yearFormat}`;
+        newJobNo = `${branch_code}/${job_no}/${yearFormat}`;
 
         // Check if this job number already exists
         const existingJob = await ExportJobModel.findOne({
@@ -73,7 +73,7 @@ router.post(
         // Find the latest job for this branch/year/transportMode combination
         const latestJob = await ExportJobModel.findOne({
           job_no: {
-            $regex: `^${branch_code}/EXP/${transportMode}/`,
+            $regex: `^${branch_code}/`,
             $options: "i",
           },
           year: yearFormat,
@@ -84,7 +84,7 @@ router.post(
         if (latestJob && latestJob.job_no) {
           // Extract sequence number from existing job number
           const jobNoParts = latestJob.job_no.split("/");
-          const sequenceStr = jobNoParts[3]; // The sequence part (e.g., "00025")
+          const sequenceStr = jobNoParts[1]; // The sequence part (e.g., "00025")
 
           if (sequenceStr && /^\d+$/.test(sequenceStr)) {
             nextSequence = parseInt(sequenceStr, 10) + 1;
@@ -92,7 +92,7 @@ router.post(
             // If pattern doesn't match, count existing jobs
             const jobCount = await ExportJobModel.countDocuments({
               job_no: {
-                $regex: `^${branch_code}/EXP/${transportMode}/`,
+                $regex: `^${branch_code}/`,
                 $options: "i",
               },
               year: yearFormat,
@@ -103,7 +103,7 @@ router.post(
           // No jobs found for this combination, start from 1
           const jobCount = await ExportJobModel.countDocuments({
             job_no: {
-              $regex: `^${branch_code}/EXP/${transportMode}/`,
+              $regex: `^${branch_code}/`,
               $options: "i",
             },
             year: yearFormat,
@@ -112,7 +112,7 @@ router.post(
         }
 
         const sequenceStr = nextSequence.toString().padStart(5, "0");
-        newJobNo = `${branch_code}/EXP/${transportMode}/${sequenceStr}/${yearFormat}`;
+        newJobNo = `${branch_code}/${sequenceStr}/${yearFormat}`;
 
         // Final check to ensure no duplicates even with auto-generation
         const duplicateCheck = await ExportJobModel.findOne({
@@ -122,7 +122,7 @@ router.post(
         if (duplicateCheck) {
           // If somehow duplicate exists, increment again
           const sequenceStr = (nextSequence + 1).toString().padStart(5, "0");
-          newJobNo = `${branch_code}/EXP/${transportMode}/${sequenceStr}/${yearFormat}`;
+          newJobNo = `${branch_code}/${sequenceStr}/${yearFormat}`;
         }
       }
 
@@ -238,7 +238,7 @@ router.post(
 
         // Pad with zeros to make it 5 digits
         sequenceStr = manualSequence.padStart(5, "0");
-        newJobNo = `${branch_code}/EXP/${transportMode}/${sequenceStr}/${year}`;
+        newJobNo = `${branch_code}/${sequenceStr}/${year}`;
 
         // Check if this job number already exists
         const existingJob = await ExportJobModel.findOne({
@@ -259,7 +259,7 @@ router.post(
         // Auto-generate sequence - find the highest sequence for this branch/year/transportMode
         const existingJobs = await ExportJobModel.find({
           job_no: {
-            $regex: `^${branch_code}/EXP/${transportMode}/`,
+            $regex: `^${branch_code}/`,
             $options: "i",
           },
           year: year,
@@ -284,7 +284,7 @@ router.post(
         // Get next sequence
         const nextSequence = maxSequence + 1;
         sequenceStr = nextSequence.toString().padStart(5, "0");
-        newJobNo = `${branch_code}/EXP/${transportMode}/${sequenceStr}/${year}`;
+        newJobNo = `${branch_code}/${sequenceStr}/${year}`;
 
         // Double-check for duplicates
         const duplicateCheck = await ExportJobModel.findOne({
@@ -294,7 +294,7 @@ router.post(
         if (duplicateCheck) {
           // If duplicate exists (shouldn't happen), increment further
           const sequenceStr = (nextSequence + 1).toString().padStart(5, "0");
-          newJobNo = `${branch_code}/EXP/${transportMode}/${sequenceStr}/${year}`;
+          newJobNo = `${branch_code}/${sequenceStr}/${year}`;
         }
       }
 
@@ -380,7 +380,7 @@ router.post("/api/jobs/suggest-sequence", async (req, res) => {
     // Find all jobs for this branch/year/transportMode combination
     const existingJobs = await ExportJobModel.find({
       job_no: {
-        $regex: `^${branch_code}/EXP/${transportMode}/`,
+        $regex: `^${branch_code}/`,
         $options: "i",
       },
       year: year,
