@@ -263,7 +263,7 @@ router.get("/exports/:status?", async (req, res) => {
       });
     }
 
-    // Year filter - extract from job_no (format: BRANCH/EXP/MODE/SEQ/YEAR)
+    // Year filter - extract from job_no (format: BRANCH/SEQ/YEAR)
     if (year) {
       filter.$and.push({
         job_no: { $regex: `/${year}$`, $options: "i" },
@@ -360,7 +360,6 @@ router.get("/:job_no(.*)", async (req, res, next) => {
       job_no &&
       typeof job_no === "string" &&
       job_no.includes("/") &&
-      /\/EXP\//i.test(job_no) &&
       job_no.split("/").length >= 3;
 
     if (!isJobNumber) {
@@ -484,7 +483,6 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
       job_no &&
       typeof job_no === "string" &&
       job_no.includes("/") &&
-      /\/EXP\//i.test(job_no) &&
       job_no.split("/").length >= 3;
 
     if (!isJobNumber) {
