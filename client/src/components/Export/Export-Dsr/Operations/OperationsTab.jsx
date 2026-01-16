@@ -146,7 +146,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
   const [query, setQuery] = useState(
     (formik.values[fieldName.split(".")[0]] &&
       getNestedValue(formik.values, fieldName)) ||
-    ""
+      ""
   );
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
@@ -178,11 +178,11 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
 
     const url = isAir
       ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-        searchVal
-      )}`
+          searchVal
+        )}`
       : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-        searchVal
-      )}`;
+          searchVal
+        )}`;
 
     const t = setTimeout(async () => {
       try {
@@ -192,8 +192,8 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-              ? data
-              : []
+            ? data
+            : []
         );
       } catch {
         setOpts([]);
@@ -444,8 +444,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-              ? data
-              : []
+            ? data
+            : []
         );
       } catch {
         setOpts([]);
@@ -1194,11 +1194,11 @@ const OperationsTab = ({ formik }) => {
         { field: "vehicleNo", label: "Vehicle No.", width: "10px" },
         // If Dock (FCL or LCL), we do NOT show Container No in Carting Details
         !isAir &&
-        !isDock && {
-          field: "containerNo",
-          label: "Container No.",
-          width: "140px",
-        },
+          !isDock && {
+            field: "containerNo",
+            label: "Container No.",
+            width: "140px",
+          },
         { field: "driverName", label: "Driver Name", width: "150px" },
         { field: "contactNo", label: "Contact No.", width: "120px" },
         {
@@ -1338,12 +1338,6 @@ const OperationsTab = ({ formik }) => {
           width: "150px",
         },
         !isAir && { field: "voyageNo", label: "Voyage", width: "100px" },
-        !isAir && {
-          field: "portOfLoading",
-          label: "POL",
-          width: "120px",
-          type: "gatewaydropdown",
-        },
         !isAir && {
           field: "handoverLocation",
           label: "Empty Pickup / Drop Location",
@@ -1763,18 +1757,18 @@ const TableSection = ({
                           <input
                             type={
                               col.type === "date" ||
-                                col.type === "datetime-local"
+                              col.type === "datetime-local"
                                 ? "text"
                                 : col.type || "text"
                             }
                             value={
                               item[col.field] === undefined ||
-                                item[col.field] === null
+                              item[col.field] === null
                                 ? ""
                                 : col.type === "date" ||
                                   col.type === "datetime-local"
-                                  ? formatDateForInput(item[col.field], col.type)
-                                  : item[col.field]
+                                ? formatDateForInput(item[col.field], col.type)
+                                : item[col.field]
                             }
                             onChange={(e) =>
                               onUpdate(
@@ -2041,16 +2035,16 @@ const StatusSection = ({
             f.field === "leoUpload"
               ? "leo_uploads"
               : f.field === "eGatePassUpload"
-                ? "egate_uploads"
-                : f.field === "stuffingSheetUpload"
-                  ? "stuffing_sheet_uploads"
-                  : f.field === "stuffingPhotoUpload"
-                    ? "stuffing_photo_uploads"
-                    : f.field === "billingDocsSentUpload"
-                      ? "billing_uploads"
-                      : f.field === "handoverImageUpload"
-                        ? "job_handover_images"
-                        : "general_uploads"
+              ? "egate_uploads"
+              : f.field === "stuffingSheetUpload"
+              ? "stuffing_sheet_uploads"
+              : f.field === "stuffingPhotoUpload"
+              ? "stuffing_photo_uploads"
+              : f.field === "billingDocsSentUpload"
+              ? "billing_uploads"
+              : f.field === "handoverImageUpload"
+              ? "job_handover_images"
+              : "general_uploads"
           }
           multiple={true}
           acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
@@ -2965,4 +2959,3 @@ const styles = {
 };
 
 export default OperationsTab;
-

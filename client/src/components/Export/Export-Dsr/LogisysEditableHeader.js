@@ -311,7 +311,7 @@ const LogisysEditableHeader = ({
         }}
       >
         {/* Job Number */}
-        <div style={{ flex: "1 1 210px", minWidth: 120 }}>
+        <div style={{ flex: "1 1 180px", minWidth: 120 }}>
           <div style={{ fontSize: 11, color: "#888" }}>Job Number</div>
           {isNewJob ? (
             <input
@@ -336,7 +336,7 @@ const LogisysEditableHeader = ({
                 background: "#eef4fa",
                 border: "1px solid #e0e0e0",
                 borderRadius: 4,
-                padding: "2px 9px",
+                padding: "2px 5px",
                 fontSize: 12,
                 color: "#000",
               }}
@@ -350,7 +350,7 @@ const LogisysEditableHeader = ({
                   border: "none",
                   marginLeft: 8,
                   cursor: "pointer",
-                  fontSize: 15,
+                  fontSize: 12,
                   color: "#666",
                 }}
               >

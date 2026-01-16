@@ -115,7 +115,7 @@ const s = {
   // Table
   tableContainer: {
     overflowX: "auto",
-    border: "1px solid #e5e7eb",
+    border: "1px solid #ccccccff",
     borderRadius: "3px",
     maxHeight: "600px",
     overflowY: "auto",
@@ -131,9 +131,9 @@ const s = {
     textAlign: "left",
     fontWeight: "700",
     fontSize: "13px", // Slightly smaller
-    color: "#000000",
-    borderBottom: "1px solid #e5e7eb",
-    borderRight: "1px solid #f3f4f6",
+    color: "#ffffff",
+    borderBottom: "1px solid #dbdbdbff",
+    borderRight: "1px solid #dbdbdbff",
     whiteSpace: "normal", // Allow wrapping
     wordBreak: "break-word", // Break long words
     verticalAlign: "top", // Align to top for better readability
@@ -143,8 +143,8 @@ const s = {
   },
   td: {
     padding: "6px 6px", // Reduced padding
-    // borderBottom: "1px solid #f3f4f6",
-    // borderRight: "1px solid #f9fafb",
+    borderBottom: "1px solid #dbdbdbff",
+    // borderRight: "1px solid #000000ff",
     color: "#1f2937",
     whiteSpace: "normal", // Allow wrapping
     wordBreak: "break-word", // Break long words
@@ -428,8 +428,8 @@ const ExportJobsTable = () => {
         setJobs(response.data.data.jobs || []);
         setTotalRecords(
           response.data.data.total ||
-          response.data.data.pagination?.totalCount ||
-          0
+            response.data.data.pagination?.totalCount ||
+            0
         );
       }
     } catch (err) {
@@ -605,8 +605,8 @@ const ExportJobsTable = () => {
           setJobs(refreshResponse.data.data.jobs || []);
           setTotalRecords(
             refreshResponse.data.data.total ||
-            refreshResponse.data.data.pagination?.totalCount ||
-            0
+              refreshResponse.data.data.pagination?.totalCount ||
+              0
           );
         }
 
@@ -625,22 +625,22 @@ const ExportJobsTable = () => {
         if (error.response.status === 409) {
           setCopyError(
             error.response.data.message ||
-            "This job number already exists. Please use a different sequence."
+              "This job number already exists. Please use a different sequence."
           );
         } else if (error.response.status === 404) {
           setCopyError(
             error.response.data.message ||
-            "Source job not found. Please refresh and try again."
+              "Source job not found. Please refresh and try again."
           );
         } else if (error.response.status === 400) {
           setCopyError(
             error.response.data.message ||
-            "Invalid input. Please check your entries."
+              "Invalid input. Please check your entries."
           );
         } else {
           setCopyError(
             error.response.data.message ||
-            "Error copying job. Please try again."
+              "Error copying job. Please try again."
           );
         }
       } else {
@@ -794,11 +794,11 @@ const ExportJobsTable = () => {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <h1 style={s.pageTitle}>Export Jobs</h1>
+              <h1 style={s.pageTitle}>Export Jobs:</h1>
               <span
                 style={{
-                  fontSize: "12px",
-                  color: "#6b7280",
+                  fontSize: "20px",
+                  color: "#000000ff",
                   backgroundColor: "#f3f4f6",
                   padding: "2px 8px",
                   borderRadius: "12px",
@@ -1087,7 +1087,15 @@ const ExportJobsTable = () => {
                 <col style={{ width: "60px" }} /> {/* Action */}
               </colgroup>
               <thead>
-                <tr>
+                <tr
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 1,
+                  }}
+                >
                   <th style={s.th}>Job No / Owner</th>
                   <th style={s.th}>Exporter</th>
                   <th style={s.th}>KYC / Codes</th>
@@ -1096,8 +1104,8 @@ const ExportJobsTable = () => {
                   <th style={s.th}>No. of Pkgs</th>
                   <th style={s.th}>Destination</th>
                   <th style={s.th}>Plac’t / Container</th>
+                  <th style={s.th}>Handover</th>
                   <th style={s.th}>Status</th>
-                  <th style={s.th}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -1393,7 +1401,7 @@ const ExportJobsTable = () => {
                                       {containerNo}
                                       {/* Add line break after every 2 containers, except the last one */}
                                       {index < array.length - 1 &&
-                                        (index + 1) % 2 === 0 ? (
+                                      (index + 1) % 2 === 0 ? (
                                         <br />
                                       ) : index < array.length - 1 ? (
                                         ", "
@@ -1429,13 +1437,13 @@ const ExportJobsTable = () => {
                               style={{ color: "#6b7280", fontSize: "10px" }}
                             >
                               {job.transportMode === "AIR" ||
-                                job.consignmentType === "LCL"
+                              job.consignmentType === "LCL"
                                 ? "File:"
                                 : "Fwd:"}
                             </span>{" "}
                             {formatDate(
                               job.operations?.[0]?.statusDetails?.[0]
-                                ?.hoToConsoleDate
+                                ?.handoverForwardingNoteDate
                             )}
                           </div>
                           <div>
@@ -1484,7 +1492,7 @@ const ExportJobsTable = () => {
                           >
                             {/* Use detailedStatus array first item or fallback */}
                             {Array.isArray(job.detailedStatus) &&
-                              job.detailedStatus.length > 0
+                            job.detailedStatus.length > 0
                               ? job.detailedStatus[0]
                               : job.status || "-"}
                           </div>
@@ -1663,9 +1671,9 @@ const ExportJobsTable = () => {
                 style={
                   copyLoading
                     ? {
-                      ...modalStyles.submitButton,
-                      ...modalStyles.disabledButton,
-                    }
+                        ...modalStyles.submitButton,
+                        ...modalStyles.disabledButton,
+                      }
                     : modalStyles.submitButton
                 }
                 onClick={handleCopySubmit}

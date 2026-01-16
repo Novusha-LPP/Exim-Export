@@ -35,8 +35,8 @@ const getTabsForEximCode = (eximCode) => {
         "Main",
         "General",
         "DEEC",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
@@ -45,8 +45,8 @@ const getTabsForEximCode = (eximCode) => {
         "Main",
         "General",
         "Drawback",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
@@ -54,7 +54,7 @@ const getTabsForEximCode = (eximCode) => {
       return [
         "Main",
         "General",
-        "CessExport Duty",
+        // "CessExport Duty",
         "AreDetails",
         "Re-Export",
         "Other Details",
@@ -65,8 +65,8 @@ const getTabsForEximCode = (eximCode) => {
         "General",
         "EPCG",
         "Drawback",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
@@ -76,8 +76,8 @@ const getTabsForEximCode = (eximCode) => {
         "General",
         "DEEC",
         "EPCG",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
@@ -86,8 +86,8 @@ const getTabsForEximCode = (eximCode) => {
         "Main",
         "General",
         "Drawback",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
@@ -98,8 +98,8 @@ const getTabsForEximCode = (eximCode) => {
         "General",
         "EPCG",
         "Drawback",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
@@ -108,8 +108,8 @@ const getTabsForEximCode = (eximCode) => {
       return [
         "Main",
         "General",
-        "CessExport Duty",
-        "AreDetails",
+        // "CessExport Duty",
+        // "AreDetails",
         "Re-Export",
         "Other Details",
       ];
@@ -155,22 +155,22 @@ const ProductTab = ({ formik, directories, params }) => {
         return <ProductGeneralTab {...commonProps} />;
       case "Drawback":
         return <DrawbackTab {...commonProps} />;
-      case "CessExport Duty":
-        return (
-          <ProductCessDutyTab
-            formik={formik}
-            selectedInvoiceIndex={selectedInvoiceIndex}
-            idx={selectedProductIndex}
-          />
-        );
-      case "AreDetails":
-        return (
-          <ProductAREDetailsTab
-            formik={formik}
-            selectedInvoiceIndex={selectedInvoiceIndex}
-            idx={selectedProductIndex}
-          />
-        );
+      // case "CessExport Duty":
+      //   return (
+      //     <ProductCessDutyTab
+      //       formik={formik}
+      //       selectedInvoiceIndex={selectedInvoiceIndex}
+      //       idx={selectedProductIndex}
+      //     />
+      //   );
+      // case "AreDetails":
+      //   return (
+      //     <ProductAREDetailsTab
+      //       formik={formik}
+      //       selectedInvoiceIndex={selectedInvoiceIndex}
+      //       idx={selectedProductIndex}
+      //     />
+      //   );
       case "Re-Export":
         return (
           <ProductReExportTab
@@ -219,7 +219,6 @@ const ProductTab = ({ formik, directories, params }) => {
         }}
       >
         <Box>
-
           {/* Invoice Selector */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
             <Typography variant="body2" fontWeight="600">

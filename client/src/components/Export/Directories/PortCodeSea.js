@@ -293,7 +293,11 @@ const PortList = ({ onEdit, onDelete, refresh }) => {
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
+      page: key === "page" ? value : 1,
+    }));
   };
 
   const handleSearchChange = (e) => {
@@ -368,7 +372,6 @@ const PortList = ({ onEdit, onDelete, refresh }) => {
             <tr>
               <th style={{ width: "120px" }}>Port Code</th>
               <th style={{ width: "200px" }}>Port Name</th>
-              <th>Port Details</th>
               <th style={{ width: "150px" }}>Country</th>
               <th style={{ width: "150px" }}>Actions</th>
             </tr>
@@ -384,11 +387,6 @@ const PortList = ({ onEdit, onDelete, refresh }) => {
                   </td>
                   <td>
                     <strong>{item.portName}</strong>
-                  </td>
-                  <td>
-                    <div title={item.portDetails}>
-                      {truncateDetails(item.portDetails) || "-"}
-                    </div>
                   </td>
                   <td>
                     <span className="badge bg-info">{item.country}</span>

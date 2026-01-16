@@ -183,7 +183,7 @@ const AirPortForm = ({ airPortData, onSave, onCancel }) => {
           <Row>
             <Col md={12}>
               <Form.Group className="mb-3">
-                <Form.Label>Port Details</Form.Label>
+                <Form.Label>Country</Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={4}
@@ -266,7 +266,11 @@ const AirPortList = ({ onEdit, onDelete, refresh }) => {
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
+      page: key === "page" ? value : 1,
+    }));
   };
 
   const handleSearchChange = (e) => {
@@ -330,7 +334,7 @@ const AirPortList = ({ onEdit, onDelete, refresh }) => {
             <tr>
               <th style={{ width: "120px" }}>Port Code</th>
               <th style={{ width: "250px" }}>Port Name</th>
-              <th>Port Details</th>
+              <th>Country</th>
               <th style={{ width: "150px" }}>Actions</th>
             </tr>
           </thead>
@@ -347,9 +351,7 @@ const AirPortList = ({ onEdit, onDelete, refresh }) => {
                     <strong>{item.portName}</strong>
                   </td>
                   <td>
-                    <div title={item.portDetails}>
-                      {truncateDetails(item.portDetails) || "-"}
-                    </div>
+                    <div>{item.country || "-"}</div>
                   </td>
                   <td>
                     <Button
@@ -417,59 +419,23 @@ const AirPortList = ({ onEdit, onDelete, refresh }) => {
                 Previous
               </button>
             </li>
-            {(() => {
-              const total = pagination.totalPages;
-              const current = pagination.currentPage;
-              const delta = 2;
-              let pages = [];
-
-              // Always show first page
-              pages.push(1);
-
-              // Add dots if needed before window
-              if (current - delta > 2) {
-                pages.push("...");
-              }
-
-              // Add window around current
-              for (
-                let i = Math.max(2, current - delta);
-                i <= Math.min(total - 1, current + delta);
-                i++
-              ) {
-                pages.push(i);
-              }
-
-              // Add dots if needed after window
-              if (current + delta < total - 1) {
-                pages.push("...");
-              }
-
-              // Always show last page if > 1
-              if (total > 1) {
-                pages.push(total);
-              }
-
-              return pages.map((page, index) => (
+            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
+              (page) => (
                 <li
-                  key={index}
-                  className={`page-item ${page === current ? "active" : ""} ${
-                    page === "..." ? "disabled" : ""
+                  key={page}
+                  className={`page-item ${
+                    pagination.currentPage === page ? "active" : ""
                   }`}
                 >
-                  {page === "..." ? (
-                    <span className="page-link">...</span>
-                  ) : (
-                    <button
-                      className="page-link"
-                      onClick={() => handleFilterChange("page", page)}
-                    >
-                      {page}
-                    </button>
-                  )}
+                  <button
+                    className="page-link"
+                    onClick={() => handleFilterChange("page", page)}
+                  >
+                    {page}
+                  </button>
                 </li>
-              ));
-            })()}
+              )
+            )}
             <li
               className={`page-item ${
                 pagination.currentPage === pagination.totalPages

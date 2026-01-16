@@ -266,7 +266,11 @@ const CountryList = ({ onEdit, onDelete, refresh }) => {
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
+      page: key === "page" ? value : 1,
+    }));
   };
 
   const handleSearchChange = (e) => {

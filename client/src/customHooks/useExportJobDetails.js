@@ -164,7 +164,6 @@ function useExportJobDetails(params, setFileSnackbar) {
 
       // Tracking Fields
       customerremark: "",
-      workflowlocation: "",
       shipmenttype: "International",
       milestoneremarks: "",
       milestoneviewuploaddocuments: "",
@@ -1034,7 +1033,6 @@ function useExportJobDetails(params, setFileSnackbar) {
         freightInsuranceCharges: safeValue(data.freightInsuranceCharges, {}),
         milestones: safeValue(data.milestones, []),
         customerremark: safeValue(data.customerremark),
-        workflowlocation: safeValue(data.workflowlocation),
         shipmenttype: safeValue(data.shipmenttype, "International"),
         milestoneremarks: safeValue(data.milestoneremarks),
         milestoneviewuploaddocuments: safeValue(

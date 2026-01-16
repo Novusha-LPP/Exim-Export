@@ -1002,7 +1002,6 @@ const exportJobSchema = new mongoose.Schema(
     isJobCanceled: { type: Boolean, default: false },
     milestones: [milestoneSchema],
     customerremark: { type: String, trim: true },
-    workflowlocation: { type: String, trim: true },
     shipmenttype: { type: String, trim: true },
     milestoneremarks: { type: String, trim: true },
     milestoneviewuploaddocuments: { type: String, trim: true },
