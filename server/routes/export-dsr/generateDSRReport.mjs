@@ -103,14 +103,14 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
       worksheet.addRow({
         container_placement_date: status.containerPlacementDate || "",
         origin_docs_received: job.job_date || "",
-        handover_date: status.hoToConsoleDate || "",
+        handover_date: status.handoverForwardingNoteDate || "",
         gate_in_thar: transporter.gateInDate || "",
         rail_out_planned: status.handoverConcorTharSanganaRailRoadDate || "",
         rail_out_actual: status.railOutReachedDate || "",
         cntr_port_gate_in: transporter.gateInDate || "",
-        remarks: "",
+        remarks: job.customerremark,
         consignment_type: job.consignmentType || "",
-        milestone_remarks: job.milestoneremarks || "",
+        milestone_remarks: job.milestones?.[0]?.remarks || "",
 
         port_of_origin: job.custom_house || "",
         job_no: job.job_no || "",
