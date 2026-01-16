@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const AirPortSchema = new mongoose.Schema(
+const SeaPortSchema = new mongoose.Schema(
   {
     portName: {
       type: String,
@@ -29,7 +29,7 @@ const AirPortSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-AirPortSchema.index({ portName: "text", portCode: "text", country: "text" });
-AirPortSchema.index({ portCode: 1 });
+SeaPortSchema.index({ portName: "text", portCode: "text", country: "text" });
+SeaPortSchema.index({ portCode: 1 });
 
-export default mongoose.model("AirPort", AirPortSchema);
+export default mongoose.model("SeaPort", SeaPortSchema);

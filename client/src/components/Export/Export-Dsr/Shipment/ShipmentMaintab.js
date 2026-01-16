@@ -597,7 +597,7 @@ function UnitDropdownField({
   );
 }
 
-function usePortDropdown(fieldName, formik, onSelect) {
+function usePortDropdown(fieldName, formik, onSelect, endpoint) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(formik.values[fieldName] || "");
   const [opts, setOpts] = useState([]);
@@ -619,9 +619,11 @@ function usePortDropdown(fieldName, formik, onSelect) {
     const searchVal = isTyping ? (query || "").trim() : "";
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `${apiBase}/ports?search=${encodeURIComponent(searchVal)}`
-        );
+        const fetchUrl = endpoint
+          ? `${apiBase}/${endpoint}?search=${encodeURIComponent(searchVal)}`
+          : `${apiBase}/ports?search=${encodeURIComponent(searchVal)}`;
+
+        const res = await fetch(fetchUrl);
         const data = await res.json();
         setOpts(
           Array.isArray(data?.data)
@@ -635,7 +637,7 @@ function usePortDropdown(fieldName, formik, onSelect) {
       }
     }, 220);
     return () => clearTimeout(t);
-  }, [open, query, isTyping, apiBase]);
+  }, [open, query, isTyping, apiBase, endpoint]);
 
   useEffect(() => {
     function close(e) {
@@ -656,11 +658,14 @@ function usePortDropdown(fieldName, formik, onSelect) {
     if (opts[i]) {
       const sel = opts[i];
       const pName = sel.portName || sel.name || "";
-      const pCode = sel.portCode || sel.unece_code || "";
-      const pDetails = sel.portDetails || sel.port_type || "";
-      // Compose: portName + '(' + portDetails + ')'
-      const value =
-        toUpper(pName) + (pDetails ? "(" + toUpper(pDetails) + ")" : "");
+      const pDetails = sel.uneceCode || "";
+
+      // Format: PNAME (UNECECODE)
+      let value = toUpper(pName);
+      if (pDetails) {
+        value += ` (${toUpper(pDetails)})`;
+      }
+
       setQuery(value);
       formik.setFieldValue(fieldName, value);
       setOpen(false);
@@ -702,8 +707,15 @@ function usePortDropdown(fieldName, formik, onSelect) {
   };
 }
 
-function PortField({ label, fieldName, placeholder, formik, onSelect }) {
-  const d = usePortDropdown(fieldName, formik, onSelect);
+function PortField({
+  label,
+  fieldName,
+  placeholder,
+  formik,
+  onSelect,
+  endpoint,
+}) {
+  const d = usePortDropdown(fieldName, formik, onSelect, endpoint);
   return (
     <div style={styles.field} ref={d.wrapperRef}>
       <div style={styles.label}>{label}</div>
@@ -734,18 +746,17 @@ function PortField({ label, fieldName, placeholder, formik, onSelect }) {
         {d.open && d.opts.length > 0 && (
           <div style={styles.acMenu}>
             {d.opts.map((opt, i) => {
-              const pCode = opt.portCode || opt.unece_code || "";
               const pName = opt.portName || opt.name || "";
-              const pDetails = opt.portDetails || opt.port_type || "";
+              const pDetails = opt.uneceCode || "";
+
               return (
                 <div
-                  key={opt._id || pCode || pName || i}
+                  key={opt._id || pName || i}
                   style={styles.acItem(d.active === i)}
                   onMouseDown={() => d.select(i)}
                   onMouseEnter={() => d.setActive(i)}
                 >
-                  {toUpper(pCode)} {pDetails && `(${toUpper(pDetails)})`} -{" "}
-                  {toUpper(pName)}
+                  {toUpper(pName)} {pDetails && `(${toUpper(pDetails)})`}
                   {opt.country && (
                     <span
                       style={{ marginLeft: 8, color: "#668", fontWeight: 400 }}
@@ -979,8 +990,8 @@ function ShippingLineDropdownField({
   formik,
   placeholder = "ENTER LINE",
 }) {
-  const transportMode = toUpper(formik.values.transportMode || "");
-  const isAir = transportMode === "AIR";
+  const consignmentType = toUpper(formik.values.consignmentType || "");
+  const isAir = consignmentType === "AIR";
   const label = isAir ? "AIR LINE" : "SHIPPING LINE";
 
   const d = useShippingOrAirlineDropdown(fieldName, formik);
@@ -1102,6 +1113,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   fieldName="port_of_discharge"
                   placeholder="ENTER PORT"
                   formik={formik}
+                  endpoint={isAir ? "airPorts" : "seaPorts"}
                   onSelect={(opt) => {
                     if (opt.country) {
                       formik.setFieldValue(
@@ -1235,8 +1247,9 @@ function ShipmentMainTab({ formik, onUpdate }) {
                 <PortField
                   label="DESTINATION PORT"
                   fieldName="destination_port"
-                  placeholder="Enter Port"
+                  placeholder="ENTER PORT"
                   formik={formik}
+                  endpoint={isAir ? "airPorts" : "seaPorts"}
                   onSelect={(opt) => {
                     if (opt.country) {
                       formik.setFieldValue(
@@ -1249,7 +1262,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                 <CountryField
                   label="DESTINATION COUNTRY"
                   fieldName="destination_country"
-                  placeholder="Enter Port"
+                  placeholder="Enter Country"
                   formik={formik}
                 />
                 {isAir ? (

@@ -15,7 +15,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 
 // API Service
 const PortService = {
-  baseURL: `${import.meta.env.VITE_API_STRING}/ports`,
+  baseURL: `${import.meta.env.VITE_API_STRING}/seaPorts`,
 
   getAll: async (params = {}) => {
     try {
@@ -459,23 +459,59 @@ const PortList = ({ onEdit, onDelete, refresh }) => {
                 Previous
               </button>
             </li>
-            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
-              (page) => (
+            {(() => {
+              const total = pagination.totalPages;
+              const current = pagination.currentPage;
+              const delta = 2;
+              let pages = [];
+
+              // Always show first page
+              pages.push(1);
+
+              // Add dots if needed before window
+              if (current - delta > 2) {
+                pages.push("...");
+              }
+
+              // Add window around current
+              for (
+                let i = Math.max(2, current - delta);
+                i <= Math.min(total - 1, current + delta);
+                i++
+              ) {
+                pages.push(i);
+              }
+
+              // Add dots if needed after window
+              if (current + delta < total - 1) {
+                pages.push("...");
+              }
+
+              // Always show last page if > 1
+              if (total > 1) {
+                pages.push(total);
+              }
+
+              return pages.map((page, index) => (
                 <li
-                  key={page}
-                  className={`page-item ${
-                    pagination.currentPage === page ? "active" : ""
+                  key={index}
+                  className={`page-item ${page === current ? "active" : ""} ${
+                    page === "..." ? "disabled" : ""
                   }`}
                 >
-                  <button
-                    className="page-link"
-                    onClick={() => handleFilterChange("page", page)}
-                  >
-                    {page}
-                  </button>
+                  {page === "..." ? (
+                    <span className="page-link">...</span>
+                  ) : (
+                    <button
+                      className="page-link"
+                      onClick={() => handleFilterChange("page", page)}
+                    >
+                      {page}
+                    </button>
+                  )}
                 </li>
-              )
-            )}
+              ));
+            })()}
             <li
               className={`page-item ${
                 pagination.currentPage === pagination.totalPages

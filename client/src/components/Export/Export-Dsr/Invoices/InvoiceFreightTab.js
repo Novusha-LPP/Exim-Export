@@ -426,12 +426,13 @@ const InvoiceFreightTab = ({ formik }) => {
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
+            justifyContent: "flex-start",
             alignItems: "center",
             marginBottom: "12px",
+            gap: "24px",
           }}
         >
-          <div style={styles.title}>Invoice Selector</div>
+          {/* <div style={styles.title}>Invoice Selector</div> */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <span
               style={{ fontSize: "12px", fontWeight: "700", color: "#4b5563" }}
@@ -463,7 +464,6 @@ const InvoiceFreightTab = ({ formik }) => {
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              marginLeft: "20px",
             }}
           >
             <label
@@ -600,11 +600,9 @@ const InvoiceFreightTab = ({ formik }) => {
                         ...(disabled ? styles.disabled : {}),
                       }}
                       value={
-                        disabled
-                          ? ""
-                          : data.rate !== undefined &&
-                            data.rate !== null &&
-                            data.rate !== ""
+                        data.rate !== undefined &&
+                        data.rate !== null &&
+                        data.rate !== ""
                           ? data.rate
                           : ""
                       }
@@ -646,7 +644,6 @@ const InvoiceFreightTab = ({ formik }) => {
                       ...(disabled ? styles.disabled : {}),
                     }}
                     value={(() => {
-                      if (disabled) return "";
                       if (
                         data.amount !== undefined &&
                         data.amount !== null &&
