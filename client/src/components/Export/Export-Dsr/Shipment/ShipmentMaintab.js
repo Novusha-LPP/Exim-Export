@@ -277,8 +277,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -627,8 +627,8 @@ function usePortDropdown(fieldName, formik, onSelect) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -883,11 +883,11 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
 
     const url = isAir
       ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-          searchVal
-        )}`
+        searchVal
+      )}`
       : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-          searchVal
-        )}`;
+        searchVal
+      )}`;
 
     const t = setTimeout(async () => {
       try {
@@ -897,8 +897,8 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -1070,8 +1070,8 @@ function ShippingLineDropdownField({
 }
 
 function ShipmentMainTab({ formik, onUpdate }) {
-  const transportMode = toUpper(formik.values.transportMode || "");
-  const isAir = transportMode == "AIR";
+  const consignmentType = toUpper(formik.values.consignmentType || "");
+  const isAir = consignmentType == "AIR";
   console.log(isAir);
   const saveTimeoutRef = useRef(null);
 

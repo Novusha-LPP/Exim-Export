@@ -46,8 +46,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
   // We need to detect when real data comes in vs initial empty state
   const hasInitializedRef = useRef(false);
 
-  const transportMode = (formik.values.transportMode || "").toUpperCase();
-  const isAir = transportMode === "AIR";
+  const consignmentType = (formik.values.consignmentType || "").toUpperCase();
+  const isAir = consignmentType === "AIR";
 
   const currentBaseMilestones = getMilestones(isAir);
   const currentMandatory = getMandatoryNames(isAir);
@@ -192,8 +192,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
     filter === "Completed Only"
       ? allMilestones.filter((m) => m.isCompleted)
       : filter === "Pending Only"
-      ? allMilestones.filter((m) => !m.isCompleted)
-      : allMilestones;
+        ? allMilestones.filter((m) => !m.isCompleted)
+        : allMilestones;
 
   return (
     <div
@@ -374,8 +374,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                         background: isSelected
                           ? "#e0e7ff"
                           : idx % 2 === 0
-                          ? "#ffffff"
-                          : "#f7f9fc",
+                            ? "#ffffff"
+                            : "#f7f9fc",
                         borderTop: "1px solid #e1e7f0",
                         cursor: "pointer",
                       }}
@@ -401,8 +401,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                             height: 24,
                             background:
                               m.actualDate &&
-                              m.actualDate !== "dd-mm-yyyy" &&
-                              m.actualDate !== ""
+                                m.actualDate !== "dd-mm-yyyy" &&
+                                m.actualDate !== ""
                                 ? "#ecfdf3"
                                 : "#ffffff",
                           }}

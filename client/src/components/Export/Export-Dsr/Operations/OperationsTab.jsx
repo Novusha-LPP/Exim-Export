@@ -1310,7 +1310,11 @@ const OperationsTab = ({ formik }) => {
     />
   );
 
+<<<<<<< HEAD
   const bookingSection = !(isAir && isLCL) && (
+=======
+  const bookingSection = (
+>>>>>>> CombineModules
     <TableSection
       title="Booking Details"
       data={activeOperation.bookingDetails || []}
