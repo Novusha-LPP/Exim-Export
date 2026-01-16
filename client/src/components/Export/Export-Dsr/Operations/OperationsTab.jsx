@@ -1310,7 +1310,7 @@ const OperationsTab = ({ formik }) => {
     />
   );
 
-  const bookingSection = !(isAir && isLCL) && (
+  const bookingSection = (
     <TableSection
       title="Booking Details"
       data={activeOperation.bookingDetails || []}
@@ -2965,3 +2965,4 @@ const styles = {
 };
 
 export default OperationsTab;
+
