@@ -725,6 +725,7 @@ const ESanchitEditDialog = ({
                 <DateInput
                   style={s.input}
                   value={safeDoc.dateTimeOfUpload || ""}
+                  withTime={true}
                   onChange={(e) =>
                     handleFieldChange("dateTimeOfUpload", e.target.value)
                   }

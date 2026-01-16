@@ -286,22 +286,6 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
             }
           />
         </div>
-        <div
-          style={{
-            borderLeft: "1px solid #e1e7f0",
-            paddingLeft: 10,
-            fontSize: 11,
-            lineHeight: 1.4,
-          }}
-        >
-          <div style={{ fontWeight: 600, marginBottom: 2 }}>Workflow for</div>
-          <div>
-            Location : {formik.values.workflowlocation || "All Locations"}
-          </div>
-          <div>
-            Shipment Type : {formik.values.shipmenttype || "International"}
-          </div>
-        </div>
       </div>
 
       {/* REST OF JSX REMAINS IDENTICAL - Milestones table, right panel, etc. */}

@@ -502,7 +502,7 @@ const eSanchitDocumentSchema = new Schema({
   expiryDate: { type: String, trim: true },
   fileUrl: String,
 
-  dateTimeOfUpload: { type: Date, default: Date.now },
+  dateTimeOfUpload: { type: String, trim: true },
   issuingParty: {
     name: String,
     code: String,

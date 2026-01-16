@@ -107,8 +107,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-              ? data
-              : []
+            ? data
+            : []
         );
       } catch {
         setOpts([]);
@@ -472,14 +472,16 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Loading Port */}
-        <div style={{ flex: "1 1 120px", minWidth: 110 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Port Of Loading</div>
-          <GatewayPortDropdown
-            fieldName="port_of_loading"
-            formik={formik}
-            placeholder="Select Loading Port"
-          />
-        </div>
+        {toUpper(formik.values.consignmentType) !== "AIR" && (
+          <div style={{ flex: "1 1 120px", minWidth: 110 }}>
+            <div style={{ fontSize: 11, color: "#888" }}>Port Of Loading</div>
+            <GatewayPortDropdown
+              fieldName="port_of_loading"
+              formik={formik}
+              placeholder="Select Loading Port"
+            />
+          </div>
+        )}
 
         {/* Consignment Type */}
         <div style={{ flex: "1 1 120px", minWidth: 100 }}>
@@ -495,33 +497,6 @@ const LogisysEditableHeader = ({
             ]}
             onChange={formik.handleChange}
             placeholder="Select Type"
-          />
-        </div>
-
-        {/* SB Type */}
-        <div style={{ flex: "1 1 120px", minWidth: 100 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>SB Type</div>
-          <AutocompleteSelect
-            name="sb_type"
-            value={formik.values.sb_type}
-            options={[
-              { value: "", label: "All" },
-              { value: "White - Free/DEEC", label: "White - Free/DEEC" },
-              { value: "Green - Drawback", label: "Green - Drawback" },
-              { value: "Green - RODTEP", label: "Green - RODTEP" },
-              { value: "Blue - DEPB", label: "Blue - DEPB" },
-              { value: "Yellow - Dutiable", label: "Yellow - Dutiable" },
-              { value: "Pink - ExBond", label: "Pink - ExBond" },
-              { value: "SEZ - Regular", label: "SEZ - Regular" },
-              { value: "SEZ - ExBond", label: "SEZ - ExBond" },
-              {
-                value: "SEZ - DTA Procurement",
-                label: "SEZ - DTA Procurement",
-              },
-              { value: "Red", label: "Red" },
-            ]}
-            onChange={formik.handleChange}
-            placeholder="Select SB Type"
           />
         </div>
 

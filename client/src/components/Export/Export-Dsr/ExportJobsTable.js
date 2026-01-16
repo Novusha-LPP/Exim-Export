@@ -143,12 +143,14 @@ const s = {
   },
   td: {
     padding: "6px 6px", // Reduced padding
-    borderBottom: "1px solid #f3f4f6",
-    borderRight: "1px solid #f9fafb",
+    // borderBottom: "1px solid #f3f4f6",
+    // borderRight: "1px solid #f9fafb",
     color: "#1f2937",
     whiteSpace: "normal", // Allow wrapping
     wordBreak: "break-word", // Break long words
     verticalAlign: "top",
+    alignItems: "center",
+    justifyContent: "center",
   },
   rowHover: {
     cursor: "pointer",
@@ -793,12 +795,12 @@ const ExportJobsTable = () => {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <h1 style={s.pageTitle}>Export Jobs</h1>
+              <h1 style={s.pageTitle}>Export Jobs:</h1>
               <span
                 style={{
-                  fontSize: "12px",
-                  color: "#6b7280",
-                  backgroundColor: "#f3f4f6",
+                  fontSize: "20px",
+                  color: "#000000ff",
+                  // backgroundColor: "#f3f4f6",
                   padding: "2px 8px",
                   borderRadius: "12px",
                   fontWeight: 600,
@@ -1074,11 +1076,11 @@ const ExportJobsTable = () => {
           <div style={s.tableContainer}>
             <table style={s.table}>
               <colgroup>
-                <col style={{ width: "150px" }} /> {/* Job No + Owner */}
+                <col style={{ width: "120px" }} /> {/* Job No + Owner */}
                 <col style={{ width: "150px" }} /> {/* Exporter */}
-                <col style={{ width: "140px" }} /> {/* NEW: KYC/Codes */}
-                <col style={{ width: "110px" }} /> {/* Invoice */}
-                <col style={{ width: "80px" }} /> {/* SB */}
+                <col style={{ width: "110px" }} /> {/* NEW: KYC/Codes */}
+                <col style={{ width: "90px" }} /> {/* Invoice */}
+                <col style={{ width: "60px" }} /> {/* SB */}
                 <col style={{ width: "80px" }} /> {/* Pkgs */}
                 <col style={{ width: "100px" }} /> {/* Port */}
                 <col style={{ width: "100px" }} /> {/* Placement */}
@@ -1125,7 +1127,7 @@ const ExportJobsTable = () => {
                           ...s.rowHover,
                           backgroundColor: rowBg,
                         }}
-                        onClick={(e) => handleJobClick(job, e)}
+                        //onClick={(e) => handleJobClick(job, e)}
                         onMouseEnter={(e) =>
                           (e.currentTarget.style.backgroundColor = "#eef2ff")
                         } // Hover highlight

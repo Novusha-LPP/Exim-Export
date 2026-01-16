@@ -200,7 +200,7 @@ export const handleDateInput = (value) => {
       ];
 
       // Check if the original value had time information (HH:mm)
-      const hasTime = /[\s:](\d{2}:?\d{2})$/.test(trimmedValue);
+      const hasTime = /[\s:T](\d{2}:?\d{2})$/i.test(trimmedValue);
 
       for (const dateFormat of monthNameFormats) {
         try {
@@ -224,7 +224,9 @@ export const handleDateInput = (value) => {
   }
 
   // Check if the original value had time information (HH:mm or HHmm)
-  const hasTime = /[\s:](\d{2}:?\d{2})$/.test(trimmedValue) || trimmedValue.toLowerCase().includes("hh");
+  const hasTime =
+    /[\s:T](\d{2}:?\d{2})$/i.test(trimmedValue) ||
+    trimmedValue.toLowerCase().includes("hh");
 
   const cleanValue = trimmedValue.replace(/[^\d\/\-\.\s:a-zA-Z]/g, "");
 

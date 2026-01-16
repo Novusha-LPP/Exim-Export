@@ -1310,7 +1310,7 @@ const OperationsTab = ({ formik }) => {
     />
   );
 
-  const bookingSection = (
+  const bookingSection = !(isAir && isLCL) && (
     <TableSection
       title="Booking Details"
       data={activeOperation.bookingDetails || []}
