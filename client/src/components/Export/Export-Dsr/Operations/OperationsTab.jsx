@@ -1310,7 +1310,7 @@ const OperationsTab = ({ formik }) => {
     />
   );
 
-  const bookingSection = (
+  const bookingSection = !isAir && !isLCL && (
     <TableSection
       title="Booking Details"
       data={activeOperation.bookingDetails || []}
@@ -1371,7 +1371,7 @@ const OperationsTab = ({ formik }) => {
     />
   );
 
-  const weighmentSection = !isAir && (
+  const weighmentSection = !isAir && !isLCL && (
     <TableSection
       title="Weighment Details"
       data={activeOperation.weighmentDetails || []}
