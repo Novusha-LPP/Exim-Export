@@ -107,8 +107,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-              ? data
-              : []
+            ? data
+            : []
         );
       } catch {
         setOpts([]);
@@ -259,7 +259,11 @@ const LogisysEditableHeader = ({
     if (toUpper(formik.values.transportMode) !== mode) {
       formik.setFieldValue("transportMode", mode);
     }
-  }, [formik.values.consignmentType, formik.setFieldValue, formik.values.transportMode]);
+  }, [
+    formik.values.consignmentType,
+    formik.setFieldValue,
+    formik.values.transportMode,
+  ]);
 
   const [snackbar, setSnackbar] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -475,14 +479,16 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Loading Port */}
-        <div style={{ flex: "1 1 120px", minWidth: 110 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Port Of Loading</div>
-          <GatewayPortDropdown
-            fieldName="port_of_loading"
-            formik={formik}
-            placeholder="Select Loading Port"
-          />
-        </div>
+        {toUpper(formik.values.consignmentType) !== "AIR" && (
+          <div style={{ flex: "1 1 120px", minWidth: 110 }}>
+            <div style={{ fontSize: 11, color: "#888" }}>Port Of Loading</div>
+            <GatewayPortDropdown
+              fieldName="port_of_loading"
+              formik={formik}
+              placeholder="Select Loading Port"
+            />
+          </div>
+        )}
 
         {/* Consignment Type */}
         <div style={{ flex: "1 1 120px", minWidth: 100 }}>
@@ -502,7 +508,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* SB Type */}
-        <div style={{ flex: "1 1 120px", minWidth: 100 }}>
+        {/* <div style={{ flex: "1 1 120px", minWidth: 100 }}>
           <div style={{ fontSize: 11, color: "#888" }}>SB Type</div>
           <AutocompleteSelect
             name="sb_type"
@@ -526,7 +532,7 @@ const LogisysEditableHeader = ({
             onChange={formik.handleChange}
             placeholder="Select SB Type"
           />
-        </div>
+        </div> */}
 
         {/* Standard Documents Button */}
         <div
