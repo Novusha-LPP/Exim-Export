@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_STRING;
+const API_URL = import.meta.env.VITE_API_STRING || "http://localhost:9002";
 
 const getHeaders = () => {
   const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
@@ -103,9 +103,18 @@ export const deleteOpenPoint = async (pointId) => {
   );
   return response.data;
 };
+
 export const deleteProject = async (projectId) => {
   const response = await axios.delete(
     `${API_URL}/open-points/projects/${projectId}`,
+    getHeaders()
+  );
+  return response.data;
+};
+export const changeProjectOwner = async (projectId, newOwnerId) => {
+  const response = await axios.put(
+    `${API_URL}/open-points/projects/${projectId}/change-owner`,
+    { newOwnerId },
     getHeaders()
   );
   return response.data;

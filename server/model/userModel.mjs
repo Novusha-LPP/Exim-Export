@@ -6,10 +6,10 @@ dotenv.config();
 // Create a separate connection for user database
 const USER_MONGODB_URI =
   process.env.NODE_ENV === "production"
-    ? process.env.USER_MONGODB_URI_PROD
+    ? process.env.IMPORT_MONGODB_URI_PROD
     : process.env.NODE_ENV === "server"
-      ? process.env.USER_MONGODB_URI_SERVER
-      : process.env.USER_MONGODB_URI;
+    ? process.env.USER_MONGODB_URI_SERVER
+    : process.env.USER_MONGODB_URI;
 
 // Create dedicated connection for user database
 const userDbConnection = mongoose.createConnection(USER_MONGODB_URI);
@@ -27,7 +27,7 @@ userDbConnection.on("error", (err) => {
 
 const Schema = mongoose.Schema;
 
-const userSchema = new Schema({
+export const userSchema = new Schema({
   username: {
     type: String,
   },
