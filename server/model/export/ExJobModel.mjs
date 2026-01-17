@@ -205,6 +205,14 @@ const drawbackDetailsSchema = new Schema(
     dbkCapunit: { type: String, trim: true },
     dbkAmount: { type: Number, default: 0, min: 0 },
     percentageOfFobValue: { type: String },
+    // ROSCTL fields
+    slRate: { type: Number, default: 0 },
+    slCap: { type: Number, default: 0 },
+    ctlRate: { type: Number, default: 0 },
+    ctlCap: { type: Number, default: 0 },
+    rosctlAmount: { type: Number, default: 0 },
+    rosctlCategory: { type: String, trim: true }, // "B" or "D"
+    showRosctl: { type: Boolean, default: false },
   },
   { _id: true }
 );
@@ -273,7 +281,20 @@ const productDetailsSchema = new Schema(
       capUnit: { type: String, trim: true }, // Added capUnit if needed
     },
 
+    // --- ROSCTL Info (Grouped) ---
+    rosctlInfo: {
+      claim: { type: String, trim: true, default: "No" },
+      quantity: { type: String, default: "0" },
+      slRate: { type: String, default: "0" },
+      slCap: { type: String, default: "0" },
+      ctlRate: { type: String, default: "0" },
+      ctlCap: { type: String, default: "0" },
+      amountINR: { type: String, default: "0" },
+      category: { type: String, trim: true }, // "B" or "D"
+    },
+
     cessExpDuty: { type: cessExpDutySchema },
+
 
     // --- Re-Export Details ---
     reExport: {

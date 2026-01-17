@@ -41,13 +41,52 @@ const ExportChecklistGenerator = ({
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
+
+    // Handle DD-MM-YYYY or DD-MM-YYYY HH:mm format
+    if (typeof dateString === "string" && dateString.includes("-")) {
+      const parts = dateString.split(" ");
+      const datePart = parts[0];
+      const dateComponents = datePart.split("-");
+
+      if (dateComponents.length === 3) {
+        // Check if first component is year or day
+        if (dateComponents[0].length === 4) {
+          // YYYY-MM-DD
+          const d = new Date(dateString);
+          if (!isNaN(d.getTime())) {
+            return d.toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
+          }
+        } else {
+          // DD-MM-YYYY
+          const day = parseInt(dateComponents[0], 10);
+          const month = parseInt(dateComponents[1], 10) - 1;
+          const year = parseInt(dateComponents[2], 10);
+          const d = new Date(year, month, day);
+          if (!isNaN(d.getTime())) {
+            return d.toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
+          }
+        }
+      }
+    }
+
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; // Return original if still invalid
+
     return date.toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     });
   };
+
 
   const createPDFHelpers = (pdf) => {
     const centerX = PAGE_CONFIG.width / 2;
@@ -318,133 +357,128 @@ const ExportChecklistGenerator = ({
 
     yPos = leftY + 8;
 
-    // Invoice Details section
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.fieldValue);
-    pdf.text("Invoice Details: Invoice 1 / 1", leftColX, yPos);
-    yPos += 12;
+    // Invoice Details section - Loop through ALL invoices
+    (data.invoicesDetail || []).forEach((inv, invIdx) => {
+      // Check if we need a new page if too many invoices
+      if (yPos > 680) {
+        pdf.addPage();
+        helpers.addHeader(
+          pdf.internal.getNumberOfPages(),
+          4,
+          data.customStation,
+          data.aeoRegistrationNo,
+          data.aeoRole,
+          data.currentDate
+        );
+        yPos = 80;
+      }
 
-    // Invoice fields in two columns
-    const invoiceLeftFields = [
-      { label: "Inv. No", value: data.invoiceNo },
-      { label: "Inv. Date", value: data.invoiceDate },
-      { label: "Nature of contract", value: data.natureOfContract },
-      { label: "Unit Price Includes", value: data.unitPriceIncludes },
-      { label: "Inv. Currency", value: data.invoiceCurrency },
-    ];
-
-    const invoiceRightFields = [
-      { label: "Inv. Value", value: data.invoiceValue },
-      { label: "FOB Value", value: data.fobValue },
-      { label: "Exp Contract No.", value: data.expContractNo },
-      { label: "Exp Contract Date", value: data.expContractDate },
-      { label: "Exch. Rate", value: data.exchangeRate },
-    ];
-
-    let invoiceLeftY = yPos;
-    let invoiceRightY = yPos;
-
-    for (let i = 0; i < 5; i++) {
-      let rowHeight = 12;
-
-      // Left Side
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(FONT_SIZES.fieldLabel);
-      pdf.text(invoiceLeftFields[i].label, leftColX, invoiceLeftY);
-
-      pdf.setFont("helvetica", "normal");
       pdf.setFontSize(FONT_SIZES.fieldValue);
-      const leftVal = String(invoiceLeftFields[i].value || "");
-      const leftSplit = pdf.splitTextToSize(leftVal, 160);
-      pdf.text(leftSplit, leftColX + 80, invoiceLeftY);
-      rowHeight = Math.max(rowHeight, leftSplit.length * 10 + 2);
+      pdf.text(
+        `Invoice Details: Invoice ${invIdx + 1} / ${data.invoicesDetail.length}`,
+        leftColX,
+        yPos
+      );
+      yPos += 12;
 
-      // Right Side
+      // Invoice fields in two columns
+      const invoiceLeftFields = [
+        { label: "Inv. No", value: inv.invoiceNo },
+        { label: "Inv. Date", value: inv.invoiceDate },
+        { label: "Nature of contract", value: inv.natureOfContract },
+        { label: "Unit Price Includes", value: inv.unitPriceIncludes },
+        { label: "Inv. Currency", value: inv.invoiceCurrency },
+      ];
+
+      const invoiceRightFields = [
+        { label: "Inv. Value", value: inv.invoiceValue },
+        { label: "FOB Value", value: inv.fobValue },
+        { label: "Exp Contract No.", value: inv.expContractNo },
+        { label: "Exp Contract Date", value: inv.expContractDate },
+        { label: "Exch. Rate", value: inv.exchangeRate },
+      ];
+
+      let invoiceLeftY = yPos;
+      let invoiceRightY = yPos;
+
+      for (let i = 0; i < 5; i++) {
+        let rowHeight = 12;
+
+        // Left Side
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(FONT_SIZES.fieldLabel);
+        pdf.text(invoiceLeftFields[i].label, leftColX, invoiceLeftY);
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(FONT_SIZES.fieldValue);
+        const leftVal = String(invoiceLeftFields[i].value || "");
+        const leftSplit = pdf.splitTextToSize(leftVal, 160);
+        pdf.text(leftSplit, leftColX + 80, invoiceLeftY);
+        rowHeight = Math.max(rowHeight, leftSplit.length * 10 + 2);
+
+        // Right Side
+        pdf.setFont("helvetica", "bold");
+        pdf.text(invoiceRightFields[i].label, rightColX, invoiceRightY);
+
+        pdf.setFont("helvetica", "normal");
+        const rightVal = String(invoiceRightFields[i].value || "");
+        const rightSplit = pdf.splitTextToSize(rightVal, 160);
+        pdf.text(rightSplit, rightColX + 80, invoiceRightY);
+        rowHeight = Math.max(rowHeight, rightSplit.length * 10 + 2);
+
+        invoiceLeftY += rowHeight;
+        invoiceRightY += rowHeight;
+      }
+
+      yPos = invoiceLeftY + 8;
+
+      // Rate table header
       pdf.setFont("helvetica", "bold");
-      pdf.text(invoiceRightFields[i].label, rightColX, invoiceRightY);
+      pdf.setFontSize(FONT_SIZES.tableHeader);
+      pdf.text("Rate", leftColX + 80, yPos);
+      pdf.text("Currency", leftColX + 150, yPos);
+      pdf.text("Amount", leftColX + 220, yPos);
+      yPos += 10;
+
+      const rateItemsData = [
+        { label: "Insurance", ...inv.insuranceData },
+        { label: "Freight", ...inv.freightData },
+        { label: "Discount", ...inv.discountData },
+        { label: "Commission", ...inv.commissionData },
+        { label: "Other Deduction", ...inv.otherDeductionData },
+        { label: "Packing Charges", ...inv.packingChargesData },
+      ];
 
       pdf.setFont("helvetica", "normal");
-      const rightVal = String(invoiceRightFields[i].value || "");
-      const rightSplit = pdf.splitTextToSize(rightVal, 160);
-      pdf.text(rightSplit, rightColX + 80, invoiceRightY);
-      rowHeight = Math.max(rowHeight, rightSplit.length * 10 + 2);
+      pdf.setFontSize(FONT_SIZES.tableContent);
 
-      invoiceLeftY += rowHeight;
-      invoiceRightY += rowHeight;
-    }
+      rateItemsData.forEach((item) => {
+        pdf.text(item.label, leftColX, yPos);
+        const rateText =
+          item.rate !== "" && item.rate !== null && item.rate !== undefined
+            ? String(item.rate)
+            : "";
+        const currencyText =
+          item.currency !== "" &&
+            item.currency !== null &&
+            item.currency !== undefined
+            ? String(item.currency)
+            : "";
+        const amountText =
+          item.amount !== "" && item.amount !== null && item.amount !== undefined
+            ? String(item.amount)
+            : "";
 
-    yPos = invoiceLeftY + 8;
+        pdf.text(rateText, leftColX + 80, yPos);
+        pdf.text(currencyText, leftColX + 150, yPos);
+        pdf.text(amountText, leftColX + 220, yPos);
+        yPos += 10;
+      });
 
-    // Rate table header
-    yPos += 12;
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.tableHeader);
-    pdf.text("Rate", leftColX + 80, yPos);
-    pdf.text("Currency", leftColX + 150, yPos);
-    pdf.text("Amount", leftColX + 220, yPos);
-    yPos += 10;
-
-    // Rate items - Display actual data in Rate, Currency, Amount columns
-    const rateItemsData = [
-      {
-        label: "Insurance",
-        rate: data.insuranceData?.rate || "",
-        currency: data.insuranceData?.currency || "",
-        amount: data.insuranceData?.amount || "",
-      },
-      {
-        label: "Freight",
-        rate: data.freightData?.rate || "",
-        currency: data.freightData?.currency || "",
-        amount: data.freightData?.amount || "",
-      },
-      {
-        label: "Discount",
-        rate: data.discountData?.rate || "",
-        currency: data.discountData?.currency || "",
-        amount: data.discountData?.amount || "",
-      },
-      {
-        label: "Commission",
-        rate: data.commissionData?.rate || "",
-        currency: data.commissionData?.currency || "",
-        amount: data.commissionData?.amount || "",
-      },
-      {
-        label: "Other Deduction",
-        rate: data.otherDeductionData?.rate || "",
-        currency: data.otherDeductionData?.currency || "",
-        amount: data.otherDeductionData?.amount || "",
-      },
-      {
-        label: "Packing Charges",
-        rate: data.packingChargesData?.rate || "",
-        currency: data.packingChargesData?.currency || "",
-        amount: data.packingChargesData?.amount || "",
-      },
-    ];
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(FONT_SIZES.tableContent);
-
-    rateItemsData.forEach((item) => {
-      pdf.text(item.label, leftColX, yPos);
-      // Display rate, currency, amount - handle empty values properly
-      const rateText = item.rate !== "" && item.rate !== null && item.rate !== undefined
-        ? String(item.rate)
-        : "";
-      const currencyText = item.currency !== "" && item.currency !== null && item.currency !== undefined
-        ? String(item.currency)
-        : "";
-      const amountText = item.amount !== "" && item.amount !== null && item.amount !== undefined
-        ? String(item.amount)
-        : "";
-
-      pdf.text(rateText, leftColX + 80, yPos);
-      pdf.text(currencyText, leftColX + 150, yPos);
-      pdf.text(amountText, leftColX + 220, yPos);
-      yPos += 10;
+      yPos += 15;
     });
+
 
     yPos += 5;
     yPos += 12;
@@ -778,6 +812,59 @@ const ExportChecklistGenerator = ({
 
     yPos = pdf.lastAutoTable.finalY + 18;
 
+    // ROSCTL DETAILS SECTION (Only if data exists)
+    if (data.rosctlData && data.rosctlData.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("ROSCTL DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 17;
+
+      const rosctlHeaders = [
+        "Inv No",
+        "Item No",
+        "Tariff Item",
+        "Cat",
+        "SL Rate",
+        "SL Cap",
+        "CTL Rate",
+        "CTL Cap",
+        "Amount",
+      ];
+
+      pdf.autoTable({
+        head: [rosctlHeaders],
+        body: data.rosctlData.map((row) => [
+          row.invNo,
+          row.itemNo,
+          row.tariffItem,
+          row.category,
+          row.slRate,
+          row.slCap,
+          row.ctlRate,
+          row.ctlCap,
+          row.amount,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+          overflow: "linebreak",
+        },
+        headStyles: {
+          fillColor: [220, 220, 220],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: FONT_SIZES.tableHeader,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
+
+      yPos = pdf.lastAutoTable.finalY + 18;
+    }
+
     // VESSEL DETAILS
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(FONT_SIZES.sectionHeader);
@@ -850,7 +937,7 @@ const ExportChecklistGenerator = ({
 
     yPos = pdf.lastAutoTable.finalY + 18;
 
-    // Additional Details
+    // Additional Details Table
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(FONT_SIZES.sectionHeader);
     pdf.text("Additional Details", leftX, yPos);
@@ -858,73 +945,33 @@ const ExportChecklistGenerator = ({
     drawLine(leftX, yPos, rightX);
     yPos += 17;
 
-    const additionalFields = [
-      { label: "Inv/Item SLN", value: data.invItemSln },
-      { label: "SQC Qty/Unit", value: data.sqcQtyUnit },
-      {
-        label: "Origin District",
-        value: data.originDistrict,
-      },
-      { label: "Origin State", value: data.originState },
-      { label: "Comp. Cess Amount(INR)", value: data.compCessAmount },
-      {
-        label: "PTA/FTA",
-        value: data.ptaFta,
-      },
+    const additionalHeaders = [
+      "Inv/Item SLN",
+      "SQC Qty/Unit",
+      "Origin District",
+      "Origin State",
+      "Comp. Cess Amount",
+      "PTA/FTA",
     ];
 
-    additionalFields.forEach((field) => {
-      yPos = drawField(field.label, field.value, leftX, yPos, 160);
-      yPos += 9;
-    });
-
-    return yPos + 8;
-  };
-
-  // Update renderPage3 to start from where Page 2 left off
-  const renderPage3 = (pdf, helpers, data) => {
-    const { drawLine, drawField, leftX, rightX } = helpers;
-    let yPos = 80;
-
-    // SINGLE WINDOW - Additional Product Information
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("SINGLE WINDOW - Additional Product Information", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 17;
-
-    const singleWindowHeaders = [
-      "Inv No",
-      "Item No",
-      "Info Type",
-      "Info Qualifier",
-      "Info Code",
-      "Information",
-      "Measurement",
-      "Unit",
-    ];
-
-    const singleWindowRows = Array.isArray(data.singleWindowData)
-      ? data.singleWindowData
-      : [data.singleWindowData];
+    const additionalRows = Array.isArray(data.additionalDetailsRows)
+      ? data.additionalDetailsRows
+      : [];
 
     pdf.autoTable({
-      head: [singleWindowHeaders],
-      body: singleWindowRows.map((row) => [
-        row.invNo,
-        row.itemNo,
-        row.infoType,
-        row.infoQualifier,
-        row.infoCode,
-        row.information,
-        row.measurement,
-        row.unit,
+      head: [additionalHeaders],
+      body: additionalRows.map((row) => [
+        row.invItemSln,
+        row.sqcQtyUnit,
+        row.originDistrict,
+        row.originState,
+        row.compCessAmount,
+        row.ptaFta,
       ]),
       startY: yPos,
       styles: {
-        fontSize: FONT_SIZES.tableContent - 1,
-        cellPadding: 1,
+        fontSize: FONT_SIZES.tableContent,
+        cellPadding: 2,
       },
       headStyles: {
         fillColor: [220, 220, 220],
@@ -936,6 +983,16 @@ const ExportChecklistGenerator = ({
     });
 
     yPos = pdf.lastAutoTable.finalY + 18;
+
+    return yPos + 8;
+  };
+
+  // Update renderPage3 to start from where Page 2 left off
+  const renderPage3 = (pdf, helpers, data) => {
+    const { drawLine, drawField, leftX, rightX } = helpers;
+    let yPos = 80;
+
+
 
     // END USE INFORMATION
     pdf.setFont("helvetica", "bold");
@@ -1521,204 +1578,141 @@ const ExportChecklistGenerator = ({
             )
             .toFixed(2) || "0.00",
 
-        // Invoice Details - From first invoice
-        invoiceNo: exportJob.invoices?.[0]?.invoiceNumber || "",
-        // Invoice Value - show in invoice currency + INR using customs rate
-        invoiceValue: (() => {
-          const inv = exportJob.invoices?.[0];
-          if (!inv) return "";
+        invoicesDetail: (exportJob.invoices || []).map((inv) => {
+          const baseValue = inv.productValue || inv.invoiceValue || 0;
+          const freightInsurance = inv.freightInsuranceCharges;
 
-          const baseCurrency = inv.currency;
-          const rawAmount = inv.invoiceValue ?? inv.invoice_value;
-          if (rawAmount === null || rawAmount === undefined || rawAmount === "")
-            return "";
-
-          const amountNum = parseFloat(rawAmount) || 0;
-          const basePart = `${baseCurrency} ${amountNum.toFixed(2)}`;
-
-          // Prefer customs export rate; fall back to stored exchange_rate
-          const rateFromApi = getExportRate(baseCurrency);
-          const rate = rateFromApi || exportJob.exchange_rate;
-
-          if (!rate) return basePart;
-
-          const inrAmount = (amountNum * rate).toFixed(2);
-          return `${basePart} / INR ${inrAmount}`;
-        })(),
-        invoiceDate: formatDate(exportJob.invoices?.[0]?.invoiceDate) || "",
-        // FOB Value - Use pre-calculated value from freightInsuranceCharges
-        fobValue: (() => {
-          const invoice = exportJob.invoices?.[0];
-          const fob = invoice?.freightInsuranceCharges?.fobValue;
-
-          if (!fob || !fob.amount) return "";
-
-          const currency = fob.currency || invoice?.currency || "USD";
-          const amount = parseFloat(fob.amount);
-
-          // Get exchange rate for conversion to INR
-          const rateFromApi = getExportRate(currency);
-          const rate = rateFromApi || parseFloat(exportJob.exchange_rate) || 1;
-
-          const inrAmount = (amount * rate).toFixed(2);
-          return `${currency} ${amount.toFixed(2)} / INR ${inrAmount}`;
-        })(),
-        natureOfContract: exportJob.invoices?.[0]?.termsOfInvoice || "",
-        expContractNo: exportJob.otherInfo?.exportContractNo || "",
-        expContractDate:
-          formatDate(exportJob.otherInfo?.exportContractDate) || "",
-        unitPriceIncludes: exportJob.invoices?.[0]?.priceIncludes || "",
-        invoiceCurrency: exportJob.invoices?.[0]?.currency,
-        exchangeRate: exportJob.exchange_rate || "",
-
-        // Rate Details - From freightInsuranceCharges
-        // Store as objects with rate, currency, amount for proper table display
-        // Calculate amount if not present: amount = baseValue × rate / 100
-        insuranceData: (() => {
-          const freightInsurance = exportJob.invoices?.[0]?.freightInsuranceCharges;
-          const rate = freightInsurance?.insurance?.rate || 0;
-          const amount = freightInsurance?.insurance?.amount;
-          const currency = freightInsurance?.insurance?.currency || "";
-          const baseValue =
-            exportJob.invoices?.[0]?.productValue ||
-            exportJob.invoices?.[0]?.invoiceValue ||
-            0;
-          const calculatedAmount =
-            amount !== undefined && amount !== null && amount !== ""
-              ? amount
-              : rate
-                ? ((baseValue * rate) / 100).toFixed(2)
-                : "";
           return {
-            rate: rate !== 0 ? rate : "",  // Show rate if it exists
-            currency: currency,
-            amount: calculatedAmount,
-          };
-        })(),
-        freightData: (() => {
-          const freightInsurance = exportJob.invoices?.[0]?.freightInsuranceCharges;
-          const rate = freightInsurance?.freight?.rate || 0;
-          const amount = freightInsurance?.freight?.amount;
-          const currency = freightInsurance?.freight?.currency || "";
-          const baseValue =
-            exportJob.invoices?.[0]?.productValue ||
-            exportJob.invoices?.[0]?.invoiceValue ||
-            0;
-          const calculatedAmount =
-            amount !== undefined && amount !== null && amount !== ""
-              ? amount
-              : rate
-                ? ((baseValue * rate) / 100).toFixed(2)
-                : "";
-          return {
-            rate: rate !== 0 ? rate : "",
-            currency: currency,
-            amount: calculatedAmount,
-          };
-        })(),
-        discountData: (() => {
-          const freightInsurance = exportJob.invoices?.[0]?.freightInsuranceCharges;
-          const rate = freightInsurance?.discount?.rate || 0;
-          const amount = freightInsurance?.discount?.amount;
-          const currency = freightInsurance?.discount?.currency || "";
-          const baseValue =
-            exportJob.invoices?.[0]?.productValue ||
-            exportJob.invoices?.[0]?.invoiceValue ||
-            0;
-          const calculatedAmount =
-            amount !== undefined && amount !== null && amount !== ""
-              ? amount
-              : rate
-                ? ((baseValue * rate) / 100).toFixed(2)
-                : "";
-          return {
-            rate: rate !== 0 ? rate : "",
-            currency: currency,
-            amount: calculatedAmount,
-          };
-        })(),
-        commissionData: (() => {
-          const freightInsurance = exportJob.invoices?.[0]?.freightInsuranceCharges;
-          const rate = freightInsurance?.commission?.rate || 0;
-          const amount = freightInsurance?.commission?.amount;
-          const currency = freightInsurance?.commission?.currency || "";
-          const baseValue =
-            exportJob.invoices?.[0]?.productValue ||
-            exportJob.invoices?.[0]?.invoiceValue ||
-            0;
-          const calculatedAmount =
-            amount !== undefined && amount !== null && amount !== ""
-              ? amount
-              : rate
-                ? ((baseValue * rate) / 100).toFixed(2)
-                : "";
-          return {
-            rate: rate !== 0 ? rate : "",
-            currency: currency,
-            amount: calculatedAmount,
-          };
-        })(),
-        otherDeductionData: (() => {
-          const freightInsurance = exportJob.invoices?.[0]?.freightInsuranceCharges;
-          const rate = freightInsurance?.otherDeduction?.rate || 0;
-          const amount = freightInsurance?.otherDeduction?.amount;
-          const currency = freightInsurance?.otherDeduction?.currency || "";
-          const baseValue =
-            exportJob.invoices?.[0]?.productValue ||
-            exportJob.invoices?.[0]?.invoiceValue ||
-            0;
-          const calculatedAmount =
-            amount !== undefined && amount !== null && amount !== ""
-              ? amount
-              : rate
-                ? ((baseValue * rate) / 100).toFixed(2)
-                : "";
-          return {
-            rate: rate !== 0 ? rate : "",
-            currency: currency,
-            amount: calculatedAmount,
-          };
-        })(),
-        packingChargesData: {
-          rate: "",
-          currency: "",
-          amount:
-            exportJob.invoices?.[0]?.packing_fob ||
-            exportJob.invoices?.[0]?.packingFOB ||
-            "",
-        },
+            invoiceNo: inv.invoiceNumber || "",
+            invoiceDate: formatDate(inv.invoiceDate) || "",
+            invoiceCurrency: inv.currency || "",
+            natureOfContract: inv.termsOfInvoice || "",
+            unitPriceIncludes: inv.priceIncludes || "",
+            exchangeRate: exportJob.exchange_rate || "",
+            expContractNo: exportJob.otherInfo?.exportContractNo || "",
+            expContractDate: formatDate(exportJob.otherInfo?.exportContractDate) || "",
 
-        // Keep legacy string versions for backward compatibility
-        insurance: exportJob.invoices?.[0]?.freightInsuranceCharges?.insurance?.amount
-          ? exportJob.invoices[0].freightInsuranceCharges.insurance.amount.toString()
-          : exportJob.invoices?.[0]?.freightInsuranceCharges?.insurance?.rate
-            ? `${exportJob.invoices[0].freightInsuranceCharges.insurance.rate}%`
-            : "Not entered",
-        freight: exportJob.invoices?.[0]?.freightInsuranceCharges?.freight?.amount
-          ? exportJob.invoices[0].freightInsuranceCharges.freight.amount.toString()
-          : exportJob.invoices?.[0]?.freightInsuranceCharges?.freight?.rate
-            ? `${exportJob.invoices[0].freightInsuranceCharges.freight.rate}%`
-            : "Not entered",
-        discount: exportJob.invoices?.[0]?.freightInsuranceCharges?.discount?.amount
-          ? exportJob.invoices[0].freightInsuranceCharges.discount.amount.toString()
-          : exportJob.invoices?.[0]?.freightInsuranceCharges?.discount?.rate
-            ? `${exportJob.invoices[0].freightInsuranceCharges.discount.rate}%`
-            : "Not entered",
-        commission: exportJob.invoices?.[0]?.freightInsuranceCharges?.commission?.amount
-          ? exportJob.invoices[0].freightInsuranceCharges.commission.amount.toString()
-          : exportJob.invoices?.[0]?.freightInsuranceCharges?.commission?.rate
-            ? `${exportJob.invoices[0].freightInsuranceCharges.commission.rate}%`
-            : "Not entered",
-        otherDeduction: exportJob.invoices?.[0]?.freightInsuranceCharges?.otherDeduction
-          ?.amount
-          ? exportJob.invoices[0].freightInsuranceCharges.otherDeduction.amount.toString()
-          : exportJob.invoices?.[0]?.freightInsuranceCharges?.otherDeduction?.rate
-            ? `${exportJob.invoices[0].freightInsuranceCharges.otherDeduction.rate}%`
-            : "Not entered",
-        packingCharges:
-          exportJob.invoices?.[0]?.packing_fob ||
-          exportJob.invoices?.[0]?.packingFOB ||
-          "Not entered",
+            invoiceValue: (() => {
+              const baseCurrency = inv.currency;
+              const rawAmount = inv.invoiceValue ?? inv.invoice_value;
+              if (rawAmount === null || rawAmount === undefined || rawAmount === "")
+                return "";
+              const amountNum = parseFloat(rawAmount) || 0;
+              const basePart = `${baseCurrency} ${amountNum.toFixed(2)}`;
+              const rateFromApi = getExportRate(baseCurrency);
+              const rate = rateFromApi || exportJob.exchange_rate;
+              if (!rate) return basePart;
+              const inrAmount = (amountNum * rate).toFixed(2);
+              return `${basePart} / INR ${inrAmount}`;
+            })(),
+
+            fobValue: (() => {
+              const fob = inv.freightInsuranceCharges?.fobValue;
+              if (!fob || !fob.amount) return "";
+              const currency = fob.currency || inv.currency || "USD";
+              const amount = parseFloat(fob.amount);
+              const rateFromApi = getExportRate(currency);
+              const rate = rateFromApi || parseFloat(exportJob.exchange_rate) || 1;
+              const inrAmount = (amount * rate).toFixed(2);
+              return `${currency} ${amount.toFixed(2)} / INR ${inrAmount}`;
+            })(),
+
+            insuranceData: (() => {
+              const rate = freightInsurance?.insurance?.rate || 0;
+              const amount = freightInsurance?.insurance?.amount;
+              const currency = freightInsurance?.insurance?.currency || "";
+              const calculatedAmount =
+                amount !== undefined && amount !== null && amount !== ""
+                  ? amount
+                  : rate
+                    ? ((baseValue * rate) / 100).toFixed(2)
+                    : "";
+              return {
+                rate: rate !== 0 ? rate : "",
+                currency: currency,
+                amount: calculatedAmount,
+              };
+            })(),
+
+            freightData: (() => {
+              const rate = freightInsurance?.freight?.rate || 0;
+              const amount = freightInsurance?.freight?.amount;
+              const currency = freightInsurance?.freight?.currency || "";
+              const calculatedAmount =
+                amount !== undefined && amount !== null && amount !== ""
+                  ? amount
+                  : rate
+                    ? ((baseValue * rate) / 100).toFixed(2)
+                    : "";
+              return {
+                rate: rate !== 0 ? rate : "",
+                currency: currency,
+                amount: calculatedAmount,
+              };
+            })(),
+
+            discountData: (() => {
+              const rate = freightInsurance?.discount?.rate || 0;
+              const amount = freightInsurance?.discount?.amount;
+              const currency = freightInsurance?.discount?.currency || "";
+              const calculatedAmount =
+                amount !== undefined && amount !== null && amount !== ""
+                  ? amount
+                  : rate
+                    ? ((baseValue * rate) / 100).toFixed(2)
+                    : "";
+              return {
+                rate: rate !== 0 ? rate : "",
+                currency: currency,
+                amount: calculatedAmount,
+              };
+            })(),
+
+            commissionData: (() => {
+              const rate = freightInsurance?.commission?.rate || 0;
+              const amount = freightInsurance?.commission?.amount;
+              const currency = freightInsurance?.commission?.currency || "";
+              const calculatedAmount =
+                amount !== undefined && amount !== null && amount !== ""
+                  ? amount
+                  : rate
+                    ? ((baseValue * rate) / 100).toFixed(2)
+                    : "";
+              return {
+                rate: rate !== 0 ? rate : "",
+                currency: currency,
+                amount: calculatedAmount,
+              };
+            })(),
+
+            otherDeductionData: (() => {
+              const rate = freightInsurance?.otherDeduction?.rate || 0;
+              const amount = freightInsurance?.otherDeduction?.amount;
+              const currency = freightInsurance?.otherDeduction?.currency || "";
+              const calculatedAmount =
+                amount !== undefined && amount !== null && amount !== ""
+                  ? amount
+                  : rate
+                    ? ((baseValue * rate) / 100).toFixed(2)
+                    : "";
+              return {
+                rate: rate !== 0 ? rate : "",
+                currency: currency,
+                amount: calculatedAmount,
+              };
+            })(),
+
+            packingChargesData: {
+              rate: "",
+              currency: "",
+              amount: inv.packing_fob || inv.packingFOB || "",
+            },
+          };
+        }),
+
+        // Add today's date to data for use in headers during page breaks
+        currentDate: currentDate,
+
 
         // Payment & Buyer Details
         natureOfPayment: exportJob.otherInfo?.natureOfPayment || "",
@@ -1728,10 +1722,6 @@ const ExportChecklistGenerator = ({
         // Buyer info - should show actual buyer, not third party
         buyerName: (() => {
           const buyer = exportJob.buyerThirdPartyInfo?.buyer;
-          const thirdParty = exportJob.buyerThirdPartyInfo?.thirdParty;
-
-          // If third party export, buyer info might be in buyer field
-          // Otherwise, use buyer field if available
           if (buyer?.name) {
             return `${buyer.name}\n${buyer.addressLine1 || ""}\n${buyer.country || ""}`;
           }
@@ -1754,17 +1744,15 @@ const ExportChecklistGenerator = ({
         })(),
 
         // EOU Details
-        eou:
-          exportJob.ie_code_of_eou ||
-          exportJob.annexC1Details?.ieCodeOfEOU ||
-          "",
-        iec: exportJob.ieCode || exportJob.ieCode || "",
+        eou: exportJob.ie_code_of_eou || exportJob.annexC1Details?.ieCodeOfEOU || "",
+        iec: exportJob.ieCode || "",
         branchSno:
           exportJob.branch_sr_no ||
           exportJob.branchSrNo ||
           exportJob.annexC1Details?.branchSerialNo ||
           "0",
         factoryAddress: exportJob.factory_address || "",
+
 
         // Marks & Nos
         marksAndNos: exportJob.marks_nos,
@@ -1861,6 +1849,35 @@ const ExportChecklistGenerator = ({
           return dbkRows;
         })(),
 
+        // ROSCTL Details - Extract from all products drawbackDetails
+        rosctlData: (() => {
+          const rosctlRows = [];
+          allProducts?.forEach((product, productIndex) => {
+            const invoice =
+              exportJob.invoices?.find((inv) =>
+                inv.products?.some((p) => p.serialNumber === product.serialNumber)
+              ) || exportJob.invoices?.[0];
+            const invNo = invoice?.invoiceNumber || "1";
+
+            product.drawbackDetails?.forEach((dbk) => {
+              if (dbk.showRosctl) {
+                rosctlRows.push({
+                  invNo: invNo,
+                  itemNo: product.serialNumber || (productIndex + 1).toString(),
+                  tariffItem: dbk.dbkSrNo || "",
+                  category: dbk.rosctlCategory || "",
+                  slRate: dbk.slRate || "0",
+                  slCap: dbk.slCap || "0",
+                  ctlRate: dbk.ctlRate || "0",
+                  ctlCap: dbk.ctlCap || "0",
+                  amount: dbk.rosctlAmount || "0.00",
+                });
+              }
+            });
+          });
+          return rosctlRows;
+        })(),
+
         // Vessel & Container Details
         factoryStuffed: exportJob.goods_stuffed_at === "Factory" ? "Yes" : "No",
         sealType: exportJob.stuffing_seal_type || "",
@@ -1879,35 +1896,34 @@ const ExportChecklistGenerator = ({
             sealDeviceID: container.sealDeviceId || container.rfid || "",
           })) || [],
 
-        // Additional Details
-        invItemSln: "1/1", // Static for single item/invoice
-        sqcQtyUnit: allProducts?.[0]?.socQuantity ? `${allProducts[0].socQuantity} ${allProducts[0].socunit}` : "",
-        originDistrict: allProducts?.[0]?.originDistrict || allProducts?.[0]?.district || "",
-        originState: allProducts?.[0]?.originState || exportJob.state_of_origin || "",
-        compCessAmount:
-          exportJob.products
-            ?.reduce(
-              (sum, p) =>
-                sum +
-                (parseFloat(
-                  p.igstCompensationCess?.compensationCessAmountINR
-                ) || 0),
-              0
-            )
-            .toFixed(2) || "0.00",
-        ptaFta: allProducts?.[0]?.ptaFtaInfo || allProducts?.[0]?.ptaFta || allProducts?.[0]?.pta || allProducts?.[0]?.fta || "",
+        // Additional Details Rows
+        additionalDetailsRows: (() => {
+          const rows = [];
+          exportJob.invoices?.forEach((invoice, invIdx) => {
+            invoice.products?.forEach((product, prodIdx) => {
+              rows.push({
+                invItemSln: `${invIdx + 1}/${prodIdx + 1}`,
+                sqcQtyUnit: product.socQuantity
+                  ? `${product.socQuantity} ${product.socunit}`
+                  : "",
+                originDistrict:
+                  product.originDistrict || product.district || "",
+                originState: product.originState || "",
+                compCessAmount:
+                  product.igstCompensationCess?.compensationCessAmountINR ||
+                  "0.00",
+                ptaFta:
+                  product.ptaFtaInfo ||
+                  product.ptaFta ||
+                  product.pta ||
+                  product.fta ||
+                  "",
+              });
+            });
+          });
+          return rows;
+        })(),
 
-        // Single Window Data
-        singleWindowData: allProducts?.map((product, index) => ({
-          invNo: "",
-          itemNo: (index + 1).toString(),
-          infoType: "",
-          infoQualifier: "Remission of Duty",
-          infoCode: product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
-          information: product.rodtepInfo?.claim === "Yes" ? "Claimed" : "",
-          measurement: product.rodtepInfo?.quantity,
-          unit: product.rodtepInfo?.unit,
-        })) || [],
 
         // End Use Information - One row per invoice × product
         endUseData: (() => {

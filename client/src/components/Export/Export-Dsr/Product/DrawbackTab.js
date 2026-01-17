@@ -90,8 +90,8 @@ const DrawbackTab = ({
       const list = Array.isArray(data?.data)
         ? data.data
         : Array.isArray(data)
-        ? data
-        : [];
+          ? data
+          : [];
 
       setDbkDialogOptions(list);
       if (data?.pagination) {
@@ -182,21 +182,7 @@ const DrawbackTab = ({
       });
 
       if (hasChanges) {
-        const updatedInvoices = [...invoices];
-        if (updatedInvoices[selectedInvoiceIndex]) {
-          const updatedProducts = [
-            ...(updatedInvoices[selectedInvoiceIndex].products || []),
-          ];
-          updatedProducts[selectedProductIndex] = {
-            ...updatedProducts[selectedProductIndex],
-            drawbackDetails: updatedDbk,
-          };
-          updatedInvoices[selectedInvoiceIndex] = {
-            ...updatedInvoices[selectedInvoiceIndex],
-            products: updatedProducts,
-          };
-          formik.setFieldValue("invoices", updatedInvoices);
-        }
+        saveUpdatedProducts(updatedDbk);
       }
     };
 
@@ -308,8 +294,7 @@ const DrawbackTab = ({
 
       try {
         const rosRes = await fetch(
-          `${
-            import.meta.env.VITE_API_STRING
+          `${import.meta.env.VITE_API_STRING
           }/getRosctl_R?tariff_item=${encodeURIComponent(searchItem)}`
         );
         const rosJson = await rosRes.json();
@@ -384,7 +369,7 @@ const DrawbackTab = ({
         ...updatedInvoices[selectedInvoiceIndex],
         products: updatedProducts,
       };
-      formik.setFieldValue("invoices", updatedInvoices);
+      saveUpdatedProducts(currentDbk);
     }
   };
 
@@ -420,7 +405,7 @@ const DrawbackTab = ({
         ...updatedInvoices[selectedInvoiceIndex],
         products: updatedProducts,
       };
-      formik.setFieldValue("invoices", updatedInvoices);
+      saveUpdatedProducts(currentDbk);
     }
   };
 
@@ -428,8 +413,7 @@ const DrawbackTab = ({
     if (!dbkSrNo) return;
     try {
       const res = await fetch(
-        `${
-          import.meta.env.VITE_API_STRING
+        `${import.meta.env.VITE_API_STRING
         }/getDrawback?tariff_item=${encodeURIComponent(dbkSrNo)}`
       );
       const data = await res.json();
@@ -479,21 +463,7 @@ const DrawbackTab = ({
           rowIndex
         ].percentageOfFobValue = `${currentDbk[rowIndex].dbkRate}% of FOB Value`;
 
-        const updatedInvoices = [...invoices];
-        if (updatedInvoices[selectedInvoiceIndex]) {
-          const updatedProducts = [
-            ...(updatedInvoices[selectedInvoiceIndex].products || []),
-          ];
-          updatedProducts[selectedProductIndex] = {
-            ...updatedProducts[selectedProductIndex],
-            drawbackDetails: currentDbk,
-          };
-          updatedInvoices[selectedInvoiceIndex] = {
-            ...updatedInvoices[selectedInvoiceIndex],
-            products: updatedProducts,
-          };
-          formik.setFieldValue("invoices", updatedInvoices);
-        }
+        saveUpdatedProducts(currentDbk);
       }
     } catch (error) {
       console.error("Error fetching drawback details:", error);
@@ -538,8 +508,7 @@ const DrawbackTab = ({
 
     try {
       const res = await fetch(
-        `${
-          import.meta.env.VITE_API_STRING
+        `${import.meta.env.VITE_API_STRING
         }/getRosctl_R?tariff_item=${encodeURIComponent(searchItem)}`
       );
       const json = await res.json();
@@ -628,10 +597,31 @@ const DrawbackTab = ({
       const updatedProducts = [
         ...(updatedInvoices[selectedInvoiceIndex].products || []),
       ];
+
+      // Calculate aggregated ROSCTL info for the product level
+      const totalRosctlAmount = newDbkDetails.reduce(
+        (sum, item) => sum + (parseFloat(item.rosctlAmount) || 0),
+        0
+      );
+
+      const hasRosctl = newDbkDetails.some((item) => item.showRosctl);
+      const firstRosctl = newDbkDetails.find((item) => item.showRosctl) || {};
+
       updatedProducts[selectedProductIndex] = {
         ...updatedProducts[selectedProductIndex],
         drawbackDetails: newDbkDetails,
+        rosctlInfo: {
+          ...updatedProducts[selectedProductIndex].rosctlInfo,
+          claim: hasRosctl ? "Yes" : "No",
+          amountINR: totalRosctlAmount.toFixed(2),
+          slRate: String(firstRosctl.slRate || "0"),
+          slCap: String(firstRosctl.slCap || "0"),
+          ctlRate: String(firstRosctl.ctlRate || "0"),
+          ctlCap: String(firstRosctl.ctlCap || "0"),
+          category: firstRosctl.rosctlCategory || "",
+        },
       };
+
       updatedInvoices[selectedInvoiceIndex] = {
         ...updatedInvoices[selectedInvoiceIndex],
         products: updatedProducts,
@@ -639,6 +629,7 @@ const DrawbackTab = ({
       formik.setFieldValue("invoices", updatedInvoices);
     }
   };
+
 
   const handleDbkSrNoBlur = (rowIndex, val) => {
     fetchDrawbackDetails(rowIndex, val);
@@ -656,34 +647,20 @@ const DrawbackTab = ({
   const addDrawbackDetail = () => {
     const currentDbk = [...(product.drawbackDetails || [])];
     currentDbk.push(getDefaultDrawback(currentDbk.length + 1));
-    const updatedInvoices = [...invoices];
-    if (updatedInvoices[selectedInvoiceIndex]) {
-      const updatedProducts = [
-        ...(updatedInvoices[selectedInvoiceIndex].products || []),
-      ];
-      updatedProducts[selectedProductIndex].drawbackDetails = currentDbk;
-      updatedInvoices[selectedInvoiceIndex].products = updatedProducts;
-      formik.setFieldValue("invoices", updatedInvoices);
-    }
+    saveUpdatedProducts(currentDbk);
   };
 
   const deleteDrawbackDetail = (rowIndex) => {
     const currentDbk = [...(product.drawbackDetails || [])];
     if (currentDbk.length > 1) {
       currentDbk.splice(rowIndex, 1);
-      const updatedInvoices = [...invoices];
-      if (updatedInvoices[selectedInvoiceIndex]) {
-        const updatedProducts = [
-          ...(updatedInvoices[selectedInvoiceIndex].products || []),
-        ];
-        updatedProducts[selectedProductIndex].drawbackDetails = currentDbk;
-        updatedInvoices[selectedInvoiceIndex].products = updatedProducts;
-        formik.setFieldValue("invoices", updatedInvoices);
-      }
+      saveUpdatedProducts(currentDbk);
     }
   };
 
+
   return (
+
     <div style={styles.card}>
       <div style={styles.cardTitle}>
         DRAWBACK (DBK) DETAILS
@@ -1079,6 +1056,71 @@ const DrawbackTab = ({
           </tbody>
         </table>
       </div>
+
+      {drawbackDetails.some((item) => item.showRosctl) && (
+        <div
+          style={{
+            marginTop: 20,
+            border: "1px solid #cbd5e1",
+            borderRadius: 6,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#f8fafc",
+              padding: "10px 15px",
+              borderBottom: "1px solid #cbd5e1",
+              fontWeight: "bold",
+              color: "#1e40af",
+              fontSize: 14,
+            }}
+          >
+            ROSCTL DETAILS
+          </div>
+          <div style={styles.tableContainer}>
+            <table style={styles.table}>
+              <thead>
+                <tr style={{ backgroundColor: "#eff6ff" }}>
+                  <th style={{ ...styles.th, backgroundColor: "#eff6ff", color: "#1e40af", width: 60 }}>Row</th>
+                  <th style={{ ...styles.th, backgroundColor: "#eff6ff", color: "#1e40af" }}>Tariff Item</th>
+                  <th style={{ ...styles.th, backgroundColor: "#eff6ff", color: "#1e40af" }}>Category</th>
+                  <th style={{ ...styles.th, backgroundColor: "#eff6ff", color: "#1e40af" }}>SL Rate (%)</th>
+                  <th style={{ ...styles.th, backgroundColor: "#eff6ff", color: "#1e40af" }}>SL Cap</th>
+                  <th style={{ ...styles.th, backgroundColor: "#eff6ff", color: "#1e40af" }}>CTL Rate (%)</th>
+                  <th style={{ ...styles.th, backgroundColor: "#eff6ff", color: "#1e40af" }}>CTL Cap</th>
+                  <th style={{ ...styles.th, backgroundColor: "#eff6ff", color: "#1e40af" }}>Amount (INR)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {drawbackDetails
+                  .filter((item) => item.showRosctl)
+                  .map((item, idx) => (
+                    <tr key={idx}>
+                      <td style={styles.td}>
+                        {drawbackDetails.indexOf(item) + 1}
+                      </td>
+                      <td style={styles.td}>{item.dbkSrNo}</td>
+                      <td style={styles.td}>
+                        {item.rosctlCategory === "B"
+                          ? "Sch B (Sch 1/2)"
+                          : "Sch D (Sch 3/4)"}
+                      </td>
+                      <td style={styles.td}>{item.slRate}</td>
+                      <td style={styles.td}>{item.slCap}</td>
+                      <td style={styles.td}>{item.ctlRate}</td>
+                      <td style={styles.td}>{item.ctlCap}</td>
+                      <td style={{ ...styles.td, fontWeight: "bold" }}>
+                        {item.rosctlAmount}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
 
       <button type="button" style={styles.addBtn} onClick={addDrawbackDetail}>
         <span>＋</span>

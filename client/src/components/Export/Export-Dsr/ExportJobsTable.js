@@ -428,8 +428,8 @@ const ExportJobsTable = () => {
         setJobs(response.data.data.jobs || []);
         setTotalRecords(
           response.data.data.total ||
-            response.data.data.pagination?.totalCount ||
-            0
+          response.data.data.pagination?.totalCount ||
+          0
         );
       }
     } catch (err) {
@@ -605,8 +605,8 @@ const ExportJobsTable = () => {
           setJobs(refreshResponse.data.data.jobs || []);
           setTotalRecords(
             refreshResponse.data.data.total ||
-              refreshResponse.data.data.pagination?.totalCount ||
-              0
+            refreshResponse.data.data.pagination?.totalCount ||
+            0
           );
         }
 
@@ -625,22 +625,22 @@ const ExportJobsTable = () => {
         if (error.response.status === 409) {
           setCopyError(
             error.response.data.message ||
-              "This job number already exists. Please use a different sequence."
+            "This job number already exists. Please use a different sequence."
           );
         } else if (error.response.status === 404) {
           setCopyError(
             error.response.data.message ||
-              "Source job not found. Please refresh and try again."
+            "Source job not found. Please refresh and try again."
           );
         } else if (error.response.status === 400) {
           setCopyError(
             error.response.data.message ||
-              "Invalid input. Please check your entries."
+            "Invalid input. Please check your entries."
           );
         } else {
           setCopyError(
             error.response.data.message ||
-              "Error copying job. Please try again."
+            "Error copying job. Please try again."
           );
         }
       } else {
@@ -649,6 +649,78 @@ const ExportJobsTable = () => {
     } finally {
       setCopyLoading(false);
     }
+  };
+
+  const getDocumentLinks = (job) => {
+    const links = [];
+
+    // 1. eSanchit Documents
+    if (job.eSanchitDocuments && Array.isArray(job.eSanchitDocuments)) {
+      job.eSanchitDocuments.forEach((doc, idx) => {
+        if (doc.fileUrl) {
+          const title =
+            doc.documentType || doc.icegateFilename || `eSanchit ${idx + 1}`;
+          links.push({ title, url: doc.fileUrl });
+        }
+      });
+    }
+
+    // 2. Operations Documents
+    const ops = job.operations && job.operations[0];
+    if (ops) {
+      // Status Details
+      const status = ops.statusDetails && ops.statusDetails[0];
+      if (status) {
+        const statusFiles = [
+          { field: "leoUpload", title: "LEO" },
+          { field: "stuffingSheetUpload", title: "Stuffing Sheet" },
+          { field: "stuffingPhotoUpload", title: "Stuffing Photo" },
+          { field: "eGatePassUpload", title: "Gate Pass" },
+          { field: "handoverImageUpload", title: "HO/DOC Copy" },
+          { field: "billingDocsSentUpload", title: "Bill Doc Copy" },
+        ];
+
+        statusFiles.forEach((f) => {
+          if (Array.isArray(status[f.field])) {
+            status[f.field].forEach((url, i) => {
+              if (url) links.push({ title: f.title, url });
+            });
+          }
+        });
+      }
+
+      // Other Sections
+      const sections = [
+        { field: "transporterDetails", title: "Transporter" },
+        { field: "bookingDetails", title: "Booking" },
+        { field: "weighmentDetails", title: "Weighment" },
+      ];
+
+      sections.forEach((s) => {
+        if (
+          ops[s.field] &&
+          ops[s.field][0] &&
+          Array.isArray(ops[s.field][0].images)
+        ) {
+          ops[s.field][0].images.forEach((url, i) => {
+            if (url) links.push({ title: s.title, url });
+          });
+        }
+      });
+
+      // Container Details (Special mention "container img")
+      if (ops.containerDetails && Array.isArray(ops.containerDetails)) {
+        ops.containerDetails.forEach((cd, idx) => {
+          if (Array.isArray(cd.images)) {
+            cd.images.forEach((url, i) => {
+              if (url) links.push({ title: "container img", url });
+            });
+          }
+        });
+      }
+    }
+
+    return links;
   };
 
   const totalPages = Math.ceil(totalRecords / LIMIT);
@@ -1084,6 +1156,7 @@ const ExportJobsTable = () => {
                 <col style={{ width: "100px" }} /> {/* Port */}
                 <col style={{ width: "100px" }} /> {/* Placement */}
                 <col style={{ width: "80px" }} /> {/* Handover */}
+                <col style={{ width: "100px" }} /> {/* Docs */}
                 <col style={{ width: "60px" }} /> {/* Action */}
               </colgroup>
               <thead>
@@ -1105,19 +1178,20 @@ const ExportJobsTable = () => {
                   <th style={s.th}>Destination</th>
                   <th style={s.th}>Plac’t / Container</th>
                   <th style={s.th}>Handover</th>
+                  <th style={s.th}>Docs</th>
                   <th style={s.th}>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="10" style={s.message}>
+                    <td colSpan="11" style={s.message}>
                       Loading jobs...
                     </td>
                   </tr>
                 ) : jobs.length === 0 ? (
                   <tr>
-                    <td colSpan="10" style={s.message}>
+                    <td colSpan="11" style={s.message}>
                       No jobs found.
                     </td>
                   </tr>
@@ -1401,7 +1475,7 @@ const ExportJobsTable = () => {
                                       {containerNo}
                                       {/* Add line break after every 2 containers, except the last one */}
                                       {index < array.length - 1 &&
-                                      (index + 1) % 2 === 0 ? (
+                                        (index + 1) % 2 === 0 ? (
                                         <br />
                                       ) : index < array.length - 1 ? (
                                         ", "
@@ -1437,7 +1511,7 @@ const ExportJobsTable = () => {
                               style={{ color: "#6b7280", fontSize: "10px" }}
                             >
                               {job.transportMode === "AIR" ||
-                              job.consignmentType === "LCL"
+                                job.consignmentType === "LCL"
                                 ? "File:"
                                 : "Fwd:"}
                             </span>{" "}
@@ -1459,7 +1533,42 @@ const ExportJobsTable = () => {
                           </div>
                         </td>
 
-                        {/* Column 10: Copy Action */}
+                        {/* Column 10: Docs */}
+                        <td style={s.td}>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "4px",
+                            }}
+                          >
+                            {getDocumentLinks(job).map((link, i) => (
+                              <a
+                                key={i}
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  fontSize: "10px",
+                                  color: "#2563eb",
+                                  textDecoration: "underline",
+                                  fontWeight: "600",
+                                  display: "block",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  maxWidth: "90px",
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                title={link.title}
+                              >
+                                {link.title}
+                              </a>
+                            ))}
+                          </div>
+                        </td>
+
+                        {/* Column 11: Copy Action */}
                         <td style={s.td}>
                           <button
                             className="copy-btn"
@@ -1492,7 +1601,7 @@ const ExportJobsTable = () => {
                           >
                             {/* Use detailedStatus array first item or fallback */}
                             {Array.isArray(job.detailedStatus) &&
-                            job.detailedStatus.length > 0
+                              job.detailedStatus.length > 0
                               ? job.detailedStatus[0]
                               : job.status || "-"}
                           </div>
@@ -1671,9 +1780,9 @@ const ExportJobsTable = () => {
                 style={
                   copyLoading
                     ? {
-                        ...modalStyles.submitButton,
-                        ...modalStyles.disabledButton,
-                      }
+                      ...modalStyles.submitButton,
+                      ...modalStyles.disabledButton,
+                    }
                     : modalStyles.submitButton
                 }
                 onClick={handleCopySubmit}
