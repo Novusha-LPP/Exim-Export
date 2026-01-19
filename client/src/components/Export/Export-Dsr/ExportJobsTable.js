@@ -1176,7 +1176,7 @@ const ExportJobsTable = () => {
                   <th style={s.th}>SB / Date</th>
                   <th style={s.th}>No. of Pkgs</th>
                   <th style={s.th}>Destination</th>
-                  <th style={s.th}>Plac’t / Container</th>
+                  <th style={s.th}>Container</th>
                   <th style={s.th}>Handover</th>
                   <th style={s.th}>Docs</th>
                   <th style={s.th}>Status</th>

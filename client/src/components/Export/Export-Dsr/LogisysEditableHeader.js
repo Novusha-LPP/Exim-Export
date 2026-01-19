@@ -107,8 +107,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : []
         );
       } catch {
         setOpts([]);
@@ -534,7 +534,6 @@ const LogisysEditableHeader = ({
           />
         </div> */}
 
-        {/* Standard Documents Button */}
         <div
           style={{
             flex: "1 1 105px",
@@ -561,7 +560,7 @@ const LogisysEditableHeader = ({
             type="button"
             onClick={(e) => setAnchorEl(e.currentTarget)}
           >
-            Standard Documents
+            Documents
             <ArrowDropDownIcon sx={{ fontSize: 16, ml: 0.5 }} />
           </button>
           <Menu
