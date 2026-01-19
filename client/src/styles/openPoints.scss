@@ -14,7 +14,7 @@ $text-secondary: #64748b;
   padding: 24px;
   background-color: $background;
   min-height: 100vh;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 
   h1,
   h2,
@@ -35,13 +35,15 @@ $text-secondary: #64748b;
     background: $card-bg;
     border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06);
     border: 1px solid rgba(226, 232, 240, 0.8);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+        0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
   }
 
@@ -113,13 +115,13 @@ $text-secondary: #64748b;
 .excel-table {
   width: 100%;
   border-collapse: collapse;
-  font-family: 'Arial', sans-serif;
+  font-family: "Arial", sans-serif;
   /* Excel-like font */
   font-size: 13px;
 }
 
 .excel-table th {
-  background-color: #FFFF00;
+  background-color: #ffff00;
   /* Yellow Header */
   border: 1px solid #000;
   /* Strong border for header */
@@ -154,26 +156,26 @@ $text-secondary: #64748b;
 
 /* Status Colors */
 .status-cell-Green {
-  background-color: #00FF00;
+  background-color: #00ff00;
   text-align: center;
   font-weight: bold;
 }
 
 .status-cell-Red {
-  background-color: #FF0000;
+  background-color: #ff0000;
   color: white;
   text-align: center;
   font-weight: bold;
 }
 
 .status-cell-Yellow {
-  background-color: #FFFF00;
+  background-color: #ffff00;
   text-align: center;
   font-weight: bold;
 }
 
 .status-cell-Orange {
-  background-color: #FFA500;
+  background-color: #ffa500;
   text-align: center;
   font-weight: bold;
 }
@@ -216,28 +218,28 @@ $text-secondary: #64748b;
 }
 
 .header-green {
-  background-color: #00FF00;
+  background-color: #00ff00;
 }
 
 .header-yellow {
-  background-color: #FFFF00;
+  background-color: #ffff00;
 }
 
 .header-red {
-  background-color: #FF0000;
+  background-color: #ff0000;
   color: white;
 }
 
 .header-orange {
-  background-color: #FFA500;
+  background-color: #ffa500;
 }
 
 /* Hide text in status cells */
-td[class*='status-cell-'] select {
+td[class*="status-cell-"] select {
   color: transparent;
 }
 
-td[class*='status-cell-'] select option {
+td[class*="status-cell-"] select option {
   color: black;
 }
 

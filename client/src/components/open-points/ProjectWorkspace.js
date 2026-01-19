@@ -9,6 +9,7 @@ import {
   deleteOpenPoint,
   removeProjectMember,
   deleteProject,
+  changeProjectOwner,
 } from "../../services/openPointsService";
 import { useParams, useNavigate } from "react-router-dom";
 import { UserContext } from "../../contexts/UserContext";
@@ -20,20 +21,22 @@ const ProjectWorkspace = () => {
   const { user } = useContext(UserContext);
   const [points, setPoints] = useState([]);
   const [projectTeam, setProjectTeam] = useState([]); // Array of {user: {_id, username}, role}
-  const [projectOwnerId, setProjectOwnerId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Add Member State
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
   const [allUsers, setAllUsers] = useState([]); // For autocomplete
-  const [newMemberRole, setNewMemberRole] = useState("L2");
+  const [newMemberRole, setNewMemberRole] = useState("L1");
   const [accessDenied, setAccessDenied] = useState(false);
+  const [memberSearchQuery, setMemberSearchQuery] = useState("");
+  const [showMemberSuggestions, setShowMemberSuggestions] = useState(false);
 
   // Summary Stats
   const [summary, setSummary] = useState([]);
   const [modifiedPoints, setModifiedPoints] = useState(new Set());
   const [projectName, setProjectName] = useState("");
+  const [projectOwnerId, setProjectOwnerId] = useState(null);
   const [showLegend, setShowLegend] = useState(false);
   const [filters, setFilters] = useState({
     status: "",
@@ -52,6 +55,13 @@ const ProjectWorkspace = () => {
     review_date: "",
     remarks: "",
     priority: "Low",
+  });
+
+  // Member Context Menu State
+  const [memberMenu, setMemberMenu] = useState({
+    open: false,
+    member: null,
+    position: { x: 0, y: 0 },
   });
 
   // Custom Dialog State
@@ -75,9 +85,12 @@ const ProjectWorkspace = () => {
     loadData();
   }, [projectId]);
 
+  // Re-calculate summary when team or points change to ensure names are up to date
   useEffect(() => {
-    calculateSummary(points);
-  }, [points]);
+    if (points.length > 0) {
+      calculateSummary(points);
+    }
+  }, [projectTeam]);
 
   // Auto-resize textarea
   const autoResize = (e) => {
@@ -109,7 +122,16 @@ const ProjectWorkspace = () => {
 
       // Handle Points
       if (pointsResult.status === "fulfilled") {
-        setPoints(pointsResult.value);
+        // Sync responsibility from responsible_person object if available
+        const processedPoints = pointsResult.value.map((p) => {
+          const mapped = { ...p };
+          if (mapped.responsible_person && mapped.responsible_person.username) {
+            mapped.responsibility = mapped.responsible_person.username;
+          }
+          return mapped;
+        });
+        setPoints(processedPoints);
+        calculateSummary(processedPoints);
       } else {
         console.error("Failed to fetch points", pointsResult.reason);
         if (pointsResult.reason?.response?.status === 403) {
@@ -122,18 +144,23 @@ const ProjectWorkspace = () => {
       if (projectResult.status === "fulfilled") {
         const projectData = projectResult.value;
         setProjectName(projectData.name || "");
+        setProjectOwnerId(projectData.owner._id || projectData.owner);
 
         // Build Team List
         const teamList = [];
         if (projectData.owner) {
-          const ownerIdValue = projectData.owner._id || projectData.owner;
-          setProjectOwnerId(ownerIdValue.toString());
           const ownerName =
             projectData.owner.username ||
             `User_${projectData.owner.toString().substring(0, 6)}`;
+          const ownerObj = projectData.owner;
+          const fName = ownerObj.first_name || "";
+          const lName = ownerObj.last_name || "";
+          const dName = fName || lName ? `${fName} ${lName}`.trim() : ownerName;
+
           teamList.push({
-            _id: ownerIdValue,
+            _id: projectData.owner._id || projectData.owner,
             username: ownerName,
+            displayName: dName,
             role: "Owner",
           });
         }
@@ -142,19 +169,9 @@ const ProjectWorkspace = () => {
           projectData.team_members &&
           Array.isArray(projectData.team_members)
         ) {
-          const ownerId = (
-            projectData.owner._id ||
-            projectData.owner ||
-            ""
-          ).toString();
-
           const members = projectData.team_members
-            .filter((tm) => {
-              if (!tm || !tm.user) return false;
-              const tmUserId = (tm.user._id || tm.user || "").toString();
-              return tmUserId !== ownerId;
-            })
             .map((tm) => {
+              if (!tm || !tm.user) return null;
               const userObj = tm.user;
 
               let userId = null;
@@ -178,9 +195,16 @@ const ProjectWorkspace = () => {
                 userName = userObj.username || userId;
               }
 
+              // Construct Display Name
+              const fName = userObj.first_name || "";
+              const lName = userObj.last_name || "";
+              const dName =
+                fName || lName ? `${fName} ${lName}`.trim() : userName;
+
               return {
                 _id: userId,
                 username: userName,
+                displayName: dName,
                 role: tm.role || "L2",
               };
             })
@@ -202,7 +226,6 @@ const ProjectWorkspace = () => {
         setProjectTeam([
           { _id: user._id, username: user.username, role: "Owner" },
         ]);
-        setProjectOwnerId(user._id);
       }
     } catch (error) {
       console.error("Unexpected error in loadData", error);
@@ -214,8 +237,11 @@ const ProjectWorkspace = () => {
   const calculateSummary = (data) => {
     const stats = {};
     data.forEach((p) => {
-      const person =
-        p.responsibility || p.responsible_person?.username || "Unassigned";
+      const rawPerson = p.responsibility || "Unassigned";
+      // lookup display name
+      const member = projectTeam.find((m) => m.username === rawPerson);
+      const person = member ? member.displayName || member.username : rawPerson;
+
       if (!stats[person])
         stats[person] = { total: 0, green: 0, yellow: 0, red: 0, orange: 0 };
 
@@ -233,9 +259,11 @@ const ProjectWorkspace = () => {
 
   const handleUpdate = (pointId, field, value) => {
     // Update local state only
-    setPoints((prev) =>
-      prev.map((p) => (p._id === pointId ? { ...p, [field]: value } : p))
+    const updatedPoints = points.map((p) =>
+      p._id === pointId ? { ...p, [field]: value } : p
     );
+    setPoints(updatedPoints);
+    calculateSummary(updatedPoints);
 
     // Track modification
     setModifiedPoints((prev) => new Set(prev).add(pointId));
@@ -249,10 +277,11 @@ const ProjectWorkspace = () => {
       async () => {
         try {
           await deleteOpenPoint(pointId);
-          setPoints((prev) => prev.filter((p) => p._id !== pointId));
-          showDialog("Success", "Point deleted", "alert");
-        } catch (err) {
-          console.error("Delete failed", err);
+          const filteredPoints = points.filter((p) => p._id !== pointId);
+          setPoints(filteredPoints);
+          calculateSummary(filteredPoints);
+        } catch (error) {
+          console.error("Delete failed", error);
           showDialog("Error", "Failed to delete point", "alert");
         }
       }
@@ -285,28 +314,24 @@ const ProjectWorkspace = () => {
       return;
     }
 
-    // Sync responsible_person ID
+    // Sync responsible_person ID if needed
     let responsibleId =
       point.responsible_person?._id || point.responsible_person;
-    let responsibilityName = point.responsibility;
-
-    // Ensure we have an ID for responsible_person
-    if (responsibleId) {
-      const userObj = allUsers.find(
-        (u) => u._id === responsibleId || u.id === responsibleId
-      );
-      if (userObj) responsibilityName = userObj.username;
+    if (projectTeam) {
+      if (!point.responsibility) {
+        responsibleId = null;
+      } else {
+        const found = projectTeam.find(
+          (m) => m.username === point.responsibility
+        );
+        if (found && found._id) responsibleId = found._id;
+      }
     }
 
-    const currentUserId =
-      user?._id || allUsers.find((u) => u.username === user?.username)?._id;
-
     const payload = {
-      ...point,
-      userId: currentUserId,
+      ...point, // Send all fields
+      userId: user._id,
       responsible_person: responsibleId,
-      responsibility: responsibilityName,
-      reviewer: currentUserId,
     };
 
     // Clean up payload (remove populated objects if simple IDs needed, handled by backend usually, but let's be safe)
@@ -366,24 +391,24 @@ const ProjectWorkspace = () => {
         payload.target_date = new Date(newPoint.target_date);
       }
 
-      // Map responsibility username to member id
+      // Map responsibility username to member id if available
       if (newPoint.responsibility) {
-        const found = allUsers.find(
-          (u) =>
-            u.username === newPoint.responsibility ||
-            u._id === newPoint.responsibility
+        // ALWAYS send the text responsibility for immediate UI consistency
+        payload.responsibility = newPoint.responsibility;
+
+        const found = projectTeam.find(
+          (m) => m.username === newPoint.responsibility
         );
         if (found && found._id) {
           payload.responsible_person = found._id;
-          payload.responsibility = found.username;
         }
       }
 
-      // set reviewer to current user id correctly
-      const currentUserId =
-        user?._id || allUsers.find((u) => u.username === user?.username)?._id;
-      if (currentUserId) {
-        payload.reviewer = currentUserId;
+      console.log("Create Point Payload:", payload);
+
+      // set reviewer to current user id when available
+      if (user && (user._id || user.id || user.username)) {
+        payload.reviewer = user._id || user.id || user.username;
       }
 
       await createOpenPoint(payload);
@@ -401,7 +426,16 @@ const ProjectWorkspace = () => {
       });
       // Reload specific data to keep UI snappy
       const data = await fetchProjectPoints(projectId);
-      setPoints(data);
+      // Sync responsibility from responsible_person object immediately
+      const processedPoints = data.map((p) => {
+        const mapped = { ...p };
+        if (mapped.responsible_person && mapped.responsible_person.username) {
+          mapped.responsibility = mapped.responsible_person.username;
+        }
+        return mapped;
+      });
+      setPoints(processedPoints);
+      calculateSummary(processedPoints);
     } catch (error) {
       console.error(error);
       showDialog(
@@ -416,7 +450,10 @@ const ProjectWorkspace = () => {
     try {
       await addProjectMember(projectId, newMemberName, newMemberRole);
       showDialog("Success", "Member added successfully!", "alert");
+      showDialog("Success", "Member added successfully!", "alert");
       setNewMemberName("");
+      setMemberSearchQuery("");
+      setNewMemberRole("L1");
       setShowAddMember(false);
       loadData(); // Reload to update team list
     } catch (error) {
@@ -428,17 +465,75 @@ const ProjectWorkspace = () => {
     }
   };
 
+  const handleChangeOwner = () => {
+    const { member } = memberMenu;
+    if (!member) return;
+
+    showDialog(
+      "Confirm Change Owner",
+      `Are you sure you want to transfer ownership of this project to ${member.username}? You will become a regular team member.`,
+      "confirm",
+      async () => {
+        try {
+          await changeProjectOwner(projectId, member._id);
+          showDialog(
+            "Success",
+            "Project ownership transferred successfully",
+            "alert"
+          );
+          setMemberMenu({ ...memberMenu, open: false });
+          loadData(); // reload to reflect changes
+        } catch (error) {
+          console.error("Change Owner Failed", error);
+          showDialog(
+            "Error",
+            error.response?.data?.error || "Failed to transfer ownership",
+            "alert"
+          );
+        }
+      }
+    );
+  };
+
+  const handleRemoveMember = () => {
+    const { member } = memberMenu;
+    if (!member) return;
+
+    showDialog(
+      "Remove Member",
+      `Are you sure you want to remove ${member.username} from the project?`,
+      "confirm",
+      async () => {
+        try {
+          await removeProjectMember(projectId, member.username, member._id);
+          showDialog("Success", "Member removed", "alert");
+          setMemberMenu({ ...memberMenu, open: false });
+          setProjectTeam((prev) => prev.filter((p) => p._id !== member._id));
+        } catch (err) {
+          console.error("Remove member failed", err);
+          showDialog(
+            "Error",
+            err.response?.data?.error || "Failed to remove member",
+            "alert"
+          );
+        }
+      }
+    );
+  };
+
   const handleDeleteProject = () => {
     showDialog(
-      "Delete Project",
-      "Are you sure you want to delete this entire project? This action cannot be undone and all associated points will be lost.",
+      "Confirm Delete",
+      "Are you sure you want to delete this ENTIRE project? This cannot be undone.",
       "confirm",
       async () => {
         try {
           await deleteProject(projectId);
-          navigate("/open-points");
+          showDialog("Success", "Project deleted successfully", "alert", () => {
+            navigate("/open-points");
+          });
         } catch (error) {
-          console.error("Delete project failed", error);
+          console.error("Delete Project Failed", error);
           showDialog(
             "Error",
             error.response?.data?.error || "Failed to delete project",
@@ -547,7 +642,7 @@ const ProjectWorkspace = () => {
               <option value="">Members</option>
               {projectTeam.map((m) => (
                 <option key={m._id} value={m.username}>
-                  {m.username}
+                  {m.displayName || m.username}
                 </option>
               ))}
             </select>
@@ -585,20 +680,17 @@ const ProjectWorkspace = () => {
             >
               + Add Member
             </button>
-            {user && projectOwnerId && user._id === projectOwnerId && (
-              <button
-                className="btn btn-sm btn-danger"
-                onClick={handleDeleteProject}
-                style={{
-                  fontSize: "12px",
-                  padding: "5px 12px",
-                  fontWeight: "500",
-                  marginLeft: "8px",
-                }}
-              >
-                🗑️ Delete Project
-              </button>
-            )}
+            <button
+              className="btn btn-sm btn-danger"
+              onClick={handleDeleteProject}
+              style={{
+                fontSize: "12px",
+                padding: "5px 12px",
+                fontWeight: "500",
+              }}
+            >
+              🗑️ Delete Project
+            </button>
           </div>
         </div>
       </div>
@@ -668,7 +760,7 @@ const ProjectWorkspace = () => {
                   }}
                 ></div>
                 <span>
-                  <strong>L1</strong> - Development Team
+                  <strong>L1</strong> - Employee
                 </span>
               </div>
               <div
@@ -808,31 +900,105 @@ const ProjectWorkspace = () => {
             borderRadius: "4px",
             display: "flex",
             gap: "10px",
+            alignItems: "center",
+            overflow: "visible",
           }}
         >
-          <select
-            className="form-control"
-            style={{ maxWidth: "220px" }}
-            value={newMemberName}
-            onChange={(e) => setNewMemberName(e.target.value)}
-          >
-            <option value="">Select user</option>
-            {allUsers.map((u, i) => (
-              <option key={i} value={u.username}>
-                {u.username}
-              </option>
-            ))}
-          </select>
+          <div style={{ position: "relative", width: "250px" }}>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Search user..."
+              value={memberSearchQuery}
+              onChange={(e) => {
+                setMemberSearchQuery(e.target.value);
+                setShowMemberSuggestions(true);
+                setNewMemberName(""); // Reset selected if typing
+              }}
+              onFocus={() => setShowMemberSuggestions(true)}
+              style={{ width: "100%" }}
+            />
+            {showMemberSuggestions && memberSearchQuery && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  background: "white",
+                  border: "1px solid #ddd",
+                  borderRadius: "4px",
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                  zIndex: 1000,
+                  boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                }}
+              >
+                {allUsers
+                  .filter((u) => {
+                    const search = memberSearchQuery.toLowerCase();
+                    const name = `${u.first_name || ""} ${
+                      u.last_name || ""
+                    }`.toLowerCase();
+                    const username = (u.username || "").toLowerCase();
+                    return name.includes(search) || username.includes(search);
+                  })
+                  .map((u, i) => {
+                    const displayName =
+                      u.first_name || u.last_name
+                        ? `${u.first_name || ""} ${u.last_name || ""}`.trim()
+                        : u.username;
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          padding: "8px",
+                          cursor: "pointer",
+                          borderBottom: "1px solid #f3f4f6",
+                        }}
+                        className="hover:bg-gray-100"
+                        onClick={() => {
+                          setNewMemberName(u.username);
+                          setMemberSearchQuery(displayName);
+                          setShowMemberSuggestions(false);
+                        }}
+                      >
+                        {displayName}{" "}
+                        <small style={{ color: "#666" }}>({u.username})</small>
+                      </div>
+                    );
+                  })}
+                {allUsers.filter((u) => {
+                  const search = memberSearchQuery.toLowerCase();
+                  const name = `${u.first_name || ""} ${
+                    u.last_name || ""
+                  }`.toLowerCase();
+                  const username = (u.username || "").toLowerCase();
+                  return name.includes(search) || username.includes(search);
+                }).length === 0 && (
+                  <div
+                    style={{
+                      padding: "8px",
+                      color: "#666",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    No users found
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           <select
             value={newMemberRole}
             onChange={(e) => setNewMemberRole(e.target.value)}
             className="form-control"
             style={{ maxWidth: "140px" }}
           >
+            <option value="L1">L1</option>
             <option value="L2">L2</option>
             <option value="L3">L3</option>
             <option value="L4">L4</option>
-            <option value="L1">L1</option>
           </select>
           <button className="btn btn-sm btn-primary" onClick={handleAddMember}>
             Add to Project
@@ -915,37 +1081,19 @@ const ProjectWorkspace = () => {
                   </td>
                   <td>
                     <select
-                      value={
-                        point.responsible_person?._id ||
-                        point.responsible_person ||
-                        allUsers.find(
-                          (u) => u.username === point.responsibility
-                        )?._id ||
-                        ""
-                      }
-                      onChange={(e) => {
-                        const selectedId = e.target.value;
-                        const selectedUser = allUsers.find(
-                          (u) => u._id === selectedId
-                        );
+                      value={point.responsibility || ""}
+                      onChange={(e) =>
                         handleUpdate(
                           point._id,
-                          "responsible_person",
-                          selectedId
-                        );
-                        if (selectedUser) {
-                          handleUpdate(
-                            point._id,
-                            "responsibility",
-                            selectedUser.username
-                          );
-                        }
-                      }}
+                          "responsibility",
+                          e.target.value
+                        )
+                      }
                     >
                       <option value="">Select</option>
-                      {projectTeam.map((u) => (
-                        <option key={u._id} value={u._id}>
-                          {u.username}
+                      {projectTeam.map((m) => (
+                        <option key={m._id} value={m.username}>
+                          {m.displayName || m.username}
                         </option>
                       ))}
                     </select>
@@ -982,6 +1130,20 @@ const ProjectWorkspace = () => {
                       }
                       onChange={(e) =>
                         handleUpdate(point._id, "target_date", e.target.value)
+                      }
+                      disabled={
+                        !user ||
+                        !projectOwnerId ||
+                        (user._id !== projectOwnerId &&
+                          user._id !== projectOwnerId.toString())
+                      }
+                      title={
+                        !user ||
+                        !projectOwnerId ||
+                        (user._id !== projectOwnerId &&
+                          user._id !== projectOwnerId.toString())
+                          ? "Only Project Owner can set Target Date"
+                          : ""
                       }
                     />
                   </td>
@@ -1059,17 +1221,11 @@ const ProjectWorkspace = () => {
                       )}
                       <button
                         className="btn btn-sm btn-danger"
-                        style={{
-                          padding: "2px 8px",
-                          fontSize: "12px",
-                          border: "1px solid #dc3545",
-                          background: "#fff",
-                          color: "#dc3545",
-                        }}
+                        style={{ padding: "2px 6px", fontSize: "11px" }}
                         onClick={() => handleDeleteRow(point._id)}
                         title="Delete Point"
                       >
-                        Delete
+                        🗑️
                       </button>
                     </div>
                   </td>
@@ -1106,9 +1262,9 @@ const ProjectWorkspace = () => {
                   }
                 >
                   <option value="">Select</option>
-                  {projectTeam.map((u) => (
-                    <option key={u._id} value={u.username}>
-                      {u.username}
+                  {projectTeam.map((m) => (
+                    <option key={m._id} value={m.username}>
+                      {m.displayName || m.username}
                     </option>
                   ))}
                 </select>
@@ -1265,57 +1421,18 @@ const ProjectWorkspace = () => {
                   <span
                     role="button"
                     tabIndex={0}
-                    onClick={() => {
-                      // If current user is project owner (or first team entry is owner), allow removal prompt
-                      const isOwner =
-                        user &&
-                        (user._id === (projectTeam[0] && projectTeam[0]._id) ||
-                          (projectTeam[0] && projectTeam[0].role === "Owner"));
-                      if (!isOwner) {
-                        showDialog(
-                          "Permission Denied",
-                          "Only the project owner can remove members.",
-                          "alert"
-                        );
-                        return;
-                      }
-
-                      if (member.role === "Owner") {
-                        showDialog(
-                          "Not Allowed",
-                          "Cannot remove the project owner.",
-                          "alert"
-                        );
-                        return;
-                      }
-
-                      showDialog(
-                        "Remove Member",
-                        `Are you sure you want to remove ${member.username} from the project?`,
-                        "confirm",
-                        async () => {
-                          try {
-                            await removeProjectMember(
-                              projectId,
-                              member.username,
-                              member._id
-                            );
-                            showDialog("Success", "Member removed", "alert");
-                            loadData(); // Reload to refresh points and summary
-                          } catch (err) {
-                            console.error("Remove member failed", err);
-                            showDialog(
-                              "Error",
-                              err.response?.data?.error ||
-                                "Failed to remove member",
-                              "alert"
-                            );
-                          }
-                        }
-                      );
-                    }}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") e.currentTarget.click();
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Open Context Menu
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setMemberMenu({
+                        open: true,
+                        member: member,
+                        position: {
+                          x: rect.left,
+                          bottom: window.innerHeight - rect.top + 5,
+                        },
+                      });
                     }}
                     style={{
                       cursor: "pointer",
@@ -1323,7 +1440,7 @@ const ProjectWorkspace = () => {
                       color: "#1e40af",
                     }}
                   >
-                    <strong>{member.username}</strong>
+                    <strong>{member.displayName || member.username}</strong>
                   </span>
                   <span style={{ color: "#666", marginLeft: 6 }}>
                     ({member.role || "Member"})
@@ -1394,6 +1511,93 @@ const ProjectWorkspace = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Member Action Menu */}
+      {memberMenu.open && memberMenu.member && (
+        <>
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 1100,
+            }}
+            onClick={() => setMemberMenu({ ...memberMenu, open: false })}
+          />
+          <div
+            style={{
+              position: "fixed",
+              bottom: memberMenu.position.bottom,
+              left: memberMenu.position.x,
+              background: "white",
+              border: "1px solid #ddd",
+              borderRadius: "4px",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+              zIndex: 1200,
+              minWidth: "150px",
+              padding: "5px 0",
+            }}
+          >
+            <div
+              style={{
+                padding: "8px 12px",
+                fontSize: "12px",
+                borderBottom: "1px solid #eee",
+                color: "#666",
+              }}
+            >
+              Action for <strong>{memberMenu.member.username}</strong>
+            </div>
+
+            {projectTeam.find((m) => m.username === memberMenu.member.username)
+              ?.role !== "Owner" && (
+              <button
+                className="menu-item"
+                style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "8px 12px",
+                  border: "none",
+                  background: "none",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  color: "#dc2626",
+                }}
+                onClick={() => {
+                  handleRemoveMember();
+                  setMemberMenu({ ...memberMenu, open: false });
+                }}
+              >
+                🗑️ Remove Member
+              </button>
+            )}
+
+            <button
+              className="menu-item"
+              style={{
+                display: "block",
+                width: "100%",
+                textAlign: "left",
+                padding: "8px 12px",
+                border: "none",
+                background: "none",
+                cursor: "pointer",
+                fontSize: "13px",
+                color: "#2563eb",
+              }}
+              onClick={() => {
+                handleChangeOwner();
+                setMemberMenu({ ...memberMenu, open: false });
+              }}
+            >
+              👑 Make Owner
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

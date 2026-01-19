@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "../../styles/openPoints.scss";
 
-const API_URL = import.meta.env.VITE_API_STRING;
+const API_URL = import.meta.env.VITE_API_STRING || "http://localhost:9002";
 
 const AnalyticsDashboard = () => {
   const [stats, setStats] = useState(null);
@@ -11,10 +11,13 @@ const AnalyticsDashboard = () => {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
-        const res = await axios.get(`${API_URL}/open-points/analytics/global`, {
-          headers: { "user-id": user._id },
-        });
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const res = await axios.get(
+          `${API_URL}/api/open-points/analytics/global`,
+          {
+            headers: { "user-id": user._id },
+          }
+        );
         setStats(res.data);
       } catch (error) {
         console.error("Error fetching analytics", error);

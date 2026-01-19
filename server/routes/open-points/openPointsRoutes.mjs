@@ -76,27 +76,30 @@ router.post("/api/open-points/projects", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 // Delete Project (Owner Only)
 router.delete("/api/open-points/projects/:projectId", async (req, res) => {
   try {
     const { projectId } = req.params;
     const userId = req.headers["user-id"];
 
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const project = await OpenPointProject.findById(projectId);
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    // Check if requester is owner
+    // Check ownership
     if (project.owner.toString() !== userId) {
-      return res
-        .status(403)
-        .json({ error: "Only project owner can delete the project" });
+      return res.status(403).json({
+        error: "Access Denied: Only the project owner can delete this project",
+      });
     }
 
     // Delete associated points first
     await OpenPoint.deleteMany({ project_id: projectId });
 
-    // Delete project
+    // Delete the project
     await OpenPointProject.findByIdAndDelete(projectId);
 
     res.json({
@@ -187,13 +190,6 @@ router.post(
         return res.status(400).json({ error: "User is not a member" });
 
       await project.save();
-
-      // Unassign points for this user in this project
-      await OpenPoint.updateMany(
-        { project_id: req.params.projectId, responsible_person: user._id },
-        { $unset: { responsible_person: 1 }, $set: { responsibility: "" } }
-      );
-
       res.json({ message: "Member removed", project });
     } catch (error) {
       console.error("Remove Member Error:", error);
@@ -226,7 +222,10 @@ router.get("/api/open-points/my-projects", async (req, res) => {
       $or: [{ owner: user._id }, { "team_members.user": user._id }],
     })
       .populate("owner", "username")
-      .populate("team_members.user", "username employee_photo");
+      .populate(
+        "team_members.user",
+        "username employee_photo first_name last_name"
+      );
 
     // Calculate health stats for each project
     const projectStats = await Promise.all(
@@ -280,8 +279,8 @@ router.get(
   async (req, res) => {
     try {
       const project = await OpenPointProject.findById(req.params.projectId)
-        .populate("owner", "username")
-        .populate("team_members.user", "username email");
+        .populate("owner", "username first_name last_name")
+        .populate("team_members.user", "username email first_name last_name");
 
       if (!project) return res.status(404).json({ error: "Project not found" });
       res.json(project);
@@ -302,7 +301,7 @@ router.get(
       await OpenPoint.updateMany(
         {
           project_id: req.params.projectId,
-          status: { $ne: "Green" },
+          status: { $nin: ["Green", "Yellow", "Orange"] },
           target_date: { $lt: today },
         },
         {
@@ -311,8 +310,8 @@ router.get(
       );
 
       const points = await OpenPoint.find({ project_id: req.params.projectId })
-        .populate("responsible_person", "username")
-        .populate("reviewer", "username")
+        .populate("responsible_person", "username first_name last_name")
+        .populate("reviewer", "username first_name last_name")
         .sort({ status: 1, target_date: 1 }); // Sort by status Priority (Red logic needs custom sort but simplified)
 
       res.json(points);
@@ -325,9 +324,34 @@ router.get(
 // Create Point
 router.post("/api/open-points/points", async (req, res) => {
   try {
-    const point = new OpenPoint(req.body);
-    await point.save();
-    res.status(201).json(point);
+    console.log(
+      "Create Point Request Body:",
+      JSON.stringify(req.body, null, 2)
+    );
+
+    const pointData = { ...req.body };
+
+    // Server-side fallback: If responsibility text is missing but ID is present, fetch it.
+    if (!pointData.responsibility && pointData.responsible_person) {
+      try {
+        const user = await UserModel.findById(pointData.responsible_person);
+        if (user) {
+          pointData.responsibility = user.username;
+          console.log("Auto-filled responsibility from ID:", user.username);
+        }
+      } catch (err) {
+        console.error("Failed to auto-fill responsibility", err);
+      }
+    }
+
+    const point = new OpenPoint(pointData);
+    const savedPoint = await point.save();
+    console.log(
+      "Create Point Saved Data:",
+      JSON.stringify(savedPoint, null, 2)
+    );
+
+    res.status(201).json(savedPoint);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -337,16 +361,38 @@ router.post("/api/open-points/points", async (req, res) => {
 router.put("/api/open-points/points/:pointId", async (req, res) => {
   try {
     const { status, remarks, evidence, userId, ...otherFields } = req.body;
-    const point = await OpenPoint.findById(req.params.pointId);
+    const point = await OpenPoint.findById(req.params.pointId).populate(
+      "project_id"
+    );
 
     if (!point) return res.status(404).json({ error: "Point not found" });
 
+    // Permission Check for Target Date
+    if (otherFields.target_date) {
+      const project = point.project_id;
+      if (!project)
+        return res
+          .status(404)
+          .json({ error: "Project not found for this point" });
+
+      if (project.owner.toString() !== userId) {
+        const oldDate = point.target_date
+          ? new Date(point.target_date).toISOString().split("T")[0]
+          : "";
+        const newDate = new Date(otherFields.target_date)
+          .toISOString()
+          .split("T")[0];
+        if (oldDate !== newDate) {
+          return res.status(403).json({
+            error:
+              "Access Denied: Only the project owner can modify target dates.",
+          });
+        }
+      }
+    }
+
     // 1. Handle Status Change Logic
     if (status && status !== point.status) {
-      // Logic: Green requires evidence
-      // Start of Logic: Green used to require evidence, but we are disabling this check for now as UI for evidence is not ready.
-      // if (status === 'Green' && (!evidence || evidence.length === 0)) { ... }
-
       point.status = status;
       if (status === "Green") point.completion_date = new Date();
 
@@ -358,6 +404,11 @@ router.put("/api/open-points/points/:pointId", async (req, res) => {
       });
     }
 
+    // Handle Remarks persistence
+    if (remarks !== undefined) {
+      point.remarks = remarks;
+    }
+
     // 2. Handle Evidence Update
     if (evidence && evidence.length > 0) {
       point.evidence = [...point.evidence, ...evidence];
@@ -365,7 +416,7 @@ router.put("/api/open-points/points/:pointId", async (req, res) => {
 
     // 3. Handle Other Fields (Excel Inline Edits)
     Object.keys(otherFields).forEach((key) => {
-      if (key !== "history" && key !== "_id") {
+      if (key !== "history" && key !== "_id" && key !== "project_id") {
         // Protect sensitive fields
         point[key] = otherFields[key];
       }
@@ -374,6 +425,7 @@ router.put("/api/open-points/points/:pointId", async (req, res) => {
     await point.save();
     res.json(point);
   } catch (error) {
+    console.error("Update Point Error", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -482,6 +534,72 @@ router.post(
 
       res.json({ message: "Projects assigned successfully" });
     } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+// Change Project Owner
+router.put(
+  "/api/open-points/projects/:projectId/change-owner",
+  async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const { newOwnerId } = req.body;
+      const requesterId = req.headers["user-id"];
+
+      if (!requesterId) return res.status(401).json({ error: "Unauthorized" });
+
+      const project = await OpenPointProject.findById(projectId);
+      if (!project) return res.status(404).json({ error: "Project not found" });
+
+      // Only current owner can transfer ownership
+      if (project.owner.toString() !== requesterId) {
+        return res.status(403).json({
+          error:
+            "Access Denied: Only the current project owner can transfer ownership",
+        });
+      }
+
+      const newOwner = await UserModel.findById(newOwnerId);
+      if (!newOwner)
+        return res.status(404).json({ error: "New owner not found" });
+
+      if (project.owner.toString() === newOwnerId.toString()) {
+        return res.status(400).json({ error: "User is already the owner" });
+      }
+
+      const oldOwnerId = project.owner;
+
+      // Add old owner to team members if not present
+      if (
+        !project.team_members.some(
+          (m) => m.user.toString() === oldOwnerId.toString()
+        )
+      ) {
+        project.team_members.push({
+          user: oldOwnerId,
+          role: "L4", // Previous owner likely has high privileges
+          added_at: new Date(),
+        });
+      }
+
+      // Remove new owner from team members if present
+      project.team_members = project.team_members.filter(
+        (m) => m.user.toString() !== newOwnerId.toString()
+      );
+
+      // Set New Owner
+      project.owner = newOwner._id;
+
+      await project.save();
+
+      res.json({
+        message: "Project ownership transferred successfully",
+        project,
+      });
+    } catch (error) {
+      console.error("Change Owner Error:", error);
       res.status(500).json({ error: error.message });
     }
   }
