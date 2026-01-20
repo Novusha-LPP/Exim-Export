@@ -295,7 +295,7 @@ const ExportJobsTable = () => {
     const fetchUsers = async () => {
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/export-jobs-module-users`
+          `${import.meta.env.VITE_API_STRING}/export-jobs-module-users`,
         );
         if (response.data.success) {
           setJobOwnersList(response.data.data);
@@ -340,7 +340,7 @@ const ExportJobsTable = () => {
     const fetchExporters = async () => {
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/exporter-list`
+          `${import.meta.env.VITE_API_STRING}/exporter-list`,
         );
         if (response.data.success) {
           setExporters(response.data.data || []);
@@ -358,7 +358,7 @@ const ExportJobsTable = () => {
     const fetchCustomHouses = async () => {
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/custom-house-list`
+          `${import.meta.env.VITE_API_STRING}/custom-house-list`,
         );
         if (response.data.success) {
           setCustomHouses(response.data.data || []);
@@ -382,14 +382,14 @@ const ExportJobsTable = () => {
         {
           params: { exporter: selectedExporter },
           responseType: "blob",
-        }
+        },
       );
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute(
         "download",
-        `DSR_Report_${selectedExporter}_${format(new Date(), "yyyyMMdd")}.xlsx`
+        `DSR_Report_${selectedExporter}_${format(new Date(), "yyyyMMdd")}.xlsx`,
       );
       document.body.appendChild(link);
       link.click();
@@ -422,14 +422,14 @@ const ExportJobsTable = () => {
             page: page,
             limit: LIMIT,
           },
-        }
+        },
       );
       if (response.data.success) {
         setJobs(response.data.data.jobs || []);
         setTotalRecords(
           response.data.data.total ||
-          response.data.data.pagination?.totalCount ||
-          0
+            response.data.data.pagination?.totalCount ||
+            0,
         );
       }
     } catch (err) {
@@ -520,7 +520,7 @@ const ExportJobsTable = () => {
             branch_code: extractedBranch,
             transportMode: job.transportMode || "SEA",
             year: extractedYear,
-          }
+          },
         );
 
         if (response.data.success) {
@@ -581,7 +581,7 @@ const ExportJobsTable = () => {
           transportMode: copyForm.transportMode,
           year: copyForm.year,
           manualSequence: copyForm.manualSequence || "",
-        }
+        },
       );
 
       if (response.data.success) {
@@ -598,21 +598,21 @@ const ExportJobsTable = () => {
               page: page,
               limit: LIMIT,
             },
-          }
+          },
         );
 
         if (refreshResponse.data.success) {
           setJobs(refreshResponse.data.data.jobs || []);
           setTotalRecords(
             refreshResponse.data.data.total ||
-            refreshResponse.data.data.pagination?.totalCount ||
-            0
+              refreshResponse.data.data.pagination?.totalCount ||
+              0,
           );
         }
 
         // Show success message
         alert(
-          `Job copied successfully! New job number: ${response.data.job.job_no}`
+          `Job copied successfully! New job number: ${response.data.job.job_no}`,
         );
 
         // Optionally navigate to the new job
@@ -625,22 +625,22 @@ const ExportJobsTable = () => {
         if (error.response.status === 409) {
           setCopyError(
             error.response.data.message ||
-            "This job number already exists. Please use a different sequence."
+              "This job number already exists. Please use a different sequence.",
           );
         } else if (error.response.status === 404) {
           setCopyError(
             error.response.data.message ||
-            "Source job not found. Please refresh and try again."
+              "Source job not found. Please refresh and try again.",
           );
         } else if (error.response.status === 400) {
           setCopyError(
             error.response.data.message ||
-            "Invalid input. Please check your entries."
+              "Invalid input. Please check your entries.",
           );
         } else {
           setCopyError(
             error.response.data.message ||
-            "Error copying job. Please try again."
+              "Error copying job. Please try again.",
           );
         }
       } else {
@@ -658,8 +658,11 @@ const ExportJobsTable = () => {
     if (job.eSanchitDocuments && Array.isArray(job.eSanchitDocuments)) {
       job.eSanchitDocuments.forEach((doc, idx) => {
         if (doc.fileUrl) {
-          const title =
+          let title =
             doc.documentType || doc.icegateFilename || `eSanchit ${idx + 1}`;
+
+          if (title === "380") title = "Commercial Invoice";
+
           links.push({ title, url: doc.fileUrl });
         }
       });
@@ -1094,7 +1097,6 @@ const ExportJobsTable = () => {
                 ))}
               </Select>
             </FormControl>
-
             {/* Custom House Filter */}
             <select
               style={s.select}
@@ -1199,7 +1201,10 @@ const ExportJobsTable = () => {
                   jobs.map((job, idx) => {
                     const rowBg =
                       getStatusColor(
-                        job.detailedStatus?.[0] || job.status || ""
+                        (Array.isArray(job.detailedStatus) &&
+                        job.detailedStatus.length > 0
+                          ? job.detailedStatus[job.detailedStatus.length - 1]
+                          : job.status) || "",
                       ) || "#ffffff";
                     return (
                       <tr
@@ -1475,7 +1480,7 @@ const ExportJobsTable = () => {
                                       {containerNo}
                                       {/* Add line break after every 2 containers, except the last one */}
                                       {index < array.length - 1 &&
-                                        (index + 1) % 2 === 0 ? (
+                                      (index + 1) % 2 === 0 ? (
                                         <br />
                                       ) : index < array.length - 1 ? (
                                         ", "
@@ -1499,7 +1504,7 @@ const ExportJobsTable = () => {
                             <span style={{ fontSize: "10px" }}>Place:</span>{" "}
                             {formatDate(
                               job.operations?.[0]?.statusDetails?.[0]
-                                ?.containerPlacementDate
+                                ?.containerPlacementDate,
                             )}
                           </div>
                         </td>
@@ -1511,13 +1516,13 @@ const ExportJobsTable = () => {
                               style={{ color: "#6b7280", fontSize: "10px" }}
                             >
                               {job.transportMode === "AIR" ||
-                                job.consignmentType === "LCL"
+                              job.consignmentType === "LCL"
                                 ? "File:"
                                 : "Fwd:"}
                             </span>{" "}
                             {formatDate(
                               job.operations?.[0]?.statusDetails?.[0]
-                                ?.handoverForwardingNoteDate
+                                ?.handoverForwardingNoteDate,
                             )}
                           </div>
                           <div>
@@ -1528,7 +1533,7 @@ const ExportJobsTable = () => {
                             </span>{" "}
                             {formatDate(
                               job.operations?.[0]?.statusDetails?.[0]
-                                ?.railOutReachedDate
+                                ?.railOutReachedDate,
                             )}
                           </div>
                         </td>
@@ -1539,6 +1544,7 @@ const ExportJobsTable = () => {
                             style={{
                               display: "flex",
                               flexDirection: "column",
+                              wordBreak: "break-word",
                               gap: "4px",
                             }}
                           >
@@ -1599,10 +1605,12 @@ const ExportJobsTable = () => {
                               borderRadius: "4px",
                             }}
                           >
-                            {/* Use detailedStatus array first item or fallback */}
+                            {/* Use detailedStatus array LAST item or fallback */}
                             {Array.isArray(job.detailedStatus) &&
-                              job.detailedStatus.length > 0
-                              ? job.detailedStatus[0]
+                            job.detailedStatus.length > 0
+                              ? job.detailedStatus[
+                                  job.detailedStatus.length - 1
+                                ]
                               : job.status || "-"}
                           </div>
                         </td>
@@ -1780,9 +1788,9 @@ const ExportJobsTable = () => {
                 style={
                   copyLoading
                     ? {
-                      ...modalStyles.submitButton,
-                      ...modalStyles.disabledButton,
-                    }
+                        ...modalStyles.submitButton,
+                        ...modalStyles.disabledButton,
+                      }
                     : modalStyles.submitButton
                 }
                 onClick={handleCopySubmit}

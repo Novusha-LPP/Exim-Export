@@ -123,7 +123,7 @@ function useCompactCountryDropdown(fieldName, formik) {
     const t = setTimeout(async () => {
       try {
         const res = await fetch(
-          `${apiBase}/countries?search=${encodeURIComponent(searchVal)}`
+          `${apiBase}/countries?search=${encodeURIComponent(searchVal)}`,
         );
         const data = await res.json();
         setOpts(data?.data || []);
@@ -169,7 +169,7 @@ function useCompactCountryDropdown(fieldName, formik) {
         setQuery(toUpper(opts[i].countryName || opts[i].country_name));
         formik.setFieldValue(
           fieldName,
-          toUpper(opts[i].countryName || opts[i].country_name)
+          toUpper(opts[i].countryName || opts[i].country_name),
         );
         setOpen(false);
         setActive(-1);
@@ -207,7 +207,7 @@ function CountryField({ label, fieldName, placeholder, formik }) {
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
-                Math.min(d.opts.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(d.opts.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp")
               d.setActive((a) => Math.max(0, a - 1));
@@ -266,7 +266,7 @@ function useGatewayPortDropdown(fieldName, formik) {
 
     const searchVal = isTyping ? (query || "").trim() : "";
     const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
-      searchVal
+      searchVal,
     )}`;
 
     const t = setTimeout(async () => {
@@ -278,7 +278,7 @@ function useGatewayPortDropdown(fieldName, formik) {
             ? data.data
             : Array.isArray(data)
               ? data
-              : []
+              : [],
         );
       } catch {
         setOpts([]);
@@ -379,7 +379,7 @@ function GatewayPortDropdownField({
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
-                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp")
               d.setActive((a) => Math.max(0, a - 1));
@@ -433,8 +433,8 @@ function NatureOfCargoDropdownField({
   const filtered = (natureOptions || [])
     .filter((opt) =>
       toUpper(typeof opt === "string" ? opt : opt.name).includes(
-        query.toUpperCase()
-      )
+        query.toUpperCase(),
+      ),
     )
     .slice(0, 10);
 
@@ -481,7 +481,7 @@ function NatureOfCargoDropdownField({
             if (!open) return;
             if (e.key === "ArrowDown")
               setActive((a) =>
-                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp") setActive((a) => Math.max(0, a - 1));
             else if (e.key === "Enter" && active >= 0) {
@@ -568,7 +568,7 @@ function UnitDropdownField({
             if (!open) return;
             if (e.key === "ArrowDown")
               setActive((a) =>
-                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp") setActive((a) => Math.max(0, a - 1));
             else if (e.key === "Enter" && active >= 0) {
@@ -630,7 +630,7 @@ function usePortDropdown(fieldName, formik, onSelect, endpoint) {
             ? data.data
             : Array.isArray(data)
               ? data
-              : []
+              : [],
         );
       } catch {
         setOpts([]);
@@ -732,7 +732,7 @@ function PortField({
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
-                Math.min(d.opts.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(d.opts.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp")
               d.setActive((a) => Math.max(0, a - 1));
@@ -788,7 +788,7 @@ function StateDropdownField({
   // Filtering states by substring match, always upper-case
   const filteredStates = (states || [])
     .filter((s) =>
-      toUpper(typeof s === "string" ? s : s.name).includes(query.toUpperCase())
+      toUpper(typeof s === "string" ? s : s.name).includes(query.toUpperCase()),
     )
     .slice(0, 10); // Limit for dropdown height
 
@@ -839,7 +839,7 @@ function StateDropdownField({
             if (!open) return;
             if (e.key === "ArrowDown")
               setActive((a) =>
-                Math.min(filteredStates.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(filteredStates.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp") setActive((a) => Math.max(0, a - 1));
             else if (e.key === "Enter" && active >= 0) {
@@ -894,11 +894,11 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
 
     const url = isAir
       ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-        searchVal
-      )}`
+          searchVal,
+        )}`
       : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-        searchVal
-      )}`;
+          searchVal,
+        )}`;
 
     const t = setTimeout(async () => {
       try {
@@ -909,7 +909,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
             ? data.data
             : Array.isArray(data)
               ? data
-              : []
+              : [],
         );
       } catch {
         setOpts([]);
@@ -1031,7 +1031,7 @@ function ShippingLineDropdownField({
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
-                Math.min(filteredOpts.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(filteredOpts.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp")
               d.setActive((a) => Math.max(0, a - 1));
@@ -1091,7 +1091,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
     async (values) => {
       if (onUpdate) await onUpdate(values);
     },
-    [onUpdate]
+    [onUpdate],
   );
   function handleFieldChange(field, value) {
     formik.setFieldValue(field, value);
@@ -1118,16 +1118,25 @@ function ShipmentMainTab({ formik, onUpdate }) {
                     if (opt.country) {
                       formik.setFieldValue(
                         "discharge_country",
-                        toUpper(opt.country)
+                        toUpper(opt.country),
                       );
                     }
                   }}
                 />
-                <CountryField
-                  label="DISCHARGE COUNTRY"
-                  fieldName="discharge_country"
-                  placeholder="ENTER COUNTRY"
+                <PortField
+                  label="DESTINATION PORT"
+                  fieldName="destination_port"
+                  placeholder="ENTER PORT"
                   formik={formik}
+                  endpoint={isAir ? "airPorts" : "seaPorts"}
+                  onSelect={(opt) => {
+                    if (opt.country) {
+                      formik.setFieldValue(
+                        "destination_country",
+                        toUpper(opt.country),
+                      );
+                    }
+                  }}
                 />
                 <ShippingLineDropdownField
                   fieldName="shipping_line_airline"
@@ -1144,7 +1153,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                       onChange={(e) =>
                         handleFieldChange(
                           "voyage_no",
-                          e.target.value.toUpperCase()
+                          e.target.value.toUpperCase(),
                         )
                       }
                     />
@@ -1189,7 +1198,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                       onChange={(e) =>
                         handleFieldChange(
                           "pre_carriage_by",
-                          e.target.value.toUpperCase()
+                          e.target.value.toUpperCase(),
                         )
                       }
                     />
@@ -1204,7 +1213,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                       onChange={(e) =>
                         handleFieldChange(
                           "transhipper_code",
-                          e.target.value.toUpperCase()
+                          e.target.value.toUpperCase(),
                         )
                       }
                     />
@@ -1234,7 +1243,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                       onChange={(e) =>
                         handleFieldChange(
                           "annexure_c_details",
-                          e.target.checked
+                          e.target.checked,
                         )
                       }
                       style={{ marginRight: 7 }}
@@ -1244,21 +1253,13 @@ function ShipmentMainTab({ formik, onUpdate }) {
                 </div>
               </div>
               <div style={styles.half}>
-                <PortField
-                  label="DESTINATION PORT"
-                  fieldName="destination_port"
-                  placeholder="ENTER PORT"
+                <CountryField
+                  label="DISCHARGE COUNTRY"
+                  fieldName="discharge_country"
+                  placeholder="ENTER COUNTRY"
                   formik={formik}
-                  endpoint={isAir ? "airPorts" : "seaPorts"}
-                  onSelect={(opt) => {
-                    if (opt.country) {
-                      formik.setFieldValue(
-                        "destination_country",
-                        toUpper(opt.country)
-                      );
-                    }
-                  }}
                 />
+
                 <CountryField
                   label="DESTINATION COUNTRY"
                   fieldName="destination_country"
@@ -1276,7 +1277,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                         onChange={(e) =>
                           handleFieldChange(
                             "flight_no",
-                            e.target.value.toUpperCase()
+                            e.target.value.toUpperCase(),
                           )
                         }
                       />
@@ -1303,7 +1304,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                         onChange={(e) =>
                           handleFieldChange(
                             "vessel_name",
-                            e.target.value.toUpperCase()
+                            e.target.value.toUpperCase(),
                           )
                         }
                       />
@@ -1364,7 +1365,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                       onChange={(e) =>
                         handleFieldChange(
                           "place_of_receipt",
-                          e.target.value.toUpperCase()
+                          e.target.value.toUpperCase(),
                         )
                       }
                     />

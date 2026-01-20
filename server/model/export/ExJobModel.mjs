@@ -13,7 +13,7 @@ const areDetailsSchema = new Schema(
     range: { type: String, trim: true },
     remark: { type: String, trim: true },
   },
-  { _id: true }
+  { _id: true },
 );
 const deecSchema = new Schema(
   {
@@ -46,7 +46,7 @@ const deecSchema = new Schema(
       },
     ],
   },
-  { _id: true }
+  { _id: true },
 );
 
 // EPCG Schema
@@ -81,7 +81,7 @@ const epcgSchema = new Schema(
       },
     ],
   },
-  { _id: true }
+  { _id: true },
 );
 const cessExpDutySchema = new Schema(
   {
@@ -140,7 +140,7 @@ const cessExpDutySchema = new Schema(
       assesseeCode: { type: String, trim: true },
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const freightInsuranceChargesSchema = new Schema(
@@ -183,7 +183,7 @@ const freightInsuranceChargesSchema = new Schema(
       amount: { type: Number },
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // Drawback Details Schema
@@ -214,7 +214,7 @@ const drawbackDetailsSchema = new Schema(
     rosctlCategory: { type: String, trim: true }, // "B" or "D"
     showRosctl: { type: Boolean, default: false },
   },
-  { _id: true }
+  { _id: true },
 );
 // Product/Item Details Schema (for multiple products per invoice)
 const productDetailsSchema = new Schema(
@@ -294,7 +294,6 @@ const productDetailsSchema = new Schema(
     },
 
     cessExpDuty: { type: cessExpDutySchema },
-
 
     // --- Re-Export Details ---
     reExport: {
@@ -380,7 +379,7 @@ const productDetailsSchema = new Schema(
     cessExciseDuty: { type: String, default: "0" },
     compensationCess: { type: String, default: "0" },
   },
-  { _id: true }
+  { _id: true },
 );
 
 // Invoice Schema (multiple invoices per job)
@@ -411,7 +410,7 @@ const invoiceSchema = new Schema(
     products: [productDetailsSchema],
     freightInsuranceCharges: { type: freightInsuranceChargesSchema },
   },
-  { _id: true }
+  { _id: true },
 );
 // Payment Request Schema
 
@@ -435,7 +434,7 @@ const containerDetailsSchema = new Schema(
     sealDeviceId: String,
     rfid: String, // If needed for RFID field
   },
-  { _id: true }
+  { _id: true },
 );
 // Buyer/Third Party Information Schema
 const buyerThirdPartySchema = new Schema(
@@ -475,7 +474,7 @@ const buyerThirdPartySchema = new Schema(
       transitCountry: { type: String, ref: "Country" },
     },
   },
-  { _id: false }
+  { _id: false },
 );
 // AP Invoice Schema (Financial - Accounts Payable)
 const apInvoiceSchema = new Schema(
@@ -489,7 +488,7 @@ const apInvoiceSchema = new Schema(
     balance: { type: Number, default: 0 },
     vendor_bill_no: { type: String, trim: true },
   },
-  { _id: true }
+  { _id: true },
 );
 
 const arInvoiceSchema = new Schema(
@@ -502,7 +501,7 @@ const arInvoiceSchema = new Schema(
     amount: { type: Number, default: 0 },
     balance: { type: Number, default: 0 },
   },
-  { _id: true }
+  { _id: true },
 );
 
 // eSanchit Document Schema
@@ -584,7 +583,7 @@ const chargeSchema = new Schema(
 
     quotationNo: { type: String, trim: true },
   },
-  { _id: true }
+  { _id: true },
 );
 
 // Milestone Tracking Schema
@@ -598,7 +597,7 @@ const milestoneSchema = new Schema(
     completedBy: { type: String, trim: true },
     remarks: { type: String, trim: true },
   },
-  { _id: true }
+  { _id: true },
 );
 
 const statusDetailsSchema = new Schema(
@@ -627,9 +626,10 @@ const statusDetailsSchema = new Schema(
     hoToConsoleDate2: { type: String, trim: true },
     hoToConsoleName: { type: String, trim: true },
     containerPlacementDate: { type: String, trim: true },
+    gateInDate: { type: String, trim: true },
     railOutReachedDate: { type: String, trim: true },
   },
-  { _id: true }
+  { _id: true },
 );
 
 // Container/Package Schema for Export - FIXED as proper Mongoose Schema
@@ -647,7 +647,6 @@ const exportOperationSchema = new Schema(
         grossWeightKgs: { type: Number },
         images: [String],
         cartingDate: { type: String, trim: true },
-        gateInDate: { type: String, trim: true },
       },
     ],
 
@@ -698,7 +697,7 @@ const exportOperationSchema = new Schema(
 
     statusDetails: [statusDetailsSchema],
   },
-  { _id: true }
+  { _id: true },
 );
 
 // Main Export Job Schema
@@ -1064,7 +1063,7 @@ const exportJobSchema = new mongoose.Schema(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
-  }
+  },
 );
 
 exportJobSchema.pre("save", function (next) {
@@ -1072,7 +1071,7 @@ exportJobSchema.pre("save", function (next) {
     "🔧 Pre-save: containers:",
     this.containers?.length || 0,
     "operations:",
-    this.operations?.length || 0
+    this.operations?.length || 0,
   );
 
   // CLEANUP: If Dock (FCL or LCL), remove containerNo from all Transporter (Carting) Details
@@ -1087,7 +1086,7 @@ exportJobSchema.pre("save", function (next) {
       (op.transporterDetails || []).forEach((td) => {
         if (td.containerNo) {
           console.log(
-            `🧹 Clearing containerNo from Carting Detail (Dock Mode): ${td.containerNo}`
+            `🧹 Clearing containerNo from Carting Detail (Dock Mode): ${td.containerNo}`,
           );
           td.containerNo = "";
         }
@@ -1104,7 +1103,7 @@ exportJobSchema.pre("save", function (next) {
     (this.containers || [])
       .map((c) => c.containerNo)
       .filter((c) => c && typeof c === "string" && c.trim().length > 0)
-      .map((c) => c.trim().toUpperCase())
+      .map((c) => c.trim().toUpperCase()),
   );
 
   // From operations - CHECK ALL ARRAYS (transporterDetails, containerDetails, weighmentDetails)
@@ -1134,7 +1133,7 @@ exportJobSchema.pre("save", function (next) {
   ]);
   console.log(
     `🔍 Found ${allContainerNos.size} unique containers:`,
-    Array.from(allContainerNos)
+    Array.from(allContainerNos),
   );
 
   // ========================================
@@ -1142,7 +1141,7 @@ exportJobSchema.pre("save", function (next) {
   // ========================================
   const existingContainers = this.containers || [];
   const existingContainerMap = new Map(
-    existingContainers.map((c) => [c.containerNo, c])
+    existingContainers.map((c) => [c.containerNo, c]),
   );
 
   // Create missing containers from operations
@@ -1187,7 +1186,7 @@ exportJobSchema.pre("save", function (next) {
   // If no operations exist, create one operation with all containers
   if (!this.operations || this.operations.length === 0) {
     console.log(
-      `🆕 Creating new operation with ${allContainerNos.size} containers`
+      `🆕 Creating new operation with ${allContainerNos.size} containers`,
     );
 
     const transporterDetails = [];
@@ -1198,7 +1197,7 @@ exportJobSchema.pre("save", function (next) {
 
     allContainerNos.forEach((containerNo) => {
       const container = syncedContainers.find(
-        (c) => c.containerNo === containerNo
+        (c) => c.containerNo === containerNo,
       );
 
       // Only add per-container carting/transporter row if NOT Dock
@@ -1313,7 +1312,7 @@ exportJobSchema.pre("save", function (next) {
       // Iterate over ALL valid containers to Upsert (Update or Insert) details
       allContainerNos.forEach((containerNo) => {
         const container = syncedContainers.find(
-          (c) => c.containerNo === containerNo
+          (c) => c.containerNo === containerNo,
         );
 
         // 1. Transporter (Carting) Details
@@ -1321,7 +1320,7 @@ exportJobSchema.pre("save", function (next) {
         if (!isDock) {
           operation.transporterDetails = operation.transporterDetails || [];
           let td = operation.transporterDetails.find(
-            (t) => t.containerNo === containerNo
+            (t) => t.containerNo === containerNo,
           );
 
           if (!td) {
@@ -1350,7 +1349,7 @@ exportJobSchema.pre("save", function (next) {
         // 2. Container Details
         operation.containerDetails = operation.containerDetails || [];
         let cd = operation.containerDetails.find(
-          (c) => c.containerNo === containerNo
+          (c) => c.containerNo === containerNo,
         );
 
         if (!cd) {
@@ -1375,7 +1374,7 @@ exportJobSchema.pre("save", function (next) {
         // 3. Weighment Details
         operation.weighmentDetails = operation.weighmentDetails || [];
         let wd = operation.weighmentDetails.find(
-          (w) => w.containerNo === containerNo
+          (w) => w.containerNo === containerNo,
         );
 
         if (!wd) {
@@ -1406,7 +1405,7 @@ exportJobSchema.pre("save", function (next) {
   }
 
   console.log(
-    `✅ Operations synced: ${this.operations.length} operation(s) with ${allContainerNos.size} containers each`
+    `✅ Operations synced: ${this.operations.length} operation(s) with ${allContainerNos.size} containers each`,
   );
 
   // ========================================
@@ -1418,7 +1417,7 @@ exportJobSchema.pre("save", function (next) {
   }
 
   console.log(
-    `✅ Sync complete: ${this.containers.length} containers ↔ ${allContainerNos.size} unique containers in operations`
+    `✅ Sync complete: ${this.containers.length} containers ↔ ${allContainerNos.size} unique containers in operations`,
   );
   next();
 });
@@ -1429,21 +1428,21 @@ exportJobSchema.methods.getOperationDataForContainer = function (containerNo) {
 
   (this.operations || []).forEach((op) => {
     const cd = (op.containerDetails || []).find(
-      (c) => c.containerNo === containerNo
+      (c) => c.containerNo === containerNo,
     );
     if (cd) {
       result.containerSize = cd.containerSize || result.containerSize;
     }
 
     const wd = (op.weighmentDetails || []).find(
-      (w) => w.containerNo === containerNo
+      (w) => w.containerNo === containerNo,
     );
     if (wd) {
       result.grossWeight = wd.grossWeight || result.grossWeight;
     }
 
     const td = (op.transporterDetails || []).find(
-      (t) => t.containerNo === containerNo
+      (t) => t.containerNo === containerNo,
     );
     if (td) {
       result.noOfPackages = td.noOfPackages || result.noOfPackages;
@@ -1464,7 +1463,7 @@ exportJobSchema.index({ "invoices.invoiceNumber": 1 }, { sparse: true });
 exportJobSchema.virtual("totalCharges").get(function () {
   return this.charges.reduce(
     (total, charge) => total + charge.revenue.amount,
-    0
+    0,
   );
 });
 
@@ -1476,7 +1475,7 @@ exportJobSchema.virtual("isCompleted").get(function () {
 exportJobSchema.methods.addMilestone = function (
   milestoneName,
 
-  actualDate = null
+  actualDate = null,
 ) {
   this.milestones.push({
     milestoneName,
@@ -1488,7 +1487,7 @@ exportJobSchema.methods.addMilestone = function (
 
 exportJobSchema.methods.updateMilestone = function (milestoneName, actualDate) {
   const milestone = this.milestones.find(
-    (m) => m.milestoneName === milestoneName
+    (m) => m.milestoneName === milestoneName,
   );
   if (milestone) {
     milestone.actualDate = actualDate;

@@ -104,17 +104,17 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
         container_placement_date: status.containerPlacementDate || "",
         origin_docs_received: job.job_date || "",
         handover_date: status.handoverForwardingNoteDate || "",
-        gate_in_thar: transporter.gateInDate || "",
+        gate_in_thar: status.gateInDate || "",
         rail_out_planned: status.handoverConcorTharSanganaRailRoadDate || "",
         rail_out_actual: status.railOutReachedDate || "",
-        cntr_port_gate_in: transporter.gateInDate || "",
+        cntr_port_gate_in: status.gateInDate || "",
         remarks: job.customerremark,
         consignment_type: job.consignmentType || "",
         milestone_remarks: job.milestones?.[0]?.remarks || "",
 
         port_of_origin: job.custom_house || "",
         job_no: job.job_no || "",
-        docs_recd_date: transporter.gateInDate || "",
+        docs_recd_date: status.gateInDate || "",
         cntr_size: cntrSize,
         consignee_name: job.consignees?.[0]?.consignee_name || "",
         invoice_no: firstInvoice.invoiceNumber || "",
@@ -196,11 +196,11 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
     // Set response headers
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="DSR_Report_${exporter}.xlsx"`
+      `attachment; filename="DSR_Report_${exporter}.xlsx"`,
     );
 
     await workbook.xlsx.write(res);

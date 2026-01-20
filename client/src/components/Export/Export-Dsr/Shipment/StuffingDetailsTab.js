@@ -179,7 +179,7 @@ function CFSDropdownField({
             if (!open) return;
             if (e.key === "ArrowDown")
               setActive((a) =>
-                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp") setActive((a) => Math.max(0, a - 1));
             else if (e.key === "Enter" && active >= 0) {
@@ -224,7 +224,7 @@ function StuffingDetailsTab({ formik, onUpdate }) {
     async (values) => {
       if (onUpdate) await onUpdate(values);
     },
-    [onUpdate]
+    [onUpdate],
   );
 
   const handleFieldChange = (field, value) => {
@@ -246,23 +246,6 @@ function StuffingDetailsTab({ formik, onUpdate }) {
 
             {/* Goods Stuffed At + Sample Accompanied */}
             <div style={styles.split}>
-              <div style={styles.half}>
-                <div style={styles.label}>GOODS STUFFED AT</div>
-                <select
-                  style={styles.select}
-                  value={formik.values.goods_stuffed_at || ""}
-                  onChange={(e) =>
-                    handleFieldChange("goods_stuffed_at", e.target.value)
-                  }
-                >
-                  <option value="">SELECT</option>
-                  {goodsStuffedAtOptions.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {toUpper(opt)}
-                    </option>
-                  ))}
-                </select>
-              </div>
               <div style={styles.half}>
                 <div style={{ ...styles.checkboxRow, marginTop: 20 }}>
                   <input
@@ -298,7 +281,7 @@ function StuffingDetailsTab({ formik, onUpdate }) {
                 onChange={(e) =>
                   handleFieldChange(
                     "factory_address",
-                    e.target.value.toUpperCase()
+                    e.target.value.toUpperCase(),
                   )
                 }
                 placeholder="ENTER FACTORY ADDRESS DETAILS..."
@@ -317,7 +300,7 @@ function StuffingDetailsTab({ formik, onUpdate }) {
                 onChange={(e) =>
                   handleFieldChange(
                     "warehouse_code",
-                    e.target.value.toUpperCase()
+                    e.target.value.toUpperCase(),
                   )
                 }
                 placeholder="ENTER WAREHOUSE CODE"
@@ -359,7 +342,7 @@ function StuffingDetailsTab({ formik, onUpdate }) {
                 onChange={(e) =>
                   handleFieldChange(
                     "stuffing_seal_no",
-                    e.target.value.toUpperCase()
+                    e.target.value.toUpperCase(),
                   )
                 }
                 placeholder="ENTER SEAL NUMBER"
@@ -375,7 +358,7 @@ function StuffingDetailsTab({ formik, onUpdate }) {
                 onChange={(e) =>
                   handleFieldChange(
                     "stuffing_agency_name",
-                    e.target.value.toUpperCase()
+                    e.target.value.toUpperCase(),
                   )
                 }
                 placeholder="ENTER AGENCY NAME"
@@ -412,7 +395,7 @@ function StuffingDetailsTab({ formik, onUpdate }) {
                 onChange={(e) =>
                   handleFieldChange(
                     "stuffing_supervisor",
-                    e.target.value.toUpperCase()
+                    e.target.value.toUpperCase(),
                   )
                 }
                 placeholder="ENTER SUPERVISOR NAME"
@@ -429,7 +412,7 @@ function StuffingDetailsTab({ formik, onUpdate }) {
                 onChange={(e) =>
                   handleFieldChange(
                     "stuffing_remarks",
-                    e.target.value.toUpperCase()
+                    e.target.value.toUpperCase(),
                   )
                 }
                 placeholder="ENTER ANY ADDITIONAL REMARKS..."

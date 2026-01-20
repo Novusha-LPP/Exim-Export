@@ -14,6 +14,8 @@ import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingN
 // Helper function
 const toUpper = (str) => (str || "").toUpperCase();
 
+const goodsStuffedAtOptions = ["Factory", "Dock"];
+
 // Styles object
 const styles = {
   field: {
@@ -96,7 +98,7 @@ function useGatewayPortDropdown(fieldName, formik) {
     // Only use query for search if user is actively typing
     const searchVal = isTyping ? (query || "").trim() : "";
     const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
-      searchVal
+      searchVal,
     )}`;
 
     const t = setTimeout(async () => {
@@ -108,7 +110,7 @@ function useGatewayPortDropdown(fieldName, formik) {
             ? data.data
             : Array.isArray(data)
               ? data
-              : []
+              : [],
         );
       } catch {
         setOpts([]);
@@ -209,7 +211,7 @@ function GatewayPortDropdown({
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
-                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp")
               d.setActive((a) => Math.max(0, a - 1));
@@ -262,8 +264,14 @@ const LogisysEditableHeader = ({
   }, [
     formik.values.consignmentType,
     formik.setFieldValue,
+    formik.setFieldValue,
     formik.values.transportMode,
   ]);
+  useEffect(() => {
+    if (toUpper(formik.values.goods_stuffed_at) === "FACTORY") {
+      formik.setFieldValue("consignmentType", "FCL");
+    }
+  }, [formik.values.goods_stuffed_at]);
 
   const [snackbar, setSnackbar] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -504,6 +512,24 @@ const LogisysEditableHeader = ({
             ]}
             onChange={formik.handleChange}
             placeholder="Select Type"
+          />
+        </div>
+
+        {/* Goods Stuffed At */}
+        <div style={{ flex: "1 1 120px", minWidth: 100 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>Goods Stuffed At</div>
+          <AutocompleteSelect
+            name="goods_stuffed_at"
+            value={formik.values.goods_stuffed_at || ""}
+            options={[
+              { value: "", label: "SELECT" },
+              ...goodsStuffedAtOptions.map((opt) => ({
+                value: opt,
+                label: toUpper(opt),
+              })),
+            ]}
+            onChange={formik.handleChange}
+            placeholder="Select"
           />
         </div>
 

@@ -71,7 +71,6 @@ const getDefaultItem = (section) => {
       grossWeightKgs: 0,
       images: [],
       cartingDate: "",
-      gateInDate: "",
     },
     containerDetails: {
       containerNo: "",
@@ -111,6 +110,7 @@ const getDefaultItem = (section) => {
       images: [],
     },
     statusDetails: {
+      gateInDate: "",
       rms: "RMS", // Default
       goodsRegistrationDate: "",
       leoDate: "",
@@ -146,7 +146,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
   const [query, setQuery] = useState(
     (formik.values[fieldName.split(".")[0]] &&
       getNestedValue(formik.values, fieldName)) ||
-      ""
+      "",
   );
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
@@ -178,10 +178,10 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
 
     const url = isAir
       ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-          searchVal
+          searchVal,
         )}`
       : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-          searchVal
+          searchVal,
         )}`;
 
     const t = setTimeout(async () => {
@@ -192,8 +192,8 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : [],
         );
       } catch {
         setOpts([]);
@@ -331,7 +331,7 @@ function ShippingLineDropdownField({ fieldName, formik, placeholder = "" }) {
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
-                Math.min(filteredOpts.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(filteredOpts.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp")
               d.setActive((a) => Math.max(0, a - 1));
@@ -392,7 +392,7 @@ function ShippingLineDropdownField({ fieldName, formik, placeholder = "" }) {
                 );
               })}
             </div>,
-            document.body
+            document.body,
           )}
       </div>
     </div>
@@ -408,7 +408,7 @@ function useGatewayPortDropdown(fieldName, formik) {
     path.split(".").reduce((acc, part) => acc && acc[part], obj);
 
   const [query, setQuery] = useState(
-    getNestedValue(formik.values, fieldName) || ""
+    getNestedValue(formik.values, fieldName) || "",
   );
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
@@ -433,7 +433,7 @@ function useGatewayPortDropdown(fieldName, formik) {
     // Only use query for search if user is actively typing
     const searchVal = isTyping ? (query || "").trim() : "";
     const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
-      searchVal
+      searchVal,
     )}`;
 
     const t = setTimeout(async () => {
@@ -444,8 +444,8 @@ function useGatewayPortDropdown(fieldName, formik) {
           Array.isArray(data?.data)
             ? data.data
             : Array.isArray(data)
-            ? data
-            : []
+              ? data
+              : [],
         );
       } catch {
         setOpts([]);
@@ -566,7 +566,7 @@ function GatewayPortDropdown({
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
-                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp")
               d.setActive((a) => Math.max(0, a - 1));
@@ -714,7 +714,7 @@ const OperationsTab = ({ formik }) => {
             allOpContainersSet.add(item.containerNo.trim().toUpperCase());
           }
         });
-      }
+      },
     );
   });
   const opContainerNos = Array.from(allOpContainersSet);
@@ -722,7 +722,7 @@ const OperationsTab = ({ formik }) => {
   // 2. Get master list container numbers
   const masterContainers = formik.values.containers || [];
   const masterContainerNos = masterContainers.map((c) =>
-    (c.containerNo || "").toUpperCase()
+    (c.containerNo || "").toUpperCase(),
   );
 
   // 3. Check Sync Status
@@ -763,7 +763,7 @@ const OperationsTab = ({ formik }) => {
       const maxLen = Math.max(
         tArr.length,
         !isAir ? cArr.length : 0,
-        !isAir ? wArr.length : 0
+        !isAir ? wArr.length : 0,
       );
 
       // Check if we need to expand any arrays to match lengths
@@ -784,7 +784,7 @@ const OperationsTab = ({ formik }) => {
       }
 
       let opIsDirty = sectionsToSync.some(
-        (s) => (op[s] || []).length !== maxLen
+        (s) => (op[s] || []).length !== maxLen,
       );
 
       const syncedOp = { ...op };
@@ -910,7 +910,7 @@ const OperationsTab = ({ formik }) => {
           if (containerDetailsMap.has(cNo)) {
             // We take the last available tare weight if multiple
             containerDetailsMap.get(cNo).tareWeightKgs = Number(
-              item.tareWeightKgs || 0
+              item.tareWeightKgs || 0,
             );
           } else {
             containerDetailsMap.set(cNo, {
@@ -947,7 +947,7 @@ const OperationsTab = ({ formik }) => {
       // 2. Update existing or add new ones to match Operations
       opContainerNos.forEach((no) => {
         let masterItemIdx = nextContainers.findIndex(
-          (c) => (c.containerNo || "").trim().toUpperCase() === no
+          (c) => (c.containerNo || "").trim().toUpperCase() === no,
         );
         const opInfo = containerDetailsMap.get(no) || {
           grossWeight: 0,
@@ -1043,7 +1043,7 @@ const OperationsTab = ({ formik }) => {
       !isAir &&
       field === "containerNo" &&
       ["transporterDetails", "containerDetails", "weighmentDetails"].includes(
-        section
+        section,
       );
 
     const newOperations = currentOps.map((op, opIdx) => {
@@ -1078,7 +1078,7 @@ const OperationsTab = ({ formik }) => {
               updatedOp[s] = [...updatedOp[s]];
               updatedOp[s][itemIndex] = row;
             }
-          }
+          },
         );
       }
 
@@ -1099,7 +1099,7 @@ const OperationsTab = ({ formik }) => {
     const isLinkedSection =
       !isAir &&
       ["transporterDetails", "containerDetails", "weighmentDetails"].includes(
-        section
+        section,
       );
 
     if (isLinkedSection) {
@@ -1135,19 +1135,19 @@ const OperationsTab = ({ formik }) => {
     const isLinkedSection =
       !isAir &&
       ["transporterDetails", "containerDetails", "weighmentDetails"].includes(
-        section
+        section,
       );
 
     if (isLinkedSection) {
       // Delete row from all linked sections to maintain index alignment
       op.transporterDetails = (op.transporterDetails || []).filter(
-        (_, i) => i !== itemIndex
+        (_, i) => i !== itemIndex,
       );
       op.containerDetails = (op.containerDetails || []).filter(
-        (_, i) => i !== itemIndex
+        (_, i) => i !== itemIndex,
       );
       op.weighmentDetails = (op.weighmentDetails || []).filter(
-        (_, i) => i !== itemIndex
+        (_, i) => i !== itemIndex,
       );
     } else {
       op[section] = (op[section] || []).filter((_, i) => i !== itemIndex);
@@ -1219,18 +1219,7 @@ const OperationsTab = ({ formik }) => {
           type: "number",
           width: "100px",
         },
-        {
-          field: "cartingDate",
-          label: "Carting",
-          type: "date",
-          width: "130px",
-        },
-        {
-          field: "gateInDate",
-          label: "Gate-In",
-          type: "date",
-          width: "130px",
-        },
+
         {
           field: "images",
           label: "Images",
@@ -1261,27 +1250,7 @@ const OperationsTab = ({ formik }) => {
           width: "140px",
         },
         { field: "containerSize", label: "Size (FT)", width: "80px" },
-        {
-          field: "containerType",
-          label: "Container Type",
-          width: "100px",
-        },
-        {
-          field: "cargoType",
-          label: "Cargo Type",
-          width: "100px",
-          type: "select",
-          options: [
-            { value: "Gen", label: "Gen" },
-            { value: "Haz", label: "Haz" },
-          ],
-        },
-        {
-          field: "maxGrossWeightKgs",
-          label: "Max Gross (KG)",
-          type: "number",
-          width: "100px",
-        },
+
         {
           field: "tareWeightKgs",
           label: "Tare Wt (KG)",
@@ -1690,7 +1659,7 @@ const TableSection = ({
                                   section,
                                   rowIdx,
                                   col.field,
-                                  updatedList
+                                  updatedList,
                                 );
                               }}
                             />
@@ -1700,13 +1669,13 @@ const TableSection = ({
                               onDeleteImage={(deleteIndex) => {
                                 const currentImages = item[col.field] || [];
                                 const updatedList = currentImages.filter(
-                                  (_, i) => i !== deleteIndex
+                                  (_, i) => i !== deleteIndex,
                                 );
                                 onUpdate(
                                   section,
                                   rowIdx,
                                   col.field,
-                                  updatedList
+                                  updatedList,
                                 );
                               }}
                             />
@@ -1736,7 +1705,7 @@ const TableSection = ({
                                 section,
                                 rowIdx,
                                 col.field,
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             style={styles.cellInput}
@@ -1766,9 +1735,12 @@ const TableSection = ({
                               item[col.field] === null
                                 ? ""
                                 : col.type === "date" ||
-                                  col.type === "datetime-local"
-                                ? formatDateForInput(item[col.field], col.type)
-                                : item[col.field]
+                                    col.type === "datetime-local"
+                                  ? formatDateForInput(
+                                      item[col.field],
+                                      col.type,
+                                    )
+                                  : item[col.field]
                             }
                             onChange={(e) =>
                               onUpdate(
@@ -1777,7 +1749,7 @@ const TableSection = ({
                                 col.field,
                                 col.type === "number"
                                   ? e.target.value
-                                  : e.target.value
+                                  : e.target.value,
                               )
                             }
                             onDoubleClick={(e) => {
@@ -1787,7 +1759,7 @@ const TableSection = ({
                               ) {
                                 const pickerVal = formatDateForPicker(
                                   item[col.field],
-                                  col.type
+                                  col.type,
                                 );
                                 if (pickerVal) e.target.value = pickerVal;
                                 e.target.type = col.type;
@@ -1825,7 +1797,7 @@ const TableSection = ({
                                     section,
                                     rowIdx,
                                     col.field,
-                                    shipmentGross
+                                    shipmentGross,
                                   );
                                 } else if (
                                   col.field === "netWeightKgs" &&
@@ -1835,7 +1807,7 @@ const TableSection = ({
                                     section,
                                     rowIdx,
                                     col.field,
-                                    shipmentNet
+                                    shipmentNet,
                                   );
                                 } else if (
                                   col.field === "noOfPackages" &&
@@ -1845,7 +1817,7 @@ const TableSection = ({
                                     section,
                                     rowIdx,
                                     col.field,
-                                    shipmentPkgs
+                                    shipmentPkgs,
                                   );
                                 }
                               }
@@ -1904,6 +1876,12 @@ const StatusSection = ({
     data && data.length > 0 ? data : [getDefaultItem(section)];
 
   const row1Fields = [
+    {
+      field: "gateInDate",
+      label: "Gate-In/Carting",
+      type: "date",
+      width: 1,
+    },
     {
       field: "rms",
       label: "RMS Status",
@@ -1965,7 +1943,7 @@ const StatusSection = ({
     {
       field: "icdPort",
       label: "ICD/Port",
-      type: "icd",
+      type: "gateway-dropdown",
       width: 1,
     },
     {
@@ -2035,16 +2013,16 @@ const StatusSection = ({
             f.field === "leoUpload"
               ? "leo_uploads"
               : f.field === "eGatePassUpload"
-              ? "egate_uploads"
-              : f.field === "stuffingSheetUpload"
-              ? "stuffing_sheet_uploads"
-              : f.field === "stuffingPhotoUpload"
-              ? "stuffing_photo_uploads"
-              : f.field === "billingDocsSentUpload"
-              ? "billing_uploads"
-              : f.field === "handoverImageUpload"
-              ? "job_handover_images"
-              : "general_uploads"
+                ? "egate_uploads"
+                : f.field === "stuffingSheetUpload"
+                  ? "stuffing_sheet_uploads"
+                  : f.field === "stuffingPhotoUpload"
+                    ? "stuffing_photo_uploads"
+                    : f.field === "billingDocsSentUpload"
+                      ? "billing_uploads"
+                      : f.field === "handoverImageUpload"
+                        ? "job_handover_images"
+                        : "general_uploads"
           }
           multiple={true}
           acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
@@ -2059,7 +2037,7 @@ const StatusSection = ({
           onDeleteImage={(deleteIndex) => {
             const currentImages = item[f.field] || [];
             const updatedList = currentImages.filter(
-              (_, i) => i !== deleteIndex
+              (_, i) => i !== deleteIndex,
             );
             onUpdate(section, rowIdx, f.field, updatedList);
           }}
@@ -2171,7 +2149,7 @@ const StatusSection = ({
                         section,
                         rowIdx,
                         "concorPrivate",
-                        e.target.checked ? "private" : "concor"
+                        e.target.checked ? "private" : "concor",
                       )
                     }
                   />
@@ -2188,7 +2166,7 @@ const StatusSection = ({
                       section,
                       rowIdx,
                       "privateTransporterName",
-                      e.target.value.toUpperCase()
+                      e.target.value.toUpperCase(),
                     )
                   }
                   style={{
@@ -2209,12 +2187,12 @@ const StatusSection = ({
             type="text"
             value={formatDateForInput(
               item.handoverConcorTharSanganaRailRoadDate || "",
-              "date"
+              "date",
             )}
             onDoubleClick={(e) => {
               const pickerVal = formatDateForPicker(
                 item.handoverConcorTharSanganaRailRoadDate,
-                "date"
+                "date",
               );
               if (pickerVal) e.target.value = pickerVal;
               e.target.type = "date";
@@ -2226,7 +2204,7 @@ const StatusSection = ({
                 section,
                 rowIdx,
                 "handoverConcorTharSanganaRailRoadDate",
-                e.target.value
+                e.target.value,
               )
             }
             style={{
@@ -2506,7 +2484,7 @@ const IcdPortAutocomplete = ({ value, onChange }) => {
     const fetchPorts = async () => {
       try {
         const res = await fetch(
-          `${apiBase}/gateway-ports/?page=1&status=&type=&search=`
+          `${apiBase}/gateway-ports/?page=1&status=&type=&search=`,
         );
         const data = await res.json();
         const ports = Array.isArray(data?.data) ? data.data : [];
