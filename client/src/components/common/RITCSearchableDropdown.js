@@ -1,19 +1,21 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
 
-const SearchableDropdown = ({
-  options,
+const RITCSearchableDropdown = ({
   value,
   onChange,
-  placeholder = "Select Option",
   style = {},
   disabled = false,
+  placeholder = "Search RITC...",
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value || "");
+  const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [active, setActive] = useState(-1);
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const wrapperRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     setQuery(value || "");
@@ -37,7 +39,7 @@ const SearchableDropdown = ({
         setCoords({
           top: rect.bottom,
           left: rect.left,
-          width: rect.width,
+          width: Math.max(rect.width, 300),
         });
       }
     };
@@ -53,20 +55,62 @@ const SearchableDropdown = ({
     };
   }, [open]);
 
-  const filteredOptions = options.filter((opt) => {
-    const optVal = typeof opt === "string" ? opt : opt.code || opt.name || "";
-    return optVal.toLowerCase().includes(query.toLowerCase());
-  });
+  const fetchOptions = useCallback(async (search) => {
+    if (!search || search.trim().length < 2) {
+      setOptions([]);
+      return;
+    }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      params.append("search", search.trim());
+      params.append("page", 1);
+      params.append("limit", 20);
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_STRING}/getCthsExport?${params.toString()}`,
+        { signal: abortControllerRef.current.signal },
+      );
+      const data = await res.json();
+      const list = Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data)
+          ? data
+          : [];
+      setOptions(list);
+    } catch (e) {
+      if (e.name !== "AbortError") {
+        console.error("RITC fetch error", e);
+        setOptions([]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => {
+      fetchOptions(query);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [query, open, fetchOptions]);
 
   const handleSelect = (opt) => {
-    const optVal = typeof opt === "string" ? opt : opt.code || opt.name || "";
-    setQuery(optVal);
-    onChange({ target: { value: optVal } });
+    const hs = opt.hs_code || "";
+    setQuery(hs);
+    onChange({ target: { value: hs } });
     setOpen(false);
   };
 
   const dropdownMenu =
-    open && filteredOptions.length > 0 ? (
+    open && (options.length > 0 || loading) ? (
       <div
         style={{
           position: "fixed",
@@ -77,27 +121,27 @@ const SearchableDropdown = ({
           background: "#fff",
           border: "1px solid #cbd5e1",
           borderRadius: 4,
-          maxHeight: 180,
+          maxHeight: 250,
           overflowY: "auto",
           boxShadow:
             "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
         }}
       >
-        {filteredOptions.map((opt, i) => {
-          const optVal =
-            typeof opt === "string" ? opt : opt.code || opt.name || "";
-          return (
+        {loading && (
+          <div style={{ padding: 8, fontSize: 11, color: "#64748b" }}>
+            Loading...
+          </div>
+        )}
+        {!loading &&
+          options.map((opt, i) => (
             <div
               key={i}
               style={{
-                padding: "6px 10px",
+                padding: "8px 10px",
                 cursor: "pointer",
                 background: i === active ? "#f1f5f9" : "#ffffff",
                 borderBottom: "1px solid #f1f5f9",
                 fontSize: 11,
-                fontWeight: i === active ? 700 : 600,
-                color: i === active ? "#1e3a8a" : "#334155",
-                textTransform: "uppercase",
               }}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -105,10 +149,35 @@ const SearchableDropdown = ({
               }}
               onMouseEnter={() => setActive(i)}
             >
-              {optVal}
+              <div
+                style={{
+                  fontWeight: 700,
+                  color: "#1e3a8a",
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span>{opt.hs_code}</span>
+                {opt.basic_duty_sch_tarrif != null && (
+                  <span style={{ fontSize: 10, color: "#2563eb" }}>
+                    BD: {opt.basic_duty_sch_tarrif}
+                  </span>
+                )}
+              </div>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: "#475569",
+                  marginTop: 2,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {opt.item_description}
+              </div>
             </div>
-          );
-        })}
+          ))}
       </div>
     ) : null;
 
@@ -125,7 +194,7 @@ const SearchableDropdown = ({
         <input
           style={{
             width: "100%",
-            padding: "3px 24px 3px 7px",
+            padding: "3px 7px",
             border: "1px solid #cbd5e1",
             borderRadius: 3,
             fontSize: 12,
@@ -134,7 +203,7 @@ const SearchableDropdown = ({
             outline: "none",
             boxSizing: "border-box",
             color: "#1e293b",
-            fontWeight: 600,
+            fontWeight: 700,
             textTransform: "uppercase",
           }}
           placeholder={placeholder}
@@ -142,83 +211,31 @@ const SearchableDropdown = ({
           onChange={(e) => {
             setQuery(e.target.value.toUpperCase());
             setOpen(true);
+            setActive(-1);
           }}
           onFocus={() => !disabled && setOpen(true)}
           disabled={disabled}
           onKeyDown={(e) => {
-            if (e.key === "Tab") {
-              if (open) {
-                if (active >= 0 && filteredOptions[active]) {
-                  handleSelect(filteredOptions[active]);
-                } else if (filteredOptions.length === 1) {
-                  handleSelect(filteredOptions[0]);
-                } else {
-                  setOpen(false);
-                  const tm = query.trim().toUpperCase();
-                  if (tm !== query) {
-                    setQuery(tm);
-                    onChange({ target: { value: tm } });
-                  }
-                }
-              } else {
-                const tm = query.trim().toUpperCase();
-                if (tm !== query) {
-                  setQuery(tm);
-                  onChange({ target: { value: tm } });
-                }
-              }
-              return;
-            }
-
             if (e.key === "ArrowDown") {
               setOpen(true);
-              setActive((prev) =>
-                Math.min(prev + 1, filteredOptions.length - 1),
-              );
+              setActive((prev) => Math.min(prev + 1, options.length - 1));
             } else if (e.key === "ArrowUp") {
               setActive((prev) => Math.max(prev - 1, 0));
             } else if (e.key === "Enter" && active >= 0) {
-              handleSelect(filteredOptions[active]);
+              e.preventDefault();
+              handleSelect(options[active]);
             } else if (e.key === "Escape") {
               setOpen(false);
             }
           }}
           onBlur={() => {
-            const trimmed = query.trim();
-            const match = options.find((opt) => {
-              const optVal =
-                typeof opt === "string" ? opt : opt.code || opt.name || "";
-              return optVal.toUpperCase() === trimmed.toUpperCase();
-            });
-
-            if (match) {
-              handleSelect(match);
-            } else {
-              setQuery(trimmed);
-              if (trimmed !== query) {
-                onChange({ target: { value: trimmed } });
-              }
-            }
             setTimeout(() => setOpen(false), 200);
           }}
         />
-        <span
-          style={{
-            position: "absolute",
-            right: 8,
-            top: "50%",
-            transform: "translateY(-50%)",
-            fontSize: 10,
-            color: "#94a3b8",
-            pointerEvents: "none",
-          }}
-        >
-          ▼
-        </span>
       </div>
       {ReactDOM.createPortal(dropdownMenu, document.body)}
     </div>
   );
 };
 
-export default SearchableDropdown;
+export default RITCSearchableDropdown;

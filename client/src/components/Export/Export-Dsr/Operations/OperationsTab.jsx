@@ -80,6 +80,7 @@ const getDefaultItem = (section) => {
       maxGrossWeightKgs: 0,
       tareWeightKgs: 0,
       maxPayloadKgs: 0,
+      shippingLineSealNo: "",
       images: [],
     },
     bookingDetails: {
@@ -943,23 +944,27 @@ const OperationsTab = ({ formik }) => {
         }
       });
 
-      // Also grab tareWeightKgs from containerDetails
+      // Also grab tareWeightKgs and shippingLineSealNo from containerDetails
       (op.containerDetails || []).forEach((item) => {
-        if (item.containerNo && item.tareWeightKgs) {
+        if (item.containerNo) {
           const cNo = item.containerNo.trim().toUpperCase();
-          if (containerDetailsMap.has(cNo)) {
-            // We take the last available tare weight if multiple
-            containerDetailsMap.get(cNo).tareWeightKgs = Number(
-              item.tareWeightKgs || 0,
-            );
-          } else {
+
+          // Ensure entry exists (it might not if not in transporterDetails)
+          if (!containerDetailsMap.has(cNo)) {
             containerDetailsMap.set(cNo, {
               grossWeight: 0,
               netWeight: 0,
               noOfPackages: 0,
-              tareWeightKgs: Number(item.tareWeightKgs || 0),
+              tareWeightKgs: 0,
+              shippingLineSealNo: "",
             });
           }
+
+          const info = containerDetailsMap.get(cNo);
+          if (item.tareWeightKgs)
+            info.tareWeightKgs = Number(item.tareWeightKgs || 0);
+          if (item.shippingLineSealNo)
+            info.shippingLineSealNo = item.shippingLineSealNo;
         }
       });
     });
@@ -1005,7 +1010,11 @@ const OperationsTab = ({ formik }) => {
             pkgsStuffed: opInfo.noOfPackages,
             grossWeight: opInfo.grossWeight,
             netWeight: opInfo.netWeight,
+            pkgsStuffed: opInfo.noOfPackages,
+            grossWeight: opInfo.grossWeight,
+            netWeight: opInfo.netWeight,
             tareWeightKgs: opInfo.tareWeightKgs,
+            shippingLineSealNo: opInfo.shippingLineSealNo || "",
           });
           masterChanged = true;
         } else {
@@ -1015,7 +1024,8 @@ const OperationsTab = ({ formik }) => {
             Number(m.grossWeight) !== opInfo.grossWeight ||
             Number(m.netWeight) !== opInfo.netWeight ||
             Number(m.pkgsStuffed) !== opInfo.noOfPackages ||
-            Number(m.tareWeightKgs || 0) !== opInfo.tareWeightKgs
+            Number(m.tareWeightKgs || 0) !== opInfo.tareWeightKgs ||
+            (m.shippingLineSealNo || "") !== (opInfo.shippingLineSealNo || "")
           ) {
             nextContainers[masterItemIdx] = {
               ...m,
@@ -1023,6 +1033,8 @@ const OperationsTab = ({ formik }) => {
               netWeight: opInfo.netWeight,
               pkgsStuffed: opInfo.noOfPackages,
               tareWeightKgs: opInfo.tareWeightKgs,
+              shippingLineSealNo:
+                opInfo.shippingLineSealNo || m.shippingLineSealNo || "",
             };
             masterChanged = true;
           }
@@ -1772,7 +1784,9 @@ const TableSection = ({
                             }
                             value={
                               item[col.field] === undefined ||
-                              item[col.field] === null
+                              item[col.field] === null ||
+                              (col.type === "number" &&
+                                Number(item[col.field] || 0) === 0)
                                 ? ""
                                 : col.type === "date" ||
                                     col.type === "datetime-local"
@@ -1782,13 +1796,21 @@ const TableSection = ({
                                     )
                                   : item[col.field]
                             }
+                            placeholder={
+                              col.type === "number"
+                                ? "0.00"
+                                : col.placeholder ||
+                                  (col.type === "date" ? "dd-mm-yyyy" : "")
+                            }
                             onChange={(e) =>
                               onUpdate(
                                 section,
                                 rowIdx,
                                 col.field,
                                 col.type === "number"
-                                  ? e.target.value
+                                  ? e.target.value === ""
+                                    ? 0
+                                    : e.target.value
                                   : e.target.value,
                               )
                             }
@@ -1863,10 +1885,6 @@ const TableSection = ({
                               }
                             }}
                             style={styles.cellInput}
-                            placeholder={
-                              col.placeholder ||
-                              (col.type === "date" ? "dd-mm-yyyy" : "")
-                            }
                           />
                         )}
                       </td>

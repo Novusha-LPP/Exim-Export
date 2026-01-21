@@ -27,9 +27,9 @@ function useExportJobDetails(params, setFileSnackbar) {
 
         const response = await axios.get(
           `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(
-            params.job_no
+            params.job_no,
           )}`,
-          { headers }
+          { headers },
         );
         let jobData = null;
 
@@ -249,7 +249,7 @@ function useExportJobDetails(params, setFileSnackbar) {
           productValue: 0,
           priceIncludes: "Both",
           invoice_value: 0,
-          packing_fob: 0,
+          packing_charges: 0,
         },
       ],
 
@@ -776,10 +776,10 @@ function useExportJobDetails(params, setFileSnackbar) {
 
         const response = await axios.put(
           `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(
-            params.job_no
+            params.job_no,
           )}`,
           syncedValues,
-          { headers }
+          { headers },
         );
 
         if (setFileSnackbar) {
@@ -894,7 +894,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         stuffing_agency_name: safeValue(data.stuffing_agency_name),
         buyer_other_than_consignee: safeValue(
           data.buyer_other_than_consignee,
-          false
+          false,
         ),
         status: safeValue(data.status),
         exporter_address: safeValue(data.exporter_address),
@@ -938,96 +938,96 @@ function useExportJobDetails(params, setFileSnackbar) {
         annexC1Details: safeValue(data.annexC1Details, {}),
         // Individual fields for form handling
         ie_code_of_eou: safeValue(
-          data.ie_code_of_eou || data.annexC1Details?.ieCodeOfEOU
+          data.ie_code_of_eou || data.annexC1Details?.ieCodeOfEOU,
         ),
         branch_sr_no: safeValue(
           data.branch_sr_no || data.annexC1Details?.branchSerialNo,
-          0
+          0,
         ),
         examination_date: safeValue(
-          data.examination_date || data.annexC1Details?.examinationDate
+          data.examination_date || data.annexC1Details?.examinationDate,
         ),
         examining_officer: safeValue(
-          data.examining_officer || data.annexC1Details?.examiningOfficer
+          data.examining_officer || data.annexC1Details?.examiningOfficer,
         ),
         supervising_officer: safeValue(
-          data.supervising_officer || data.annexC1Details?.supervisingOfficer
+          data.supervising_officer || data.annexC1Details?.supervisingOfficer,
         ),
         commissionerate: safeValue(
-          data.commissionerate || data.annexC1Details?.commissionerate
+          data.commissionerate || data.annexC1Details?.commissionerate,
         ),
         verified_by_examining_officer: safeValue(
           data.verified_by_examining_officer ||
             data.annexC1Details?.verifiedByExaminingOfficer,
-          false
+          false,
         ),
         annex_seal_number: safeValue(
           data.annex_seal_number ||
             data.annexC1Details?.sealNumber ||
-            data.stuffing_seal_no
+            data.stuffing_seal_no,
         ), // Reference stuffing_seal_no
         annex_designation: safeValue(
-          data.annex_designation || data.annexC1Details?.designation
+          data.annex_designation || data.annexC1Details?.designation,
         ),
         annex_division: safeValue(
-          data.annex_division || data.annexC1Details?.division
+          data.annex_division || data.annexC1Details?.division,
         ),
         annex_range: safeValue(data.annex_range || data.annexC1Details?.range),
         sample_forwarded: safeValue(
           data.sample_forwarded || data.annexC1Details?.sampleForwarded,
-          false
+          false,
         ),
         annex_additional_notes: safeValue(data.annex_additional_notes),
         annex_c1_documents: safeValue(
           data.annex_c1_documents || data.annexC1Details?.documents,
-          []
+          [],
         ),
 
         // Structured annexC1Details object
         annexC1Details: safeValue(data.annexC1Details, {
           ieCodeOfEOU: safeValue(
-            data.ie_code_of_eou || data.annexC1Details?.ieCodeOfEOU
+            data.ie_code_of_eou || data.annexC1Details?.ieCodeOfEOU,
           ),
           branchSerialNo: safeValue(
             data.branch_sr_no || data.annexC1Details?.branchSerialNo,
-            0
+            0,
           ),
           examinationDate: safeValue(
-            data.examination_date || data.annexC1Details?.examinationDate
+            data.examination_date || data.annexC1Details?.examinationDate,
           ),
           examiningOfficer: safeValue(
-            data.examining_officer || data.annexC1Details?.examiningOfficer
+            data.examining_officer || data.annexC1Details?.examiningOfficer,
           ),
           supervisingOfficer: safeValue(
-            data.supervising_officer || data.annexC1Details?.supervisingOfficer
+            data.supervising_officer || data.annexC1Details?.supervisingOfficer,
           ),
           commissionerate: safeValue(
-            data.commissionerate || data.annexC1Details?.commissionerate
+            data.commissionerate || data.annexC1Details?.commissionerate,
           ),
           verifiedByExaminingOfficer: safeValue(
             data.verified_by_examining_officer ||
               data.annexC1Details?.verifiedByExaminingOfficer,
-            false
+            false,
           ),
           sealNumber: safeValue(
             data.stuffing_seal_no ||
               data.annex_seal_number ||
-              data.annexC1Details?.sealNumber
+              data.annexC1Details?.sealNumber,
           ), // Sync from main seal number
           documents: safeValue(
             data.annex_c1_documents || data.annexC1Details?.documents,
-            []
+            [],
           ),
           designation: safeValue(
-            data.annex_designation || data.annexC1Details?.designation
+            data.annex_designation || data.annexC1Details?.designation,
           ),
           division: safeValue(
-            data.annex_division || data.annexC1Details?.division
+            data.annex_division || data.annexC1Details?.division,
           ),
           range: safeValue(data.annex_range || data.annexC1Details?.range),
           sampleForwarded: safeValue(
             data.sample_forwarded || data.annexC1Details?.sampleForwarded,
-            false
+            false,
           ),
         }),
         freightInsuranceCharges: safeValue(data.freightInsuranceCharges, {}),
@@ -1036,7 +1036,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         shipmenttype: safeValue(data.shipmenttype, "International"),
         milestoneremarks: safeValue(data.milestoneremarks),
         milestoneviewuploaddocuments: safeValue(
-          data.milestoneviewuploaddocuments
+          data.milestoneviewuploaddocuments,
         ),
         milestonehandledby: safeValue(data.milestonehandledby),
         isJobtrackingEnabled: safeValue(data.isJobtrackingEnabled, false),

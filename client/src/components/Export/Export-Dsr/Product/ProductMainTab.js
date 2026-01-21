@@ -1,6 +1,7 @@
 import { unitCodes, currencyList } from "../../../../utils/masterList";
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import SearchableDropdown from "../../../common/SearchableDropdown";
+import RITCSearchableDropdown from "../../../common/RITCSearchableDropdown";
 
 function toUpper(val) {
   return (typeof val === "string" ? val : "").toUpperCase();
@@ -56,8 +57,6 @@ const styles = {
     background: "#ffffff",
     marginBottom: 10,
     overflowX: "auto",
-    // overflowY: "auto",
-    // maxHeight: 400,
   },
   table: {
     width: "100%",
@@ -128,23 +127,11 @@ const styles = {
   },
 };
 
-const HS_LIMIT = 20; // per-page records in dialog
-
 const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
   const invoices = formik.values.invoices || [];
   const activeInvoice = invoices[selectedInvoiceIndex] || {};
   const products = activeInvoice.products || [];
   const inputRefs = useRef({});
-
-  // HS dialog state
-  const [hsDialogOpen, setHsDialogOpen] = useState(false);
-  const [hsDialogIndex, setHsDialogIndex] = useState(null);
-  const [hsDialogQuery, setHsDialogQuery] = useState("");
-  const [hsDialogOptions, setHsDialogOptions] = useState([]);
-  const [hsDialogLoading, setHsDialogLoading] = useState(false);
-  const [hsDialogActive, setHsDialogActive] = useState(-1);
-  const [hsPage, setHsPage] = useState(1);
-  const [hsTotalPages, setHsTotalPages] = useState(1);
 
   const setProducts = useCallback(
     (updatedProducts) => {
@@ -157,7 +144,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
         formik.setFieldValue("invoices", updatedInvoices);
       }
     },
-    [formik, invoices, selectedInvoiceIndex]
+    [formik, invoices, selectedInvoiceIndex],
   );
 
   const recalcAmount = useCallback((prod) => {
@@ -190,7 +177,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
       updated[idx] = current;
       setProducts(updated);
     },
-    [products, setProducts, recalcAmount]
+    [products, setProducts, recalcAmount],
   );
 
   const handleBlur = useCallback(
@@ -224,7 +211,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
       updated[idx] = current;
       setProducts(updated);
     },
-    [products, setProducts]
+    [products, setProducts],
   );
 
   const addNewProduct = useCallback(() => {
@@ -252,7 +239,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
         .map((p, i) => ({ ...p, serialNumber: i + 1 }));
       setProducts(next);
     },
-    [products, setProducts]
+    [products, setProducts],
   );
 
   const copyProduct = useCallback(
@@ -267,66 +254,11 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
       }));
       setProducts(resequenced);
     },
-    [products, setProducts]
+    [products, setProducts],
   );
-
-  // Debounced fetch for HS dialog (also used for immediate Enter search)
-  const fetchHsCodes = useCallback(async (search, page) => {
-    try {
-      setHsDialogLoading(true);
-      const params = new URLSearchParams();
-      if (search && search.trim()) params.append("search", search.trim());
-      params.append("page", page || 1);
-      params.append("limit", HS_LIMIT);
-
-      const res = await fetch(
-        `${import.meta.env.VITE_API_STRING}/getCthsExport?${params.toString()}`
-      );
-      const data = await res.json();
-
-      const list = Array.isArray(data?.data)
-        ? data.data
-        : Array.isArray(data)
-        ? data
-        : [];
-
-      setHsDialogOptions(list);
-      if (data?.pagination) {
-        setHsTotalPages(data.pagination.totalPages || 1);
-      } else {
-        setHsTotalPages(1);
-      }
-    } catch (e) {
-      console.error("HS dialog fetch error", e);
-      setHsDialogOptions([]);
-      setHsTotalPages(1);
-    } finally {
-      setHsDialogLoading(false);
-    }
-  }, []);
-
-  // 1) Immediate fetch when page changes (no debounce)
-  useEffect(() => {
-    if (!hsDialogOpen) return;
-    fetchHsCodes(hsDialogQuery, hsPage);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hsPage, hsDialogOpen, fetchHsCodes]);
-
-  // 2) Debounced fetch when query changes (2s)
-  useEffect(() => {
-    if (!hsDialogOpen) return;
-
-    const timer = setTimeout(() => {
-      fetchHsCodes(hsDialogQuery, 1); // always reset to page 1 on new query
-    }, 2000);
-
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hsDialogQuery, hsDialogOpen, fetchHsCodes]);
 
   return (
     <div style={styles.page}>
-      {/* Invoice Selector at Top */}
       <div style={{ ...styles.card, padding: "16px", marginBottom: "16px" }}>
         <div
           style={{
@@ -338,9 +270,6 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
           <div style={styles.cardTitle}>
             Selected Invoice:{" "}
             {activeInvoice.invoiceNumber || `#${selectedInvoiceIndex + 1}`}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {/* Invoice selection is handled by parent ProductTab */}
           </div>
         </div>
         {activeInvoice?.currency && (
@@ -360,7 +289,6 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
 
       <div style={styles.card}>
         <div style={styles.cardTitle}>Product Items</div>
-
         <div style={styles.tableWrapper}>
           <table style={styles.table}>
             <thead>
@@ -382,7 +310,6 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
               {products.map((prod, idx) => (
                 <tr key={idx}>
                   <td style={styles.td}>{prod.serialNumber || idx + 1}</td>
-
                   <td style={styles.td}>
                     <textarea
                       style={styles.textarea}
@@ -393,7 +320,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                         handleProductFieldChange(
                           idx,
                           "description",
-                          toUpper(e.target.value)
+                          toUpper(e.target.value),
                         )
                       }
                     />
@@ -407,56 +334,22 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                       {(prod.description || "").length}/120
                     </div>
                   </td>
-
                   <td style={styles.td}>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 4 }}
-                    >
-                      <input
-                        style={{ ...styles.input, flex: 1 }}
-                        value={toUpper(prod.ritc || "")}
-                        onChange={(e) =>
-                          handleProductFieldChange(
-                            idx,
-                            "ritc",
-                            toUpper(e.target.value)
-                          )
-                        }
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setHsDialogIndex(idx);
-                          setHsDialogQuery("");
-                          setHsDialogOptions([]);
-                          setHsDialogActive(-1);
-                          setHsPage(1);
-                          setHsDialogOpen(true);
-                        }}
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: 4,
-                          border: "1px solid #16408f",
-                          background: "#f1f5ff",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                        }}
-                        title="Search HS Code"
-                      >
-                        🔍
-                      </button>
-                    </div>
+                    <RITCSearchableDropdown
+                      value={toUpper(prod.ritc || "")}
+                      onChange={(e) =>
+                        handleProductFieldChange(
+                          idx,
+                          "ritc",
+                          toUpper(e.target.value),
+                        )
+                      }
+                      style={{ fontSize: 12, height: 24 }}
+                    />
                   </td>
-
                   <td style={styles.td}>
                     <div style={{ display: "flex", gap: 4 }}>
                       <input
-                        ref={(el) => {
-                          inputRefs.current[`${idx}-quantity`] = el;
-                        }}
                         type="text"
                         style={{ ...styles.input, flex: 1 }}
                         value={prod.quantity || ""}
@@ -476,7 +369,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                           handleProductFieldChange(
                             idx,
                             "qtyUnit",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         placeholder="Unit"
@@ -484,13 +377,9 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                       />
                     </div>
                   </td>
-
                   <td style={styles.td}>
                     <div style={{ display: "flex", gap: 4 }}>
                       <input
-                        ref={(el) => {
-                          inputRefs.current[`${idx}-socQuantity`] = el;
-                        }}
                         type="text"
                         style={{ ...styles.input, flex: 1 }}
                         value={prod.socQuantity || ""}
@@ -508,7 +397,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                           handleProductFieldChange(
                             idx,
                             "socunit",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         placeholder="Unit"
@@ -516,12 +405,8 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                       />
                     </div>
                   </td>
-
                   <td style={styles.td}>
                     <input
-                      ref={(el) => {
-                        inputRefs.current[`${idx}-unitPrice`] = el;
-                      }}
                       type="text"
                       style={styles.input}
                       value={prod.unitPrice || ""}
@@ -535,7 +420,6 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                       placeholder="0.0000"
                     />
                   </td>
-
                   <td style={styles.td}>
                     <select
                       style={styles.input}
@@ -544,7 +428,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                         handleProductFieldChange(
                           idx,
                           "priceUnit",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       disabled={activeInvoice?.currency}
@@ -558,13 +442,9 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                         ))}
                     </select>
                   </td>
-
                   <td style={styles.td}>
                     <div style={{ display: "flex", gap: 4 }}>
                       <input
-                        ref={(el) => {
-                          inputRefs.current[`${idx}-per`] = el;
-                        }}
                         type="text"
                         style={{ ...styles.input, flex: 1 }}
                         value={prod.per || ""}
@@ -584,7 +464,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                           handleProductFieldChange(
                             idx,
                             "perUnit",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         placeholder="Unit"
@@ -594,9 +474,6 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                   </td>
                   <td style={styles.td}>
                     <input
-                      ref={(el) => {
-                        inputRefs.current[`${idx}-amount`] = el;
-                      }}
                       type="text"
                       style={styles.input}
                       value={prod.amount || ""}
@@ -608,7 +485,6 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                       placeholder="0.00"
                     />
                   </td>
-
                   <td style={styles.td}>
                     <select
                       style={styles.input}
@@ -617,7 +493,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                         handleProductFieldChange(
                           idx,
                           "amountUnit",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       disabled={activeInvoice?.currency}
@@ -631,7 +507,6 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                         ))}
                     </select>
                   </td>
-
                   <td style={styles.td}>
                     <button
                       type="button"
@@ -653,7 +528,6 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
             </tbody>
           </table>
         </div>
-
         <div style={{ marginTop: 8 }}>
           <button
             type="button"
@@ -664,208 +538,6 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
           </button>
         </div>
       </div>
-
-      {/* HS search dialog */}
-      {hsDialogOpen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(0,0,0,0.35)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 3000,
-          }}
-          onClick={() => {
-            setHsDialogOpen(false);
-            setHsDialogIndex(null);
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "#ffffff",
-              borderRadius: 6,
-              padding: 12,
-              width: 520,
-              maxHeight: 460,
-              boxShadow: "0 12px 30px rgba(15,23,42,0.25)",
-              fontSize: 12,
-              display: "flex",
-              flexDirection: "column",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 8,
-              }}
-            >
-              <div style={{ fontWeight: 700, color: "#111827" }}>
-                Search HS / RITC
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setHsDialogOpen(false);
-                  setHsDialogIndex(null);
-                }}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                  fontSize: 16,
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Search box */}
-            <div style={{ marginBottom: 8 }}>
-              <input
-                style={{ ...styles.input, width: "100%" }}
-                placeholder="Type HS code or description"
-                value={hsDialogQuery}
-                onChange={(e) => {
-                  const v = toUpper(e.target.value);
-                  setHsDialogQuery(v);
-                  setHsDialogActive(-1);
-                  setHsPage(1);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    fetchHsCodes(hsDialogQuery, 1);
-                    setHsPage(1);
-                  }
-                }}
-              />
-            </div>
-
-            {/* Results list */}
-            <div
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                border: "1px solid #e5e7eb",
-                borderRadius: 4,
-              }}
-            >
-              {hsDialogLoading && (
-                <div style={{ padding: 8, color: "#6b7280" }}>Loading...</div>
-              )}
-
-              {!hsDialogLoading &&
-                hsDialogOptions.length === 0 &&
-                hsDialogQuery.trim().length >= 2 && (
-                  <div style={{ padding: 8, color: "#9ca3af" }}>No results</div>
-                )}
-
-              {!hsDialogLoading &&
-                hsDialogOptions.map((opt, idx) => (
-                  <div
-                    key={`${opt.hs_code}-${idx}`}
-                    onClick={() => {
-                      if (hsDialogIndex == null) return;
-                      const targetIdx = hsDialogIndex;
-                      const hs = toUpper(opt.hs_code || "");
-
-                      handleProductFieldChange(targetIdx, "ritc", hs);
-
-                      setHsDialogOpen(false);
-                      setHsDialogIndex(null);
-                    }}
-                    onMouseEnter={() => setHsDialogActive(idx)}
-                    style={{
-                      padding: 8,
-                      cursor: "pointer",
-                      backgroundColor:
-                        hsDialogActive === idx ? "#eff6ff" : "#ffffff",
-                      borderBottom: "1px solid #f3f4f6",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <div style={{ fontWeight: 700 }}>
-                        {opt.hs_code || "-"}
-                      </div>
-                      <div style={{ fontSize: 11, color: "#1d4ed8" }}>
-                        {opt.basic_duty_sch_tarrif != null
-                          ? `Basic Duty: ${opt.basic_duty_sch_tarrif}`
-                          : ""}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "#4b5563",
-                        marginTop: 2,
-                      }}
-                    >
-                      {opt.item_description || "-"}
-                    </div>
-                  </div>
-                ))}
-            </div>
-
-            {/* Pagination inside dialog */}
-            <div
-              style={{
-                marginTop: 8,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                fontSize: 11,
-              }}
-            >
-              <div>
-                Page {hsPage} of {hsTotalPages || 1}
-              </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  type="button"
-                  style={{
-                    padding: "3px 8px",
-                    borderRadius: 3,
-                    border: "1px solid #d1d5db",
-                    backgroundColor: hsPage === 1 ? "#f9fafb" : "#ffffff",
-                    cursor: hsPage === 1 ? "not-allowed" : "pointer",
-                    fontSize: 11,
-                  }}
-                  disabled={hsPage === 1}
-                  onClick={() => setHsPage((p) => Math.max(1, p - 1))}
-                >
-                  Prev
-                </button>
-                <button
-                  type="button"
-                  style={{
-                    padding: "3px 8px",
-                    borderRadius: 3,
-                    border: "1px solid #d1d5db",
-                    backgroundColor:
-                      hsPage >= hsTotalPages ? "#f9fafb" : "#ffffff",
-                    cursor: hsPage >= hsTotalPages ? "not-allowed" : "pointer",
-                    fontSize: 11,
-                  }}
-                  disabled={hsPage >= hsTotalPages}
-                  onClick={() => setHsPage((p) => p + 1)}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

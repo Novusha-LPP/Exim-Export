@@ -26,6 +26,7 @@ router.get("/", async (req, res) => {
       filter.$or = [
         { hs_code: { $regex: `^${q}`, $options: "i" } },
         { item_description: { $regex: q, $options: "i" } },
+        { unit: { $regex: q, $options: "i" } },
       ];
     }
 
@@ -35,7 +36,7 @@ router.get("/", async (req, res) => {
         .skip(skip)
         .limit(perPage)
         .lean()
-        .select("hs_code item_description basic_duty_sch_tarrif"), // only fields needed by UI
+        .select("hs_code item_description basic_duty_sch_tarrif unit"), // only fields needed by UI
       CthExportModel.countDocuments(filter),
     ]);
 

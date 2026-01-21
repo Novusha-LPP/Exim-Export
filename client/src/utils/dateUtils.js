@@ -123,6 +123,8 @@ export const parseDate = (val) => {
 
     if (typeof val === "string") {
       const trimmedVal = val.trim();
+      // Avoid parsing short strings (like "25") which might be interpreted as year 2500
+      if (trimmedVal.length < 5) return null;
 
       // Try ISO format first
       date = parseISO(trimmedVal);

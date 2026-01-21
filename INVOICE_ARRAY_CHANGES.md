@@ -151,9 +151,9 @@ const invoiceSchema = new Schema(
       enum: ["Both", "Freight", "Insurance", "None"],
       default: "Both",
     },
-    packing_fob: { type: Number, default: 0 },
+    packing_charges: { type: Number, default: 0 },
   },
-  { _id: true }
+  { _id: true },
 );
 
 // Used in main schema as:

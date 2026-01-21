@@ -1644,10 +1644,15 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                 <input
                   style={styles.input}
                   type="number"
-                  value={formik.values.total_no_of_pkgs || ""}
+                  value={
+                    formik.values.total_no_of_pkgs === 0
+                      ? ""
+                      : formik.values.total_no_of_pkgs || ""
+                  }
                   onChange={(e) =>
                     handleFieldChange("total_no_of_pkgs", e.target.value)
                   }
+                  placeholder="0.00"
                 />
               </div>
               <UnitDropdownField
@@ -1665,10 +1670,15 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   <input
                     style={styles.input}
                     type="number"
-                    value={formik.values.loose_pkgs || ""}
+                    value={
+                      formik.values.loose_pkgs === 0
+                        ? ""
+                        : formik.values.loose_pkgs || ""
+                    }
                     onChange={(e) =>
                       handleFieldChange("loose_pkgs", e.target.value)
                     }
+                    placeholder="0.00"
                   />
                 </div>
                 <div style={styles.field}>
@@ -1676,10 +1686,15 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   <input
                     style={styles.input}
                     type="number"
-                    value={formik.values.no_of_containers || ""}
+                    value={
+                      formik.values.no_of_containers === 0
+                        ? ""
+                        : formik.values.no_of_containers || ""
+                    }
                     onChange={(e) =>
                       handleFieldChange("no_of_containers", e.target.value)
                     }
+                    placeholder="0.00"
                   />
                 </div>
               </>
@@ -1693,7 +1708,11 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                       style={styles.input}
                       type="number"
                       step="0.001"
-                      value={formik.values.gross_weight_kg || ""}
+                      value={
+                        formik.values.gross_weight_kg === 0
+                          ? ""
+                          : formik.values.gross_weight_kg || ""
+                      }
                       onChange={(e) =>
                         handleFieldChange("gross_weight_kg", e.target.value)
                       }
@@ -1703,6 +1722,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                           handleFieldChange("gross_weight_kg", val.toFixed(3));
                         }
                       }}
+                      placeholder="0.00"
                     />
                   </div>
                   <UnitDropdownField
@@ -1720,7 +1740,11 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                       style={styles.input}
                       type="number"
                       step="0.001"
-                      value={formik.values.net_weight_kg || ""}
+                      value={
+                        formik.values.net_weight_kg === 0
+                          ? ""
+                          : formik.values.net_weight_kg || ""
+                      }
                       onChange={(e) =>
                         handleFieldChange("net_weight_kg", e.target.value)
                       }
@@ -1730,6 +1754,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                           handleFieldChange("net_weight_kg", val.toFixed(3));
                         }
                       }}
+                      placeholder="0.00"
                     />
                   </div>
                   <UnitDropdownField
@@ -1758,7 +1783,11 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   style={styles.input}
                   type="number"
                   step="0.001"
-                  value={formik.values.volume_cbm || ""}
+                  value={
+                    formik.values.volume_cbm === 0
+                      ? ""
+                      : formik.values.volume_cbm || ""
+                  }
                   onChange={(e) =>
                     handleFieldChange("volume_cbm", e.target.value)
                   }
@@ -1768,6 +1797,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                       handleFieldChange("volume_cbm", val.toFixed(3));
                     }
                   }}
+                  placeholder="0.00"
                 />
               </div>
               <UnitDropdownField
@@ -1785,7 +1815,11 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   style={styles.input}
                   type="number"
                   step="0.001"
-                  value={formik.values.chargeable_weight || ""}
+                  value={
+                    formik.values.chargeable_weight === 0
+                      ? ""
+                      : formik.values.chargeable_weight || ""
+                  }
                   onChange={(e) =>
                     handleFieldChange("chargeable_weight", e.target.value)
                   }
@@ -1795,6 +1829,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                       handleFieldChange("chargeable_weight", val.toFixed(3));
                     }
                   }}
+                  placeholder="0.00"
                 />
               </div>
               <UnitDropdownField

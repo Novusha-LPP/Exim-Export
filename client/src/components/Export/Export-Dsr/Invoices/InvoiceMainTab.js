@@ -159,7 +159,7 @@ const InvoiceMainTab = ({ formik }) => {
       try {
         const dateStr = getJobDateFormatted(formik.values.job_date);
         const res = await fetch(
-          `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`
+          `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`,
         );
         const json = await res.json();
 
@@ -209,7 +209,7 @@ const InvoiceMainTab = ({ formik }) => {
   }, []);
 
   const productsSignature = JSON.stringify(
-    invoices.map((inv) => (inv.products || []).map((p) => p.amount))
+    invoices.map((inv) => (inv.products || []).map((p) => p.amount)),
   );
 
   const prevSumsRef = useRef(null);
@@ -218,8 +218,8 @@ const InvoiceMainTab = ({ formik }) => {
     const currentSums = invoices.map((inv) =>
       (inv.products || []).reduce(
         (acc, p) => acc + (parseFloat(p.amount) || 0),
-        0
-      )
+        0,
+      ),
     );
 
     if (prevSumsRef.current === null) {
@@ -363,6 +363,7 @@ const InvoiceMainTab = ({ formik }) => {
                 </th>
                 <th style={{ ...styles.th, width: 120 }}>Invoice Value</th>
                 <th style={{ ...styles.th, width: 140 }}>Product Value</th>
+                <th style={{ ...styles.th, width: 120 }}>Packing Charges</th>
                 <th style={{ ...styles.th, width: 140 }}>Action</th>
               </tr>
             </thead>
@@ -381,7 +382,7 @@ const InvoiceMainTab = ({ formik }) => {
                         handleInvChange(
                           index,
                           "invoiceNumber",
-                          e.target.value.toUpperCase()
+                          e.target.value.toUpperCase(),
                         )
                       }
                       placeholder="INVOICE NO"
@@ -436,13 +437,20 @@ const InvoiceMainTab = ({ formik }) => {
                     <input
                       type="number"
                       style={styles.inputNumber}
-                      value={formik.values.exchange_rate || 1}
+                      value={
+                        formik.values.exchange_rate === 0
+                          ? ""
+                          : formik.values.exchange_rate
+                      }
                       onChange={(e) =>
                         handleFieldChange(
                           "exchange_rate",
-                          parseFloat(e.target.value || 0)
+                          e.target.value === ""
+                            ? 0
+                            : parseFloat(e.target.value || 0),
                         )
                       }
+                      placeholder="0.00"
                     />
                   </td>
 
@@ -494,7 +502,7 @@ const InvoiceMainTab = ({ formik }) => {
                           "invoiceValue",
                           e.target.value === ""
                             ? ""
-                            : parseFloat(e.target.value || 0)
+                            : parseFloat(e.target.value || 0),
                         )
                       }
                       placeholder="0.00"
@@ -517,7 +525,29 @@ const InvoiceMainTab = ({ formik }) => {
                           "productValue",
                           e.target.value === ""
                             ? ""
-                            : parseFloat(e.target.value || 0)
+                            : parseFloat(e.target.value || 0),
+                        )
+                      }
+                      placeholder="0.00"
+                    />
+                  </td>
+                  <td style={styles.td} data-label="Packing Charges">
+                    <input
+                      type="number"
+                      style={styles.inputNumber}
+                      value={
+                        invoice.packing_charges === 0 ||
+                        invoice.packing_charges === ""
+                          ? ""
+                          : invoice.packing_charges
+                      }
+                      onChange={(e) =>
+                        handleInvChange(
+                          index,
+                          "packing_charges",
+                          e.target.value === ""
+                            ? ""
+                            : parseFloat(e.target.value || 0),
                         )
                       }
                       placeholder="0.00"

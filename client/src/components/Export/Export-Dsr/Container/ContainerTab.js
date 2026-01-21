@@ -33,7 +33,7 @@ function ContainerTab({ formik, onUpdate }) {
     async (values) => {
       if (onUpdate) await onUpdate(values);
     },
-    [onUpdate]
+    [onUpdate],
   );
 
   // const debouncedSave = () => {
@@ -90,7 +90,7 @@ function ContainerTab({ formik, onUpdate }) {
           const hasContainer = cDetails.some(
             (d) =>
               (d.containerNo || "").trim().toUpperCase() ===
-              containerNo.trim().toUpperCase()
+              containerNo.trim().toUpperCase(),
           );
 
           if (hasContainer) {
@@ -103,6 +103,45 @@ function ContainerTab({ formik, onUpdate }) {
                   containerNo.trim().toUpperCase()
                 ) {
                   return { ...d, tareWeightKgs: value };
+                }
+                return d;
+              }),
+            };
+          }
+          return op;
+        });
+
+        if (opsChanged) {
+          formik.setFieldValue("operations", newOps);
+        }
+      }
+    }
+
+    // Sync shippingLineSealNo to Operations Tab if changed
+    if (field === "shippingLineSealNo") {
+      const containerNo = list[idx].containerNo;
+      if (containerNo) {
+        const operations = formik.values.operations || [];
+        let opsChanged = false;
+
+        const newOps = operations.map((op) => {
+          const cDetails = op.containerDetails || [];
+          const hasContainer = cDetails.some(
+            (d) =>
+              (d.containerNo || "").trim().toUpperCase() ===
+              containerNo.trim().toUpperCase(),
+          );
+
+          if (hasContainer) {
+            opsChanged = true;
+            return {
+              ...op,
+              containerDetails: cDetails.map((d) => {
+                if (
+                  (d.containerNo || "").trim().toUpperCase() ===
+                  containerNo.trim().toUpperCase()
+                ) {
+                  return { ...d, shippingLineSealNo: value };
                 }
                 return d;
               }),
@@ -130,7 +169,8 @@ function ContainerTab({ formik, onUpdate }) {
       type: "",
       pkgsStuffed: 0,
       grossWeight: 0,
-      sealType: "",
+      sealType: "RFID - RADIO FREQUENCY IDENTIFIER",
+      shippingLineSealNo: "",
       tareWeightKgs: 0,
       grWtPlusTrWt: 0,
       rfid: "",
@@ -176,16 +216,17 @@ function ContainerTab({ formik, onUpdate }) {
           <table style={{ ...styles.table, minWidth: 1400 }}>
             <thead>
               <tr>
-                <th style={{ ...styles.th, width: 40 }}>#</th>
-                <th style={{ ...styles.th, width: 150 }}>CONTAINER NO</th>
-                <th style={{ ...styles.th, width: 120 }}>SEAL NO</th>
-                <th style={{ ...styles.th, width: 120 }}>SEAL DATE</th>
-                <th style={{ ...styles.th, width: 180 }}>SEAL TYPE</th>
+                <th style={{ ...styles.th, width: 20 }}>#</th>
+                <th style={{ ...styles.th, width: 120 }}>CONTAINER NO</th>
+                <th style={{ ...styles.th, width: 80 }}>SEAL NO</th>
+                <th style={{ ...styles.th, width: 100 }}>SEAL DATE</th>
+                <th style={{ ...styles.th, width: 100 }}>SEAL TYPE</th>
+                <th style={{ ...styles.th, width: 250 }}>S/LINE SEAL NO</th>
                 <th style={{ ...styles.th, width: 180 }}>TYPE</th>
                 <th style={{ ...styles.th, width: 100 }}>PKGS</th>
                 <th style={{ ...styles.th, width: 130 }}>GROSS WT</th>
                 <th style={{ ...styles.th, width: 130 }}>TARE WT</th>
-                <th style={{ ...styles.th, width: 130 }}>GR + TR WT</th>
+                <th style={{ ...styles.th, width: 130 }}>VGM WT</th>
                 <th style={{ ...styles.th, width: 60, textAlign: "center" }}>
                   ACTION
                 </th>
@@ -228,7 +269,7 @@ function ContainerTab({ formik, onUpdate }) {
                         handleFieldChange(
                           idx,
                           "containerNo",
-                          toUpperVal(e.target.value)
+                          toUpperVal(e.target.value),
                         )
                       }
                       placeholder="CONT. NO"
@@ -243,7 +284,7 @@ function ContainerTab({ formik, onUpdate }) {
                         handleFieldChange(
                           idx,
                           "sealNo",
-                          toUpperVal(e.target.value)
+                          toUpperVal(e.target.value),
                         )
                       }
                       placeholder="SEAL NO"
@@ -260,6 +301,20 @@ function ContainerTab({ formik, onUpdate }) {
                     />
                   </td>
 
+                  <td>
+                    <input
+                      style={styles.input}
+                      value={toUpperVal(row.shippingLineSealNo || "")}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          idx,
+                          "shippingLineSealNo",
+                          toUpperVal(e.target.value),
+                        )
+                      }
+                      placeholder="S/LINE SEAL NO"
+                    />
+                  </td>
                   <td style={styles.td}>
                     <select
                       style={styles.select}
@@ -298,14 +353,15 @@ function ContainerTab({ formik, onUpdate }) {
                     <input
                       type="number"
                       style={styles.input}
-                      value={row.pkgsStuffed || 0}
+                      value={row.pkgsStuffed === 0 ? "" : row.pkgsStuffed}
                       onChange={(e) =>
                         handleFieldChange(
                           idx,
                           "pkgsStuffed",
-                          Number(e.target.value || 0)
+                          Number(e.target.value || 0),
                         )
                       }
+                      placeholder="0.00"
                     />
                   </td>
 
@@ -313,14 +369,15 @@ function ContainerTab({ formik, onUpdate }) {
                     <input
                       type="number"
                       style={styles.input}
-                      value={row.grossWeight || 0}
+                      value={row.grossWeight === 0 ? "" : row.grossWeight}
                       onChange={(e) =>
                         handleFieldChange(
                           idx,
                           "grossWeight",
-                          Number(e.target.value || 0)
+                          Number(e.target.value || 0),
                         )
                       }
+                      placeholder="0.00"
                     />
                   </td>
 
@@ -328,14 +385,15 @@ function ContainerTab({ formik, onUpdate }) {
                     <input
                       type="number"
                       style={styles.input}
-                      value={row.tareWeightKgs || 0}
+                      value={row.tareWeightKgs === 0 ? "" : row.tareWeightKgs}
                       onChange={(e) =>
                         handleFieldChange(
                           idx,
                           "tareWeightKgs",
-                          Number(e.target.value || 0)
+                          Number(e.target.value || 0),
                         )
                       }
+                      placeholder="0.00"
                     />
                   </td>
 
@@ -343,14 +401,15 @@ function ContainerTab({ formik, onUpdate }) {
                     <input
                       type="number"
                       style={styles.input}
-                      value={row.grWtPlusTrWt || 0}
+                      value={row.grWtPlusTrWt === 0 ? "" : row.grWtPlusTrWt}
                       onChange={(e) =>
                         handleFieldChange(
                           idx,
                           "grWtPlusTrWt",
-                          Number(e.target.value || 0)
+                          Number(e.target.value || 0),
                         )
                       }
+                      placeholder="0.00"
                     />
                   </td>
 

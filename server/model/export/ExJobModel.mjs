@@ -406,7 +406,7 @@ const invoiceSchema = new Schema(
       enum: ["Both", "Freight", "Insurance", "None"],
       default: "Both",
     },
-    packing_fob: { type: Number, default: 0 },
+    packing_charges: { type: Number, default: 0 },
     products: [productDetailsSchema],
     freightInsuranceCharges: { type: freightInsuranceChargesSchema },
   },

@@ -87,7 +87,6 @@ const ExportChecklistGenerator = ({
     });
   };
 
-
   const createPDFHelpers = (pdf) => {
     const centerX = PAGE_CONFIG.width / 2;
     const rightX = PAGE_CONFIG.width - PAGE_CONFIG.margins.right;
@@ -126,7 +125,7 @@ const ExportChecklistGenerator = ({
         customStation,
         aeoRegistrationNo,
         aeoRole,
-        currentDate
+        currentDate,
       ) => {
         let y = PAGE_CONFIG.margins.top;
 
@@ -166,7 +165,7 @@ const ExportChecklistGenerator = ({
           `AEO Registration No. ${aeoRegistrationNo || ""}`,
           centerX,
           y + 40,
-          { align: "center" }
+          { align: "center" },
         );
 
         pdf.setFont("helvetica", "normal");
@@ -368,7 +367,7 @@ const ExportChecklistGenerator = ({
           data.customStation,
           data.aeoRegistrationNo,
           data.aeoRole,
-          data.currentDate
+          data.currentDate,
         );
         yPos = 80;
       }
@@ -378,7 +377,7 @@ const ExportChecklistGenerator = ({
       pdf.text(
         `Invoice Details: Invoice ${invIdx + 1} / ${data.invoicesDetail.length}`,
         leftColX,
-        yPos
+        yPos,
       );
       yPos += 12;
 
@@ -461,12 +460,14 @@ const ExportChecklistGenerator = ({
             : "";
         const currencyText =
           item.currency !== "" &&
-            item.currency !== null &&
-            item.currency !== undefined
+          item.currency !== null &&
+          item.currency !== undefined
             ? String(item.currency)
             : "";
         const amountText =
-          item.amount !== "" && item.amount !== null && item.amount !== undefined
+          item.amount !== "" &&
+          item.amount !== null &&
+          item.amount !== undefined
             ? String(item.amount)
             : "";
 
@@ -478,7 +479,6 @@ const ExportChecklistGenerator = ({
 
       yPos += 15;
     });
-
 
     yPos += 5;
     yPos += 12;
@@ -669,12 +669,12 @@ const ExportChecklistGenerator = ({
         pdf.text(
           `${product.unitPrice || ""}/${product.priceUnit || product.qtyUnit || "PCS"}/${product.per || "1"}`,
           col3,
-          unitPriceY
+          unitPriceY,
         );
         pdf.text(
           product.fobValueFC || product.amount || "",
           col3,
-          unitPriceY + 20
+          unitPriceY + 20,
         );
 
         // Column 5: FOB ValINR - PURE DATA
@@ -684,38 +684,38 @@ const ExportChecklistGenerator = ({
         pdf.text(product.amount || "", col5, itemY);
         pdf.text(
           product.igstPaymentStatus ||
-          product.igstCompensationCess?.igstPaymentStatus ||
-          "",
+            product.igstCompensationCess?.igstPaymentStatus ||
+            "",
           col5,
-          itemY + 20
+          itemY + 20,
         );
 
         // Column 7: PMV/Unit, IGST Taxable Value - PURE DATA
         pdf.text(
           product.pmvPerUnit || product.pmvInfo?.pmvPerUnit || "",
           col6,
-          itemY
+          itemY,
         );
         pdf.text(
           product.taxableValueINR ||
-          product.igstCompensationCess?.taxableValueINR ||
-          "",
+            product.igstCompensationCess?.taxableValueINR ||
+            "",
           col6,
-          itemY + 20
+          itemY + 20,
         );
 
         // Column 8: Total PMV INR, IGST Amount - PURE DATA
         pdf.text(
           product.totalPMV || product.pmvInfo?.totalPMV || "",
           col7,
-          itemY
+          itemY,
         );
         pdf.text(
           product.igstAmountINR ||
-          product.igstCompensationCess?.igstAmountINR ||
-          "",
+            product.igstCompensationCess?.igstAmountINR ||
+            "",
           col7,
-          itemY + 20
+          itemY + 20,
         );
 
         // Calculate height needed for this item based on description lines
@@ -992,8 +992,6 @@ const ExportChecklistGenerator = ({
     const { drawLine, drawField, leftX, rightX } = helpers;
     let yPos = 80;
 
-
-
     // END USE INFORMATION
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(FONT_SIZES.sectionHeader);
@@ -1121,7 +1119,7 @@ const ExportChecklistGenerator = ({
     pdf.setFontSize(FONT_SIZES.declaration);
     const declarationLines = pdf.splitTextToSize(
       data.declarationText,
-      rightX - leftX - 50
+      rightX - leftX - 50,
     );
     declarationLines.forEach((line) => {
       pdf.text(line, leftX + 50, yPos);
@@ -1315,7 +1313,7 @@ const ExportChecklistGenerator = ({
     pdf.setFontSize(FONT_SIZES.declaration);
     const declarationLines = safeSplitText(
       data.finalDeclaration || "",
-      rightX - leftX
+      rightX - leftX,
     );
     declarationLines.forEach((line) => {
       pdf.text(line, leftX, yPos);
@@ -1336,7 +1334,7 @@ const ExportChecklistGenerator = ({
     try {
       const encodedJobNo = encodeURIComponent(jobNo);
       const response = await axios.get(
-        `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`
+        `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`,
       );
 
       const exportJob = response.data;
@@ -1363,13 +1361,12 @@ const ExportChecklistGenerator = ({
         const dateStr = `${dd}-${mm}-${yyyy}`;
 
         const ratesResp = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`
+          `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`,
         );
         currencyRates = ratesResp.data?.data?.exchange_rates || null;
       } catch (err) {
         console.error("Error fetching currency rates for checklist:", err);
       }
-
 
       // Flatten products from all invoices for aggregate calculations
       const allProducts = (exportJob.invoices || []).flatMap((inv, invIdx) =>
@@ -1378,7 +1375,7 @@ const ExportChecklistGenerator = ({
           invoiceIndex: invIdx,
           invoiceCurrency: inv.currency,
           invoiceNo: inv.invoiceNumber,
-        }))
+        })),
       );
 
       // Prepare comprehensive data object with all fields from PDF
@@ -1441,16 +1438,17 @@ const ExportChecklistGenerator = ({
 
         // Weight calculation from products or containers
         grossWeight: exportJob.gross_weight_kg
-          ? `${exportJob.gross_weight_kg} ${exportJob.gross_weight_unit || "KGS"
-          }`
+          ? `${exportJob.gross_weight_kg} ${
+              exportJob.gross_weight_unit || "KGS"
+            }`
           : exportJob.containers
-            ?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0)
-            .toFixed(3) + " KGS" || "0.000 KGS",
+              ?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0)
+              .toFixed(3) + " KGS" || "0.000 KGS",
         netWeight: exportJob.net_weight_kg
           ? `${exportJob.net_weight_kg} ${exportJob.net_weight_unit || "KGS"}`
           : allProducts
-            ?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
-            .toFixed(3) + " KGS" || "0.000 KGS",
+              ?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
+              .toFixed(3) + " KGS" || "0.000 KGS",
 
         // Financial Details - Calculate from products and invoices
         totalFobInr:
@@ -1502,7 +1500,7 @@ const ExportChecklistGenerator = ({
             ?.reduce(
               (sum, p) =>
                 sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0),
-              0
+              0,
             )
             .toFixed(2) || "0.00",
         compCess:
@@ -1511,22 +1509,22 @@ const ExportChecklistGenerator = ({
               (sum, p) =>
                 sum +
                 (parseFloat(
-                  p.igstCompensationCess?.compensationCessAmountINR
+                  p.igstCompensationCess?.compensationCessAmountINR,
                 ) || 0),
-              0
+              0,
             )
             .toFixed(2) || "0.00",
         forexBankAcNo: exportJob.bank_account_number || "",
         // DBK + RODTEP/ROSCTL - Dynamic label based on what's available
         dbkStrLabel: (() => {
           // Check if RODTEP is available
-          const hasRodtep = allProducts?.some(p =>
-            parseFloat(p.rodtepInfo?.amountINR) > 0
+          const hasRodtep = allProducts?.some(
+            (p) => parseFloat(p.rodtepInfo?.amountINR) > 0,
           );
 
           // Check if ROSCTL is available (you can add this field if needed)
-          const hasRosctl = allProducts?.some(p =>
-            parseFloat(p.rosctlInfo?.amountINR) > 0
+          const hasRosctl = allProducts?.some(
+            (p) => parseFloat(p.rosctlInfo?.amountINR) > 0,
           );
 
           if (hasRodtep) return "DBK + RODTEP (INR)";
@@ -1535,28 +1533,35 @@ const ExportChecklistGenerator = ({
         })(),
         dbkStr: (() => {
           // Calculate total drawback amount
-          const totalDbkAmount = allProducts?.reduce((sum, p) => {
-            const productDbk = (p.drawbackDetails || []).reduce(
-              (dbkSum, d) => dbkSum + (parseFloat(d.dbkAmount) || 0),
-              0
-            );
-            return sum + productDbk;
-          }, 0) || 0;
+          const totalDbkAmount =
+            allProducts?.reduce((sum, p) => {
+              const productDbk = (p.drawbackDetails || []).reduce(
+                (dbkSum, d) => dbkSum + (parseFloat(d.dbkAmount) || 0),
+                0,
+              );
+              return sum + productDbk;
+            }, 0) || 0;
 
           // Calculate total RODTEP amount
-          const totalRodtepAmount = allProducts?.reduce(
-            (sum, p) => sum + (parseFloat(p.rodtepInfo?.amountINR) || 0),
-            0
-          ) || 0;
+          const totalRodtepAmount =
+            allProducts?.reduce(
+              (sum, p) => sum + (parseFloat(p.rodtepInfo?.amountINR) || 0),
+              0,
+            ) || 0;
 
           // Calculate total ROSCTL amount (if available)
-          const totalRosctlAmount = allProducts?.reduce(
-            (sum, p) => sum + (parseFloat(p.rosctlInfo?.amountINR) || 0),
-            0
-          ) || 0;
+          const totalRosctlAmount =
+            allProducts?.reduce(
+              (sum, p) => sum + (parseFloat(p.rosctlInfo?.amountINR) || 0),
+              0,
+            ) || 0;
 
           // DBK + RODTEP or DBK + ROSCTL (only one can be present)
-          return (totalDbkAmount + totalRodtepAmount + totalRosctlAmount).toFixed(2);
+          return (
+            totalDbkAmount +
+            totalRodtepAmount +
+            totalRosctlAmount
+          ).toFixed(2);
         })(),
         rbiWaiverNo: exportJob.rbi_waiver_no || "",
         dbkBankAcNo: "", // Not found in data structure
@@ -1565,7 +1570,7 @@ const ExportChecklistGenerator = ({
             ?.reduce((sum, p) => {
               const productDbk = (p.drawbackDetails || []).reduce(
                 (dbkSum, d) => dbkSum + (parseFloat(d.dbkAmount) || 0),
-                0
+                0,
               );
               return sum + productDbk;
             }, 0)
@@ -1574,7 +1579,7 @@ const ExportChecklistGenerator = ({
           allProducts
             ?.reduce(
               (sum, p) => sum + (parseFloat(p.rodtepInfo?.amountINR) || 0),
-              0
+              0,
             )
             .toFixed(2) || "0.00",
 
@@ -1590,12 +1595,17 @@ const ExportChecklistGenerator = ({
             unitPriceIncludes: inv.priceIncludes || "",
             exchangeRate: exportJob.exchange_rate || "",
             expContractNo: exportJob.otherInfo?.exportContractNo || "",
-            expContractDate: formatDate(exportJob.otherInfo?.exportContractDate) || "",
+            expContractDate:
+              formatDate(exportJob.otherInfo?.exportContractDate) || "",
 
             invoiceValue: (() => {
               const baseCurrency = inv.currency;
               const rawAmount = inv.invoiceValue ?? inv.invoice_value;
-              if (rawAmount === null || rawAmount === undefined || rawAmount === "")
+              if (
+                rawAmount === null ||
+                rawAmount === undefined ||
+                rawAmount === ""
+              )
                 return "";
               const amountNum = parseFloat(rawAmount) || 0;
               const basePart = `${baseCurrency} ${amountNum.toFixed(2)}`;
@@ -1612,7 +1622,8 @@ const ExportChecklistGenerator = ({
               const currency = fob.currency || inv.currency || "USD";
               const amount = parseFloat(fob.amount);
               const rateFromApi = getExportRate(currency);
-              const rate = rateFromApi || parseFloat(exportJob.exchange_rate) || 1;
+              const rate =
+                rateFromApi || parseFloat(exportJob.exchange_rate) || 1;
               const inrAmount = (amount * rate).toFixed(2);
               return `${currency} ${amount.toFixed(2)} / INR ${inrAmount}`;
             })(),
@@ -1705,14 +1716,13 @@ const ExportChecklistGenerator = ({
             packingChargesData: {
               rate: "",
               currency: "",
-              amount: inv.packing_fob || inv.packingFOB || "",
+              amount: inv.packing_charges || inv.packingFOB || "",
             },
           };
         }),
 
         // Add today's date to data for use in headers during page breaks
         currentDate: currentDate,
-
 
         // Payment & Buyer Details
         natureOfPayment: exportJob.otherInfo?.natureOfPayment || "",
@@ -1744,7 +1754,10 @@ const ExportChecklistGenerator = ({
         })(),
 
         // EOU Details
-        eou: exportJob.ie_code_of_eou || exportJob.annexC1Details?.ieCodeOfEOU || "",
+        eou:
+          exportJob.ie_code_of_eou ||
+          exportJob.annexC1Details?.ieCodeOfEOU ||
+          "",
         iec: exportJob.ieCode || "",
         branchSno:
           exportJob.branch_sr_no ||
@@ -1752,7 +1765,6 @@ const ExportChecklistGenerator = ({
           exportJob.annexC1Details?.branchSerialNo ||
           "0",
         factoryAddress: exportJob.factory_address || "",
-
 
         // Marks & Nos
         marksAndNos: exportJob.marks_nos,
@@ -1767,15 +1779,14 @@ const ExportChecklistGenerator = ({
               parseFloat(exportJob.exchange_rate) ||
               1;
             // Calculate proper FOB using the utility function
-            const invoice = exportJob.invoices?.find(inv =>
-              inv.products?.some(p => p.serialNumber === product.serialNumber)
-            ) || exportJob.invoices?.[0];
+            const invoice =
+              exportJob.invoices?.find((inv) =>
+                inv.products?.some(
+                  (p) => p.serialNumber === product.serialNumber,
+                ),
+              ) || exportJob.invoices?.[0];
 
-            const fobINR = calculateProductFobINR(
-              product,
-              invoice,
-              rate
-            );
+            const fobINR = calculateProductFobINR(product, invoice, rate);
 
             const fobFC = fobINR / rate;
 
@@ -1811,7 +1822,7 @@ const ExportChecklistGenerator = ({
           ?.reduce(
             (sum, p) =>
               sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0),
-            0
+            0,
           )
           .toFixed(2),
         totalPmvGross: allProducts
@@ -1821,7 +1832,7 @@ const ExportChecklistGenerator = ({
           ?.reduce(
             (sum, p) =>
               sum + (parseFloat(p.igstCompensationCess?.igstAmountINR) || 0),
-            0
+            0,
           )
           .toFixed(2),
 
@@ -1829,9 +1840,12 @@ const ExportChecklistGenerator = ({
         dbkData: (() => {
           const dbkRows = [];
           allProducts?.forEach((product, productIndex) => {
-            const invoice = exportJob.invoices?.find(inv =>
-              inv.products?.some(p => p.serialNumber === product.serialNumber)
-            ) || exportJob.invoices?.[0];
+            const invoice =
+              exportJob.invoices?.find((inv) =>
+                inv.products?.some(
+                  (p) => p.serialNumber === product.serialNumber,
+                ),
+              ) || exportJob.invoices?.[0];
             const invNo = invoice?.invoiceNumber || "1";
 
             product.drawbackDetails?.forEach((dbk, dbkIndex) => {
@@ -1855,7 +1869,9 @@ const ExportChecklistGenerator = ({
           allProducts?.forEach((product, productIndex) => {
             const invoice =
               exportJob.invoices?.find((inv) =>
-                inv.products?.some((p) => p.serialNumber === product.serialNumber)
+                inv.products?.some(
+                  (p) => p.serialNumber === product.serialNumber,
+                ),
               ) || exportJob.invoices?.[0];
             const invNo = invoice?.invoiceNumber || "1";
 
@@ -1924,7 +1940,6 @@ const ExportChecklistGenerator = ({
           return rows;
         })(),
 
-
         // End Use Information - One row per invoice × product
         endUseData: (() => {
           const endUseRows = [];
@@ -1938,7 +1953,9 @@ const ExportChecklistGenerator = ({
               }
             });
           });
-          return endUseRows.length > 0 ? endUseRows : [{ invItemSrNo: "", code: "" }];
+          return endUseRows.length > 0
+            ? endUseRows
+            : [{ invItemSrNo: "", code: "" }];
         })(),
 
         // RODTEP Data - One row per invoice × product
@@ -1948,7 +1965,8 @@ const ExportChecklistGenerator = ({
             invoice.products?.forEach((product, prodIndex) => {
               rodtepRows.push({
                 invItemSr: `${invIndex + 1}/${prodIndex + 1}`,
-                claimStatus: product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
+                claimStatus:
+                  product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
                 quantity: product.rodtepInfo?.quantity || "",
                 rate: product.rodtepInfo?.ratePercent || "",
                 capValue: product.rodtepInfo?.capValue || "",
@@ -1974,7 +1992,9 @@ const ExportChecklistGenerator = ({
               }
             });
           });
-          return declRows.length > 0 ? declRows : [{ declType: "", declCode: "", invItemSrNo: "" }];
+          return declRows.length > 0
+            ? declRows
+            : [{ declType: "", declCode: "", invItemSrNo: "" }];
         })(),
 
         declarationText: `I/We, in regard to my/our claim under RoDTEP scheme made in this Shipping Bill or Bill of Export, hereby declare that:
@@ -1988,60 +2008,60 @@ const ExportChecklistGenerator = ({
         // Supporting Documents
         supportingDocs: exportJob.eSanchitDocuments?.[0]
           ? {
-            invItemSrNo:
-              exportJob.eSanchitDocuments[0].invSerialNo || "1/0/1",
-            imageRefNo: exportJob.eSanchitDocuments[0].irn || "",
-            icegateId: exportJob.eSanchitDocuments[0].otherIcegateId || "",
-            issuingPartyName:
-              exportJob.eSanchitDocuments[0].issuingParty?.name ||
-              exportJob.exporter ||
-              "",
-            beneficiaryPartyName:
-              exportJob.eSanchitDocuments[0].beneficiaryParty?.name ||
-              exportJob.consignees?.[0]?.consignee_name ||
-              "",
-            docIssueDate:
-              formatDate(exportJob.eSanchitDocuments[0].dateOfIssue) || "",
-            docRefNo:
-              exportJob.eSanchitDocuments[0].documentReferenceNo || "",
-            fileType:
-              exportJob.eSanchitDocuments[0].icegateFilename
-                ?.split(".")
-                .pop() || "",
-            issuingPartyAdd1:
-              exportJob.eSanchitDocuments[0].issuingParty?.addressLine1 ||
-              exportJob.exporter_address ||
-              "",
-            beneficiaryPartyAdd1:
-              exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine1 ||
-              exportJob.consignees?.[0]?.consignee_address ||
-              "",
-            docExpiryDate:
-              formatDate(exportJob.eSanchitDocuments[0].expiryDate) || "",
-            docUploadedOn:
-              formatDate(exportJob.eSanchitDocuments[0].dateTimeOfUpload) ||
-              "",
-            placeOfIssue: exportJob.eSanchitDocuments[0].placeOfIssue || "",
-            issuingPartyAdd2:
-              exportJob.eSanchitDocuments[0].issuingParty?.addressLine2 || "",
-            beneficiaryPartyAdd2:
-              exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine2 ||
-              "",
-            docTypeCode: exportJob.eSanchitDocuments[0].documentType || "",
-            docName: exportJob.eSanchitDocuments[0].icegateFilename || "",
-            issuingPartyCode:
-              exportJob.eSanchitDocuments[0].issuingParty?.code || "",
-            issuingPartyCity:
-              exportJob.eSanchitDocuments[0].issuingParty?.city || "",
-            beneficiaryPartyCity:
-              exportJob.eSanchitDocuments[0].beneficiaryParty?.city || "",
-            beneficiaryPartyCode:
-              exportJob.eSanchitDocuments[0].beneficiaryParty?.code || "",
-            issuingPartyPinCode:
-              exportJob.eSanchitDocuments[0].issuingParty?.pinCode || "",
-            beneficiaryPartyPinCode:
-              exportJob.eSanchitDocuments[0].beneficiaryParty?.pinCode || "",
-          }
+              invItemSrNo:
+                exportJob.eSanchitDocuments[0].invSerialNo || "1/0/1",
+              imageRefNo: exportJob.eSanchitDocuments[0].irn || "",
+              icegateId: exportJob.eSanchitDocuments[0].otherIcegateId || "",
+              issuingPartyName:
+                exportJob.eSanchitDocuments[0].issuingParty?.name ||
+                exportJob.exporter ||
+                "",
+              beneficiaryPartyName:
+                exportJob.eSanchitDocuments[0].beneficiaryParty?.name ||
+                exportJob.consignees?.[0]?.consignee_name ||
+                "",
+              docIssueDate:
+                formatDate(exportJob.eSanchitDocuments[0].dateOfIssue) || "",
+              docRefNo:
+                exportJob.eSanchitDocuments[0].documentReferenceNo || "",
+              fileType:
+                exportJob.eSanchitDocuments[0].icegateFilename
+                  ?.split(".")
+                  .pop() || "",
+              issuingPartyAdd1:
+                exportJob.eSanchitDocuments[0].issuingParty?.addressLine1 ||
+                exportJob.exporter_address ||
+                "",
+              beneficiaryPartyAdd1:
+                exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine1 ||
+                exportJob.consignees?.[0]?.consignee_address ||
+                "",
+              docExpiryDate:
+                formatDate(exportJob.eSanchitDocuments[0].expiryDate) || "",
+              docUploadedOn:
+                formatDate(exportJob.eSanchitDocuments[0].dateTimeOfUpload) ||
+                "",
+              placeOfIssue: exportJob.eSanchitDocuments[0].placeOfIssue || "",
+              issuingPartyAdd2:
+                exportJob.eSanchitDocuments[0].issuingParty?.addressLine2 || "",
+              beneficiaryPartyAdd2:
+                exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine2 ||
+                "",
+              docTypeCode: exportJob.eSanchitDocuments[0].documentType || "",
+              docName: exportJob.eSanchitDocuments[0].icegateFilename || "",
+              issuingPartyCode:
+                exportJob.eSanchitDocuments[0].issuingParty?.code || "",
+              issuingPartyCity:
+                exportJob.eSanchitDocuments[0].issuingParty?.city || "",
+              beneficiaryPartyCity:
+                exportJob.eSanchitDocuments[0].beneficiaryParty?.city || "",
+              beneficiaryPartyCode:
+                exportJob.eSanchitDocuments[0].beneficiaryParty?.code || "",
+              issuingPartyPinCode:
+                exportJob.eSanchitDocuments[0].issuingParty?.pinCode || "",
+              beneficiaryPartyPinCode:
+                exportJob.eSanchitDocuments[0].beneficiaryParty?.pinCode || "",
+            }
           : {},
 
         // Final Declaration
@@ -2062,7 +2082,7 @@ Signature of Exporter/CHA with date`,
         data.customStation,
         data.aeoRegistrationNo,
         data.aeoRole,
-        currentDate
+        currentDate,
       );
       renderPage1(pdf, helpers, data);
 
@@ -2074,7 +2094,7 @@ Signature of Exporter/CHA with date`,
         data.customStation,
         data.aeoRegistrationNo,
         data.aeoRole,
-        currentDate
+        currentDate,
       );
       renderItemDetailsPage(pdf, helpers, data);
 
@@ -2086,7 +2106,7 @@ Signature of Exporter/CHA with date`,
         data.customStation,
         data.aeoRegistrationNo,
         data.aeoRole,
-        currentDate
+        currentDate,
       );
       renderPage2(pdf, helpers, data);
 
@@ -2098,7 +2118,7 @@ Signature of Exporter/CHA with date`,
         data.customStation,
         data.aeoRegistrationNo,
         data.aeoRole,
-        currentDate
+        currentDate,
       );
       renderPage3(pdf, helpers, data);
 
@@ -2109,14 +2129,14 @@ Signature of Exporter/CHA with date`,
         data.customStation,
         data.aeoRegistrationNo,
         data.aeoRole,
-        currentDate
+        currentDate,
       );
       renderPage4(pdf, helpers, data);
 
       // Generate filename and display
       const filename = `Export-CheckList-${data.jobNumber.replace(
         /\//g,
-        "-"
+        "-",
       )}-${currentDate.replace(/ /g, "-")}.pdf`;
       const pdfBlob = pdf.output("blob");
       const blobUrl = URL.createObjectURL(pdfBlob);
@@ -2167,7 +2187,7 @@ Signature of Exporter/CHA with date`,
                 });
               </script>
             </body>
-          </html>`
+          </html>`,
         );
 
         setTimeout(() => {
