@@ -14,8 +14,6 @@ import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingN
 // Helper function
 const toUpper = (str) => (str || "").toUpperCase();
 
-const goodsStuffedAtOptions = ["Factory", "Dock"];
-
 // Styles object
 const styles = {
   field: {
@@ -208,6 +206,25 @@ function GatewayPortDropdown({
           onFocus={d.onInputFocus}
           onBlur={d.onInputBlur}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (d.open) {
+                if (d.active >= 0 && filtered[d.active]) {
+                  d.select(d.active);
+                } else if (filtered.length === 1) {
+                  d.select(0);
+                } else {
+                  d.setOpen(false);
+                }
+              }
+              const trimmed = d.query.trim();
+              if (trimmed !== d.query) {
+                const upper = toUpper(trimmed);
+                d.setQuery(upper);
+                formik.setFieldValue(fieldName, upper);
+              }
+              return;
+            }
+
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
@@ -267,11 +284,6 @@ const LogisysEditableHeader = ({
     formik.setFieldValue,
     formik.values.transportMode,
   ]);
-  useEffect(() => {
-    if (toUpper(formik.values.goods_stuffed_at) === "FACTORY") {
-      formik.setFieldValue("consignmentType", "FCL");
-    }
-  }, [formik.values.goods_stuffed_at]);
 
   const [snackbar, setSnackbar] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -512,24 +524,6 @@ const LogisysEditableHeader = ({
             ]}
             onChange={formik.handleChange}
             placeholder="Select Type"
-          />
-        </div>
-
-        {/* Goods Stuffed At */}
-        <div style={{ flex: "1 1 120px", minWidth: 100 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Goods Stuffed At</div>
-          <AutocompleteSelect
-            name="goods_stuffed_at"
-            value={formik.values.goods_stuffed_at || ""}
-            options={[
-              { value: "", label: "SELECT" },
-              ...goodsStuffedAtOptions.map((opt) => ({
-                value: opt,
-                label: toUpper(opt),
-              })),
-            ]}
-            onChange={formik.handleChange}
-            placeholder="Select"
           />
         </div>
 

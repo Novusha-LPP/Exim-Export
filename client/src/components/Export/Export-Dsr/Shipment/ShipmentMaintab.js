@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import { Alert } from "@mui/material";
 import DateInput from "../../../common/DateInput.js";
 import { states } from "../../../../utils/masterList";
 import { natureOfCargo } from "../../../../utils/masterList";
@@ -204,6 +205,25 @@ function CountryField({ label, fieldName, placeholder, formik }) {
           onFocus={d.onInputFocus}
           onBlur={d.onInputBlur}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (d.open) {
+                if (d.active >= 0 && d.opts[d.active]) {
+                  d.select(d.active);
+                } else if (d.opts.length === 1) {
+                  d.select(0);
+                } else {
+                  d.setOpen(false);
+                }
+              }
+              const trimmed = d.query.trim();
+              if (trimmed !== d.query) {
+                const upper = toUpper(trimmed);
+                d.setQuery(upper);
+                formik.setFieldValue(fieldName, upper);
+              }
+              return;
+            }
+
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
@@ -376,6 +396,25 @@ function GatewayPortDropdownField({
           onFocus={d.onInputFocus}
           onBlur={d.onInputBlur}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (d.open) {
+                if (d.active >= 0 && filtered[d.active]) {
+                  d.select(d.active);
+                } else if (filtered.length === 1) {
+                  d.select(0);
+                } else {
+                  d.setOpen(false);
+                }
+              }
+              const trimmed = d.query.trim();
+              if (trimmed !== d.query) {
+                const upper = toUpper(trimmed);
+                d.setQuery(upper);
+                formik.setFieldValue(fieldName, upper);
+              }
+              return;
+            }
+
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
@@ -478,6 +517,25 @@ function NatureOfCargoDropdownField({
             setActive(-1);
           }}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (open) {
+                if (active >= 0 && filtered[active]) {
+                  handleSelect(active);
+                } else if (filtered.length === 1) {
+                  handleSelect(0);
+                } else {
+                  setOpen(false);
+                }
+              }
+              const trimmed = query.trim();
+              if (trimmed !== query) {
+                const upper = toUpper(trimmed);
+                setQuery(upper);
+                formik.setFieldValue(fieldName, upper);
+              }
+              return;
+            }
+
             if (!open) return;
             if (e.key === "ArrowDown")
               setActive((a) =>
@@ -565,6 +623,25 @@ function UnitDropdownField({
             setActive(-1);
           }}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (open) {
+                if (active >= 0 && filtered[active]) {
+                  handleSelect(active);
+                } else if (filtered.length === 1) {
+                  handleSelect(0);
+                } else {
+                  setOpen(false);
+                }
+              }
+              const trimmed = query.trim();
+              if (trimmed !== query) {
+                const upper = toUpper(trimmed);
+                setQuery(upper);
+                formik.setFieldValue(fieldName, upper);
+              }
+              return;
+            }
+
             if (!open) return;
             if (e.key === "ArrowDown")
               setActive((a) =>
@@ -729,6 +806,25 @@ function PortField({
           onFocus={d.onInputFocus}
           onBlur={d.onInputBlur}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (d.open) {
+                if (d.active >= 0 && d.opts[d.active]) {
+                  d.select(d.active);
+                } else if (d.opts.length === 1) {
+                  d.select(0);
+                } else {
+                  d.setOpen(false);
+                }
+              }
+              const trimmed = d.query.trim();
+              if (trimmed !== d.query) {
+                const upper = toUpper(trimmed);
+                d.setQuery(upper);
+                formik.setFieldValue(fieldName, upper);
+              }
+              return;
+            }
+
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
@@ -836,6 +932,25 @@ function StateDropdownField({
             setActive(-1);
           }}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (open) {
+                if (active >= 0 && filteredStates[active]) {
+                  handleSelect(active);
+                } else if (filteredStates.length === 1) {
+                  handleSelect(0);
+                } else {
+                  setOpen(false);
+                }
+              }
+              const trimmed = query.trim();
+              if (trimmed !== query) {
+                const upper = toUpper(trimmed);
+                setQuery(upper);
+                formik.setFieldValue(fieldName, upper);
+              }
+              return;
+            }
+
             if (!open) return;
             if (e.key === "ArrowDown")
               setActive((a) =>
@@ -1028,6 +1143,27 @@ function ShippingLineDropdownField({
           onFocus={d.onInputFocus}
           onBlur={d.onInputBlur}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (d.open) {
+                if (d.active >= 0) {
+                  const originalIndex = indexInOpts(d.active);
+                  if (originalIndex >= 0) d.select(originalIndex);
+                } else if (filteredOpts.length === 1) {
+                  const originalIndex = indexInOpts(0);
+                  if (originalIndex >= 0) d.select(originalIndex);
+                } else {
+                  d.setOpen(false);
+                }
+              }
+              const trimmed = d.query.trim();
+              if (trimmed !== d.query) {
+                const upper = toUpper(trimmed);
+                d.setQuery(upper);
+                formik.setFieldValue(fieldName, upper);
+              }
+              return;
+            }
+
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
@@ -1080,9 +1216,41 @@ function ShippingLineDropdownField({
   );
 }
 
-function ShipmentMainTab({ formik, onUpdate }) {
+function ShipmentMainTab({ formik, onUpdate, directories }) {
   const consignmentType = toUpper(formik.values.consignmentType || "");
   const isAir = consignmentType == "AIR";
+
+  // Auto-populate State of Origin from Directory based on Exporter
+  // Auto-populate State of Origin from Directory based on Exporter
+  useEffect(() => {
+    const exportersList = directories?.exporters || [];
+
+    if (formik.values.exporter && exportersList.length > 0) {
+      const dir = exportersList.find(
+        (d) =>
+          (d.organization || "").toUpperCase() ===
+          (formik.values.exporter || "").toUpperCase(),
+      );
+
+      if (dir && dir.branchInfo && dir.branchInfo.length > 0) {
+        // Use the first branch's state as default reference
+        const state = dir.branchInfo[0].state;
+
+        if (state && !formik.values.state_of_origin) {
+          formik.setFieldValue("state_of_origin", toUpper(state));
+        }
+      }
+    }
+  }, [formik.values.exporter, directories, formik.values.state_of_origin]);
+
+  useEffect(() => {
+    if (isAir) {
+      formik.setFieldValue("nature_of_cargo", "NON-CONTAINERIZED");
+    } else {
+      formik.setFieldValue("nature_of_cargo", "CONTAINERIZED");
+    }
+  }, [isAir]);
+
   console.log(isAir);
   const saveTimeoutRef = useRef(null);
 
@@ -1106,6 +1274,8 @@ function ShipmentMainTab({ formik, onUpdate }) {
         <div style={styles.col}>
           <div style={styles.card}>
             <div style={styles.sectionTitle}>PORT & LOCATION DETAILS</div>
+
+            {/* Row 1: Discharge Port | Discharge Country */}
             <div style={styles.split}>
               <div style={styles.half}>
                 <PortField
@@ -1116,13 +1286,33 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   endpoint={isAir ? "airPorts" : "seaPorts"}
                   onSelect={(opt) => {
                     if (opt.country) {
-                      formik.setFieldValue(
-                        "discharge_country",
-                        toUpper(opt.country),
-                      );
+                      const country = toUpper(opt.country);
+                      formik.setFieldValue("discharge_country", country);
+                      formik.setFieldValue("destination_country", country);
                     }
+                    const pName = opt.portName || opt.name || "";
+                    const pDetails = opt.uneceCode || "";
+                    let value = toUpper(pName);
+                    if (pDetails) {
+                      value += ` (${toUpper(pDetails)})`;
+                    }
+                    formik.setFieldValue("destination_port", value);
                   }}
                 />
+              </div>
+              <div style={styles.half}>
+                <CountryField
+                  label="DISCHARGE COUNTRY"
+                  fieldName="discharge_country"
+                  placeholder="ENTER COUNTRY"
+                  formik={formik}
+                />
+              </div>
+            </div>
+
+            {/* Row 2: Destination Port | Destination Country */}
+            <div style={styles.split}>
+              <div style={styles.half}>
                 <PortField
                   label="DESTINATION PORT"
                   fieldName="destination_port"
@@ -1138,12 +1328,64 @@ function ShipmentMainTab({ formik, onUpdate }) {
                     }
                   }}
                 />
+              </div>
+              <div style={styles.half}>
+                <CountryField
+                  label="DESTINATION COUNTRY"
+                  fieldName="destination_country"
+                  placeholder="Enter Country"
+                  formik={formik}
+                />
+              </div>
+            </div>
+
+            {/* Row 3: Shipping Line | Flight/Vessel Name */}
+            <div style={styles.split}>
+              <div style={styles.half}>
                 <ShippingLineDropdownField
                   fieldName="shipping_line_airline"
                   formik={formik}
                   placeholder="ENTER LINE"
                 />
+              </div>
+              <div style={styles.half}>
+                {isAir ? (
+                  <div style={styles.field}>
+                    <div style={styles.label}>FLIGHT NO</div>
+                    <input
+                      style={styles.input}
+                      placeholder="ENTER FLIGHT NO"
+                      value={toUpper(formik.values.flight_no || "")}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          "flight_no",
+                          e.target.value.toUpperCase(),
+                        )
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div style={styles.field}>
+                    <div style={styles.label}>VESSEL NAME</div>
+                    <input
+                      style={styles.input}
+                      placeholder="Enter Vessel Name"
+                      value={toUpper(formik.values.vessel_name || "")}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          "vessel_name",
+                          e.target.value.toUpperCase(),
+                        )
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
 
+            {/* Row 4: Voyage No | Flight/Sailing Date */}
+            <div style={styles.split}>
+              <div style={styles.half}>
                 {!isAir && (
                   <div style={styles.field}>
                     <div style={styles.label}>VOYAGE NO</div>
@@ -1159,6 +1401,33 @@ function ShipmentMainTab({ formik, onUpdate }) {
                     />
                   </div>
                 )}
+              </div>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>
+                    {isAir ? "FLIGHT DATE" : "SAILING DATE"}
+                  </div>
+                  <DateInput
+                    style={styles.input}
+                    value={
+                      isAir
+                        ? formik.values.flight_date || ""
+                        : formik.values.sailing_date || ""
+                    }
+                    onChange={(e) =>
+                      handleFieldChange(
+                        isAir ? "flight_date" : "sailing_date",
+                        e.target.value,
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 5: EGM No | EGM Date */}
+            <div style={styles.split}>
+              <div style={styles.half}>
                 <div style={styles.field}>
                   <div style={styles.label}>EGM NO</div>
                   <input
@@ -1169,6 +1438,24 @@ function ShipmentMainTab({ formik, onUpdate }) {
                     }
                   />
                 </div>
+              </div>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>EGM DATE</div>
+                  <DateInput
+                    style={styles.input}
+                    value={formik.values.egm_date || ""}
+                    onChange={(e) =>
+                      handleFieldChange("egm_date", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 6: MAWB/MBL No | MAWB/MBL Date */}
+            <div style={styles.split}>
+              <div style={styles.half}>
                 <div style={styles.field}>
                   <div style={styles.label}>{isAir ? "MAWB NO" : "MBL NO"}</div>
                   <input
@@ -1179,6 +1466,26 @@ function ShipmentMainTab({ formik, onUpdate }) {
                     }
                   />
                 </div>
+              </div>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>
+                    {isAir ? "MAWB DATE" : "MBL DATE"}
+                  </div>
+                  <DateInput
+                    style={styles.input}
+                    value={formik.values.mbl_date || ""}
+                    onChange={(e) =>
+                      handleFieldChange("mbl_date", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 7: HAWB/HBL No | HAWB/HBL Date */}
+            <div style={styles.split}>
+              <div style={styles.half}>
                 <div style={styles.field}>
                   <div style={styles.label}>{isAir ? "HAWB NO" : "HBL NO"}</div>
                   <input
@@ -1189,7 +1496,27 @@ function ShipmentMainTab({ formik, onUpdate }) {
                     }
                   />
                 </div>
-                {!isAir && (
+              </div>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>
+                    {isAir ? "HAWB DATE" : "HBL DATE"}
+                  </div>
+                  <DateInput
+                    style={styles.input}
+                    value={formik.values.hbl_date || ""}
+                    onChange={(e) =>
+                      handleFieldChange("hbl_date", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 8 (Sea Only): Pre-Carriage | Place of Receipt */}
+            {!isAir && (
+              <div style={styles.split}>
+                <div style={styles.half}>
                   <div style={styles.field}>
                     <div style={styles.label}>PRE-CARRIAGE BY</div>
                     <input
@@ -1203,8 +1530,29 @@ function ShipmentMainTab({ formik, onUpdate }) {
                       }
                     />
                   </div>
-                )}
-                {!isAir && (
+                </div>
+                <div style={styles.half}>
+                  <div style={styles.field}>
+                    <div style={styles.label}>PLACE OF RECEIPT</div>
+                    <input
+                      style={styles.input}
+                      value={toUpper(formik.values.place_of_receipt || "")}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          "place_of_receipt",
+                          e.target.value.toUpperCase(),
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Row 9: Transhipper/State(Air) | Gateway Port */}
+            <div style={styles.split}>
+              <div style={styles.half}>
+                {!isAir ? (
                   <div style={styles.field}>
                     <div style={styles.label}>TRANSHIPPER CODE</div>
                     <input
@@ -1218,15 +1566,38 @@ function ShipmentMainTab({ formik, onUpdate }) {
                       }
                     />
                   </div>
+                ) : (
+                  <StateDropdownField
+                    label="STATE OF ORIGIN"
+                    fieldName="state_of_origin"
+                    formik={formik}
+                    states={states} // your imported states array
+                    placeholder="STATES"
+                  />
                 )}
-                <StateDropdownField
-                  label="STATE OF ORIGIN"
-                  fieldName="state_of_origin"
+              </div>
+              <div style={styles.half}>
+                <GatewayPortDropdownField
+                  label="GATEWAY PORT"
+                  fieldName="gateway_port"
                   formik={formik}
-                  states={states} // your imported states array
-                  placeholder="STATES"
+                  placeholder="ENTER GATEWAY PORT"
                 />
+              </div>
+            </div>
 
+            {/* Row 10: State(Sea) | Annexure C */}
+            <div style={styles.split}>
+              <div style={styles.half}>
+                {!isAir && (
+                  <StateDropdownField
+                    label="STATE OF ORIGIN"
+                    fieldName="state_of_origin"
+                    formik={formik}
+                    states={states} // your imported states array
+                    placeholder="STATES"
+                  />
+                )}
                 <div style={{ ...styles.field, marginTop: 5 }}>
                   <label
                     style={{
@@ -1252,132 +1623,7 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   </label>
                 </div>
               </div>
-              <div style={styles.half}>
-                <CountryField
-                  label="DISCHARGE COUNTRY"
-                  fieldName="discharge_country"
-                  placeholder="ENTER COUNTRY"
-                  formik={formik}
-                />
-
-                <CountryField
-                  label="DESTINATION COUNTRY"
-                  fieldName="destination_country"
-                  placeholder="Enter Country"
-                  formik={formik}
-                />
-                {isAir ? (
-                  <>
-                    <div style={styles.field}>
-                      <div style={styles.label}>FLIGHT NO</div>
-                      <input
-                        style={styles.input}
-                        placeholder="ENTER FLIGHT NO"
-                        value={toUpper(formik.values.flight_no || "")}
-                        onChange={(e) =>
-                          handleFieldChange(
-                            "flight_no",
-                            e.target.value.toUpperCase(),
-                          )
-                        }
-                      />
-                    </div>
-                    <div style={styles.field}>
-                      <div style={styles.label}>FLIGHT DATE</div>
-                      <DateInput
-                        style={styles.input}
-                        value={formik.values.flight_date || ""}
-                        onChange={(e) =>
-                          handleFieldChange("flight_date", e.target.value)
-                        }
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div style={styles.field}>
-                      <div style={styles.label}>VESSEL NAME</div>
-                      <input
-                        style={styles.input}
-                        placeholder="Enter Vessel Name"
-                        value={toUpper(formik.values.vessel_name || "")}
-                        onChange={(e) =>
-                          handleFieldChange(
-                            "vessel_name",
-                            e.target.value.toUpperCase(),
-                          )
-                        }
-                      />
-                    </div>
-                    <div style={styles.field}>
-                      <div style={styles.label}>SAILING DATE</div>
-                      <DateInput
-                        style={styles.input}
-                        value={formik.values.sailing_date || ""}
-                        onChange={(e) =>
-                          handleFieldChange("sailing_date", e.target.value)
-                        }
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div style={styles.field}>
-                  <div style={styles.label}>EGM DATE</div>
-                  <DateInput
-                    style={styles.input}
-                    value={formik.values.egm_date || ""}
-                    onChange={(e) =>
-                      handleFieldChange("egm_date", e.target.value)
-                    }
-                  />
-                </div>
-                <div style={styles.field}>
-                  <div style={styles.label}>
-                    {isAir ? "MAWB DATE" : "MBL DATE"}
-                  </div>
-                  <DateInput
-                    style={styles.input}
-                    value={formik.values.mbl_date || ""}
-                    onChange={(e) =>
-                      handleFieldChange("mbl_date", e.target.value)
-                    }
-                  />
-                </div>
-                <div style={styles.field}>
-                  <div style={styles.label}>
-                    {isAir ? "HAWB DATE" : "HBL DATE"}
-                  </div>
-                  <DateInput
-                    style={styles.input}
-                    value={formik.values.hbl_date || ""}
-                    onChange={(e) =>
-                      handleFieldChange("hbl_date", e.target.value)
-                    }
-                  />
-                </div>
-                {!isAir && (
-                  <div style={styles.field}>
-                    <div style={styles.label}>PLACE OF RECEIPT</div>
-                    <input
-                      style={styles.input}
-                      value={toUpper(formik.values.place_of_receipt || "")}
-                      onChange={(e) =>
-                        handleFieldChange(
-                          "place_of_receipt",
-                          e.target.value.toUpperCase(),
-                        )
-                      }
-                    />
-                  </div>
-                )}
-                <GatewayPortDropdownField
-                  label="GATEWAY PORT"
-                  fieldName="gateway_port"
-                  formik={formik}
-                  placeholder="ENTER GATEWAY PORT"
-                />
-              </div>
+              <div style={styles.half}>{/* Empty right Col */}</div>
             </div>
           </div>
         </div>
@@ -1411,22 +1657,6 @@ function ShipmentMainTab({ formik, onUpdate }) {
                 unitOptions={unitCodes}
                 placeholder="Enter Unit"
               />
-              <div style={styles.half}>
-                <div style={styles.label}>&nbsp;</div>
-                <button
-                  type="button"
-                  style={{
-                    ...styles.input,
-                    height: 26,
-                    background: "#e5fafa",
-                    fontWeight: 700,
-                    color: "#1e3965",
-                    cursor: "pointer",
-                  }}
-                >
-                  PACKING DETAILS
-                </button>
-              </div>
             </div>
             {!isAir && (
               <>
@@ -1504,12 +1734,21 @@ function ShipmentMainTab({ formik, onUpdate }) {
                   </div>
                   <UnitDropdownField
                     label="UNIT"
-                    fieldName="net_weight_unit" // use your desired formik field
+                    fieldName="net_weight_unit"
                     formik={formik}
                     unitOptions={unitCodes}
                     placeholder="Enter Unit"
                   />
                 </div>
+                {parseFloat(formik.values.net_weight_kg || 0) >
+                  parseFloat(formik.values.gross_weight_kg || 0) && (
+                  <Alert
+                    severity="warning"
+                    sx={{ mt: 1, py: 0, fontSize: "0.80rem" }}
+                  >
+                    Warning: Net Weight cannot be greater than Gross Weight.
+                  </Alert>
+                )}
               </>
             )}
             <div style={styles.split}>

@@ -1,198 +1,240 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const { Schema, model } = mongoose;
 
 // Schema for individual file objects
-const fileSchema = new Schema({
-  url: { type: String,   },
-  name: String,
-  size: Number,
-  uploadedAt: Date
-}, { _id: false });
+const fileSchema = new Schema(
+  {
+    url: { type: String },
+    name: String,
+    size: Number,
+    uploadedAt: Date,
+  },
+  { _id: false },
+);
 
 // Schema for document upload tracking
-const documentUploadSchema = new Schema({
-  uploaded: { type: Boolean, default: false },
-  files: { type: [fileSchema], default: [] }  // Array of file objects, not strings
-}, { _id: false });
+const documentUploadSchema = new Schema(
+  {
+    uploaded: { type: Boolean, default: false },
+    files: { type: [fileSchema], default: [] }, // Array of file objects, not strings
+  },
+  { _id: false },
+);
 
 // Updated KYC Documents schema
-const kycDocumentsSchema = new Schema({
-  certificateOfIncorporation: { type: documentUploadSchema, default: () => ({}) },
-  memorandumOfAssociation: { type: documentUploadSchema, default: () => ({}) },
-  articlesOfAssociation: { type: documentUploadSchema, default: () => ({}) },
-  powerOfAttorney: { type: documentUploadSchema, default: () => ({}) },
-  copyOfPanAllotment: { type: documentUploadSchema, default: () => ({}) },
-  copyOfTelephoneBill: { type: documentUploadSchema, default: () => ({}) },
-  gstRegistrationCopy: { type: documentUploadSchema, default: () => ({}) },
-  balanceSheet: { type: documentUploadSchema, default: () => ({}) }
-}, { _id: false });
+const kycDocumentsSchema = new Schema(
+  {
+    certificateOfIncorporation: {
+      type: documentUploadSchema,
+      default: () => ({}),
+    },
+    memorandumOfAssociation: {
+      type: documentUploadSchema,
+      default: () => ({}),
+    },
+    articlesOfAssociation: { type: documentUploadSchema, default: () => ({}) },
+    powerOfAttorney: { type: documentUploadSchema, default: () => ({}) },
+    copyOfPanAllotment: { type: documentUploadSchema, default: () => ({}) },
+    copyOfTelephoneBill: { type: documentUploadSchema, default: () => ({}) },
+    gstRegistrationCopy: { type: documentUploadSchema, default: () => ({}) },
+    balanceSheet: { type: documentUploadSchema, default: () => ({}) },
+    msmeCertificate: { type: documentUploadSchema, default: () => ({}) },
+  },
+  { _id: false },
+);
 
 // Other schemas remain the same...
-const addressSchema = new Schema({
-  addressLine: { type: String,   },
-  postalCode: { type: String,   },
-  telephone: String,
-  fax: String,
-  email: String
-}, { _id: false });
+const addressSchema = new Schema(
+  {
+    addressLine: { type: String },
+    postalCode: { type: String },
+    telephone: String,
+    fax: String,
+    email: String,
+  },
+  { _id: false },
+);
 
-const generalInfoSchema = new Schema({
-  entityType: { 
-    type: String, 
+const generalInfoSchema = new Schema(
+  {
+    entityType: {
+      type: String,
+    },
+    exporterType: {
+      type: String,
+    },
+    shipperConsignee: {
+      type: String,
+    },
   },
-  exporterType : { 
-    type: String, 
-  },
-  shipperConsignee : { 
-    type: String, 
-  },
-}, { _id: false });
+  { _id: false },
+);
 
-const registrationDetailsSchema = new Schema({
-  binNo: String,
-  ieCode: { type: String,   },
-  panNo: { type: String,   },
-  gstinMainBranch: String,
-  gstinBranchCodeFree: String,
-  gstinBranchCode15: String
-}, { _id: false });
+const registrationDetailsSchema = new Schema(
+  {
+    binNo: String,
+    ieCode: { type: String },
+    panNo: { type: String },
+    gstinMainBranch: String,
+    gstinBranchCodeFree: String,
+    gstinBranchCode15: String,
+    msmeRegistered: { type: Boolean, default: false },
+  },
+  { _id: false },
+);
 
 const branchInfoSchema = new Schema({
-  branchName: { type: String,   },
-  branchCode: { type: String,   },
-  address: { type: String,   },
-  city: { type: String,   },
-  state: { type: String,   },
-  postalCode: { type: String,   },
-  country: { type: String,   default: 'India' },
-  msmeRegistered: { type: Boolean, default: false }
-
+  branchName: { type: String },
+  branchCode: { type: String },
+  address: { type: String },
+  city: { type: String },
+  state: { type: String },
+  postalCode: { type: String },
+  country: { type: String, default: "India" },
 });
 
-const aeoDetailsSchema = new Schema({
-  aeoCode: String,
-  aeoCountry: { type: String, default: 'India' },
-  aeoRole: String
-}, { _id: false });
+const aeoDetailsSchema = new Schema(
+  {
+    aeoCode: String,
+    aeoCountry: { type: String, default: "India" },
+    aeoRole: String,
+  },
+  { _id: false },
+);
 
-const billingCurrencySchema = new Schema({
-  defaultCurrency: { type: String, default: 'INR' },
-  defaultBillTypes: [String]
-}, { _id: false });
+const billingCurrencySchema = new Schema(
+  {
+    defaultCurrency: { type: String, default: "INR" },
+    defaultBillTypes: [String],
+  },
+  { _id: false },
+);
 
 const authorizedSignatorySchema = new Schema({
   name: String,
   designation: String,
   mobile: String,
-  email: String
+  email: String,
 });
 
 const customHouseSchema = new Schema({
   name: String,
   location: String,
   code: String,
-  linkedStatus: { type: String, enum: ['Linked', 'Not Linked'], default: 'Not Linked' }
+  linkedStatus: {
+    type: String,
+    enum: ["Linked", "Not Linked"],
+    default: "Not Linked",
+  },
 });
 
-const accountCreditInfoSchema = new Schema({
-  creditLimit: { type: Number, default: 0 },
-  unlimitedEnabled: { type: Boolean, default: false },
-  creditPeriod: { type: Number, default: 0 }
-}, { _id: false });
+const accountCreditInfoSchema = new Schema(
+  {
+    creditLimit: { type: Number, default: 0 },
+    unlimitedEnabled: { type: Boolean, default: false },
+    creditPeriod: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
 
 const bankDetailsSchema = new Schema({
-  entityName: { type: String   },
-  ifscCode: { type: String   },
-  branchLocation: { type: String  },
-  accountNumber: { type: String   },
-  adCode: { type: String   },
-  isDefault: { type: Boolean, default: false }
+  entityName: { type: String },
+  ifscCode: { type: String },
+  branchLocation: { type: String },
+  accountNumber: { type: String },
+  adCode: { type: String },
+  isDefault: { type: Boolean, default: false },
 });
 
 const affiliateBranchSchema = new Schema({
   branchCode: String,
-  branchName: String
+  branchName: String,
 });
 
 // Main Directory Schema
-const directorySchema = new Schema({
-  // Organization Information
-  organization: { type: String,   },
-  alias: { type: String,   },
-  approvalStatus: { 
-    type: String, 
-    enum: ['Pending', 'Approved', 'Rejected'], 
-    default: 'Pending' 
+const directorySchema = new Schema(
+  {
+    // Organization Information
+    organization: { type: String },
+    alias: { type: String },
+    approvalStatus: {
+      type: String,
+      enum: ["Pending", "Approved", "Rejected"],
+      default: "Pending",
+    },
+
+    // General Information (KYC)
+    generalInfo: { type: generalInfoSchema },
+
+    // Address (Principal Place of Business)
+    address: { type: addressSchema },
+
+    // Documents (KYC Uploads) - Updated to handle file objects
+    kycDocuments: { type: kycDocumentsSchema, default: () => ({}) },
+
+    // Registration Details
+    registrationDetails: { type: registrationDetailsSchema },
+
+    // Branch Information (Array of branches)
+    branchInfo: [branchInfoSchema],
+
+    // AEO Details
+    aeoDetails: { type: aeoDetailsSchema, default: () => ({}) },
+
+    // Billing & Currency
+    billingCurrency: { type: billingCurrencySchema, default: () => ({}) },
+
+    // Authorized Signatory (Array)
+    authorizedSignatory: [authorizedSignatorySchema],
+
+    // Custom House (Drawback Bank) (Array)
+    customHouse: [customHouseSchema],
+
+    // Account & Credit Information
+    accountCreditInfo: { type: accountCreditInfoSchema, default: () => ({}) },
+
+    // Bank / Dealer Information (Array)
+    bankDetails: [bankDetailsSchema],
+
+    // Affiliate Branches (Array)
+    affiliateBranches: [affiliateBranchSchema],
+
+    // Notes
+    notes: String,
+
+    // History (Audit Trail)
+    history: [
+      {
+        action: String,
+        user: String,
+        timestamp: { type: Date, default: Date.now },
+        changes: mongoose.Schema.Types.Mixed,
+      },
+    ],
   },
-  
-  // General Information (KYC)
-  generalInfo: { type: generalInfoSchema,   },
-  
-  // Address (Principal Place of Business)
-  address: { type: addressSchema,   },
-  
-  // Documents (KYC Uploads) - Updated to handle file objects
-  kycDocuments: { type: kycDocumentsSchema, default: () => ({}) },
-  
-  // Registration Details
-  registrationDetails: { type: registrationDetailsSchema,   },
-  
-  // Branch Information (Array of branches)
-  branchInfo: [branchInfoSchema],
-  
-  // AEO Details
-  aeoDetails: { type: aeoDetailsSchema, default: () => ({}) },
-  
-  // Billing & Currency
-  billingCurrency: { type: billingCurrencySchema, default: () => ({}) },
-  
-  // Authorized Signatory (Array)
-  authorizedSignatory: [authorizedSignatorySchema],
-  
-  // Custom House (Drawback Bank) (Array)
-  customHouse: [customHouseSchema],
-  
-  // Account & Credit Information
-  accountCreditInfo: { type: accountCreditInfoSchema, default: () => ({}) },
-  
-  // Bank / Dealer Information (Array)
-  bankDetails: [bankDetailsSchema],
-  
-  // Affiliate Branches (Array)
-  affiliateBranches: [affiliateBranchSchema],
-  
-  // Notes
-  notes: String,
-  
-  // History (Audit Trail)
-  history: [{
-    action: String,
-    user: String,
-    timestamp: { type: Date, default: Date.now },
-    changes: mongoose.Schema.Types.Mixed
-  }]
-}, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
-});
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  },
+);
 
 // Indexes for better query performance
-directorySchema.index({ organization: 'text', alias: 'text' });
-directorySchema.index({ 'registrationDetails.ieCode': 1 });
-directorySchema.index({ 'registrationDetails.panNo': 1 });
+directorySchema.index({ organization: "text", alias: "text" });
+directorySchema.index({ "registrationDetails.ieCode": 1 });
+directorySchema.index({ "registrationDetails.panNo": 1 });
 directorySchema.index({ approvalStatus: 1 });
 directorySchema.index({ createdAt: -1 });
 
 // Virtual for entity type display
-directorySchema.virtual('entityType').get(function() {
+directorySchema.virtual("entityType").get(function () {
   return this.generalInfo?.entityType;
 });
 
 // Virtual for IE Code display
-directorySchema.virtual('ieCode').get(function() {
+directorySchema.virtual("ieCode").get(function () {
   return this.registrationDetails?.ieCode;
 });
 
-export default model('Directory', directorySchema);
+export default model("Directory", directorySchema);

@@ -73,10 +73,34 @@ const SearchableDropdown = ({
           onFocus={() => !disabled && setOpen(true)}
           disabled={disabled}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (open) {
+                if (active >= 0 && filteredOptions[active]) {
+                  handleSelect(filteredOptions[active]);
+                } else if (filteredOptions.length === 1) {
+                  handleSelect(filteredOptions[0]);
+                } else {
+                  setOpen(false);
+                  const tm = query.trim().toUpperCase();
+                  if (tm !== query) {
+                    setQuery(tm);
+                    onChange({ target: { value: tm } });
+                  }
+                }
+              } else {
+                const tm = query.trim().toUpperCase();
+                if (tm !== query) {
+                  setQuery(tm);
+                  onChange({ target: { value: tm } });
+                }
+              }
+              return;
+            }
+
             if (e.key === "ArrowDown") {
               setOpen(true);
               setActive((prev) =>
-                Math.min(prev + 1, filteredOptions.length - 1)
+                Math.min(prev + 1, filteredOptions.length - 1),
               );
             } else if (e.key === "ArrowUp") {
               setActive((prev) => Math.max(prev - 1, 0));

@@ -90,11 +90,11 @@ const TABLE_COLUMNS = [
 
 // Helper - Color for Approval Status
 const getStatusColor = (status) =>
-({
-  Approved: "success",
-  Rejected: "error",
-  Pending: "warning",
-}[status] || "info");
+  ({
+    Approved: "success",
+    Rejected: "error",
+    Pending: "warning",
+  })[status] || "info";
 
 // Helper - Entity Type Icon
 const getEntityIcon = (entityType) => {
@@ -250,6 +250,10 @@ const DirectoryDetailView = ({ directory }) => (
               <strong>GSTIN:</strong>{" "}
               {directory.registrationDetails?.gstinMainBranch || "-"}
             </Typography>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              <strong>MSME Registered:</strong>{" "}
+              {directory.registrationDetails?.msmeRegistered ? "Yes" : "No"}
+            </Typography>
           </Box>
         </Paper>
       </Grid>
@@ -287,10 +291,7 @@ const DirectoryDetailView = ({ directory }) => (
                   <Typography variant="body2" sx={{ mb: 0.5 }}>
                     <strong>Email:</strong> {branch.email || "-"}
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>MSME Registered:</strong>{" "}
-                    {branch.msmeRegistered ? "Yes" : "No"}
-                  </Typography>
+
                   {idx < directory.branchInfo.length - 1 && (
                     <Divider sx={{ my: 1 }} />
                   )}
@@ -398,8 +399,8 @@ const ExportDirectory = () => {
             .includes(searchTerm.toLowerCase()) ||
           // Search in bank details AD codes
           dir.bankDetails?.some((bank) =>
-            bank.adCode?.toLowerCase().includes(searchTerm.toLowerCase())
-          )
+            bank.adCode?.toLowerCase().includes(searchTerm.toLowerCase()),
+          ),
       );
     }
     if (statusFilter) {
@@ -480,7 +481,7 @@ const ExportDirectory = () => {
 
   const paginatedDirectories = filteredDirectories.slice(
     page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
+    page * rowsPerPage + rowsPerPage,
   );
 
   return (

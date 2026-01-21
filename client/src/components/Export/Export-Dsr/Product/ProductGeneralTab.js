@@ -224,12 +224,12 @@ function UnitDropdownField({
       .filter(Boolean)
       .reduce(
         (acc, key) => (acc && acc[key] !== undefined ? acc[key] : ""),
-        obj
+        obj,
       );
   }
 
   const [query, setQuery] = useState(
-    getValueByPath(formik.values, fieldName) || ""
+    getValueByPath(formik.values, fieldName) || "",
   );
 
   useEffect(() => {
@@ -295,10 +295,32 @@ function UnitDropdownField({
             setActive(-1);
           }}
           onKeyDown={(e) => {
-            if (disabled || !open) return;
+            if (disabled) return;
+            if (e.key === "Tab") {
+              if (open) {
+                if (active >= 0 && filtered[active]) {
+                  handleSelect(active);
+                } else if (filtered.length === 1) {
+                  handleSelect(0);
+                } else {
+                  setOpen(false);
+                }
+              }
+              const trimmed = query.trim();
+              if (trimmed !== query) {
+                const upper = toUpper(trimmed);
+                setQuery(upper);
+                formik.setFieldValue(fieldName, upper);
+                if (onSelect) onSelect(upper);
+              }
+              // Tab propagates
+              return;
+            }
+
+            if (!open) return;
             if (e.key === "ArrowDown") {
               setActive((a) =>
-                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(filtered.length - 1, a < 0 ? 0 : a + 1),
               );
             } else if (e.key === "ArrowUp") {
               setActive((a) => Math.max(0, a - 1));
@@ -337,7 +359,7 @@ function useEximCodeDropdown(
   invoiceIndex,
   productIndex,
   formik,
-  handleProductChange
+  handleProductChange,
 ) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -369,7 +391,7 @@ function useEximCodeDropdown(
     .filter((opt) => {
       const code = toUpper(typeof opt === "string" ? opt : opt.code || "");
       const desc = toUpper(
-        typeof opt === "string" ? "" : opt.description || ""
+        typeof opt === "string" ? "" : opt.description || "",
       );
       const q = toUpper(query);
       const formatted = desc ? `${code} - ${desc}` : code;
@@ -425,7 +447,7 @@ function useStateDropdown(
   invoiceIndex,
   productIndex,
   formik,
-  handleProductChange
+  handleProductChange,
 ) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -449,7 +471,9 @@ function useStateDropdown(
 
   const filteredStates = states
     .filter((s) =>
-      toUpper(typeof s === "string" ? s : s.name || "").includes(toUpper(query))
+      toUpper(typeof s === "string" ? s : s.name || "").includes(
+        toUpper(query),
+      ),
     )
     .slice(0, 10);
 
@@ -457,7 +481,7 @@ function useStateDropdown(
     const stateName = toUpper(
       typeof filteredStates[i] === "string"
         ? filteredStates[i]
-        : filteredStates[i].name
+        : filteredStates[i].name,
     );
     setQuery(stateName);
     handleProductChange(productIndex, fieldName, stateName);
@@ -490,7 +514,7 @@ function useDistrictApiDropdown(
   invoiceIndex,
   productIndex,
   formik,
-  handleProductChange
+  handleProductChange,
 ) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -511,8 +535,8 @@ function useDistrictApiDropdown(
       try {
         const res = await fetch(
           `${apiBase}/districts/?status=Active&search=${encodeURIComponent(
-            query.trim()
-          )}`
+            query.trim(),
+          )}`,
         );
         const data = await res.json();
         setOpts(
@@ -520,7 +544,7 @@ function useDistrictApiDropdown(
             ? data.data
             : Array.isArray(data)
               ? data
-              : []
+              : [],
         );
       } catch {
         setOpts([]);
@@ -554,7 +578,7 @@ function useDistrictApiDropdown(
     const item = opts[i];
     if (item) {
       const districtValue = `${item.districtCode} - ${toUpper(
-        item.districtName
+        item.districtName,
       )}`;
       setQuery(districtValue);
       handleProductChange(productIndex, fieldName, districtValue);
@@ -562,19 +586,19 @@ function useDistrictApiDropdown(
         handleProductChange(
           productIndex,
           "originState",
-          toUpper(item.stateName)
+          toUpper(item.stateName),
         );
       } else if (item.stateCode) {
         const matchedState = states.find(
           (s) =>
             (s.code && s.code == item.stateCode) ||
-            (s.stateCode && s.stateCode == item.stateCode)
+            (s.stateCode && s.stateCode == item.stateCode),
         );
         if (matchedState)
           handleProductChange(
             productIndex,
             "originState",
-            toUpper(matchedState.name || matchedState)
+            toUpper(matchedState.name || matchedState),
           );
       }
       setOpen(false);
@@ -610,7 +634,7 @@ function usePtaFtaDropdown(
   invoiceIndex,
   productIndex,
   formik,
-  handleProductChange
+  handleProductChange,
 ) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -691,7 +715,7 @@ function useEndUseDropdown(
   invoiceIndex,
   productIndex,
   formik,
-  handleProductChange
+  handleProductChange,
 ) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -787,7 +811,7 @@ const EximCodeField = ({
     invoiceIndex,
     productIndex,
     formik,
-    handleProductChange
+    handleProductChange,
   );
   return (
     <div style={styles.field} ref={d.wrapperRef}>
@@ -802,10 +826,28 @@ const EximCodeField = ({
           onFocus={d.onInputFocus}
           onBlur={d.onInputBlur}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (d.open) {
+                if (d.active >= 0 && d.filtered[d.active]) {
+                  d.select(d.active);
+                } else if (d.filtered.length === 1) {
+                  d.select(0);
+                } else {
+                  d.setOpen(false);
+                }
+              }
+              const trimmed = d.query.trim();
+              if (trimmed !== d.query) {
+                const upper = toUpper(trimmed);
+                d.handle(upper); // Using handle to update query and trigger change
+              }
+              return;
+            }
+
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
-                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp")
               d.setActive((a) => Math.max(0, a - 1));
@@ -856,7 +898,7 @@ const DistrictApiField = ({
     invoiceIndex,
     productIndex,
     formik,
-    handleProductChange
+    handleProductChange,
   );
   return (
     <div style={styles.field} ref={d.wrapperRef}>
@@ -871,10 +913,28 @@ const DistrictApiField = ({
           onFocus={d.onInputFocus}
           onBlur={d.onInputBlur}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (d.open) {
+                if (d.active >= 0 && d.opts[d.active]) {
+                  d.select(d.active);
+                } else if (d.opts.length === 1) {
+                  d.select(0);
+                } else {
+                  d.setOpen(false);
+                }
+              }
+              const trimmed = d.query.trim();
+              if (trimmed !== d.query) {
+                const upper = toUpper(trimmed);
+                d.handle(upper);
+              }
+              return;
+            }
+
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
-                Math.min(d.opts.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(d.opts.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp")
               d.setActive((a) => Math.max(0, a - 1));
@@ -918,7 +978,7 @@ const PtaFtaField = ({
     invoiceIndex,
     productIndex,
     formik,
-    handleProductChange
+    handleProductChange,
   );
   return (
     <div style={styles.field} ref={d.wrapperRef}>
@@ -933,10 +993,28 @@ const PtaFtaField = ({
           onFocus={d.onInputFocus}
           onBlur={d.onInputBlur}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (d.open) {
+                if (d.active >= 0 && d.filtered[d.active]) {
+                  d.select(d.active);
+                } else if (d.filtered.length === 1) {
+                  d.select(0);
+                } else {
+                  d.setOpen(false);
+                }
+              }
+              const trimmed = d.query.trim();
+              if (trimmed !== d.query) {
+                const upper = toUpper(trimmed);
+                d.handle(upper);
+              }
+              return;
+            }
+
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
-                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1),
               );
             else if (e.key === "ArrowUp")
               d.setActive((a) => Math.max(0, a - 1));
@@ -983,7 +1061,7 @@ const EndUseField = ({
     invoiceIndex,
     productIndex,
     formik,
-    handleProductChange
+    handleProductChange,
   );
 
   return (
@@ -999,10 +1077,28 @@ const EndUseField = ({
           onFocus={d.onInputFocus}
           onBlur={d.onInputBlur}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (d.open) {
+                if (d.active >= 0 && d.filtered[d.active]) {
+                  d.select(d.active);
+                } else if (d.filtered.length === 1) {
+                  d.select(0);
+                } else {
+                  d.setOpen(false);
+                }
+              }
+              const trimmed = d.query.trim();
+              if (trimmed !== d.query) {
+                const upper = toUpper(trimmed);
+                d.handle(upper);
+              }
+              return;
+            }
+
             if (!d.open) return;
             if (e.key === "ArrowDown") {
               d.setActive((a) =>
-                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1),
               );
             } else if (e.key === "ArrowUp") {
               d.setActive((a) => Math.max(0, a - 1));
@@ -1088,7 +1184,7 @@ function ProductRow({
               data.data.find(
                 (e) =>
                   (e.tariff_line || e.tariff_item || "").toString() ===
-                  product.ritc.toString()
+                  product.ritc.toString(),
               ) || data.data[0];
           }
         }
@@ -1104,13 +1200,13 @@ function ProductRow({
           handleProductChange(
             index,
             "rodtepInfo.ratePercent",
-            parseFloat(rate)
+            parseFloat(rate),
           );
 
           handleProductChange(
             index,
             "rodtepInfo.capValuePerUnits",
-            parseFloat(cap)
+            parseFloat(cap),
           );
 
           if (uqc) {
@@ -1144,7 +1240,7 @@ function ProductRow({
     const fobINR = calculateProductFobINR(
       product,
       invoice,
-      invoiceExchangeRate
+      invoiceExchangeRate,
     );
     const rateAmount = fobINR * (rate / 100);
 
@@ -1159,7 +1255,7 @@ function ProductRow({
     } else {
       finalAmount = Math.min(
         rateAmount,
-        capAmount === Infinity ? rateAmount : capAmount
+        capAmount === Infinity ? rateAmount : capAmount,
       );
     }
 
@@ -1167,7 +1263,7 @@ function ProductRow({
       handleProductChange(
         index,
         "rodtepInfo.amountINR",
-        parseFloat(finalAmount.toFixed(2))
+        parseFloat(finalAmount.toFixed(2)),
       );
     }
   }, [
@@ -1187,7 +1283,7 @@ function ProductRow({
     selectedInvoiceIndex,
     index,
     formik,
-    handleProductChange
+    handleProductChange,
   );
 
   // Auto-calculate IGST fields based on payment status
@@ -1201,13 +1297,13 @@ function ProductRow({
 
       if (
         Math.abs(
-          (product.igstCompensationCess?.taxableValueINR || 0) - taxableValue
+          (product.igstCompensationCess?.taxableValueINR || 0) - taxableValue,
         ) > 0.01
       ) {
         handleProductChange(
           index,
           "igstCompensationCess.taxableValueINR",
-          parseFloat(taxableValue.toFixed(2))
+          parseFloat(taxableValue.toFixed(2)),
         );
       }
 
@@ -1216,13 +1312,13 @@ function ProductRow({
 
       if (
         Math.abs(
-          (product.igstCompensationCess?.igstAmountINR || 0) - igstAmount
+          (product.igstCompensationCess?.igstAmountINR || 0) - igstAmount,
         ) > 0.01
       ) {
         handleProductChange(
           index,
           "igstCompensationCess.igstAmountINR",
-          parseFloat(igstAmount.toFixed(2))
+          parseFloat(igstAmount.toFixed(2)),
         );
       }
     }
@@ -1353,13 +1449,38 @@ function ProductRow({
                 stateData.setActive(-1);
               }}
               onKeyDown={(e) => {
+                if (e.key === "Tab") {
+                  if (stateData.open) {
+                    if (
+                      stateData.active >= 0 &&
+                      stateData.filteredStates[stateData.active]
+                    ) {
+                      stateData.handleSelect(stateData.active);
+                    } else if (stateData.filteredStates.length === 1) {
+                      stateData.handleSelect(0);
+                    } else {
+                      stateData.setOpen(false);
+                    }
+                  }
+                  const trimmed = stateData.query.trim();
+                  if (trimmed !== stateData.query) {
+                    const upper = toUpper(trimmed);
+                    // stateData has handleInput but it takes event
+                    // We need to call handleProductChange manually or find a way.
+                    // stateData.handleInput expects event, let's call logic directly
+                    // It uses handleProductChange from closure
+                    handleProductChange(index, "originState", upper);
+                  }
+                  return;
+                }
+
                 if (!stateData.open) return;
                 if (e.key === "ArrowDown")
                   stateData.setActive((a) =>
                     Math.min(
                       stateData.filteredStates.length - 1,
-                      a < 0 ? 0 : a + 1
-                    )
+                      a < 0 ? 0 : a + 1,
+                    ),
                   );
                 else if (e.key === "ArrowUp")
                   stateData.setActive((a) => Math.max(0, a - 1));
@@ -1379,7 +1500,7 @@ function ProductRow({
                     onMouseEnter={() => stateData.setActive(i)}
                   >
                     {toUpper(
-                      typeof state === "string" ? state : state.name || ""
+                      typeof state === "string" ? state : state.name || "",
                     )}
                   </div>
                 ))}
@@ -1408,7 +1529,7 @@ function ProductRow({
               handleProductChange(
                 index,
                 "alternateQty",
-                parseFloat(e.target.value) || 0
+                parseFloat(e.target.value) || 0,
               )
             }
           />
@@ -1456,7 +1577,7 @@ function ProductRow({
               handleProductChange(
                 index,
                 "surfaceMaterialInContact",
-                e.target.value
+                e.target.value,
               )
             }
             disabled
@@ -1510,7 +1631,7 @@ function ProductRow({
                 handleProductChange(
                   index,
                   "pmvInfo.calculationMethod",
-                  e.target.value
+                  e.target.value,
                 )
               }
             >
@@ -1519,19 +1640,19 @@ function ProductRow({
             </select>
             {(product.pmvInfo?.calculationMethod ?? "percentage") ===
               "percentage" && (
-                <input
-                  style={{ ...styles.input, width: "40%" }}
-                  type="number"
-                  value={product.pmvInfo?.percentage ?? 110.0}
-                  onChange={(e) =>
-                    handleProductChange(
-                      index,
-                      "pmvInfo.percentage",
-                      parseFloat(e.target.value)
-                    )
-                  }
-                />
-              )}
+              <input
+                style={{ ...styles.input, width: "40%" }}
+                type="number"
+                value={product.pmvInfo?.percentage ?? 110.0}
+                onChange={(e) =>
+                  handleProductChange(
+                    index,
+                    "pmvInfo.percentage",
+                    parseFloat(e.target.value),
+                  )
+                }
+              />
+            )}
           </div>
         </div>
 
@@ -1544,7 +1665,7 @@ function ProductRow({
                 paddingRight: 35,
                 backgroundColor:
                   (product.pmvInfo?.calculationMethod ?? "percentage") ===
-                    "percentage"
+                  "percentage"
                     ? "#e2e8f0"
                     : "#f7fafc",
               }}
@@ -1554,7 +1675,7 @@ function ProductRow({
                 handleProductChange(
                   index,
                   "pmvInfo.pmvPerUnit",
-                  parseFloat(e.target.value)
+                  parseFloat(e.target.value),
                 )
               }
               disabled={
@@ -1589,7 +1710,7 @@ function ProductRow({
                 paddingRight: 35,
                 backgroundColor:
                   (product.pmvInfo?.calculationMethod ?? "percentage") ===
-                    "percentage"
+                  "percentage"
                     ? "#e2e8f0"
                     : "#f7fafc",
               }}
@@ -1599,7 +1720,7 @@ function ProductRow({
                 handleProductChange(
                   index,
                   "pmvInfo.totalPMV",
-                  parseFloat(e.target.value)
+                  parseFloat(e.target.value),
                 )
               }
               disabled={
@@ -1657,7 +1778,7 @@ function ProductRow({
                   handleProductChange(
                     index,
                     "igstCompensationCess.igstPaymentStatus",
-                    val
+                    val,
                   );
                 }
               }}
@@ -1678,7 +1799,7 @@ function ProductRow({
               style={{
                 ...styles.select,
                 ...(product.igstCompensationCess?.igstPaymentStatus !==
-                  "Export Against Payment"
+                "Export Against Payment"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1687,7 +1808,7 @@ function ProductRow({
                 handleProductChange(
                   index,
                   "igstCompensationCess.igstRate",
-                  parseFloat(e.target.value)
+                  parseFloat(e.target.value),
                 )
               }
               disabled={
@@ -1706,7 +1827,7 @@ function ProductRow({
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus !==
-                  "Export Against Payment"
+                "Export Against Payment"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1716,7 +1837,7 @@ function ProductRow({
                 handleProductChange(
                   index,
                   "igstCompensationCess.compensationCessRate",
-                  parseFloat(e.target.value)
+                  parseFloat(e.target.value),
                 )
               }
               disabled={
@@ -1733,7 +1854,7 @@ function ProductRow({
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus ===
-                  "Not Applicable"
+                "Not Applicable"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1743,7 +1864,7 @@ function ProductRow({
                 handleProductChange(
                   index,
                   "igstCompensationCess.taxableValueINR",
-                  parseFloat(e.target.value)
+                  parseFloat(e.target.value),
                 )
               }
               disabled={
@@ -1762,7 +1883,7 @@ function ProductRow({
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus !==
-                  "Export Against Payment"
+                "Export Against Payment"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1772,7 +1893,7 @@ function ProductRow({
                 handleProductChange(
                   index,
                   "igstCompensationCess.igstAmountINR",
-                  parseFloat(e.target.value)
+                  parseFloat(e.target.value),
                 )
               }
               disabled={
@@ -1787,7 +1908,7 @@ function ProductRow({
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus !==
-                  "Export Against Payment"
+                "Export Against Payment"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1799,7 +1920,7 @@ function ProductRow({
                 handleProductChange(
                   index,
                   "igstCompensationCess.compensationCessAmountINR",
-                  parseFloat(e.target.value)
+                  parseFloat(e.target.value),
                 )
               }
               disabled={
@@ -1839,7 +1960,7 @@ function ProductRow({
               handleProductChange(
                 index,
                 "rodtepInfo.quantity",
-                parseFloat(e.target.value)
+                parseFloat(e.target.value),
               )
             }
             disabled={product.rodtepInfo?.claim === "Not Applicable"}
@@ -1868,7 +1989,7 @@ function ProductRow({
               handleProductChange(
                 index,
                 "rodtepInfo.ratePercent",
-                parseFloat(e.target.value)
+                parseFloat(e.target.value),
               )
             }
             disabled={product.rodtepInfo?.claim === "Not Applicable"}
@@ -1885,7 +2006,7 @@ function ProductRow({
               handleProductChange(
                 index,
                 "rodtepInfo.capValue",
-                parseFloat(e.target.value)
+                parseFloat(e.target.value),
               )
             }
             disabled={product.rodtepInfo?.claim === "Not Applicable"}
@@ -1902,7 +2023,7 @@ function ProductRow({
               handleProductChange(
                 index,
                 "rodtepInfo.capValuePerUnits",
-                parseFloat(e.target.value)
+                parseFloat(e.target.value),
               )
             }
             disabled={product.rodtepInfo?.claim === "Not Applicable"}
@@ -1931,7 +2052,7 @@ function ProductRow({
               handleProductChange(
                 index,
                 "rodtepInfo.amountINR",
-                parseFloat(e.target.value)
+                parseFloat(e.target.value),
               )
             }
             disabled={product.rodtepInfo?.claim === "Not Applicable"}
@@ -2019,7 +2140,7 @@ const ProductGeneralTab = ({
       const code = currencyCode.toString().toUpperCase();
       const rateObj = exchangeRates.find(
         (r) =>
-          (r.currency_code || r.code || "").toString().toUpperCase() === code
+          (r.currency_code || r.code || "").toString().toUpperCase() === code,
       );
 
       if (!rateObj) return 1;
@@ -2030,7 +2151,7 @@ const ProductGeneralTab = ({
       if (isNaN(num) || unit <= 0) return 1;
       return num / unit;
     },
-    [exchangeRates]
+    [exchangeRates],
   );
 
   const convertToINR = useCallback(
@@ -2043,7 +2164,7 @@ const ProductGeneralTab = ({
       const total = parseFloat(amount) * rate;
       return Number.isFinite(total) ? total : 0;
     },
-    [getExportRate]
+    [getExportRate],
   );
 
   // const calculatePMV = useCallback(
@@ -2091,7 +2212,7 @@ const ProductGeneralTab = ({
     (index, field, value) => {
       formik.setFieldValue(
         `invoices[${selectedInvoiceIndex}].products[${index}].${field}`,
-        value
+        value,
       );
 
       // If PMV calculation method changes to percentage, recalculate PMV
@@ -2105,7 +2226,7 @@ const ProductGeneralTab = ({
         const amountInINR = calculateProductFobINR(
           prod,
           invoice,
-          invoiceExchangeRate
+          invoiceExchangeRate,
         );
 
         const totalPMV_INR = (amountInINR * percentage) / 100;
@@ -2125,11 +2246,11 @@ const ProductGeneralTab = ({
 
         formik.setFieldValue(
           `invoices[${selectedInvoiceIndex}].products[${index}].pmvInfo.pmvPerUnit`,
-          parseFloat(pmvPerUnit.toFixed(2))
+          parseFloat(pmvPerUnit.toFixed(2)),
         );
         formik.setFieldValue(
           `invoices[${selectedInvoiceIndex}].products[${index}].pmvInfo.totalPMV`,
-          parseFloat(totalPMV.toFixed(2))
+          parseFloat(totalPMV.toFixed(2)),
         );
       }
     },
@@ -2140,7 +2261,7 @@ const ProductGeneralTab = ({
       invoice?.currency,
       selectedInvoiceIndex,
       products,
-    ]
+    ],
   );
   // Removed formik.values.products and calculatePMV from dependencies
 
@@ -2148,10 +2269,10 @@ const ProductGeneralTab = ({
     (index, unitField, unitValue) => {
       formik.setFieldValue(
         `invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.${unitField}`,
-        unitValue
+        unitValue,
       );
     },
-    [formik.setFieldValue, selectedInvoiceIndex]
+    [formik.setFieldValue, selectedInvoiceIndex],
   );
 
   // Sync RoDTEP Quantity & Unit with SQC values
@@ -2214,7 +2335,7 @@ const ProductGeneralTab = ({
       const amountInINR = calculateProductFobINR(
         prod,
         invoice,
-        invoiceExchangeRate
+        invoiceExchangeRate,
       );
 
       const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;

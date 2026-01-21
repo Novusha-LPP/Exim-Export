@@ -16,6 +16,7 @@ import {
   FormHelperText,
   FormGroup,
   IconButton,
+  Alert,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -45,18 +46,18 @@ const validationSchema = Yup.object({
   }),
 
   registrationDetails: Yup.object({
-    ieCode: Yup.string()
-    .required("IE Code is required"),
+    ieCode: Yup.string().required("IE Code is required"),
     panNo: Yup.string()
       .matches(
         /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
-        "Invalid PAN format (e.g., ABCDE1234F)"
+        "Invalid PAN format (e.g., ABCDE1234F)",
       )
       .required("PAN No is required"),
     gstinMainBranch: Yup.string().matches(
       /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/,
-      "Invalid GSTIN format"
+      "Invalid GSTIN format",
     ),
+    msmeRegistered: Yup.boolean(),
   }),
 
   branchInfo: Yup.array()
@@ -73,8 +74,7 @@ const validationSchema = Yup.object({
         country: Yup.string().max(100).required("Country is required"),
         mobile: Yup.string().matches(/^\d{10}$/, "Mobile must be 10 digits"),
         email: Yup.string().email("Invalid email format").max(255),
-        msmeRegistered: Yup.boolean(),
-      })
+      }),
     )
     .min(1, "At least one branch is required"),
 
@@ -111,6 +111,19 @@ const validationSchema = Yup.object({
       uploaded: Yup.boolean(),
       files: Yup.array(),
     }),
+    msmeCertificate: Yup.object({
+      uploaded: Yup.boolean(),
+      files: Yup.array(),
+    }),
+  }).when("registrationDetails", {
+    is: (registrationDetails) => registrationDetails?.msmeRegistered === true,
+    then: (schema) =>
+      schema.shape({
+        msmeCertificate: Yup.object({
+          uploaded: Yup.boolean().isTrue("MSME Certificate is required"),
+          files: Yup.array().min(1, "MSME Certificate is required"),
+        }),
+      }),
   }),
 
   billingCurrency: Yup.object({
@@ -124,7 +137,7 @@ const validationSchema = Yup.object({
       designation: Yup.string().max(100),
       mobile: Yup.string().matches(/^\d{10}$/, "Mobile must be 10 digits"),
       email: Yup.string().email("Invalid email format").max(255),
-    })
+    }),
   ),
 
   accountCreditInfo: Yup.object({
@@ -149,6 +162,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
       ieCode: directory?.registrationDetails?.ieCode || "",
       panNo: directory?.registrationDetails?.panNo || "",
       gstinMainBranch: directory?.registrationDetails?.gstinMainBranch || "",
+      msmeRegistered: directory?.registrationDetails?.msmeRegistered || false,
     },
     kycDocuments: {
       certificateOfIncorporation: {
@@ -190,6 +204,10 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
         uploaded: directory?.kycDocuments?.balanceSheet?.uploaded || false,
         files: directory?.kycDocuments?.balanceSheet?.files || [],
       },
+      msmeCertificate: {
+        uploaded: directory?.kycDocuments?.msmeCertificate?.uploaded || false,
+        files: directory?.kycDocuments?.msmeCertificate?.files || [],
+      },
     },
     branchInfo: directory?.branchInfo || [
       {
@@ -202,7 +220,6 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
         country: "India",
         mobile: "",
         email: "",
-        msmeRegistered: false,
       },
     ],
     billingCurrency: {
@@ -259,12 +276,12 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
 
   const handleFileDelete = (documentType, fileIndex, values, setFieldValue) => {
     const updatedFiles = values.kycDocuments[documentType].files.filter(
-      (_, index) => index !== fileIndex
+      (_, index) => index !== fileIndex,
     );
     setFieldValue(`kycDocuments.${documentType}.files`, updatedFiles);
     setFieldValue(
       `kycDocuments.${documentType}.uploaded`,
-      updatedFiles.length > 0
+      updatedFiles.length > 0,
     );
   };
 
@@ -423,7 +440,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                 : "";
                               setFieldValue(
                                 "generalInfo.shipperConsignee",
-                                newValue
+                                newValue,
                               );
                             }}
                             size="small"
@@ -450,7 +467,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                 : "";
                               setFieldValue(
                                 "generalInfo.shipperConsignee",
-                                newValue
+                                newValue,
                               );
                             }}
                             size="small"
@@ -555,7 +572,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         const uppercaseValue = e.target.value.toUpperCase();
                         setFieldValue(
                           "registrationDetails.panNo",
-                          uppercaseValue
+                          uppercaseValue,
                         );
                       }}
                       onBlur={handleBlur}
@@ -585,7 +602,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         const uppercaseValue = e.target.value.toUpperCase();
                         setFieldValue(
                           "registrationDetails.gstinMainBranch",
-                          uppercaseValue
+                          uppercaseValue,
                         );
                       }}
                       onBlur={handleBlur}
@@ -601,6 +618,30 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                       inputProps={{
                         style: { textTransform: "uppercase" },
                         maxLength: 15,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={values.registrationDetails.msmeRegistered}
+                          onChange={(e) => {
+                            setFieldValue(
+                              "registrationDetails.msmeRegistered",
+                              e.target.checked,
+                            );
+                          }}
+                          size="small"
+                        />
+                      }
+                      label="MSME Registered?"
+                      sx={{
+                        mt: 2,
+                        "& .MuiFormControlLabel-label": {
+                          fontWeight: 600,
+                          color: "primary.main",
+                        },
                       }}
                     />
                   </Grid>
@@ -711,7 +752,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                 error={
                                   touched.bankDetails?.[index]?.entityName &&
                                   Boolean(
-                                    errors.bankDetails?.[index]?.entityName
+                                    errors.bankDetails?.[index]?.entityName,
                                   )
                                 }
                                 helperText={
@@ -735,7 +776,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                   touched.bankDetails?.[index]
                                     ?.branchLocation &&
                                   Boolean(
-                                    errors.bankDetails?.[index]?.branchLocation
+                                    errors.bankDetails?.[index]?.branchLocation,
                                   )
                                 }
                                 helperText={
@@ -759,7 +800,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                 error={
                                   touched.bankDetails?.[index]?.accountNumber &&
                                   Boolean(
-                                    errors.bankDetails?.[index]?.accountNumber
+                                    errors.bankDetails?.[index]?.accountNumber,
                                   )
                                 }
                                 helperText={
@@ -803,7 +844,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                     e.target.value.toUpperCase();
                                   setFieldValue(
                                     `bankDetails[${index}].ifscCode`,
-                                    uppercaseValue
+                                    uppercaseValue,
                                   );
                                 }}
                                 onBlur={handleBlur}
@@ -888,7 +929,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                           ...values.branchInfo,
                           {
                             branchCode: "",
-                            branchName: "",
+                            branchName: `Branch ${values.branchInfo.length}`, // Auto-name from 1
                             address: "",
                             city: "",
                             state: "",
@@ -896,7 +937,6 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                             country: "India",
                             mobile: "",
                             email: "",
-                            msmeRegistered: false,
                           },
                         ])
                       }
@@ -938,7 +978,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                             variant="subtitle2"
                             sx={{ fontSize: "0.9rem", fontWeight: "bold" }}
                           >
-                            Branch {index + 1}
+                            Branch {index}
                           </Typography>
                           {!readOnly && (
                             <IconButton
@@ -1068,7 +1108,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                   .slice(0, 6);
                                 setFieldValue(
                                   `branchInfo[${index}].postalCode`,
-                                  value
+                                  value,
                                 );
                               }}
                               onBlur={handleBlur}
@@ -1116,7 +1156,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                   .slice(0, 10);
                                 setFieldValue(
                                   `branchInfo[${index}].mobile`,
-                                  value
+                                  value,
                                 );
                               }}
                               onBlur={handleBlur}
@@ -1152,126 +1192,118 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                               margin="dense"
                             />
                           </Grid>
-                          <Grid item xs={6} sm={3} md={2}>
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  checked={Boolean(branch.msmeRegistered)}
-                                  onChange={() =>
-                                    setFieldValue(
-                                      `branchInfo[${index}].msmeRegistered`,
-                                      !branch.msmeRegistered
-                                    )
-                                  }
-                                  size="small"
-                                />
-                              }
-                              label="MSME"
-                              sx={{
-                                mt: 1,
-                                "& .MuiFormControlLabel-label": {
-                                  fontSize: "0.8rem",
-                                },
-                              }}
-                            />
-                          </Grid>
                         </Grid>
-
-                        {/* KYC Documents for each branch */}
-                        <Box sx={{ mt: 2 }}>
-                          <Typography
-                            variant="subtitle2"
-                            sx={{
-                              mb: 1,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 0.5,
-                              fontSize: "0.8rem",
-                            }}
-                          >
-                            <DocumentIcon fontSize="small" color="primary" />
-                            KYC Documents
-                          </Typography>
-
-                          <Grid container spacing={1}>
-                            {[
-                              {
-                                key: "certificateOfIncorporation",
-                                label: "Incorporation Cert",
-                              },
-                              { key: "memorandumOfAssociation", label: "MOA" },
-                              { key: "articlesOfAssociation", label: "AOA" },
-                              {
-                                key: "powerOfAttorney",
-                                label: "Power of Attorney",
-                              },
-                              { key: "copyOfPanAllotment", label: "PAN Copy" },
-                              {
-                                key: "copyOfTelephoneBill",
-                                label: "Telephone Bill",
-                              },
-                              {
-                                key: "gstRegistrationCopy",
-                                label: "GST Registration",
-                              },
-                              { key: "balanceSheet", label: "Balance Sheet" },
-                            ].map((doc) => (
-                              <Grid item xs={6} sm={4} md={3} key={doc.key}>
-                                <Box sx={{ p: 0.5 }}>
-                                  <Typography
-                                    variant="caption"
-                                    display="block"
-                                    gutterBottom
-                                    sx={{
-                                      fontWeight: "bold",
-                                      fontSize: "0.7rem",
-                                    }}
-                                  >
-                                    {doc.label}
-                                  </Typography>
-                                  <FileUpload
-                                    label={`Upload`}
-                                    onFilesUploaded={(files) =>
-                                      handleFileUpload(
-                                        doc.key,
-                                        files,
-                                        setFieldValue
-                                      )
-                                    }
-                                    bucketPath={`kyc-documents/${
-                                      doc.key
-                                    }-branch-${index + 1}`}
-                                    multiple={false}
-                                    acceptedFileTypes={[
-                                      ".pdf",
-                                      ".jpg",
-                                      ".jpeg",
-                                      ".png",
-                                    ]}
-                                    readOnly={readOnly}
-                                    existingFiles={
-                                      values.kycDocuments[doc.key].files
-                                    }
-                                    onFileDeleted={(fileIndex) =>
-                                      handleFileDelete(
-                                        doc.key,
-                                        fileIndex,
-                                        values,
-                                        setFieldValue
-                                      )
-                                    }
-                                    compact
-                                  />
-                                </Box>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </Box>
                       </Box>
                     ))}
                   </Box>
                 )}
               </FieldArray>
+
+              {/* KYC Documents Section - MOVED OUTSIDE BRANCH LOOP */}
+              <Box
+                sx={{
+                  mt: 3,
+                  mb: 2,
+                  p: 1.5,
+                  bgcolor: "rgba(0,0,0,0.02)",
+                  borderRadius: 1,
+                }}
+              >
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    mb: 1.5,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  <DocumentIcon fontSize="small" color="primary" />
+                  KYC Documents
+                </Typography>
+
+                <Alert severity="info" sx={{ mb: 2, fontSize: "0.85rem" }}>
+                  Note: An organization can only have one MSME (Udyam)
+                  Registration per legal entity (PAN).
+                </Alert>
+
+                <Grid container spacing={1}>
+                  {[
+                    {
+                      key: "certificateOfIncorporation",
+                      label: "Incorporation Cert",
+                    },
+                    { key: "memorandumOfAssociation", label: "MOA" },
+                    { key: "articlesOfAssociation", label: "AOA" },
+                    {
+                      key: "powerOfAttorney",
+                      label: "Power of Attorney",
+                    },
+                    { key: "copyOfPanAllotment", label: "PAN Copy" },
+                    {
+                      key: "copyOfTelephoneBill",
+                      label: "Telephone Bill",
+                    },
+                    {
+                      key: "gstRegistrationCopy",
+                      label: "GST Registration",
+                    },
+                    { key: "balanceSheet", label: "Balance Sheet" },
+                    // ADD MSME Certificate conditionally or always show
+                    {
+                      key: "msmeCertificate",
+                      label: "MSME Certificate",
+                      required: values.registrationDetails.msmeRegistered,
+                    },
+                  ].map((doc) => (
+                    <Grid item xs={6} sm={4} md={3} key={doc.key}>
+                      <Box sx={{ p: 0.5 }}>
+                        <Typography
+                          variant="caption"
+                          display="block"
+                          gutterBottom
+                          sx={{
+                            fontWeight: "bold",
+                            fontSize: "0.7rem",
+                            color: doc.required ? "error.main" : "text.primary",
+                          }}
+                        >
+                          {doc.label} {doc.required ? "*" : ""}
+                        </Typography>
+                        <FileUpload
+                          label={doc.label}
+                          onFilesUploaded={(files) =>
+                            handleFileUpload(doc.key, files, setFieldValue)
+                          }
+                          bucketPath={`kyc-documents/${doc.key}`}
+                          multiple={false}
+                          acceptedFileTypes={[".pdf", ".jpg", ".jpeg", ".png"]}
+                          readOnly={readOnly}
+                          existingFiles={values.kycDocuments[doc.key]?.files}
+                          onFileDeleted={(fileIndex) =>
+                            handleFileDelete(
+                              doc.key,
+                              fileIndex,
+                              values,
+                              setFieldValue,
+                            )
+                          }
+                          compact
+                        />
+                        {/* Show error for MSME if missing and required */}
+                        {doc.key === "msmeCertificate" &&
+                          touched.kycDocuments?.msmeCertificate &&
+                          errors.kycDocuments?.msmeCertificate?.uploaded && (
+                            <FormHelperText error>
+                              {errors.kycDocuments.msmeCertificate.uploaded}
+                            </FormHelperText>
+                          )}
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
             </Box>
 
             {!readOnly && (

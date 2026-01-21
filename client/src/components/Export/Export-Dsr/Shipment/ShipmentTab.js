@@ -52,9 +52,10 @@ const ShipmentTab = ({ formik, directories, params, onUpdate }) => {
             <Tab label="Stuffing Details" />
           )}
           {/* <Tab label="Shipping Bill Printing" /> */}
-          {(formik.values.consignmentType || "").toUpperCase() !== "AIR" && (
-            <Tab label="Annex C1 Details" />
-          )}
+          {(formik.values.consignmentType || "").toUpperCase() !== "AIR" &&
+            formik.values.annexure_c_details && (
+              <Tab label="Annex C1 Details" />
+            )}
         </Tabs>
       </Box>
 
@@ -85,16 +86,17 @@ const ShipmentTab = ({ formik, directories, params, onUpdate }) => {
         />
       </ShipmentTabPanel>
        */}
-      {(formik.values.consignmentType || "").toUpperCase() !== "AIR" && (
-        <ShipmentTabPanel value={activeSubTab} index={2}>
-          <AnnexC1DetailsTab
-            formik={formik}
-            directories={directories}
-            params={params}
-            onUpdate={onUpdate}
-          />
-        </ShipmentTabPanel>
-      )}
+      {(formik.values.consignmentType || "").toUpperCase() !== "AIR" &&
+        formik.values.annexure_c_details && (
+          <ShipmentTabPanel value={activeSubTab} index={2}>
+            <AnnexC1DetailsTab
+              formik={formik}
+              directories={directories}
+              params={params}
+              onUpdate={onUpdate}
+            />
+          </ShipmentTabPanel>
+        )}
     </Box>
   );
 };

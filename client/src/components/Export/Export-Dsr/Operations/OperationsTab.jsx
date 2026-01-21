@@ -328,6 +328,27 @@ function ShippingLineDropdownField({ fieldName, formik, placeholder = "" }) {
           onFocus={d.onInputFocus}
           onBlur={d.onInputBlur}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (d.open) {
+                if (d.active >= 0) {
+                  const originalIndex = indexInOpts(d.active);
+                  if (originalIndex >= 0) d.select(originalIndex);
+                } else if (filteredOpts.length === 1) {
+                  const originalIndex = indexInOpts(0);
+                  if (originalIndex >= 0) d.select(originalIndex);
+                } else {
+                  d.setOpen(false);
+                }
+              }
+              const trimmed = d.query.trim();
+              if (trimmed !== d.query) {
+                const upper = toUpper(trimmed);
+                d.setQuery(upper);
+                formik.setFieldValue(fieldName, upper);
+              }
+              return;
+            }
+
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>
@@ -563,6 +584,25 @@ function GatewayPortDropdown({
           onFocus={d.onInputFocus}
           onBlur={d.onInputBlur}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (d.open) {
+                if (d.active >= 0) {
+                  d.select(d.active);
+                } else if (filtered.length === 1) {
+                  d.select(0);
+                } else {
+                  d.setOpen(false);
+                }
+              }
+              const trimmed = d.query.trim();
+              if (trimmed !== d.query) {
+                const upper = toUpper(trimmed);
+                d.setQuery(upper);
+                formik.setFieldValue(fieldName, upper);
+              }
+              return;
+            }
+
             if (!d.open) return;
             if (e.key === "ArrowDown")
               d.setActive((a) =>

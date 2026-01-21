@@ -176,6 +176,25 @@ function CFSDropdownField({
             setActive(-1);
           }}
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (open) {
+                if (active >= 0 && filtered[active]) {
+                  handleSelect(active);
+                } else if (filtered.length === 1) {
+                  handleSelect(0);
+                } else {
+                  setOpen(false);
+                }
+              }
+              const trimmed = query.trim();
+              if (trimmed !== query) {
+                const upper = toUpper(trimmed);
+                setQuery(upper);
+                formik.setFieldValue(fieldName, upper);
+              }
+              return;
+            }
+
             if (!open) return;
             if (e.key === "ArrowDown")
               setActive((a) =>

@@ -32,7 +32,7 @@ function useConsigneeCountryDropdown(value, onChange) {
     const t = setTimeout(async () => {
       try {
         const res = await fetch(
-          `${apiBase}/countries?search=${encodeURIComponent(query.trim())}`
+          `${apiBase}/countries?search=${encodeURIComponent(query.trim())}`,
         );
         const data = await res.json();
         setOpts(data?.data || []);
@@ -119,6 +119,24 @@ const ConsigneeCountryAutocomplete = ({ value, onChange }) => {
         onFocus={d.handleFocus}
         onBlur={d.handleBlur}
         onKeyDown={(e) => {
+          if (e.key === "Tab") {
+            if (d.open) {
+              if (d.active >= 0 && d.opts[d.active]) {
+                d.selectIndex(d.active);
+              } else if (d.opts.length === 1) {
+                d.selectIndex(0);
+              } else {
+                d.setOpen(false);
+              }
+            }
+            const trimmed = d.query.trim();
+            if (trimmed !== d.query) {
+              const upper = toUpper(trimmed);
+              d.handleChange(upper);
+            }
+            return;
+          }
+
           if (!d.open) return;
           if (e.key === "ArrowDown") {
             e.preventDefault();
@@ -253,7 +271,7 @@ const GeneralTab = ({ formik, directories }) => {
 
     // Filter list
     const filtered = consigneeList.filter((c) =>
-      toUpper(c.consignee_name).includes(val)
+      toUpper(c.consignee_name).includes(val),
     );
     setFilteredConsignees(filtered);
     setActiveIdx(idx);
@@ -316,7 +334,7 @@ const GeneralTab = ({ formik, directories }) => {
   useEffect(() => {
     const exporterName = getVal("exporter");
     const exp = exporters.find(
-      (ex) => toUpper(ex.organization) === exporterName
+      (ex) => toUpper(ex.organization) === exporterName,
     );
     if (!exp) return;
 
@@ -341,7 +359,7 @@ const GeneralTab = ({ formik, directories }) => {
         toUpper(
           `${branch.address || ""}${
             branch.postalCode ? `, ${branch.postalCode}` : ""
-          }`
+          }`,
         );
 
     if (!shouldUpdate) return;
@@ -352,7 +370,7 @@ const GeneralTab = ({ formik, directories }) => {
       exporter_address: toUpper(
         `${branch.address || ""}${
           branch.postalCode ? `, ${branch.postalCode}` : ""
-        }`
+        }`,
       ),
       branch_sno: toUpper(branch.branchCode || "0"),
       branchSrNo: toUpper(branch.branchCode || "0"),
@@ -365,14 +383,14 @@ const GeneralTab = ({ formik, directories }) => {
     };
 
     Object.entries(updates).forEach(([key, val]) =>
-      formik.setFieldValue(key, val)
+      formik.setFieldValue(key, val),
     );
 
     if (exp.bankDetails?.[0]) {
       const bank = exp.bankDetails[0];
       formik.setFieldValue(
         "bank_dealer",
-        `${toUpper(bank.entityName)} ${toUpper(bank.branchLocation)}`
+        `${toUpper(bank.entityName)} ${toUpper(bank.branchLocation)}`,
       );
       formik.setFieldValue("bank_name", toUpper(bank.entityName));
       formik.setFieldValue("ac_number", toUpper(bank.accountNumber));
@@ -457,7 +475,7 @@ const GeneralTab = ({ formik, directories }) => {
   function branchSelectField() {
     const exporterName = getVal("exporter");
     const exp = exporters.find(
-      (ex) => toUpper(ex.organization) === exporterName
+      (ex) => toUpper(ex.organization) === exporterName,
     );
 
     if (!exp || !exp.branchInfo || exp.branchInfo.length <= 1) {
@@ -756,10 +774,33 @@ const GeneralTab = ({ formik, directories }) => {
                   setShowMenu(true);
                 }}
                 onKeyDown={(e) => {
+                  if (e.key === "Tab") {
+                    if (activeIdx === idx && showMenu) {
+                      if (
+                        keyboardActive >= 0 &&
+                        filteredConsignees[keyboardActive]
+                      ) {
+                        handleSelectConsignee(
+                          idx,
+                          filteredConsignees[keyboardActive],
+                        );
+                      } else if (filteredConsignees.length === 1) {
+                        handleSelectConsignee(idx, filteredConsignees[0]);
+                      } else {
+                        setShowMenu(false);
+                      }
+                    }
+                    const val = toUpper(consignee.consignee_name).trim();
+                    if (val !== toUpper(consignee.consignee_name)) {
+                      handleConsigneeChange(idx, "consignee_name", val);
+                    }
+                    return;
+                  }
+
                   if (activeIdx !== idx || !showMenu) return;
                   if (e.key === "ArrowDown") {
                     setKeyboardActive((a) =>
-                      Math.min(filteredConsignees.length - 1, a + 1)
+                      Math.min(filteredConsignees.length - 1, a + 1),
                     );
                   } else if (e.key === "ArrowUp") {
                     setKeyboardActive((a) => Math.max(0, a - 1));
@@ -767,7 +808,7 @@ const GeneralTab = ({ formik, directories }) => {
                     e.preventDefault();
                     handleSelectConsignee(
                       idx,
-                      filteredConsignees[keyboardActive]
+                      filteredConsignees[keyboardActive],
                     );
                   } else if (e.key === "Escape") {
                     setShowMenu(false);

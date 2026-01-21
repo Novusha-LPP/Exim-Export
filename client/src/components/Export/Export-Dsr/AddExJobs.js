@@ -295,7 +295,7 @@ function useConsigneeCountryDropdown(value, onChange, apiBase) {
     const t = setTimeout(async () => {
       try {
         const res = await fetch(
-          `${apiBase}/countries?search=${encodeURIComponent(query.trim())}`
+          `${apiBase}/countries?search=${encodeURIComponent(query.trim())}`,
         );
         const data = await res.json();
         setOpts(data?.data || []);
@@ -381,11 +381,31 @@ function ConsigneeCountryField({ value, onChange }) {
           onBlur={d.handleBlur}
           // 🔥 ADD THIS
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (d.open) {
+                if (d.active >= 0 && d.filtered[d.active]) {
+                  d.selectIndex(d.active);
+                } else if (d.filtered.length === 1) {
+                  d.selectIndex(0);
+                } else {
+                  d.setOpen(false);
+                }
+              }
+              const trimmed = d.query.trim();
+              if (trimmed !== d.query) {
+                const upper = toUpper(trimmed);
+                d.setQuery(upper);
+                // Since this component uses a parent onChange for the value string
+                onChange(upper);
+              }
+              return;
+            }
+
             if (!d.open) return;
             if (e.key === "ArrowDown") {
               e.preventDefault();
               d.setActive((a) =>
-                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1),
               );
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
@@ -568,7 +588,7 @@ function useGatewayPortDropdown(value, onChange, priorityList = []) {
     }
     const searchVal = (query || "").trim();
     const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
-      searchVal
+      searchVal,
     )}`;
     const t = setTimeout(async () => {
       try {
@@ -588,10 +608,10 @@ function useGatewayPortDropdown(value, onChange, priorityList = []) {
 
             // Find index in priority list (checking if name INCLUDES priority keyword)
             const pIndexA = priorityList.findIndex((p) =>
-              nameA.includes(p.toUpperCase())
+              nameA.includes(p.toUpperCase()),
             );
             const pIndexB = priorityList.findIndex((p) =>
-              nameB.includes(p.toUpperCase())
+              nameB.includes(p.toUpperCase()),
             );
 
             // Both in priority list -> sort by order in priority list
@@ -698,6 +718,25 @@ function GatewayPortDropdown({
           autoComplete="off"
           // 🔥 ADD THIS onKeyDown handler to prevent form submission
           onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (d.open) {
+                if (d.active >= 0 && d.filtered[d.active]) {
+                  d.selectIndex(d.active);
+                } else if (d.filtered.length === 1) {
+                  d.selectIndex(0);
+                } else {
+                  d.setOpen(false);
+                }
+              }
+              const trimmed = d.query.trim();
+              if (trimmed !== d.query) {
+                const upper = toUpper(trimmed);
+                d.setQuery(upper);
+                onChange(upper);
+              }
+              return;
+            }
+
             if (!d.open) return;
 
             if (e.key === "Enter") {
@@ -708,7 +747,7 @@ function GatewayPortDropdown({
             } else if (e.key === "ArrowDown") {
               e.preventDefault();
               d.setActive((a) =>
-                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1)
+                Math.min(d.filtered.length - 1, a < 0 ? 0 : a + 1),
               );
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
@@ -777,6 +816,7 @@ const AddExJobs = ({ onJobCreated }) => {
     status: "Pending",
     year: "25-26",
     transportMode: "SEA",
+    goods_stuffed_at: "",
     job_date: new Date().toISOString().split("T")[0],
   });
 
@@ -803,6 +843,15 @@ const AddExJobs = ({ onJobCreated }) => {
     }));
   }, [formData.consignmentType]);
 
+  useEffect(() => {
+    const stuffed = toUpper(formData.goods_stuffed_at || "");
+    if (stuffed === "FACTORY") {
+      setFormData((prev) => ({ ...prev, consignmentType: "FCL" }));
+    }
+    // If DOCK, we allow FCL & LCL (user can select manually), no forced override usually required
+    // unless to switch back from AIR, but user can do that.
+  }, [formData.goods_stuffed_at]);
+
   const branchOptions = [
     { code: "BRD", label: "BRD - BARODA" },
     { code: "GIM", label: "GIM - GANDHIDHAM" },
@@ -821,7 +870,7 @@ const AddExJobs = ({ onJobCreated }) => {
     const fetchConsignees = async () => {
       try {
         const res = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/dsr/consignees`
+          `${import.meta.env.VITE_API_STRING}/dsr/consignees`,
         );
         if (res.data?.success && Array.isArray(res.data.data)) {
           setConsigneeList(res.data.data);
@@ -863,16 +912,16 @@ const AddExJobs = ({ onJobCreated }) => {
         setLoading(true);
         const response = await axios.get(
           `${import.meta.env.VITE_API_STRING}/directory`,
-          { params: { limit: 1000 } }
+          { params: { limit: 1000 } },
         );
         if (response.data.success) {
           const allOrgs = response.data.data;
           const filtered = formData.exporter
             ? allOrgs.filter((o) =>
-              (o.organization || "")
-                .toUpperCase()
-                .includes(formData.exporter.toUpperCase())
-            )
+                (o.organization || "")
+                  .toUpperCase()
+                  .includes(formData.exporter.toUpperCase()),
+              )
             : allOrgs;
           setOrganizations(filtered);
         }
@@ -907,7 +956,7 @@ const AddExJobs = ({ onJobCreated }) => {
     showToast(
       ieCode
         ? "Exporter details populated!"
-        : "PAN auto-filled in IE Code field"
+        : "PAN auto-filled in IE Code field",
     );
   };
 
@@ -923,7 +972,7 @@ const AddExJobs = ({ onJobCreated }) => {
 
     // Filter list
     const filtered = consigneeList.filter((c) =>
-      toUpper(c.consignee_name).includes(val)
+      toUpper(c.consignee_name).includes(val),
     );
     setFilteredConsignees(filtered);
     setActiveConsigneeIdx(idx);
@@ -965,7 +1014,7 @@ const AddExJobs = ({ onJobCreated }) => {
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_API_STRING}/jobs/add-job-exp-man`,
-        formData
+        formData,
       );
       if (response.data.success) {
         showToast(`Job Created! No: ${response.data.job.job_no}`);
@@ -993,6 +1042,7 @@ const AddExJobs = ({ onJobCreated }) => {
       status: "Pending",
       year: "25-26",
       transportMode: "SEA",
+      goods_stuffed_at: "",
       job_date: new Date().toISOString().split("T")[0],
     });
   };
@@ -1064,8 +1114,8 @@ const AddExJobs = ({ onJobCreated }) => {
                               key={i}
                               style={s.dropdownItem}
                               onMouseEnter={(e) =>
-                              (e.currentTarget.style.backgroundColor =
-                                "#f9fafb")
+                                (e.currentTarget.style.backgroundColor =
+                                  "#f9fafb")
                               }
                               onMouseLeave={(e) =>
                                 (e.currentTarget.style.backgroundColor = "#fff")
@@ -1122,7 +1172,7 @@ const AddExJobs = ({ onJobCreated }) => {
                       if (!formData.ieCode) {
                         handleInputChange(
                           "ieCode",
-                          e.target.value.replace(/\D/g, "")
+                          e.target.value.replace(/\D/g, ""),
                         );
                       }
                     }}
@@ -1204,7 +1254,7 @@ const AddExJobs = ({ onJobCreated }) => {
                       onFocus={() => {
                         const val = toUpper(item.consignee_name);
                         const filtered = consigneeList.filter((c) =>
-                          toUpper(c.consignee_name).includes(val)
+                          toUpper(c.consignee_name).includes(val),
                         );
                         setFilteredConsignees(filtered);
                         setActiveConsigneeIdx(idx);
@@ -1216,7 +1266,7 @@ const AddExJobs = ({ onJobCreated }) => {
                         if (e.key === "ArrowDown") {
                           e.preventDefault();
                           setKeyboardActive((a) =>
-                            Math.min(filteredConsignees.length - 1, a + 1)
+                            Math.min(filteredConsignees.length - 1, a + 1),
                           );
                         } else if (e.key === "ArrowUp") {
                           e.preventDefault();
@@ -1225,7 +1275,7 @@ const AddExJobs = ({ onJobCreated }) => {
                           e.preventDefault();
                           handleSelectConsignee(
                             idx,
-                            filteredConsignees[keyboardActive]
+                            filteredConsignees[keyboardActive],
                           );
                         } else if (e.key === "Escape") {
                           setShowConsigneeMenu(false);
@@ -1283,7 +1333,7 @@ const AddExJobs = ({ onJobCreated }) => {
                         handleConsigneeChange(
                           idx,
                           "consignee_address",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                     />
@@ -1362,6 +1412,21 @@ const AddExJobs = ({ onJobCreated }) => {
                     value={formData.transportMode}
                     readOnly
                   />
+                </div>
+
+                <div style={{ ...s.col, maxWidth: "120px" }}>
+                  <label style={s.label}>Goods Stuffed At</label>
+                  <select
+                    style={s.select}
+                    value={formData.goods_stuffed_at}
+                    onChange={(e) =>
+                      handleInputChange("goods_stuffed_at", e.target.value)
+                    }
+                  >
+                    <option value="">SELECT</option>
+                    <option value="FACTORY">FACTORY</option>
+                    <option value="DOCK">DOCK</option>
+                  </select>
                 </div>
 
                 {/* Custom House using SAME directory */}

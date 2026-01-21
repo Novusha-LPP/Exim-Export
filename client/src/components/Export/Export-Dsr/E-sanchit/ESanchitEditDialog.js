@@ -37,7 +37,7 @@ function SearchableOrganizationDropdown({
   }, []);
 
   const filtered = options.filter((org) =>
-    toUpper(org.organization || "").includes(toUpper(query))
+    toUpper(org.organization || "").includes(toUpper(query)),
   );
 
   const handleSelect = (org) => {
@@ -58,6 +58,23 @@ function SearchableOrganizationDropdown({
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={(e) => {
+          if (e.key === "Tab") {
+            if (open) {
+              if (active >= 0 && filtered[active]) {
+                handleSelect(filtered[active]);
+              } else if (filtered.length === 1) {
+                handleSelect(filtered[0]);
+              } else {
+                setOpen(false);
+              }
+            }
+            const trimmed = query.trim();
+            if (trimmed !== query) {
+              setQuery(toUpper(trimmed));
+            }
+            return;
+          }
+
           if (!open || filtered.length === 0) return;
           if (e.key === "ArrowDown") {
             e.preventDefault();
@@ -169,7 +186,7 @@ function SearchableConsigneeDropdown({
   }, []);
 
   const filtered = options.filter((consignee) =>
-    toUpper(consignee.consignee_name || "").includes(toUpper(query))
+    toUpper(consignee.consignee_name || "").includes(toUpper(query)),
   );
 
   const handleSelect = (consignee) => {
@@ -190,6 +207,23 @@ function SearchableConsigneeDropdown({
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={(e) => {
+          if (e.key === "Tab") {
+            if (open) {
+              if (active >= 0 && filtered[active]) {
+                handleSelect(filtered[active]);
+              } else if (filtered.length === 1) {
+                handleSelect(filtered[0]);
+              } else {
+                setOpen(false);
+              }
+            }
+            const trimmed = query.trim();
+            if (trimmed !== query) {
+              setQuery(toUpper(trimmed));
+            }
+            return;
+          }
+
           if (!open || filtered.length === 0) return;
           if (e.key === "ArrowDown") {
             e.preventDefault();
@@ -492,7 +526,7 @@ const ESanchitEditDialog = ({
         setOrgLoading(true);
         const res = await axios.get(
           `${import.meta.env.VITE_API_STRING}/directory`,
-          { params: { limit: 1000 } }
+          { params: { limit: 1000 } },
         );
         if (res.data?.success) setOrganizations(res.data.data || []);
       } catch (e) {
@@ -510,7 +544,7 @@ const ESanchitEditDialog = ({
     const fetchConsignees = async () => {
       try {
         const res = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/dsr/consignees`
+          `${import.meta.env.VITE_API_STRING}/dsr/consignees`,
         );
         if (res.data?.success && Array.isArray(res.data.data)) {
           setConsigneeList(res.data.data);
@@ -536,7 +570,7 @@ const ESanchitEditDialog = ({
 
       // Find and populate exporter details
       const org = organizations.find(
-        (o) => toUpper(o.organization || "") === exporterName
+        (o) => toUpper(o.organization || "") === exporterName,
       );
 
       if (org) {
@@ -562,17 +596,17 @@ const ESanchitEditDialog = ({
 
       // Try to find full consignee details from the consignee list
       const fullConsignee = consigneeList.find(
-        (c) => toUpper(c.consignee_name || "") === consigneeName
+        (c) => toUpper(c.consignee_name || "") === consigneeName,
       );
 
       if (fullConsignee) {
         handleBeneficiaryPartyChange(
           "name",
-          toUpper(fullConsignee.consignee_name || "")
+          toUpper(fullConsignee.consignee_name || ""),
         );
         handleBeneficiaryPartyChange(
           "addressLine1",
-          toUpper(fullConsignee.consignee_address || "")
+          toUpper(fullConsignee.consignee_address || ""),
         );
         handleBeneficiaryPartyChange("addressLine2", "");
         handleBeneficiaryPartyChange("city", "");
@@ -582,7 +616,7 @@ const ESanchitEditDialog = ({
         handleBeneficiaryPartyChange("name", consigneeName);
         handleBeneficiaryPartyChange(
           "addressLine1",
-          toUpper(firstConsignee.consignee_address || "")
+          toUpper(firstConsignee.consignee_address || ""),
         );
         handleBeneficiaryPartyChange("addressLine2", "");
         handleBeneficiaryPartyChange("city", "");
@@ -595,7 +629,7 @@ const ESanchitEditDialog = ({
     const val = toUpper(e.target.value);
     handleIssuingPartyChange("name", val);
     const org = organizations.find(
-      (o) => toUpper(o.organization || "") === val
+      (o) => toUpper(o.organization || "") === val,
     );
     if (!org) return;
     const branch = org.branchInfo?.[0] || {};
@@ -612,14 +646,14 @@ const ESanchitEditDialog = ({
 
     // Find consignee and populate details
     const consignee = consigneeList.find(
-      (c) => toUpper(c.consignee_name || "") === val
+      (c) => toUpper(c.consignee_name || "") === val,
     );
     if (!consignee) return;
 
     handleBeneficiaryPartyChange("code", "");
     handleBeneficiaryPartyChange(
       "addressLine1",
-      toUpper(consignee.consignee_address || "")
+      toUpper(consignee.consignee_address || ""),
     );
     handleBeneficiaryPartyChange("addressLine2", "");
     handleBeneficiaryPartyChange("city", "");
@@ -823,24 +857,24 @@ const ESanchitEditDialog = ({
                       const branch = selectedOrg.branchInfo?.[0] || {};
                       handleIssuingPartyChange(
                         "name",
-                        toUpper(selectedOrg.organization || "")
+                        toUpper(selectedOrg.organization || ""),
                       );
                       handleIssuingPartyChange(
                         "code",
-                        toUpper(branch.branchCode || "")
+                        toUpper(branch.branchCode || ""),
                       );
                       handleIssuingPartyChange(
                         "addressLine1",
-                        toUpper(branch.address || "")
+                        toUpper(branch.address || ""),
                       );
                       handleIssuingPartyChange("addressLine2", "");
                       handleIssuingPartyChange(
                         "city",
-                        toUpper(branch.city || "")
+                        toUpper(branch.city || ""),
                       );
                       handleIssuingPartyChange(
                         "pinCode",
-                        toUpper(branch.postalCode || "")
+                        toUpper(branch.postalCode || ""),
                       );
                     }
                   }}
@@ -885,12 +919,12 @@ const ESanchitEditDialog = ({
                     if (selectedConsignee) {
                       handleBeneficiaryPartyChange(
                         "name",
-                        toUpper(selectedConsignee.consignee_name || "")
+                        toUpper(selectedConsignee.consignee_name || ""),
                       );
                       handleBeneficiaryPartyChange("code", "");
                       handleBeneficiaryPartyChange(
                         "addressLine1",
-                        toUpper(selectedConsignee.consignee_address || "")
+                        toUpper(selectedConsignee.consignee_address || ""),
                       );
                       handleBeneficiaryPartyChange("addressLine2", "");
                       handleBeneficiaryPartyChange("city", "");
