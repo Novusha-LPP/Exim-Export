@@ -228,13 +228,26 @@ router.get("/exports/:status?", async (req, res) => {
     }
 
     // Search filter
+    // Search filter
     if (search) {
       filter.$and.push({
         $or: [
           { job_no: { $regex: search, $options: "i" } },
           { exporter: { $regex: search, $options: "i" } },
-          { consignee_name: { $regex: search, $options: "i" } },
           { ieCode: { $regex: search, $options: "i" } },
+          { "consignees.consignee_name": { $regex: search, $options: "i" } },
+
+          // 1. Search by SB Number (Shipping Bill)
+          { sb_no: { $regex: search, $options: "i" } },
+
+          // 2. Search in Invoices Array (Invoice Number)
+          { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
+
+          // 3. Search in Containers Array (Container Number)
+          { "containers.containerNo": { $regex: search, $options: "i" } },
+
+          // 4. Search in Operations (Alternative Container source)
+          { "operations.containerDetails.containerNo": { $regex: search, $options: "i" } }
         ],
       });
     }

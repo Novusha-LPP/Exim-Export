@@ -1,0 +1,244 @@
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import ReactDOM from "react-dom";
+
+const DBKSearchableDropdown = ({
+    value,
+    onChange,
+    style = {},
+    disabled = false,
+    placeholder = "Search DBK Code...",
+}) => {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState(value || "");
+    const [options, setOptions] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [active, setActive] = useState(-1);
+    const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+    const wrapperRef = useRef(null);
+    const abortControllerRef = useRef(null);
+
+    useEffect(() => {
+        setQuery(value || "");
+    }, [value]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Update position on scroll or resize when open
+    useEffect(() => {
+        const updatePosition = () => {
+            if (open && wrapperRef.current) {
+                const rect = wrapperRef.current.getBoundingClientRect();
+                setCoords({
+                    top: rect.bottom,
+                    left: rect.left,
+                    width: Math.max(rect.width, 400),
+                });
+            }
+        };
+
+        if (open) {
+            updatePosition();
+            window.addEventListener("scroll", updatePosition, true);
+            window.addEventListener("resize", updatePosition);
+        }
+        return () => {
+            window.removeEventListener("scroll", updatePosition, true);
+            window.removeEventListener("resize", updatePosition);
+        };
+    }, [open]);
+
+    const fetchOptions = useCallback(async (search) => {
+        if (!search || search.trim().length < 2) {
+            setOptions([]);
+            return;
+        }
+
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        try {
+            setLoading(true);
+            const params = new URLSearchParams();
+            params.append("search", search.trim());
+            params.append("page", 1);
+            params.append("limit", 20);
+
+            const res = await fetch(
+                `${import.meta.env.VITE_API_STRING}/getDrawback?${params.toString()}`,
+                { signal: abortControllerRef.current.signal },
+            );
+            const data = await res.json();
+            const list = Array.isArray(data?.data)
+                ? data.data
+                : Array.isArray(data)
+                    ? data
+                    : [];
+            setOptions(list);
+        } catch (e) {
+            if (e.name !== "AbortError") {
+                console.error("DBK fetch error", e);
+                setOptions([]);
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!open) return;
+        const timer = setTimeout(() => {
+            fetchOptions(query);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [query, open, fetchOptions]);
+
+    const handleSelect = (opt) => {
+        const val = opt.tariff_item || "";
+        setQuery(val);
+        onChange({ target: { value: val }, origin: opt });
+        setOpen(false);
+    };
+
+    const dropdownMenu =
+        open && (options.length > 0 || loading) ? (
+            <div
+                style={{
+                    position: "fixed",
+                    top: coords.top + 2,
+                    left: coords.left,
+                    width: coords.width,
+                    zIndex: 999999,
+                    background: "#fff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                    maxHeight: 250,
+                    overflowY: "auto",
+                    boxShadow:
+                        "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+                }}
+            >
+                {loading && (
+                    <div style={{ padding: 8, fontSize: 11, color: "#64748b" }}>
+                        Loading...
+                    </div>
+                )}
+                {!loading &&
+                    options.map((opt, i) => (
+                        <div
+                            key={i}
+                            style={{
+                                padding: "8px 10px",
+                                cursor: "pointer",
+                                background: i === active ? "#f1f5f9" : "#ffffff",
+                                borderBottom: "1px solid #f1f5f9",
+                                fontSize: 11,
+                            }}
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSelect(opt);
+                            }}
+                            onMouseEnter={() => setActive(i)}
+                        >
+                            <div
+                                style={{
+                                    fontWeight: 700,
+                                    color: "#1e3a8a",
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                }}
+                            >
+                                <span>{opt.tariff_item}</span>
+                                <span style={{ fontSize: 10, color: "#2563eb" }}>
+                                    Rate: {opt.drawback_rate} | Cap: {opt.drawback_cap}
+                                </span>
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: 10,
+                                    color: "#475569",
+                                    marginTop: 2,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                }}
+                            >
+                                {opt.description_of_goods}
+                            </div>
+                        </div>
+                    ))}
+            </div>
+        ) : null;
+
+    return (
+        <div
+            ref={wrapperRef}
+            style={{
+                position: "relative",
+                width: "100%",
+                ...style,
+            }}
+        >
+            <div style={{ position: "relative" }}>
+                <input
+                    style={{
+                        width: "100%",
+                        padding: "3px 7px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 3,
+                        fontSize: 12,
+                        height: 25,
+                        background: disabled ? "#f1f5f9" : "#ffffff",
+                        outline: "none",
+                        boxSizing: "border-box",
+                        color: "#1e293b",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                    }}
+                    placeholder={placeholder}
+                    value={query}
+                    onChange={(e) => {
+                        setQuery(e.target.value.toUpperCase());
+                        setOpen(true);
+                        setActive(-1);
+                    }}
+                    onFocus={() => !disabled && setOpen(true)}
+                    disabled={disabled}
+                    onKeyDown={(e) => {
+                        if (e.key === "ArrowDown") {
+                            setOpen(true);
+                            setActive((prev) => Math.min(prev + 1, options.length - 1));
+                        } else if (e.key === "ArrowUp") {
+                            setActive((prev) => Math.max(prev - 1, 0));
+                        } else if (e.key === "Enter" && active >= 0) {
+                            e.preventDefault();
+                            handleSelect(options[active]);
+                        } else if (e.key === "Tab") {
+                            if (options.length > 0) {
+                                const indexToSelect = active >= 0 ? active : 0;
+                                handleSelect(options[indexToSelect]);
+                            }
+                        } else if (e.key === "Escape") {
+                            setOpen(false);
+                        }
+                    }}
+                    onBlur={() => {
+                        setTimeout(() => setOpen(false), 200);
+                    }}
+                />
+            </div>
+            {ReactDOM.createPortal(dropdownMenu, document.body)}
+        </div>
+    );
+};
+
+export default DBKSearchableDropdown;

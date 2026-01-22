@@ -61,6 +61,7 @@ import getRosctl_R from "./routes/export-dsr/getRosctl_R.js";
 import feedback from "./routes/feedbackRoutes.js";
 
 import getConsignees from "./routes/export-dsr/getConsignees.js";
+import getManufacture from "./routes/export-dsr/getManufacture.js";
 import getHoToConsoleNames from "./routes/export-dsr/getHoToConsoleNames.js";
 import rodtepReRoutes from "./routes/export-dsr/rodtepReRoutes.js";
 import generateDSRReport from "./routes/export-dsr/generateDSRReport.mjs";
@@ -112,8 +113,8 @@ const MONGODB_URI =
   process.env.NODE_ENV === "production"
     ? process.env.PROD_MONGODB_URI
     : process.env.NODE_ENV === "server"
-    ? process.env.SERVER_MONGODB_URI
-    : process.env.DEV_MONGODB_URI;
+      ? process.env.SERVER_MONGODB_URI
+      : process.env.DEV_MONGODB_URI;
 
 // MongoDB connection
 mongoose.set("strictQuery", true);
@@ -186,6 +187,7 @@ app.use(getExporterList);
 // app.use(getExporterJobs);
 app.use(addJobs);
 app.use(getConsignees);
+app.use(getManufacture);
 app.use(getHoToConsoleNames);
 app.use(getExportJobsModuleUsers);
 app.use(currencyRate);

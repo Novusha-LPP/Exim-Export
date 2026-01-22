@@ -1,6 +1,7 @@
 import React, { useRef, useCallback, useState, useEffect } from "react";
 import { styles, toUpperVal } from "./commonStyles";
 import { calculateProductFobINR } from "../../../../utils/fobCalculations";
+import DBKSearchableDropdown from "../../../common/DBKSearchableDropdown";
 
 // Default drawback detail object
 const getDefaultDrawback = (idx = 1) => ({
@@ -46,8 +47,6 @@ function toUpper(val) {
   return (typeof val === "string" ? val : "").toUpperCase();
 }
 
-const DBK_LIMIT = 20;
-
 const DrawbackTab = ({
   formik,
   selectedInvoiceIndex,
@@ -59,71 +58,8 @@ const DrawbackTab = ({
   const product = products[selectedProductIndex] || {};
   const saveTimeoutRef = useRef(null);
 
-  // DBK Search Dialog State
-  const [dbkDialogOpen, setDbkDialogOpen] = useState(false);
-  const [dbkDialogIndex, setDbkDialogIndex] = useState(null);
-  const [dbkDialogQuery, setDbkDialogQuery] = useState("");
-  const [dbkDialogOptions, setDbkDialogOptions] = useState([]);
-  const [dbkDialogLoading, setDbkDialogLoading] = useState(false);
-  const [dbkDialogActive, setDbkDialogActive] = useState(-1);
-  const [dbkPage, setDbkPage] = useState(1);
-  const [dbkTotalPages, setDbkTotalPages] = useState(1);
-
   // Ensure array exists
   const drawbackDetails = product.drawbackDetails || [getDefaultDrawback(1)];
-
-  const autoSave = useCallback(() => formik.submitForm(), [formik]);
-
-  const fetchDbkCodes = useCallback(async (search, page) => {
-    try {
-      setDbkDialogLoading(true);
-      const params = new URLSearchParams();
-      if (search && search.trim()) params.append("search", search.trim());
-      params.append("page", page || 1);
-      params.append("limit", DBK_LIMIT);
-
-      const res = await fetch(
-        `${import.meta.env.VITE_API_STRING}/getDrawback?${params.toString()}`
-      );
-      const data = await res.json();
-
-      const list = Array.isArray(data?.data)
-        ? data.data
-        : Array.isArray(data)
-          ? data
-          : [];
-
-      setDbkDialogOptions(list);
-      if (data?.pagination) {
-        setDbkTotalPages(data.pagination.totalPages || 1);
-      } else {
-        setDbkTotalPages(1);
-      }
-    } catch (e) {
-      console.error("DBK dialog fetch error", e);
-      setDbkDialogOptions([]);
-      setDbkTotalPages(1);
-    } finally {
-      setDbkDialogLoading(false);
-    }
-  }, []);
-
-  // Immediate fetch when page changes
-  useEffect(() => {
-    if (!dbkDialogOpen) return;
-    fetchDbkCodes(dbkDialogQuery, dbkPage);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dbkPage, dbkDialogOpen, fetchDbkCodes]);
-
-  // Debounced fetch when query changes
-  useEffect(() => {
-    if (!dbkDialogOpen) return;
-    const timer = setTimeout(() => {
-      fetchDbkCodes(dbkDialogQuery, 1);
-    }, 800);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dbkDialogQuery, dbkDialogOpen, fetchDbkCodes]);
 
   // Sync Quantity/Unit from Products & FOB Value from FreightInsuranceCharges
   useEffect(() => {
@@ -694,48 +630,17 @@ const DrawbackTab = ({
                   <td style={styles.td}>{idx + 1}</td>
 
                   <td style={styles.td}>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 4 }}
-                    >
-                      <input
-                        style={{ ...styles.input, flex: 1 }}
-                        value={item.dbkSrNo || ""}
-                        onChange={(e) =>
-                          handleDrawbackFieldChange(
-                            idx,
-                            "dbkSrNo",
-                            e.target.value
-                          )
+                    <DBKSearchableDropdown
+                      value={item.dbkSrNo || ""}
+                      onChange={(e) => {
+                        if (e.origin) {
+                          populateDbkRow(idx, e.origin);
+                        } else {
+                          handleDrawbackFieldChange(idx, "dbkSrNo", e.target.value);
                         }
-                        title="Type DBK Sr No or Search"
-                        onBlur={(e) => handleDbkSrNoBlur(idx, e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDbkDialogIndex(idx);
-                          setDbkDialogQuery("");
-                          setDbkDialogOptions([]);
-                          setDbkDialogActive(-1);
-                          setDbkPage(1);
-                          setDbkDialogOpen(true);
-                        }}
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: 4,
-                          border: "1px solid #16408f",
-                          background: "#f1f5ff",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                        }}
-                        title="Search Drawback Code"
-                      >
-                        🔍
-                      </button>
-                    </div>
+                      }}
+                      style={{ flex: 1 }}
+                    />
                   </td>
                   <td style={styles.td}>
                     <input
@@ -1127,203 +1032,6 @@ const DrawbackTab = ({
         <span>Add Drawback Entry</span>
       </button>
 
-      {/* DBK Search Dialog */}
-      {dbkDialogOpen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(0,0,0,0.35)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 3000,
-          }}
-          onClick={() => {
-            setDbkDialogOpen(false);
-            setDbkDialogIndex(null);
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "#ffffff",
-              borderRadius: 6,
-              padding: 12,
-              width: 600,
-              maxHeight: 500,
-              boxShadow: "0 12px 30px rgba(15,23,42,0.25)",
-              fontSize: 12,
-              display: "flex",
-              flexDirection: "column",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 8,
-              }}
-            >
-              <div style={{ fontWeight: 700, color: "#111827" }}>
-                Search Drawback Item
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setDbkDialogOpen(false);
-                  setDbkDialogIndex(null);
-                }}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                  fontSize: 16,
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Search box */}
-            <div style={{ marginBottom: 8 }}>
-              <input
-                style={{ ...styles.input, width: "100%" }}
-                placeholder="Type DBK Sr No or Description"
-                value={dbkDialogQuery}
-                onChange={(e) => {
-                  const v = toUpper(e.target.value);
-                  setDbkDialogQuery(v);
-                  setDbkDialogActive(-1);
-                  setDbkPage(1);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    fetchDbkCodes(dbkDialogQuery, 1);
-                    setDbkPage(1);
-                  }
-                }}
-              />
-            </div>
-
-            {/* Results list */}
-            <div
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                border: "1px solid #e5e7eb",
-                borderRadius: 4,
-              }}
-            >
-              {dbkDialogLoading && (
-                <div style={{ padding: 8, color: "#6b7280" }}>Loading...</div>
-              )}
-
-              {!dbkDialogLoading &&
-                dbkDialogOptions.length === 0 &&
-                dbkDialogQuery.trim().length >= 2 && (
-                  <div style={{ padding: 8, color: "#9ca3af" }}>No results</div>
-                )}
-
-              {!dbkDialogLoading &&
-                dbkDialogOptions.map((opt, idx) => (
-                  <div
-                    key={`${opt.tariff_item}-${idx}`}
-                    onClick={() => {
-                      if (dbkDialogIndex == null) return;
-                      populateDbkRow(dbkDialogIndex, opt);
-                      setDbkDialogOpen(false);
-                      setDbkDialogIndex(null);
-                    }}
-                    onMouseEnter={() => setDbkDialogActive(idx)}
-                    style={{
-                      padding: 8,
-                      cursor: "pointer",
-                      backgroundColor:
-                        dbkDialogActive === idx ? "#eff6ff" : "#ffffff",
-                      borderBottom: "1px solid #f3f4f6",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <div style={{ fontWeight: 700 }}>
-                        {opt.tariff_item || "-"}
-                      </div>
-                      <div style={{ fontSize: 11, color: "#1d4ed8" }}>
-                        Rate: {opt.drawback_rate || "-"} | Cap:{" "}
-                        {opt.drawback_cap || "-"}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "#4b5563",
-                        marginTop: 2,
-                      }}
-                    >
-                      {opt.description_of_goods || "-"}
-                    </div>
-                  </div>
-                ))}
-            </div>
-
-            {/* Pagination inside dialog */}
-            <div
-              style={{
-                marginTop: 8,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                fontSize: 11,
-              }}
-            >
-              <div>
-                Page {dbkPage} of {dbkTotalPages || 1}
-              </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  type="button"
-                  style={{
-                    padding: "3px 8px",
-                    borderRadius: 3,
-                    border: "1px solid #d1d5db",
-                    backgroundColor: dbkPage === 1 ? "#f9fafb" : "#ffffff",
-                    cursor: dbkPage === 1 ? "not-allowed" : "pointer",
-                    fontSize: 11,
-                  }}
-                  disabled={dbkPage === 1}
-                  onClick={() => setDbkPage((p) => Math.max(1, p - 1))}
-                >
-                  Prev
-                </button>
-                <button
-                  type="button"
-                  style={{
-                    padding: "3px 8px",
-                    borderRadius: 3,
-                    border: "1px solid #d1d5db",
-                    backgroundColor:
-                      dbkPage >= dbkTotalPages ? "#f9fafb" : "#ffffff",
-                    cursor:
-                      dbkPage >= dbkTotalPages ? "not-allowed" : "pointer",
-                    fontSize: 11,
-                  }}
-                  disabled={dbkPage >= dbkTotalPages}
-                  onClick={() => setDbkPage((p) => p + 1)}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

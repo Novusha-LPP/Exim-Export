@@ -24,6 +24,10 @@ const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
   const thirdParty = otherDetails.thirdParty || {};
   const manufacturer = otherDetails.manufacturer || {};
 
+  const [manufacturerList, setManufacturerList] = useState([]);
+  const [showManufMenu, setShowManufMenu] = useState(false);
+  const [filteredManufacturers, setFilteredManufacturers] = useState([]);
+  const [manufKeyboardActive, setManufKeyboardActive] = useState(-1);
   const [organizations, setOrganizations] = useState([]);
   const [orgLoading, setOrgLoading] = useState(false);
 
@@ -56,6 +60,17 @@ const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
     otherDetails.accessories === "Accessory Included";
   const isThirdPartyEnabled = !!otherDetails.isThirdPartyExport;
 
+  useEffect(() => {
+    const fetchManufs = async () => {
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/dsr/manufacturers`);
+        if (res.data?.success) setManufacturerList(res.data.data);
+      } catch (e) {
+        console.error("Error fetching manufacturers", e);
+      }
+    };
+    fetchManufs();
+  }, []);
   // fetch directory for third-party dropdown
   useEffect(() => {
     const fetchOrgs = async () => {
@@ -95,15 +110,53 @@ const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
       branchSrNo: toUpper(branch.branchCode || ""),
       regnNo: toUpper(reg.gstinMainBranch || ""),
       address: toUpper(
-        `${branch.address || ""}${
-          branch.postalCode ? `, ${branch.postalCode}` : ""
+        `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""
         }`
       ),
     };
 
     handleChange("thirdParty", { ...thirdParty, ...auto });
   };
+  const handleManufacturerInput = (e) => {
+    const val = toUpperVal(e);
+    handleManufacturerChange("name", val);
 
+    const filtered = manufacturerList.filter((m) =>
+      toUpper(m.name).includes(val)
+    );
+    setFilteredManufacturers(filtered);
+    setShowManufMenu(true);
+    setManufKeyboardActive(-1);
+  };
+
+  const handleSelectManufacturer = (manuf) => {
+    const updatedInvoices = [...invoices];
+    const currentInvoice = updatedInvoices[selectedInvoiceIndex];
+
+    if (currentInvoice && currentInvoice.products[idx]) {
+      // Keep existing otherDetails (like thirdParty) but update manufacturer
+      const existingOtherDetails = currentInvoice.products[idx].otherDetails || {};
+
+      currentInvoice.products[idx].otherDetails = {
+        ...existingOtherDetails,
+        manufacturer: {
+          name: toUpper(manuf.name),
+          code: toUpper(manuf.code || ""),
+          address: toUpper(manuf.address || ""),
+          country: toUpper(manuf.country || ""),
+          stateProvince: toUpper(manuf.stateProvince || ""),
+          postalCode: toUpper(manuf.postalCode || ""),
+          sourceState: toUpper(manuf.sourceState || ""),
+          transitCountry: toUpper(manuf.transitCountry || ""),
+        }
+      };
+
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
+
+    setShowManufMenu(false);
+    setManufKeyboardActive(-1);
+  };
   return (
     <div style={styles.card}>
       <div style={styles.cardTitle}>Other Product Details</div>
@@ -189,8 +242,7 @@ const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
                     branchSrNo: toUpper(branch.branchCode || ""),
                     regnNo: toUpper(reg.gstinMainBranch || ""),
                     address: toUpper(
-                      `${branch.address || ""}${
-                        branch.postalCode ? `, ${branch.postalCode}` : ""
+                      `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""
                       }`
                     ),
                   });
@@ -264,6 +316,7 @@ const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
         </div>
 
         {/* RIGHT: Manufacturer / Producer / Grower */}
+        {/* RIGHT: Manufacturer / Producer / Grower */}
         <div style={{ width: "100%" }}>
           <div style={styles.subSectionTitle}>
             Manufacturer / Producer / Grower Details
@@ -271,34 +324,97 @@ const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
 
           {/* Name / Code / Address */}
           <div style={styles.grid3}>
-            <div style={styles.field}>
+            <div style={{ ...styles.field, position: "relative" }}>
               <div style={styles.label}>Name</div>
               <input
                 style={styles.input}
                 value={manufacturer.name || ""}
-                onChange={(e) =>
-                  handleManufacturerChange("name", e.target.value)
-                }
+                autoComplete="off"
+                placeholder="Type Manufacturer Name..."
+                onChange={handleManufacturerInput} // Link to the new input handler
+                onFocus={() => {
+                  setFilteredManufacturers(manufacturerList);
+                  setShowManufMenu(true);
+                }}
+                onBlur={() => {
+                  // Timeout allows the onMouseDown of the list to trigger before hiding
+                  setTimeout(() => setShowManufMenu(false), 200);
+                }}
+                onKeyDown={(e) => {
+                  if (!showManufMenu) return;
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setManufKeyboardActive((a) => Math.min(filteredManufacturers.length - 1, a + 1));
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setManufKeyboardActive((a) => Math.max(0, a - 1));
+                  } else if (e.key === "Enter" && manufKeyboardActive >= 0) {
+                    e.preventDefault();
+                    handleSelectManufacturer(filteredManufacturers[manufKeyboardActive]);
+                  } else if (e.key === "Escape") {
+                    setShowManufMenu(false);
+                  }
+                }}
               />
+
+              {/* Autocomplete Dropdown Menu */}
+              {showManufMenu && filteredManufacturers.length > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    top: "100%",
+                    background: "#fff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 3,
+                    zIndex: 50,
+                    maxHeight: 180,
+                    overflow: "auto",
+                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                  }}
+                >
+                  {filteredManufacturers.map((m, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                        fontSize: 12,
+                        background: manufKeyboardActive === i ? "#e5edff" : "#fff",
+                        fontWeight: manufKeyboardActive === i ? 600 : 400,
+                        borderBottom: "1px solid #f1f5f9",
+                      }}
+                      onMouseDown={() => handleSelectManufacturer(m)}
+                      onMouseEnter={() => setManufKeyboardActive(i)}
+                    >
+                      <div style={{ color: "#334155" }}>{toUpper(m.name)}</div>
+                      {m.address && (
+                        <div style={{ fontSize: 10, color: "#64748b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {toUpper(m.address)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
             <div style={styles.field}>
               <div style={styles.label}>Code</div>
               <input
                 style={styles.input}
                 value={manufacturer.code || ""}
-                onChange={(e) =>
-                  handleManufacturerChange("code", e.target.value)
-                }
+                onChange={(e) => handleManufacturerChange("code", toUpperVal(e))}
               />
             </div>
+
             <div style={{ ...styles.field, gridColumn: "1 / 4" }}>
               <div style={styles.label}>Address</div>
               <input
                 style={styles.input}
                 value={manufacturer.address || ""}
-                onChange={(e) =>
-                  handleManufacturerChange("address", e.target.value)
-                }
+                onChange={(e) => handleManufacturerChange("address", toUpperVal(e))}
               />
             </div>
           </div>
@@ -310,9 +426,7 @@ const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
               <input
                 style={styles.input}
                 value={manufacturer.country || ""}
-                onChange={(e) =>
-                  handleManufacturerChange("country", e.target.value)
-                }
+                onChange={(e) => handleManufacturerChange("country", toUpperVal(e))}
               />
             </div>
             <div style={styles.field}>
@@ -320,9 +434,7 @@ const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
               <input
                 style={styles.input}
                 value={manufacturer.stateProvince || ""}
-                onChange={(e) =>
-                  handleManufacturerChange("stateProvince", e.target.value)
-                }
+                onChange={(e) => handleManufacturerChange("stateProvince", toUpperVal(e))}
               />
             </div>
             <div style={styles.field}>
@@ -330,21 +442,18 @@ const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
               <input
                 style={styles.input}
                 value={manufacturer.postalCode || ""}
-                onChange={(e) =>
-                  handleManufacturerChange("postalCode", e.target.value)
-                }
+                onChange={(e) => handleManufacturerChange("postalCode", toUpperVal(e))}
               />
             </div>
           </div>
+
           <div style={styles.grid3}>
             <div style={styles.field}>
               <div style={styles.label}>Source State</div>
               <input
                 style={styles.input}
                 value={manufacturer.sourceState || ""}
-                onChange={(e) =>
-                  handleManufacturerChange("sourceState", e.target.value)
-                }
+                onChange={(e) => handleManufacturerChange("sourceState", toUpperVal(e))}
               />
             </div>
             <div style={{ ...styles.field, gridColumn: "2 / 4" }}>
@@ -352,9 +461,7 @@ const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
               <input
                 style={styles.input}
                 value={manufacturer.transitCountry || ""}
-                onChange={(e) =>
-                  handleManufacturerChange("transitCountry", e.target.value)
-                }
+                onChange={(e) => handleManufacturerChange("transitCountry", toUpperVal(e))}
               />
             </div>
           </div>
