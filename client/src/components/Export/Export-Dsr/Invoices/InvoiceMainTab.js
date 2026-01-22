@@ -340,6 +340,34 @@ const InvoiceMainTab = ({ formik }) => {
     formik.setFieldValue("invoices", updatedInvoices);
   };
 
+  const copyInvoice = (index) => {
+    const shouldCopyProducts = window.confirm(
+      "Do you want to copy the products as well?",
+    );
+
+    const sourceInvoice = invoices[index];
+    const newInvoice = { ...sourceInvoice };
+
+    // If user said NO, we clear the products (but keep other main details)
+    if (!shouldCopyProducts) {
+      newInvoice.products = [];
+      newInvoice.productValue = "";
+      newInvoice.invoiceValue = ""; // Potentially reset values driven by products
+    } else {
+      // Deep copy products to avoid reference issues
+      if (Array.isArray(newInvoice.products)) {
+        newInvoice.products = newInvoice.products.map((p) => ({ ...p }));
+      }
+    }
+
+    // Reset unique identifier fields if they exist (usually _id)
+    delete newInvoice._id;
+
+    const updatedInvoices = [...invoices];
+    updatedInvoices.splice(index + 1, 0, newInvoice);
+    formik.setFieldValue("invoices", updatedInvoices);
+  };
+
   const currencyCodes = (currencyList || []).map((c) => c.code || c);
 
   return (
@@ -558,12 +586,7 @@ const InvoiceMainTab = ({ formik }) => {
                     <button
                       type="button"
                       style={styles.smallButton}
-                      onClick={() => {
-                        const newInvoice = { ...invoice };
-                        const updatedInvoices = [...invoices];
-                        updatedInvoices.splice(index + 1, 0, newInvoice);
-                        formik.setFieldValue("invoices", updatedInvoices);
-                      }}
+                      onClick={() => copyInvoice(index)}
                     >
                       Copy
                     </button>

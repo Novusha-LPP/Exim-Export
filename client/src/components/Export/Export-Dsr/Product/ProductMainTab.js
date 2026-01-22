@@ -133,6 +133,10 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
   const products = activeInvoice.products || [];
   const inputRefs = useRef({});
 
+  // Export State
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [productToExportIndex, setProductToExportIndex] = useState(null);
+
   const setProducts = useCallback(
     (updatedProducts) => {
       const updatedInvoices = [...invoices];
@@ -178,6 +182,26 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
       setProducts(updated);
     },
     [products, setProducts, recalcAmount],
+  );
+
+  const handleRITCChange = useCallback(
+    (idx, ritcValue, origin) => {
+      const updated = [...products];
+      const current = { ...updated[idx] };
+      current.ritc = toUpper(ritcValue);
+
+      if (origin && origin.unit) {
+        const u = origin.unit.toUpperCase();
+        const matched = unitCodes.find((c) => c === u || c.startsWith(u));
+        if (matched) {
+          current.socunit = matched;
+        }
+      }
+
+      updated[idx] = current;
+      setProducts(updated);
+    },
+    [products, setProducts],
   );
 
   const handleBlur = useCallback(
@@ -256,6 +280,39 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
     },
     [products, setProducts],
   );
+
+  const openExportModal = (idx) => {
+    setProductToExportIndex(idx);
+    setExportModalOpen(true);
+  };
+
+  const closeExportModal = () => {
+    setExportModalOpen(false);
+    setProductToExportIndex(null);
+  };
+
+  const handleExportToInvoice = (targetInvIndex) => {
+    if (productToExportIndex === null) return;
+    if (targetInvIndex === selectedInvoiceIndex) return; // same invoice
+
+    const updatedInvoices = [...invoices];
+    const targetInvoice = { ...updatedInvoices[targetInvIndex] };
+    const sourceProduct = products[productToExportIndex];
+
+    const newProduct = { ...sourceProduct };
+    delete newProduct._id;
+
+    // Recalculate serial number for the target
+    const targetProducts = targetInvoice.products || [];
+    newProduct.serialNumber = targetProducts.length + 1;
+
+    targetInvoice.products = [...targetProducts, newProduct];
+    updatedInvoices[targetInvIndex] = targetInvoice;
+
+    formik.setFieldValue("invoices", updatedInvoices);
+    closeExportModal();
+    alert("Product exported successfully!");
+  };
 
   return (
     <div style={styles.page}>
@@ -338,11 +395,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                     <RITCSearchableDropdown
                       value={toUpper(prod.ritc || "")}
                       onChange={(e) =>
-                        handleProductFieldChange(
-                          idx,
-                          "ritc",
-                          toUpper(e.target.value),
-                        )
+                        handleRITCChange(idx, e.target.value, e.origin)
                       }
                       style={{ fontSize: 12, height: 24 }}
                     />
@@ -522,6 +575,13 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                     >
                       Delete
                     </button>
+                    <button
+                      type="button"
+                      style={{ ...styles.smallButton, marginLeft: 6 }}
+                      onClick={() => openExportModal(idx)}
+                    >
+                      Export
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -538,6 +598,97 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
           </button>
         </div>
       </div>
+
+      {exportModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              padding: 20,
+              borderRadius: 8,
+              minWidth: 300,
+              boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
+            }}
+          >
+            <h3
+              style={{
+                marginTop: 0,
+                color: "#16408f",
+                fontSize: 16,
+                marginBottom: 16,
+              }}
+            >
+              Select Invoice to Export
+            </h3>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                maxHeight: 300,
+                overflowY: "auto",
+              }}
+            >
+              {invoices.map((inv, idx) => {
+                if (idx === selectedInvoiceIndex) return null;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    style={{
+                      padding: "8px 12px",
+                      border: "1px solid #d2d8e4",
+                      background: "#f7fafc",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      fontSize: 13,
+                    }}
+                    onClick={() => handleExportToInvoice(idx)}
+                  >
+                    <strong>#{idx + 1}</strong> -{" "}
+                    {inv.invoiceNumber || "(No Invoice No)"}
+                  </button>
+                );
+              })}
+              {invoices.length <= 1 && (
+                <div style={{ padding: 10, color: "#666", fontSize: 12 }}>
+                  No other invoices available.
+                </div>
+              )}
+            </div>
+            <div style={{ marginTop: 16, textAlign: "right" }}>
+              <button
+                type="button"
+                style={{
+                  padding: "6px 12px",
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+                onClick={closeExportModal}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -105,7 +105,7 @@ const RITCSearchableDropdown = ({
   const handleSelect = (opt) => {
     const hs = opt.hs_code || "";
     setQuery(hs);
-    onChange({ target: { value: hs } });
+    onChange({ target: { value: hs }, origin: opt });
     setOpen(false);
   };
 
@@ -224,6 +224,12 @@ const RITCSearchableDropdown = ({
             } else if (e.key === "Enter" && active >= 0) {
               e.preventDefault();
               handleSelect(options[active]);
+            } else if (e.key === "Tab") {
+              if (options.length > 0) {
+                // Select active option, or first option logic
+                const indexToSelect = active >= 0 ? active : 0;
+                handleSelect(options[indexToSelect]);
+              }
             } else if (e.key === "Escape") {
               setOpen(false);
             }
