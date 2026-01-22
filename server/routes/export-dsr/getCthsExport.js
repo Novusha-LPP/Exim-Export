@@ -18,25 +18,85 @@ router.get("/", async (req, res) => {
 
     if (search && search.trim()) {
       const q = search.trim();
+      const regex = new RegExp(q, "i");
+      const prefixRegex = new RegExp(`^${q}`, "i");
 
-      // If you have a text index on hs_code + item_description, use $text:
-      // filter.$text = { $search: q };
-
-      // If not, fall back to prefix regex on indexed fields
-      filter.$or = [
-        { hs_code: { $regex: `^${q}`, $options: "i" } },
-        { item_description: { $regex: q, $options: "i" } },
-        { unit: { $regex: q, $options: "i" } },
+      const pipeline = [
+        {
+          $match: {
+            $or: [
+              { hs_code: regex },
+              { item_description: regex },
+              { unit: regex },
+            ],
+          },
+        },
+        {
+          $addFields: {
+            priority: {
+              $cond: {
+                if: { $regexMatch: { input: "$hs_code", regex: prefixRegex } },
+                then: 0,
+                else: {
+                  $cond: {
+                    if: {
+                      $regexMatch: {
+                        input: "$item_description",
+                        regex: prefixRegex,
+                      },
+                    },
+                    then: 1,
+                    else: 2,
+                  },
+                },
+              },
+            },
+          },
+        },
+        { $sort: { priority: 1, hs_code: 1 } },
+        { $skip: skip },
+        { $limit: perPage },
+        {
+          $project: {
+            hs_code: 1,
+            item_description: 1,
+            basic_duty_sch_tarrif: 1,
+            unit: 1,
+          },
+        },
       ];
+
+      const [items, total] = await Promise.all([
+        CthExportModel.aggregate(pipeline),
+        CthExportModel.countDocuments({
+          $or: [
+            { hs_code: regex },
+            { item_description: regex },
+            { unit: regex },
+          ],
+        }),
+      ]);
+
+      return res.json({
+        success: true,
+        data: items,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: perPage,
+          totalPages: Math.ceil(total / perPage),
+        },
+      });
     }
 
+    // Default case (no search)
     const [items, total] = await Promise.all([
       CthExportModel.find(filter)
         .sort({ hs_code: 1 })
         .skip(skip)
         .limit(perPage)
         .lean()
-        .select("hs_code item_description basic_duty_sch_tarrif unit"), // only fields needed by UI
+        .select("hs_code item_description basic_duty_sch_tarrif unit"),
       CthExportModel.countDocuments(filter),
     ]);
 

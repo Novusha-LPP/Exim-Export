@@ -60,7 +60,7 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
       { header: "Cntr port gate in date", key: "cntr_port_gate_in", width: 22 },
       { header: "Remarks", key: "remarks", width: 15 },
       { header: "Lcl / fcl / air", key: "consignment_type", width: 15 },
-      { header: "Milestone remarks", key: "milestone_remarks", width: 25 },
+      { header: "Remarks", key: "milestone_remarks", width: 25 },
 
       { header: "Port of origin", key: "port_of_origin", width: 20 },
       { header: "Job number", key: "job_no", width: 20 },

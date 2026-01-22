@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
+import { priorityFilter } from "../../utils/filterUtils";
 
 const SearchableDropdown = ({
   options,
@@ -53,10 +54,9 @@ const SearchableDropdown = ({
     };
   }, [open]);
 
-  const filteredOptions = options.filter((opt) => {
-    const optVal = typeof opt === "string" ? opt : opt.code || opt.name || "";
-    return optVal.toLowerCase().includes(query.toLowerCase());
-  });
+  const filteredOptions = priorityFilter(options, query, (opt) =>
+    typeof opt === "string" ? opt : opt.code || opt.name || "",
+  );
 
   const handleSelect = (opt) => {
     const optVal = typeof opt === "string" ? opt : opt.code || opt.name || "";

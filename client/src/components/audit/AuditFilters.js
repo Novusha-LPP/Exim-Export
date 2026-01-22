@@ -2,6 +2,7 @@ import React from 'react';
 import { Grid, TextField, FormControl, InputLabel, Select, MenuItem, Button, CircularProgress, InputAdornment, Autocomplete } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
+import { priorityFilter } from '../../utils/filterUtils';
 
 const AuditFilters = ({
   filters,
@@ -146,6 +147,9 @@ const AuditFilters = ({
             size="small"
             options={userList?.filter(u => u && u.label).map((user) => user.label) || []}
             value={userList?.find(u => u && u.value === userFilter)?.label || ""}
+            filterOptions={(options, { inputValue }) =>
+              priorityFilter(options, inputValue)
+            }
             onInputChange={(event, newValue) => {
               if (newValue === null || newValue === undefined) {
                 handleUserFilterChange({ target: { value: "" } });

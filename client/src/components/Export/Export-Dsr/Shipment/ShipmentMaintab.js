@@ -4,6 +4,7 @@ import DateInput from "../../../common/DateInput.js";
 import { states } from "../../../../utils/masterList";
 import { natureOfCargo } from "../../../../utils/masterList";
 import { unitCodes } from "../../../../utils/masterList";
+import { priorityFilter } from "../../../../utils/filterUtils";
 
 const apiBase = import.meta.env.VITE_API_STRING;
 
@@ -127,7 +128,11 @@ function useCompactCountryDropdown(fieldName, formik) {
           `${apiBase}/countries?search=${encodeURIComponent(searchVal)}`,
         );
         const data = await res.json();
-        setOpts(data?.data || []);
+        const list = data?.data || [];
+        const sorted = priorityFilter(list, query, (c) =>
+          `${c.countryCode || ""} ${c.countryName || c.country_name || ""}`,
+        );
+        setOpts(sorted);
       } catch {
         setOpts([]);
       }
@@ -375,12 +380,10 @@ function GatewayPortDropdownField({
 }) {
   const d = useGatewayPortDropdown(fieldName, formik);
 
-  const filtered = d.opts.filter((p) => {
+  const filtered = priorityFilter(d.opts, d.query, (p) => {
     const code = p.unece_code || "";
     const name = p.name || "";
-    const haystack = `${code} ${name}`.toUpperCase();
-    const needle = (d.query || "").toUpperCase();
-    return !needle || haystack.includes(needle);
+    return `${code} ${name}`;
   });
 
   return (
@@ -469,13 +472,9 @@ function NatureOfCargoDropdownField({
   const wrapperRef = useRef();
 
   // Filter options by search (always toUpper)
-  const filtered = (natureOptions || [])
-    .filter((opt) =>
-      toUpper(typeof opt === "string" ? opt : opt.name).includes(
-        query.toUpperCase(),
-      ),
-    )
-    .slice(0, 10);
+  const filtered = priorityFilter(natureOptions || [], query, (opt) =>
+    typeof opt === "string" ? opt : opt.name
+  ).slice(0, 10);
 
   useEffect(() => {
     setQuery(formik.values[fieldName] || "");
@@ -581,9 +580,7 @@ function UnitDropdownField({
   const wrapperRef = useRef();
 
   // Filter unit codes (toupper)
-  const filtered = (unitOptions || [])
-    .filter((opt) => toUpper(opt).includes(query.toUpperCase()))
-    .slice(0, 15);
+  const filtered = priorityFilter(unitOptions || [], query).slice(0, 15);
 
   useEffect(() => {
     setQuery(formik.values[fieldName] || "");
@@ -1009,11 +1006,11 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
 
     const url = isAir
       ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-          searchVal,
-        )}`
+        searchVal,
+      )}`
       : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-          searchVal,
-        )}`;
+        searchVal,
+      )}`;
 
     const t = setTimeout(async () => {
       try {
@@ -1111,16 +1108,14 @@ function ShippingLineDropdownField({
 
   const d = useShippingOrAirlineDropdown(fieldName, formik);
 
-  const filteredOpts = d.opts.filter((opt) => {
+  const filteredOpts = priorityFilter(d.opts, d.query, (opt) => {
     const code = isAir
       ? opt.alphanumericCode || opt.code || ""
       : opt.shippingLineCode || opt.code || "";
     const name = isAir
       ? opt.airlineName || opt.name || ""
       : opt.shippingName || opt.name || "";
-    const haystack = `${code} ${name}`.toUpperCase();
-    const needle = (d.query || "").toUpperCase();
-    return !needle || haystack.includes(needle);
+    return `${code} ${name}`;
   });
 
   // helper: map filtered index -> original opts index
@@ -1767,13 +1762,13 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                 </div>
                 {parseFloat(formik.values.net_weight_kg || 0) >
                   parseFloat(formik.values.gross_weight_kg || 0) && (
-                  <Alert
-                    severity="warning"
-                    sx={{ mt: 1, py: 0, fontSize: "0.80rem" }}
-                  >
-                    Warning: Net Weight cannot be greater than Gross Weight.
-                  </Alert>
-                )}
+                    <Alert
+                      severity="warning"
+                      sx={{ mt: 1, py: 0, fontSize: "0.80rem" }}
+                    >
+                      Warning: Net Weight cannot be greater than Gross Weight.
+                    </Alert>
+                  )}
               </>
             )}
             <div style={styles.split}>

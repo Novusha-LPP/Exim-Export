@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import FileUpload from "../../../gallery/FileUpload";
 import ImagePreview from "../../../gallery/ImagePreview";
 import zIndex from "@mui/material/styles/zIndex";
+import { priorityFilter } from "../../../../utils/filterUtils";
 
 // Helper
 const toUpper = (str) => (str ? str.toUpperCase() : "");
@@ -147,7 +148,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
   const [query, setQuery] = useState(
     (formik.values[fieldName.split(".")[0]] &&
       getNestedValue(formik.values, fieldName)) ||
-      "",
+    "",
   );
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
@@ -179,11 +180,11 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
 
     const url = isAir
       ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-          searchVal,
-        )}`
+        searchVal,
+      )}`
       : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-          searchVal,
-        )}`;
+        searchVal,
+      )}`;
 
     const t = setTimeout(async () => {
       try {
@@ -299,16 +300,14 @@ function ShippingLineDropdownField({ fieldName, formik, placeholder = "" }) {
     };
   }, [d.open]);
 
-  const filteredOpts = d.opts.filter((opt) => {
+  const filteredOpts = priorityFilter(d.opts, d.query, (opt) => {
     const code = isAir
       ? opt.alphanumericCode || opt.code || ""
       : opt.shippingLineCode || opt.code || "";
     const name = isAir
       ? opt.airlineName || opt.name || ""
       : opt.shippingName || opt.name || "";
-    const haystack = `${code} ${name}`.toUpperCase();
-    const needle = (d.query || "").toUpperCase();
-    return !needle || haystack.includes(needle);
+    return `${code} ${name}`;
   });
 
   const indexInOpts = (filteredIndex) => {
@@ -544,12 +543,10 @@ function GatewayPortDropdown({
 }) {
   const d = useGatewayPortDropdown(fieldName, formik);
 
-  const filtered = d.opts.filter((p) => {
+  const filtered = priorityFilter(d.opts, d.query, (p) => {
     const code = p.unece_code || "";
     const name = p.name || "";
-    const haystack = `${code} ${name}`.toUpperCase();
-    const needle = (d.query || "").toUpperCase();
-    return !needle || haystack.includes(needle);
+    return `${code} ${name}`;
   });
 
   return (
@@ -1246,11 +1243,11 @@ const OperationsTab = ({ formik }) => {
         { field: "vehicleNo", label: "Vehicle No.", width: "10px" },
         // If Dock (FCL or LCL), we do NOT show Container No in Carting Details
         !isAir &&
-          !isDock && {
-            field: "containerNo",
-            label: "Container No.",
-            width: "140px",
-          },
+        !isDock && {
+          field: "containerNo",
+          label: "Container No.",
+          width: "140px",
+        },
         { field: "driverName", label: "Driver Name", width: "150px" },
         { field: "contactNo", label: "Contact No.", width: "120px" },
         {
@@ -1778,29 +1775,29 @@ const TableSection = ({
                           <input
                             type={
                               col.type === "date" ||
-                              col.type === "datetime-local"
+                                col.type === "datetime-local"
                                 ? "text"
                                 : col.type || "text"
                             }
                             value={
                               item[col.field] === undefined ||
-                              item[col.field] === null ||
-                              (col.type === "number" &&
-                                Number(item[col.field] || 0) === 0)
+                                item[col.field] === null ||
+                                (col.type === "number" &&
+                                  Number(item[col.field] || 0) === 0)
                                 ? ""
                                 : col.type === "date" ||
-                                    col.type === "datetime-local"
+                                  col.type === "datetime-local"
                                   ? formatDateForInput(
-                                      item[col.field],
-                                      col.type,
-                                    )
+                                    item[col.field],
+                                    col.type,
+                                  )
                                   : item[col.field]
                             }
                             placeholder={
                               col.type === "number"
                                 ? "0.00"
                                 : col.placeholder ||
-                                  (col.type === "date" ? "dd-mm-yyyy" : "")
+                                (col.type === "date" ? "dd-mm-yyyy" : "")
                             }
                             onChange={(e) =>
                               onUpdate(

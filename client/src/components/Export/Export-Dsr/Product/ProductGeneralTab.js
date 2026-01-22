@@ -9,6 +9,7 @@ import {
 } from "../../../../utils/masterList";
 import { toUpperVal } from "./commonStyles.js";
 import { calculateProductFobINR } from "../../../../utils/fobCalculations";
+import { priorityFilter } from "../../../../utils/filterUtils";
 
 const apiBase = import.meta.env.VITE_API_STRING;
 
@@ -243,9 +244,7 @@ function UnitDropdownField({
     if (disabled && open) setOpen(false);
   }, [disabled]);
 
-  const filtered = (unitOptions || [])
-    .filter((opt) => opt.toUpperCase().includes(query.toUpperCase()))
-    .slice(0, 15);
+  const filtered = priorityFilter(unitOptions || [], query).slice(0, 15);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -387,17 +386,11 @@ function useEximCodeDropdown(
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  const filtered = eximCodes
-    .filter((opt) => {
-      const code = toUpper(typeof opt === "string" ? opt : opt.code || "");
-      const desc = toUpper(
-        typeof opt === "string" ? "" : opt.description || "",
-      );
-      const q = toUpper(query);
-      const formatted = desc ? `${code} - ${desc}` : code;
-      return code.includes(q) || desc.includes(q) || formatted.includes(q);
-    })
-    .slice(0, 15);
+  const filtered = priorityFilter(eximCodes, query, (opt) => {
+    const code = toUpper(typeof opt === "string" ? opt : opt.code || "");
+    const desc = toUpper(typeof opt === "string" ? "" : opt.description || "");
+    return desc ? `${code} - ${desc}` : code;
+  }).slice(0, 15);
 
   const handle = (val) => {
     const v = val.toUpperCase();
@@ -469,13 +462,9 @@ function useStateDropdown(
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  const filteredStates = states
-    .filter((s) =>
-      toUpper(typeof s === "string" ? s : s.name || "").includes(
-        toUpper(query),
-      ),
-    )
-    .slice(0, 10);
+  const filteredStates = priorityFilter(states, query, (s) =>
+    toUpper(typeof s === "string" ? s : s.name || "")
+  ).slice(0, 10);
 
   const handleSelect = (i) => {
     const stateName = toUpper(
@@ -539,13 +528,15 @@ function useDistrictApiDropdown(
           )}`,
         );
         const data = await res.json();
-        setOpts(
-          Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-              ? data
-              : [],
+        const list = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data)
+            ? data
+            : [];
+        const sorted = priorityFilter(list, query, (d) =>
+          `${d.districtCode || ""} ${d.districtName || ""}`,
         );
+        setOpts(sorted);
       } catch {
         setOpts([]);
       }
@@ -662,11 +653,10 @@ function usePtaFtaDropdown(
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  const filtered = PTA_FTA_CODES.filter((opt) => {
+  const filtered = priorityFilter(PTA_FTA_CODES, query, (opt) => {
     const code = toUpper(opt.code || "");
     const desc = toUpper(opt.description || "");
-    const q = toUpper(query);
-    return code.includes(q) || desc.includes(q);
+    return `${code} - ${desc}`;
   }).slice(0, 15);
 
   const handle = (val) => {
@@ -743,11 +733,10 @@ function useEndUseDropdown(
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  const filtered = END_USE_CODES.filter((opt) => {
+  const filtered = priorityFilter(END_USE_CODES, query, (opt) => {
     const code = (opt.code || "").toUpperCase();
     const desc = (opt.description || "").toUpperCase();
-    const q = (query || "").toUpperCase();
-    return code.includes(q) || desc.includes(q);
+    return `${code} - ${desc}`;
   }).slice(0, 15);
 
   const handle = (val) => {
@@ -1640,19 +1629,19 @@ function ProductRow({
             </select>
             {(product.pmvInfo?.calculationMethod ?? "percentage") ===
               "percentage" && (
-              <input
-                style={{ ...styles.input, width: "40%" }}
-                type="number"
-                value={product.pmvInfo?.percentage ?? 110.0}
-                onChange={(e) =>
-                  handleProductChange(
-                    index,
-                    "pmvInfo.percentage",
-                    parseFloat(e.target.value),
-                  )
-                }
-              />
-            )}
+                <input
+                  style={{ ...styles.input, width: "40%" }}
+                  type="number"
+                  value={product.pmvInfo?.percentage ?? 110.0}
+                  onChange={(e) =>
+                    handleProductChange(
+                      index,
+                      "pmvInfo.percentage",
+                      parseFloat(e.target.value),
+                    )
+                  }
+                />
+              )}
           </div>
         </div>
 
@@ -1665,7 +1654,7 @@ function ProductRow({
                 paddingRight: 35,
                 backgroundColor:
                   (product.pmvInfo?.calculationMethod ?? "percentage") ===
-                  "percentage"
+                    "percentage"
                     ? "#e2e8f0"
                     : "#f7fafc",
               }}
@@ -1710,7 +1699,7 @@ function ProductRow({
                 paddingRight: 35,
                 backgroundColor:
                   (product.pmvInfo?.calculationMethod ?? "percentage") ===
-                  "percentage"
+                    "percentage"
                     ? "#e2e8f0"
                     : "#f7fafc",
               }}
@@ -1799,7 +1788,7 @@ function ProductRow({
               style={{
                 ...styles.select,
                 ...(product.igstCompensationCess?.igstPaymentStatus !==
-                "Export Against Payment"
+                  "Export Against Payment"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1827,7 +1816,7 @@ function ProductRow({
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus !==
-                "Export Against Payment"
+                  "Export Against Payment"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1854,7 +1843,7 @@ function ProductRow({
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus ===
-                "Not Applicable"
+                  "Not Applicable"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1883,7 +1872,7 @@ function ProductRow({
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus !==
-                "Export Against Payment"
+                  "Export Against Payment"
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1908,7 +1897,7 @@ function ProductRow({
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus !==
-                "Export Against Payment"
+                  "Export Against Payment"
                   ? { background: "#e9ecef" }
                   : {}),
               }}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { priorityFilter } from "../../utils/filterUtils";
 
 const AutocompleteSelect = ({
   options,
@@ -29,9 +30,7 @@ const AutocompleteSelect = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filtered = options.filter((opt) =>
-    (opt.label || "").toUpperCase().includes(query.toUpperCase()),
-  );
+  const filtered = priorityFilter(options, query, (opt) => opt.label);
 
   const handleSelect = (opt) => {
     onChange({ target: { name, value: opt.value } });

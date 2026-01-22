@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
+import { priorityFilter } from "../../utils/filterUtils";
 
 const RITCSearchableDropdown = ({
   value,
@@ -83,7 +84,12 @@ const RITCSearchableDropdown = ({
         : Array.isArray(data)
           ? data
           : [];
-      setOptions(list);
+
+      // Apply priority sorting on client side to the results fetched from server
+      const sorted = priorityFilter(list, search, (opt) =>
+        `${opt.hs_code || ""} ${opt.item_description || ""}`,
+      );
+      setOptions(sorted);
     } catch (e) {
       if (e.name !== "AbortError") {
         console.error("RITC fetch error", e);

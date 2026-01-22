@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import DateInput from "../../../common/DateInput.js";
 import AutocompleteSelect from "../../../common/AutocompleteSelect.js";
+import { priorityFilter } from "../../../../utils/filterUtils.js";
 
 const apiBase = import.meta.env.VITE_API_STRING;
 
@@ -228,7 +229,7 @@ const GeneralTab = ({ formik, directories }) => {
   function handleFieldChange(field, value) {
     formik.setFieldValue(field, value);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {}, 1000);
+    saveTimeoutRef.current = setTimeout(() => { }, 1000);
   }
 
   // --- Consignee Autocomplete Logic ---
@@ -269,10 +270,8 @@ const GeneralTab = ({ formik, directories }) => {
     const val = toUpperVal(e);
     handleConsigneeChange(idx, "consignee_name", val);
 
-    // Filter list
-    const filtered = consigneeList.filter((c) =>
-      toUpper(c.consignee_name).includes(val),
-    );
+    // Filter list with priority sorting
+    const filtered = priorityFilter(consigneeList, val, (c) => c.consignee_name);
     setFilteredConsignees(filtered);
     setActiveIdx(idx);
     setShowMenu(true);
@@ -352,15 +351,14 @@ const GeneralTab = ({ formik, directories }) => {
     const shouldUpdate =
       getVal("ieCode") !== toUpper(effectiveIe) ||
       getVal("gstin") !==
-        toUpper(exp.registrationDetails?.gstinMainBranch || "") ||
+      toUpper(exp.registrationDetails?.gstinMainBranch || "") ||
       getVal("exporter_type") !==
-        toUpper(exp.generalInfo?.exporterType || "") ||
+      toUpper(exp.generalInfo?.exporterType || "") ||
       getVal("exporter_address") !==
-        toUpper(
-          `${branch.address || ""}${
-            branch.postalCode ? `, ${branch.postalCode}` : ""
-          }`,
-        );
+      toUpper(
+        `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""
+        }`,
+      );
 
     if (!shouldUpdate) return;
 
@@ -368,8 +366,7 @@ const GeneralTab = ({ formik, directories }) => {
       exporter: toUpper(exp.organization),
       exporter_type: toUpper(exp.generalInfo?.exporterType || ""),
       exporter_address: toUpper(
-        `${branch.address || ""}${
-          branch.postalCode ? `, ${branch.postalCode}` : ""
+        `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""
         }`,
       ),
       branch_sno: toUpper(branch.branchCode || "0"),

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
+import { priorityFilter } from "../../utils/filterUtils";
 
 const DBKSearchableDropdown = ({
     value,
@@ -83,7 +84,10 @@ const DBKSearchableDropdown = ({
                 : Array.isArray(data)
                     ? data
                     : [];
-            setOptions(list);
+
+            // Apply priority sorting on client side to the results fetched from server
+            const sorted = priorityFilter(list, search, (opt) => opt.tariff_item);
+            setOptions(sorted);
         } catch (e) {
             if (e.name !== "AbortError") {
                 console.error("DBK fetch error", e);

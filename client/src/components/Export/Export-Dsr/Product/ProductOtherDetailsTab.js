@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { styles } from "./commonStyles";
+import { priorityFilter } from "../../../../utils/filterUtils";
 
 function toUpper(val) {
   return (typeof val === "string" ? val : "")?.toUpperCase() || "";
@@ -121,9 +122,7 @@ const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
     const val = toUpperVal(e);
     handleManufacturerChange("name", val);
 
-    const filtered = manufacturerList.filter((m) =>
-      toUpper(m.name).includes(val)
-    );
+    const filtered = priorityFilter(manufacturerList, val, (m) => m.name);
     setFilteredManufacturers(filtered);
     setShowManufMenu(true);
     setManufKeyboardActive(-1);

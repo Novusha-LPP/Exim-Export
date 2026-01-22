@@ -13,6 +13,7 @@ import AssignRole from "./AssignRole/AssignRole";
 import ChangePasswordByAdmin from "./AssignRole/ChangePasswordByAdmin";
 import SelectIcdCode from "./AssignRole/SelectIcdCode";
 import AssignImporters from "./AssignImporters";
+import { priorityFilter } from "../../utils/filterUtils";
 
 function Assign() {
   const [userList, setUserList] = useState([]);
@@ -78,6 +79,9 @@ function Assign() {
             }}
             options={userList}
             getOptionLabel={(option) => option}
+            filterOptions={(options, { inputValue }) =>
+              priorityFilter(options, inputValue)
+            }
             sx={{ width: 200, marginBottom: "20px" }}
             renderInput={(params) => (
               <TextField {...params} size="small" label="Select User" />
