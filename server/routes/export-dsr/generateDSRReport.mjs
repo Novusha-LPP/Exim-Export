@@ -64,9 +64,9 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
 
       { header: "Port of origin", key: "port_of_origin", width: 20 },
       { header: "Job number", key: "job_no", width: 20 },
-      { header: "Docs recd date", key: "docs_recd_date", width: 20 },
       { header: "Cntr 20 / 40", key: "cntr_size", width: 15 },
       { header: "Consignee name", key: "consignee_name", width: 30 },
+      { header: "Exporter Ref No", key: "exporter_ref_no", width: 20 },
       { header: "Invoice no", key: "invoice_no", width: 20 },
       { header: "Invoice date", key: "invoice_date", width: 15 },
       { header: "Invoice value", key: "invoice_value", width: 15 },
@@ -75,8 +75,8 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
       { header: "No of packages", key: "no_of_packages", width: 15 },
       { header: "Net weight (kgs)", key: "net_weight", width: 18 },
       { header: "Gross weight (kgs)", key: "gross_weight", width: 18 },
-      { header: "Port of destination", key: "port_of_destination", width: 20 },
-      { header: "Country", key: "country", width: 20 },
+      { header: "Port", key: "port_details", width: 25 },
+      { header: "Country", key: "country_details", width: 25 },
     ];
 
     // Add rows
@@ -110,13 +110,16 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
         cntr_port_gate_in: status.gateInDate || "",
         remarks: job.customerremark,
         consignment_type: job.consignmentType || "",
-        milestone_remarks: job.milestones?.[0]?.remarks || "",
+        milestone_remarks: job.milestones
+          ?.map((m) => m.remarks)
+          .filter((r) => r && r.trim() !== "")
+          .join(", ") || "",
 
         port_of_origin: job.custom_house || "",
         job_no: job.job_no || "",
-        docs_recd_date: status.gateInDate || "",
         cntr_size: cntrSize,
         consignee_name: job.consignees?.[0]?.consignee_name || "",
+        exporter_ref_no: job.exporter_ref_no || "",
         invoice_no: firstInvoice.invoiceNumber || "",
         invoice_date: firstInvoice.invoiceDate || "",
         invoice_value: firstInvoice.invoiceValue || 0,
@@ -125,9 +128,10 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
         no_of_packages: job.total_no_of_pkgs || 0,
         net_weight: job.gross_weight_kg || 0, // Swapped as per requirement
         gross_weight: job.net_weight_kg || 0, // Swapped as per requirement
-        port_of_destination:
-          job.destination_port || job.port_of_discharge || "",
-        country: job.destination_country || job.discharge_country || "",
+        port_details: `Destination: ${job.destination_port || ""}\nDischarge: ${job.port_of_discharge || ""
+          }`,
+        country_details: `Destination: ${job.destination_country || ""
+          }\nDischarge: ${job.discharge_country || ""}`,
       });
     });
 
@@ -162,9 +166,9 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
 
     worksheet.getColumn("port_of_origin").width = 25;
     worksheet.getColumn("job_no").width = 25;
-    worksheet.getColumn("docs_recd_date").width = 20;
     worksheet.getColumn("cntr_size").width = 15;
     worksheet.getColumn("consignee_name").width = 35;
+    worksheet.getColumn("exporter_ref_no").width = 20;
     worksheet.getColumn("invoice_no").width = 25;
     worksheet.getColumn("invoice_date").width = 15;
     worksheet.getColumn("invoice_value").width = 18;
@@ -173,8 +177,8 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
     worksheet.getColumn("no_of_packages").width = 15;
     worksheet.getColumn("net_weight").width = 20;
     worksheet.getColumn("gross_weight").width = 20;
-    worksheet.getColumn("port_of_destination").width = 25;
-    worksheet.getColumn("country").width = 20;
+    worksheet.getColumn("port_details").width = 30;
+    worksheet.getColumn("country_details").width = 30;
 
     // Apply borders to ALL cells in the worksheet (Thick/Medium borders)
     worksheet.eachRow((row) => {

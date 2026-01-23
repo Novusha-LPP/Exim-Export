@@ -1210,10 +1210,10 @@ const ExportJobsTable = () => {
           <div style={s.tableContainer}>
             <table style={s.table}>
               <colgroup>
-                <col style={{ width: "150px" }} /> {/* Job No + Owner */}
+                <col style={{ width: "120px" }} /> {/* Job No + Owner */}
                 <col style={{ width: "150px" }} /> {/* Exporter */}
-                <col style={{ width: "140px" }} /> {/* NEW: KYC/Codes */}
-                <col style={{ width: "110px" }} /> {/* Invoice */}
+                <col style={{ width: "100px" }} /> {/* NEW: KYC/Codes */}
+                <col style={{ width: "100px" }} /> {/* Invoice */}
                 <col style={{ width: "80px" }} /> {/* SB */}
                 <col style={{ width: "80px" }} /> {/* Pkgs */}
                 <col style={{ width: "100px" }} /> {/* Port */}
@@ -1409,7 +1409,6 @@ const ExportJobsTable = () => {
                           </div>
                         </td>
 
-                        {/* NEW Column: KYC / Codes */}
                         {/* NEW Column: KYC / Codes */}
                         <td style={s.td}>
                           <div
