@@ -273,17 +273,21 @@ const LogisysEditableHeader = ({
   exportJobsUsers = [],
 }) => {
   useEffect(() => {
-    const type = toUpper(formik.values.consignmentType || "");
-    const mode = type === "AIR" ? "AIR" : "SEA";
+    const isAir = formik.values.consignmentType === "AIR";
+    const mode = isAir ? "AIR" : "SEA";
     if (toUpper(formik.values.transportMode) !== mode) {
       formik.setFieldValue("transportMode", mode);
     }
-  }, [
-    formik.values.consignmentType,
-    formik.setFieldValue,
-    formik.setFieldValue,
-    formik.values.transportMode,
-  ]);
+  }, [formik.values.consignmentType, formik.values.transportMode, formik.setFieldValue]);
+
+  useEffect(() => {
+    const stuffed = toUpper(formik.values.goods_stuffed_at || "");
+    if (stuffed === "FACTORY") {
+      formik.setFieldValue("consignmentType", "FCL");
+    }
+    // If DOCK, we allow FCL & LCL (user can select manually), no forced override usually required
+    // unless to switch back from AIR, but user can do that.
+  }, [formik.values.goods_stuffed_at, formik.setFieldValue]);
 
   const [snackbar, setSnackbar] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -524,6 +528,22 @@ const LogisysEditableHeader = ({
             ]}
             onChange={formik.handleChange}
             placeholder="Select Type"
+          />
+        </div>
+
+        {/* Goods Stuffed At */}
+        <div style={{ flex: "1 1 120px", minWidth: 100 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>Goods Stuffed At</div>
+          <AutocompleteSelect
+            name="goods_stuffed_at"
+            value={formik.values.goods_stuffed_at || ""}
+            options={[
+              { value: "", label: "Select" },
+              { value: "FACTORY", label: "FACTORY" },
+              { value: "DOCK", label: "DOCK" },
+            ]}
+            onChange={formik.handleChange}
+            placeholder="Select Location"
           />
         </div>
 

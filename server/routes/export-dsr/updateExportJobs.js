@@ -305,6 +305,12 @@ router.get("/exports/:status?", async (req, res) => {
       });
     }
 
+    if (req.query.goods_stuffed_at) {
+      filter.$and.push({
+        goods_stuffed_at: req.query.goods_stuffed_at,
+      });
+    }
+
     // Remove empty $and array if no conditions were added
     if (filter.$and && filter.$and.length === 0) {
       delete filter.$and;

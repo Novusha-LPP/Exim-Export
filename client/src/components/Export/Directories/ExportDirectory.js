@@ -247,10 +247,6 @@ const DirectoryDetailView = ({ directory }) => (
               {directory.registrationDetails?.panNo || "-"}
             </Typography>
             <Typography variant="body2" sx={{ mb: 0.5 }}>
-              <strong>GSTIN:</strong>{" "}
-              {directory.registrationDetails?.gstinMainBranch || "-"}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 0.5 }}>
               <strong>MSME Registered:</strong>{" "}
               {directory.registrationDetails?.msmeRegistered ? "Yes" : "No"}
             </Typography>
@@ -270,10 +266,10 @@ const DirectoryDetailView = ({ directory }) => (
               directory.branchInfo.map((branch, idx) => (
                 <Box key={idx} sx={{ mb: 2 }}>
                   <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>Branch Name:</strong> {branch.branchName || "-"}
+                    <strong>Branch {idx + 1}:</strong> {branch.branchName || "-"} (Code: {branch.branchCode || "-"})
                   </Typography>
                   <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>Branch Code:</strong> {branch.branchCode || "-"}
+                    <strong>GST No:</strong> {branch.gstNo || "-"}
                   </Typography>
                   <Typography variant="body2" sx={{ mb: 0.5 }}>
                     <strong>Address:</strong> {branch.address || "-"}

@@ -76,7 +76,6 @@ const registrationDetailsSchema = new Schema(
     binNo: String,
     ieCode: { type: String },
     panNo: { type: String },
-    gstinMainBranch: String,
     gstinBranchCodeFree: String,
     gstinBranchCode15: String,
     msmeRegistered: { type: Boolean, default: false },
@@ -87,6 +86,7 @@ const registrationDetailsSchema = new Schema(
 const branchInfoSchema = new Schema({
   branchName: { type: String },
   branchCode: { type: String },
+  gstNo: { type: String },
   address: { type: String },
   city: { type: String },
   state: { type: String },

@@ -351,7 +351,7 @@ const GeneralTab = ({ formik, directories }) => {
     const shouldUpdate =
       getVal("ieCode") !== toUpper(effectiveIe) ||
       getVal("gstin") !==
-      toUpper(exp.registrationDetails?.gstinMainBranch || "") ||
+      toUpper(branch.gstNo || "") ||
       getVal("exporter_type") !==
       toUpper(exp.generalInfo?.exporterType || "") ||
       getVal("exporter_address") !==
@@ -373,10 +373,10 @@ const GeneralTab = ({ formik, directories }) => {
       branchSrNo: toUpper(branch.branchCode || "0"),
       state: toUpper(branch.state || ""),
       ieCode: toUpper(effectiveIe),
-      gstin: toUpper(exp.registrationDetails?.gstinMainBranch || ""),
-      gstinMainBranch: toUpper(exp.registrationDetails?.gstinMainBranch || ""),
-      regn_no: toUpper(exp.registrationDetails?.gstinMainBranch || ""),
-      exporter_gstin: toUpper(exp.registrationDetails?.gstinMainBranch || ""),
+      gstin: toUpper(branch.gstNo || ""),
+      gstinMainBranch: toUpper(branch.gstNo || ""),
+      regn_no: toUpper(branch.gstNo || ""),
+      exporter_gstin: toUpper(branch.gstNo || ""),
     };
 
     Object.entries(updates).forEach(([key, val]) =>

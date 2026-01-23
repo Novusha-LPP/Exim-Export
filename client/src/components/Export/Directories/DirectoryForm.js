@@ -53,10 +53,6 @@ const validationSchema = Yup.object({
         "Invalid PAN format (e.g., ABCDE1234F)",
       )
       .required("PAN No is required"),
-    gstinMainBranch: Yup.string().matches(
-      /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/,
-      "Invalid GSTIN format",
-    ),
     msmeRegistered: Yup.boolean(),
   }),
 
@@ -65,6 +61,10 @@ const validationSchema = Yup.object({
       Yup.object({
         branchCode: Yup.string().max(50).required("Branch code is required"),
         branchName: Yup.string().max(255).required("Branch name is required"),
+        gstNo: Yup.string().matches(
+          /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/,
+          "Invalid GSTIN format",
+        ),
         address: Yup.string().max(500).required("Address is required"),
         city: Yup.string().max(100).required("City is required"),
         state: Yup.string().max(100).required("State is required"),
@@ -161,7 +161,6 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
     registrationDetails: {
       ieCode: directory?.registrationDetails?.ieCode || "",
       panNo: directory?.registrationDetails?.panNo || "",
-      gstinMainBranch: directory?.registrationDetails?.gstinMainBranch || "",
       msmeRegistered: directory?.registrationDetails?.msmeRegistered || false,
     },
     kycDocuments: {
@@ -213,6 +212,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
       {
         branchCode: "",
         branchName: "",
+        gstNo: "",
         address: "",
         city: "",
         state: "",
@@ -591,36 +591,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                       }}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6} md={4}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      name="registrationDetails.gstinMainBranch"
-                      label="GSTIN"
-                      value={values.registrationDetails.gstinMainBranch}
-                      onChange={(e) => {
-                        const uppercaseValue = e.target.value.toUpperCase();
-                        setFieldValue(
-                          "registrationDetails.gstinMainBranch",
-                          uppercaseValue,
-                        );
-                      }}
-                      onBlur={handleBlur}
-                      error={
-                        touched.registrationDetails?.gstinMainBranch &&
-                        Boolean(errors.registrationDetails?.gstinMainBranch)
-                      }
-                      helperText={
-                        touched.registrationDetails?.gstinMainBranch &&
-                        errors.registrationDetails?.gstinMainBranch
-                      }
-                      margin="dense"
-                      inputProps={{
-                        style: { textTransform: "uppercase" },
-                        maxLength: 15,
-                      }}
-                    />
-                  </Grid>
+
                   <Grid item xs={12} sm={6} md={3}>
                     <FormControlLabel
                       control={
@@ -1031,6 +1002,36 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                 errors.branchInfo?.[index]?.branchCode
                               }
                               margin="dense"
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={12} md={5}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`branchInfo[${index}].gstNo`}
+                              label="GST Number"
+                              value={branch.gstNo}
+                              onChange={(e) => {
+                                const uppercaseValue = e.target.value.toUpperCase();
+                                setFieldValue(
+                                  `branchInfo[${index}].gstNo`,
+                                  uppercaseValue,
+                                );
+                              }}
+                              onBlur={handleBlur}
+                              error={
+                                touched.branchInfo?.[index]?.gstNo &&
+                                Boolean(errors.branchInfo?.[index]?.gstNo)
+                              }
+                              helperText={
+                                touched.branchInfo?.[index]?.gstNo &&
+                                errors.branchInfo?.[index]?.gstNo
+                              }
+                              margin="dense"
+                              inputProps={{
+                                style: { textTransform: "uppercase" },
+                                maxLength: 15,
+                              }}
                             />
                           </Grid>
                           <Grid item xs={12}>

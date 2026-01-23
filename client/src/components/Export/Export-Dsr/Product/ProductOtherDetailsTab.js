@@ -109,7 +109,7 @@ const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
       name: toUpper(org.organization || ""),
       ieCode: toUpper(reg.ieCode || ""),
       branchSrNo: toUpper(branch.branchCode || ""),
-      regnNo: toUpper(reg.gstinMainBranch || ""),
+      regnNo: toUpper(branch.gstNo || ""),
       address: toUpper(
         `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""
         }`
@@ -239,7 +239,7 @@ const ProductOtherDetailsTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
                     name: toUpper(org.organization || ""),
                     ieCode: toUpper(reg.ieCode || ""),
                     branchSrNo: toUpper(branch.branchCode || ""),
-                    regnNo: toUpper(reg.gstinMainBranch || ""),
+                    regnNo: toUpper(branch.gstNo || ""),
                     address: toUpper(
                       `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""
                       }`

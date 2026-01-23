@@ -14,12 +14,20 @@ import {
   InputLabel,
   Autocomplete,
   TextField,
+  Menu,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AddExJobs from "./AddExJobs";
 import { formatDate } from "../../../utils/dateUtils";
 import { priorityFilter } from "../../../utils/filterUtils";
+import ExportChecklistGenerator from "./StandardDocuments/ExportChecklistGenerator";
+import ConsignmentNoteGenerator from "./StandardDocuments/ConsignmentNoteGenerator";
+import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
+import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharGenerator";
+import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
+import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
 
 // --- Clean Enterprise Styles ---
 const s = {
@@ -290,6 +298,7 @@ const ExportJobsTable = () => {
   const [selectedDetailedStatus, setSelectedDetailedStatus] = useState("");
   const [selectedCustomHouse, setSelectedCustomHouse] = useState("");
   const [selectedJobOwner, setSelectedJobOwner] = useState("");
+  const [selectedGoodsStuffedAt, setSelectedGoodsStuffedAt] = useState("");
   const [customHouses, setCustomHouses] = useState([]); // Re-added customHouses state
   const [jobOwnersList, setJobOwnersList] = useState([]); // Stores fetched users for Job Owner dropdown
 
@@ -338,6 +347,10 @@ const ExportJobsTable = () => {
   const [exporters, setExporters] = useState([]);
   const [selectedExporter, setSelectedExporter] = useState("");
   const [dsrLoading, setDSRLoading] = useState(false);
+
+  // Documents Menu State
+  const [docsAnchorEl, setDocsAnchorEl] = useState(null);
+  const [selectedDocJob, setSelectedDocJob] = useState(null);
 
   // Fetch Exporters for DSR
   useEffect(() => {
@@ -423,6 +436,7 @@ const ExportJobsTable = () => {
             detailedStatus: selectedDetailedStatus,
             customHouse: selectedCustomHouse,
             jobOwner: selectedJobOwner, // Added job owner filter
+            goods_stuffed_at: selectedGoodsStuffedAt,
             page: page,
             limit: LIMIT,
           },
@@ -458,6 +472,7 @@ const ExportJobsTable = () => {
     selectedDetailedStatus,
     selectedCustomHouse,
     selectedJobOwner,
+    selectedGoodsStuffedAt,
     page,
   ]);
 
@@ -474,6 +489,7 @@ const ExportJobsTable = () => {
     selectedDetailedStatus,
     selectedCustomHouse,
     selectedJobOwner,
+    selectedGoodsStuffedAt,
   ]);
 
   const handleJobClick = (job, e) => {
@@ -1145,6 +1161,17 @@ const ExportJobsTable = () => {
               ))}
             </select>
 
+            {/* Goods Stuffed At Filter */}
+            <select
+              style={s.select}
+              value={selectedGoodsStuffedAt}
+              onChange={(e) => setSelectedGoodsStuffedAt(e.target.value)}
+            >
+              <option value="">All Stuffed At</option>
+              <option value="FACTORY">FACTORY</option>
+              <option value="DOCK">DOCK</option>
+            </select>
+
             {/* Search Input */}
             <div
               style={{
@@ -1248,12 +1275,12 @@ const ExportJobsTable = () => {
                           backgroundColor: rowBg,
                           cursor: "default", // Row is no longer clickable as a whole
                         }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.backgroundColor = "#eef2ff")
-                        } // Hover highlight
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.backgroundColor = rowBg)
-                        }
+                      // onMouseEnter={(e) =>
+                      //   (e.currentTarget.style.backgroundColor = "#eef2ff")
+                      // } // Hover highlight
+                      // onMouseLeave={(e) =>
+                      //   (e.currentTarget.style.backgroundColor = rowBg)
+                      // }
                       >
                         {/* <td
                         style={{
@@ -1272,7 +1299,7 @@ const ExportJobsTable = () => {
                             ...s.td,
                             left: 0,
                             backgroundColor: "inherit",
-                            zIndex: 5,
+
                             position: "sticky",
                             cursor: "pointer", // Make the whole cell look clickable
                           }}
@@ -1783,23 +1810,50 @@ const ExportJobsTable = () => {
 
                         {/* Column 11: Copy Action */}
                         <td style={s.td}>
-                          <button
-                            className="copy-btn"
-                            onClick={(e) => handleCopyJob(job, e)}
-                            style={{
-                              padding: "6px 12px",
-                              backgroundColor: "#10b981",
-                              color: "white",
-                              border: "none",
-                              borderRadius: "3px",
-                              fontSize: "11px",
-                              fontWeight: "600",
-                              cursor: "pointer",
-                              width: "100%",
-                            }}
-                          >
-                            Copy
-                          </button>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <button
+                              className="copy-btn"
+                              onClick={(e) => handleCopyJob(job, e)}
+                              style={{
+                                padding: "6px 12px",
+                                backgroundColor: "#10b981",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "3px",
+                                fontSize: "11px",
+                                fontWeight: "600",
+                                cursor: "pointer",
+                                width: "100%",
+                              }}
+                            >
+                              Copy
+                            </button>
+                            <button
+                              style={{
+                                background: "#fff",
+                                border: "1.2px solid #1976d2",
+                                color: "#1976d2",
+                                padding: "3px 8px",
+                                borderRadius: 4,
+                                fontWeight: 500,
+                                fontSize: 11,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                width: "100%",
+                              }}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedDocJob(job);
+                                setDocsAnchorEl(e.currentTarget);
+                              }}
+                            >
+                              Docs
+                              <ArrowDropDownIcon sx={{ fontSize: 14, ml: 0.3 }} />
+                            </button>
+                          </div>
                           <div
                             style={{
                               textAlign: "center",
@@ -1807,12 +1861,11 @@ const ExportJobsTable = () => {
                               fontSize: "10px",
                               fontWeight: "700",
                               color: "#374151",
-                              backgroundColor: "rgba(255,255,255,0.6)", // Slight overlay for readability
+                              backgroundColor: "rgba(255,255,255,0.6)",
                               padding: "2px 4px",
                               borderRadius: "4px",
                             }}
                           >
-                            {/* Use detailedStatus array LAST item or fallback */}
                             {Array.isArray(job.detailedStatus) &&
                               job.detailedStatus.length > 0
                               ? job.detailedStatus[
@@ -1861,159 +1914,161 @@ const ExportJobsTable = () => {
             </div>
           </div>
         </div>
-      </div>
+      </div >
 
       {/* Copy Job Modal */}
-      {showCopyModal && copySourceJob && (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.modal}>
-            <div style={modalStyles.modalHeader}>
-              <h3 style={modalStyles.modalTitle}>Copy Export Job</h3>
-              <button
-                style={modalStyles.closeButton}
-                onClick={() => {
-                  setShowCopyModal(false);
-                  setCopySourceJob(null);
-                  setCopyError("");
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div style={modalStyles.formGroup}>
-              <label style={modalStyles.label}>Source Job Number</label>
-              <input
-                style={s.input}
-                type="text"
-                value={copySourceJob.job_no}
-                readOnly
-                disabled
-              />
-              <div style={modalStyles.infoText}>
-                All data from this job will be copied (except SB details)
+      {
+        showCopyModal && copySourceJob && (
+          <div style={modalStyles.overlay}>
+            <div style={modalStyles.modal}>
+              <div style={modalStyles.modalHeader}>
+                <h3 style={modalStyles.modalTitle}>Copy Export Job</h3>
+                <button
+                  style={modalStyles.closeButton}
+                  onClick={() => {
+                    setShowCopyModal(false);
+                    setCopySourceJob(null);
+                    setCopyError("");
+                  }}
+                >
+                  ×
+                </button>
               </div>
-            </div>
 
-            <div style={modalStyles.formGroup}>
-              <label style={modalStyles.label}>Branch Code *</label>
-              <select
-                style={s.select}
-                value={copyForm.branch_code}
-                onChange={(e) =>
-                  setCopyForm({ ...copyForm, branch_code: e.target.value })
-                }
-                required
-              >
-                <option value="">Select Branch</option>
-                {branchOptions
-                  .filter((branch) => branch.code !== "")
-                  .map((branch) => (
-                    <option key={branch.code} value={branch.code}>
-                      {branch.label}
+              <div style={modalStyles.formGroup}>
+                <label style={modalStyles.label}>Source Job Number</label>
+                <input
+                  style={s.input}
+                  type="text"
+                  value={copySourceJob.job_no}
+                  readOnly
+                  disabled
+                />
+                <div style={modalStyles.infoText}>
+                  All data from this job will be copied (except SB details)
+                </div>
+              </div>
+
+              <div style={modalStyles.formGroup}>
+                <label style={modalStyles.label}>Branch Code *</label>
+                <select
+                  style={s.select}
+                  value={copyForm.branch_code}
+                  onChange={(e) =>
+                    setCopyForm({ ...copyForm, branch_code: e.target.value })
+                  }
+                  required
+                >
+                  <option value="">Select Branch</option>
+                  {branchOptions
+                    .filter((branch) => branch.code !== "")
+                    .map((branch) => (
+                      <option key={branch.code} value={branch.code}>
+                        {branch.label}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div style={modalStyles.formGroup}>
+                <label style={modalStyles.label}>Transport Mode *</label>
+                <select
+                  style={s.select}
+                  value={copyForm.transportMode}
+                  onChange={(e) =>
+                    setCopyForm({ ...copyForm, transportMode: e.target.value })
+                  }
+                  required
+                >
+                  {transportModeOptions.map((mode) => (
+                    <option key={mode.value} value={mode.value}>
+                      {mode.label}
                     </option>
                   ))}
-              </select>
-            </div>
-
-            <div style={modalStyles.formGroup}>
-              <label style={modalStyles.label}>Transport Mode *</label>
-              <select
-                style={s.select}
-                value={copyForm.transportMode}
-                onChange={(e) =>
-                  setCopyForm({ ...copyForm, transportMode: e.target.value })
-                }
-                required
-              >
-                {transportModeOptions.map((mode) => (
-                  <option key={mode.value} value={mode.value}>
-                    {mode.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div style={modalStyles.formGroup}>
-              <label style={modalStyles.label}>Financial Year *</label>
-              <input
-                style={s.input}
-                type="text"
-                placeholder="e.g., 25-26"
-                value={copyForm.year}
-                onChange={(e) =>
-                  setCopyForm({ ...copyForm, year: e.target.value })
-                }
-                required
-              />
-              <div style={modalStyles.infoText}>
-                Format: YY-YY (e.g., 25-26 for 2025-2026)
+                </select>
               </div>
-            </div>
 
-            <div style={modalStyles.formGroup}>
-              <label style={modalStyles.label}>
-                Manual Sequence (Optional)
-              </label>
-              <input
-                style={s.input}
-                type="text"
-                placeholder="Leave empty for auto-sequence"
-                value={copyForm.manualSequence}
-                onChange={(e) =>
-                  setCopyForm({ ...copyForm, manualSequence: e.target.value })
-                }
-              />
-              {suggestedSequence && !copyForm.manualSequence && (
+              <div style={modalStyles.formGroup}>
+                <label style={modalStyles.label}>Financial Year *</label>
+                <input
+                  style={s.input}
+                  type="text"
+                  placeholder="e.g., 25-26"
+                  value={copyForm.year}
+                  onChange={(e) =>
+                    setCopyForm({ ...copyForm, year: e.target.value })
+                  }
+                  required
+                />
                 <div style={modalStyles.infoText}>
-                  Suggested next sequence: {suggestedSequence}
+                  Format: YY-YY (e.g., 25-26 for 2025-2026)
+                </div>
+              </div>
+
+              <div style={modalStyles.formGroup}>
+                <label style={modalStyles.label}>
+                  Manual Sequence (Optional)
+                </label>
+                <input
+                  style={s.input}
+                  type="text"
+                  placeholder="Leave empty for auto-sequence"
+                  value={copyForm.manualSequence}
+                  onChange={(e) =>
+                    setCopyForm({ ...copyForm, manualSequence: e.target.value })
+                  }
+                />
+                {suggestedSequence && !copyForm.manualSequence && (
+                  <div style={modalStyles.infoText}>
+                    Suggested next sequence: {suggestedSequence}
+                  </div>
+                )}
+              </div>
+
+              {generatedJobNo && (
+                <div style={modalStyles.formGroup}>
+                  <label style={modalStyles.label}>Generated Job Number:</label>
+                  <div style={modalStyles.generatedJobNo}>{generatedJobNo}</div>
                 </div>
               )}
-            </div>
 
-            {generatedJobNo && (
-              <div style={modalStyles.formGroup}>
-                <label style={modalStyles.label}>Generated Job Number:</label>
-                <div style={modalStyles.generatedJobNo}>{generatedJobNo}</div>
+              {copyError && <div style={modalStyles.errorText}>{copyError}</div>}
+
+              <div style={modalStyles.buttonGroup}>
+                <button
+                  style={modalStyles.cancelButton}
+                  onClick={() => {
+                    setShowCopyModal(false);
+                    setCopySourceJob(null);
+                    setCopyError("");
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  style={
+                    copyLoading
+                      ? {
+                        ...modalStyles.submitButton,
+                        ...modalStyles.disabledButton,
+                      }
+                      : modalStyles.submitButton
+                  }
+                  onClick={handleCopySubmit}
+                  disabled={
+                    copyLoading ||
+                    !copyForm.branch_code ||
+                    !copyForm.transportMode ||
+                    !copyForm.year
+                  }
+                >
+                  {copyLoading ? "Copying..." : "Copy Job"}
+                </button>
               </div>
-            )}
-
-            {copyError && <div style={modalStyles.errorText}>{copyError}</div>}
-
-            <div style={modalStyles.buttonGroup}>
-              <button
-                style={modalStyles.cancelButton}
-                onClick={() => {
-                  setShowCopyModal(false);
-                  setCopySourceJob(null);
-                  setCopyError("");
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                style={
-                  copyLoading
-                    ? {
-                      ...modalStyles.submitButton,
-                      ...modalStyles.disabledButton,
-                    }
-                    : modalStyles.submitButton
-                }
-                onClick={handleCopySubmit}
-                disabled={
-                  copyLoading ||
-                  !copyForm.branch_code ||
-                  !copyForm.transportMode ||
-                  !copyForm.year
-                }
-              >
-                {copyLoading ? "Copying..." : "Copy Job"}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
       {/* Add Job Dialog */}
       <Dialog
         open={openAddDialog}
@@ -2137,6 +2192,97 @@ const ExportJobsTable = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Documents Menu */}
+      <Menu
+        anchorEl={docsAnchorEl}
+        open={Boolean(docsAnchorEl)}
+        onClose={() => {
+          setDocsAnchorEl(null);
+          setSelectedDocJob(null);
+        }}
+      >
+        <ExportChecklistGenerator
+          jobNo={selectedDocJob?.job_no}
+          renderAsIcon={false}
+        >
+          <MenuItem
+            disableRipple
+            onClick={() => {
+              setDocsAnchorEl(null);
+              setSelectedDocJob(null);
+            }}
+            sx={{ fontSize: 13, minWidth: 150 }}
+          >
+            Checklist
+          </MenuItem>
+        </ExportChecklistGenerator>
+
+        <FileCoverGenerator jobNo={selectedDocJob?.job_no}>
+          <MenuItem
+            disableRipple
+            onClick={() => {
+              setDocsAnchorEl(null);
+              setSelectedDocJob(null);
+            }}
+            sx={{ fontSize: 13, minWidth: 150 }}
+          >
+            File Cover
+          </MenuItem>
+        </FileCoverGenerator>
+
+        <ConsignmentNoteGenerator jobNo={selectedDocJob?.job_no}>
+          <MenuItem
+            disableRipple
+            onClick={() => {
+              setDocsAnchorEl(null);
+              setSelectedDocJob(null);
+            }}
+            sx={{ fontSize: 13, minWidth: 150 }}
+          >
+            Consignment Note
+          </MenuItem>
+        </ConsignmentNoteGenerator>
+
+        <ForwardingNoteTharGenerator jobNo={selectedDocJob?.job_no}>
+          <MenuItem
+            disableRipple
+            onClick={() => {
+              setDocsAnchorEl(null);
+              setSelectedDocJob(null);
+            }}
+            sx={{ fontSize: 13, minWidth: 150 }}
+          >
+            Forwarding Note (THAR)
+          </MenuItem>
+        </ForwardingNoteTharGenerator>
+
+        <AnnexureCGenerator jobNo={selectedDocJob?.job_no}>
+          <MenuItem
+            disableRipple
+            onClick={() => {
+              setDocsAnchorEl(null);
+              setSelectedDocJob(null);
+            }}
+            sx={{ fontSize: 13, minWidth: 150 }}
+          >
+            Annexure C
+          </MenuItem>
+        </AnnexureCGenerator>
+
+        <ConcorForwardingNoteGenerator jobNo={selectedDocJob?.job_no}>
+          <MenuItem
+            disableRipple
+            onClick={() => {
+              setDocsAnchorEl(null);
+              setSelectedDocJob(null);
+            }}
+            sx={{ fontSize: 13, minWidth: 150 }}
+          >
+            Forwarding Note (CONCOR)
+          </MenuItem>
+        </ConcorForwardingNoteGenerator>
+      </Menu>
     </>
   );
 };

@@ -122,7 +122,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
         startY: yPos,
         theme: "grid",
         styles: {
-          lineColor: [255, 0, 0], // Red borders as per screenshot
+          lineColor: [0, 0, 0], // Black borders
           lineWidth: 0.8,
           textColor: [0, 0, 0],
           font: "helvetica",
@@ -261,7 +261,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
         startY: yPos,
         theme: "grid",
         styles: {
-          lineColor: [255, 0, 0],
+          lineColor: [0, 0, 0],
           lineWidth: 0.8,
           textColor: [0, 0, 0],
           font: "helvetica",
@@ -274,7 +274,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
           fillColor: [255, 255, 255],
           textColor: [0, 0, 0],
           fontStyle: "boldItalic",
-          lineColor: [255, 0, 0],
+          lineColor: [0, 0, 0],
           lineWidth: 0.8,
         },
         body: containerBody,
