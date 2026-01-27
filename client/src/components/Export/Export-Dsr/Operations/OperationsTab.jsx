@@ -59,6 +59,35 @@ const formatDateForPicker = (dateVal, type = "date") => {
   }
 };
 
+const containerTypes = [
+  "20 STANDARD DRY",
+  "20 FLAT RACK",
+  "20 COLLAPSIBLE FLAT RACK",
+  "20 REEFER",
+  "20 TANK",
+  "20 OPEN TOP",
+  "20 HARD TOP",
+  "20 PLATFORM",
+  "40 STANDARD DRY",
+  "40 FLAT RACK",
+  "40 COLLAPSIBLE FLAT RACK",
+  "40 REEFER",
+  "40 TANK",
+  "40 OPEN TOP",
+  "40 HARD TOP",
+  "40 HIGH CUBE",
+  "40 REEFER HIGH CUBE",
+  "40 PLATFORM",
+];
+
+const cargoTypes = [
+  { value: "GEN", label: "General (GEN)" },
+  { value: "HAZ", label: "Hazardous (HAZ)" },
+  { value: "REF", label: "Reefer (REF)" },
+  { value: "ONION", label: "Onion (ONION)" },
+  { value: "ODC", label: "ODC" },
+];
+
 const getDefaultItem = (section) => {
   const defaults = {
     transporterDetails: {
@@ -68,7 +97,6 @@ const getDefaultItem = (section) => {
       driverName: "",
       contactNo: "",
       noOfPackages: 0,
-      netWeightKgs: 0,
       grossWeightKgs: 0,
       images: [],
       cartingDate: "",
@@ -77,7 +105,10 @@ const getDefaultItem = (section) => {
       containerNo: "",
       containerSize: "",
       containerType: "",
-      cargoType: "Gen",
+      cargoType: "GEN",
+      portOfLoading: "",
+      customSealNo: "",
+      grossWeight: 0,
       maxGrossWeightKgs: 0,
       tareWeightKgs: 0,
       maxPayloadKgs: 0,
@@ -93,7 +124,6 @@ const getDefaultItem = (section) => {
       voyageNo: "",
       portOfLoading: "",
       handoverLocation: "",
-      validity: "",
       images: [],
       containerPlacementDate: "",
       shippingLineSealNo: "",
@@ -104,17 +134,14 @@ const getDefaultItem = (section) => {
       address: "",
       dateTime: "",
       vehicleNo: "",
-      containerNo: "",
-      size: "",
-      grossWeight: 0,
       tareWeight: 0,
-      netWeight: 0,
       images: [],
     },
     statusDetails: {
       gateInDate: "",
       rms: "RMS", // Default
       goodsRegistrationDate: "",
+      goodsReportDate: "",
       leoDate: "",
       leoUpload: [],
       containerPlacementDate: "",
@@ -435,6 +462,7 @@ function useGatewayPortDropdown(fieldName, formik) {
   const [active, setActive] = useState(-1);
   const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef();
+  const menuRef = useRef(); // New ref for the portal menu
   const apiBase = import.meta.env.VITE_API_STRING;
   const keepOpen = useRef(false);
 
@@ -481,7 +509,8 @@ function useGatewayPortDropdown(fieldName, formik) {
       if (
         !keepOpen.current &&
         wrapperRef.current &&
-        !wrapperRef.current.contains(e.target)
+        !wrapperRef.current.contains(e.target) &&
+        (!menuRef.current || !menuRef.current.contains(e.target))
       ) {
         setOpen(false);
         setIsTyping(false);
@@ -507,6 +536,7 @@ function useGatewayPortDropdown(fieldName, formik) {
 
   return {
     wrapperRef,
+    menuRef,
     open,
     setOpen,
     query,
@@ -542,6 +572,30 @@ function GatewayPortDropdown({
   placeholder = "ENTER GATEWAY PORT",
 }) {
   const d = useGatewayPortDropdown(fieldName, formik);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+
+  const updateCoords = () => {
+    if (d.wrapperRef.current) {
+      const rect = d.wrapperRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (d.open) {
+      updateCoords();
+      window.addEventListener("scroll", updateCoords, true);
+      window.addEventListener("resize", updateCoords);
+    }
+    return () => {
+      window.removeEventListener("scroll", updateCoords, true);
+      window.removeEventListener("resize", updateCoords);
+    };
+  }, [d.open]);
 
   const filtered = priorityFilter(d.opts, d.query, (p) => {
     const code = p.unece_code || "";
@@ -625,62 +679,43 @@ function GatewayPortDropdown({
         >
           ▼
         </span>
-        {d.open && filtered.length > 0 && (
-          <div
-            style={{
-              position: "fixed",
-              background: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "6px",
-              marginTop: "4px",
-              maxHeight: "200px",
-              overflowY: "auto",
-              overflowX: "visible",
-              zIndex: 100000000,
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-              width: d.wrapperRef.current
-                ? d.wrapperRef.current.getBoundingClientRect().width
-                : "auto",
-              top: d.wrapperRef.current
-                ? d.wrapperRef.current.getBoundingClientRect().bottom + 5
-                : 0,
-              left: d.wrapperRef.current
-                ? d.wrapperRef.current.getBoundingClientRect().left
-                : 0,
-            }}
-          >
-            {filtered.map((port, i) => (
-              <div
-                key={port._id || port.unece_code || port.name || i}
-                style={{
-                  padding: "10px 12px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: "500",
-                  color: d.active === i ? "#1e293b" : "#475569",
-                  background: d.active === i ? "#f1f5f9" : "#ffffff",
-                  borderBottom: "1px solid #f1f5f9",
-                  transition: "all 0.1s ease",
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  d.select(i);
-                }}
-                onMouseEnter={() => d.setActive(i)}
-              >
-                {(port.unece_code || "").toUpperCase()} -{" "}
-                {(port.name || "").toUpperCase()}
-                {port.port_type && (
-                  <span
-                    style={{ marginLeft: 6, color: "#667", fontWeight: 400 }}
-                  >
-                    ({port.port_type.toUpperCase()})
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        {d.open &&
+          filtered.length > 0 &&
+          createPortal(
+            <div
+              ref={d.menuRef}
+              style={{
+                ...styles.acMenu,
+                position: "fixed",
+                top: coords.top + 4,
+                left: coords.left,
+                width: coords.width,
+              }}
+            >
+              {filtered.map((port, i) => (
+                <div
+                  key={port._id || port.unece_code || port.name || i}
+                  style={styles.acItem(d.active === i)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    d.select(i);
+                  }}
+                  onMouseEnter={() => d.setActive(i)}
+                >
+                  {(port.unece_code || "").toUpperCase()} -{" "}
+                  {(port.name || "").toUpperCase()}
+                  {port.port_type && (
+                    <span
+                      style={{ marginLeft: 6, color: "#667", fontWeight: 400 }}
+                    >
+                      ({port.port_type.toUpperCase()})
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>,
+            document.body,
+          )}
       </div>
     </div>
   );
@@ -742,10 +777,35 @@ const OperationsTab = ({ formik }) => {
     }
   }, [formik.values.custom_house, formik.values.consignmentType]);
 
+  // Sync Port Of Loading between Header and Operations
+  useEffect(() => {
+    const headerPol = toUpper(formik.values.port_of_loading || "");
+    // Propagate header POL to all containers in all operations
+    let polChanged = false;
+    const nextOps = operations.map((op) => {
+      const containerDetails = op.containerDetails || [];
+      let opPolChanged = false;
+      const updatedCD = containerDetails.map((cd) => {
+        if (toUpper(cd.portOfLoading) !== headerPol) {
+          polChanged = true;
+          opPolChanged = true;
+          return { ...cd, portOfLoading: headerPol };
+        }
+        return cd;
+      });
+      if (opPolChanged) return { ...op, containerDetails: updatedCD };
+      return op;
+    });
+
+    if (polChanged) {
+      formik.setFieldValue("operations", nextOps);
+    }
+  }, [formik.values.port_of_loading]);
+
   // 1. Collect all unique container numbers from ALL sections of ALL operations
   const allOpContainersSet = new Set();
   operations.forEach((op) => {
-    ["transporterDetails", "containerDetails", "weighmentDetails"].forEach(
+    ["transporterDetails", "containerDetails"].forEach(
       (sec) => {
         (op[sec] || []).forEach((item) => {
           if (item.containerNo && item.containerNo.trim()) {
@@ -851,9 +911,6 @@ const OperationsTab = ({ formik }) => {
           if (syncedOp.containerDetails && syncedOp.containerDetails[i]) {
             sources.push(syncedOp.containerDetails[i].containerNo);
           }
-          if (syncedOp.weighmentDetails && syncedOp.weighmentDetails[i]) {
-            sources.push(syncedOp.weighmentDetails[i].containerNo);
-          }
 
           const nosFound = sources.filter((n) => n && n.trim());
 
@@ -885,17 +942,6 @@ const OperationsTab = ({ formik }) => {
                 opIsDirty = true;
               }
             }
-
-            // Should we update Weighment Details?
-            if (syncedOp.weighmentDetails && syncedOp.weighmentDetails[i]) {
-              if (syncedOp.weighmentDetails[i].containerNo !== bestNo) {
-                syncedOp.weighmentDetails[i] = {
-                  ...syncedOp.weighmentDetails[i],
-                  containerNo: bestNo,
-                };
-                opIsDirty = true;
-              }
-            }
           }
         }
       }
@@ -912,7 +958,6 @@ const OperationsTab = ({ formik }) => {
     // Phase B: Totals Sync (Sum up all operations)
     let totalPkgs = 0;
     let totalGross = 0;
-    let totalNet = 0;
 
     // Also build a map of container details from transporterDetails to sync to master containers
     const containerDetailsMap = new Map();
@@ -921,21 +966,20 @@ const OperationsTab = ({ formik }) => {
       (op.transporterDetails || []).forEach((item) => {
         totalPkgs += Number(item.noOfPackages || 0);
         totalGross += Number(item.grossWeightKgs || 0);
-        totalNet += Number(item.netWeightKgs || 0);
 
         if (item.containerNo) {
           const cNo = item.containerNo.trim().toUpperCase();
           if (!containerDetailsMap.has(cNo)) {
             containerDetailsMap.set(cNo, {
               grossWeight: Number(item.grossWeightKgs || 0),
-              netWeight: Number(item.netWeightKgs || 0),
+              netWeight: 0,
               noOfPackages: Number(item.noOfPackages || 0),
             });
           } else {
             // If container appears multiple times, we sum its specific weights
             const existing = containerDetailsMap.get(cNo);
             existing.grossWeight += Number(item.grossWeightKgs || 0);
-            existing.netWeight += Number(item.netWeightKgs || 0);
+            // netWeight removed from transporterDetails
             existing.noOfPackages += Number(item.noOfPackages || 0);
           }
         }
@@ -970,8 +1014,6 @@ const OperationsTab = ({ formik }) => {
       formik.setFieldValue("total_no_of_pkgs", totalPkgs);
     if (Number(formik.values.gross_weight_kg) !== totalGross)
       formik.setFieldValue("gross_weight_kg", totalGross);
-    if (Number(formik.values.net_weight_kg) !== totalNet)
-      formik.setFieldValue("net_weight_kg", totalNet);
 
     // Phase C: Master Containers Sync (Updates formik.values.containers)
     // Only run this if NOT Air mode, as Air doesn't use the master containers list
@@ -1004,9 +1046,6 @@ const OperationsTab = ({ formik }) => {
             type: "",
             sealNo: "",
             sealDate: "",
-            pkgsStuffed: opInfo.noOfPackages,
-            grossWeight: opInfo.grossWeight,
-            netWeight: opInfo.netWeight,
             pkgsStuffed: opInfo.noOfPackages,
             grossWeight: opInfo.grossWeight,
             netWeight: opInfo.netWeight,
@@ -1091,7 +1130,7 @@ const OperationsTab = ({ formik }) => {
     const isLinkedContainerField =
       !isAir &&
       field === "containerNo" &&
-      ["transporterDetails", "containerDetails", "weighmentDetails"].includes(
+      ["transporterDetails", "containerDetails"].includes(
         section,
       );
 
@@ -1129,6 +1168,23 @@ const OperationsTab = ({ formik }) => {
             }
           },
         );
+      }
+
+      // Auto-calculate Max Payload if Gross Weight or Tare Weight changes in Container Details
+      if (section === "containerDetails" && (field === "grossWeight" || field === "tareWeightKgs")) {
+        updatedOp[section] = updatedOp[section].map((item, idx) => {
+          if (idx !== itemIndex) return item;
+          const gW = field === "grossWeight" ? Number(finalValue || 0) : Number(item.grossWeight || 0);
+          const tW = field === "tareWeightKgs" ? Number(finalValue || 0) : Number(item.tareWeightKgs || 0);
+          // Requirement: "Max Payload (KG) = gross weight + tare weight"
+          const payload = gW + tW;
+          return { ...item, maxPayloadKgs: payload };
+        });
+      }
+
+      // SYNC: Port Of Loading with Header
+      if (section === "containerDetails" && field === "portOfLoading") {
+        formik.setFieldValue("port_of_loading", finalValue);
       }
 
       return updatedOp;
@@ -1262,12 +1318,6 @@ const OperationsTab = ({ formik }) => {
           type: "number",
           width: "100px",
         },
-        {
-          field: "netWeightKgs",
-          label: "Net Wt (KG)",
-          type: "number",
-          width: "100px",
-        },
 
         {
           field: "images",
@@ -1281,7 +1331,7 @@ const OperationsTab = ({ formik }) => {
       onUpdate={updateField}
       onAdd={addItem}
       onDelete={deleteItem}
-      defaultOpen={true}
+      defaultOpen={false}
     />
   );
 
@@ -1298,8 +1348,20 @@ const OperationsTab = ({ formik }) => {
           label: "S/Line Seal No",
           width: "140px",
         },
-        { field: "containerSize", label: "Size (FT)", width: "80px" },
-
+        {
+          field: "customSealNo",
+          label: "Custom Seal No",
+          width: "140px",
+        },
+        { field: "containerSize", label: "Size (FT)", width: "160px", type: "select", options: containerTypes },
+        { field: "cargoType", label: "Cargo Type", width: "120px", type: "select", options: cargoTypes },
+        { field: "portOfLoading", label: "Port Of Loading", width: "150px", type: "gateway-dropdown" },
+        {
+          field: "grossWeight",
+          label: "Gross Weight (KG)",
+          type: "number",
+          width: "100px",
+        },
         {
           field: "tareWeightKgs",
           label: "Tare Wt (KG)",
@@ -1311,6 +1373,7 @@ const OperationsTab = ({ formik }) => {
           label: "Max Payload (KG)",
           type: "number",
           width: "100px",
+          readOnly: true, // Auto-calculated
         },
         {
           field: "images",
@@ -1324,7 +1387,7 @@ const OperationsTab = ({ formik }) => {
       onUpdate={updateField}
       onAdd={addItem}
       onDelete={deleteItem}
-      defaultOpen={true}
+      defaultOpen={false}
     />
   );
 
@@ -1361,12 +1424,6 @@ const OperationsTab = ({ formik }) => {
           label: "Empty Pickup / Drop Location",
           width: "140px",
         },
-        !isAir && {
-          field: "validity",
-          label: "Booking Valid Till",
-          type: "date",
-          width: "130px",
-        },
         {
           field: "images",
           label: "Images",
@@ -1379,7 +1436,7 @@ const OperationsTab = ({ formik }) => {
       onUpdate={updateField}
       onAdd={addItem}
       onDelete={deleteItem}
-      defaultOpen={true}
+      defaultOpen={false}
     />
   );
 
@@ -1390,12 +1447,12 @@ const OperationsTab = ({ formik }) => {
       formik={formik}
       activeOpIndex={activeOpIndex}
       columns={[
+        { field: "regNo", label: "Reg No/Slip No", width: "140px" },
         {
           field: "weighBridgeName",
           label: "Weighbridge Name",
           width: "180px",
         },
-        { field: "regNo", label: "Reg No.", width: "120px" },
         {
           field: "address",
           label: "Weighbridge Address",
@@ -1408,25 +1465,20 @@ const OperationsTab = ({ formik }) => {
           width: "160px",
         },
         { field: "vehicleNo", label: "Vehicle No.", width: "120px" },
-        { field: "containerNo", label: "Container No.", width: "140px" },
-        { field: "size", label: "Cntr Size", width: "80px" },
-        {
-          field: "grossWeight",
-          label: "Gross Wt (KG)",
-          type: "number",
-          width: "90px",
-        },
         {
           field: "tareWeight",
           label: "Tare Wt (KG)",
           type: "number",
           width: "90px",
-        },
-        {
-          field: "netWeight",
-          label: "Net Wt (KG)",
-          type: "number",
-          width: "90px",
+          // Add warning logic if Tare > Container Gross
+          warningCheck: (val, row) => {
+            // Access container Details via activeOpIndex and row index (assuming synced order)
+            // However, row object doesn't have container details.
+            // We can check if `grossWeight` was passed in props or we access it from formik globally if possible.
+            // Since we can't easily access other rows here without major refactor,
+            // I'll leave the warningCheck as a marker for the renderer enhancement I'll do below.
+            return false;
+          }
         },
         {
           field: "images",
@@ -1440,7 +1492,7 @@ const OperationsTab = ({ formik }) => {
       onUpdate={updateField}
       onAdd={addItem}
       onDelete={deleteItem}
-      defaultOpen={true}
+      defaultOpen={false}
     />
   );
 
@@ -1457,7 +1509,7 @@ const OperationsTab = ({ formik }) => {
       isAir={isAir}
       consignmentType={toUpper(formik.values.consignmentType || "")}
       customHouse={toUpper(formik.values.custom_house || "")}
-      defaultOpen={true}
+      defaultOpen={false}
     />
   );
 
@@ -1541,6 +1593,7 @@ const OperationsTab = ({ formik }) => {
     </div>
   );
 };
+
 
 // const JobDetailedStatusSection = ({ formik }) => {
 //   const statuses = [
@@ -1634,7 +1687,7 @@ const TableSection = ({
   onDelete,
   formik,
   activeOpIndex,
-  defaultOpen = true,
+  defaultOpen = false,
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   // Ensure at least one row exists
@@ -1837,14 +1890,11 @@ const TableSection = ({
                               if (
                                 section === "transporterDetails" &&
                                 (col.field === "grossWeightKgs" ||
-                                  col.field === "netWeightKgs" ||
                                   col.field === "noOfPackages") &&
                                 !e.target.value
                               ) {
                                 const shipmentGross =
                                   formik.values.gross_weight_kg || "";
-                                const shipmentNet =
-                                  formik.values.net_weight_kg || "";
                                 const shipmentPkgs =
                                   formik.values.total_no_of_pkgs || "";
 
@@ -1859,16 +1909,6 @@ const TableSection = ({
                                     shipmentGross,
                                   );
                                 } else if (
-                                  col.field === "netWeightKgs" &&
-                                  shipmentNet
-                                ) {
-                                  onUpdate(
-                                    section,
-                                    rowIdx,
-                                    col.field,
-                                    shipmentNet,
-                                  );
-                                } else if (
                                   col.field === "noOfPackages" &&
                                   shipmentPkgs
                                 ) {
@@ -1881,7 +1921,23 @@ const TableSection = ({
                                 }
                               }
                             }}
-                            style={styles.cellInput}
+                            // Validating Weighment Tare > Container Gross
+                            style={{
+                              ...styles.cellInput,
+                              border:
+                                section === "weighmentDetails" && col.field === "tareWeight" &&
+                                  formik.values.operations[activeOpIndex]?.containerDetails?.[rowIdx]?.grossWeight &&
+                                  Number(item.tareWeight) > Number(formik.values.operations[activeOpIndex].containerDetails[rowIdx].grossWeight)
+                                  ? "2px solid red"
+                                  : styles.cellInput.border
+                            }}
+                            title={
+                              section === "weighmentDetails" && col.field === "tareWeight" &&
+                                formik.values.operations[activeOpIndex]?.containerDetails?.[rowIdx]?.grossWeight &&
+                                Number(item.tareWeight) > Number(formik.values.operations[activeOpIndex].containerDetails[rowIdx].grossWeight)
+                                ? "Warning: Tare Weight is greater than Container Gross Weight!"
+                                : ""
+                            }
                           />
                         )}
                       </td>
@@ -1924,7 +1980,7 @@ const StatusSection = ({
   isAir,
   consignmentType,
   customHouse,
-  defaultOpen = true,
+  defaultOpen = false,
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const displayData =
@@ -1946,7 +2002,13 @@ const StatusSection = ({
     },
     {
       field: "goodsRegistrationDate",
-      label: "Goods Reg./Report",
+      label: "Goods Reg.",
+      type: "date",
+      width: 1,
+    },
+    {
+      field: "goodsReportDate",
+      label: "Goods Report",
       type: "date",
       width: 1,
     },
@@ -2003,13 +2065,13 @@ const StatusSection = ({
     },
     {
       field: "handoverForwardingNoteDate",
-      label: "File HO/DOC",
+      label: "Handover doc",
       type: "date",
       width: 1,
     },
     {
       field: "handoverImageUpload",
-      label: "HO/DOC Copy",
+      label: "Handover/Doc Copy",
       type: "upload",
       width: 1,
       hidden: isAir,
@@ -2030,7 +2092,7 @@ const StatusSection = ({
     },
     {
       field: "railOutReachedDate",
-      label: "Reached",
+      label: "Rail Reached",
       type: "date",
       width: 1,
       hidden: isAir,
@@ -2766,6 +2828,7 @@ const styles = {
     boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
     border: "1px solid #e2e8f0",
     overflow: "hidden",
+    marginBottom: "10px",
   },
   sectionHeader: {
     padding: "12px 16px",

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
+import { createPortal } from "react-dom";
 import { UserContext } from "../../../contexts/UserContext";
 import DateInput from "../../common/DateInput.js";
 import AutocompleteSelect from "../../common/AutocompleteSelect.js";
@@ -79,6 +80,7 @@ function useGatewayPortDropdown(fieldName, formik) {
   const [active, setActive] = useState(-1);
   const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef();
+  const menuRef = useRef(); // New ref for the portal menu
   const apiBase = import.meta.env.VITE_API_STRING;
   const keepOpen = useRef(false);
 
@@ -123,7 +125,8 @@ function useGatewayPortDropdown(fieldName, formik) {
       if (
         !keepOpen.current &&
         wrapperRef.current &&
-        !wrapperRef.current.contains(e.target)
+        !wrapperRef.current.contains(e.target) &&
+        (!menuRef.current || !menuRef.current.contains(e.target))
       ) {
         setOpen(false);
         setIsTyping(false);
@@ -149,6 +152,7 @@ function useGatewayPortDropdown(fieldName, formik) {
 
   return {
     wrapperRef,
+    menuRef,
     open,
     setOpen,
     query,
@@ -185,6 +189,30 @@ function GatewayPortDropdown({
   placeholder = "ENTER GATEWAY PORT",
 }) {
   const d = useGatewayPortDropdown(fieldName, formik);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+
+  const updateCoords = () => {
+    if (d.wrapperRef.current) {
+      const rect = d.wrapperRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (d.open) {
+      updateCoords();
+      window.addEventListener("scroll", updateCoords, true);
+      window.addEventListener("resize", updateCoords);
+    }
+    return () => {
+      window.removeEventListener("scroll", updateCoords, true);
+      window.removeEventListener("resize", updateCoords);
+    };
+  }, [d.open]);
 
   const filtered = d.opts.filter((p) => {
     const code = p.unece_code || "";
@@ -239,28 +267,43 @@ function GatewayPortDropdown({
           }}
         />
         <span style={styles.acIcon}>▼</span>
-        {d.open && filtered.length > 0 && (
-          <div style={styles.acMenu}>
-            {filtered.map((port, i) => (
-              <div
-                key={port._id || port.unece_code || port.name || i}
-                style={styles.acItem(d.active === i)}
-                onMouseDown={() => d.select(i)}
-                onMouseEnter={() => d.setActive(i)}
-              >
-                {(port.unece_code || "").toUpperCase()} -{" "}
-                {(port.name || "").toUpperCase()}
-                {port.port_type && (
-                  <span
-                    style={{ marginLeft: 6, color: "#667", fontWeight: 400 }}
-                  >
-                    ({port.port_type.toUpperCase()})
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        {d.open &&
+          filtered.length > 0 &&
+          createPortal(
+            <div
+              ref={d.menuRef}
+              style={{
+                ...styles.acMenu,
+                position: "fixed",
+                top: coords.top + 2,
+                left: coords.left,
+                width: coords.width,
+              }}
+            >
+              {filtered.map((port, i) => (
+                <div
+                  key={port._id || port.unece_code || port.name || i}
+                  style={styles.acItem(d.active === i)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    d.select(i);
+                  }}
+                  onMouseEnter={() => d.setActive(i)}
+                >
+                  {(port.unece_code || "").toUpperCase()} -{" "}
+                  {(port.name || "").toUpperCase()}
+                  {port.port_type && (
+                    <span
+                      style={{ marginLeft: 6, color: "#667", fontWeight: 400 }}
+                    >
+                      ({port.port_type.toUpperCase()})
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>,
+            document.body,
+          )}
       </div>
     </div>
   );
