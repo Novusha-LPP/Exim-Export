@@ -96,7 +96,7 @@ function AssignModule(props) {
     });
   };
 
-  console.log("LEFT", left);
+
   useEffect(() => {
     async function getUserModules() {
       if (props.selectedUser && props.category) {

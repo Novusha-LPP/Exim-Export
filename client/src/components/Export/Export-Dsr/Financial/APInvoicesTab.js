@@ -97,7 +97,7 @@ const APInvoicesTab = ({ formik, directories, params, onUpdate }) => {
 
   const refreshInvoices = () => {
     // Implement refresh logic here
-    console.log("Refreshing AP Invoices...");
+
   };
 
   // Ensure we have at least one empty invoice for display

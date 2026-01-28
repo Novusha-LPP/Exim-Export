@@ -54,11 +54,11 @@ const ImagePreview = ({
 
   const imageArray = Array.isArray(images)
     ? images.map((img) =>
-        typeof img === "object" && img !== null ? img.url : img
-      )
+      typeof img === "object" && img !== null ? img.url : img
+    )
     : images
-    ? [typeof images === "object" && images !== null ? images.url : images]
-    : [];
+      ? [typeof images === "object" && images !== null ? images.url : images]
+      : [];
 
   const extractFileName = (url) => {
     try {
@@ -84,7 +84,7 @@ const ImagePreview = ({
 
   const confirmDelete = async () => {
     const imageUrl = imageArray[deleteIndex];
-    console.log("Deleting image from S3:", imageUrl);
+
     try {
       const key = new URL(imageUrl).pathname.slice(1);
       const response = await fetch(

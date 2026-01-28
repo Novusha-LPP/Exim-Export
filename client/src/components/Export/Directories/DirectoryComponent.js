@@ -16,20 +16,20 @@ import SupportingDocument from "./SupportingDocument.js";
 import GatewayPortDirectory from "./GatwayPort.js";
 import DistrictDirectory from "./DistrictCodeDirectory.js";
 function DirectoryComponent({ directoryType }) {
-  console.log("Selected Directory Type:", directoryType); // Debugging log
+
 
   const renderDirectory = () => {
     switch (directoryType) {
       case "Organization": // ✅ Fix case to match viewMasterList
-        return < ExportDirectory/>;
+        return < ExportDirectory />;
       case "State Code": // ✅ Added State Directory
         return <StateDirectory />;
       case "Airline Code": // ✅ Added Airline Code Directory
         return <AirlineCodeDirectory />;
       case "Country Code":
-        return <Country/>;
+        return <Country />;
       case "ITCHS and Standard UQC":
-        return <TarrifHead/>;
+        return <TarrifHead />;
       case "Shipping Line Code":
         return <ShippingLine />;
       case "Custom EDI Location": // ✅ Added EDI Location Directory
@@ -53,7 +53,6 @@ function DirectoryComponent({ directoryType }) {
       case "District Code":
         return <DistrictDirectory />;
       default:
-        console.log("No matching directory found for:", directoryType);
         return null;
     }
   };

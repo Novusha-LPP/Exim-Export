@@ -69,7 +69,7 @@ const PaymentRequestTab = ({ formik, directories, params }) => {
   };
 
   const refreshRequests = () => {
-    console.log("Refreshing payment requests...");
+
   };
 
   return (
@@ -77,14 +77,14 @@ const PaymentRequestTab = ({ formik, directories, params }) => {
       <Typography variant="h6" fontWeight="bold" gutterBottom>
         Payment Request
       </Typography>
-      
+
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Card sx={{ p: 2 }}>
             {/* Action Buttons */}
             <Box sx={{ mb: 2, display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 size="small"
                 onClick={refreshRequests}
                 sx={{ fontSize: "0.75rem", textTransform: "none" }}
@@ -92,7 +92,7 @@ const PaymentRequestTab = ({ formik, directories, params }) => {
                 Refresh
               </Button>
             </Box>
-            
+
             <TableContainer component={Paper} sx={{ mt: 2 }}>
               <Table size="small">
                 <TableHead>
@@ -115,10 +115,10 @@ const PaymentRequestTab = ({ formik, directories, params }) => {
                     </TableRow>
                   ) : (
                     paymentRequests.map((request, index) => (
-                      <TableRow 
+                      <TableRow
                         key={index}
                         onClick={() => handleEditRequest(request, index)}
-                        sx={{ 
+                        sx={{
                           cursor: 'pointer',
                           '&:hover': { backgroundColor: '#f5f5f5' }
                         }}
@@ -141,17 +141,17 @@ const PaymentRequestTab = ({ formik, directories, params }) => {
 
             {/* Action Buttons */}
             <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-              <Button 
+              <Button
                 variant="contained"
-                size="small" 
+                size="small"
                 onClick={handleNewRequest}
                 sx={{ fontSize: "0.75rem", textTransform: "none" }}
               >
                 New
               </Button>
-              <Button 
+              <Button
                 variant="outlined"
-                size="small" 
+                size="small"
                 color="error"
                 disabled={paymentRequests.length === 0}
                 onClick={() => handleDeleteRequest(paymentRequests.length - 1)}
@@ -165,8 +165,8 @@ const PaymentRequestTab = ({ formik, directories, params }) => {
       </Grid>
 
       {/* Payment Request Form Dialog */}
-      <Dialog 
-        open={isFormOpen} 
+      <Dialog
+        open={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         maxWidth="lg"
         fullWidth

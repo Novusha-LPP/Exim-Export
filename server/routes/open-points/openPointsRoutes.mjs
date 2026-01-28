@@ -13,7 +13,7 @@ const verifyProjectAccess = async (req, res, next) => {
     const userId = req.headers["user-id"]; // Assuming user-id is passed in headers
 
     if (!userId) {
-      // console.log("Debug Auth: Missing User ID");
+
       return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -49,7 +49,7 @@ const verifyProjectAccess = async (req, res, next) => {
 // Create Project (L3/L4 Only - simplified to anyone for now, restrict in UI or added middleware)
 router.post("/api/open-points/projects", async (req, res) => {
   try {
-    // console.log("Create Project Request Body:", req.body);
+
     const { name, description, ownerUsername, team_members } = req.body;
 
     if (!ownerUsername) {
@@ -202,8 +202,7 @@ router.post(
 router.get("/api/open-points/my-projects", async (req, res) => {
   try {
     const username = req.headers["username"] || req.headers["x-username"];
-    console.log("GET My Projects - Username from headers:", username);
-    console.log("GET My Projects - All headers:", req.headers);
+
 
     if (!username) {
       return res
@@ -324,10 +323,7 @@ router.get(
 // Create Point
 router.post("/api/open-points/points", async (req, res) => {
   try {
-    console.log(
-      "Create Point Request Body:",
-      JSON.stringify(req.body, null, 2)
-    );
+
 
     const pointData = { ...req.body };
 
@@ -337,7 +333,7 @@ router.post("/api/open-points/points", async (req, res) => {
         const user = await UserModel.findById(pointData.responsible_person);
         if (user) {
           pointData.responsibility = user.username;
-          console.log("Auto-filled responsibility from ID:", user.username);
+
         }
       } catch (err) {
         console.error("Failed to auto-fill responsibility", err);
@@ -346,10 +342,7 @@ router.post("/api/open-points/points", async (req, res) => {
 
     const point = new OpenPoint(pointData);
     const savedPoint = await point.save();
-    console.log(
-      "Create Point Saved Data:",
-      JSON.stringify(savedPoint, null, 2)
-    );
+
 
     res.status(201).json(savedPoint);
   } catch (error) {

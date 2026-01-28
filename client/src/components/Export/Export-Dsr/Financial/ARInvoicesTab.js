@@ -109,7 +109,7 @@ const ARInvoicesTab = ({ formik, directories, params, onUpdate }) => {
 
   const refreshInvoices = () => {
     // Implement refresh logic here
-    console.log("Refreshing AR Invoices...");
+
   };
 
   return (

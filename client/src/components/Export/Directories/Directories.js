@@ -7,7 +7,7 @@ function Directories() {
   const [selectedDirectory, setSelectedDirectory] = useState("");
 
   const handleDirectoryChange = (event) => {
-    console.log("Selected value:", event.target.value);
+
     setSelectedDirectory(event.target.value);
   };
 

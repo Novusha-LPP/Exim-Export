@@ -12,4 +12,4 @@ const RodtepRSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Rodtep_R", RodtepRSchema);
+export default mongoose.model("Rodtep_R", RodtepRSchema, "rodtep_rs");

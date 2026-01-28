@@ -303,8 +303,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
         setFieldValue,
         isSubmitting,
       }) => {
-        console.log("Form Errors:", errors); // Debug errors
-        console.log("Form Touched:", touched); // Debug touched fields
+
 
         return (
           <Form>

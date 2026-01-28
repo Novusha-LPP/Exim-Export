@@ -5,8 +5,8 @@ import PropTypes from "prop-types";
 function AssignImporters({ selectedUser }) {
   // You can add additional logic or props if needed
   if (!selectedUser) return null;
-  console.log(selectedUser)
-  return <UserDetails selectedUser={selectedUser} onClose={() => {}} />;
+
+  return <UserDetails selectedUser={selectedUser} onClose={() => { }} />;
 }
 
 AssignImporters.propTypes = {

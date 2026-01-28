@@ -1246,7 +1246,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
     }
   }, [isAir]);
 
-  console.log(isAir);
+
   const saveTimeoutRef = useRef(null);
 
   // Compact auto-save

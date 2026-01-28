@@ -257,12 +257,10 @@ const AuditTrailViewer = ({ job_no, year }) => {
       );
       const transformedUsers = response.data.map((user) => ({
         label: user.username,
-        value: user.username,
-        id: user._id,
       }));
       setUserList(transformedUsers);
     } catch (error) {
-      console.error("Error fetching users:", error);
+
     }
   };
 
@@ -382,7 +380,7 @@ const AuditTrailViewer = ({ job_no, year }) => {
   const handleUserFilterChange = (event) => {
     const value = event.target.value;
     setUserFilter(value);
-    console.log("User filter changed:", value);
+
     // Trigger data refresh when user filter changes
     setFilters((prev) => ({ ...prev, username: value }));
   };

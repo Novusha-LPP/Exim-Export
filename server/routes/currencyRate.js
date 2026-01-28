@@ -8,7 +8,7 @@ const router = express.Router();
 // Manual test API to trigger scraping
 router.post("/api/currency-rates/scrape", async (req, res) => {
   try {
-    console.log("🔧 Manual scrape triggered via API");
+
 
     const result = await scrapeAndSaveCurrencyRates();
 

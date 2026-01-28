@@ -1065,12 +1065,7 @@ const exportJobSchema = new mongoose.Schema(
 );
 
 exportJobSchema.pre("save", function (next) {
-  console.log(
-    "🔧 Pre-save: containers:",
-    this.containers?.length || 0,
-    "operations:",
-    this.operations?.length || 0,
-  );
+
 
   // CLEANUP: If Dock (FCL or LCL), remove containerNo from all Transporter (Carting) Details
   // This ensures that Carting Details are treated as independent "Gate In" entries for loose goods,
@@ -1083,9 +1078,7 @@ exportJobSchema.pre("save", function (next) {
     (this.operations || []).forEach((op) => {
       (op.transporterDetails || []).forEach((td) => {
         if (td.containerNo) {
-          console.log(
-            `🧹 Clearing containerNo from Carting Detail (Dock Mode): ${td.containerNo}`,
-          );
+
           td.containerNo = "";
         }
       });
@@ -1129,10 +1122,7 @@ exportJobSchema.pre("save", function (next) {
     ...containerNosFromContainers,
     ...containerNosFromOperations,
   ]);
-  console.log(
-    `🔍 Found ${allContainerNos.size} unique containers:`,
-    Array.from(allContainerNos),
-  );
+
 
   // ========================================
   // STEP 1: SYNC CONTAINERS ARRAY
@@ -1152,7 +1142,7 @@ exportJobSchema.pre("save", function (next) {
       const existing = existingContainerMap.get(containerNo);
       existing.serialNumber = serialNum++;
       syncedContainers.push(existing);
-      console.log(`✅ Keeping existing container: ${containerNo}`);
+
     } else {
       // Create new container from operation data
       const opData = this.getOperationDataForContainer(containerNo);
@@ -1170,12 +1160,12 @@ exportJobSchema.pre("save", function (next) {
         rfid: "",
       };
       syncedContainers.push(newContainer);
-      console.log(`🆕 Created new container: ${containerNo}`);
+
     }
   });
 
   this.containers = syncedContainers;
-  console.log(`✅ Containers synced: ${this.containers.length} total`);
+
 
   // ========================================
   // STEP 2: SYNC OPERATIONS ARRAY
@@ -1183,9 +1173,7 @@ exportJobSchema.pre("save", function (next) {
 
   // If no operations exist, create one operation with all containers
   if (!this.operations || this.operations.length === 0) {
-    console.log(
-      `🆕 Creating new operation with ${allContainerNos.size} containers`,
-    );
+
 
     const transporterDetails = [];
     const containerDetails = [];
@@ -1402,9 +1390,7 @@ exportJobSchema.pre("save", function (next) {
     });
   }
 
-  console.log(
-    `✅ Operations synced: ${this.operations.length} operation(s) with ${allContainerNos.size} containers each`,
-  );
+
 
   // ========================================
   // STEP 3: SEAL SYNC
@@ -1414,9 +1400,6 @@ exportJobSchema.pre("save", function (next) {
     this.annexC1Details.sealNumber = this.stuffing_seal_no;
   }
 
-  console.log(
-    `✅ Sync complete: ${this.containers.length} containers ↔ ${allContainerNos.size} unique containers in operations`,
-  );
   next();
 });
 

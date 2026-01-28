@@ -6,7 +6,7 @@ const rodtepReSchema = new mongoose.Schema(
       type: Number,
     },
     tariff_line: {
-      type: String, // Storing as String to preserve potential leading zeros if any, though sample showed Number
+      type: mongoose.Schema.Types.Mixed, // Allows matching both String and Number types in the database
       index: true,
     },
     description: {
@@ -27,6 +27,6 @@ const rodtepReSchema = new mongoose.Schema(
   }
 );
 
-const Rodtep_RE = mongoose.model("Rodtep_RE", rodtepReSchema);
+const Rodtep_RE = mongoose.model("Rodtep_RE", rodtepReSchema, "rodtep_res");
 
 export default Rodtep_RE;

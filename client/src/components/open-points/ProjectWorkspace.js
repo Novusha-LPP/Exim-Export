@@ -404,7 +404,7 @@ const ProjectWorkspace = () => {
         }
       }
 
-      console.log("Create Point Payload:", payload);
+
 
       // set reviewer to current user id when available
       if (user && (user._id || user.id || user.username)) {
@@ -937,9 +937,8 @@ const ProjectWorkspace = () => {
                 {allUsers
                   .filter((u) => {
                     const search = memberSearchQuery.toLowerCase();
-                    const name = `${u.first_name || ""} ${
-                      u.last_name || ""
-                    }`.toLowerCase();
+                    const name = `${u.first_name || ""} ${u.last_name || ""
+                      }`.toLowerCase();
                     const username = (u.username || "").toLowerCase();
                     return name.includes(search) || username.includes(search);
                   })
@@ -970,22 +969,21 @@ const ProjectWorkspace = () => {
                   })}
                 {allUsers.filter((u) => {
                   const search = memberSearchQuery.toLowerCase();
-                  const name = `${u.first_name || ""} ${
-                    u.last_name || ""
-                  }`.toLowerCase();
+                  const name = `${u.first_name || ""} ${u.last_name || ""
+                    }`.toLowerCase();
                   const username = (u.username || "").toLowerCase();
                   return name.includes(search) || username.includes(search);
                 }).length === 0 && (
-                  <div
-                    style={{
-                      padding: "8px",
-                      color: "#666",
-                      fontStyle: "italic",
-                    }}
-                  >
-                    No users found
-                  </div>
-                )}
+                    <div
+                      style={{
+                        padding: "8px",
+                        color: "#666",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      No users found
+                    </div>
+                  )}
               </div>
             )}
           </div>
@@ -1139,9 +1137,9 @@ const ProjectWorkspace = () => {
                       }
                       title={
                         !user ||
-                        !projectOwnerId ||
-                        (user._id !== projectOwnerId &&
-                          user._id !== projectOwnerId.toString())
+                          !projectOwnerId ||
+                          (user._id !== projectOwnerId &&
+                            user._id !== projectOwnerId.toString())
                           ? "Only Project Owner can set Target Date"
                           : ""
                       }
@@ -1554,27 +1552,27 @@ const ProjectWorkspace = () => {
 
             {projectTeam.find((m) => m.username === memberMenu.member.username)
               ?.role !== "Owner" && (
-              <button
-                className="menu-item"
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "8px 12px",
-                  border: "none",
-                  background: "none",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  color: "#dc2626",
-                }}
-                onClick={() => {
-                  handleRemoveMember();
-                  setMemberMenu({ ...memberMenu, open: false });
-                }}
-              >
-                🗑️ Remove Member
-              </button>
-            )}
+                <button
+                  className="menu-item"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "8px 12px",
+                    border: "none",
+                    background: "none",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    color: "#dc2626",
+                  }}
+                  onClick={() => {
+                    handleRemoveMember();
+                    setMemberMenu({ ...memberMenu, open: false });
+                  }}
+                >
+                  🗑️ Remove Member
+                </button>
+              )}
 
             <button
               className="menu-item"

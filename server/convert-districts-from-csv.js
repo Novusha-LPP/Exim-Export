@@ -72,4 +72,4 @@ for (const line of dataLines) {
 }
 
 fs.writeFileSync(outputFile, JSON.stringify(results, null, 2), "utf8");
-console.log(`Wrote ${results.length} district records to ${outputFile}`);
+

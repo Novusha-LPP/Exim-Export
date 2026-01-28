@@ -390,7 +390,6 @@ export const scrapeAndSaveCurrencyRates = async () => {
     const rowNum = latest.rowNum;
     const row = latest.row;
 
-    console.log(`🚀 Processing latest notification: ${latest.notifText} (${latest.dateText})`);
 
     try {
       let downloadEl = await row.$("text=Download PDF");
@@ -438,12 +437,10 @@ export const scrapeAndSaveCurrencyRates = async () => {
         });
 
         if (existing) {
-          console.log(`✅ Latest notification ${parsed.notification_number} already in database.`);
           results.total_skipped++;
         } else {
           // It's a NEW notification. Since we only want the LATEST one, 
           // we delete all old records and save this one.
-          console.log(`✨ New notification found: ${parsed.notification_number}. Updating database...`);
 
           await CurrencyRate.deleteMany({}); // Clear collection to keep only ONE latest record
 
@@ -461,7 +458,7 @@ export const scrapeAndSaveCurrencyRates = async () => {
       try {
         await fs.unlink(outPath);
       } catch (e) {
-        console.log(`  ⚠️ Could not delete PDF: ${e.message}`);
+        console.warn(`  ⚠️ Could not delete PDF: ${e.message}`);
       }
     } catch (e) {
       console.error(`❌ Error processing row ${rowNum}: ${e.message}`);

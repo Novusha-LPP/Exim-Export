@@ -642,12 +642,7 @@ const AllUsersPage = () => {
       );
       const data = await response.json();
 
-      // Debug logging
-      console.log("API Response:", data);
-      console.log("Endpoint used:", endpoint);
-      console.log("Total users:", data.pagination?.totalItems);
-      console.log("Debug info:", data.debug);
-      console.log("Current filters:", filters);
+
 
       setUsers(data.users || []);
       setPagination(data.pagination || {});
@@ -680,7 +675,7 @@ const AllUsersPage = () => {
 
   // Export functionality (placeholder)
   const handleExport = () => {
-    console.log("Export users data");
+
     // Implement export functionality
   };
 

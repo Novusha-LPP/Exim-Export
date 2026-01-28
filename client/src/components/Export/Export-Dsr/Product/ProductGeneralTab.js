@@ -1151,15 +1151,19 @@ function ProductRow({
   // Fetch RoDTEP data when RITC or eximCode changes
   useEffect(() => {
     const fetchRodtepData = async () => {
-      if (!product.ritc || product.ritc.length < 4) return;
+      if (!product.ritc || product.ritc.toString().length < 4) return;
       if (product.rodtepInfo?.claim !== "Yes") return;
 
       const eximCode = product.eximCode || "";
       const useReApi = eximCode.includes("03");
 
+      const ritcToSearch = product.ritc.toString().startsWith("0")
+        ? product.ritc.toString().slice(1)
+        : product.ritc.toString();
+
       const endpoint = useReApi
-        ? `${apiBase}/rodtep-re/search?q=${product.ritc}`
-        : `${apiBase}/getRodtep_R?tariff_item=${product.ritc}`;
+        ? `${apiBase}/getRodtep_RE?tariff_line=${ritcToSearch}`
+        : `${apiBase}/getRodtep_R?tariff_item=${ritcToSearch}`;
 
       try {
         setRodtepLoading(true);
@@ -1173,33 +1177,33 @@ function ProductRow({
               data.data.find(
                 (e) =>
                   (e.tariff_line || e.tariff_item || "").toString() ===
-                  product.ritc.toString(),
+                  ritcToSearch,
               ) || data.data[0];
           }
         }
 
         if (entry) {
-          const rate = entry.rate_percentage_fob ?? entry.rate ?? 0;
-          const cap =
-            entry.cap_rs_per_uqc ?? entry.cap_per_uqc ?? entry.cap ?? 0;
-          const uqc = entry.uqc || "";
-
-          console.log("RoDTEP Fetch Success:", { rate, cap, uqc, entry });
-
-          handleProductChange(
-            index,
-            "rodtepInfo.ratePercent",
-            parseFloat(rate),
+          const rate = parseFloat(entry.rate_percentage_fob ?? entry.rate ?? 0);
+          const cap = parseFloat(
+            entry.cap_rs_per_uqc ?? entry.cap_per_uqc ?? entry.cap ?? 0,
           );
+          const uqc = toUpper(entry.uqc || "");
 
-          handleProductChange(
-            index,
-            "rodtepInfo.capValuePerUnits",
-            parseFloat(cap),
-          );
+          const currentRate = parseFloat(product.rodtepInfo?.ratePercent) || 0;
+          const currentCap =
+            parseFloat(product.rodtepInfo?.capValuePerUnits) || 0;
+          const currentUqc = toUpper(product.rodtepInfo?.capUnit || "");
 
-          if (uqc) {
-            handleProductChange(index, "rodtepInfo.capUnit", toUpper(uqc));
+          if (rate !== currentRate) {
+            handleProductChange(index, "rodtepInfo.ratePercent", rate);
+          }
+
+          if (cap !== currentCap) {
+            handleProductChange(index, "rodtepInfo.capValuePerUnits", cap);
+          }
+
+          if (uqc && uqc !== currentUqc) {
+            handleProductChange(index, "rodtepInfo.capUnit", uqc);
           }
         }
       } catch (err) {
@@ -1214,9 +1218,7 @@ function ProductRow({
     }, 500);
 
     return () => clearTimeout(t);
-    // Only depend on ritc, eximCode, and rodtepInfo.claim
-    // Remove product.rodtepInfo?.claim from deps to prevent loops
-  }, [product.ritc, product.eximCode, index, handleProductChange]);
+  }, [product.ritc, product.eximCode, product.rodtepInfo?.claim, index]);
 
   // Calculate RoDTEP amount when relevant values change
   useEffect(() => {
