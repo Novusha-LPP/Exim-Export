@@ -52,6 +52,48 @@ const DrawbackTab = ({
   selectedInvoiceIndex,
   selectedProductIndex,
 }) => {
+  const [exchangeRates, setExchangeRates] = useState([]);
+
+  // Fetch rates for auto-sync
+  useEffect(() => {
+    const fetchRates = async () => {
+      try {
+        const dateStr = getJobDateFormatted(formik.values.job_date);
+        const res = await fetch(
+          `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`,
+        );
+        const json = await res.json();
+        if (json?.success && json?.data?.exchange_rates) {
+          setExchangeRates(json.data.exchange_rates);
+        }
+      } catch (e) {
+        console.error("Drawback auto-sync fetch failed", e);
+      }
+    };
+    fetchRates();
+  }, [formik.values.job_date]);
+
+  // Sync global exchange_rate
+  useEffect(() => {
+    if (exchangeRates.length === 0) return;
+    const inv = (formik.values.invoices || [])[selectedInvoiceIndex];
+    if (inv && inv.currency) {
+      const code = inv.currency.toUpperCase();
+      const rateObj = exchangeRates.find(
+        (r) => (r.currency_code || r.code || "").toUpperCase() === code,
+      );
+      if (rateObj) {
+        const raw =
+          rateObj.export_rate ?? rateObj.exportRate ?? rateObj.rate ?? 0;
+        const unit = parseFloat(rateObj.unit) || 1;
+        const newRate = raw / unit;
+        if (newRate > 0 && formik.values.exchange_rate !== newRate) {
+          formik.setFieldValue("exchange_rate", newRate);
+        }
+      }
+    }
+  }, [exchangeRates, selectedInvoiceIndex, formik]);
+
   const invoices = formik.values.invoices || [];
   const activeInvoice = invoices[selectedInvoiceIndex] || {};
   const products = activeInvoice.products || [];

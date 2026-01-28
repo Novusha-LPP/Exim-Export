@@ -123,7 +123,8 @@ const getDefaultItem = (section) => {
       vesselName: "",
       voyageNo: "",
       portOfLoading: "",
-      handoverLocation: "",
+      emptyPickUpLoc: "",
+      emptyDropLoc: "",
       images: [],
       containerPlacementDate: "",
       shippingLineSealNo: "",
@@ -725,15 +726,23 @@ const OperationsTab = ({ formik }) => {
   const operations = formik.values.operations || [];
   const [activeOpIndex, setActiveOpIndex] = useState(0);
 
+  // Flags for mode detection
+  const transportMode = toUpper(formik.values.transportMode || "");
+  const isAir = transportMode === "AIR";
+  const stuffedAt = toUpper(formik.values.goods_stuffed_at || "");
+  const consignmentType = toUpper(formik.values.consignmentType || "");
+  const isDock = stuffedAt === "DOCK" || stuffedAt === "DOCKS";
+  const isLCL = consignmentType === "LCL";
+  const isDockLCL = isDock && isLCL;
+  const isFCL = consignmentType === "FCL";
+
   // Ensure at least one operation exists - but only once the form is truly ready
   useEffect(() => {
     if (formik.values.job_no && operations.length === 0) {
-      const transportMode = toUpper(formik.values.transportMode || "");
-      const isAir = transportMode === "AIR";
       const customHouse = formik.values.custom_house || "";
 
       const statusDefaults = { ...getDefaultItem("statusDetails") };
-      if (toUpper(formik.values.consignmentType || "") !== "FCL") {
+      if (consignmentType !== "FCL") {
         statusDefaults.icdPort = toUpper(customHouse);
       }
 
@@ -755,7 +764,6 @@ const OperationsTab = ({ formik }) => {
   // Sync ICD Port with Custom House if currently empty
   useEffect(() => {
     const customHouse = toUpper(formik.values.custom_house || "");
-    const consignmentType = toUpper(formik.values.consignmentType || "");
     if (customHouse && consignmentType !== "FCL") {
       let changed = false;
       const updatedOps = operations.map((op) => {
@@ -836,113 +844,79 @@ const OperationsTab = ({ formik }) => {
     // This prevents wiping container lists during the initial render "flicker".
     if (!formik.values.job_no || operations.length === 0) return;
 
-    // Phase A: Intra-operation Sync (Ensure Transporter, Container, and Weighment Details stay in lock-step)
+    // Phase A: Intra-operation Sync (Propagate Unique Containers across sections)
     let opsModified = false;
     const nextOperations = operations.map((op) => {
-      const transportMode = toUpper(formik.values.transportMode || "");
-      const isAir = transportMode === "AIR";
-
-      const stuffedAt = toUpper(formik.values.goods_stuffed_at || "");
-      const consignmentType = toUpper(formik.values.consignmentType || "");
-      const isDock = stuffedAt === "DOCK" || stuffedAt === "DOCKS";
-      const isLCL = consignmentType === "LCL";
-      const isDockLCL = isDock && isLCL;
-
-      // If Dock LCL, we DO NOT sync row counts or container numbers between sections.
-      // Carting (Transporter) is incoming; Weighment/Status is outgoing/processing.
-      // They are independent lists in this mode.
+      // If Dock LCL, we DO NOT sync anything between sections.
       if (isDockLCL) {
         return op;
       }
 
-      const tArr = op.transporterDetails || [];
-      const cArr = !isAir ? op.containerDetails || [] : [];
-      const wArr = !isAir ? op.weighmentDetails || [] : [];
-      const maxLen = Math.max(
-        tArr.length,
-        !isAir ? cArr.length : 0,
-        !isAir ? wArr.length : 0,
-      );
-
-      // Check if we need to expand any arrays to match lengths
-      // For DOCK jobs (FCL), Transporter (Carting) details are independent inputs (trucks)
-      // and do not necessarily match the number of output containers.
-      // So we exclude transporterDetails from sync if isDock is true.
-      let sectionsToSync = [];
-      if (isAir) {
-        sectionsToSync = ["transporterDetails"];
-      } else if (isDock) {
-        sectionsToSync = ["containerDetails", "weighmentDetails"];
-      } else {
-        sectionsToSync = [
-          "transporterDetails",
-          "containerDetails",
-          "weighmentDetails",
-        ];
-      }
-
-      let opIsDirty = sectionsToSync.some(
-        (s) => (op[s] || []).length !== maxLen,
-      );
-
+      let opIsDirty = false;
       const syncedOp = { ...op };
+
+      // 1. Collect all unique container numbers from Transporter, Container, and Weighment sections
+      const opUniqueContainers = new Set();
+      const sectionsToSync = isAir
+        ? ["transporterDetails"]
+        : ["transporterDetails", "containerDetails"];
+
       sectionsToSync.forEach((s) => {
-        const arr = [...(op[s] || [])];
-        while (arr.length < maxLen) {
-          arr.push(getDefaultItem(s));
-        }
-        syncedOp[s] = arr;
+        (syncedOp[s] || []).forEach((row) => {
+          if (row.containerNo && row.containerNo.trim()) {
+            opUniqueContainers.add(row.containerNo.trim().toUpperCase());
+          }
+        });
       });
 
-      // Check for missing container numbers at the same index
+      // 2. Ensure Container Details represent all unique containers
       if (!isAir) {
-        for (let i = 0; i < maxLen; i++) {
-          // Construct the list of found container numbers
-          const sources = [];
+        ["containerDetails"].forEach((s) => {
+          const currentArr = [...(syncedOp[s] || [])];
+          opUniqueContainers.forEach((cNo) => {
+            const alreadyExists = currentArr.some(
+              (row) => (row.containerNo || "").trim().toUpperCase() === cNo,
+            );
 
-          // Only look at Transporter Details if NOT Dock mode (since they are independent for Dock)
-          if (
-            !isDock &&
-            syncedOp.transporterDetails &&
-            syncedOp.transporterDetails[i]
-          ) {
-            sources.push(syncedOp.transporterDetails[i].containerNo);
-          }
-          if (syncedOp.containerDetails && syncedOp.containerDetails[i]) {
-            sources.push(syncedOp.containerDetails[i].containerNo);
-          }
+            if (!alreadyExists) {
+              // Try to fill the first row that has no container number
+              const emptyIdx = currentArr.findIndex(
+                (row) => !(row.containerNo || "").trim(),
+              );
 
-          const nosFound = sources.filter((n) => n && n.trim());
-
-          if (nosFound.length > 0) {
-            const bestNo = nosFound[0].trim().toUpperCase();
-
-            // Should we update Transporter Details? Only if NOT Dock and the row exists
-            if (
-              !isDock &&
-              syncedOp.transporterDetails &&
-              syncedOp.transporterDetails[i]
-            ) {
-              if (syncedOp.transporterDetails[i].containerNo !== bestNo) {
-                syncedOp.transporterDetails[i] = {
-                  ...syncedOp.transporterDetails[i],
-                  containerNo: bestNo,
+              if (emptyIdx !== -1) {
+                currentArr[emptyIdx] = {
+                  ...currentArr[emptyIdx],
+                  containerNo: cNo,
                 };
-                opIsDirty = true;
+              } else {
+                // Otherwise, add a new row for this unique container
+                currentArr.push({ ...getDefaultItem(s), containerNo: cNo });
               }
+              opIsDirty = true;
             }
+          });
+          syncedOp[s] = currentArr;
+        });
 
-            // Should we update Container Details?
-            if (syncedOp.containerDetails && syncedOp.containerDetails[i]) {
-              if (syncedOp.containerDetails[i].containerNo !== bestNo) {
-                syncedOp.containerDetails[i] = {
-                  ...syncedOp.containerDetails[i],
-                  containerNo: bestNo,
-                };
-                opIsDirty = true;
+        // 3. Special Case: If we are NOT in Dock mode (Factory mode), 
+        // Sync Transporter rows to match at least the unique container count 
+        // (to keep the 1-truck-per-container feel)
+        if (!isDock) {
+          const tArr = [...(syncedOp.transporterDetails || [])];
+          opUniqueContainers.forEach((cNo) => {
+            const found = tArr.some(row => (row.containerNo || "").trim().toUpperCase() === cNo);
+            if (!found) {
+              const emptyIdx = tArr.findIndex(row => !(row.containerNo || "").trim());
+              if (emptyIdx !== -1) {
+                tArr[emptyIdx] = { ...tArr[emptyIdx], containerNo: cNo };
+              } else {
+                tArr.push({ ...getDefaultItem("transporterDetails"), containerNo: cNo });
               }
+              opIsDirty = true;
             }
-          }
+          });
+          syncedOp.transporterDetails = tArr;
         }
       }
 
@@ -1155,7 +1129,7 @@ const OperationsTab = ({ formik }) => {
 
       // SYNC: If it's a linked container field, update other sections at same index
       if (isLinkedContainerField) {
-        ["transporterDetails", "containerDetails", "weighmentDetails"].forEach(
+        ["transporterDetails", "containerDetails"].forEach(
           (s) => {
             if (s === section) return;
             if (updatedOp[s] && updatedOp[s][itemIndex]) {
@@ -1198,32 +1172,7 @@ const OperationsTab = ({ formik }) => {
     const op = { ...newOperations[activeOpIndex] };
     if (!op) return;
 
-    const transportMode = toUpper(formik.values.transportMode || "");
-    const isAir = transportMode === "AIR";
-
-    const isLinkedSection =
-      !isAir &&
-      ["transporterDetails", "containerDetails", "weighmentDetails"].includes(
-        section,
-      );
-
-    if (isLinkedSection) {
-      // Add row to all 3 linked sections to maintain index alignment
-      op.transporterDetails = [
-        ...(op.transporterDetails || []),
-        getDefaultItem("transporterDetails"),
-      ];
-      op.containerDetails = [
-        ...(op.containerDetails || []),
-        getDefaultItem("containerDetails"),
-      ];
-      op.weighmentDetails = [
-        ...(op.weighmentDetails || []),
-        getDefaultItem("weighmentDetails"),
-      ];
-    } else {
-      op[section] = [...(op[section] || []), getDefaultItem(section)];
-    }
+    op[section] = [...(op[section] || []), getDefaultItem(section)];
 
     newOperations[activeOpIndex] = op;
     formik.setFieldValue("operations", newOperations);
@@ -1234,29 +1183,7 @@ const OperationsTab = ({ formik }) => {
     const op = { ...newOperations[activeOpIndex] };
     if (!op) return;
 
-    const transportMode = toUpper(formik.values.transportMode || "");
-    const isAir = transportMode === "AIR";
-
-    const isLinkedSection =
-      !isAir &&
-      ["transporterDetails", "containerDetails", "weighmentDetails"].includes(
-        section,
-      );
-
-    if (isLinkedSection) {
-      // Delete row from all linked sections to maintain index alignment
-      op.transporterDetails = (op.transporterDetails || []).filter(
-        (_, i) => i !== itemIndex,
-      );
-      op.containerDetails = (op.containerDetails || []).filter(
-        (_, i) => i !== itemIndex,
-      );
-      op.weighmentDetails = (op.weighmentDetails || []).filter(
-        (_, i) => i !== itemIndex,
-      );
-    } else {
-      op[section] = (op[section] || []).filter((_, i) => i !== itemIndex);
-    }
+    op[section] = (op[section] || []).filter((_, i) => i !== itemIndex);
 
     newOperations[activeOpIndex] = op;
     formik.setFieldValue("operations", newOperations);
@@ -1274,16 +1201,6 @@ const OperationsTab = ({ formik }) => {
     if (operations.length > 0) setActiveOpIndex(0);
     return null;
   }
-
-  const transportMode = toUpper(formik.values.transportMode || "");
-  const isAir = transportMode === "AIR";
-
-  const stuffedAt = toUpper(formik.values.goods_stuffed_at || "");
-  const consignmentType = toUpper(formik.values.consignmentType || "");
-  const isDock = stuffedAt === "DOCK" || stuffedAt === "DOCKS";
-  const isLCL = consignmentType === "LCL";
-  const isFCL = consignmentType === "FCL";
-
   const transporterSection = (
     <TableSection
       title={isDock ? "Carting Details" : "Transporter Details"}
@@ -1420,8 +1337,13 @@ const OperationsTab = ({ formik }) => {
         },
         !isAir && { field: "voyageNo", label: "Voyage", width: "100px" },
         !isAir && {
-          field: "handoverLocation",
-          label: "Empty Pickup / Drop Location",
+          field: "emptyPickUpLoc",
+          label: "Empty Pickup Location",
+          width: "140px",
+        },
+        !isAir && {
+          field: "emptyDropLoc",
+          label: "Drop Location",
           width: "140px",
         },
         {

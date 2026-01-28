@@ -676,7 +676,8 @@ const exportOperationSchema = new Schema(
         vesselName: { type: String },
         voyageNo: { type: String },
         portOfLoading: { type: String },
-        handoverLocation: { type: String },
+        emptyPickUpLoc: { type: String },
+        emptyDropLoc: { type: String },
         images: [String],
       },
     ],
@@ -1215,19 +1216,21 @@ exportJobSchema.pre("save", function (next) {
         images: [],
       });
 
+      // 3. Weighment Details
+      // REMOVED: Weighment Details should be fully independent and not tied to the container list.
+    });
+
+    // If no weighment rows exist at all, add one empty row to prevent UI issues
+    if (weighmentDetails.length === 0) {
       weighmentDetails.push({
-        containerNo,
         weighBridgeName: "",
         regNo: "",
-        dateTime: new Date(),
+        dateTime: "",
         vehicleNo: "",
-        size: container?.type || "",
-        grossWeight: container?.grossWeight || 0,
         tareWeight: 0,
-        netWeight: 0,
         address: "",
       });
-    });
+    }
 
     // If Dock, ensure at least one empty row exists so the UI isn't broken
     if (isDock && transporterDetails.length === 0) {
@@ -1259,7 +1262,8 @@ exportJobSchema.pre("save", function (next) {
             vesselName: "",
             voyageNo: "",
             portOfLoading: "",
-            handoverLocation: "",
+            emptyPickUpLoc: "",
+            emptyDropLoc: "",
             validity: "",
             images: [],
           },
@@ -1358,34 +1362,7 @@ exportJobSchema.pre("save", function (next) {
         }
 
         // 3. Weighment Details
-        operation.weighmentDetails = operation.weighmentDetails || [];
-        let wd = operation.weighmentDetails.find(
-          (w) => w.containerNo === containerNo,
-        );
-
-        if (!wd) {
-          // Insert new
-          operation.weighmentDetails.push({
-            containerNo,
-            weighBridgeName: "",
-            regNo: "",
-            dateTime: new Date(),
-            vehicleNo: "",
-            size: container?.type || "",
-            grossWeight: container?.grossWeight || 0,
-            tareWeight: 0,
-            netWeight: 0,
-            address: "",
-          });
-        } else {
-          // Update existing
-          if (container?.type) {
-            wd.size = container.type;
-          }
-          if (container?.grossWeight && !wd.grossWeight) {
-            wd.grossWeight = container.grossWeight;
-          }
-        }
+        // REMOVED: Weighment Details should be fully independent and not tied to the container list.
       });
     });
   }

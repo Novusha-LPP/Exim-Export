@@ -845,12 +845,14 @@ const AddExJobs = ({ onJobCreated }) => {
 
   useEffect(() => {
     const stuffed = toUpper(formData.goods_stuffed_at || "");
-    if (stuffed === "FACTORY") {
+    const type = toUpper(formData.consignmentType || "");
+    if (stuffed === "FACTORY" && type !== "FCL") {
       setFormData((prev) => ({ ...prev, consignmentType: "FCL" }));
     }
-    // If DOCK, we allow FCL & LCL (user can select manually), no forced override usually required
-    // unless to switch back from AIR, but user can do that.
-  }, [formData.goods_stuffed_at]);
+    if (type === "LCL" && stuffed !== "DOCK") {
+      setFormData((prev) => ({ ...prev, goods_stuffed_at: "DOCK" }));
+    }
+  }, [formData.goods_stuffed_at, formData.consignmentType]);
 
   const branchOptions = [
     { code: "BRD", label: "BRD - BARODA" },
@@ -918,10 +920,10 @@ const AddExJobs = ({ onJobCreated }) => {
           const allOrgs = response.data.data;
           const filtered = formData.exporter
             ? allOrgs.filter((o) =>
-                (o.organization || "")
-                  .toUpperCase()
-                  .includes(formData.exporter.toUpperCase()),
-              )
+              (o.organization || "")
+                .toUpperCase()
+                .includes(formData.exporter.toUpperCase()),
+            )
             : allOrgs;
           setOrganizations(filtered);
         }
@@ -1114,8 +1116,8 @@ const AddExJobs = ({ onJobCreated }) => {
                               key={i}
                               style={s.dropdownItem}
                               onMouseEnter={(e) =>
-                                (e.currentTarget.style.backgroundColor =
-                                  "#f9fafb")
+                              (e.currentTarget.style.backgroundColor =
+                                "#f9fafb")
                               }
                               onMouseLeave={(e) =>
                                 (e.currentTarget.style.backgroundColor = "#fff")
@@ -1424,7 +1426,9 @@ const AddExJobs = ({ onJobCreated }) => {
                     }
                   >
                     <option value="">SELECT</option>
-                    <option value="FACTORY">FACTORY</option>
+                    {toUpper(formData.consignmentType) !== "LCL" && (
+                      <option value="FACTORY">FACTORY</option>
+                    )}
                     <option value="DOCK">DOCK</option>
                   </select>
                 </div>

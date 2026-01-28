@@ -2125,6 +2125,28 @@ const ProductGeneralTab = ({
     fetchRates();
   }, [apiBase, formik.values.job_date]);
 
+  // AUTO-SYNC: Update global exchange_rate when exchangeRates map changes
+  useEffect(() => {
+    if (exchangeRates.length === 0) return;
+    const inv = (formik.values.invoices || [])[selectedInvoiceIndex];
+    if (inv && inv.currency) {
+      const code = inv.currency.toUpperCase();
+      const rateObj = exchangeRates.find(
+        (r) =>
+          (r.currency_code || r.code || "").toString().toUpperCase() === code,
+      );
+      if (rateObj) {
+        const raw =
+          rateObj.export_rate ?? rateObj.exportRate ?? rateObj.rate ?? 0;
+        const unit = parseFloat(rateObj.unit) || 1;
+        const newRate = raw / unit;
+        if (newRate > 0 && formik.values.exchange_rate !== newRate) {
+          formik.setFieldValue("exchange_rate", newRate);
+        }
+      }
+    }
+  }, [exchangeRates, selectedInvoiceIndex]);
+
   const getExportRate = useCallback(
     (currencyCode) => {
       if (!currencyCode || currencyCode === "INR") return 1;

@@ -157,20 +157,20 @@ const ExportChecklistGenerator = ({
 
         // --- Next Line: Printed On (Left), AEO Reg. No (Center), AEO Role (Right)
         pdf.setFontSize(FONT_SIZES.fieldLabel);
-        pdf.text(`Printed On : ${currentDate || ""}`, leftX, y + 40);
+        pdf.text(`Printed On : ${currentDate || ""}`, leftX, y + 30);
 
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldValue);
         pdf.text(
-          `AEO Registration No. ${aeoRegistrationNo || ""}`,
+          `AEO Registration No. ${"INABOFS1766L0F191"}`,
           centerX,
-          y + 40,
+          y + 30,
           { align: "center" },
         );
 
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(FONT_SIZES.fieldLabel);
-        pdf.text(`AEO Role : ${aeoRole || ""}`, rightX, y + 40, {
+        pdf.text(`AEO Role : ${"Customs" || ""}`, rightX, y + 30, {
           align: "right",
         });
       },
@@ -185,7 +185,7 @@ const ExportChecklistGenerator = ({
 
   const renderPage1 = (pdf, helpers, data) => {
     const { drawLine, drawField, leftX, rightX, centerX } = helpers;
-    let yPos = 80;
+    let yPos = 60;
 
     const leftColX = leftX;
     const rightColX = centerX + 20;
@@ -460,14 +460,14 @@ const ExportChecklistGenerator = ({
             : "";
         const currencyText =
           item.currency !== "" &&
-          item.currency !== null &&
-          item.currency !== undefined
+            item.currency !== null &&
+            item.currency !== undefined
             ? String(item.currency)
             : "";
         const amountText =
           item.amount !== "" &&
-          item.amount !== null &&
-          item.amount !== undefined
+            item.amount !== null &&
+            item.amount !== undefined
             ? String(item.amount)
             : "";
 
@@ -684,8 +684,8 @@ const ExportChecklistGenerator = ({
         pdf.text(product.amount || "", col5, itemY);
         pdf.text(
           product.igstPaymentStatus ||
-            product.igstCompensationCess?.igstPaymentStatus ||
-            "",
+          product.igstCompensationCess?.igstPaymentStatus ||
+          "",
           col5,
           itemY + 20,
         );
@@ -698,8 +698,8 @@ const ExportChecklistGenerator = ({
         );
         pdf.text(
           product.taxableValueINR ||
-            product.igstCompensationCess?.taxableValueINR ||
-            "",
+          product.igstCompensationCess?.taxableValueINR ||
+          "",
           col6,
           itemY + 20,
         );
@@ -712,8 +712,8 @@ const ExportChecklistGenerator = ({
         );
         pdf.text(
           product.igstAmountINR ||
-            product.igstCompensationCess?.igstAmountINR ||
-            "",
+          product.igstCompensationCess?.igstAmountINR ||
+          "",
           col7,
           itemY + 20,
         );
@@ -1025,106 +1025,103 @@ const ExportChecklistGenerator = ({
     yPos = pdf.lastAutoTable.finalY + 18;
 
     // RODTEP Info
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("RODTEP Info", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 17;
+    if (data.rodtepData && data.rodtepData.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("RODTEP Info", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 17;
 
-    const rodtepHeaders = [
-      "Inv/Item Sr",
-      "Claim Status",
-      "Quantity",
-      "Rate (in %)",
-      "Cap Value",
-      "No. of Units",
-      "RODTEP Amount (INR)",
-    ];
+      const rodtepHeaders = [
+        "Inv/Item Sr",
+        "Claim Status",
+        "Quantity",
+        "Rate (in %)",
+        "Cap Value",
+        "No. of Units",
+        "RODTEP Amount (INR)",
+      ];
 
-    const rodtepRows = Array.isArray(data.rodtepData)
-      ? data.rodtepData
-      : [data.rodtepData];
+      pdf.autoTable({
+        head: [rodtepHeaders],
+        body: data.rodtepData.map((row) => [
+          row.invItemSr,
+          row.claimStatus,
+          row.quantity,
+          row.rate,
+          row.capValue,
+          row.noOfUnits,
+          row.rodtepAmount,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [220, 220, 220],
+          textColor: 0,
+          fontStyle: "bold",
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
 
-    pdf.autoTable({
-      head: [rodtepHeaders],
-      body: rodtepRows.map((row) => [
-        row.invItemSr,
-        row.claimStatus,
-        row.quantity,
-        row.rate,
-        row.capValue,
-        row.noOfUnits,
-        row.rodtepAmount,
-      ]),
-      startY: yPos,
-      styles: {
-        fontSize: FONT_SIZES.tableContent,
-        cellPadding: 2,
-      },
-      headStyles: {
-        fillColor: [220, 220, 220],
-        textColor: 0,
-        fontStyle: "bold",
-      },
-      margin: { left: leftX },
-      tableWidth: rightX - leftX,
-    });
-
-    yPos = pdf.lastAutoTable.finalY + 18;
+      yPos = pdf.lastAutoTable.finalY + 18;
+    }
 
     // DECLARATIONS
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("DECLARATIONS", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 17;
+    if (data.declarationData && data.declarationData.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("DECLARATIONS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 17;
 
-    const declarationHeaders = ["Decl. Typ", "Decl. Cod", "Inv / Item Sr.No."];
-    const declarationRows = Array.isArray(data.declarationData)
-      ? data.declarationData
-      : [data.declarationData];
+      const declarationHeaders = ["Decl. Typ", "Decl. Cod", "Inv / Item Sr.No."];
 
-    pdf.autoTable({
-      head: [declarationHeaders],
-      body: declarationRows.map((decl) => [
-        decl.declType,
-        decl.declCode,
-        decl.invItemSrNo,
-      ]),
-      startY: yPos,
-      styles: {
-        fontSize: FONT_SIZES.tableContent,
-        cellPadding: 2,
-      },
-      headStyles: {
-        fillColor: [220, 220, 220],
-        textColor: 0,
-        fontStyle: "bold",
-      },
-      margin: { left: leftX },
-      tableWidth: 200,
-    });
+      pdf.autoTable({
+        head: [declarationHeaders],
+        body: data.declarationData.map((decl) => [
+          decl.declType,
+          decl.declCode,
+          decl.invItemSrNo,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [220, 220, 220],
+          textColor: 0,
+          fontStyle: "bold",
+        },
+        margin: { left: leftX },
+        tableWidth: 200,
+      });
 
-    yPos = pdf.lastAutoTable.finalY + 15;
+      yPos = pdf.lastAutoTable.finalY + 15;
 
-    // Declaration Text
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Decl. Cod", leftX, yPos);
-    pdf.text("Declaration", leftX + 50, yPos);
-    yPos += 10;
+      // Declaration Text
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Decl. Cod", leftX, yPos);
+      pdf.text("Declaration", leftX + 50, yPos);
+      yPos += 10;
 
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(FONT_SIZES.declaration);
-    const declarationLines = pdf.splitTextToSize(
-      data.declarationText,
-      rightX - leftX - 50,
-    );
-    declarationLines.forEach((line) => {
-      pdf.text(line, leftX + 50, yPos);
-      yPos += FONT_SIZES.declaration * 1.2;
-    });
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(FONT_SIZES.declaration);
+      const declarationLines = pdf.splitTextToSize(
+        data.declarationText,
+        rightX - leftX - 50,
+      );
+      declarationLines.forEach((line) => {
+        pdf.text(line, leftX + 50, yPos);
+        yPos += FONT_SIZES.declaration * 1.2;
+      });
+    }
 
     return yPos + 8;
   };
@@ -1438,17 +1435,16 @@ const ExportChecklistGenerator = ({
 
         // Weight calculation from products or containers
         grossWeight: exportJob.gross_weight_kg
-          ? `${exportJob.gross_weight_kg} ${
-              exportJob.gross_weight_unit || "KGS"
-            }`
+          ? `${exportJob.gross_weight_kg} ${exportJob.gross_weight_unit || "KGS"
+          }`
           : exportJob.containers
-              ?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0)
-              .toFixed(3) + " KGS" || "0.000 KGS",
+            ?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0)
+            .toFixed(3) + " KGS" || "0.000 KGS",
         netWeight: exportJob.net_weight_kg
           ? `${exportJob.net_weight_kg} ${exportJob.net_weight_unit || "KGS"}`
           : allProducts
-              ?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
-              .toFixed(3) + " KGS" || "0.000 KGS",
+            ?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
+            .toFixed(3) + " KGS" || "0.000 KGS",
 
         // Financial Details - Calculate from products and invoices
         totalFobInr:
@@ -1918,7 +1914,7 @@ const ExportChecklistGenerator = ({
           exportJob.invoices?.forEach((invoice, invIdx) => {
             invoice.products?.forEach((product, prodIdx) => {
               rows.push({
-                invItemSln: `${invIdx + 1}/${prodIdx + 1}`,
+                invItemSln: `${invIdx + 1}/${product.serialNumber || (prodIdx + 1)}`,
                 sqcQtyUnit: product.socQuantity
                   ? `${product.socQuantity} ${product.socunit}`
                   : "",
@@ -1947,7 +1943,7 @@ const ExportChecklistGenerator = ({
             invoice.products?.forEach((product, prodIndex) => {
               if (product.endUse) {
                 endUseRows.push({
-                  invItemSrNo: `${invIndex + 1}/${prodIndex + 1}`,
+                  invItemSrNo: `${invIndex + 1}/${product.serialNumber || (prodIndex + 1)}`,
                   code: product.endUse || "",
                 });
               }
@@ -1963,16 +1959,19 @@ const ExportChecklistGenerator = ({
           const rodtepRows = [];
           exportJob.invoices?.forEach((invoice, invIndex) => {
             invoice.products?.forEach((product, prodIndex) => {
-              rodtepRows.push({
-                invItemSr: `${invIndex + 1}/${prodIndex + 1}`,
-                claimStatus:
-                  product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
-                quantity: product.rodtepInfo?.quantity || "",
-                rate: product.rodtepInfo?.ratePercent || "",
-                capValue: product.rodtepInfo?.capValue || "",
-                noOfUnits: "1",
-                rodtepAmount: product.rodtepInfo?.amountINR || "",
-              });
+              const amount = parseFloat(product.rodtepInfo?.amountINR) || 0;
+              if (amount > 0) {
+                rodtepRows.push({
+                  invItemSr: `${invIndex + 1}/${product.serialNumber || (prodIndex + 1)}`,
+                  claimStatus:
+                    product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
+                  quantity: product.rodtepInfo?.quantity || "",
+                  rate: product.rodtepInfo?.ratePercent || "",
+                  capValue: product.rodtepInfo?.capValue || "",
+                  noOfUnits: "1",
+                  rodtepAmount: product.rodtepInfo?.amountINR || "",
+                });
+              }
             });
           });
           return rodtepRows;
@@ -1983,18 +1982,17 @@ const ExportChecklistGenerator = ({
           const declRows = [];
           exportJob.invoices?.forEach((invoice, invIndex) => {
             invoice.products?.forEach((product, prodIndex) => {
-              if (product.rodtepInfo?.claim === "Yes") {
+              const amount = parseFloat(product.rodtepInfo?.amountINR) || 0;
+              if (product.rodtepInfo?.claim === "Yes" && amount > 0) {
                 declRows.push({
                   declType: "DEC",
                   declCode: "RD001", // Standard RODTEP declaration
-                  invItemSrNo: `${invIndex + 1}/${prodIndex + 1}`,
+                  invItemSrNo: `${invIndex + 1}/${product.serialNumber || (prodIndex + 1)}`,
                 });
               }
             });
           });
-          return declRows.length > 0
-            ? declRows
-            : [{ declType: "", declCode: "", invItemSrNo: "" }];
+          return declRows;
         })(),
 
         declarationText: `I/We, in regard to my/our claim under RoDTEP scheme made in this Shipping Bill or Bill of Export, hereby declare that:
@@ -2008,60 +2006,60 @@ const ExportChecklistGenerator = ({
         // Supporting Documents
         supportingDocs: exportJob.eSanchitDocuments?.[0]
           ? {
-              invItemSrNo:
-                exportJob.eSanchitDocuments[0].invSerialNo || "1/0/1",
-              imageRefNo: exportJob.eSanchitDocuments[0].irn || "",
-              icegateId: exportJob.eSanchitDocuments[0].otherIcegateId || "",
-              issuingPartyName:
-                exportJob.eSanchitDocuments[0].issuingParty?.name ||
-                exportJob.exporter ||
-                "",
-              beneficiaryPartyName:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.name ||
-                exportJob.consignees?.[0]?.consignee_name ||
-                "",
-              docIssueDate:
-                formatDate(exportJob.eSanchitDocuments[0].dateOfIssue) || "",
-              docRefNo:
-                exportJob.eSanchitDocuments[0].documentReferenceNo || "",
-              fileType:
-                exportJob.eSanchitDocuments[0].icegateFilename
-                  ?.split(".")
-                  .pop() || "",
-              issuingPartyAdd1:
-                exportJob.eSanchitDocuments[0].issuingParty?.addressLine1 ||
-                exportJob.exporter_address ||
-                "",
-              beneficiaryPartyAdd1:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine1 ||
-                exportJob.consignees?.[0]?.consignee_address ||
-                "",
-              docExpiryDate:
-                formatDate(exportJob.eSanchitDocuments[0].expiryDate) || "",
-              docUploadedOn:
-                formatDate(exportJob.eSanchitDocuments[0].dateTimeOfUpload) ||
-                "",
-              placeOfIssue: exportJob.eSanchitDocuments[0].placeOfIssue || "",
-              issuingPartyAdd2:
-                exportJob.eSanchitDocuments[0].issuingParty?.addressLine2 || "",
-              beneficiaryPartyAdd2:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine2 ||
-                "",
-              docTypeCode: exportJob.eSanchitDocuments[0].documentType || "",
-              docName: exportJob.eSanchitDocuments[0].icegateFilename || "",
-              issuingPartyCode:
-                exportJob.eSanchitDocuments[0].issuingParty?.code || "",
-              issuingPartyCity:
-                exportJob.eSanchitDocuments[0].issuingParty?.city || "",
-              beneficiaryPartyCity:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.city || "",
-              beneficiaryPartyCode:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.code || "",
-              issuingPartyPinCode:
-                exportJob.eSanchitDocuments[0].issuingParty?.pinCode || "",
-              beneficiaryPartyPinCode:
-                exportJob.eSanchitDocuments[0].beneficiaryParty?.pinCode || "",
-            }
+            invItemSrNo:
+              exportJob.eSanchitDocuments[0].invSerialNo || "1/0/1",
+            imageRefNo: exportJob.eSanchitDocuments[0].irn || "",
+            icegateId: exportJob.eSanchitDocuments[0].otherIcegateId || "",
+            issuingPartyName:
+              exportJob.eSanchitDocuments[0].issuingParty?.name ||
+              exportJob.exporter ||
+              "",
+            beneficiaryPartyName:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.name ||
+              exportJob.consignees?.[0]?.consignee_name ||
+              "",
+            docIssueDate:
+              formatDate(exportJob.eSanchitDocuments[0].dateOfIssue) || "",
+            docRefNo:
+              exportJob.eSanchitDocuments[0].documentReferenceNo || "",
+            fileType:
+              exportJob.eSanchitDocuments[0].icegateFilename
+                ?.split(".")
+                .pop() || "",
+            issuingPartyAdd1:
+              exportJob.eSanchitDocuments[0].issuingParty?.addressLine1 ||
+              exportJob.exporter_address ||
+              "",
+            beneficiaryPartyAdd1:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine1 ||
+              exportJob.consignees?.[0]?.consignee_address ||
+              "",
+            docExpiryDate:
+              formatDate(exportJob.eSanchitDocuments[0].expiryDate) || "",
+            docUploadedOn:
+              formatDate(exportJob.eSanchitDocuments[0].dateTimeOfUpload) ||
+              "",
+            placeOfIssue: exportJob.eSanchitDocuments[0].placeOfIssue || "",
+            issuingPartyAdd2:
+              exportJob.eSanchitDocuments[0].issuingParty?.addressLine2 || "",
+            beneficiaryPartyAdd2:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.addressLine2 ||
+              "",
+            docTypeCode: exportJob.eSanchitDocuments[0].documentType || "",
+            docName: exportJob.eSanchitDocuments[0].icegateFilename || "",
+            issuingPartyCode:
+              exportJob.eSanchitDocuments[0].issuingParty?.code || "",
+            issuingPartyCity:
+              exportJob.eSanchitDocuments[0].issuingParty?.city || "",
+            beneficiaryPartyCity:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.city || "",
+            beneficiaryPartyCode:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.code || "",
+            issuingPartyPinCode:
+              exportJob.eSanchitDocuments[0].issuingParty?.pinCode || "",
+            beneficiaryPartyPinCode:
+              exportJob.eSanchitDocuments[0].beneficiaryParty?.pinCode || "",
+          }
           : {},
 
         // Final Declaration

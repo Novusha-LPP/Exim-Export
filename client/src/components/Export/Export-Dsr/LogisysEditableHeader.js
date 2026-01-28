@@ -325,12 +325,16 @@ const LogisysEditableHeader = ({
 
   useEffect(() => {
     const stuffed = toUpper(formik.values.goods_stuffed_at || "");
-    if (stuffed === "FACTORY") {
+    const type = toUpper(formik.values.consignmentType || "");
+
+    if (stuffed === "FACTORY" && type !== "FCL") {
       formik.setFieldValue("consignmentType", "FCL");
     }
-    // If DOCK, we allow FCL & LCL (user can select manually), no forced override usually required
-    // unless to switch back from AIR, but user can do that.
-  }, [formik.values.goods_stuffed_at, formik.setFieldValue]);
+
+    if (type === "LCL" && stuffed !== "DOCK") {
+      formik.setFieldValue("goods_stuffed_at", "DOCK");
+    }
+  }, [formik.values.goods_stuffed_at, formik.values.consignmentType, formik.setFieldValue]);
 
   const [snackbar, setSnackbar] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -582,9 +586,12 @@ const LogisysEditableHeader = ({
             value={formik.values.goods_stuffed_at || ""}
             options={[
               { value: "", label: "Select" },
-              { value: "FACTORY", label: "FACTORY" },
+              toUpper(formik.values.consignmentType) !== "LCL" && {
+                value: "FACTORY",
+                label: "FACTORY",
+              },
               { value: "DOCK", label: "DOCK" },
-            ]}
+            ].filter(Boolean)}
             onChange={formik.handleChange}
             placeholder="Select Location"
           />
