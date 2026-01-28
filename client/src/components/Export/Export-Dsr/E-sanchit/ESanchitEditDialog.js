@@ -822,7 +822,7 @@ const ESanchitEditDialog = ({
               <Field
                 label="File Type"
                 value="PDF"
-                onChange={() => {}}
+                onChange={() => { }}
                 disabled
               />
               <Field

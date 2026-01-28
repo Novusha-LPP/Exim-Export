@@ -144,6 +144,51 @@ const InvoiceFreightTab = ({ formik }) => {
     fetchRates();
   }, [formik.values.job_date]);
 
+  // AUTO-SYNC: Update charges when rateMap updates
+  useEffect(() => {
+    if (Object.keys(rateMap).length === 0) return;
+
+    let globalModified = false;
+    const invList = (formik.values.invoices || []).map((inv) => ({ ...inv }));
+
+    const updatedInvoices = invList.map((inv) => {
+      const charges = inv.freightInsuranceCharges || {};
+      let invModified = false;
+      const nextCharges = { ...charges };
+
+      const rowKeys = [
+        "freight",
+        "insurance",
+        "discount",
+        "otherDeduction",
+        "commission",
+        "fobValue",
+      ];
+
+      rowKeys.forEach((k) => {
+        const row = nextCharges[k] || {};
+        const code = (row.currency || "").toUpperCase();
+        if (code && rateMap[code]) {
+          const newRate = rateMap[code];
+          if (row.exchangeRate !== newRate) {
+            nextCharges[k] = { ...row, exchangeRate: newRate };
+            invModified = true;
+          }
+        }
+      });
+
+      if (invModified) {
+        globalModified = true;
+        return { ...inv, freightInsuranceCharges: nextCharges };
+      }
+      return inv;
+    });
+
+    if (globalModified) {
+      formik.setFieldValue("invoices", updatedInvoices);
+    }
+  }, [rateMap, formik.setFieldValue]);
+
   const autoSave = useCallback((values) => {
     // debounce-save hook if needed
   }, []);
@@ -316,8 +361,8 @@ const InvoiceFreightTab = ({ formik }) => {
 
     const fobRate =
       existingFob.exchangeRate !== undefined &&
-      existingFob.exchangeRate !== null &&
-      existingFob.exchangeRate !== ""
+        existingFob.exchangeRate !== null &&
+        existingFob.exchangeRate !== ""
         ? Number(existingFob.exchangeRate)
         : fallbackRate !== undefined && fallbackRate !== null
           ? Number(fallbackRate)
@@ -354,7 +399,7 @@ const InvoiceFreightTab = ({ formik }) => {
     const fobAmountINR =
       Number(fobRow.amountINR || 0) ||
       Number(fobRow.amount || 0) *
-        Number(fobRow.exchangeRate || invoiceExchangeRate || 0);
+      Number(fobRow.exchangeRate || invoiceExchangeRate || 0);
     if (!fobAmountINR || !invoiceExchangeRate) return 0;
 
     // invoiceExchangeRate is invoiceCurrency → INR
@@ -635,9 +680,9 @@ const InvoiceFreightTab = ({ formik }) => {
                       }}
                       value={
                         data.rate !== undefined &&
-                        data.rate !== null &&
-                        data.rate !== "" &&
-                        data.rate !== 0
+                          data.rate !== null &&
+                          data.rate !== "" &&
+                          data.rate !== 0
                           ? data.rate
                           : ""
                       }

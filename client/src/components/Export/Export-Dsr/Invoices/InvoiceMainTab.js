@@ -181,6 +181,62 @@ const InvoiceMainTab = ({ formik }) => {
     fetchRates();
   }, [formik.values.job_date]);
 
+  // AUTO-SYNC: Update values when rateMap changes (e.g. after job_date change)
+  useEffect(() => {
+    if (Object.keys(rateMap).length === 0) return;
+
+    let anyChanges = false;
+    const invList = formik.values.invoices || [];
+
+    // 1. Update top-level exchange_rate based on first invoice currency
+    const firstCurrency = (invList[0]?.currency || "").toUpperCase();
+    if (firstCurrency && rateMap[firstCurrency]) {
+      const newGlobalRate = rateMap[firstCurrency];
+      if (formik.values.exchange_rate !== newGlobalRate) {
+        formik.setFieldValue("exchange_rate", newGlobalRate);
+        anyChanges = true;
+      }
+    }
+
+    // 2. Update nested freightInsuranceCharges exchangeRate for all invoices
+    const nextInvoices = invList.map((inv) => {
+      const charges = inv.freightInsuranceCharges || {};
+      let chargesChanged = false;
+      const nextCharges = { ...charges };
+
+      const rowKeys = [
+        "freight",
+        "insurance",
+        "discount",
+        "otherDeduction",
+        "commission",
+        "fobValue",
+      ];
+
+      rowKeys.forEach((k) => {
+        const row = charges[k] || {};
+        const code = (row.currency || "").toUpperCase();
+        if (code && rateMap[code]) {
+          const newRate = rateMap[code];
+          if (row.exchangeRate !== newRate) {
+            nextCharges[k] = { ...row, exchangeRate: newRate };
+            chargesChanged = true;
+          }
+        }
+      });
+
+      if (chargesChanged) {
+        anyChanges = true;
+        return { ...inv, freightInsuranceCharges: nextCharges };
+      }
+      return inv;
+    });
+
+    if (anyChanges) {
+      formik.setFieldValue("invoices", nextInvoices);
+    }
+  }, [rateMap, formik.setFieldValue]);
+
   const mapTOIToPriceIncludes = (toi) => {
     switch (toi?.toUpperCase()) {
       case "C&I":
@@ -520,7 +576,7 @@ const InvoiceMainTab = ({ formik }) => {
                       style={styles.inputNumber}
                       value={
                         invoice.invoiceValue === 0 ||
-                        invoice.invoiceValue === ""
+                          invoice.invoiceValue === ""
                           ? ""
                           : invoice.invoiceValue
                       }
@@ -543,7 +599,7 @@ const InvoiceMainTab = ({ formik }) => {
                       style={styles.inputNumber}
                       value={
                         invoice.productValue === 0 ||
-                        invoice.productValue === ""
+                          invoice.productValue === ""
                           ? ""
                           : invoice.productValue
                       }
@@ -565,7 +621,7 @@ const InvoiceMainTab = ({ formik }) => {
                       style={styles.inputNumber}
                       value={
                         invoice.packing_charges === 0 ||
-                        invoice.packing_charges === ""
+                          invoice.packing_charges === ""
                           ? ""
                           : invoice.packing_charges
                       }
