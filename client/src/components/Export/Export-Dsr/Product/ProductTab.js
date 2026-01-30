@@ -11,6 +11,9 @@ import ProductReExportTab from "./ProductReExportTab";
 import ProductOtherDetailsTab from "./ProductOtherDetailsTab";
 import ProductDEECTab from "./ProductDEECTab";
 import ProductEPCGTab from "./ProductEPCGTab";
+import ProductDEPBTab from "./ProductDEPBTab";
+import ProductDFRCTab from "./ProductDFRCTab";
+import ProductJobWorkTab from "./ProductJobWorkTab";
 
 function ProductTabPanel({ children, value, index, ...other }) {
   return (
@@ -26,15 +29,80 @@ function ProductTabPanel({ children, value, index, ...other }) {
   );
 }
 
-// EXIM Code to Tab mapping
+// EXIM Code to Tab mapping 
 const getTabsForEximCode = (eximCode) => {
   const code = eximCode?.toString();
   switch (code) {
+    case "00 - FREE SHIPPING BILL INVOLVING REMITTANCE OF FOREIGN EXCHANGE": return [
+      "Main",
+      "General",
+      // "CessExport Duty",
+      "AreDetails",
+      "Re-Export",
+      "Other Details",
+    ];
+    case "01 - ADVANCE LICENCE WITH ACTUAL USER CONDITION":
+    case "02 - ADVANCE LICENCE FOR INTERMEDIATE SUPPLIES":
     case "03 - ADVANCE LICENCE": // ADVANCE LICENCE DEEC
+    case "04 - ADVANCE RELEASE ORDER":
+    case "05 - ADVANCE LICENCE FOR DEEMED EXPORTS":
       return [
         "Main",
         "General",
         "DEEC",
+        // "CessExport Duty",
+        // "AreDetails",
+        "Re-Export",
+        "Other Details",
+      ];
+    case "06 - DEPB-POST EXPORTS": // DEPB
+      return [
+        "Main",
+        "General",
+        "DEPB",
+        // "CessExport Duty",
+        "AreDetails",
+        "Re-Export",
+        "Other Details",
+      ];
+    case "08 - REPLENISHMENT LICENCE":
+    case "09 - DIAMOND IMPREST LICENCE":
+    case "22 - SERVED FROM INDIA SCHEME (SFIS)":
+    case "24 - VISHESH KRISHI UPAJ YOJANA":
+      return [
+        "Main",
+        "General",
+        // "CessExport Duty",
+        "AreDetails",
+        "Re-Export",
+        "Other Details",
+      ];
+    case "11 - CONCESSIONAL DUTY EPCG SCHEME": // EPCG
+    case "12 - ZERO DUTY EPCG SCHEME": // EPCG
+      return [
+        "Main",
+        "General",
+        "EPCG",
+        // "CessExport Duty",
+        // "AreDetails",
+        "Re-Export",
+        "Other Details",
+      ];
+    case "17 - ADVANCE LICENCE FOR ANNUAL REQUIREMENT":
+      return [
+        "Main",
+        "General",
+        "DEEC",
+        // "CessExport Duty",
+        // "AreDetails",
+        "Re-Export",
+        "Other Details",
+      ];
+    case "18 - DUTY FREE REPLENISHMENT CERTIFICATE": // DFRC
+      return [
+        "Main",
+        "General",
+        "DFRC",
         // "CessExport Duty",
         // "AreDetails",
         "Re-Export",
@@ -45,6 +113,16 @@ const getTabsForEximCode = (eximCode) => {
         "Main",
         "General",
         "Drawback",
+        // "CessExport Duty",
+        // "AreDetails",
+        "Re-Export",
+        "Other Details",
+      ];
+    case "20 - JOBBING (JBG)": // JOB WORK
+      return [
+        "Main",
+        "General",
+        "Job Work",
         // "CessExport Duty",
         // "AreDetails",
         "Re-Export",
@@ -198,6 +276,30 @@ const ProductTab = ({ formik, directories, params }) => {
       case "EPCG":
         return (
           <ProductEPCGTab
+            formik={formik}
+            selectedInvoiceIndex={selectedInvoiceIndex}
+            productIndex={selectedProductIndex}
+          />
+        );
+      case "DEPB":
+        return (
+          <ProductDEPBTab
+            formik={formik}
+            selectedInvoiceIndex={selectedInvoiceIndex}
+            productIndex={selectedProductIndex}
+          />
+        );
+      case "DFRC":
+        return (
+          <ProductDFRCTab
+            formik={formik}
+            selectedInvoiceIndex={selectedInvoiceIndex}
+            productIndex={selectedProductIndex}
+          />
+        );
+      case "Job Work":
+        return (
+          <ProductJobWorkTab
             formik={formik}
             selectedInvoiceIndex={selectedInvoiceIndex}
             productIndex={selectedProductIndex}
