@@ -1924,7 +1924,7 @@ const StatusSection = ({
     },
     {
       field: "goodsRegistrationDate",
-      label: "Goods Reg.",
+      label: "Goods Registration",
       type: "date",
       width: 1,
     },
@@ -1937,8 +1937,17 @@ const StatusSection = ({
     { field: "leoDate", label: "LEO", type: "date", width: 1 },
     { field: "leoUpload", label: "LEO Copy", type: "upload", width: 1 },
     {
+      field: "icdPort",
+      label: "ICD/Port",
+      type: "gateway-dropdown",
+      width: 1,
+    },
+  ].filter((f) => !f.hidden);
+
+  const row2Fields = [
+    {
       field: "containerPlacementDate",
-      label: "Cnt Placement",
+      label: "container placement",
       type: "date",
       width: 1,
       hidden: isAir,
@@ -1976,24 +1985,18 @@ const StatusSection = ({
       type: "upload",
       width: 1,
     },
-  ].filter((f) => !f.hidden);
-
-  const row2Fields = [
-    {
-      field: "icdPort",
-      label: "ICD/Port",
-      type: "gateway-dropdown",
-      width: 1,
-    },
     {
       field: "handoverForwardingNoteDate",
       label: "Handover doc",
       type: "date",
       width: 1,
     },
+  ].filter((f) => !f.hidden);
+
+  const row3Fields = [
     {
       field: "handoverImageUpload",
-      label: "Handover/Doc Copy",
+      label: "Handover Copy",
       type: "upload",
       width: 1,
       hidden: isAir,
@@ -2009,7 +2012,7 @@ const StatusSection = ({
       field: "dispatchDetails",
       label: "Dispatch Tracking",
       type: "dispatch",
-      width: 1,
+      width: 2,
       hidden: isAir,
     },
     {
@@ -2043,6 +2046,7 @@ const StatusSection = ({
   // Calculate grid columns for each row based on visible fields
   const r1Cols = row1Fields.reduce((sum, f) => sum + (f.width || 1), 0);
   const r2Cols = row2Fields.reduce((sum, f) => sum + (f.width || 1), 0);
+  const r3Cols = row3Fields.reduce((sum, f) => sum + (f.width || 1), 0);
 
   const renderCell = (f, item, rowIdx) => {
     return f.type === "upload" ? (
@@ -2254,7 +2258,7 @@ const StatusSection = ({
               minHeight: "28px",
               width: "100px",
             }}
-            placeholder="Date"
+            placeholder="dd-mm-yyyy"
           />
         </div>
       </div>
@@ -2356,7 +2360,7 @@ const StatusSection = ({
                   gridTemplateColumns: `repeat(${r2Cols}, 1fr)`,
                   border: "1px solid #e2e8f0",
                   borderTop: "none",
-                  borderRadius: "0 0 4px 4px",
+                  borderRadius: "0",
                   overflow: "hidden",
                 }}
               >
@@ -2378,6 +2382,46 @@ const StatusSection = ({
                 {row2Fields.map((f) => (
                   <div
                     key={`d2-${f.field}`}
+                    style={{
+                      ...styles.td,
+                      gridColumn: `span ${f.width || 1}`,
+                      borderRight: "1px solid #e2e8f0",
+                    }}
+                  >
+                    {renderCell(f, item, rowIdx)}
+                  </div>
+                ))}
+              </div>
+
+              {/* Row 3 Grid */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: `repeat(${r3Cols}, 1fr)`,
+                  border: "1px solid #e2e8f0",
+                  borderTop: "none",
+                  borderRadius: "0 0 4px 4px",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Headers 3 */}
+                {row3Fields.map((f) => (
+                  <div
+                    key={`h3-${f.field}`}
+                    style={{
+                      ...styles.th,
+                      gridColumn: `span ${f.width || 1}`,
+                      borderBottom: "1px solid #cbd5e1",
+                      borderRight: "1px solid #e2e8f0",
+                    }}
+                  >
+                    {f.label}
+                  </div>
+                ))}
+                {/* Data 3 */}
+                {row3Fields.map((f) => (
+                  <div
+                    key={`d3-${f.field}`}
                     style={{
                       ...styles.td,
                       gridColumn: `span ${f.width || 1}`,

@@ -810,8 +810,22 @@ const ESanchitEditDialog = ({
                   }
                 >
                   <option value="">Select Type...</option>
-                  <option value="380">Commercial Invoice</option>
-                  <option value="Packing List">Packing List</option>
+                  <option value="380000">380000-Commercial Invoice</option>
+                  <option value="331000">331000-Commercial invoice which includes a packing list</option>
+                  <option value="740000">740000-Air Waybill</option>
+                  <option value="911IS2">911IS2-Export Performance Certificate(Issued By SILK)</option>
+                  <option value="911SG2">911SG2-Export Performance Certificate(Issued By SPORTS)</option>
+                  <option value="811CB1">811CB1-Export permit for Export of Indian Coffee</option>
+                  <option value="858EX2">858EX2-Export Exmaination Images</option>
+                  <option value="811DE1">811DE1-Export Licence</option>
+                  <option value="911SR4">911SR4-Export Performance Certificate (EPC)</option>
+                  <option value="811TB1">811TB1-Exporter License</option>
+                  <option value="101TO3">101TO3-Exporter of Tobacco</option>
+                  <option value="101TO4">101TO4-Exporter of Tobacco Products</option>
+                  <option value="101CB1">101CB1-Exporter Registration</option>
+                  <option value="911MP1">911MP1-Exporter Certificate Application MPEDA</option>
+                  <option value="830RV1">830RV1-Exports Revision Copy</option>
+                  <option value="271000">271000-Packing List</option>
                 </select>
               </div>
               <Field

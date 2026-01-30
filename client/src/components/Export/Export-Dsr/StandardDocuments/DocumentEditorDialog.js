@@ -80,7 +80,7 @@ const DocumentEditorDialog = ({
             </DialogTitle>
             <DialogContent dividers sx={{ p: 0, height: "100%" }}>
                 <Editor
-                    apiKey="i5olr495qse96606e9n24yl5mxg36jbs0i597ikvspy4z4go"
+                    tinymceScriptSrc="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js"
                     onInit={(evt, editor) => (editorRef.current = editor)}
                     initialValue={initialContent}
                     init={{
