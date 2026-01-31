@@ -1152,7 +1152,8 @@ function ProductRow({
   useEffect(() => {
     const fetchRodtepData = async () => {
       if (!product.ritc || product.ritc.toString().length < 4) return;
-      if (product.rodtepInfo?.claim !== "Yes") return;
+      const claim = product.rodtepInfo?.claim || "Yes";
+      if (claim !== "Yes") return;
 
       const eximCode = product.eximCode || "";
       const useReApi = eximCode.includes("03");
@@ -1515,7 +1516,8 @@ function ProductRow({
           <input
             style={styles.input}
             type="number"
-            value={product.alternateQty || 0}
+            value={product.alternateQty || ""}
+            placeholder="0.00"
             onChange={(e) =>
               handleProductChange(
                 index,
@@ -1661,7 +1663,8 @@ function ProductRow({
                     : "#f7fafc",
               }}
               type="number"
-              value={product.pmvInfo?.pmvPerUnit ?? 0}
+              value={product.pmvInfo?.pmvPerUnit || ""}
+              placeholder="0.00"
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1706,7 +1709,8 @@ function ProductRow({
                     : "#f7fafc",
               }}
               type="number"
-              value={product.pmvInfo?.totalPMV ?? 0}
+              value={product.pmvInfo?.totalPMV || ""}
+              placeholder="0.00"
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1823,7 +1827,8 @@ function ProductRow({
                   : {}),
               }}
               type="number"
-              value={product.igstCompensationCess?.compensationCessRate ?? 0}
+              value={product.igstCompensationCess?.compensationCessRate || ""}
+              placeholder="0.00"
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1850,7 +1855,8 @@ function ProductRow({
                   : {}),
               }}
               type="number"
-              value={product.igstCompensationCess?.taxableValueINR ?? 0}
+              value={product.igstCompensationCess?.taxableValueINR || ""}
+              placeholder="0.00"
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1879,7 +1885,8 @@ function ProductRow({
                   : {}),
               }}
               type="number"
-              value={product.igstCompensationCess?.igstAmountINR ?? 0}
+              value={product.igstCompensationCess?.igstAmountINR || ""}
+              placeholder="0.00"
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1905,8 +1912,9 @@ function ProductRow({
               }}
               type="number"
               value={
-                product.igstCompensationCess?.compensationCessAmountINR ?? 0
+                product.igstCompensationCess?.compensationCessAmountINR || ""
               }
+              placeholder="0.00"
               onChange={(e) =>
                 handleProductChange(
                   index,
@@ -1931,9 +1939,21 @@ function ProductRow({
           <select
             style={styles.select}
             value={product.rodtepInfo?.claim || "Yes"}
-            onChange={(e) =>
-              handleProductChange(index, "rodtepInfo.claim", e.target.value)
-            }
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "No") {
+                handleProductChange(index, "rodtepInfo", {
+                  ...(product.rodtepInfo || {}),
+                  claim: "No",
+                  ratePercent: 0,
+                  capValue: 0,
+                  capValuePerUnits: 0,
+                  amountINR: 0,
+                });
+              } else {
+                handleProductChange(index, "rodtepInfo.claim", val);
+              }
+            }}
           >
             <option value="Yes">Yes</option>
             <option value="No">No</option>
@@ -1946,7 +1966,8 @@ function ProductRow({
           <input
             style={styles.input}
             type="number"
-            value={product.rodtepInfo?.quantity ?? 0}
+            value={product.rodtepInfo?.quantity || ""}
+            placeholder="0.00"
             onChange={(e) =>
               handleProductChange(
                 index,
@@ -1975,7 +1996,8 @@ function ProductRow({
           <input
             style={styles.input}
             type="number"
-            value={product.rodtepInfo?.ratePercent ?? 0}
+            value={product.rodtepInfo?.ratePercent || ""}
+            placeholder="0.00"
             onChange={(e) =>
               handleProductChange(
                 index,
@@ -1992,7 +2014,8 @@ function ProductRow({
           <input
             style={styles.input}
             type="number"
-            value={product.rodtepInfo?.capValue ?? 0}
+            value={product.rodtepInfo?.capValue || ""}
+            placeholder="0.00"
             onChange={(e) =>
               handleProductChange(
                 index,
@@ -2009,7 +2032,8 @@ function ProductRow({
           <input
             style={styles.input}
             type="number"
-            value={product.rodtepInfo?.capValuePerUnits ?? 0}
+            value={product.rodtepInfo?.capValuePerUnits || ""}
+            placeholder="0.00"
             onChange={(e) =>
               handleProductChange(
                 index,
@@ -2038,7 +2062,8 @@ function ProductRow({
           <input
             style={styles.input}
             type="number"
-            value={product.rodtepInfo?.amountINR ?? 0}
+            value={product.rodtepInfo?.amountINR || ""}
+            placeholder="0.00"
             onChange={(e) =>
               handleProductChange(
                 index,

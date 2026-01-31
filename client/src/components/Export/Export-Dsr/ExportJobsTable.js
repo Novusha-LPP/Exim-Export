@@ -28,6 +28,7 @@ import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
 import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharGenerator";
 import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
 import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
+import { CUSTOM_HOUSE_OPTIONS, getOptionsForBranch } from "../../common/CustomHouseDropdown";
 
 // --- Clean Enterprise Styles ---
 const s = {
@@ -491,6 +492,18 @@ const ExportJobsTable = () => {
     selectedJobOwner,
     selectedGoodsStuffedAt,
   ]);
+
+  // Reset Custom House filter when branch changes (to clear invalid selection)
+  useEffect(() => {
+    if (selectedBranch && selectedCustomHouse) {
+      // Check if current custom house belongs to the selected branch
+      const branchOptions = getOptionsForBranch(selectedBranch);
+      const validHouses = branchOptions.flatMap(g => g.items.map(i => i.value));
+      if (!validHouses.includes(selectedCustomHouse)) {
+        setSelectedCustomHouse(""); // Reset if not valid for this branch
+      }
+    }
+  }, [selectedBranch]);
 
   const handleJobClick = (job, e) => {
     // Determine if the click was on the Job No column (specifically the text or cell)
@@ -1154,10 +1167,14 @@ const ExportJobsTable = () => {
               onChange={(e) => setSelectedCustomHouse(e.target.value)}
             >
               <option value="">All Custom Houses</option>
-              {customHouses.map((ch, i) => (
-                <option key={i} value={ch}>
-                  {ch}
-                </option>
+              {getOptionsForBranch(selectedBranch).map((group) => (
+                <optgroup key={group.group} label={group.group}>
+                  {group.items.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
 

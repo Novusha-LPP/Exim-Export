@@ -794,6 +794,195 @@ function GatewayPortDropdown({
   );
 }
 
+// Custom House options grouped by location with branch codes
+const CUSTOM_HOUSE_OPTIONS = [
+  {
+    group: "Ahmedabad", branchCode: "AMD", items: [
+      { value: "AHMEDABAD AIR CARGO", label: "Ahmedabad Air Cargo" },
+      { value: "ICD SABARMATI, AHMEDABAD", label: "ICD Sabarmati, Ahmedabad" },
+      { value: "ICD SACHANA", label: "ICD SACHANA" },
+      { value: "ICD VIROCHAN NAGAR", label: "ICD Virochan Nagar" },
+      { value: "THAR DRY PORT", label: "THAR DRY PORT" },
+    ]
+  },
+  {
+    group: "Baroda", branchCode: "BRD", items: [
+      { value: "ICD VIRAMGAM", label: "ICD VIRAMGAM" },
+      { value: "ANKLESHWAR ICD", label: "Ankleshwar ICD" },
+    ]
+  },
+  {
+    group: "Gandhidham", branchCode: "GIM", items: [
+      { value: "MUNDRA SEA", label: "Mundra Sea" },
+      { value: "KANDLA SEA", label: "Kandla Sea" },
+    ]
+  },
+  {
+    group: "Cochin", branchCode: "COK", items: [
+      { value: "COCHIN AIR CARGO", label: "Cochin Air Cargo" },
+      { value: "COCHIN SEA", label: "Cochin Sea" },
+    ]
+  },
+  {
+    group: "Hazira", branchCode: "HAZ", items: [
+      { value: "HAZIRA", label: "Hazira" },
+    ]
+  },
+];
+
+function CustomHouseDropdownLocal({ label, value, onChange, branchCode = "" }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value || "");
+  const [active, setActive] = useState(-1);
+  const wrapRef = useRef(null);
+  const keepOpen = useRef(false);
+
+  useEffect(() => {
+    setQuery(value || "");
+  }, [value]);
+
+  useEffect(() => {
+    function close(e) {
+      if (!keepOpen.current && wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  // Filter options by branch code first
+  const branchOptions = branchCode
+    ? CUSTOM_HOUSE_OPTIONS.filter(g => g.branchCode === branchCode.toUpperCase())
+    : CUSTOM_HOUSE_OPTIONS;
+
+  // Flatten and filter options by query
+  const filteredGroups = branchOptions.map(group => ({
+    ...group,
+    items: group.items.filter(item => {
+      const needle = (query || "").toUpperCase();
+      return !needle ||
+        item.value.toUpperCase().includes(needle) ||
+        item.label.toUpperCase().includes(needle) ||
+        group.group.toUpperCase().includes(needle);
+    }),
+  })).filter(group => group.items.length > 0);
+
+  // Flat list for keyboard navigation
+  const flatFiltered = [];
+  filteredGroups.forEach(group => {
+    group.items.forEach(item => flatFiltered.push(item));
+  });
+
+  const handleSelect = (item) => {
+    const val = item.value.toUpperCase();
+    setQuery(val);
+    onChange(val);
+    setOpen(false);
+    setActive(-1);
+  };
+
+  let itemIndex = -1;
+
+  return (
+    <div style={s.col} ref={wrapRef}>
+      <label style={s.label}>{label}</label>
+      <div style={s.comboWrapper}>
+        <input
+          style={s.inputWithIcon}
+          value={toUpper(query)}
+          onChange={(e) => {
+            const v = e.target.value.toUpperCase();
+            setQuery(v);
+            onChange(v);
+            setOpen(true);
+          }}
+          onFocus={() => {
+            setOpen(true);
+            setActive(-1);
+            keepOpen.current = true;
+          }}
+          onBlur={() => {
+            setTimeout(() => {
+              keepOpen.current = false;
+            }, 100);
+          }}
+          placeholder="SELECT CUSTOM HOUSE"
+          autoComplete="off"
+          onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (open && active >= 0 && flatFiltered[active]) {
+                handleSelect(flatFiltered[active]);
+              } else if (flatFiltered.length === 1) {
+                handleSelect(flatFiltered[0]);
+              }
+              setOpen(false);
+              return;
+            }
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (active >= 0 && flatFiltered[active]) {
+                handleSelect(flatFiltered[active]);
+              }
+            } else if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setOpen(true);
+              setActive((a) => Math.min(flatFiltered.length - 1, a < 0 ? 0 : a + 1));
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setActive((a) => Math.max(0, a - 1));
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              setOpen(false);
+            }
+          }}
+        />
+        <span style={s.comboIcon}>▼</span>
+        {open && filteredGroups.length > 0 && (
+          <div style={s.dropdownList}>
+            {filteredGroups.map((group) => (
+              <div key={group.group}>
+                <div style={{
+                  padding: "6px 10px",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: "#1976d2",
+                  background: "#f0f7ff",
+                  borderBottom: "1px solid #e3e7ee",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}>
+                  {group.group}
+                </div>
+                {group.items.map((item) => {
+                  itemIndex++;
+                  const currentIndex = itemIndex;
+                  return (
+                    <div
+                      key={item.value}
+                      style={{
+                        ...s.dropdownItem,
+                        paddingLeft: 18,
+                        backgroundColor: currentIndex === active ? "#f9fafb" : "#fff",
+                      }}
+                      onMouseDown={() => handleSelect(item)}
+                      onMouseEnter={() => setActive(currentIndex)}
+                    >
+                      <div style={{ fontWeight: 600, color: "#111827" }}>
+                        {item.label.toUpperCase()}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const AddExJobs = ({ onJobCreated }) => {
   const emptyConsignee = {
     consignee_name: "",
@@ -803,6 +992,8 @@ const AddExJobs = ({ onJobCreated }) => {
   const [formData, setFormData] = useState({
     branch_code: "AMD", // 👈 default
     exporter: "",
+    job_owner: "",
+    port_of_loading: "",
     consignees: [{ ...emptyConsignee }],
     ieCode: "",
     panNo: "",
@@ -833,6 +1024,27 @@ const AddExJobs = ({ onJobCreated }) => {
   const [filteredConsignees, setFilteredConsignees] = useState([]);
   const [keyboardActive, setKeyboardActive] = useState(-1);
   const consigneeMenuRef = useRef(null);
+
+  // Users for Job Owner
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_STRING}/export-jobs-module-users`
+        );
+        if (res.data.success) {
+          setUsers(res.data.data || []);
+        } else if (Array.isArray(res.data.data)) {
+          setUsers(res.data.data);
+        }
+      } catch (e) {
+        console.error("Error fetching users", e);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   // inside AddExJobs.jsx, before component
   useEffect(() => {
@@ -1032,6 +1244,8 @@ const AddExJobs = ({ onJobCreated }) => {
     setFormData({
       branch_code: "AMD",
       exporter: "",
+      job_owner: "",
+      port_of_loading: "",
       consignees: [{ ...emptyConsignee }],
       ieCode: "",
       pan_no: "",
@@ -1193,6 +1407,22 @@ const AddExJobs = ({ onJobCreated }) => {
                       handleInputChange("job_date", e.target.value)
                     }
                   />
+                </div>
+
+                <div style={{ ...s.col, maxWidth: "160px" }}>
+                  <label style={s.label}>Job Owner</label>
+                  <select
+                    style={s.select}
+                    value={formData.job_owner}
+                    onChange={(e) => handleInputChange("job_owner", e.target.value)}
+                  >
+                    <option value="">Select Owner</option>
+                    {users.map((u) => (
+                      <option key={u.username} value={u.username}>
+                        {u.fullName}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div style={{ ...s.col, maxWidth: "100px" }}>
@@ -1433,18 +1663,18 @@ const AddExJobs = ({ onJobCreated }) => {
                   </select>
                 </div>
 
-                {/* Custom House using SAME directory */}
-                <GatewayPortDropdown
+                {/* Custom House with static grouped options */}
+                <CustomHouseDropdownLocal
                   label="Custom House"
                   value={formData.custom_house}
                   onChange={(val) => handleInputChange("custom_house", val)}
-                  priorityList={
-                    formData.branch_code === "AMD"
-                      ? ["ICD AHMEDABAD", "SABARMATI", "THAR", "SACHANA"]
-                      : formData.branch_code === "BRD"
-                        ? ["ICD ANKLESHWAR"]
-                        : []
-                  }
+                  branchCode={formData.branch_code}
+                />
+
+                <GatewayPortDropdown
+                  label="Port of Loading"
+                  value={formData.port_of_loading}
+                  onChange={(val) => handleInputChange("port_of_loading", val)}
                 />
               </div>
             </div>

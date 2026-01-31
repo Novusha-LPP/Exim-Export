@@ -1640,7 +1640,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   style={styles.input}
                   type="number"
                   value={
-                    formik.values.total_no_of_pkgs === 0
+                    Number(formik.values.total_no_of_pkgs) === 0
                       ? ""
                       : formik.values.total_no_of_pkgs || ""
                   }
@@ -1666,7 +1666,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                     style={styles.input}
                     type="number"
                     value={
-                      formik.values.loose_pkgs === 0
+                      Number(formik.values.loose_pkgs) === 0
                         ? ""
                         : formik.values.loose_pkgs || ""
                     }
@@ -1682,7 +1682,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                     style={styles.input}
                     type="number"
                     value={
-                      formik.values.no_of_containers === 0
+                      Number(formik.values.no_of_containers) === 0
                         ? ""
                         : formik.values.no_of_containers || ""
                     }
@@ -1694,83 +1694,82 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                 </div>
               </>
             )}
-            {!isAir && (
-              <>
-                <div style={styles.split}>
-                  <div style={styles.half}>
-                    <div style={styles.label}>GROSS WEIGHT</div>
-                    <input
-                      style={styles.input}
-                      type="number"
-                      step="0.001"
-                      value={
-                        formik.values.gross_weight_kg === 0
-                          ? ""
-                          : formik.values.gross_weight_kg || ""
+
+            <>
+              <div style={styles.split}>
+                <div style={styles.half}>
+                  <div style={styles.label}>GROSS WEIGHT</div>
+                  <input
+                    style={styles.input}
+                    type="number"
+                    step="0.001"
+                    value={
+                      Number(formik.values.gross_weight_kg) === 0
+                        ? ""
+                        : formik.values.gross_weight_kg || ""
+                    }
+                    onChange={(e) =>
+                      handleFieldChange("gross_weight_kg", e.target.value)
+                    }
+                    onBlur={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val)) {
+                        handleFieldChange("gross_weight_kg", val.toFixed(3));
                       }
-                      onChange={(e) =>
-                        handleFieldChange("gross_weight_kg", e.target.value)
-                      }
-                      onBlur={(e) => {
-                        const val = parseFloat(e.target.value);
-                        if (!isNaN(val)) {
-                          handleFieldChange("gross_weight_kg", val.toFixed(3));
-                        }
-                      }}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <UnitDropdownField
-                    label="UNIT"
-                    fieldName="gross_weight_unit" // use your desired formik field
-                    formik={formik}
-                    unitOptions={unitCodes}
-                    placeholder="Enter Unit"
+                    }}
+                    placeholder="0.00"
                   />
                 </div>
-                <div style={styles.split}>
-                  <div style={styles.half}>
-                    <div style={styles.label}>NET WEIGHT</div>
-                    <input
-                      style={styles.input}
-                      type="number"
-                      step="0.001"
-                      value={
-                        formik.values.net_weight_kg === 0
-                          ? ""
-                          : formik.values.net_weight_kg || ""
+                <UnitDropdownField
+                  label="UNIT"
+                  fieldName="gross_weight_unit" // use your desired formik field
+                  formik={formik}
+                  unitOptions={unitCodes}
+                  placeholder="Enter Unit"
+                />
+              </div>
+              <div style={styles.split}>
+                <div style={styles.half}>
+                  <div style={styles.label}>NET WEIGHT</div>
+                  <input
+                    style={styles.input}
+                    type="number"
+                    step="0.001"
+                    value={
+                      Number(formik.values.net_weight_kg) === 0
+                        ? ""
+                        : formik.values.net_weight_kg || ""
+                    }
+                    onChange={(e) =>
+                      handleFieldChange("net_weight_kg", e.target.value)
+                    }
+                    onBlur={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val)) {
+                        handleFieldChange("net_weight_kg", val.toFixed(3));
                       }
-                      onChange={(e) =>
-                        handleFieldChange("net_weight_kg", e.target.value)
-                      }
-                      onBlur={(e) => {
-                        const val = parseFloat(e.target.value);
-                        if (!isNaN(val)) {
-                          handleFieldChange("net_weight_kg", val.toFixed(3));
-                        }
-                      }}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <UnitDropdownField
-                    label="UNIT"
-                    fieldName="net_weight_unit"
-                    formik={formik}
-                    unitOptions={unitCodes}
-                    placeholder="Enter Unit"
+                    }}
+                    placeholder="0.00"
                   />
                 </div>
-                {parseFloat(formik.values.net_weight_kg || 0) >
-                  parseFloat(formik.values.gross_weight_kg || 0) && (
-                    <Alert
-                      severity="warning"
-                      sx={{ mt: 1, py: 0, fontSize: "0.80rem" }}
-                    >
-                      Warning: Net Weight cannot be greater than Gross Weight.
-                    </Alert>
-                  )}
-              </>
-            )}
+                <UnitDropdownField
+                  label="UNIT"
+                  fieldName="net_weight_unit"
+                  formik={formik}
+                  unitOptions={unitCodes}
+                  placeholder="Enter Unit"
+                />
+              </div>
+              {parseFloat(formik.values.net_weight_kg || 0) >
+                parseFloat(formik.values.gross_weight_kg || 0) && (
+                  <Alert
+                    severity="warning"
+                    sx={{ mt: 1, py: 0, fontSize: "0.80rem" }}
+                  >
+                    Warning: Net Weight cannot be greater than Gross Weight.
+                  </Alert>
+                )}
+            </>
             <div style={styles.split}>
               <div style={styles.half}>
                 <div style={styles.label}>VOLUME</div>
@@ -1779,7 +1778,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   type="number"
                   step="0.001"
                   value={
-                    formik.values.volume_cbm === 0
+                    Number(formik.values.volume_cbm) === 0
                       ? ""
                       : formik.values.volume_cbm || ""
                   }
@@ -1811,7 +1810,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   type="number"
                   step="0.001"
                   value={
-                    formik.values.chargeable_weight === 0
+                    Number(formik.values.chargeable_weight) === 0
                       ? ""
                       : formik.values.chargeable_weight || ""
                   }

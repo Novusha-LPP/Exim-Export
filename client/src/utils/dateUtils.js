@@ -182,6 +182,38 @@ export const handleDateInput = (value) => {
 
   const trimmedValue = value.trim();
 
+  // Handle compact format without separators (e.g., "251225" -> "25-12-2025")
+  // Must be exactly 6 digits: ddMMyy
+  if (/^\d{6}$/.test(trimmedValue)) {
+    const day = trimmedValue.substring(0, 2);
+    const month = trimmedValue.substring(2, 4);
+    const shortYear = trimmedValue.substring(4, 6);
+    // Convert 2-digit year to 4-digit (assume 2000s for years 00-99)
+    const fullYear = parseInt(shortYear, 10) >= 0 ? `20${shortYear}` : `19${shortYear}`;
+
+    const dateStr = `${day}-${month}-${fullYear}`;
+    const testDate = parse(dateStr, "dd-MM-yyyy", new Date());
+    if (isValid(testDate)) {
+      return dateStr;
+    }
+  }
+
+  // Handle format with separators but 2-digit year (e.g., "25.12.25" or "25-12-25" or "25/12/25")
+  const shortYearMatch = trimmedValue.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2})$/);
+  if (shortYearMatch) {
+    const day = shortYearMatch[1].padStart(2, "0");
+    const month = shortYearMatch[2].padStart(2, "0");
+    const shortYear = shortYearMatch[3];
+    // Convert 2-digit year to 4-digit (assume 2000s)
+    const fullYear = `20${shortYear}`;
+
+    const dateStr = `${day}-${month}-${fullYear}`;
+    const testDate = parse(dateStr, "dd-MM-yyyy", new Date());
+    if (isValid(testDate)) {
+      return dateStr;
+    }
+  }
+
   // First, try to parse dates with month names (e.g., "31-dec-2025", "31 December 2025")
   // Check if the value contains letters (potential month name)
   if (/[a-zA-Z]/.test(trimmedValue)) {

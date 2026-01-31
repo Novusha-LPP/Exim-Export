@@ -15,6 +15,7 @@ const allModules = [
   "Export - ESanchit",
   "Export - Documentation",
   "Export - Jobs",
+  "Export - VGM",
   "Export - Audit Trail",
   "Export - Operation",
   "Export - Charges",

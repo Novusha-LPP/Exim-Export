@@ -174,7 +174,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
 
       // Propagate Unit change
       if (field === "qtyUnit") {
-        current.socunit = rawValue;
+        // Only update perUnit, do NOT overwrite socunit (user request)
         current.perUnit = rawValue;
       }
 

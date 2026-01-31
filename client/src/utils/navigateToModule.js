@@ -37,6 +37,8 @@ export const navigateToModule = (module, navigate) => {
       return navigate("/export-directories");
     case "Export - Jobs":
       return navigate("/export-dsr");
+    case "Export - VGM":
+      return window.location.href = "http://handover-odex.s3-website.ap-south-1.amazonaws.com";
     case "Export - Documentation":
       return navigate("/export-documentation");
     case "Export - ESanchit":

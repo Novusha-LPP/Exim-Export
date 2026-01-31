@@ -594,19 +594,6 @@ function useExportExcelUpload(inputRef, onSuccess) {
                             if (parsed.year) modifiedItem.year = parsed.year;
                             if (parsed.branch_code) modifiedItem.branch_code = parsed.branch_code;
                         }
-                        // Handle custom house transformation
-                        else if (mappedField === "custom_house") {
-                            const customHouse = String(value).toLowerCase();
-                            if (customHouse.includes("sabarmati")) {
-                                modifiedItem.custom_house = "ICD KHODIYAR";
-                            } else if (customHouse.includes("thar")) {
-                                modifiedItem.custom_house = "ICD SANAND";
-                            } else if (customHouse.includes("mundra")) {
-                                modifiedItem.custom_house = "MUNDRA PORT";
-                            } else {
-                                modifiedItem.custom_house = value;
-                            }
-                        }
                         // Handle IE Code - ensure 10 characters
                         else if (mappedField === "ieCode") {
                             let ieCodeValue = String(value || "").trim();

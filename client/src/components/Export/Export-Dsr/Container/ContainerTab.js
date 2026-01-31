@@ -23,7 +23,7 @@ const containerTypes = [
   "40 PLATFORM",
 ];
 
-const sealTypes = ["RFID - RADIO FREQUENCY IDENTIFIER"];
+const sealTypes = ["RFID"];
 
 function ContainerTab({ formik, onUpdate }) {
   const [editingIndex, setEditingIndex] = useState(null);
@@ -169,7 +169,7 @@ function ContainerTab({ formik, onUpdate }) {
       type: "",
       pkgsStuffed: 0,
       grossWeight: 0,
-      sealType: "RFID - RADIO FREQUENCY IDENTIFIER",
+      sealType: "RFID",
       shippingLineSealNo: "",
       tareWeightKgs: 0,
       grWtPlusTrWt: 0,
@@ -301,20 +301,6 @@ function ContainerTab({ formik, onUpdate }) {
                     />
                   </td>
 
-                  <td>
-                    <input
-                      style={styles.input}
-                      value={toUpperVal(row.shippingLineSealNo || "")}
-                      onChange={(e) =>
-                        handleFieldChange(
-                          idx,
-                          "shippingLineSealNo",
-                          toUpperVal(e.target.value),
-                        )
-                      }
-                      placeholder="S/LINE SEAL NO"
-                    />
-                  </td>
                   <td style={styles.td}>
                     <select
                       style={styles.select}
@@ -330,6 +316,21 @@ function ContainerTab({ formik, onUpdate }) {
                         </option>
                       ))}
                     </select>
+                  </td>
+
+                  <td>
+                    <input
+                      style={styles.input}
+                      value={toUpperVal(row.shippingLineSealNo || "")}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          idx,
+                          "shippingLineSealNo",
+                          toUpperVal(e.target.value),
+                        )
+                      }
+                      placeholder="S/LINE SEAL NO"
+                    />
                   </td>
 
                   <td style={styles.td}>
@@ -353,7 +354,7 @@ function ContainerTab({ formik, onUpdate }) {
                     <input
                       type="number"
                       style={styles.input}
-                      value={row.pkgsStuffed === 0 ? "" : row.pkgsStuffed}
+                      value={Number(row.pkgsStuffed) === 0 ? "" : row.pkgsStuffed}
                       onChange={(e) =>
                         handleFieldChange(
                           idx,
@@ -369,7 +370,7 @@ function ContainerTab({ formik, onUpdate }) {
                     <input
                       type="number"
                       style={styles.input}
-                      value={row.grossWeight === 0 ? "" : row.grossWeight}
+                      value={Number(row.grossWeight) === 0 ? "" : row.grossWeight}
                       onChange={(e) =>
                         handleFieldChange(
                           idx,
@@ -385,7 +386,7 @@ function ContainerTab({ formik, onUpdate }) {
                     <input
                       type="number"
                       style={styles.input}
-                      value={row.tareWeightKgs === 0 ? "" : row.tareWeightKgs}
+                      value={Number(row.tareWeightKgs) === 0 ? "" : row.tareWeightKgs}
                       onChange={(e) =>
                         handleFieldChange(
                           idx,
@@ -401,7 +402,7 @@ function ContainerTab({ formik, onUpdate }) {
                     <input
                       type="number"
                       style={styles.input}
-                      value={row.grWtPlusTrWt === 0 ? "" : row.grWtPlusTrWt}
+                      value={Number(row.grWtPlusTrWt) === 0 ? "" : row.grWtPlusTrWt}
                       onChange={(e) =>
                         handleFieldChange(
                           idx,

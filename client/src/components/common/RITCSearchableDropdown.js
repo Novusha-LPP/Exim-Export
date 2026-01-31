@@ -90,6 +90,12 @@ const RITCSearchableDropdown = ({
         `${opt.hs_code || ""} ${opt.item_description || ""}`,
       );
       setOptions(sorted);
+
+      // Auto-match if exact HS Code is found (for Paste functionality)
+      const exactMatch = sorted.find((s) => s.hs_code === search);
+      if (exactMatch) {
+        onChange({ target: { value: search }, origin: exactMatch });
+      }
     } catch (e) {
       if (e.name !== "AbortError") {
         console.error("RITC fetch error", e);
@@ -98,15 +104,22 @@ const RITCSearchableDropdown = ({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onChange]); // Added onChange dependency
+
+  const firstRender = useRef(true);
 
   useEffect(() => {
-    if (!open) return;
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+
+    // allow fetch even if closed (for paste-and-tab support)
     const timer = setTimeout(() => {
       fetchOptions(query);
-    }, 500);
+    }, 300);
     return () => clearTimeout(timer);
-  }, [query, open, fetchOptions]);
+  }, [query, fetchOptions]);
 
   const handleSelect = (opt) => {
     const hs = opt.hs_code || "";
@@ -215,7 +228,9 @@ const RITCSearchableDropdown = ({
           placeholder={placeholder}
           value={query}
           onChange={(e) => {
-            setQuery(e.target.value.toUpperCase());
+            const val = e.target.value.toUpperCase();
+            setQuery(val);
+            onChange({ target: { value: val } }); // Propagate text immediately
             setOpen(true);
             setActive(-1);
           }}

@@ -2006,7 +2006,6 @@ const StatusSection = ({
       label: "Forwarder",
       type: "text",
       width: 1,
-      hidden: isAir,
     },
     {
       field: "dispatchDetails",

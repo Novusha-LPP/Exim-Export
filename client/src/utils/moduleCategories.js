@@ -6,6 +6,7 @@ export const moduleCategories = {
   "Export - ESanchit": "Export",
   Directories: "Export",
   "Export - Jobs": "Export",
+  "Export - VGM": "Export",
   "Export - Audit Trail": "Export",
   "Open Points": "Management",
 };

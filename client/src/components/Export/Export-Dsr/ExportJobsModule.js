@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Typography, Button, Box, Paper, Tabs, Tab } from "@mui/material";
+import { Typography, Button, Box, Paper, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import LockIcon from "@mui/icons-material/Lock";
 import { UserContext } from "../../../contexts/UserContext";
 import useExportJobDetails from "../../../customHooks/useExportJobDetails.js";
 import axios from "axios";
@@ -17,7 +18,6 @@ import InvoiceTab from "./Invoices/InvoiceTab.js";
 import ProductTab from "./Product/ProductTab.js";
 import ESanchitTab from "./E-sanchit/EsanchitTab.js";
 import ChargesTab from "./Charges/ChargesTab.js";
-import FinancialTab from "./Financial/FinancialTab.js";
 import OperationsTab from "./Operations/OperationsTab.jsx";
 
 // Tab Panel Component
@@ -48,7 +48,7 @@ function ExportJobsModule() {
   const { jobNo } = useParams();
   const decodedJobNo = decodeURIComponent(jobNo || "");
 
-  const { data, loading, formik } = useExportJobDetails(
+  const { data, loading, formik, lockError } = useExportJobDetails(
     { job_no: decodedJobNo },
     setFileSnackbar
   );
@@ -59,6 +59,103 @@ function ExportJobsModule() {
   };
 
   const [activeTab, setActiveTab] = useState(getInitialTab());
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockDialogOpen, setLockDialogOpen] = useState(false);
+  const [lockedByUser, setLockedByUser] = useState(null);
+  const hasLockedRef = useRef(false);
+
+  // Lock the job when the component mounts
+  const lockJob = useCallback(async () => {
+    if (!decodedJobNo || !user?.username || hasLockedRef.current) return;
+
+    try {
+      const response = await axios.put(
+        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(decodedJobNo)}/lock`,
+        { username: user.username }
+      );
+      if (response.data.message === "Job locked successfully") {
+        setIsLocked(true);
+        hasLockedRef.current = true;
+      }
+    } catch (error) {
+      if (error.response?.status === 423) {
+        // Job is locked by someone else
+        setLockedByUser(error.response.data.lockedBy);
+        setLockDialogOpen(true);
+      } else {
+        console.error("Error locking job:", error);
+      }
+    }
+  }, [decodedJobNo, user?.username]);
+
+  // Unlock the job
+  const unlockJob = useCallback(async () => {
+    if (!decodedJobNo || !user?.username || !hasLockedRef.current) return;
+
+    try {
+      await axios.put(
+        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(decodedJobNo)}/unlock`,
+        { username: user.username }
+      );
+      hasLockedRef.current = false;
+      setIsLocked(false);
+    } catch (error) {
+      console.error("Error unlocking job:", error);
+    }
+  }, [decodedJobNo, user?.username]);
+
+  // Lock job when data is loaded and unlock on unmount
+  useEffect(() => {
+    if (data && !loading && decodedJobNo) {
+      lockJob();
+    }
+
+    // Cleanup: unlock when component unmounts
+    return () => {
+      if (hasLockedRef.current) {
+        // Use sync version for unmount to ensure it runs
+        const unlockSync = async () => {
+          try {
+            await axios.put(
+              `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(decodedJobNo)}/unlock`,
+              { username: user?.username }
+            );
+          } catch (e) {
+            // Ignore errors on cleanup
+          }
+        };
+        unlockSync();
+      }
+    };
+  }, [data, loading, decodedJobNo, lockJob]);
+
+  // Handle browser close/refresh - unlock the job
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasLockedRef.current && decodedJobNo && user?.username) {
+        // Use sendBeacon for reliable delivery on page unload
+        const data = JSON.stringify({ username: user.username });
+        navigator.sendBeacon(
+          `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(decodedJobNo)}/unlock`,
+          new Blob([data], { type: 'application/json' })
+        );
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [decodedJobNo, user?.username]);
+
+  // Handle lock error from useExportJobDetails
+  useEffect(() => {
+    if (lockError) {
+      const match = lockError.match(/locked by (.+)/i);
+      if (match) {
+        setLockedByUser(match[1]);
+        setLockDialogOpen(true);
+      }
+    }
+  }, [lockError]);
 
   // Fetch directories and users
   useEffect(() => {
@@ -103,11 +200,18 @@ function ExportJobsModule() {
   const handleUpdateAndClose = async () => {
     try {
       await formik.submitForm();
+      await unlockJob(); // Unlock before navigating away
       navigate("/export-dsr");
     } catch (error) {
       console.error("Error during auto-update on close:", error);
+      await unlockJob(); // Still try to unlock even on error
       navigate("/export-dsr");
     }
+  };
+
+  const handleLockDialogClose = () => {
+    setLockDialogOpen(false);
+    navigate("/export-dsr"); // Go back to job list when user acknowledges lock
   };
 
   if (loading) {
@@ -149,6 +253,31 @@ function ExportJobsModule() {
 
   return (
     <>
+      {/* Lock Dialog - Shows when job is locked by another user */}
+      <Dialog
+        open={lockDialogOpen}
+        onClose={handleLockDialogClose}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'warning.main' }}>
+          <LockIcon /> Job Locked
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This job is currently being edited by <strong>{lockedByUser}</strong>.
+            <br /><br />
+            To prevent data conflicts, only one user can edit a job at a time.
+            Please try again later or contact {lockedByUser} to release the job.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleLockDialogClose} variant="contained" color="primary">
+            Go Back to Job List
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Box sx={{ mt: 3, mb: 2, mx: 1 }}>
         <LogisysEditableHeader
           formik={formik}
@@ -191,7 +320,7 @@ function ExportJobsModule() {
             <Tab label="Product" />
             <Tab label="ESanchit" />
             <Tab label="Charges" />
-            <Tab label="Financial" />
+
             <Tab label="Operations" />
             <Tab label="Tracking Completed" />
           </Tabs>
@@ -222,17 +351,17 @@ function ExportJobsModule() {
             },
             ...(!isAir
               ? [
-                  {
-                    label: "Container",
-                    component: (
-                      <ContainerTab
-                        job={data}
-                        formik={formik}
-                        onUpdate={formik.handleSubmit}
-                      />
-                    ),
-                  },
-                ]
+                {
+                  label: "Container",
+                  component: (
+                    <ContainerTab
+                      job={data}
+                      formik={formik}
+                      onUpdate={formik.handleSubmit}
+                    />
+                  ),
+                },
+              ]
               : []),
             {
               label: "Invoice",
@@ -246,10 +375,7 @@ function ExportJobsModule() {
               label: "Charges",
               component: <ChargesTab formik={formik} />,
             },
-            {
-              label: "Financial",
-              component: <FinancialTab formik={formik} />,
-            },
+
             {
               label: "Operations",
               component: <OperationsTab formik={formik} />,

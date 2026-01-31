@@ -3,8 +3,11 @@ import { createPortal } from "react-dom";
 import { UserContext } from "../../../contexts/UserContext";
 import DateInput from "../../common/DateInput.js";
 import AutocompleteSelect from "../../common/AutocompleteSelect.js";
-import { Menu, MenuItem } from "@mui/material";
+import CustomHouseDropdown from "../../common/CustomHouseDropdown.js";
+import { Menu, MenuItem, IconButton, Tooltip } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import LockIcon from "@mui/icons-material/Lock";
+import LockOpenIcon from "@mui/icons-material/LockOpen";
 import ExportChecklistGenerator from "./StandardDocuments/ExportChecklistGenerator";
 import ConsignmentNoteGenerator from "./StandardDocuments/ConsignmentNoteGenerator";
 import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
@@ -15,36 +18,51 @@ import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingN
 // Helper function
 const toUpper = (str) => (str || "").toUpperCase();
 
-// Styles object
+// Compact styles for single-row layout
 const styles = {
   field: {
-    flex: "1 1 120px",
-    minWidth: 110,
+    flex: "1 1 80px",
+    minWidth: 70,
     position: "relative",
   },
   label: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#888",
-    marginBottom: 2,
+    marginBottom: 1,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
   acWrap: {
     position: "relative",
   },
   input: {
     width: "100%",
-    padding: "3px 24px 3px 6px",
+    padding: "2px 18px 2px 4px",
     border: "1px solid #d6dae2",
-    borderRadius: 4,
-    fontSize: 13,
+    borderRadius: 3,
+    fontSize: 11,
     background: "#fff",
     boxSizing: "border-box",
+    height: 24,
+  },
+  inputDisabled: {
+    width: "100%",
+    padding: "2px 4px",
+    border: "1px solid #e0e0e0",
+    borderRadius: 3,
+    fontSize: 11,
+    background: "#f5f5f5",
+    boxSizing: "border-box",
+    height: 24,
+    color: "#666",
   },
   acIcon: {
     position: "absolute",
-    right: 6,
+    right: 4,
     top: "50%",
     transform: "translateY(-50%)",
-    fontSize: 10,
+    fontSize: 8,
     color: "#888",
     pointerEvents: "none",
   },
@@ -62,9 +80,9 @@ const styles = {
     zIndex: 9999,
   },
   acItem: (active) => ({
-    padding: "8px 10px",
+    padding: "6px 8px",
     cursor: "pointer",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 500,
     background: active ? "#e3f2fd" : "#fff",
     color: "#111827",
@@ -73,14 +91,14 @@ const styles = {
 };
 
 // Hook for Gateway Port Dropdown
-function useGatewayPortDropdown(fieldName, formik) {
+function useGatewayPortDropdown(fieldName, formik, disabled) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(formik.values[fieldName] || "");
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
   const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef();
-  const menuRef = useRef(); // New ref for the portal menu
+  const menuRef = useRef();
   const apiBase = import.meta.env.VITE_API_STRING;
   const keepOpen = useRef(false);
 
@@ -89,13 +107,11 @@ function useGatewayPortDropdown(fieldName, formik) {
   }, [formik.values[fieldName], fieldName]);
 
   useEffect(() => {
-    if (!open) {
+    if (!open || disabled) {
       setOpts([]);
       return;
     }
 
-    // When dropdown opens, fetch all options (empty search)
-    // Only use query for search if user is actively typing
     const searchVal = isTyping ? (query || "").trim() : "";
     const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
       searchVal,
@@ -118,7 +134,7 @@ function useGatewayPortDropdown(fieldName, formik) {
     }, 220);
 
     return () => clearTimeout(t);
-  }, [open, query, apiBase, isTyping]);
+  }, [open, query, apiBase, isTyping, disabled]);
 
   useEffect(() => {
     function close(e) {
@@ -161,6 +177,7 @@ function useGatewayPortDropdown(fieldName, formik) {
     active,
     setActive,
     handle: (val) => {
+      if (disabled) return;
       const v = val.toUpperCase();
       setQuery(v);
       formik.setFieldValue(fieldName, v);
@@ -169,10 +186,10 @@ function useGatewayPortDropdown(fieldName, formik) {
     },
     select,
     onInputFocus: () => {
+      if (disabled) return;
       setOpen(true);
       setActive(-1);
       keepOpen.current = true;
-      // Don't set isTyping here - we want to show all options on focus
     },
     onInputBlur: () => {
       setTimeout(() => {
@@ -186,9 +203,10 @@ function useGatewayPortDropdown(fieldName, formik) {
 function GatewayPortDropdown({
   fieldName,
   formik,
-  placeholder = "ENTER GATEWAY PORT",
+  placeholder = "Select",
+  disabled = false,
 }) {
-  const d = useGatewayPortDropdown(fieldName, formik);
+  const d = useGatewayPortDropdown(fieldName, formik, disabled);
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
 
   const updateCoords = () => {
@@ -226,14 +244,16 @@ function GatewayPortDropdown({
     <div style={{ position: "relative" }} ref={d.wrapperRef}>
       <div style={styles.acWrap}>
         <input
-          style={styles.input}
+          style={disabled ? styles.inputDisabled : styles.input}
           placeholder={placeholder}
           autoComplete="off"
           value={toUpper(d.query)}
           onChange={(e) => d.handle(e.target.value)}
           onFocus={d.onInputFocus}
           onBlur={d.onInputBlur}
+          disabled={disabled}
           onKeyDown={(e) => {
+            if (disabled) return;
             if (e.key === "Tab") {
               if (d.open) {
                 if (d.active >= 0 && filtered[d.active]) {
@@ -266,8 +286,9 @@ function GatewayPortDropdown({
             } else if (e.key === "Escape") d.setOpen(false);
           }}
         />
-        <span style={styles.acIcon}>▼</span>
+        {!disabled && <span style={styles.acIcon}>▼</span>}
         {d.open &&
+          !disabled &&
           filtered.length > 0 &&
           createPortal(
             <div
@@ -277,7 +298,7 @@ function GatewayPortDropdown({
                 position: "fixed",
                 top: coords.top + 2,
                 left: coords.left,
-                width: coords.width,
+                width: Math.max(coords.width, 200),
               }}
             >
               {filtered.map((port, i) => (
@@ -315,6 +336,9 @@ const LogisysEditableHeader = ({
   directories,
   exportJobsUsers = [],
 }) => {
+  // Lock state - default to locked (not editable)
+  const [isEditable, setIsEditable] = useState(false);
+
   useEffect(() => {
     const isAir = formik.values.consignmentType === "AIR";
     const mode = isAir ? "AIR" : "SEA";
@@ -347,57 +371,75 @@ const LogisysEditableHeader = ({
     setTimeout(() => setSnackbar(false), 2000);
   };
 
+  const toggleLock = () => {
+    setIsEditable(!isEditable);
+  };
+
   const shipperOpts = (directories?.exporters || []).map((exp) => ({
     label: `${exp.organization} (${exp.registrationDetails?.ieCode || ""})`,
     value: exp.organization,
   }));
 
+  const isAirType = toUpper(formik.values.consignmentType) === "AIR";
+
   return (
     <div
       style={{
-        marginBottom: 20,
+        marginBottom: 12,
         background: "linear-gradient(90deg, #f7fafc 85%, #e3f2fd 100%)",
         border: "1px solid #e3e7ee",
-        borderRadius: 8,
-        boxShadow: "0 2px 6px 0 rgba(60,72,100,0.08)",
-        padding: "17px 23px",
+        borderRadius: 6,
+        boxShadow: "0 1px 4px 0 rgba(60,72,100,0.06)",
+        padding: "8px 12px",
+        position: "relative",
+        zIndex: 99999,
       }}
     >
+      {/* Responsive Row Container */}
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "flex-end",
-          marginBottom: 2,
-        }}
-      ></div>
-
-      {/* ROWS */}
-      <div
-        style={{
-          display: "flex",
+          gap: 8,
           flexWrap: "wrap",
-          gap: "10px 18px",
-          alignItems: "flex-end",
+          rowGap: 8,
         }}
       >
+        {/* Lock/Unlock Button */}
+        <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center" }}>
+          <Tooltip title={isEditable ? "Lock Editing" : "Unlock to Edit"}>
+            <IconButton
+              onClick={toggleLock}
+              size="small"
+              sx={{
+                padding: "4px",
+                backgroundColor: isEditable ? "#e8f5e9" : "#ffebee",
+                border: isEditable ? "1px solid #4caf50" : "1px solid #f44336",
+                "&:hover": {
+                  backgroundColor: isEditable ? "#c8e6c9" : "#ffcdd2",
+                },
+              }}
+            >
+              {isEditable ? (
+                <LockOpenIcon sx={{ fontSize: 16, color: "#4caf50" }} />
+              ) : (
+                <LockIcon sx={{ fontSize: 16, color: "#f44336" }} />
+              )}
+            </IconButton>
+          </Tooltip>
+        </div>
+
         {/* Job Number */}
-        <div style={{ flex: "1 1 180px", minWidth: 120 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Job Number</div>
+        <div style={{ flex: "0 0 auto", minWidth: 90 }}>
+          <div style={styles.label}>Job No</div>
           {isNewJob ? (
             <input
-              style={{
-                width: "97%",
-                padding: "3px 6px",
-                border: "1px solid #d6dae2",
-                borderRadius: 4,
-                fontSize: 12,
-                background: "#fff",
-              }}
+              style={!isEditable ? styles.inputDisabled : styles.input}
               name="job_no"
               value={formik.values.job_no}
               onChange={formik.handleChange}
-              placeholder="Auto-generated if empty"
+              placeholder="Auto"
+              disabled={!isEditable}
             />
           ) : (
             <div
@@ -406,23 +448,28 @@ const LogisysEditableHeader = ({
                 alignItems: "center",
                 background: "#eef4fa",
                 border: "1px solid #e0e0e0",
-                borderRadius: 4,
-                padding: "2px 5px",
-                fontSize: 12,
+                borderRadius: 3,
+                padding: "1px 4px",
+                fontSize: 11,
                 color: "#000",
+                height: 22,
+                whiteSpace: "nowrap",
               }}
             >
-              <span>{formik.values.job_no}</span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                {formik.values.job_no}
+              </span>
               <button
                 title="Copy"
                 onClick={() => handleCopyText(formik.values.job_no)}
                 style={{
                   background: "none",
                   border: "none",
-                  marginLeft: 8,
+                  marginLeft: 4,
                   cursor: "pointer",
-                  fontSize: 12,
+                  fontSize: 10,
                   color: "#666",
+                  padding: 0,
                 }}
               >
                 📋
@@ -432,93 +479,76 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Job Date */}
-        <div style={{ flex: "1 1 110px", minWidth: 100 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Job Date</div>
+        <div style={{ flex: "0 0 auto", minWidth: 85 }}>
+          <div style={styles.label}>Job Date</div>
           <DateInput
             name="job_date"
             value={formik.values.job_date}
             onChange={formik.handleChange}
-            style={{
-              width: "98%",
-              padding: "3px 6px",
-              border: "1px solid #d6dae2",
-              borderRadius: 4,
-              background: "#fff",
-              fontSize: 13,
+            disabled={!isEditable}
+            style={!isEditable ? styles.inputDisabled : {
+              ...styles.input,
+              width: "100%",
             }}
           />
         </div>
 
         {/* SB No */}
-        <div style={{ flex: "1 1 90px", minWidth: 80 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>SB No</div>
+        <div style={{ flex: "0 0 auto", minWidth: 60 }}>
+          <div style={styles.label}>SB No</div>
           <input
             name="sb_no"
             value={formik.values.sb_no}
             onChange={formik.handleChange}
-            style={{
-              width: "97%",
-              padding: "3px 6px",
-              border: "1px solid #d6dae2",
-              borderRadius: 4,
-              fontSize: 13,
-              background: "#fff",
-            }}
+            disabled={!isEditable}
+            style={!isEditable ? styles.inputDisabled : styles.input}
           />
         </div>
 
         {/* SB Date */}
-        <div style={{ flex: "1 1 150px", minWidth: 120 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>SB Date</div>
+        <div style={{ flex: "0 0 auto", minWidth: 85 }}>
+          <div style={styles.label}>SB Date</div>
           <DateInput
             name="sb_date"
             value={formik.values.sb_date}
             onChange={formik.handleChange}
-            style={{
-              width: "97%",
-              padding: "3px 6px",
-              border: "1px solid #d6dae2",
-              borderRadius: 4,
-              fontSize: 13,
-              background: "#fff",
+            disabled={!isEditable}
+            style={!isEditable ? styles.inputDisabled : {
+              ...styles.input,
+              width: "100%",
             }}
           />
         </div>
 
         {/* Job Owner */}
-        <div style={{ flex: "1 1 150px", minWidth: 90 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Job Owner</div>
+        <div style={{ flex: "1 1 auto", minWidth: 90, maxWidth: 130 }}>
+          <div style={styles.label}>Job Owner</div>
           <AutocompleteSelect
             name="job_owner"
             value={formik.values.job_owner || ""}
             options={[
-              { value: "", label: "Select Job Owner" },
+              { value: "", label: "Select" },
               ...(exportJobsUsers?.map((user) => ({
                 value: user.username,
                 label: user.fullName,
               })) || []),
             ]}
             onChange={formik.handleChange}
-            placeholder="Select Job Owner"
+            placeholder="Select"
+            disabled={!isEditable}
           />
         </div>
 
         {/* Shipper */}
-        <div style={{ flex: "1 1 170px", minWidth: 130 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Shipper</div>
+        <div style={{ flex: "1 1 auto", minWidth: 100, maxWidth: 160 }}>
+          <div style={styles.label}>Shipper</div>
           <input
             name="shipper"
             list="shipper-list"
             value={formik.values.exporter}
             onChange={formik.handleChange}
-            style={{
-              width: "98%",
-              padding: "3px 6px",
-              border: "1px solid #d6dae2",
-              borderRadius: 4,
-              fontSize: 13,
-              background: "#fff",
-            }}
+            disabled={!isEditable}
+            style={!isEditable ? styles.inputDisabled : styles.input}
           />
           <datalist id="shipper-list">
             {shipperOpts.map((opt) => (
@@ -530,40 +560,44 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Transport Mode */}
-        <div style={{ flex: "1 1 100px", minWidth: 80 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Transport Mode</div>
+        <div style={{ flex: "0 0 auto", minWidth: 50 }}>
+          <div style={styles.label}>Mode</div>
           <input
-            style={{ ...styles.input, background: "#f0f0f0" }}
+            style={{ ...styles.inputDisabled, width: 50 }}
             value={toUpper(formik.values.transportMode)}
             readOnly
           />
         </div>
 
-        {/* Custom House - Now with Gateway Port Dropdown */}
-        <div style={{ flex: "1 1 120px", minWidth: 110 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Custom House</div>
-          <GatewayPortDropdown
-            fieldName="custom_house"
-            formik={formik}
-            placeholder="Select Custom House"
+        {/* Custom House */}
+        <div style={{ flex: "1 1 auto", minWidth: 90, maxWidth: 160 }}>
+          <div style={styles.label}>Custom House</div>
+          <CustomHouseDropdown
+            name="custom_house"
+            value={formik.values.custom_house || ""}
+            onChange={formik.handleChange}
+            placeholder="Select"
+            disabled={!isEditable}
+            branchCode={formik.values.branch_code || ""}
           />
         </div>
 
-        {/* Loading Port */}
-        {toUpper(formik.values.consignmentType) !== "AIR" && (
-          <div style={{ flex: "1 1 120px", minWidth: 110 }}>
-            <div style={{ fontSize: 11, color: "#888" }}>Port Of Loading</div>
+        {/* Loading Port - Only show for non-AIR */}
+        {!isAirType && (
+          <div style={{ flex: "1 1 auto", minWidth: 90, maxWidth: 140 }}>
+            <div style={styles.label}>Port Of Loading</div>
             <GatewayPortDropdown
               fieldName="port_of_loading"
               formik={formik}
-              placeholder="Select Loading Port"
+              placeholder="Select"
+              disabled={!isEditable}
             />
           </div>
         )}
 
         {/* Consignment Type */}
-        <div style={{ flex: "1 1 120px", minWidth: 100 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Consignment Type</div>
+        <div style={{ flex: "0 0 auto", minWidth: 70 }}>
+          <div style={styles.label}>Type</div>
           <AutocompleteSelect
             name="consignmentType"
             value={formik.values.consignmentType}
@@ -571,16 +605,17 @@ const LogisysEditableHeader = ({
               { value: "FCL", label: "FCL" },
               { value: "LCL", label: "LCL" },
               { value: "AIR", label: "AIR" },
-              { value: "Break Bulk", label: "Break Bulk" },
+              { value: "Break Bulk", label: "BB" },
             ]}
             onChange={formik.handleChange}
-            placeholder="Select Type"
+            placeholder="Type"
+            disabled={!isEditable}
           />
         </div>
 
         {/* Goods Stuffed At */}
-        <div style={{ flex: "1 1 120px", minWidth: 100 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>Goods Stuffed At</div>
+        <div style={{ flex: "0 0 auto", minWidth: 70 }}>
+          <div style={styles.label}>Stuffed At</div>
           <AutocompleteSelect
             name="goods_stuffed_at"
             value={formik.values.goods_stuffed_at || ""}
@@ -593,65 +628,33 @@ const LogisysEditableHeader = ({
               { value: "DOCK", label: "DOCK" },
             ].filter(Boolean)}
             onChange={formik.handleChange}
-            placeholder="Select Location"
+            placeholder="Select"
+            disabled={!isEditable}
           />
         </div>
 
-        {/* SB Type */}
-        {/* <div style={{ flex: "1 1 120px", minWidth: 100 }}>
-          <div style={{ fontSize: 11, color: "#888" }}>SB Type</div>
-          <AutocompleteSelect
-            name="sb_type"
-            value={formik.values.sb_type}
-            options={[
-              { value: "", label: "All" },
-              { value: "White - Free/DEEC", label: "White - Free/DEEC" },
-              { value: "Green - Drawback", label: "Green - Drawback" },
-              { value: "Green - RODTEP", label: "Green - RODTEP" },
-              { value: "Blue - DEPB", label: "Blue - DEPB" },
-              { value: "Yellow - Dutiable", label: "Yellow - Dutiable" },
-              { value: "Pink - ExBond", label: "Pink - ExBond" },
-              { value: "SEZ - Regular", label: "SEZ - Regular" },
-              { value: "SEZ - ExBond", label: "SEZ - ExBond" },
-              {
-                value: "SEZ - DTA Procurement",
-                label: "SEZ - DTA Procurement",
-              },
-              { value: "Red", label: "Red" },
-            ]}
-            onChange={formik.handleChange}
-            placeholder="Select SB Type"
-          />
-        </div> */}
-
-        <div
-          style={{
-            flex: "1 1 105px",
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "flex-end",
-            minWidth: 25,
-          }}
-        >
+        {/* Documents Button */}
+        <div style={{ flex: "0 0 auto" }}>
           <button
             style={{
               background: "#fff",
-              border: "1.2px solid #1976d2",
+              border: "1px solid #1976d2",
               color: "#1976d2",
-              marginLeft: 7,
-              padding: "3px 12px",
-              borderRadius: 4,
+              padding: "3px 8px",
+              borderRadius: 3,
               fontWeight: 500,
-              fontSize: 12,
+              fontSize: 11,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
+              height: 24,
+              whiteSpace: "nowrap",
             }}
             type="button"
             onClick={(e) => setAnchorEl(e.currentTarget)}
           >
-            Documents
-            <ArrowDropDownIcon sx={{ fontSize: 16, ml: 0.5 }} />
+            Docs
+            <ArrowDropDownIcon sx={{ fontSize: 14, ml: 0.3 }} />
           </button>
           <Menu
             anchorEl={anchorEl}
@@ -665,7 +668,7 @@ const LogisysEditableHeader = ({
               <MenuItem
                 disableRipple
                 onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 13, minWidth: 150 }}
+                sx={{ fontSize: 12, minWidth: 140 }}
               >
                 Checklist
               </MenuItem>
@@ -675,7 +678,7 @@ const LogisysEditableHeader = ({
               <MenuItem
                 disableRipple
                 onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 13, minWidth: 150 }}
+                sx={{ fontSize: 12, minWidth: 140 }}
               >
                 File Cover
               </MenuItem>
@@ -685,7 +688,7 @@ const LogisysEditableHeader = ({
               <MenuItem
                 disableRipple
                 onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 13, minWidth: 150 }}
+                sx={{ fontSize: 12, minWidth: 140 }}
               >
                 Consignment Note
               </MenuItem>
@@ -695,7 +698,7 @@ const LogisysEditableHeader = ({
               <MenuItem
                 disableRipple
                 onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 13, minWidth: 150 }}
+                sx={{ fontSize: 12, minWidth: 140 }}
               >
                 Forwarding Note (THAR)
               </MenuItem>
@@ -705,16 +708,17 @@ const LogisysEditableHeader = ({
               <MenuItem
                 disableRipple
                 onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 13, minWidth: 150 }}
+                sx={{ fontSize: 12, minWidth: 140 }}
               >
                 Annexure C
               </MenuItem>
             </AnnexureCGenerator>
+
             <ConcorForwardingNoteGenerator jobNo={formik.values.job_no}>
               <MenuItem
                 disableRipple
                 onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 13, minWidth: 150 }}
+                sx={{ fontSize: 12, minWidth: 140 }}
               >
                 Forwarding Note (CONCOR)
               </MenuItem>
@@ -728,8 +732,8 @@ const LogisysEditableHeader = ({
           style={{
             background: "#1976d2",
             color: "#fff",
-            padding: "3px 16px",
-            fontSize: 13,
+            padding: "3px 12px",
+            fontSize: 11,
             position: "fixed",
             right: 20,
             top: 76,
