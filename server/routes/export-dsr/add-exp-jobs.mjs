@@ -2,15 +2,12 @@ import express from "express";
 import ExportJobModel from "../../model/export/ExJobModel.mjs";
 import ExLastJobsDate from "../../model/export/ExLastJobDate.mjs";
 import auditMiddleware from "../../middleware/auditTrail.mjs";
-import mongoose from "mongoose";
+import JobSequence from "../../model/export/JobSequence.mjs";
+import { getNextJobSequence, updateJobSequenceIfHigher } from "../../utils/jobNumberGenerator.mjs";
 
 const router = express.Router();
 
-// ✅ SIMPLE APPROACH: Mirror your successful import API exactly
-// ✅ BULLETPROOF: Super Simple Approach
-// exportRoutes.mjs (snippet)
-
-// Update your backend route - exportRoutes.mjs
+// Route 1: Add Manual Export Job
 router.post(
   "/api/jobs/add-job-exp-man",
   auditMiddleware("ExportJob"),
@@ -28,13 +25,12 @@ router.post(
         ...otherFields
       } = req.body;
 
-      const hasIdentifier = ieCode || panNo;
-
-      if (!exporter || !hasIdentifier || !branch_code || !transportMode) {
+      // Basic Validation
+      const hasIdentifier = ieCode || otherFields.panNo; // ieCode is primary
+      if (!exporter || !branch_code || !transportMode) {
         return res.status(400).json({
           success: false,
-          message:
-            "Missing required fields: exporter,(IE Code or PAN), branch_code, and transportMode are required.",
+          message: "Missing required fields: exporter, branch_code, and transportMode are required.",
         });
       }
 
@@ -47,12 +43,20 @@ router.post(
 
       let newJobNo;
 
-      // Check for manual job number
       if (job_no && job_no.length > 0) {
-        // If user provides a manual job number, check if it already exists
-        newJobNo = `${branch_code}/${job_no}/${yearFormat}`;
+        // --- MANUAL JOB NUMBER ---
+        // Validate manual input
+        if (!/^\d+$/.test(job_no)) {
+          return res.status(400).json({
+            success: false,
+            message: "Job number must contain only digits."
+          });
+        }
 
-        // Check if this job number already exists
+        const sequenceStr = job_no.padStart(5, "0");
+        newJobNo = `${branch_code}/${sequenceStr}/${yearFormat}`;
+
+        // Check for duplicates
         const existingJob = await ExportJobModel.findOne({
           job_no: { $regex: `^${newJobNo}$`, $options: "i" },
         });
@@ -60,7 +64,7 @@ router.post(
         if (existingJob) {
           return res.status(409).json({
             success: false,
-            message: `Job number ${newJobNo} already exists. Please use a different number.`,
+            message: `Job number ${newJobNo} already exists.`,
             existingJob: {
               job_no: existingJob.job_no,
               exporter: existingJob.exporter,
@@ -68,64 +72,18 @@ router.post(
             },
           });
         }
+
+        // Update the central counter if manual sequence is higher
+        await updateJobSequenceIfHigher(branch_code, yearFormat, parseInt(job_no, 10));
+
       } else {
-        // Generate auto-incremented job number
-        // Find the latest job for this branch/year/transportMode combination
-        const latestJob = await ExportJobModel.findOne({
-          job_no: {
-            $regex: `^${branch_code}/`,
-            $options: "i",
-          },
-          year: yearFormat,
-        }).sort({ createdAt: -1 });
-
-        let nextSequence = 1;
-
-        if (latestJob && latestJob.job_no) {
-          // Extract sequence number from existing job number
-          const jobNoParts = latestJob.job_no.split("/");
-          const sequenceStr = jobNoParts[1]; // The sequence part (e.g., "00025")
-
-          if (sequenceStr && /^\d+$/.test(sequenceStr)) {
-            nextSequence = parseInt(sequenceStr, 10) + 1;
-          } else {
-            // If pattern doesn't match, count existing jobs
-            const jobCount = await ExportJobModel.countDocuments({
-              job_no: {
-                $regex: `^${branch_code}/`,
-                $options: "i",
-              },
-              year: yearFormat,
-            });
-            nextSequence = jobCount + 1;
-          }
-        } else {
-          // No jobs found for this combination, start from 1
-          const jobCount = await ExportJobModel.countDocuments({
-            job_no: {
-              $regex: `^${branch_code}/`,
-              $options: "i",
-            },
-            year: yearFormat,
-          });
-          nextSequence = jobCount + 1;
-        }
-
-        const sequenceStr = nextSequence.toString().padStart(5, "0");
-        newJobNo = `${branch_code}/${sequenceStr}/${yearFormat}`;
-
-        // Final check to ensure no duplicates even with auto-generation
-        const duplicateCheck = await ExportJobModel.findOne({
-          job_no: { $regex: `^${newJobNo}$`, $options: "i" },
-        });
-
-        if (duplicateCheck) {
-          // If somehow duplicate exists, increment again
-          const sequenceStr = (nextSequence + 1).toString().padStart(5, "0");
-          newJobNo = `${branch_code}/${sequenceStr}/${yearFormat}`;
-        }
+        // --- AUTO GENERATED JOB NUMBER ---
+        // Use the centralized atomic generator
+        const nextSequenceStr = await getNextJobSequence(branch_code, yearFormat);
+        newJobNo = `${branch_code}/${nextSequenceStr}/${yearFormat}`;
       }
 
+      // Date Handling
       const getTodayDate = () => {
         const today = new Date();
         const day = String(today.getDate()).padStart(2, "0");
@@ -150,6 +108,7 @@ router.post(
 
       await newExportJob.save();
 
+      // Update last job date tracker (optional but kept for legacy)
       await ExLastJobsDate.findOneAndUpdate(
         {},
         { date: todayDate },
@@ -162,24 +121,19 @@ router.post(
         job: {
           job_no: newExportJob.job_no,
           exporter: newExportJob.exporter,
-          consignee_name: newExportJob.consignee_name,
-          ieCode: newExportJob.ieCode,
-          transportMode: newExportJob.transportMode,
           branch_code: newExportJob.branch_code,
           year: newExportJob.year,
         },
       });
+
     } catch (error) {
       console.error("Error adding export job:", error);
-
-      // Check for duplicate key error
       if (error.code === 11000 || error.message.includes("duplicate")) {
         return res.status(409).json({
           success: false,
-          message: "This job already exists. Please check the job number.",
+          message: "Job number conflict detected. Please try again.",
         });
       }
-
       res.status(500).json({
         success: false,
         message: error.message || "Internal server error.",
@@ -188,7 +142,7 @@ router.post(
   }
 );
 
-// In your exportRoutes.mjs file, add this new route:
+// Route 2: Copy Export Job
 router.post(
   "/api/jobs/copy-export-job",
   auditMiddleware("ExportJob"),
@@ -202,16 +156,14 @@ router.post(
         manualSequence = "",
       } = req.body;
 
-      // Validate required fields
       if (!sourceJobNo || !branch_code || !transportMode || !year) {
         return res.status(400).json({
           success: false,
-          message:
-            "Missing required fields: sourceJobNo, branch_code, transportMode, and year are required.",
+          message: "Missing required fields: sourceJobNo, branch_code, transportMode, and year.",
         });
       }
 
-      // Find the source job
+      // Find Source Job
       const sourceJob = await ExportJobModel.findOne({
         job_no: { $regex: `^${sourceJobNo}$`, $options: "i" },
       });
@@ -224,23 +176,19 @@ router.post(
       }
 
       let newJobNo;
-      let sequenceStr;
 
-      // Check for manual sequence input
       if (manualSequence && manualSequence.length > 0) {
-        // User provided a manual sequence number
+        // Manual Sequence Logic
         if (!/^\d+$/.test(manualSequence)) {
           return res.status(400).json({
             success: false,
-            message: "Manual sequence must contain only numbers.",
+            message: "Manual sequence must contain only digits.",
           });
         }
 
-        // Pad with zeros to make it 5 digits
-        sequenceStr = manualSequence.padStart(5, "0");
+        const sequenceStr = manualSequence.padStart(5, "0");
         newJobNo = `${branch_code}/${sequenceStr}/${year}`;
 
-        // Check if this job number already exists
         const existingJob = await ExportJobModel.findOne({
           job_no: { $regex: `^${newJobNo}$`, $options: "i" },
         });
@@ -248,60 +196,23 @@ router.post(
         if (existingJob) {
           return res.status(409).json({
             success: false,
-            message: `Job number ${newJobNo} already exists. Please use a different sequence.`,
-            existingJob: {
-              job_no: existingJob.job_no,
-              exporter: existingJob.exporter,
-            },
+            message: `Job number ${newJobNo} already exists.`,
           });
         }
+
+        // Update counter
+        await updateJobSequenceIfHigher(branch_code, year, parseInt(manualSequence, 10));
+
       } else {
-        // Auto-generate sequence - find the highest sequence for this branch/year/transportMode
-        const existingJobs = await ExportJobModel.find({
-          job_no: {
-            $regex: `^${branch_code}/`,
-            $options: "i",
-          },
-          year: year,
-        });
-
-        let maxSequence = 0;
-
-        // Find the maximum sequence number
-        existingJobs.forEach((job) => {
-          const parts = job.job_no.split("/");
-          if (parts.length >= 5) {
-            const sequencePart = parts[3];
-            if (/^\d+$/.test(sequencePart)) {
-              const seqNum = parseInt(sequencePart, 10);
-              if (seqNum > maxSequence) {
-                maxSequence = seqNum;
-              }
-            }
-          }
-        });
-
-        // Get next sequence
-        const nextSequence = maxSequence + 1;
-        sequenceStr = nextSequence.toString().padStart(5, "0");
-        newJobNo = `${branch_code}/${sequenceStr}/${year}`;
-
-        // Double-check for duplicates
-        const duplicateCheck = await ExportJobModel.findOne({
-          job_no: { $regex: `^${newJobNo}$`, $options: "i" },
-        });
-
-        if (duplicateCheck) {
-          // If duplicate exists (shouldn't happen), increment further
-          const sequenceStr = (nextSequence + 1).toString().padStart(5, "0");
-          newJobNo = `${branch_code}/${sequenceStr}/${year}`;
-        }
+        // Auto Generation Logic
+        const nextSequenceStr = await getNextJobSequence(branch_code, year);
+        newJobNo = `${branch_code}/${nextSequenceStr}/${year}`;
       }
 
-      // Create a deep copy of the source job data
+      // Prepare New Job Data
       const sourceData = sourceJob.toObject();
 
-      // Remove fields that should not be copied
+      // Remove system fields and specific job data
       delete sourceData._id;
       delete sourceData.__v;
       delete sourceData.createdAt;
@@ -316,21 +227,16 @@ router.post(
       delete sourceData.sb_submitted_date;
       delete sourceData.sb_status;
 
-      // Reset job-specific fields for new job
-      sourceData.status = "Pending";
-      sourceData.sb_no = "";
-      sourceData.sb_date = "";
-      sourceData.sb_submitted_date = "";
-      sourceData.sb_status = "";
-
-      // Add new job number and other identifiers
+      // Set new values
       const newExportJob = new ExportJobModel({
         ...sourceData,
         job_no: newJobNo,
-        year: year,
-        branch_code: branch_code,
-        transportMode: transportMode,
-        job_date: new Date().toISOString().split("T")[0], // Today's date
+        branch_code,
+        year,
+        transportMode,
+        status: "Pending",
+        job_date: new Date().toISOString().split("T")[0],
+        milestones: [], // Reset milestones
       });
 
       await newExportJob.save();
@@ -340,101 +246,71 @@ router.post(
         message: "Export job copied successfully.",
         job: {
           job_no: newExportJob.job_no,
-          exporter: newExportJob.exporter,
-          consignee_name: newExportJob.consignee_name,
-          ieCode: newExportJob.ieCode,
-          transportMode: newExportJob.transportMode,
           branch_code: newExportJob.branch_code,
           year: newExportJob.year,
-          status: newExportJob.status,
         },
       });
+
     } catch (error) {
       console.error("Error copying export job:", error);
-
       if (error.code === 11000 || error.message.includes("duplicate")) {
         return res.status(409).json({
           success: false,
-          message: "This job number already exists. Please try again.",
+          message: "Job number conflict detected. Please try again.",
         });
       }
-
       res.status(500).json({
         success: false,
         message: error.message || "Internal server error.",
       });
     }
   }
-); // Add to your exportRoutes.mjs file
+);
+
+// Route 3: Suggest Next Sequence (for UI)
 router.post("/api/jobs/suggest-sequence", async (req, res) => {
   try {
-    const { branch_code, transportMode, year } = req.body;
+    const { branch_code, year } = req.body;
 
-    if (!branch_code || !transportMode || !year) {
+    if (!branch_code || !year) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields",
+        message: "Missing branch_code or year",
       });
     }
 
-    // Find all jobs for this branch/year/transportMode combination
-    const existingJobs = await ExportJobModel.find({
-      job_no: {
-        $regex: `^${branch_code}/`,
-        $options: "i",
-      },
-      year: year,
+    // Get the current max sequence from our centralized counter
+    const sequenceDoc = await JobSequence.findOne({
+      branch: branch_code.toUpperCase(),
+      year: year
     });
 
-    let maxSequence = 0;
-
-    // Find the maximum sequence number
-    existingJobs.forEach((job) => {
-      const parts = job.job_no.split("/");
-      if (parts.length >= 5) {
-        const sequencePart = parts[3];
-        if (/^\d+$/.test(sequencePart)) {
-          const seqNum = parseInt(sequencePart, 10);
-          if (seqNum > maxSequence) {
-            maxSequence = seqNum;
-          }
-        }
-      }
-    });
-
-    // Suggest next sequence
-    const suggestedSequence = (maxSequence + 1).toString();
+    const currentMax = sequenceDoc ? sequenceDoc.lastSequence : 0;
+    const nextSequence = currentMax + 1;
 
     res.json({
       success: true,
-      suggestedSequence: suggestedSequence,
-      maxSequence: maxSequence,
-      jobCount: existingJobs.length,
+      suggestedSequence: nextSequence.toString(),
+      maxSequence: currentMax,
     });
+
   } catch (error) {
     console.error("Error suggesting sequence:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: error.message,
     });
   }
 });
-// // Add this route to your export routes file
+
+// Route 4: Fix Index (Utility)
 router.delete("/api/jobs/fix-export-indexes", async (req, res) => {
   try {
-    // Drop the problematic index
     await ExportJobModel.collection.dropIndex("account_fields.name_1");
-
-    res.json({
-      success: true,
-      message: "Problematic index dropped successfully",
-    });
+    res.json({ success: true, message: "Problematic index dropped successfully" });
   } catch (error) {
     console.error("Error dropping index:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

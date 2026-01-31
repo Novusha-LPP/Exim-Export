@@ -384,85 +384,114 @@ export const scrapeAndSaveCurrencyRates = async () => {
       return results;
     }
 
-    // Sort by date descending and pick the latest one
+    // Sort by date descending
     candidates.sort((a, b) => b.parsedDate - a.parsedDate);
-    const latest = candidates[0];
-    const rowNum = latest.rowNum;
-    const row = latest.row;
 
+    console.log(`Found ${candidates.length} notifications. Processing all...`);
 
-    try {
-      let downloadEl = await row.$("text=Download PDF");
-      if (!downloadEl) {
-        downloadEl = await row.$(
-          "a:has-text('Download PDF'), button:has-text('Download PDF')"
-        );
-      }
+    for (const candidate of candidates) {
+      const rowNum = candidate.rowNum;
+      const row = candidate.row;
 
-      if (!downloadEl) {
-        throw new Error("Download button not found in row");
-      }
-
-      const notifSafe = sanitizeFilename(latest.notifText || `row${rowNum}`);
-      const dateSafe = sanitizeFilename(latest.dateText || "unknown-date");
-      const pdfName = `${notifSafe}-${dateSafe}.pdf`;
-      let outPath = path.join(TEMP_DIR, pdfName);
-
-      let download;
       try {
-        const downloadPromise = page.waitForEvent("download", {
-          timeout: CLICK_TIMEOUT,
-        });
-        await downloadEl.scrollIntoViewIfNeeded({ timeout: 2000 });
-        await downloadEl.click({ timeout: CLICK_TIMEOUT });
-        download = await downloadPromise;
-      } catch (e) {
-        results.errors.push({ row: rowNum, error: e.message });
-        return results;
-      }
+        let downloadEl = await row.$("text=Download PDF");
+        if (!downloadEl) {
+          downloadEl = await row.$(
+            "a:has-text('Download PDF'), button:has-text('Download PDF')"
+          );
+        }
 
-      await download.saveAs(outPath);
-      results.total_scraped++;
+        if (!downloadEl) {
+          console.warn(`⚠️ Download button not found in row ${rowNum}`);
+          continue;
+        }
 
-      // Parse PDF
-      const parsed = await parseExchangePdf(outPath);
+        const notifSafe = sanitizeFilename(candidate.notifText || `row${rowNum}`);
+        const dateSafe = sanitizeFilename(candidate.dateText || "unknown-date");
+        const pdfName = `${notifSafe}-${dateSafe}.pdf`;
+        let outPath = path.join(TEMP_DIR, pdfName);
 
-      if (parsed.error) {
-        results.errors.push({ row: rowNum, error: parsed.error });
-      } else {
-        // Check if this EXACT record already exists
-        const existing = await CurrencyRate.findOne({
-          notification_number: parsed.notification_number,
-          effective_date: parsed.effective_date,
-        });
+        // Check if we already have this file downloaded/processed to avoid redownloading?
+        // But we rely on PDF parsing to get the real ID. 
+        // We could optimize by checking if a record exists with similar date/notif text, 
+        // but text matching might be flaky. Safe to download and parse.
 
-        if (existing) {
-          results.total_skipped++;
+        let download;
+        try {
+          const downloadPromise = page.waitForEvent("download", {
+            timeout: CLICK_TIMEOUT,
+          });
+          await downloadEl.scrollIntoViewIfNeeded({ timeout: 2000 });
+          await downloadEl.click({ timeout: CLICK_TIMEOUT });
+          download = await downloadPromise;
+        } catch (e) {
+          console.error(`Error downloading row ${rowNum}:`, e.message);
+          results.errors.push({ row: rowNum, error: e.message });
+          continue;
+        }
+
+        await download.saveAs(outPath);
+        results.total_scraped++;
+
+        // Parse PDF
+        const parsed = await parseExchangePdf(outPath);
+
+        // Fallback for unknown fields using the table data
+        if ((!parsed.notification_number || parsed.notification_number === "unknown") && candidate.notifText) {
+          console.log(`⚠️ PDF parsing failed for Notification No. Using fallback: ${candidate.notifText}`);
+          parsed.notification_number = candidate.notifText;
+        }
+
+        // If still unknown, use the filename to ensure uniqueness
+        if (!parsed.notification_number || parsed.notification_number === "unknown") {
+          parsed.notification_number = `UNKNOWN_${path.basename(pdfName, '.pdf')}`;
+        }
+
+        if ((!parsed.effective_date || parsed.effective_date === "unknown") && candidate.dateText) {
+          console.log(`⚠️ PDF parsing failed for Date. Using fallback: ${candidate.dateText}`);
+          // Try to format it if needed, or save as is
+          parsed.effective_date = candidate.dateText;
+        }
+
+        if (parsed.error) {
+          results.errors.push({ row: rowNum, error: parsed.error });
         } else {
-          // It's a NEW notification. Since we only want the LATEST one, 
-          // we delete all old records and save this one.
-
-          await CurrencyRate.deleteMany({}); // Clear collection to keep only ONE latest record
-
-          const currencyRate = new CurrencyRate({
-            ...parsed,
-            scraped_at: new Date(),
+          // Check if this EXACT record already exists
+          const existing = await CurrencyRate.findOne({
+            notification_number: parsed.notification_number,
+            effective_date: parsed.effective_date,
           });
 
-          await currencyRate.save();
-          results.total_saved++;
-        }
-      }
+          if (existing) {
+            console.log(`⏩ Skipping existing record: ${parsed.notification_number}`);
+            results.total_skipped++;
+          } else {
+            console.log(`✅ Saving new record: ${parsed.notification_number}`);
 
-      // Clean up PDF file
-      try {
-        await fs.unlink(outPath);
+            const currencyRate = new CurrencyRate({
+              ...parsed,
+              scraped_at: new Date(),
+            });
+
+            await currencyRate.save();
+            results.total_saved++;
+          }
+        }
+
+        // Clean up PDF file
+        try {
+          await fs.unlink(outPath);
+        } catch (e) {
+          console.warn(`  ⚠️ Could not delete PDF: ${e.message}`);
+        }
+
+        // Sleep a bit to be nice to the server
+        await sleep(SLEEP_BETWEEN);
+
       } catch (e) {
-        console.warn(`  ⚠️ Could not delete PDF: ${e.message}`);
+        console.error(`❌ Error processing row ${rowNum}: ${e.message}`);
+        results.errors.push({ row: rowNum, error: e.message });
       }
-    } catch (e) {
-      console.error(`❌ Error processing row ${rowNum}: ${e.message}`);
-      results.errors.push({ row: rowNum, error: e.message });
     }
   } catch (e) {
     console.error("❌ Main process error:", e);

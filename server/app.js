@@ -49,6 +49,7 @@ import getExJobsOverview from "./routes/export-dsr/getExJobsOverview.mjs";
 import getExporterList from "./routes/export-dsr/getExporterList.mjs";
 // import getExporterJobs from "./routes/export-dsr/getExporterJobs.mjs";
 import addJobs from "./routes/export-dsr/add-exp-jobs.mjs";
+import addJobsExcel from "./routes/export-dsr/add-exp-jobs-excel.mjs";
 import getExpJob from "./routes/export-dsr/getExpJob.mjs";
 import updateExportJobs from "./routes/export-dsr/updateExportJobs.js";
 import currencyRate from "./routes/currencyRate.js";
@@ -186,6 +187,7 @@ app.use(getExporterList);
 
 // app.use(getExporterJobs);
 app.use(addJobs);
+app.use(addJobsExcel);
 app.use(getConsignees);
 app.use(getManufacture);
 app.use(getHoToConsoleNames);

@@ -622,7 +622,7 @@ const ExportJobsTable = () => {
 
         // Refresh the jobs list
         const refreshResponse = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/api/exports`,
+          `${import.meta.env.VITE_API_STRING}/exports`,
           {
             params: {
               status: activeTab,

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { formatDate } from "../../../utils/dateUtils";
+import useExportExcelUpload from "../../../customHooks/useExportExcelUpload";
 import {
   BarChart,
   Bar,
@@ -191,6 +192,19 @@ const ExportDashboard = () => {
     cancelled: 0,
   });
   const [monthlyData, setMonthlyData] = useState([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const inputRef = useRef(null);
+
+  // Excel Upload Hook
+  const {
+    handleFileUpload,
+    snackbar,
+    loading: uploadLoading,
+    error: uploadError,
+    setError: setUploadError,
+    progress,
+    uploadStats,
+  } = useExportExcelUpload(inputRef, () => setRefreshTrigger((prev) => prev + 1));
   const [filters, setFilters] = useState({
     year: "",
     movementType: "",
@@ -213,7 +227,7 @@ const ExportDashboard = () => {
     fetchExporters();
   }, []);
 
-  // Stats Fetch
+  // Stats Fetch (also triggers on successful upload)
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -251,7 +265,7 @@ const ExportDashboard = () => {
     // Debounce
     const timer = setTimeout(fetchStats, 300);
     return () => clearTimeout(timer);
-  }, [filters]);
+  }, [filters, refreshTrigger]);
 
   const handleFilter = (key, val) =>
     setFilters((prev) => ({ ...prev, [key]: val }));
@@ -270,10 +284,90 @@ const ExportDashboard = () => {
       {/* Header */}
       <div style={s.header}>
         <h1 style={s.title}>Export Overview</h1>
-        <span style={s.lastUpdated}>
-          Last updated: {formatDate(new Date())} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          {/* Excel Upload Section */}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <button
+              onClick={() => !uploadLoading && inputRef.current?.click()}
+              disabled={uploadLoading}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 16px",
+                backgroundColor: uploadLoading ? "#9ca3af" : "#2563eb",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                cursor: uploadLoading ? "not-allowed" : "pointer",
+                fontSize: "12px",
+                fontWeight: "600",
+                boxShadow: "0 1px 3px rgba(37, 99, 235, 0.3)",
+              }}
+            >
+              {uploadLoading ? (
+                <>
+                  <span
+                    style={{
+                      width: "14px",
+                      height: "14px",
+                      border: "2px solid #fff",
+                      borderTopColor: "transparent",
+                      borderRadius: "50%",
+                      animation: "spin 0.8s linear infinite",
+                    }}
+                  />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  📊 Import Excel/CSV
+                </>
+              )}
+            </button>
+            <input
+              type="file"
+              ref={inputRef}
+              onChange={handleFileUpload}
+              accept=".xlsx,.xls,.csv"
+              style={{ display: "none" }}
+            />
+            {/* Progress indicator */}
+            {uploadLoading && progress.total > 0 && (
+              <span style={{ fontSize: "11px", color: "#6b7280" }}>
+                {progress.current}/{progress.total} chunks
+              </span>
+            )}
+            {/* Success indicator */}
+            {snackbar && uploadStats && (
+              <span style={{ fontSize: "11px", color: "#16a34a", fontWeight: "600" }}>
+                ✅ {uploadStats.count} records in {uploadStats.timeTaken}s
+              </span>
+            )}
+            {/* Error indicator */}
+            {uploadError && (
+              <span
+                style={{ fontSize: "11px", color: "#dc2626", cursor: "pointer" }}
+                onClick={() => setUploadError(null)}
+                title="Click to dismiss"
+              >
+                ❌ {uploadError.slice(0, 30)}...
+              </span>
+            )}
+          </div>
+          <span style={s.lastUpdated}>
+            Last updated: {formatDate(new Date())} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+          </span>
+        </div>
       </div>
+
+      {/* Spinner animation */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
 
       {/* Filters Row */}
       <div style={s.filterBar}>
