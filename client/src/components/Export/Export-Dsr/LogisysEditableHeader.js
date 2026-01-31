@@ -388,9 +388,9 @@ const LogisysEditableHeader = ({
         marginBottom: 12,
         background: "linear-gradient(90deg, #f7fafc 85%, #e3f2fd 100%)",
         border: "1px solid #e3e7ee",
-        borderRadius: 6,
+        borderRadius: 10,
         boxShadow: "0 1px 4px 0 rgba(60,72,100,0.06)",
-        padding: "8px 12px",
+        padding: "20px 24px",
         position: "relative",
         zIndex: 99999,
       }}
