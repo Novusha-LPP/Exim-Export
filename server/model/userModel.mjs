@@ -4,15 +4,23 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Create a separate connection for user database
-const USER_MONGODB_URI =
-  process.env.NODE_ENV === "production"
-    ? process.env.IMPORT_MONGODB_URI_PROD
-    : process.env.NODE_ENV === "server"
-    ? process.env.USER_MONGODB_URI_SERVER
-    : process.env.USER_MONGODB_URI;
+const USER_MONGODB_URI = (() => {
+  if (process.env.NODE_ENV === "production")
+    return process.env.IMPORT_MONGODB_URI_PROD || process.env.PROD_MONGODB_URI;
+  if (process.env.NODE_ENV === "server")
+    return process.env.USER_MONGODB_URI_SERVER || process.env.SERVER_MONGODB_URI;
+  return process.env.USER_MONGODB_URI || process.env.DEV_MONGODB_URI;
+})();
 
-// Create dedicated connection for user database
-const userDbConnection = mongoose.createConnection(USER_MONGODB_URI);
+// Create dedicated connection for user database (fallbacks to main DB URIs if missing)
+if (!USER_MONGODB_URI) {
+  console.warn(
+    "⚠️ USER_MONGODB_URI not defined. Falling back to server or dev DB to avoid crash."
+  );
+}
+const userDbConnection = mongoose.createConnection(
+  USER_MONGODB_URI || process.env.SERVER_MONGODB_URI || process.env.DEV_MONGODB_URI
+);
 
 userDbConnection.on("connected", () => {
   console.log(

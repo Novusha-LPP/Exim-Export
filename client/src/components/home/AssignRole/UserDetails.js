@@ -16,6 +16,7 @@ import {
   ListItemIcon,
   Checkbox,
   Divider,
+  TextField,
 } from "@mui/material";
 import axios from "axios";
 import PropTypes from "prop-types";
@@ -35,6 +36,7 @@ function union(a, b) {
 
 function UserDetails({ selectedUser, onClose, onSave }) {
   const [userData, setUserData] = useState(null);
+  const [department, setDepartment] = useState("");
   const [checked, setChecked] = useState([]);
   const [right, setRight] = useState([]); // Assigned importers
   const [left, setLeft] = useState([]); // Available importers
@@ -82,6 +84,7 @@ function UserDetails({ selectedUser, onClose, onSave }) {
           `${import.meta.env.VITE_API_STRING}/get-user/${selectedUser}`
         );
         setUserData(res.data);
+        setDepartment(res.data.department || "");
 
         // Set assigned importers (right side)
         const assignedImporters = res.data.assigned_importer_name || [];
@@ -123,6 +126,7 @@ function UserDetails({ selectedUser, onClose, onSave }) {
       );
       setLeft(availableImporters.sort());
       setUserData(selectedUser);
+      setDepartment(selectedUser.department || "");
     }
   }, [selectedUser, allImporters]);
 
@@ -231,6 +235,36 @@ function UserDetails({ selectedUser, onClose, onSave }) {
     }
   };
 
+  // Save department for user via admin
+  const handleSaveDepartment = async () => {
+    if (!userData?.username) return;
+
+    setLoading(true);
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_STRING}/assign-department`,
+        { username: userData.username, department }
+      );
+
+      setUserData((prev) => ({ ...prev, department }));
+
+      setSnackbar({
+        open: true,
+        message: res.data?.message || "Department updated successfully.",
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Error assigning department:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to assign department. Please try again.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSnackbarClose = (event, reason) => {
     if (reason === "clickaway") return;
     setSnackbar({ open: false, message: "", type: "" });
@@ -309,13 +343,33 @@ function UserDetails({ selectedUser, onClose, onSave }) {
               alt={userData?.username}
               style={{ width: "80px", height: "80px" }}
             />
-            <div>
+            <div style={{ flex: 1 }}>
               <Typography variant="h5" gutterBottom>
                 {userData?.username}
               </Typography>
               <Typography variant="body1" color="textSecondary">
                 Role: {userData?.role}
               </Typography>
+
+              {/* Department editing for Admins */}
+              <div style={{ marginTop: "10px", display: "flex", gap: "10px", alignItems: "center" }}>
+                <TextField
+                  size="small"
+                  label="Department"
+                  value={userData?.department || department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  disabled={loading}
+                  variant="outlined"
+                />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleSaveDepartment}
+                  disabled={loading}
+                >
+                  Save
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>

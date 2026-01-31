@@ -208,6 +208,9 @@ function AssignRole({ selectedUser }) {
                             Role: {user.role}
                           </Typography>
                           <Typography variant="body2">
+                            Department: {user.department || "—"}
+                          </Typography>
+                          <Typography variant="body2">
                             Importers Assigned:
                             {user.assigned_importer_name.length > 0
                               ? user.assigned_importer_name.length

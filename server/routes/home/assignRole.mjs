@@ -106,4 +106,33 @@ router.patch("/api/users/:username/add-importer", async (req, res) => {
       .send({ message: "Internal Server Error", error: error.message });
   }
 });
+
+// POST: Assign or update a user's department (Admin use)
+router.post("/api/assign-department", async (req, res) => {
+  const { username, department } = req.body;
+
+  if (!username) {
+    return res.status(400).send({ success: false, message: "Username is required" });
+  }
+
+  try {
+    const user = await UserModel.findOne({ username });
+    if (!user) {
+      return res.status(404).send({ success: false, message: "User not found" });
+    }
+
+    user.department = department || "";
+    await user.save();
+
+    res.status(200).send({
+      success: true,
+      message: "Department assigned successfully",
+      updatedUser: { username: user.username, department: user.department },
+    });
+  } catch (error) {
+    console.error("Error assigning department:", error);
+    res.status(500).send({ success: false, message: "Internal Server Error" });
+  }
+});
+
 export default router;
