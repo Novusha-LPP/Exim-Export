@@ -10,8 +10,8 @@ router.post("/api/admin/assign-icd-code", async (req, res) => {
   try {
     // Validation
     if (!username || !selectedIcdCodes || !adminUsername) {
-      return res.status(400).json({ 
-        message: "Username, selected ICD codes, and admin username are required" 
+      return res.status(400).json({
+        message: "Username, selected ICD codes, and admin username are required"
       });
     }
 
@@ -21,8 +21,8 @@ router.post("/api/admin/assign-icd-code", async (req, res) => {
     // Find the admin user
     const adminUser = await UserModel.findOne({ username: adminUsername });
     if (!adminUser || adminUser.role !== "Admin") {
-      return res.status(403).json({ 
-        message: "Unauthorized. Admin privileges required." 
+      return res.status(403).json({
+        message: "Unauthorized. Admin privileges required."
       });
     }
 
@@ -35,15 +35,24 @@ router.post("/api/admin/assign-icd-code", async (req, res) => {
     // Valid ICD codes
     const validIcdCodes = [
       "ICD SACHANA",
-      "ICD SANAND", 
+      "ICD SANAND",
       "ICD KHODIYAR",
+      "ICD SABARMATI, AHMEDABAD",
+      "ICD VIRAMGAM",
+      "AIR AHMEDABAD",
+      "AHMEDABAD AIR CARGO",
+      "ICD THAR DRY PORT",
+      "THAR DRY PORT",
+      "ICD VIROCHANNAGAR",
+      "ICD VIROCHAN NAGAR",
+      "HAZIRA"
     ];
 
     // Validate all selected ICD codes
     const invalidCodes = icdCodesArray.filter(code => !validIcdCodes.includes(code));
     if (invalidCodes.length > 0) {
-      return res.status(400).json({ 
-        message: `Invalid ICD codes selected: ${invalidCodes.join(', ')}` 
+      return res.status(400).json({
+        message: `Invalid ICD codes selected: ${invalidCodes.join(', ')}`
       });
     }
 
@@ -51,8 +60,8 @@ router.post("/api/admin/assign-icd-code", async (req, res) => {
     targetUser.selected_icd_codes = [...new Set(icdCodesArray)];
     await targetUser.save();
 
-    res.status(200).json({ 
-      message: `ICD codes "${icdCodesArray.join(', ')}" assigned to user "${username}" successfully` 
+    res.status(200).json({
+      message: `ICD codes "${icdCodesArray.join(', ')}" assigned to user "${username}" successfully`
     });
 
   } catch (err) {
@@ -68,16 +77,16 @@ router.post("/api/admin/remove-icd-code", async (req, res) => {
   try {
     // Validation
     if (!username || !adminUsername) {
-      return res.status(400).json({ 
-        message: "Username and admin username are required" 
+      return res.status(400).json({
+        message: "Username and admin username are required"
       });
     }
 
     // Find the admin user
     const adminUser = await UserModel.findOne({ username: adminUsername });
     if (!adminUser || adminUser.role !== "Admin") {
-      return res.status(403).json({ 
-        message: "Unauthorized. Admin privileges required." 
+      return res.status(403).json({
+        message: "Unauthorized. Admin privileges required."
       });
     }
 
@@ -89,8 +98,8 @@ router.post("/api/admin/remove-icd-code", async (req, res) => {
 
     // Check if user has any ICD codes assigned
     if (!targetUser.selected_icd_codes || targetUser.selected_icd_codes.length === 0) {
-      return res.status(400).json({ 
-        message: "No ICD codes assigned to this user" 
+      return res.status(400).json({
+        message: "No ICD codes assigned to this user"
       });
     }
 
@@ -100,17 +109,17 @@ router.post("/api/admin/remove-icd-code", async (req, res) => {
         code => !icdCodesToRemove.includes(code)
       );
       await targetUser.save();
-      
-      res.status(200).json({ 
-        message: `ICD codes "${icdCodesToRemove.join(', ')}" removed from user "${username}" successfully` 
+
+      res.status(200).json({
+        message: `ICD codes "${icdCodesToRemove.join(', ')}" removed from user "${username}" successfully`
       });
     } else {
       // Remove all ICD codes
       targetUser.selected_icd_codes = [];
       await targetUser.save();
 
-      res.status(200).json({ 
-        message: `All ICD codes removed from user "${username}" successfully` 
+      res.status(200).json({
+        message: `All ICD codes removed from user "${username}" successfully`
       });
     }
 

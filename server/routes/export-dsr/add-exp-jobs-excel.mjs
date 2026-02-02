@@ -113,23 +113,49 @@ function computeStatus(data) {
 function isEmpty(value) {
     if (value === undefined || value === null) return true;
     if (typeof value === 'string' && value.trim() === '') return true;
+    if (Array.isArray(value) && value.length === 0) return true;
     return false;
 }
 
+// Helper to normalize EXIM scheme from numeric code to full descriptive string
+const normalizeEximScheme = (scheme) => {
+    const s = String(scheme || "").trim();
+    switch (s) {
+        case "03": return "03 - ADVANCE LICENCE";
+        case "19": return "19 - DRAWBACK (DBK)";
+        case "21": return "21 (EOU/EPZ/SEZ/EHTP/STP)";
+        case "43": return "43 - DRAWBACK AND ZERO DUTY PECG";
+        case "50": return "50 - EPCG AND ADVANCE LICENSE";
+        case "60": return "60 - DRAWBACK AND ROSCTL";
+        case "61": return "61 - EPCG, DRAWBACK AND ROSCTL";
+        case "99": return "99 - NFEI";
+        default: return s;
+    }
+};
+
+// Helper to normalize seal type
+const normalizeSealType = (type) => {
+    const t = String(type || "").toUpperCase().trim();
+    if (t.includes("BTSL") || t.includes("BOTTLE")) return "BTSL";
+    if (t.includes("RFID")) return "RFID";
+    return t;
+};
+
 /**
- * Helper to get value only if existing is empty
- * Used to preserve existing data and not overwrite with Excel data
+ * Helper to get value for update
+ * Prioritizes the new value from Excel if it's not empty.
+ * If new value is empty, preserves existing data.
  * @param {any} newValue - New value from Excel
  * @param {any} existingValue - Existing value in database
- * @returns {any} - Value to use (existing if present, else new)
+ * @returns {any} - Value to use
  */
-function getValueIfEmpty(newValue, existingValue) {
-    // If existing has data, keep it
-    if (!isEmpty(existingValue)) {
-        return existingValue;
+function getUpdateValue(newValue, existingValue) {
+    // If Excel has data, use it (Source of Truth for import)
+    if (!isEmpty(newValue)) {
+        return newValue;
     }
-    // Otherwise use new value
-    return newValue;
+    // Otherwise keep existing
+    return existingValue;
 }
 
 /**
@@ -177,6 +203,9 @@ router.post("/api/jobs/add-job", async (req, res) => {
         let processedCount = 0;
         let skippedCount = 0;
 
+        // Collect max sequence numbers to update JobSequence at the end
+        const maxSequences = new Map(); // Key: "branch|year", Value: maxSeq
+
         for (const data of jsonData) {
             const {
                 // Core identification
@@ -194,6 +223,8 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 exporter_type,
                 exporter_gstin,
                 gstin,
+                exporter_pan,
+                exporter_state,
 
                 // IE Code (now comes as ieCode from frontend)
                 ieCode,
@@ -224,6 +255,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 invoice_number,
                 invoice_date,
                 total_inv_value,
+                invoice_value,
 
                 // Weight & Packages
                 total_no_of_pkgs,
@@ -235,6 +267,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 exchange_rate,
                 currency,
                 cif_amount,
+                fob_value,
                 unit_price,
 
                 // Consignment/Transport
@@ -287,7 +320,47 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 // Bank
                 adCode,
                 bank_name,
+                bank_account_number,
+
+                // Invoice/Product Details from Excel
+                total_igst_amount,
+                total_dbk_inr,
+                total_igst_taxable_value,
+                total_rodtep_amount,
+                total_rosctl_amount,
+                ritc_no,
+                product_qty,
+                product_description,
+                product_amount,
+                terms_of_invoice,
+                fob_value_inr,
+
+                // Buyer & Other
+                buyer_name,
+                buyer_address,
+                commission_amount,
+                seal_no_date,
+                seal_no,
+                seal_date,
+                seal_type,
+                exim_scheme,
+
+                // Branch
+                branchSrNo,
             } = data;
+
+            // Debug logging for the first job to see what's being received
+            if (processedCount === 0) {
+                console.log(`🔍 [Backend] First job data sample:`, {
+                    job_no,
+                    port_of_discharge,
+                    destination_port,
+                    custom_house,
+                    invoice_number,
+                    invoice_date,
+                    exporter
+                });
+            }
 
             // Sync the job sequence counter if this is a valid job number
             // Format expected: BRANCH/SEQUENCE/YEAR (e.g. AMD/00123/25-26)
@@ -327,14 +400,18 @@ router.post("/api/jobs/add-job", async (req, res) => {
                         console.log(`Title: Syncing Sequence | Job: ${job_no} | Branch: ${targetBranch} | Year: ${targetYear} | Seq: ${seqNum}`);
 
                         if (targetBranch && targetYear && !isNaN(seqNum)) {
-                            await updateJobSequenceIfHigher(targetBranch, targetYear, seqNum);
+                            const key = `${targetBranch}|${targetYear}`;
+                            const currentMax = maxSequences.get(key) || 0;
+                            if (seqNum > currentMax) {
+                                maxSequences.set(key, seqNum);
+                            }
                         } else {
                             console.warn(`Skipping sequence sync for ${job_no} - Missing Branch/Year/Seq`);
                         }
                     }
                 }
             } catch (err) {
-                console.warn(`Could not sync sequence for job ${job_no}:`, err.message);
+                console.warn(`Could parse sequence info for job ${job_no}:`, err.message);
             }
 
             // Define the filter to find existing jobs
@@ -343,41 +420,40 @@ router.post("/api/jobs/add-job", async (req, res) => {
             // OPTIMIZATION: Use Map lookup instead of database query
             const existingJob = existingJobsMap.get(job_no);
 
-            // Handle fields that should only update if empty in existing record
+            // Handle fields that should update if new data is provided
             let vesselBerthingToUpdate = existingJob?.vessel_berthing || "";
             let gatewayIgmDateUpdate = existingJob?.gateway_igm_date || "";
             let lineNoUpdate = existingJob?.line_no || "";
             let ieCodeUpdate = existingJob?.ieCode || "";
 
-            // Only update vessel_berthing if it's empty in the database
-            if (
-                vessel_berthing &&
-                (!vesselBerthingToUpdate || vesselBerthingToUpdate.trim() === "")
-            ) {
-                vesselBerthingToUpdate = vessel_berthing;
+            // Update if new value is provided in Excel
+            if (vessel_berthing && String(vessel_berthing).trim() !== "") {
+                vesselBerthingToUpdate = String(vessel_berthing).trim();
             }
-            if (
-                gateway_igm_date &&
-                (!gatewayIgmDateUpdate || gatewayIgmDateUpdate.trim() === "")
-            ) {
-                gatewayIgmDateUpdate = gateway_igm_date;
+            if (gateway_igm_date && String(gateway_igm_date).trim() !== "") {
+                gatewayIgmDateUpdate = String(gateway_igm_date).trim();
             }
-            if (line_no && (!lineNoUpdate || lineNoUpdate.trim() === "")) {
-                lineNoUpdate = line_no;
+            if (line_no && String(line_no).trim() !== "") {
+                lineNoUpdate = String(line_no).trim();
             }
             // ieCode now comes directly from frontend
             if (ieCode) {
-                ieCodeUpdate = ieCode;
+                let formattedIeCode = String(ieCode).trim();
+                if (formattedIeCode.length < 10 && formattedIeCode.length > 0) {
+                    formattedIeCode = formattedIeCode.padStart(10, "0");
+                }
+                ieCodeUpdate = formattedIeCode;
             }
 
             // Build consignees array if consignee info exists
-            const consignees = [];
-            if (consignee_name) {
-                consignees.push({
+            // Prioritize spreadsheet data if provided, otherwise preserve existing
+            let consigneesToUpdate = existingJob?.consignees || [];
+            if (consignee_name && String(consignee_name).trim() !== "") {
+                consigneesToUpdate = [{
                     consignee_name: consignee_name,
                     consignee_address: consignee_address || "",
                     consignee_country: consignee_country || "",
-                });
+                }];
             }
 
             // Build the update data with all fields from the Excel
@@ -387,101 +463,116 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 year: normalizeYear(year),
                 job_no,
                 jobNumber: job_no, // Required for unique index
-                job_date: getValueIfEmpty(job_date, existingJob?.job_date),
+                job_date: getUpdateValue(job_date, existingJob?.job_date),
                 branch_code: normalizeBranchCode(branch_code),
 
-                // Custom House - preserve if exists
-                custom_house: getValueIfEmpty(custom_house, existingJob?.custom_house),
+                // Custom House
+                custom_house: getUpdateValue(custom_house, existingJob?.custom_house),
 
-                // Exporter - preserve if exists
-                exporter: getValueIfEmpty(exporter, existingJob?.exporter),
-                exporter_address: getValueIfEmpty(exporter_address, existingJob?.exporter_address),
-                exporter_type: getValueIfEmpty(exporter_type, existingJob?.exporter_type),
-                exporter_gstin: getValueIfEmpty(exporter_gstin || gstin, existingJob?.exporter_gstin),
-                gstin: getValueIfEmpty(gstin || exporter_gstin, existingJob?.gstin),
+                // Exporter
+                exporter: getUpdateValue(exporter, existingJob?.exporter),
+                exporter_address: getUpdateValue(exporter_address, existingJob?.exporter_address),
+                exporter_type: getUpdateValue(exporter_type, existingJob?.exporter_type),
+                exporter_gstin: getUpdateValue(exporter_gstin || gstin, existingJob?.exporter_gstin),
+                gstin: getUpdateValue(gstin || exporter_gstin, existingJob?.gstin),
+                exporter_pan: getUpdateValue(exporter_pan, existingJob?.exporter_pan),
+                pan_no: getUpdateValue(exporter_pan, existingJob?.pan_no),
+                panNo: getUpdateValue(exporter_pan, existingJob?.panNo),
+                exporter_state: getUpdateValue(exporter_state, existingJob?.exporter_state),
 
-                // Shipping Bill - preserve if exists
-                sb_no: getValueIfEmpty(sb_no, existingJob?.sb_no),
-                sb_date: getValueIfEmpty(sb_date, existingJob?.sb_date),
-                sb_type: getValueIfEmpty(sb_type, existingJob?.sb_type),
+                // Buyer & Third Party Info
+                buyerThirdPartyInfo: {
+                    buyer: {
+                        name: getUpdateValue(buyer_name, existingJob?.buyerThirdPartyInfo?.buyer?.name),
+                        addressLine1: getUpdateValue(buyer_address, existingJob?.buyerThirdPartyInfo?.buyer?.addressLine1),
+                    }
+                },
 
-                // BE - preserve if exists
-                be_no: getValueIfEmpty(be_no, existingJob?.be_no),
-                be_date: getValueIfEmpty(be_date, existingJob?.be_date),
+                // Shipping Bill
+                sb_no: getUpdateValue(sb_no, existingJob?.sb_no),
+                sb_date: getUpdateValue(sb_date, existingJob?.sb_date),
+                sb_type: getUpdateValue(sb_type, existingJob?.sb_type),
 
-                // AWB/BL - preserve if exists
-                awb_bl_no: getValueIfEmpty(awb_bl_no, existingJob?.awb_bl_no),
-                awb_bl_date: getValueIfEmpty(awb_bl_date, existingJob?.awb_bl_date),
-                mbl_no: getValueIfEmpty(mbl_no, existingJob?.mbl_no),
-                mbl_date: getValueIfEmpty(mbl_date, existingJob?.mbl_date),
-                hbl_no: getValueIfEmpty(hbl_no, existingJob?.hbl_no),
-                hbl_date: getValueIfEmpty(hbl_date, existingJob?.hbl_date),
+                // BE
+                be_no: getUpdateValue(be_no, existingJob?.be_no),
+                be_date: getUpdateValue(be_date, existingJob?.be_date),
 
-                // Invoice - preserve if exists
-                invoice_number: getValueIfEmpty(invoice_number, existingJob?.invoice_number),
-                invoice_date: getValueIfEmpty(invoice_date, existingJob?.invoice_date),
-                total_inv_value: getValueIfEmpty(total_inv_value, existingJob?.total_inv_value),
+                // AWB/BL
+                awb_bl_no: getUpdateValue(awb_bl_no, existingJob?.awb_bl_no),
+                awb_bl_date: getUpdateValue(awb_bl_date, existingJob?.awb_bl_date),
+                mbl_no: getUpdateValue(mbl_no, existingJob?.mbl_no),
+                mbl_date: getUpdateValue(mbl_date, existingJob?.mbl_date),
+                hbl_no: getUpdateValue(hbl_no, existingJob?.hbl_no),
+                hbl_date: getUpdateValue(hbl_date, existingJob?.hbl_date),
 
-                // Weight & Packages - preserve if exists
-                total_no_of_pkgs: getValueIfEmpty(total_no_of_pkgs, existingJob?.total_no_of_pkgs),
-                package_unit: getValueIfEmpty(package_unit, existingJob?.package_unit),
-                gross_weight_kg: getValueIfEmpty(gross_weight_kg, existingJob?.gross_weight_kg),
-                net_weight_kg: getValueIfEmpty(net_weight_kg, existingJob?.net_weight_kg),
+                // Note: Invoice data (invoice_number, invoice_date, invoice_value, total_inv_value)
+                // is handled separately and stored in the invoices array structure
 
-                // Financial - preserve if exists
-                exchange_rate: getValueIfEmpty(exchange_rate, existingJob?.exchange_rate),
-                currency: getValueIfEmpty(currency, existingJob?.currency),
-                cif_amount: getValueIfEmpty(cif_amount, existingJob?.cif_amount),
-                unit_price: getValueIfEmpty(unit_price, existingJob?.unit_price),
+                // Weight & Packages
+                total_no_of_pkgs: getUpdateValue(total_no_of_pkgs, existingJob?.total_no_of_pkgs),
+                package_unit: getUpdateValue(package_unit, existingJob?.package_unit),
+                gross_weight_kg: getUpdateValue(gross_weight_kg, existingJob?.gross_weight_kg),
+                net_weight_kg: getUpdateValue(net_weight_kg, existingJob?.net_weight_kg),
+
+                // Financial
+                exchange_rate: getUpdateValue(exchange_rate, existingJob?.exchange_rate),
+                currency: getUpdateValue(currency, existingJob?.currency),
+                cif_amount: getUpdateValue(cif_amount, existingJob?.cif_amount),
+                fob_value: getUpdateValue(fob_value_inr || fob_value, existingJob?.fob_value),
+                unit_price: getUpdateValue(unit_price, existingJob?.unit_price),
+                branchSrNo: getUpdateValue(branchSrNo, existingJob?.branchSrNo),
+                branch_sr_no: getUpdateValue(branchSrNo, existingJob?.branch_sr_no),
 
                 // IE Code
                 ieCode: ieCodeUpdate,
 
-                // Consignment/Transport - preserve if exists
-                consignmentType: getValueIfEmpty(consignmentType, existingJob?.consignmentType),
-                transportMode: getValueIfEmpty(transportMode, existingJob?.transportMode),
+                // Consignment/Transport
+                consignmentType: getUpdateValue(consignmentType, existingJob?.consignmentType),
+                transportMode: getUpdateValue(transportMode, existingJob?.transportMode),
 
-                // Shipping Line - preserve if exists
-                shipping_line_airline: getValueIfEmpty(shipping_line_airline, existingJob?.shipping_line_airline),
+                // Shipping Line
+                shipping_line_airline: getUpdateValue(shipping_line_airline, existingJob?.shipping_line_airline),
 
-                // Ports - preserve if exists
-                port_of_loading: getValueIfEmpty(port_of_loading, existingJob?.port_of_loading),
-                port_of_discharge: getValueIfEmpty(port_of_discharge, existingJob?.port_of_discharge),
-                final_destination: getValueIfEmpty(final_destination, existingJob?.final_destination),
-                gateway_port: getValueIfEmpty(gateway_port, existingJob?.gateway_port),
-                discharge_country: getValueIfEmpty(discharge_country, existingJob?.discharge_country),
-                destination_country: getValueIfEmpty(destination_country, existingJob?.destination_country),
-                destination_port: getValueIfEmpty(destination_port, existingJob?.destination_port),
+                // Ports
+                port_of_loading: getUpdateValue(port_of_loading, existingJob?.port_of_loading),
+                port_of_discharge: getUpdateValue(port_of_discharge, existingJob?.port_of_discharge),
+                final_destination: getUpdateValue(final_destination, existingJob?.final_destination),
+                gateway_port: getUpdateValue(gateway_port, existingJob?.gateway_port),
+                discharge_country: getUpdateValue(discharge_country, existingJob?.discharge_country),
+                destination_country: getUpdateValue(destination_country, existingJob?.destination_country),
+                destination_port: getUpdateValue(destination_port, existingJob?.destination_port),
 
-                // Vessel/Flight - preserve if exists
-                vessel_name: getValueIfEmpty(vessel_name, existingJob?.vessel_name),
-                voyage_no: getValueIfEmpty(voyage_no, existingJob?.voyage_no),
-                flight_no: getValueIfEmpty(flight_no, existingJob?.flight_no),
-                flight_date: getValueIfEmpty(flight_date, existingJob?.flight_date),
-                sailing_date: getValueIfEmpty(sailing_date, existingJob?.sailing_date),
+                // Vessel/Flight
+                vessel_name: getUpdateValue(vessel_name, existingJob?.vessel_name),
+                voyage_no: getUpdateValue(voyage_no, existingJob?.voyage_no),
+                flight_no: getUpdateValue(flight_no, existingJob?.flight_no),
+                flight_date: getUpdateValue(flight_date, existingJob?.flight_date),
+                sailing_date: getUpdateValue(sailing_date, existingJob?.sailing_date),
 
-                // Container count - preserve if exists
-                no_of_containers: getValueIfEmpty(no_of_containers, existingJob?.no_of_containers),
+                // Container count
+                no_of_containers: getUpdateValue(no_of_containers, existingJob?.no_of_containers),
 
-                // EGM - preserve if exists
-                egm_no: getValueIfEmpty(egm_no, existingJob?.egm_no),
-                egm_date: getValueIfEmpty(egm_date, existingJob?.egm_date),
+                // EGM
+                egm_no: getUpdateValue(egm_no, existingJob?.egm_no),
+                egm_date: getUpdateValue(egm_date, existingJob?.egm_date),
 
-                // Description & Other - preserve if exists
-                description: getValueIfEmpty(description, existingJob?.description),
-                hss_name: getValueIfEmpty(hss_name, existingJob?.hss_name),
-                cha: getValueIfEmpty(cha, existingJob?.cha),
-                remarks: getValueIfEmpty(remarks, existingJob?.remarks),
-                job_owner: getValueIfEmpty(job_owner, existingJob?.job_owner),
-                shipper: getValueIfEmpty(shipper, existingJob?.shipper),
-                notify: getValueIfEmpty(notify, existingJob?.notify),
-                exporter_ref_no: getValueIfEmpty(exporter_ref_no, existingJob?.exporter_ref_no),
-                nature_of_cargo: getValueIfEmpty(nature_of_cargo, existingJob?.nature_of_cargo),
-                state_of_origin: getValueIfEmpty(state_of_origin, existingJob?.state_of_origin),
+                // Description & Other
+                description: getUpdateValue(description, existingJob?.description),
+                hss_name: getUpdateValue(hss_name, existingJob?.hss_name),
+                cha: getUpdateValue(cha, existingJob?.cha),
+                remarks: getUpdateValue(remarks, existingJob?.remarks),
+                job_owner: getUpdateValue(job_owner, existingJob?.job_owner),
+                shipper: getUpdateValue(shipper, existingJob?.shipper),
+                notify: getUpdateValue(notify, existingJob?.notify),
+                exporter_ref_no: getUpdateValue(exporter_ref_no, existingJob?.exporter_ref_no),
+                nature_of_cargo: getUpdateValue(nature_of_cargo, existingJob?.nature_of_cargo),
+                state_of_origin: getUpdateValue(state_of_origin, existingJob?.state_of_origin),
 
-                // Bank - preserve if exists
-                adCode: getValueIfEmpty(adCode, existingJob?.adCode),
-                bank_name: getValueIfEmpty(bank_name, existingJob?.bank_name),
+                // Bank
+                adCode: getUpdateValue(adCode, existingJob?.adCode),
+                ad_code: getUpdateValue(adCode, existingJob?.ad_code),
+                bank_name: getUpdateValue(bank_name, existingJob?.bank_name),
+                bank_account_number: getUpdateValue(bank_account_number, existingJob?.bank_account_number),
 
                 // Conditional updates
                 line_no: lineNoUpdate,
@@ -501,10 +592,127 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 }
             });
 
-            // Add consignees if present
-            if (consignees.length > 0) {
-                updateData.consignees = consignees;
+            // Build invoices array if invoice data exists
+            // Excel has invoice data at top level, but schema stores it in invoices array
+            if (invoice_number && String(invoice_number).trim() !== "") {
+                const invoice_number_str = String(invoice_number).trim();
+                const existingInvoices = existingJob?.invoices || [];
+
+                // Check if this invoice already exists
+                const invoiceIndex = existingInvoices.findIndex(
+                    inv => inv.invoiceNumber === invoice_number_str
+                );
+
+                // Build product data (usually one dummy product per invoice for DSR imports)
+                const productData = {
+                    serialNumber: "1",
+                    description: product_description || description || "",
+                    ritc: ritc_no || "",
+                    quantity: product_qty ? String(product_qty) : "0",
+                    qtyUnit: package_unit || "",
+                    amount: product_amount ? String(product_amount) : "0",
+                    eximCode: normalizeEximScheme(exim_scheme),
+                    igstCompensationCess: {
+                        igstPaymentStatus: "LUT",
+                        taxableValueINR: total_igst_taxable_value ? String(total_igst_taxable_value) : "0",
+                        igstRate: "0",
+                        igstAmountINR: total_igst_amount ? String(total_igst_amount) : "0",
+                    },
+                    rodtepInfo: {
+                        claim: total_rodtep_amount ? "Yes" : "No",
+                        amountINR: total_rodtep_amount ? String(total_rodtep_amount) : "0",
+                    },
+                    rosctlInfo: {
+                        claim: total_rosctl_amount ? "Yes" : "No",
+                        amountINR: total_rosctl_amount ? String(total_rosctl_amount) : "0",
+                    },
+                    drawbackDetails: total_dbk_inr ? [{
+                        dbkitem: true,
+                        dbkAmount: parseFloat(total_dbk_inr) || 0,
+                    }] : [],
+                };
+
+                const invoiceData = {
+                    invoiceNumber: invoice_number_str,
+                    invoiceDate: invoice_date || "",
+                    currency: currency || "USD",
+                    invoiceValue: invoice_value ? parseFloat(invoice_value) : 0,
+                    productValue: total_inv_value ? parseFloat(total_inv_value) : 0,
+                    termsOfInvoice: terms_of_invoice || "FOB",
+                    priceIncludes: "Both",
+                    packing_charges: 0,
+                    products: [productData],
+                    freightInsuranceCharges: {
+                        fobValue: {
+                            amount: fob_value_inr ? parseFloat(fob_value_inr) : 0
+                        },
+                        commission: {
+                            amount: commission_amount ? parseFloat(commission_amount) : 0
+                        }
+                    }
+                };
+
+                if (invoiceIndex >= 0) {
+                    // Update existing invoice
+                    existingInvoices[invoiceIndex] = {
+                        ...existingInvoices[invoiceIndex],
+                        ...invoiceData
+                    };
+                    updateData.invoices = existingInvoices;
+                } else {
+                    // Add new invoice
+                    updateData.invoices = [...existingInvoices, invoiceData];
+                }
             }
+
+            // Add consignees if present
+            if (consigneesToUpdate && consigneesToUpdate.length > 0) {
+                updateData.consignees = consigneesToUpdate;
+            }
+
+            // Build seal info arrays (Excel can have multiple containers/seals in one row)
+            const sealNoDateList = seal_no_date ? String(seal_no_date).split(',').map(s => s.trim()) : [];
+            const sealTypeList = seal_type ? String(seal_type).split(',').map(s => s.trim()) : [];
+            const sealNoList = seal_no ? String(seal_no).split(',').map(s => s.trim()) : [];
+            const sealDateList = seal_date ? String(seal_date).split(',').map(s => s.trim()) : [];
+
+            // Helper to get seal info for a specific container index
+            const getSealInfoForIndex = (index) => {
+                let sNo = sealNoList[index] || "";
+                let sDate = sealDateList[index] || "";
+                let sType = sealTypeList[index] || (sealTypeList.length === 1 ? sealTypeList[0] : "");
+
+                // Fallback to split seal_no_date if separate fields are missing for this index
+                const combined = sealNoDateList[index] || (sealNoDateList.length === 1 ? sealNoDateList[0] : "");
+                if (!sNo && combined) {
+                    const firstDelimMatch = combined.match(/[\s,/]/);
+                    if (firstDelimMatch) {
+                        const dIndex = firstDelimMatch.index;
+                        sNo = combined.substring(0, dIndex).trim();
+                        if (!sDate) {
+                            sDate = combined.substring(dIndex + 1).trim();
+                        }
+                    } else {
+                        sNo = combined;
+                    }
+                }
+
+                // Clean up date (remove common prefixes like DT., DT, DATE, etc.)
+                if (sDate) {
+                    sDate = sDate.replace(/^(DT|DATE|DAT|D)\.?[\s:]*/i, "").trim();
+                }
+
+                // Clean up seal number as well just in case
+                if (sNo) {
+                    sNo = sNo.replace(/^(SEAL|NO)\.?[\s:]*/i, "").trim();
+                }
+
+                return {
+                    sealNo: sNo,
+                    sealDate: sDate,
+                    sealType: normalizeSealType(sType)
+                };
+            };
 
             // Handle container_nos if present
             if (container_nos && Array.isArray(container_nos)) {
@@ -515,38 +723,57 @@ router.post("/api/jobs/add-job", async (req, res) => {
                         const newContainerData = container_nos.find(
                             (c) => c.containerNo === existingContainer.containerNo
                         );
-                        return newContainerData
-                            ? { ...existingContainer, type: newContainerData.type }
-                            : existingContainer;
+                        if (newContainerData) {
+                            const containerIndexInMatch = container_nos.indexOf(newContainerData);
+                            const sInfo = getSealInfoForIndex(containerIndexInMatch);
+                            return {
+                                ...existingContainer,
+                                type: newContainerData.type,
+                                sealNo: sInfo.sealNo || existingContainer.sealNo,
+                                sealDate: sInfo.sealDate || existingContainer.sealDate,
+                                sealType: sInfo.sealType || existingContainer.sealType
+                            };
+                        }
+                        return existingContainer;
                     });
 
                     // Add new containers that don't exist
-                    container_nos.forEach((newContainer) => {
+                    container_nos.forEach((newContainer, idx) => {
                         const exists = updatedContainers.find(
                             (c) => c.containerNo === newContainer.containerNo
                         );
                         if (!exists) {
+                            const sInfo = getSealInfoForIndex(idx);
                             updatedContainers.push({
                                 containerNo: newContainer.containerNo,
                                 type: newContainer.type || "",
+                                sealNo: sInfo.sealNo || "",
+                                sealDate: sInfo.sealDate || "",
+                                sealType: sInfo.sealType || ""
                             });
                         }
                     });
 
                     updateData.containers = updatedContainers;
                 } else {
-                    updateData.containers = container_nos.map((c) => ({
-                        containerNo: c.containerNo || c.container_number,
-                        type: c.type || c.size || "",
-                    }));
+                    updateData.containers = container_nos.map((c, idx) => {
+                        const sInfo = getSealInfoForIndex(idx);
+                        return {
+                            containerNo: c.containerNo || c.container_number,
+                            type: c.type || c.size || "",
+                            sealNo: sInfo.sealNo || "",
+                            sealDate: sInfo.sealDate || "",
+                            sealType: sInfo.sealType || ""
+                        };
+                    });
                 }
             }
 
             // (Status is already set in updateData above)
 
-            // Remove undefined and null values to avoid overwriting existing data
+            // Remove undefined and null values only (keep empty strings as they may be intentional clears)
             Object.keys(updateData).forEach(key => {
-                if (updateData[key] === undefined || updateData[key] === null || updateData[key] === '') {
+                if (updateData[key] === undefined || updateData[key] === null) {
                     delete updateData[key];
                 }
             });
@@ -597,6 +824,19 @@ router.post("/api/jobs/add-job", async (req, res) => {
             );
             await ExportJobModel.bulkWrite(bulkOperations, { ordered: false });
             console.log(`✅ [Backend] Final chunk written successfully.`);
+        }
+
+        // Update sequence counters in bulk at the end
+        if (maxSequences.size > 0) {
+            console.log(`🆙 [Backend] Syncing job sequences for ${maxSequences.size} branch/year combinations...`);
+            for (const [key, maxSeq] of maxSequences.entries()) {
+                const [branch, year] = key.split('|');
+                try {
+                    await updateJobSequenceIfHigher(branch, year, maxSeq);
+                } catch (err) {
+                    console.error(`Failed to sync sequence for ${branch}/${year}:`, err.message);
+                }
+            }
         }
 
         // Update the last jobs update date

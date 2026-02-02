@@ -77,10 +77,10 @@ const styles = {
     border: "1px solid #d6dae2",
     borderRadius: 4,
     boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-    zIndex: 9999,
+    zIndex: 1000000,
   },
   acItem: (active) => ({
-    padding: "6px 8px",
+    padding: "4px 8px",
     cursor: "pointer",
     fontSize: 11,
     fontWeight: 500,
@@ -213,8 +213,8 @@ function GatewayPortDropdown({
     if (d.wrapperRef.current) {
       const rect = d.wrapperRef.current.getBoundingClientRect();
       setCoords({
-        top: rect.bottom,
-        left: rect.left,
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
         width: rect.width,
       });
     }
@@ -295,10 +295,11 @@ function GatewayPortDropdown({
               ref={d.menuRef}
               style={{
                 ...styles.acMenu,
-                position: "fixed",
+                position: "absolute",
                 top: coords.top + 2,
                 left: coords.left,
                 width: Math.max(coords.width, 200),
+                zIndex: 1000000,
               }}
             >
               {filtered.map((port, i) => (

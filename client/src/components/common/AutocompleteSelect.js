@@ -43,7 +43,9 @@ const AutocompleteSelect = ({
 
   // Sync query with selected value only when not open or not typing
   useEffect(() => {
-    const selected = options.find((opt) => opt.value === value);
+    const selected = options.find((opt) =>
+      String(opt.value).toUpperCase() === String(value).toUpperCase()
+    );
     if (!open) setQuery(selected ? selected.label : "");
   }, [value, options, open]);
 
@@ -174,17 +176,17 @@ const AutocompleteSelect = ({
               borderRadius: 4,
               boxShadow:
                 "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-              zIndex: 999999,
+              zIndex: 1000001,
             }}
           >
             {filtered.map((opt, i) => (
               <div
                 key={opt.value + i}
                 style={{
-                  padding: "6px 10px",
+                  padding: "4px 8px",
                   cursor: "pointer",
                   fontSize: 11,
-                  fontWeight: i === active ? 700 : 600,
+                  fontWeight: i === active ? 700 : 500,
                   background:
                     i === active
                       ? "#f1f5f9"
