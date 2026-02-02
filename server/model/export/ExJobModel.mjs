@@ -542,46 +542,14 @@ const eSanchitDocumentSchema = new Schema({
 });
 
 // Charge Schema
+// Charge Schema
 const chargeSchema = new Schema(
   {
-    chargeHead: { type: String, trim: true },
-    category: { type: String, trim: true, default: "Margin" },
-    costCenter: { type: String, trim: true, default: "CCL EXP" },
-    remark: { type: String, trim: true },
-
-    // Revenue Section
-    revenue: {
-      basis: { type: String, trim: true, default: "Per S/B" },
-      qtyUnit: { type: Number, default: 0 },
-      rate: { type: Number, default: 0 },
-      amount: { type: Number, default: 0 },
-      amountINR: { type: Number, default: 0 },
-      curr: { type: String, trim: true, default: "INR" },
-      ovrd: { type: Boolean, default: false },
-      paid: { type: Boolean, default: false },
-    },
-
-    // Cost Section
-    cost: {
-      basis: { type: String, trim: true, default: "Per S/B" },
-      qtyUnit: { type: Number, default: 0 },
-      rate: { type: Number, default: 0 },
-      amount: { type: Number, default: 0 },
-      amountINR: { type: Number, default: 0 },
-      curr: { type: String, trim: true, default: "INR" },
-      ovrd: { type: Boolean, default: false },
-      paid: { type: Boolean, default: false },
-    },
-
-    // Additional fields from form
-    chargeDescription: { type: String, trim: true },
-    overrideAutoRate: { type: Boolean, default: false },
-    receivableType: { type: String, trim: true, default: "Customer" },
-    receivableFrom: { type: String, trim: true },
-    receivableFromBranchCode: { type: String, trim: true },
-    copyToCost: { type: Boolean, default: false },
-
-    quotationNo: { type: String, trim: true },
+    isEnabled: { type: Boolean, default: false },
+    particulars: { type: String, trim: true },
+    buying: { type: Number, default: 0 },
+    selling: { type: Number, default: 0 },
+    remarks: { type: String, trim: true },
   },
   { _id: true },
 );
@@ -1419,8 +1387,8 @@ exportJobSchema.index({ createdAt: -1 }); // For recent jobs
 exportJobSchema.index({ "invoices.invoiceNumber": 1 }, { sparse: true });
 
 exportJobSchema.virtual("totalCharges").get(function () {
-  return this.charges.reduce(
-    (total, charge) => total + charge.revenue.amount,
+  return (this.charges || []).reduce(
+    (total, charge) => total + (charge.selling || 0),
     0,
   );
 });

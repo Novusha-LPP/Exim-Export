@@ -374,41 +374,8 @@ function useExportJobDetails(params, setFileSnackbar) {
       },
 
       // Charges and Billing
-      charges: [
-        {
-          chargeHead: "",
-          category: "Margin",
-          costCenter: "CCL EXP",
-          remark: "",
-          revenue: {
-            basis: "Per S/B",
-            qtyUnit: 0,
-            rate: 0,
-            amount: 0,
-            amountINR: 0,
-            curr: "INR",
-            ovrd: false,
-            paid: false,
-          },
-          cost: {
-            basis: "Per S/B",
-            qtyUnit: 0,
-            rate: 0,
-            amount: 0,
-            amountINR: 0,
-            curr: "INR",
-            ovrd: false,
-            paid: false,
-          },
-          chargeDescription: "",
-          overrideAutoRate: false,
-          receivableType: "Customer",
-          receivableFrom: "",
-          receivableFromBranchCode: "",
-          copyToCost: false,
-          quotationNo: "",
-        },
-      ],
+      // Charges and Billing
+      charges: [],
 
       // AR Invoices
       arInvoices: [

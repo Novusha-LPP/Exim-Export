@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Typography, Button, Box, Paper, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
+import { Typography, Button, Box, Paper, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Snackbar, Alert } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockIcon from "@mui/icons-material/Lock";
 import { UserContext } from "../../../contexts/UserContext";
@@ -398,6 +398,28 @@ function ExportJobsModule() {
           onClose={handleUpdateAndClose}
         />
       </Paper>
+      <Snackbar
+        open={fileSnackbar}
+        autoHideDuration={3000}
+        onClose={() => setFileSnackbar(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        sx={{ marginLeft: "50px" }}
+      >
+        <Alert
+          onClose={() => setFileSnackbar(false)}
+          severity="success"
+          sx={{
+            width: "100%",
+            backgroundColor: "black",
+            color: "white",
+            "& .MuiAlert-icon": {
+              color: "white",
+            },
+          }}
+        >
+          Job Update successfully
+        </Alert>
+      </Snackbar>
     </>
   );
 }
