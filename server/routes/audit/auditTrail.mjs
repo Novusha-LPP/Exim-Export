@@ -8,7 +8,7 @@ const router = express.Router();
 // Admin-only: Get audit trail for a specific user by userId with filters and pagination
 router.get("/api/audit-trail/user-logs/:userId", async (req, res) => {
   try {
-   
+
 
     const { userId } = req.params;
     const { actionType, fromDate, toDate, page = 1, limit = 20 } = req.query;
@@ -78,8 +78,22 @@ router.get("/api/audit-trail/all-users-with-activity", async (req, res) => {
       { $sort: { _id: 1 } },
     ]);
 
-    // Fetch all users from the user model
-    const allUsers = await UserModel.find({}).lean();
+    // Fetch all users from the user model WITH PROJECTION to reduce payload
+    const allUsers = await UserModel.find({})
+      .select({
+        _id: 1,
+        username: 1,
+        first_name: 1,
+        last_name: 1,
+        email: 1,
+        company: 1,
+        role: 1,
+        modules: 1,
+        assigned_importer_name: 1,
+        selected_icd_code: 1
+      })
+      .lean()
+      .maxTimeMS(15000); // 15 second timeout
     // Map username to user details
     const userMap = {};
     allUsers.forEach(u => {
@@ -116,23 +130,23 @@ router.get("/api/audit-trail/job/:job_no/:year", async (req, res) => {
   try {
     const { job_no, year } = req.params;
     const { page = 1, limit = 50, action, username, field } = req.query;
-    
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    
+
     // Build filter query
     const filter = { job_no, year };
     if (action) filter.action = action;
     if (username) filter.username = { $regex: username, $options: 'i' };
     if (field) filter['changes.field'] = { $regex: field, $options: 'i' };
-    
+
     const auditTrail = await AuditTrailModel.find(filter)
       .sort({ timestamp: -1 })
       .skip(skip)
       .limit(parseInt(limit))
       .lean();
-    
+
     const total = await AuditTrailModel.countDocuments(filter);
-    
+
     res.json({
       auditTrail,
       pagination: {
@@ -154,29 +168,29 @@ router.get("/api/audit-trail/user/:username", async (req, res) => {
   try {
     const { username } = req.params;
     const { page = 1, limit = 50, action, documentType, fromDate, toDate } = req.query;
-    
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    
+
     // Build filter query
     const filter = { username: { $regex: username, $options: 'i' } };
     if (action) filter.action = action;
     if (documentType) filter.documentType = documentType;
-    
+
     // Date range filter
     if (fromDate || toDate) {
       filter.timestamp = {};
       if (fromDate) filter.timestamp.$gte = new Date(fromDate);
       if (toDate) filter.timestamp.$lte = new Date(toDate);
     }
-    
+
     const auditTrail = await AuditTrailModel.find(filter)
       .sort({ timestamp: -1 })
       .skip(skip)
       .limit(parseInt(limit))
       .lean();
-    
+
     const total = await AuditTrailModel.countDocuments(filter);
-    
+
     res.json({
       auditTrail,
       pagination: {
@@ -198,17 +212,17 @@ router.get("/api/audit-trail/document/:documentId", async (req, res) => {
   try {
     const { documentId } = req.params;
     const { page = 1, limit = 50 } = req.query;
-    
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    
+
     const auditTrail = await AuditTrailModel.find({ documentId })
       .sort({ timestamp: -1 })
       .skip(skip)
       .limit(parseInt(limit))
       .lean();
-    
+
     const total = await AuditTrailModel.countDocuments({ documentId });
-    
+
     res.json({
       auditTrail,
       pagination: {
@@ -254,7 +268,7 @@ router.get("/api/audit-trail", async (req, res) => {
     if (year) filter.year = year;
     if (field) filter['changes.field'] = { $regex: field, $options: 'i' };
     if (ipAddress) filter.ipAddress = { $regex: ipAddress, $options: 'i' };
-    if (search)  filter.job_no = { $regex: search, $options: 'i' };
+    if (search) filter.job_no = { $regex: search, $options: 'i' };
 
     // Date range filter: default to current date if not provided
     const dateFilter = {};
@@ -382,7 +396,7 @@ router.get("/api/audit-trail/stats", async (req, res) => {
         }
       }
     ]);
-    
+
     // Get action breakdown
     const actionStats = await AuditTrailModel.aggregate([
       { $match: noFilters ? {} : dateFilter },
@@ -393,7 +407,7 @@ router.get("/api/audit-trail/stats", async (req, res) => {
         }
       }
     ]);
-    
+
     // Get top users
     const topUsers = await AuditTrailModel.aggregate([
       { $match: noFilters ? {} : dateFilter },
@@ -407,7 +421,7 @@ router.get("/api/audit-trail/stats", async (req, res) => {
       { $sort: { count: -1 } },
       { $limit: 10 }
     ]);
-    
+
     // Get activity grouped by hour, day, week, or month
     let dateFormat = "%Y-%m-%d %H:00"; // default: hourly
     if (groupBy === "day") dateFormat = "%Y-%m-%d";
@@ -447,31 +461,31 @@ router.get("/api/audit-trail/field-history/:job_no/:year/:fieldPath", async (req
   try {
     const { job_no, year, fieldPath } = req.params;
     const { page = 1, limit = 20 } = req.query;
-    
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    
+
     const auditTrail = await AuditTrailModel.find({
       job_no,
       year,
       'changes.fieldPath': fieldPath
     })
-    .sort({ timestamp: -1 })
-    .skip(skip)
-    .limit(parseInt(limit))
-    .lean();
-    
+      .sort({ timestamp: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
     // Extract only the relevant field changes
     const fieldHistory = auditTrail.map(entry => ({
       ...entry,
       changes: entry.changes.filter(change => change.fieldPath === fieldPath)
     }));
-    
+
     const total = await AuditTrailModel.countDocuments({
       job_no,
       year,
       'changes.fieldPath': fieldPath
     });
-    
+
     res.json({
       fieldHistory,
       pagination: {
@@ -492,7 +506,7 @@ router.get("/api/audit-trail/field-history/:job_no/:year/:fieldPath", async (req
 router.get("/api/audit/user-mappings", async (req, res) => {
   try {
     const userMappings = await getAllUserMappings();
-    
+
     res.json({
       success: true,
       data: userMappings.map(mapping => ({
@@ -514,7 +528,7 @@ router.get("/api/audit/user/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
     const username = await getUsernameById(userId);
-    
+
     if (username) {
       res.json({
         success: true,
@@ -532,36 +546,36 @@ router.get("/api/audit/user/:userId", async (req, res) => {
 // Get all users with activity statistics (for All Users page)
 router.get("/api/audit-trail/all-active-users", async (req, res) => {
   try {
-    const { 
-      fromDate, 
-      toDate, 
-      limit = 20, 
-      page = 1, 
-      username, 
+    const {
+      fromDate,
+      toDate,
+      limit = 20,
+      page = 1,
+      username,
       action,
-      sortBy = 'count', 
-      sortOrder = 'desc' 
+      sortBy = 'count',
+      sortOrder = 'desc'
     } = req.query;
-    
+
     const filter = {};
-    
+
     // Date range filter
     if (fromDate || toDate) {
       filter.timestamp = {};
       if (fromDate) filter.timestamp.$gte = new Date(fromDate);
       if (toDate) filter.timestamp.$lte = new Date(toDate);
     }
-    
+
     // Username filter (partial match)
     if (username) {
       filter.username = { $regex: username, $options: 'i' };
     }
-    
+
     // Action filter
     if (action) {
       filter.action = action;
     }
-    
+
     // First, get all users with their statistics (no limit for complete data)
     const allUsersStats = await AuditTrailModel.aggregate([
       { $match: filter },
@@ -574,19 +588,19 @@ router.get("/api/audit-trail/all-active-users", async (req, res) => {
           actions: { $addToSet: "$action" }
         }
       },
-      { 
-        $sort: { 
-          [sortBy]: sortOrder === 'desc' ? -1 : 1 
-        } 
+      {
+        $sort: {
+          [sortBy]: sortOrder === 'desc' ? -1 : 1
+        }
       }
     ]);
-    
+
     // Apply pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const totalUsers = allUsersStats.length;
     const paginatedUsers = allUsersStats.slice(skip, skip + parseInt(limit));
-    
-    res.json({ 
+
+    res.json({
       users: paginatedUsers,
       pagination: {
         currentPage: parseInt(page),
@@ -609,22 +623,22 @@ router.get("/api/audit-trail/all-active-users", async (req, res) => {
 // Get ALL system users (including those without audit activity)
 router.get("/api/audit-trail/all-system-users", async (req, res) => {
   try {
-    const { 
-      limit = 20, 
-      page = 1, 
-      username, 
-      sortBy = 'username', 
-      sortOrder = 'asc' 
+    const {
+      limit = 20,
+      page = 1,
+      username,
+      sortBy = 'username',
+      sortOrder = 'asc'
     } = req.query;
-    
+
     // Get all users from UserModel
     const userFilter = {};
     if (username) {
       userFilter.username = { $regex: username, $options: 'i' };
     }
-    
+
     const allSystemUsers = await UserModel.find(userFilter).lean();
-    
+
     // Get audit activity for each user
     const usersWithActivity = await Promise.all(
       allSystemUsers.map(async (user) => {
@@ -640,14 +654,14 @@ router.get("/api/audit-trail/all-system-users", async (req, res) => {
             }
           }
         ]);
-        
+
         const activity = userActivity[0] || {
           count: 0,
           lastActivity: null,
           firstActivity: null,
           actions: []
         };
-        
+
         return {
           _id: user.username,
           userDetails: {
@@ -665,28 +679,28 @@ router.get("/api/audit-trail/all-system-users", async (req, res) => {
         };
       })
     );
-    
+
     // Sort users
-    const sortField = sortBy === 'count' ? 'count' : 
-                     sortBy === 'lastActivity' ? 'lastActivity' : 
-                     '_id';
-    
+    const sortField = sortBy === 'count' ? 'count' :
+      sortBy === 'lastActivity' ? 'lastActivity' :
+        '_id';
+
     usersWithActivity.sort((a, b) => {
       const aVal = a[sortField] || (sortField === '_id' ? a._id : 0);
       const bVal = b[sortField] || (sortField === '_id' ? b._id : 0);
-      
+
       if (sortOrder === 'desc') {
         return bVal > aVal ? 1 : -1;
       }
       return aVal > bVal ? 1 : -1;
     });
-    
+
     // Apply pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const totalUsers = usersWithActivity.length;
     const paginatedUsers = usersWithActivity.slice(skip, skip + parseInt(limit));
-    
-    res.json({ 
+
+    res.json({
       users: paginatedUsers,
       pagination: {
         currentPage: parseInt(page),
@@ -711,44 +725,44 @@ router.get("/api/audit-trail/all-system-users", async (req, res) => {
 // Get top active users with flexible filtering and pagination
 router.get("/api/audit-trail/top-users", async (req, res) => {
   try {
-    const { 
-      fromDate, 
-      toDate, 
-      limit = 5, 
-      page = 1, 
-      username, 
+    const {
+      fromDate,
+      toDate,
+      limit = 5,
+      page = 1,
+      username,
       action,
-      sortBy = 'count', 
-      sortOrder = 'desc' 
+      sortBy = 'count',
+      sortOrder = 'desc'
     } = req.query;
-    
+
     const filter = {};
-    
+
     // Date range filter
     if (fromDate || toDate) {
       filter.timestamp = {};
       if (fromDate) filter.timestamp.$gte = new Date(fromDate);
       if (toDate) filter.timestamp.$lte = new Date(toDate);
     }
-    
+
     // Username filter (partial match)
     if (username) {
       filter.username = { $regex: username, $options: 'i' };
     }
-    
+
     // Action filter
     if (action) {
       filter.action = action;
     }
-    
+
     // Pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const sortDirection = sortOrder === 'desc' ? -1 : 1;
-    
+
     // Build sort object
     const sortObj = {};
     sortObj[sortBy] = sortDirection;
-    
+
     const topUsers = await AuditTrailModel.aggregate([
       { $match: filter },
       {
@@ -764,7 +778,7 @@ router.get("/api/audit-trail/top-users", async (req, res) => {
       { $skip: skip },
       { $limit: parseInt(limit) }
     ]);
-    
+
     // Get total count for pagination
     const totalUsers = await AuditTrailModel.aggregate([
       { $match: filter },
@@ -776,10 +790,10 @@ router.get("/api/audit-trail/top-users", async (req, res) => {
       },
       { $count: "total" }
     ]);
-    
+
     const total = totalUsers[0]?.total || 0;
-    
-    res.json({ 
+
+    res.json({
       topUsers,
       pagination: {
         currentPage: parseInt(page),

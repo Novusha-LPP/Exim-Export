@@ -4,8 +4,18 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import compression from "compression";
 import bodyParser from "body-parser";
-import logger from "./logger.js";
+import logger from "./logger.resilient.js";
 import { auditMiddleware } from "./middleware/auditTrail.mjs";
+
+// CRITICAL: Safe exception handlers with rate limiting, circuit breakers, and backoff
+// This import registers the handlers - prevents the retry storm incident
+import "./exceptionHandlers.js";
+
+// Health monitoring endpoints
+import healthRoutes from "./routes/health.js";
+
+// Query safety middleware to prevent runaway reads
+import { enforcePagination, trackResponseSize } from "./middleware/querySafety.js";
 
 import getAllUsers from "./routes/getAllUsers.mjs";
 import getUser from "./routes/getUser.mjs";
@@ -69,13 +79,13 @@ import generateDSRReport from "./routes/export-dsr/generateDSRReport.mjs";
 import openPointsRoutes from "./routes/open-points/openPointsRoutes.mjs";
 import uploadRoutes from "./routes/uploadRoutes.js";
 
-process.on("uncaughtException", (error) => {
-  logger.error(`Uncaught Exception: ${error.message}`, { stack: error.stack });
-});
-
-process.on("unhandledRejection", (reason, promise) => {
-  logger.error(`Unhandled Rejection at: ${promise} reason: ${reason}`);
-});
+// REMOVED: Dangerous exception handlers that caused 3.1M log storm
+// Exception handlers are now in ./exceptionHandlers.js with:
+// - Rate limiting (same error logged once per minute)
+// - Exponential backoff (100ms → 30s between retries)
+// - Circuit breakers (stops logging after repeated failures)
+// - Infrastructure error detection (disk errors don't go to MongoDB)
+// - Graceful shutdown on fatal loops
 
 dotenv.config();
 
@@ -106,9 +116,14 @@ app.use(
       "username",
       "user-role",
       "x-username",
+      "x-user-role",
     ],
   })
 );
+
+// Apply query safety measures (Phase 1.2 of Remediation Plan)
+app.use(enforcePagination());
+app.use(trackResponseSize(512 * 1024)); // Warning threshold: 512KB per response
 app.use(compression({ level: 9 }));
 
 const MONGODB_URI =
@@ -136,6 +151,9 @@ mongoose
     console.log("MongoDB connected");
   })
   .catch((err) => console.log("Error connecting to MongoDB:", err));
+
+// Health monitoring routes (added after retry storm incident)
+app.use("/api", healthRoutes);
 
 app.use(getAllUsers);
 app.use(getUser);

@@ -18,10 +18,20 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
       });
     }
 
-    // Fetch jobs for the selected exporter
-    const jobs = await ExportJob.find({ exporter: exporter })
+    // Build filter - support year to reduce dataset
+    const { year } = req.query;
+    const filter = { exporter };
+    if (year) filter.year = year;
+
+    // Fetch jobs with LIMIT to prevent unbounded data fetch
+    // Max 1000 jobs per report to prevent bandwidth explosion
+    const MAX_JOBS_FOR_REPORT = 1000;
+
+    const jobs = await ExportJob.find(filter)
       .sort({ createdAt: -1 })
-      .lean();
+      .limit(MAX_JOBS_FOR_REPORT)
+      .lean()
+      .maxTimeMS(60000); // 60 second timeout for report generation
 
     if (!jobs || jobs.length === 0) {
       return res.status(404).json({
