@@ -27,7 +27,20 @@ function SelectIcdCode({ selectedUser }) {
   const { user } = useContext(UserContext);
 
   // ICD Code options - you can modify this list as needed
-  const icdCodeOptions = ["ICD SACHANA", "ICD SANAND", "ICD KHODIYAR"];
+  const icdCodeOptions = [
+    "ICD SACHANA",
+    "ICD SANAND",
+    "ICD KHODIYAR",
+    "ICD SABARMATI, AHMEDABAD",
+    "ICD VIRAMGAM",
+    "AIR AHMEDABAD",
+    "AHMEDABAD AIR CARGO",
+    "ICD THAR DRY PORT",
+    "THAR DRY PORT",
+    "ICD VIROCHANNAGAR",
+    "ICD VIROCHAN NAGAR",
+    "HAZIRA"
+  ];
 
   useEffect(() => {
     // Reset form when selected user changes
@@ -53,9 +66,8 @@ function SelectIcdCode({ selectedUser }) {
 
       if (currentIcdCodes.length > 0) {
         setMessage({
-          text: `User has ${
-            currentIcdCodes.length
-          } ICD code(s) already assigned: ${currentIcdCodes.join(", ")}`,
+          text: `User has ${currentIcdCodes.length
+            } ICD code(s) already assigned: ${currentIcdCodes.join(", ")}`,
           type: "info",
         });
       } else {
@@ -222,8 +234,8 @@ function SelectIcdCode({ selectedUser }) {
             message.type === "success"
               ? "success"
               : message.type === "info"
-              ? "info"
-              : "error"
+                ? "info"
+                : "error"
           }
           sx={{ mb: 2 }}
         >

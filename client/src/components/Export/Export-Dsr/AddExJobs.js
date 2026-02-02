@@ -174,12 +174,12 @@ const s = {
     fontWeight: "700",
   },
   dropdownItem: {
-    padding: "6px 10px",
+    padding: "4px 8px",
     cursor: "pointer",
     borderBottom: "1px solid #f3f4f6",
     display: "flex",
     flexDirection: "column",
-    fontWeight: "700",
+    fontWeight: "500",
   },
   consigneeRow: {
     display: "flex",
@@ -798,52 +798,84 @@ function GatewayPortDropdown({
 const CUSTOM_HOUSE_OPTIONS = [
   {
     group: "Ahmedabad", branchCode: "AMD", items: [
-      { value: "AHMEDABAD AIR CARGO", label: "Ahmedabad Air Cargo" },
-      { value: "ICD SABARMATI, AHMEDABAD", label: "ICD Sabarmati, Ahmedabad" },
-      { value: "ICD SACHANA", label: "ICD SACHANA" },
-      { value: "ICD VIROCHAN NAGAR", label: "ICD Virochan Nagar" },
-      { value: "THAR DRY PORT", label: "THAR DRY PORT" },
+      { value: "AHMEDABAD AIR CARGO", label: "Ahmedabad Air Cargo", code: "INAMD4" },
+      { value: "ICD SABARMATI, AHMEDABAD", label: "ICD Sabarmati, Ahmedabad", code: "INSBI6" },
+      { value: "ICD SACHANA", label: "ICD SACHANA", code: "INJKA6" },
+      { value: "ICD VIROCHAN NAGAR", label: "ICD Virochan Nagar", code: "INVCN6" },
+      { value: "THAR DRY PORT", label: "THAR DRY PORT", code: "INSAU6" },
     ]
   },
   {
     group: "Baroda", branchCode: "BRD", items: [
-      { value: "ICD VIRAMGAM", label: "ICD VIRAMGAM" },
-      { value: "ANKLESHWAR ICD", label: "Ankleshwar ICD" },
+      { value: "ANKLESHWAR ICD", label: "ANKLESHWAR ICD", code: "INAKV6" },
+      { value: "ICD VARNAMA", label: "ICD VARNAMA", code: "INVRM6" },
     ]
   },
   {
     group: "Gandhidham", branchCode: "GIM", items: [
-      { value: "MUNDRA SEA", label: "Mundra Sea" },
-      { value: "KANDLA SEA", label: "Kandla Sea" },
+      { value: "MUNDRA SEA", label: "MUNDRA SEA", code: "INMUN1" },
+      { value: "KANDLA SEA", label: "KANDLA SEA", code: "INIXY1" },
     ]
   },
   {
     group: "Cochin", branchCode: "COK", items: [
-      { value: "COCHIN AIR CARGO", label: "Cochin Air Cargo" },
-      { value: "COCHIN SEA", label: "Cochin Sea" },
+      { value: "COCHIN AIR CARGO", label: "COCHIN AIR CARGO", code: "INCOK4" },
+      { value: "COCHIN SEA", label: "COCHIN SEA", code: "INCOK1" },
     ]
   },
   {
     group: "Hazira", branchCode: "HAZ", items: [
-      { value: "HAZIRA", label: "Hazira" },
+      { value: "HAZIRA", label: "HAZIRA", code: "INHZA1" },
     ]
   },
 ];
+
+import { createPortal } from "react-dom";
 
 function CustomHouseDropdownLocal({ label, value, onChange, branchCode = "" }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value || "");
   const [active, setActive] = useState(-1);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const wrapRef = useRef(null);
+  const menuRef = useRef(null);
   const keepOpen = useRef(false);
 
   useEffect(() => {
     setQuery(value || "");
   }, [value]);
 
+  const updateCoords = () => {
+    if (wrapRef.current) {
+      const rect = wrapRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (open) {
+      updateCoords();
+      window.addEventListener("scroll", updateCoords, true);
+      window.addEventListener("resize", updateCoords);
+    }
+    return () => {
+      window.removeEventListener("scroll", updateCoords, true);
+      window.removeEventListener("resize", updateCoords);
+    };
+  }, [open]);
+
   useEffect(() => {
     function close(e) {
-      if (!keepOpen.current && wrapRef.current && !wrapRef.current.contains(e.target)) {
+      if (
+        !keepOpen.current &&
+        wrapRef.current &&
+        !wrapRef.current.contains(e.target) &&
+        (!menuRef.current || !menuRef.current.contains(e.target))
+      ) {
         setOpen(false);
       }
     }
@@ -864,6 +896,7 @@ function CustomHouseDropdownLocal({ label, value, onChange, branchCode = "" }) {
       return !needle ||
         item.value.toUpperCase().includes(needle) ||
         item.label.toUpperCase().includes(needle) ||
+        (item.code && item.code.toUpperCase().includes(needle)) ||
         group.group.toUpperCase().includes(needle);
     }),
   })).filter(group => group.items.length > 0);
@@ -938,46 +971,61 @@ function CustomHouseDropdownLocal({ label, value, onChange, branchCode = "" }) {
           }}
         />
         <span style={s.comboIcon}>▼</span>
-        {open && filteredGroups.length > 0 && (
-          <div style={s.dropdownList}>
-            {filteredGroups.map((group) => (
-              <div key={group.group}>
-                <div style={{
-                  padding: "6px 10px",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: "#1976d2",
-                  background: "#f0f7ff",
-                  borderBottom: "1px solid #e3e7ee",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                }}>
-                  {group.group}
-                </div>
-                {group.items.map((item) => {
-                  itemIndex++;
-                  const currentIndex = itemIndex;
-                  return (
-                    <div
-                      key={item.value}
-                      style={{
-                        ...s.dropdownItem,
-                        paddingLeft: 18,
-                        backgroundColor: currentIndex === active ? "#f9fafb" : "#fff",
-                      }}
-                      onMouseDown={() => handleSelect(item)}
-                      onMouseEnter={() => setActive(currentIndex)}
-                    >
-                      <div style={{ fontWeight: 600, color: "#111827" }}>
-                        {item.label.toUpperCase()}
+        {open && filteredGroups.length > 0 &&
+          createPortal(
+            <div
+              ref={menuRef}
+              style={{
+                ...s.dropdownList,
+                position: "absolute",
+                top: coords.top + 2,
+                left: coords.left,
+                width: Math.max(coords.width, 200),
+                zIndex: 1000000,
+              }}
+            >
+              {filteredGroups.map((group) => (
+                <div key={group.group}>
+                  <div style={{
+                    padding: "4px 8px",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    color: "#1976d2",
+                    background: "#f0f7ff",
+                    borderBottom: "1px solid #e3e7ee",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}>
+                    {group.group}
+                  </div>
+                  {group.items.map((item) => {
+                    itemIndex++;
+                    const currentIndex = itemIndex;
+                    return (
+                      <div
+                        key={item.value}
+                        style={{
+                          ...s.dropdownItem,
+                          paddingLeft: 18,
+                          backgroundColor: currentIndex === active ? "#f9fafb" : "#fff",
+                        }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleSelect(item);
+                        }}
+                        onMouseEnter={() => setActive(currentIndex)}
+                      >
+                        <div style={{ fontWeight: 600, color: "#111827" }}>
+                          {item.label.toUpperCase()} {item.code && <span style={{ color: '#888', marginLeft: 4, fontWeight: 400 }}>({item.code})</span>}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        )}
+                    );
+                  })}
+                </div>
+              ))}
+            </div>,
+            document.body,
+          )}
       </div>
     </div>
   );
@@ -1150,7 +1198,9 @@ const AddExJobs = ({ onJobCreated }) => {
   }, [formData.exporter]);
 
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: toUpper(value) }));
+    // Exempt job_owner from uppercasing as it maps to usernames (often case-sensitive)
+    const processedValue = field === "job_owner" ? value : toUpper(value);
+    setFormData((prev) => ({ ...prev, [field]: processedValue }));
   };
 
   const handleDirectorySelect = (org) => {

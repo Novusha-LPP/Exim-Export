@@ -5,34 +5,40 @@ import { createPortal } from "react-dom";
 const CUSTOM_HOUSE_OPTIONS = [
     {
         group: "Ahmedabad", branchCode: "AMD", items: [
-            { value: "AHMEDABAD AIR CARGO", label: "Ahmedabad Air Cargo" },
-            { value: "ICD SABARMATI, AHMEDABAD", label: "ICD Sabarmati, Ahmedabad" },
-            { value: "ICD SACHANA", label: "ICD SACHANA" },
-            { value: "ICD VIROCHAN NAGAR", label: "ICD Virochan Nagar" },
-            { value: "THAR DRY PORT", label: "THAR DRY PORT" },
+            { value: "AIR AHMEDABAD", label: "AIR AHMEDABAD", code: "INAMD4" },
+            { value: "AHMEDABAD AIR CARGO", label: "AHMEDABAD AIR CARGO", code: "INAMD4" },
+            { value: "ICD SABARMATI, AHMEDABAD", label: "ICD SABARMATI, AHMEDABAD", code: "INSBI6" },
+            { value: "ICD KHODIYAR", label: "ICD KHODIYAR", code: "INSBI6" },
+            { value: "ICD VIRAMGAM", label: "ICD VIRAMGAM", code: "INVGR6" },
+            { value: "ICD SACHANA", label: "ICD SACHANA", code: "INJKA6" },
+            { value: "ICD VIROCHANNAGAR", label: "ICD VIROCHANNAGAR", code: "INVCN6" },
+            { value: "ICD VIROCHAN NAGAR", label: "ICD VIROCHAN NAGAR", code: "INVCN6" },
+            { value: "ICD THAR DRY PORT", label: "ICD THAR DRY PORT", code: "INSAU6" },
+            { value: "THAR DRY PORT", label: "THAR DRY PORT", code: "INSAU6" },
+            { value: "ICD SANAND", label: "ICD SANAND", code: "INSND6" },
         ]
     },
     {
         group: "Baroda", branchCode: "BRD", items: [
-            { value: "ICD VIRAMGAM", label: "ICD VIRAMGAM" },
-            { value: "ANKLESHWAR ICD", label: "Ankleshwar ICD" },
+            { value: "ANKLESHWAR ICD", label: "Ankleshwar ICD", code: "INAKV6" },
+            { value: "ICD VARNAMA", label: "ICD VARNAMA", code: "INVRM6" },
         ]
     },
     {
         group: "Gandhidham", branchCode: "GIM", items: [
-            { value: "MUNDRA SEA", label: "Mundra Sea" },
-            { value: "KANDLA SEA", label: "Kandla Sea" },
+            { value: "MUNDRA SEA", label: "Mundra Sea", code: "INMUN1" },
+            { value: "KANDLA SEA", label: "Kandla Sea", code: "INIXY1" },
         ]
     },
     {
         group: "Cochin", branchCode: "COK", items: [
-            { value: "COCHIN AIR CARGO", label: "Cochin Air Cargo" },
-            { value: "COCHIN SEA", label: "Cochin Sea" },
+            { value: "COCHIN AIR CARGO", label: "Cochin Air Cargo", code: "INCOK4" },
+            { value: "COCHIN SEA", label: "Cochin Sea", code: "INCOK1" },
         ]
     },
     {
         group: "Hazira", branchCode: "HAZ", items: [
-            { value: "HAZIRA", label: "Hazira" },
+            { value: "HAZIRA", label: "Hazira", code: "INHZA1" },
         ]
     },
 ];
@@ -97,11 +103,11 @@ const styles = {
         border: "1px solid #d6dae2",
         borderRadius: 4,
         boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-        zIndex: 999999,
+        zIndex: 1000002,
     },
     groupHeader: {
-        padding: "6px 10px",
-        fontSize: 10,
+        padding: "4px 8px",
+        fontSize: 9,
         fontWeight: 700,
         color: "#1976d2",
         background: "#f0f7ff",
@@ -110,7 +116,7 @@ const styles = {
         letterSpacing: 0.5,
     },
     item: (active) => ({
-        padding: "6px 10px 6px 18px",
+        padding: "4px 8px 4px 18px",
         cursor: "pointer",
         fontSize: 11,
         fontWeight: 500,
@@ -188,6 +194,7 @@ const CustomHouseDropdown = ({
             return !needle ||
                 item.value.toUpperCase().includes(needle) ||
                 item.label.toUpperCase().includes(needle) ||
+                (item.code && item.code.toUpperCase().includes(needle)) ||
                 group.group.toUpperCase().includes(needle);
         }),
     })).filter(group => group.items.length > 0);
@@ -307,7 +314,7 @@ const CustomHouseDropdown = ({
                                             }}
                                             onMouseEnter={() => setActive(currentIndex)}
                                         >
-                                            {item.label}
+                                            {item.label} {item.code && <span style={{ color: '#888', marginLeft: 4 }}>({item.code})</span>}
                                         </div>
                                     );
                                 })}
