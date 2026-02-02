@@ -17,6 +17,12 @@ const RITCSearchableDropdown = ({
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const wrapperRef = useRef(null);
   const abortControllerRef = useRef(null);
+  
+  // Store onChange in a ref to avoid triggering useEffect when parent re-renders
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     setQuery(value || "");
@@ -94,7 +100,7 @@ const RITCSearchableDropdown = ({
       // Auto-match if exact HS Code is found (for Paste functionality)
       const exactMatch = sorted.find((s) => s.hs_code === search);
       if (exactMatch) {
-        onChange({ target: { value: search }, origin: exactMatch });
+        onChangeRef.current({ target: { value: search }, origin: exactMatch });
       }
     } catch (e) {
       if (e.name !== "AbortError") {
@@ -104,7 +110,7 @@ const RITCSearchableDropdown = ({
     } finally {
       setLoading(false);
     }
-  }, [onChange]); // Added onChange dependency
+  }, []); // No dependencies - uses refs internally
 
   const firstRender = useRef(true);
 
