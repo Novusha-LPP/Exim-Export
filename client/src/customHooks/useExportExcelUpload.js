@@ -28,13 +28,24 @@ function useExportExcelUpload(inputRef, onSuccess) {
             return;
         }
 
+        const fileName = file.name.toLowerCase();
         const reader = new FileReader();
-        reader.onload = (e) => validateAndProcessFile(e, file);
-        reader.onerror = () => {
-            setError("Error reading file");
-            setLoading(false);
-        };
-        reader.readAsBinaryString(file);
+
+        if (fileName.endsWith(".xml")) {
+            reader.onload = (e) => handleXMLRead(e);
+            reader.onerror = () => {
+                setError("Error reading XML file");
+                setLoading(false);
+            };
+            reader.readAsText(file);
+        } else {
+            reader.onload = (e) => validateAndProcessFile(e, file);
+            reader.onerror = () => {
+                setError("Error reading file");
+                setLoading(false);
+            };
+            reader.readAsBinaryString(file);
+        }
     };
 
     /**
@@ -112,16 +123,26 @@ function useExportExcelUpload(inputRef, onSuccess) {
                 return `${year}-${month}-${day}`;
             }
 
-            // Format: DD-MMM-YYYY (e.g., 15-Jan-2025)
-            if (/^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(value)) {
-                const [day, month, year] = value.split("-");
+            // Format: DD-MMM-YYYY or DD/MMM/YYYY (e.g., 15-Jan-2025 or 15/Jan/2025)
+            // Handle lists by mapping each part
+            if (value.includes(",")) {
+                return value.split(",").map(v => parseExcelDate(v.trim())).join(", ");
+            }
+
+            const monthMatch = value.match(/^(\d{1,2})[-/]([A-Za-z]{3})[-/](\d{4})$/);
+            if (monthMatch) {
+                const day = monthMatch[1].padStart(2, "0");
+                const month = monthMatch[2];
+                const year = monthMatch[3];
                 const monthMapping = {
                     Jan: "01", Feb: "02", Mar: "03", Apr: "04",
                     May: "05", Jun: "06", Jul: "07", Aug: "08",
                     Sep: "09", Oct: "10", Nov: "11", Dec: "12",
                 };
-                const formattedMonth = monthMapping[month];
-                return `${year}-${formattedMonth}-${day.padStart(2, "0")}`;
+                const formattedMonth = monthMapping[month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()];
+                if (formattedMonth) {
+                    return `${year}-${formattedMonth}-${day}`;
+                }
             }
 
             // Format: YYYY-MM-DD (already correct)
@@ -240,6 +261,293 @@ function useExportExcelUpload(inputRef, onSuccess) {
             containerNo: container,
             type: predominantSize,
         }));
+    };
+
+    /**
+     * Main XML processing function
+     */
+    const handleXMLRead = async (event) => {
+        try {
+            const xmlText = event.target.result;
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+
+            // Check for parsing errors
+            if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+                setError("Invalid XML file format");
+                setLoading(false);
+                return;
+            }
+
+            const documents = xmlDoc.getElementsByTagName("SBDocument");
+            if (documents.length === 0) {
+                setError("No shipping bill records found in XML");
+                setLoading(false);
+                return;
+            }
+
+            const modifiedData = [];
+
+            for (let i = 0; i < documents.length; i++) {
+                const doc = documents[i];
+
+                const getText = (tagName, parent = doc) => {
+                    const el = parent.getElementsByTagName(tagName)[0];
+                    return el ? el.textContent.trim() : "";
+                };
+
+                // Job Identification
+                const jobNoRaw = getText("Doc_ID");
+                const { job_no, year, branch_code } = parseJobNumber(jobNoRaw);
+
+                // Container Details
+                const containerNodes = doc.getElementsByTagName("ContainerDetail");
+                const contNos = [];
+                const sealNos = [];
+                const sealDates = [];
+                const sealTypes = [];
+                const contSizes = [];
+
+                for (let j = 0; j < containerNodes.length; j++) {
+                    const cNode = containerNodes[j];
+                    contNos.push(getText("ContainerNumber", cNode));
+                    sealNos.push(getText("SealNumber", cNode));
+                    sealDates.push(parseExcelDate(getText("SealDate", cNode)));
+                    sealTypes.push(getText("Seal_Type", cNode));
+
+                    const size = getText("ContainerSize", cNode);
+                    const type = getText("ContainerType", cNode);
+                    if (size) contSizes.push(`1 x ${size}`);
+                }
+
+                // Invoice Details
+                const invoiceNodes = doc.getElementsByTagName("InvoiceDetail");
+                const invNos = [];
+                const invDates = [];
+                const invValues = [];
+                const invCurrencies = [];
+                const invTerms = [];
+
+                // Products (Aggregated summary for DSR)
+                // Products (Structure: Array of Arrays of Objects)
+                const detailedProductsPerInvoice = [];
+
+                // Arrays for invoice level details
+                const invFreights = [];
+                const invInsurances = [];
+                const invDiscounts = [];
+                const invCommissions = [];
+                const invProductValues = [];
+
+                // Buyer/ThirdParty extraction logic variables
+                // Since Job has single Buyer/ThirdParty, we'll pick from the first invoice or aggregate.
+                // Assuming uniform data across invoices for job-level fields.
+                let extractedBuyerName = "";
+                let extractedBuyerAddr = "";
+                let extractedTPName = "";
+                let extractedTPAddr = "";
+
+                for (let j = 0; j < invoiceNodes.length; j++) {
+                    const invNode = invoiceNodes[j];
+                    invNos.push(getText("InvoiceNo", invNode));
+                    invDates.push(parseExcelDate(getText("InvoiceDate", invNode)));
+                    invValues.push(getText("InvoiceValue", invNode));
+                    invCurrencies.push(getText("InvoiceCurrency", invNode));
+                    invTerms.push(getText("TermsOfInvoice", invNode));
+
+                    // Extract invoice financials
+                    invProductValues.push(getText("ProductValue", invNode));
+                    invFreights.push(getText("Freight", invNode));
+                    invInsurances.push(getText("Insurance", invNode));
+                    invDiscounts.push(getText("DiscountAmount", invNode));
+                    invCommissions.push(getText("CommissionAmount", invNode));
+
+                    // Extract Buyer/Third Party from the FIRST invoice (assuming check consistency or primary)
+                    if (j === 0) {
+                        extractedBuyerName = getText("InvBuyer_Name", invNode);
+                        extractedBuyerAddr = getText("InvBuyer_Address", invNode);
+                        // If InvBuyer fields are missing, try fallback? 
+                        // But user specifically complained about combined field, so avoid fallback to <Buyer> tag.
+
+                        extractedTPName = getText("ThirdParty_Name", invNode);
+                        extractedTPAddr = getText("ThirdParty_Address", invNode);
+                    }
+
+                    // Get products for this invoice
+                    const productNodes = invNode.getElementsByTagName("Product");
+                    const currentInvoiceProducts = [];
+
+                    for (let k = 0; k < productNodes.length; k++) {
+                        const pNode = productNodes[k];
+
+                        // Extract all detailed product fields
+                        currentInvoiceProducts.push({
+                            description: getText("ProductDesc", pNode),
+                            ritc: getText("RITCNumber", pNode),
+                            quantity: getText("Quantity", pNode),
+                            qtyUnit: getText("Unit", pNode), // Correct unit from XML
+                            unitPrice: getText("UnitPrice", pNode),
+                            amount: getText("Amount", pNode),
+                            eximCode: getText("EXIMCode", pNode),
+                            endUse: getText("End_Use", pNode),
+
+                            // PMV
+                            pmvInfo: {
+                                totalPMV: getText("PMVAmount", pNode),
+                                currency: getText("PMVCurrency", pNode),
+                                percentage: getText("PMVRate", pNode),
+                            },
+
+                            // IGST
+                            igstCompensationCess: {
+                                igstPaymentStatus: getText("IGSTPayStat", pNode), // Will map LUT/Payment backend side if needed
+                                taxableValueINR: getText("IGSTTaxableVal", pNode),
+                                igstAmountINR: getText("IGSTAmt", pNode),
+                                igstRate: getText("IGSTRate", pNode),
+                            },
+
+                            // RoDTEP
+                            rodtepInfo: {
+                                claim: getText("RoDTEPClaim", pNode) || "No", // Assuming empty means No? Or check value
+                                ratePercent: getText("RoDTEPRate", pNode),
+                                amountINR: getText("RoDTEPAmt", pNode),
+                                quantity: getText("RoDTEPRate_SQC", pNode), // SQC might be quantity used for calc
+                                unit: getText("RoDTEPUnit", pNode), // Check if this is unit
+                            },
+
+                            // DBK
+                            drawbackDetails: { // Helper structure for backend to flatten or use
+                                dbkSrNo: getText("DBKSNo", pNode.getElementsByTagName("DBKDetails")[0]),
+                                dbkRate: getText("CustomDBKRate", pNode.getElementsByTagName("DBKDetails")[0]),
+                                dbkAmount: "0", // Need to calc or find? XML doesn't allow explicit Total DBK amt sometimes
+                                quantity: getText("DBKQty", pNode.getElementsByTagName("DBKDetails")[0]),
+                                unit: getText("DBKUnit", pNode.getElementsByTagName("DBKDetails")[0]),
+                                dbkUnder: getText("DBKUnder", pNode.getElementsByTagName("DBKDetails")[0])
+                            }
+                        });
+                    }
+                    detailedProductsPerInvoice.push(currentInvoiceProducts);
+                }
+
+                const item = {
+                    job_no,
+                    year,
+                    branch_code,
+                    exporter: ((raw) => {
+                        if (!raw) return "";
+                        let clean = raw.split(/\r?\n/)[0];
+                        if (clean.includes(" - ")) clean = clean.split(" - ")[0];
+                        return clean.trim();
+                    })(getText("Exporter")),
+                    custom_house: getText("LoadingPort"),
+                    port_of_loading: getText("LoadingPort"),
+                    transportMode: getText("TransportMode") === "S" ? "SEA" : getText("TransportMode") === "A" ? "AIR" : getText("TransportMode"),
+                    sb_no: getText("SBNo"),
+                    sb_date: parseExcelDate(getText("SBDate")),
+                    consignee_name: getText("Consignee"),
+                    consignee_country: getText("ConsigneeCountry"),
+
+                    // Corrected Mapping based on user feedback:
+                    // Use extracted Invoice Buyer details. If missing, assume NO update or handle gracefully.
+                    // Only map Third Party if explicit third party fields exist.
+                    buyer_name: extractedBuyerName,
+                    buyer_address: extractedBuyerAddr,
+
+                    third_party_name: extractedTPName,
+                    third_party_address: extractedTPAddr,
+
+                    port_of_discharge: getText("DischPort"),
+                    discharge_country: getText("DischCountry"), // Added
+                    destination_port: getText("DestPort"),
+                    destination_country: getText("DestCountry"), // Added
+
+                    gross_weight_kg: getText("GrossWt"),
+                    net_weight_kg: getText("NetWt"),
+                    total_no_of_pkgs: getText("NoOfPkg"),
+                    package_unit: getText("PkgUnit"),
+                    state_of_origin: getText("StateOfOrigin"),
+                    exporter_ref_no: getText("ExporterRefNo"),
+                    ieCode: getText("RegistrationNo"),
+                    adCode: getText("DealerCode"),
+                    bank_name: getText("BankNameAddr"),
+                    bank_account_number: getText("BankAccountNo"),
+                    shipping_line_airline: getText("Carrier"),
+                    flight_no: getText("FlightNo"),
+                    flight_date: parseExcelDate(getText("FlightDate")),
+                    voyage_no: getText("VoyageNo"),
+                    awb_bl_no: getText("MAWBNo") || getText("HAWBNo"),
+                    awb_bl_date: parseExcelDate(getText("MAWBDate") || getText("HAWBDate")),
+                    consignmentType: getText("CargoType") === "C" ? "FCL" : "LCL",
+
+                    // Payment Mapping
+                    nature_of_payment: (() => {
+                        const pt = getText("PaymentType");
+                        if (pt === "DA") return "Delivery against Acceptance";
+                        if (pt === "LC") return "Letter Of Credit";
+                        if (pt === "DP") return "Direct Payment"; // Confirm mapping
+                        if (pt === "AP") return "Advance Payment";
+                        return "Not Applicable";
+                    })(),
+                    payment_period: getText("PaymentPeriod"),
+
+                    // Containers (Pass as Array for backend to process)
+                    container_nos: contNos.map((no, idx) => ({
+                        containerNo: no,
+                        sealNo: sealNos[idx] || "",
+                        sealDate: sealDates[idx] || "",
+                        sealType: sealTypes[idx] || "",
+                        type: contSizes[idx]?.replace("1 x ", "") || ""
+                    })),
+
+                    // Comma-separated lists for backend compatibility
+                    container_nos_raw: contNos.join(", "),
+                    seal_no: sealNos.join(", "),
+                    seal_date: sealDates.join(", "),
+                    seal_type: sealTypes.join(", "),
+                    no_of_container_raw: contSizes.join(", "),
+
+                    invoice_number: invNos.join(", "),
+                    invoice_date: invDates.join(", "),
+                    invoice_value: invValues.join(", "),
+                    total_inv_value: invProductValues.join(", "), // Mapping ProductValue to total_inv_value based on user note? Or keep invoice_value? 
+                    // User said "product value and invoice value is also present". 
+                    // Usually total_inv_value = Sum of products. invoice_value = Final value (CIF/FOB).
+                    // We'll pass both arrays for backend to handle.
+
+                    // Passing as explicit arrays via comma-separated strings for now (backend splits them)
+                    product_value_list: invProductValues.join(", "),
+                    freight_amount: invFreights.join(", "),
+                    insurance_amount: invInsurances.join(", "),
+                    discount_amount: invDiscounts.join(", "),
+                    commission_amount: invCommissions.join(", "),
+
+                    currency: invCurrencies.join(", "),
+                    terms_of_invoice: invTerms.join(", "),
+
+                    // Structured Products (Pass as JSON string or handle in backend as object)
+                    // We'll pass it as a field that the backend hooks will look for.
+                    // Since it's a complex array of arrays, we can stick it in a specific field.
+                    products_per_invoice: detailedProductsPerInvoice,
+
+                    product_description: "", // Deprecated for XML
+                    ritc_no: "",
+                    product_qty: "",
+                    product_amount: "",
+                    exim_scheme: "",
+                    total_dbk_inr: "",
+                    total_rodtep_amount: "",
+                };
+
+                modifiedData.push(item);
+            }
+
+            console.log(`🎉 XML processing complete! Found ${modifiedData.length} documents.`);
+            await uploadAndCheckStatus(modifiedData);
+        } catch (err) {
+            console.error("Error parsing XML:", err);
+            setError("Error parsing XML file: " + err.message);
+            setLoading(false);
+        }
     };
 
     /**

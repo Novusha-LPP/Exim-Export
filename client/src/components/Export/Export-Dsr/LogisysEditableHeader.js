@@ -386,14 +386,20 @@ const LogisysEditableHeader = ({
   return (
     <div
       style={{
-        marginBottom: 12,
+        marginBottom: 8,
         background: "linear-gradient(90deg, #f7fafc 85%, #e3f2fd 100%)",
+        borderBottom: "1px solid #e0e0e0",
         border: "1px solid #e3e7ee",
         borderRadius: 10,
+
         boxShadow: "0 1px 4px 0 rgba(60,72,100,0.06)",
-        padding: "20px 24px",
-        position: "relative",
-        zIndex: 99999,
+        // boxShadow: "0 1px 3px 0 rgba(0,0,0,0.05)",
+        padding: "12px 16px",
+        position: "sticky",
+        top: 0,
+        zIndex: 10, // Reduced from 99999 to be below MUI Overlays (1300)
+        display: "flex",
+        alignItems: "center"
       }}
     >
       {/* Responsive Row Container */}
@@ -401,9 +407,10 @@ const LogisysEditableHeader = ({
         style={{
           display: "flex",
           alignItems: "flex-end",
-          gap: 8,
+          gap: 12, // Increased gap
           flexWrap: "wrap",
-          rowGap: 8,
+          width: "100%",
+          rowGap: 12,
         }}
       >
         {/* Lock/Unlock Button */}

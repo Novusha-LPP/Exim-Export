@@ -228,7 +228,7 @@ const ExportExcelUpload = ({ onUploadSuccess }) => {
                         <span role="img" aria-label="upload">
                             📤
                         </span>
-                        Import Export Jobs from Excel/CSV
+                        Update/Import Export Jobs from Excel/CSV/XML
                     </h3>
                     {lastUpdateDate && (
                         <span style={styles.lastUpdate}>
@@ -256,7 +256,7 @@ const ExportExcelUpload = ({ onUploadSuccess }) => {
                                 <span role="img" aria-label="excel">
                                     📊
                                 </span>
-                                Choose Excel/CSV File
+                                Choose Excel/CSV/XML File to Update
                             </>
                         )}
                     </button>
@@ -265,7 +265,7 @@ const ExportExcelUpload = ({ onUploadSuccess }) => {
                         type="file"
                         ref={inputRef}
                         onChange={handleFileUpload}
-                        accept=".xlsx,.xls,.csv"
+                        accept=".xlsx,.xls,.csv,.xml,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/xml,application/xml"
                         style={styles.fileInput}
                     />
 
@@ -287,7 +287,7 @@ const ExportExcelUpload = ({ onUploadSuccess }) => {
                 </div>
 
                 <p style={styles.infoText}>
-                    Supported formats: .xlsx, .xls, .csv | Data starts from row 3 (after headers)
+                    Supported formats: .xlsx, .xls, .csv, .xml | Data starts from row 3 (after headers)
                 </p>
 
                 {/* Error Message */}

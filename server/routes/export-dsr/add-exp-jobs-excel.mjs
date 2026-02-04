@@ -344,10 +344,28 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 seal_date,
                 seal_type,
                 exim_scheme,
+                third_party_name,
+                third_party_address,
+                nature_of_payment,
+                payment_period,
+
+                // New financial lists
+                freight_amount,
+                insurance_amount,
+                discount_amount,
+                product_value_list,
+
+                products_per_invoice, // Structured products array
 
                 // Branch
                 branchSrNo,
             } = data;
+
+            // CRITICAL: Skip rows that don't have a job number
+            if (!job_no || String(job_no).trim() === "" || String(job_no).toLowerCase() === "undefined") {
+                skippedCount++;
+                continue;
+            }
 
             // Debug logging for the first job to see what's being received
             if (processedCount === 0) {
@@ -485,7 +503,19 @@ router.post("/api/jobs/add-job", async (req, res) => {
                     buyer: {
                         name: getUpdateValue(buyer_name, existingJob?.buyerThirdPartyInfo?.buyer?.name),
                         addressLine1: getUpdateValue(buyer_address, existingJob?.buyerThirdPartyInfo?.buyer?.addressLine1),
+                    },
+                    thirdParty: {
+                        name: getUpdateValue(third_party_name, existingJob?.buyerThirdPartyInfo?.thirdParty?.name),
+                        address: getUpdateValue(third_party_address, existingJob?.buyerThirdPartyInfo?.thirdParty?.address),
+                        isThirdPartyExport: !isEmpty(third_party_name) ? true : (existingJob?.buyerThirdPartyInfo?.thirdParty?.isThirdPartyExport || false)
                     }
+                },
+
+                // Other Info (Payment details)
+                otherInfo: {
+                    ...existingJob?.otherInfo, // Preserve other existing fields
+                    natureOfPayment: getUpdateValue(nature_of_payment, existingJob?.otherInfo?.natureOfPayment),
+                    paymentPeriod: getUpdateValue(payment_period, existingJob?.otherInfo?.paymentPeriod),
                 },
 
                 // Shipping Bill
@@ -562,7 +592,8 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 cha: getUpdateValue(cha, existingJob?.cha),
                 remarks: getUpdateValue(remarks, existingJob?.remarks),
                 job_owner: getUpdateValue(job_owner, existingJob?.job_owner),
-                shipper: getUpdateValue(shipper, existingJob?.shipper),
+                exporter: getUpdateValue(exporter, existingJob?.exporter),
+                shipper: getUpdateValue(shipper || exporter, existingJob?.shipper),
                 notify: getUpdateValue(notify, existingJob?.notify),
                 exporter_ref_no: getUpdateValue(exporter_ref_no, existingJob?.exporter_ref_no),
                 nature_of_cargo: getUpdateValue(nature_of_cargo, existingJob?.nature_of_cargo),
@@ -595,74 +626,168 @@ router.post("/api/jobs/add-job", async (req, res) => {
             // Build invoices array if invoice data exists
             // Excel has invoice data at top level, but schema stores it in invoices array
             if (invoice_number && String(invoice_number).trim() !== "") {
-                const invoice_number_str = String(invoice_number).trim();
-                const existingInvoices = existingJob?.invoices || [];
+                const invoice_number_raw = String(invoice_number);
+                const invNumbers = invoice_number_raw.split(',').map(s => s.trim()).filter(s => s !== "");
+                let existingInvoices = existingJob?.invoices || [];
 
-                // Check if this invoice already exists
-                const invoiceIndex = existingInvoices.findIndex(
-                    inv => inv.invoiceNumber === invoice_number_str
-                );
+                // Helper to get array from comma-separated string
+                const getList = (val) => val ? String(val).split(',').map(s => s.trim()) : [];
 
-                // Build product data (usually one dummy product per invoice for DSR imports)
-                const productData = {
-                    serialNumber: "1",
-                    description: product_description || description || "",
-                    ritc: ritc_no || "",
-                    quantity: product_qty ? String(product_qty) : "0",
-                    qtyUnit: package_unit || "",
-                    amount: product_amount ? String(product_amount) : "0",
-                    eximCode: normalizeEximScheme(exim_scheme),
-                    igstCompensationCess: {
-                        igstPaymentStatus: "LUT",
-                        taxableValueINR: total_igst_taxable_value ? String(total_igst_taxable_value) : "0",
-                        igstRate: "0",
-                        igstAmountINR: total_igst_amount ? String(total_igst_amount) : "0",
-                    },
-                    rodtepInfo: {
-                        claim: total_rodtep_amount ? "Yes" : "No",
-                        amountINR: total_rodtep_amount ? String(total_rodtep_amount) : "0",
-                    },
-                    rosctlInfo: {
-                        claim: total_rosctl_amount ? "Yes" : "No",
-                        amountINR: total_rosctl_amount ? String(total_rosctl_amount) : "0",
-                    },
-                    drawbackDetails: total_dbk_inr ? [{
-                        dbkitem: true,
-                        dbkAmount: parseFloat(total_dbk_inr) || 0,
-                    }] : [],
-                };
+                const invDates = getList(invoice_date);
+                const invValues = getList(invoice_value);
+                const totalInvValues = getList(total_inv_value);
+                const productDescriptions = getList(product_description || description);
+                const productAmounts = getList(product_amount);
+                const productQtys = getList(product_qty);
+                const ritcNos = getList(ritc_no);
+                const igstTaxableValues = getList(total_igst_taxable_value);
+                const igstAmounts = getList(total_igst_amount);
+                const rodtepAmounts = getList(total_rodtep_amount);
+                const rosctlAmounts = getList(total_rosctl_amount);
+                const dbkInrs = getList(total_dbk_inr);
+                const fobValueInrs = getList(fob_value_inr);
+                const curs = getList(currency); // Renamed to avoid collision
+                const invoiceTerms = getList(terms_of_invoice);
+                const commissions = getList(commission_amount);
+                const eximSchemes = getList(exim_scheme);
 
-                const invoiceData = {
-                    invoiceNumber: invoice_number_str,
-                    invoiceDate: invoice_date || "",
-                    currency: currency || "USD",
-                    invoiceValue: invoice_value ? parseFloat(invoice_value) : 0,
-                    productValue: total_inv_value ? parseFloat(total_inv_value) : 0,
-                    termsOfInvoice: terms_of_invoice || "FOB",
-                    priceIncludes: "Both",
-                    packing_charges: 0,
-                    products: [productData],
-                    freightInsuranceCharges: {
-                        fobValue: {
-                            amount: fob_value_inr ? parseFloat(fob_value_inr) : 0
-                        },
-                        commission: {
-                            amount: commission_amount ? parseFloat(commission_amount) : 0
-                        }
+                // New financial lists
+                const freights = getList(freight_amount);
+                const insurances = getList(insurance_amount);
+                const discounts = getList(discount_amount);
+                const prodValues = getList(product_value_list || total_inv_value);
+
+                // Check if we have structured products (from XML)
+                const hasStructuredProducts = Array.isArray(products_per_invoice) && products_per_invoice.length > 0;
+
+                invNumbers.forEach((invNo, idx) => {
+                    // Check if this invoice already exists
+                    const invoiceIndex = existingInvoices.findIndex(
+                        inv => inv.invoiceNumber === invNo
+                    );
+
+                    // Build product data (usually one dummy product per invoice for DSR imports)
+                    let invoiceProducts = [];
+
+                    if (hasStructuredProducts && products_per_invoice[idx]) {
+                        // Use structured products from XML
+                        invoiceProducts = products_per_invoice[idx].map((p, pIdx) => ({
+                            serialNumber: (pIdx + 1).toString(),
+                            description: p.description || "",
+                            ritc: p.ritc || "",
+                            quantity: p.quantity || "0",
+                            qtyUnit: p.qtyUnit || "",
+                            unitPrice: p.unitPrice || "0",
+                            amount: p.amount || "0",
+                            eximCode: normalizeEximScheme(p.eximCode),
+                            endUse: p.endUse || "",
+
+                            // IGST & Taxes
+                            igstCompensationCess: {
+                                igstPaymentStatus: p.igstCompensationCess?.igstPaymentStatus === "LUT" ? "LUT" : p.igstCompensationCess?.igstPaymentStatus || "LUT",
+                                taxableValueINR: p.igstCompensationCess?.taxableValueINR || "0",
+                                igstAmountINR: p.igstCompensationCess?.igstAmountINR || "0",
+                                igstRate: p.igstCompensationCess?.igstRate || "0"
+                            },
+
+                            // PMV
+                            pmvInfo: {
+                                currency: p.pmvInfo?.currency,
+                                totalPMV: p.pmvInfo?.totalPMV || "0",
+                                percentage: p.pmvInfo?.percentage || "0"
+                            },
+
+                            // RoDTEP
+                            rodtepInfo: {
+                                claim: p.rodtepInfo?.claim || "No",
+                                ratePercent: p.rodtepInfo?.ratePercent || "0",
+                                amountINR: p.rodtepInfo?.amountINR || "0",
+                                quantity: p.rodtepInfo?.quantity || "0",
+                                unit: p.rodtepInfo?.unit || ""
+                            },
+
+                            // DBK
+                            drawbackDetails: [{
+                                dbkSrNo: p.drawbackDetails?.dbkSrNo || "",
+                                dbkRate: parseFloat(p.drawbackDetails?.dbkRate) || 0,
+                                quantity: parseFloat(p.drawbackDetails?.quantity) || 0,
+                                unit: p.drawbackDetails?.unit || "",
+                                dbkUnder: p.drawbackDetails?.dbkUnder === "A" ? "Actual" : "Provisional",
+                                dbkAmount: parseFloat(p.drawbackDetails?.dbkAmount) || 0
+                            }]
+                        }));
+                    } else {
+                        // Legacy Dummy Product logic
+                        invoiceProducts.push({
+                            serialNumber: "1",
+                            description: productDescriptions[idx] || productDescriptions[0] || "",
+                            ritc: ritcNos[idx] || ritcNos[0] || "",
+                            quantity: productQtys[idx] || productQtys[0] || "0",
+                            qtyUnit: package_unit || "",
+                            amount: productAmounts[idx] || productAmounts[0] || "0",
+                            eximCode: normalizeEximScheme(eximSchemes[idx] || eximSchemes[0]),
+                            igstCompensationCess: {
+                                igstPaymentStatus: "LUT",
+                                taxableValueINR: igstTaxableValues[idx] || igstTaxableValues[0] || "0",
+                                igstRate: "0",
+                                igstAmountINR: igstAmounts[idx] || igstAmounts[0] || "0",
+                            },
+                            rodtepInfo: {
+                                claim: (rodtepAmounts[idx] || rodtepAmounts[0]) ? "Yes" : "No",
+                                amountINR: rodtepAmounts[idx] || rodtepAmounts[0] || "0",
+                            },
+                            rosctlInfo: {
+                                claim: (rosctlAmounts[idx] || rosctlAmounts[0]) ? "Yes" : "No",
+                                amountINR: rosctlAmounts[idx] || rosctlAmounts[0] || "0",
+                            },
+                            drawbackDetails: (dbkInrs[idx] || dbkInrs[0]) ? [{
+                                dbkitem: true,
+                                dbkAmount: parseFloat(dbkInrs[idx] || dbkInrs[0]) || 0,
+                            }] : [],
+                        });
                     }
-                };
 
-                if (invoiceIndex >= 0) {
-                    // Update existing invoice
-                    existingInvoices[invoiceIndex] = {
-                        ...existingInvoices[invoiceIndex],
-                        ...invoiceData
+                    const invoiceData = {
+                        invoiceNumber: invNo,
+                        invoiceDate: invDates[idx] || invDates[0] || "",
+                        currency: curs[idx] || curs[0] || "USD",
+                        invoiceValue: parseFloat(invValues[idx] || invValues[0]) || 0,
+                        productValue: parseFloat(prodValues[idx] || prodValues[0]) || 0,
+                        termsOfInvoice: invoiceTerms[idx] || invoiceTerms[0] || "FOB",
+                        priceIncludes: "Both",
+                        packing_charges: 0,
+                        products: invoiceProducts,
+                        freightInsuranceCharges: {
+                            fobValue: {
+                                amount: parseFloat(fobValueInrs[idx] || fobValueInrs[0]) || 0
+                            },
+                            commission: {
+                                amount: parseFloat(commissions[idx] || commissions[0]) || 0
+                            },
+                            freight: {
+                                amount: parseFloat(freights[idx] || freights[0]) || 0
+                            },
+                            insurance: {
+                                amount: parseFloat(insurances[idx] || insurances[0]) || 0
+                            },
+                            discount: {
+                                amount: parseFloat(discounts[idx] || discounts[0]) || 0
+                            }
+                        }
                     };
-                    updateData.invoices = existingInvoices;
-                } else {
-                    // Add new invoice
-                    updateData.invoices = [...existingInvoices, invoiceData];
-                }
+
+                    if (invoiceIndex >= 0) {
+                        // Update existing invoice
+                        existingInvoices[invoiceIndex] = {
+                            ...existingInvoices[invoiceIndex],
+                            ...invoiceData
+                        };
+                    } else {
+                        // Add new invoice
+                        existingInvoices.push(invoiceData);
+                    }
+                });
+                updateData.invoices = existingInvoices;
             }
 
             // Add consignees if present

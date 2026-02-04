@@ -321,7 +321,7 @@ const ExportDashboard = () => {
                 </>
               ) : (
                 <>
-                  📊 Import Excel/CSV
+                  📊 Update/Import Excel/CSV/XML
                 </>
               )}
             </button>
@@ -329,7 +329,7 @@ const ExportDashboard = () => {
               type="file"
               ref={inputRef}
               onChange={handleFileUpload}
-              accept=".xlsx,.xls,.csv"
+              accept=".xlsx,.xls,.csv,.xml,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/xml,application/xml"
               style={{ display: "none" }}
             />
             {/* Progress indicator */}

@@ -1279,9 +1279,25 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   placeholder="ENTER PORT"
                   formik={formik}
                   endpoint={isAir ? "airPorts" : "seaPorts"}
-                  onSelect={(opt) => {
+                  onSelect={async (opt) => {
                     if (opt.country) {
-                      const country = toUpper(opt.country);
+                      let country = toUpper(opt.country);
+                      try {
+                        const res = await fetch(
+                          `${apiBase}/countries?search=${encodeURIComponent(
+                            country,
+                          )}`,
+                        );
+                        const data = await res.json();
+                        const found = (data?.data || []).find(
+                          (c) => (c.countryCode || "").toUpperCase() === country,
+                        );
+                        if (found) {
+                          country = toUpper(found.countryName);
+                        }
+                      } catch (err) {
+                        console.error("Error fetching country name:", err);
+                      }
                       formik.setFieldValue("discharge_country", country);
                       formik.setFieldValue("destination_country", country);
                     }
@@ -1314,12 +1330,27 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   placeholder="ENTER PORT"
                   formik={formik}
                   endpoint={isAir ? "airPorts" : "seaPorts"}
-                  onSelect={(opt) => {
+                  onSelect={async (opt) => {
                     if (opt.country) {
-                      formik.setFieldValue(
-                        "destination_country",
-                        toUpper(opt.country),
-                      );
+                      let country = toUpper(opt.country);
+                      try {
+                        const res = await fetch(
+                          `${apiBase}/countries?search=${encodeURIComponent(
+                            country,
+                          )}`,
+                        );
+                        const data = await res.json();
+                        const found = (data?.data || []).find(
+                          (c) => (c.countryCode || "").toUpperCase() === country,
+                        );
+                        if (found) {
+                          country = toUpper(found.countryName);
+                        }
+                      } catch (err) {
+                        console.error("Error fetching country name:", err);
+                      }
+
+                      formik.setFieldValue("destination_country", country);
                     }
                   }}
                 />

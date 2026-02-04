@@ -26,11 +26,20 @@ export const calculateProductFobINR = (
   // Helper: Convert row amount (in row currency) to invoice currency using INR as pivot
   const getAmountInInvoiceCurrency = (row) => {
     const amt = parseFloat(row.amount || 0);
-    const rowToInrRate = parseFloat(row.exchangeRate || 0);
-    if (!amt || !rowToInrRate || !invToInrRate) return 0;
+    // If amount is zero, return zero
+    if (!amt) return 0;
 
-    // row amount -> INR -> Invoice Currency
-    return (amt * rowToInrRate) / invToInrRate;
+    const rowToInrRate = parseFloat(row.exchangeRate);
+
+    // If exchange rate is present, use standard conversion:
+    // Amount (RowCurr) * Rate (Row->INR) / Rate (Inv->INR) = Amount (InvCurr)
+    if (rowToInrRate && invToInrRate) {
+      return (amt * rowToInrRate) / invToInrRate;
+    }
+
+    // Fallback: If exchange rate is missing, assume the amount is ALREADY in Invoice Currency.
+    // This is common for imported data where explicit currency/rate for charges might be missing.
+    return amt;
   };
 
   const K = getAmountInInvoiceCurrency(freight);

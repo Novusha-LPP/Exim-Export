@@ -96,6 +96,7 @@ router.post(
 
       const newExportJob = new ExportJobModel({
         job_no: newJobNo,
+        jobNumber: newJobNo, // Added for unique index consistency
         year: yearFormat,
         job_date: job_date || todayDate,
         exporter,
@@ -226,11 +227,13 @@ router.post(
       delete sourceData.sb_date;
       delete sourceData.sb_submitted_date;
       delete sourceData.sb_status;
+      delete sourceData.jobNumber;
 
       // Set new values
       const newExportJob = new ExportJobModel({
         ...sourceData,
         job_no: newJobNo,
+        jobNumber: newJobNo, // Added for unique index consistency
         branch_code,
         year,
         transportMode,

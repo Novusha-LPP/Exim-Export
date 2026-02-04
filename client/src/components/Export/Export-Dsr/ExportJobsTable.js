@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -339,6 +339,7 @@ const ExportJobsTable = () => {
   const [copyLoading, setCopyLoading] = useState(false);
   const [copyError, setCopyError] = useState("");
   const [suggestedSequence, setSuggestedSequence] = useState("");
+  const isCopyingRef = useRef(false);
 
   // Create Job Dialog State
   const [openAddDialog, setOpenAddDialog] = useState(false);
@@ -613,6 +614,9 @@ const ExportJobsTable = () => {
       return;
     }
 
+    if (isCopyingRef.current) return;
+    isCopyingRef.current = true;
+
     setCopyLoading(true);
     setCopyError("");
 
@@ -692,6 +696,7 @@ const ExportJobsTable = () => {
       }
     } finally {
       setCopyLoading(false);
+      isCopyingRef.current = false;
     }
   };
 

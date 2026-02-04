@@ -29,7 +29,7 @@ const auditTrailSchema = new mongoose.Schema({
   // Action details
   action: {
     type: String,
-    enum: ['CREATE', 'UPDATE', 'DELETE'],
+    enum: ['CREATE', 'UPDATE', 'DELETE', 'BULK_CREATE_UPDATE', 'BULK_OPERATION'],
     index: true
   },
 
@@ -40,7 +40,7 @@ const auditTrailSchema = new mongoose.Schema({
     newValue: { type: mongoose.Schema.Types.Mixed },
     changeType: {
       type: String,
-      enum: ['ADDED', 'MODIFIED', 'REMOVED', 'BULK_CREATE_UPDATE'],
+      enum: ['ADDED', 'MODIFIED', 'REMOVED', 'BULK_CREATE_UPDATE', 'BULK_OPERATION'],
     }
   }],
 

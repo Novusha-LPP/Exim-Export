@@ -682,7 +682,7 @@ const exportJobSchema = new mongoose.Schema(
 
     ////////////////////////////////////////////////// Excel sheet
     year: { type: String, trim: true },
-    // job_no: { type: String, trim: true },
+    jobNumber: { type: String, trim: true, unique: true },
     custom_house: { type: String, trim: true },
     job_date: { type: String, trim: true },
     exporter: { type: String, trim: true },
