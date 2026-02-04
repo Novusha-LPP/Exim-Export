@@ -1022,6 +1022,7 @@ const exportJobSchema = new mongoose.Schema(
     },
     masterblno: { type: String, trim: true }, // Master BL Number
     houseblno: { type: String, trim: true }, // House BL Number
+    isLocked: { type: Boolean, default: false },
     lockedBy: { type: String, trim: true, default: null }, // User who currently has the job open
     lockedAt: { type: Date, default: null }, // Timestamp when the job was locked
   },

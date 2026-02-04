@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import LockIcon from "@mui/icons-material/Lock"; // Import LockIcon
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AddExJobs from "./AddExJobs";
 import { formatDate } from "../../../utils/dateUtils";
@@ -514,10 +515,15 @@ const ExportJobsTable = () => {
     // Actually, we will remove onClick from the TR entirely in the JSX.
   };
 
-  const navigateToJob = (jobNo, e) => {
+  const navigateToJob = (job, e) => {
     e.stopPropagation();
-    if (jobNo) {
-      navigate(`job/${encodeURIComponent(jobNo)}`, {
+    if (job.isLocked) {
+      if (!window.confirm("Do you wanna open this locked job?")) {
+        return;
+      }
+    }
+    if (job.job_no) {
+      navigate(`job/${encodeURIComponent(job.job_no)}`, {
         state: { fromJobList: true },
       });
     }
@@ -1325,7 +1331,7 @@ const ExportJobsTable = () => {
                             position: "sticky",
                             cursor: "pointer", // Make the whole cell look clickable
                           }}
-                          onClick={(e) => navigateToJob(job.job_no, e)} // Click anywhere in cell navigates
+                          onClick={(e) => navigateToJob(job, e)} // Click anywhere in cell navigates
                         >
                           <div
                             style={{
@@ -1344,6 +1350,11 @@ const ExportJobsTable = () => {
                             >
                               {job.job_no}
                             </div>
+                            {job.isLocked && (
+                              <Tooltip title="Job is Locked">
+                                <LockIcon style={{ fontSize: 14, color: "#dc2626", marginLeft: 4 }} />
+                              </Tooltip>
+                            )}
                             <IconButton
                               size="small"
                               onClick={(e) => handleCopyText(job.job_no, e)}

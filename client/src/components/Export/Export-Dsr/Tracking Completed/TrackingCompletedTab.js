@@ -265,6 +265,29 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
               }}
             />
           </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontWeight: 600 }}>Lock Job</span>
+            <input
+              type="checkbox"
+              checked={formik.values.isLocked ?? false}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  if (window.confirm("Do you wanna lock this job?")) {
+                    handleFieldChange("isLocked", true);
+                  }
+                } else {
+                  if (window.confirm("Do you wanna unlock this job?")) {
+                    handleFieldChange("isLocked", false);
+                  }
+                }
+              }}
+              style={{ cursor: "pointer" }}
+            />
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+
         </div>
         <div>
           <div style={{ marginBottom: 4, fontWeight: 500 }}>

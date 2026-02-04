@@ -29,6 +29,9 @@ function ContainerTab({ formik, onUpdate }) {
   const [editingIndex, setEditingIndex] = useState(null);
   const saveTimeoutRef = useRef(null);
 
+  const stuffedAt = (formik.values.goods_stuffed_at || "").toUpperCase();
+  const showSLineSeal = stuffedAt === "FACTORY";
+
   const autoSave = useCallback(
     async (values) => {
       if (onUpdate) await onUpdate(values);
@@ -65,94 +68,88 @@ function ContainerTab({ formik, onUpdate }) {
     }
   }, [formik.values.containers?.length]); // Run primarily on load or when rows added
 
+  // Initialize with one empty row if empty
+  useEffect(() => {
+    if (formik.values.job_no && (!formik.values.containers || formik.values.containers.length === 0)) {
+      // We use a slight timeout or direct update to ensure we don't conflict with initial fetch
+      const list = [{
+        serialNumber: 1,
+        containerNo: "",
+        sealNo: "",
+        sealDate: "",
+        type: "",
+        pkgsStuffed: 0,
+        grossWeight: 0,
+        sealType: "RFID",
+        shippingLineSealNo: "",
+        tareWeightKgs: 0,
+        grWtPlusTrWt: 0,
+        maxPayloadKgs: 0,
+        rfid: "",
+      }];
+      formik.setFieldValue("containers", list);
+      setEditingIndex(0);
+    }
+  }, [formik.values.job_no]);
+
   const handleFieldChange = (idx, field, value) => {
     const list = [...(formik.values.containers || [])];
     list[idx][field] = value;
 
-    // Auto-calculate sum
-    if (field === "grossWeight" || field === "tareWeightKgs") {
-      const gw = Number(list[idx].grossWeight || 0);
-      const tw = Number(list[idx].tareWeightKgs || 0);
-      list[idx].grWtPlusTrWt = parseFloat((gw + tw).toFixed(3));
-    }
+    // Auto-calculate sum (VGM = Gross + Tare) - keeping for legacy or if needed, but user wants Max Payload in that column
+    // The user requested "VGM WT = Max Payload (KG)". We will bind the column to maxPayloadKgs. 
+    // We can still calc grWtPlusTrWt in background if needed, but prioritising user request.
 
     formik.setFieldValue("containers", list);
 
-    // Sync tareWeightKgs to Operations Tab if changed
-    if (field === "tareWeightKgs") {
-      const containerNo = list[idx].containerNo;
-      if (containerNo) {
-        const operations = formik.values.operations || [];
-        let opsChanged = false;
+    // Sync to Operations Tab
+    const containerNo = list[idx].containerNo;
+    if (containerNo) {
+      const operations = formik.values.operations || [];
+      let opsChanged = false;
 
-        const newOps = operations.map((op) => {
-          const cDetails = op.containerDetails || [];
-          const hasContainer = cDetails.some(
-            (d) =>
+      const newOps = operations.map((op) => {
+        const cDetails = op.containerDetails || [];
+        const hasContainer = cDetails.some(
+          (d) =>
+            (d.containerNo || "").trim().toUpperCase() ===
+            containerNo.trim().toUpperCase(),
+        );
+
+        if (hasContainer) {
+
+          let detailsChanged = false;
+          const newCDetails = cDetails.map((d) => {
+            if (
               (d.containerNo || "").trim().toUpperCase() ===
-              containerNo.trim().toUpperCase(),
-          );
+              containerNo.trim().toUpperCase()
+            ) {
+              const newD = { ...d };
 
-          if (hasContainer) {
+              if (field === "type") newD.containerSize = value;
+              if (field === "grossWeight") newD.grossWeight = value; // Note: Operations sync might overwrite this from Transporter sum
+              if (field === "tareWeightKgs") newD.tareWeightKgs = value;
+              if (field === "shippingLineSealNo") newD.shippingLineSealNo = value;
+              if (field === "maxPayloadKgs") newD.maxPayloadKgs = value;
+
+              if (JSON.stringify(newD) !== JSON.stringify(d)) {
+                detailsChanged = true;
+                return newD;
+              }
+            }
+            return d;
+          });
+
+          if (detailsChanged) {
             opsChanged = true;
-            return {
-              ...op,
-              containerDetails: cDetails.map((d) => {
-                if (
-                  (d.containerNo || "").trim().toUpperCase() ===
-                  containerNo.trim().toUpperCase()
-                ) {
-                  return { ...d, tareWeightKgs: value };
-                }
-                return d;
-              }),
-            };
+            return { ...op, containerDetails: newCDetails };
           }
-          return op;
-        });
-
-        if (opsChanged) {
-          formik.setFieldValue("operations", newOps);
         }
-      }
-    }
+        return op;
+      });
 
-    // Sync shippingLineSealNo to Operations Tab if changed
-    if (field === "shippingLineSealNo") {
-      const containerNo = list[idx].containerNo;
-      if (containerNo) {
-        const operations = formik.values.operations || [];
-        let opsChanged = false;
-
-        const newOps = operations.map((op) => {
-          const cDetails = op.containerDetails || [];
-          const hasContainer = cDetails.some(
-            (d) =>
-              (d.containerNo || "").trim().toUpperCase() ===
-              containerNo.trim().toUpperCase(),
-          );
-
-          if (hasContainer) {
-            opsChanged = true;
-            return {
-              ...op,
-              containerDetails: cDetails.map((d) => {
-                if (
-                  (d.containerNo || "").trim().toUpperCase() ===
-                  containerNo.trim().toUpperCase()
-                ) {
-                  return { ...d, shippingLineSealNo: value };
-                }
-                return d;
-              }),
-            };
-          }
-          return op;
-        });
-
-        if (opsChanged) {
-          formik.setFieldValue("operations", newOps);
-        }
+      if (opsChanged) {
+        formik.setFieldValue("operations", newOps);
       }
     }
 
@@ -173,6 +170,7 @@ function ContainerTab({ formik, onUpdate }) {
       shippingLineSealNo: "",
       tareWeightKgs: 0,
       grWtPlusTrWt: 0,
+      maxPayloadKgs: 0,
       rfid: "",
     });
     formik.setFieldValue("containers", list);
@@ -219,9 +217,11 @@ function ContainerTab({ formik, onUpdate }) {
                 <th style={{ ...styles.th, width: 20 }}>#</th>
                 <th style={{ ...styles.th, width: 120 }}>CONTAINER NO</th>
                 <th style={{ ...styles.th, width: 80 }}>SEAL NO</th>
-                <th style={{ ...styles.th, width: 100 }}>SEAL DATE</th>
                 <th style={{ ...styles.th, width: 100 }}>SEAL TYPE</th>
-                <th style={{ ...styles.th, width: 250 }}>S/LINE SEAL NO</th>
+                <th style={{ ...styles.th, width: 100 }}>SEAL DATE</th>
+                {showSLineSeal && (
+                  <th style={{ ...styles.th, width: 150 }}>S/L SEAL NO</th>
+                )}
                 <th style={{ ...styles.th, width: 180 }}>TYPE</th>
                 <th style={{ ...styles.th, width: 100 }}>PKGS</th>
                 <th style={{ ...styles.th, width: 130 }}>GROSS WT</th>
@@ -292,16 +292,6 @@ function ContainerTab({ formik, onUpdate }) {
                   </td>
 
                   <td style={styles.td}>
-                    <DateInput
-                      style={styles.input}
-                      value={row.sealDate || ""}
-                      onChange={(e) =>
-                        handleFieldChange(idx, "sealDate", e.target.value)
-                      }
-                    />
-                  </td>
-
-                  <td style={styles.td}>
                     <select
                       style={styles.select}
                       value={row.sealType || ""}
@@ -318,20 +308,32 @@ function ContainerTab({ formik, onUpdate }) {
                     </select>
                   </td>
 
-                  <td>
-                    <input
+                  <td style={styles.td}>
+                    <DateInput
                       style={styles.input}
-                      value={toUpperVal(row.shippingLineSealNo || "")}
+                      value={row.sealDate || ""}
                       onChange={(e) =>
-                        handleFieldChange(
-                          idx,
-                          "shippingLineSealNo",
-                          toUpperVal(e.target.value),
-                        )
+                        handleFieldChange(idx, "sealDate", e.target.value)
                       }
-                      placeholder="S/LINE SEAL NO"
                     />
                   </td>
+
+                  {showSLineSeal && (
+                    <td>
+                      <input
+                        style={styles.input}
+                        value={toUpperVal(row.shippingLineSealNo || "")}
+                        onChange={(e) =>
+                          handleFieldChange(
+                            idx,
+                            "shippingLineSealNo",
+                            toUpperVal(e.target.value),
+                          )
+                        }
+                        placeholder="S/LINE SEAL NO"
+                      />
+                    </td>
+                  )}
 
                   <td style={styles.td}>
                     <select
@@ -355,6 +357,7 @@ function ContainerTab({ formik, onUpdate }) {
                       type="number"
                       style={styles.input}
                       value={Number(row.pkgsStuffed) === 0 ? "" : row.pkgsStuffed}
+                      // User can edit, but it might be overwritten by OperationsSync if connected
                       onChange={(e) =>
                         handleFieldChange(
                           idx,
@@ -402,11 +405,11 @@ function ContainerTab({ formik, onUpdate }) {
                     <input
                       type="number"
                       style={styles.input}
-                      value={Number(row.grWtPlusTrWt) === 0 ? "" : row.grWtPlusTrWt}
+                      value={Number(row.maxPayloadKgs) === 0 ? "" : row.maxPayloadKgs}
                       onChange={(e) =>
                         handleFieldChange(
                           idx,
-                          "grWtPlusTrWt",
+                          "maxPayloadKgs",
                           Number(e.target.value || 0),
                         )
                       }

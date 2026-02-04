@@ -939,27 +939,27 @@ const OperationsTab = ({ formik }) => {
     operations.forEach((op) => {
       (op.transporterDetails || []).forEach((item) => {
         totalPkgs += Number(item.noOfPackages || 0);
-        totalGross += Number(item.grossWeightKgs || 0);
+        // totalGross += Number(item.grossWeightKgs || 0); // Removed from Transporter
 
         if (item.containerNo) {
           const cNo = item.containerNo.trim().toUpperCase();
           if (!containerDetailsMap.has(cNo)) {
             containerDetailsMap.set(cNo, {
-              grossWeight: Number(item.grossWeightKgs || 0),
+              grossWeight: 0, // Will settle from containerDetails
               netWeight: 0,
               noOfPackages: Number(item.noOfPackages || 0),
             });
           } else {
             // If container appears multiple times, we sum its specific weights
             const existing = containerDetailsMap.get(cNo);
-            existing.grossWeight += Number(item.grossWeightKgs || 0);
+            // existing.grossWeight += Number(item.grossWeightKgs || 0); // Removed from Transporter
             // netWeight removed from transporterDetails
             existing.noOfPackages += Number(item.noOfPackages || 0);
           }
         }
       });
 
-      // Also grab tareWeightKgs and shippingLineSealNo from containerDetails
+      // Also grab grossWeight, tareWeightKgs and shippingLineSealNo from containerDetails
       (op.containerDetails || []).forEach((item) => {
         if (item.containerNo) {
           const cNo = item.containerNo.trim().toUpperCase();
@@ -972,14 +972,30 @@ const OperationsTab = ({ formik }) => {
               noOfPackages: 0,
               tareWeightKgs: 0,
               shippingLineSealNo: "",
+              maxPayloadKgs: 0,
+              containerSize: ""
             });
           }
 
           const info = containerDetailsMap.get(cNo);
+
+          // Sync Container-specific fields from containerDetails
+          if (item.grossWeight)
+            info.grossWeight = Number(item.grossWeight || 0);
           if (item.tareWeightKgs)
             info.tareWeightKgs = Number(item.tareWeightKgs || 0);
           if (item.shippingLineSealNo)
             info.shippingLineSealNo = item.shippingLineSealNo;
+
+          // Accumulate Global Gross Weight from Container Details
+          totalGross += Number(item.grossWeight || 0);
+
+          if (item.maxPayloadKgs)
+            info.maxPayloadKgs = Number(item.maxPayloadKgs || 0);
+          if (item.maxPayloadKgs)
+            info.maxPayloadKgs = Number(item.maxPayloadKgs || 0);
+          if (item.containerSize)
+            info.containerSize = item.containerSize;
         }
       });
     });
@@ -1025,6 +1041,7 @@ const OperationsTab = ({ formik }) => {
             netWeight: opInfo.netWeight,
             tareWeightKgs: opInfo.tareWeightKgs,
             shippingLineSealNo: opInfo.shippingLineSealNo || "",
+            maxPayloadKgs: opInfo.maxPayloadKgs || 0,
           });
           masterChanged = true;
         } else {
@@ -1035,7 +1052,9 @@ const OperationsTab = ({ formik }) => {
             Number(m.netWeight) !== opInfo.netWeight ||
             Number(m.pkgsStuffed) !== opInfo.noOfPackages ||
             Number(m.tareWeightKgs || 0) !== opInfo.tareWeightKgs ||
-            (m.shippingLineSealNo || "") !== (opInfo.shippingLineSealNo || "")
+            (m.shippingLineSealNo || "") !== (opInfo.shippingLineSealNo || "") ||
+            Number(m.maxPayloadKgs || 0) !== (opInfo.maxPayloadKgs || 0) ||
+            (m.type || "") !== (opInfo.containerSize || "")
           ) {
             nextContainers[masterItemIdx] = {
               ...m,
@@ -1045,6 +1064,8 @@ const OperationsTab = ({ formik }) => {
               tareWeightKgs: opInfo.tareWeightKgs,
               shippingLineSealNo:
                 opInfo.shippingLineSealNo || m.shippingLineSealNo || "",
+              maxPayloadKgs: opInfo.maxPayloadKgs,
+              type: opInfo.containerSize || m.type || "",
             };
             masterChanged = true;
           }
@@ -1056,6 +1077,73 @@ const OperationsTab = ({ formik }) => {
       }
     }
   }, [operations]); // Watch operations to trigger sync
+
+  // Phase D: Master -> Operations Sync (Syncs newly added containers from ContainerTab to Operations)
+  useEffect(() => {
+    if (!formik.values.job_no || operations.length === 0 || isAir) return;
+
+    const masterContainers = formik.values.containers || [];
+    let opsChanged = false;
+
+    const nextOperations = operations.map(op => {
+      // Logic similar to Phase A Intra-sync but sourced from Master
+      if (isDockLCL) return op;
+
+      const syncedOp = { ...op };
+      let opIsDirty = false;
+
+      // Sync master containers to Container Details
+      const cDetails = [...(syncedOp.containerDetails || [])];
+
+      masterContainers.forEach(mContainer => {
+        const mNo = (mContainer.containerNo || "").trim().toUpperCase();
+        if (!mNo) return; // Skip empty master containers (though ContainerTab might have initialized one)
+
+        const exists = cDetails.some(d => (d.containerNo || "").trim().toUpperCase() === mNo);
+        if (!exists) {
+          // Find empty slot to fill
+          const emptyIdx = cDetails.findIndex(d => !(d.containerNo || "").trim());
+
+          if (emptyIdx !== -1) {
+            cDetails[emptyIdx] = { ...cDetails[emptyIdx], containerNo: mNo };
+          } else {
+            cDetails.push({ ...getDefaultItem("containerDetails"), containerNo: mNo });
+          }
+          opIsDirty = true;
+        }
+      });
+      syncedOp.containerDetails = cDetails;
+
+      // Sync master containers to Transporter Details (if applicable)
+      if (!isDock) {
+        const tDetails = [...(syncedOp.transporterDetails || [])];
+        masterContainers.forEach(mContainer => {
+          const mNo = (mContainer.containerNo || "").trim().toUpperCase();
+          if (!mNo) return;
+
+          const exists = tDetails.some(d => (d.containerNo || "").trim().toUpperCase() === mNo);
+          if (!exists) {
+            const emptyIdx = tDetails.findIndex(d => !(d.containerNo || "").trim());
+            if (emptyIdx !== -1) {
+              tDetails[emptyIdx] = { ...tDetails[emptyIdx], containerNo: mNo };
+            } else {
+              tDetails.push({ ...getDefaultItem("transporterDetails"), containerNo: mNo });
+            }
+            opIsDirty = true;
+          }
+        });
+        syncedOp.transporterDetails = tDetails;
+      }
+
+      if (opIsDirty) opsChanged = true;
+      return syncedOp;
+    });
+
+    if (opsChanged) {
+      formik.setFieldValue("operations", nextOperations);
+    }
+
+  }, [formik.values.containers]); // Watch master list
 
   // --- Actions ---
 
@@ -1229,12 +1317,8 @@ const OperationsTab = ({ formik }) => {
           type: "number",
           width: "80px",
         },
-        {
-          field: "grossWeightKgs",
-          label: "Gross Wt (KG)",
-          type: "number",
-          width: "100px",
-        },
+
+        // Removed Gross Weight from Transporter as per user request
 
         {
           field: "images",
@@ -1290,7 +1374,7 @@ const OperationsTab = ({ formik }) => {
           label: "Max Payload (KG)",
           type: "number",
           width: "100px",
-          readOnly: true, // Auto-calculated
+          // readOnly: false, // User wants this editable (VGM)
         },
         {
           field: "images",
