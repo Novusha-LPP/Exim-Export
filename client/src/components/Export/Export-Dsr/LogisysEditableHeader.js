@@ -438,7 +438,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Job Number */}
-        <div style={{ flex: "0 0 auto", minWidth: 90 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 70 }}>
           <div style={styles.label}>Job No</div>
           {isNewJob ? (
             <input
@@ -487,7 +487,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Job Date */}
-        <div style={{ flex: "0 0 auto", minWidth: 85 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 70 }}>
           <div style={styles.label}>Job Date</div>
           <DateInput
             name="job_date"
@@ -502,7 +502,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* SB No */}
-        <div style={{ flex: "0 0 auto", minWidth: 60 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 50 }}>
           <div style={styles.label}>SB No</div>
           <input
             name="sb_no"
@@ -514,7 +514,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* SB Date */}
-        <div style={{ flex: "0 0 auto", minWidth: 85 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 70 }}>
           <div style={styles.label}>SB Date</div>
           <DateInput
             name="sb_date"
@@ -529,7 +529,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Job Owner */}
-        <div style={{ flex: "1 1 auto", minWidth: 90, maxWidth: 130 }}>
+        <div style={{ flex: "1 1 auto", minWidth: 70, maxWidth: 100 }}>
           <div style={styles.label}>Job Owner</div>
           <AutocompleteSelect
             name="job_owner"
@@ -548,7 +548,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Shipper */}
-        <div style={{ flex: "1 1 auto", minWidth: 100, maxWidth: 160 }}>
+        <div style={{ flex: "1 1 auto", minWidth: 80, maxWidth: 130 }}>
           <div style={styles.label}>Shipper</div>
           <input
             name="shipper"
@@ -568,7 +568,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Transport Mode */}
-        <div style={{ flex: "0 0 auto", minWidth: 50 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 40 }}>
           <div style={styles.label}>Mode</div>
           <input
             style={{ ...styles.inputDisabled, width: 50 }}
@@ -578,7 +578,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Custom House */}
-        <div style={{ flex: "1 1 auto", minWidth: 90, maxWidth: 160 }}>
+        <div style={{ flex: "1 1 auto", minWidth: 70, maxWidth: 130 }}>
           <div style={styles.label}>Custom House</div>
           <CustomHouseDropdown
             name="custom_house"
@@ -592,7 +592,7 @@ const LogisysEditableHeader = ({
 
         {/* Loading Port - Only show for non-AIR */}
         {!isAirType && (
-          <div style={{ flex: "1 1 auto", minWidth: 90, maxWidth: 140 }}>
+          <div style={{ flex: "1 1 auto", minWidth: 70, maxWidth: 110 }}>
             <div style={styles.label}>Port Of Loading</div>
             <GatewayPortDropdown
               fieldName="port_of_loading"
@@ -604,7 +604,7 @@ const LogisysEditableHeader = ({
         )}
 
         {/* Consignment Type */}
-        <div style={{ flex: "0 0 auto", minWidth: 70 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 60 }}>
           <div style={styles.label}>Type</div>
           <AutocompleteSelect
             name="consignmentType"
@@ -622,7 +622,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Goods Stuffed At */}
-        <div style={{ flex: "0 0 auto", minWidth: 70 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 60 }}>
           <div style={styles.label}>Stuffed At</div>
           <AutocompleteSelect
             name="goods_stuffed_at"
