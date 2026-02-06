@@ -232,6 +232,10 @@ app.use(deleteFromS3Routes);
 // Update Export Jobs (Wildcard route - must be last)
 app.use("/api", updateExportJobs);
 
+// DSC Signer Routes
+import signerRoutes from "./routes/signerRoutes.js";
+app.use("/api/signer", signerRoutes);
+
 app.get("/", (req, res) => {
   res.send("Export Jobs API Running");
 });

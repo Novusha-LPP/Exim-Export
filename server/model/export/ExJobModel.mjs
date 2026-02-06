@@ -774,6 +774,15 @@ const exportJobSchema = new mongoose.Schema(
 
     status: { type: String, trim: true },
     detailedStatus: { type: [String], default: [] },
+    
+    // --- DSC Signing Status ---
+    signingStatus: {
+      type: String,
+      enum: ["Pending", "ReadyToSign", "Signed", "Failed"],
+      default: "Pending",
+    },
+    signedFilePath: { type: String, trim: true }, // Path to .sb file or .sig file in S3/Local
+    signedDate: { type: Date },
 
     ////////////////////////////////////////////////// Exporter Information
     exporter_address: { type: String, trim: true },

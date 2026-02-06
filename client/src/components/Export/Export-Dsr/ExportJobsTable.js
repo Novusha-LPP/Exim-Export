@@ -20,6 +20,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LockIcon from "@mui/icons-material/Lock"; // Import LockIcon
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import GavelIcon from "@mui/icons-material/Gavel"; // Import GavelIcon
 import AddExJobs from "./AddExJobs";
 import { formatDate } from "../../../utils/dateUtils";
 import { priorityFilter } from "../../../utils/filterUtils";
@@ -703,6 +704,26 @@ const ExportJobsTable = () => {
     } finally {
       setCopyLoading(false);
       isCopyingRef.current = false;
+    }
+  };
+
+  // --- DSC Signing Handler ---
+  const handleSignDSC = async (job, e) => {
+    e.stopPropagation();
+    if (!window.confirm(`Mark job ${job.job_no} for DSC Signing?`)) return;
+
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_STRING}/signer/start-sign`,
+        { jobIds: [job._id] }
+      );
+      if (response.data) {
+        alert("Job marked for signing. Please open your Local Signer application.");
+        fetchJobs();
+      }
+    } catch (err) {
+      console.error("Error starting signing:", err);
+      alert("Failed to start signing process.");
     }
   };
 
@@ -1843,6 +1864,28 @@ const ExportJobsTable = () => {
                         {/* Column 11: Copy Action */}
                         <td style={s.td}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <button
+                              onClick={(e) => handleSignDSC(job, e)}
+                              style={{
+                                padding: "6px 12px",
+                                backgroundColor: "#9333ea",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "3px",
+                                fontSize: "11px",
+                                fontWeight: "600",
+                                cursor: "pointer",
+                                width: "100%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "4px"
+                              }}
+                              title="Sign with DSC"
+                            >
+                              <GavelIcon style={{ fontSize: 12 }} />
+                              Sign
+                            </button>
                             <button
                               className="copy-btn"
                               onClick={(e) => handleCopyJob(job, e)}
