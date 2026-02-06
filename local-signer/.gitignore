@@ -1,0 +1,25 @@
+# Build outputs
+target/
+*.jar
+!local-signer-*.jar
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+*.class
+
+# Portable runtime directories (too large for git)
+java_runtime/
+maven_runtime/
+
+# Temporary files
+*.tmp
+*.log
+*.zip
+
+# Maven wrapper
+.mvn/
+
+# Dependency reduced POM
+dependency-reduced-pom.xml
