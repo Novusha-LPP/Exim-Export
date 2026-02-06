@@ -175,43 +175,48 @@ public class Main extends JFrame {
             File outputDir = folderChooser.getSelectedFile();
 
             try {
-                // Read flat file content
-                byte[] data = Files.readAllBytes(inputFile.toPath());
-                String flatContent = new String(data, "UTF-8");
+                // Read flat file content as raw bytes - DO NOT MODIFY!
+                byte[] rawData = Files.readAllBytes(inputFile.toPath());
 
-                // Generate PKCS#7 signature
-                byte[] signature = dscService.sign(data);
+                log("Input file size: " + rawData.length + " bytes");
+                log("Creating PKCS#7/CMS signed container...");
 
-                // Base64 encode the signature
-                String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
+                // Generate PKCS#7/CMS ATTACHED signature (data embedded in signature)
+                // This produces a binary DER-encoded PKCS#7 structure starting with 0x30
+                // 0x82...
+                byte[] pkcs7Data = dscService.sign(rawData);
 
-                // Create signed content: Original content + PKCS7 signature in Base64
-                // Format: <original content>\n<SIGNATURE>\n<base64 encoded PKCS7>\n</SIGNATURE>
-                StringBuilder signedContent = new StringBuilder();
-                signedContent.append(flatContent);
-                signedContent.append("\n<SIGNATURE>\n");
-                signedContent.append(signatureBase64);
-                signedContent.append("\n</SIGNATURE>");
+                log("PKCS#7 container size: " + pkcs7Data.length + " bytes");
+                log("First bytes: 0x" + String.format("%02X %02X %02X %02X",
+                        pkcs7Data[0], pkcs7Data[1], pkcs7Data[2], pkcs7Data[3]));
 
-                // Generate output filename as .sb
+                // Generate output filename as .sb.sb (signed shipping bill)
                 String baseName = inputFile.getName();
-                if (baseName.endsWith(".txt")) {
-                    baseName = baseName.substring(0, baseName.length() - 4);
+                // Remove extension if present
+                int dotPos = baseName.lastIndexOf('.');
+                if (dotPos > 0) {
+                    baseName = baseName.substring(0, dotPos);
                 }
-                File sbFile = new File(outputDir, baseName + ".sb");
 
-                // Save single .sb file with embedded signature
-                try (FileOutputStream fos = new FileOutputStream(sbFile)) {
-                    fos.write(signedContent.toString().getBytes("UTF-8"));
+                // ICEGATE expects .sb.sb for signed shipping bills
+                File signedFile = new File(outputDir, baseName + ".sb.sb");
+
+                // Save as pure binary PKCS#7/CMS container
+                try (FileOutputStream fos = new FileOutputStream(signedFile)) {
+                    fos.write(pkcs7Data);
                 }
-                log("Saved signed file: " + sbFile.getName());
+
+                log("Saved PKCS#7 signed file: " + signedFile.getName());
 
                 JOptionPane.showMessageDialog(this,
                         "File signed successfully!\n\n" +
-                                "Output: " + sbFile.getAbsolutePath() + "\n\n" +
-                                "The .sb file contains:\n" +
-                                "• Original flat file content\n" +
-                                "• Embedded PKCS#7 digital signature",
+                                "Output: " + signedFile.getAbsolutePath() + "\n\n" +
+                                "Format: PKCS#7/CMS Binary Container\n" +
+                                "• Starts with 0x30 0x82 (ASN.1 DER)\n" +
+                                "• Contains embedded original data\n" +
+                                "• SHA1withRSA signature\n" +
+                                "• Full certificate chain\n\n" +
+                                "Ready to upload to ICEGATE!",
                         "Success", JOptionPane.INFORMATION_MESSAGE);
 
             } catch (Exception e) {
@@ -360,37 +365,29 @@ public class Main extends JFrame {
 
                     log("Signing Job: " + jobNo);
 
-                    // 1. Sign the flat file content
-                    byte[] dataToSign = content.getBytes("UTF-8");
-                    byte[] signature = dscService.sign(dataToSign);
+                    // 1. Keep content as-is (DO NOT normalize line endings!)
+                    byte[] dataToSign = content.getBytes("ISO-8859-1");
 
-                    // 2. Base64 encode the PKCS#7 signature
-                    String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
+                    // 2. Generate PKCS#7/CMS ATTACHED signature (binary container)
+                    byte[] pkcs7Data = dscService.sign(dataToSign);
 
-                    // 3. Create signed content with embedded signature
-                    // Format: <original content>\n<SIGNATURE>\n<base64 encoded PKCS7>\n</SIGNATURE>
-                    StringBuilder signedContent = new StringBuilder();
-                    signedContent.append(content);
-                    signedContent.append("\n<SIGNATURE>\n");
-                    signedContent.append(signatureBase64);
-                    signedContent.append("\n</SIGNATURE>");
-
-                    // 4. Generate file name
+                    // 3. Generate file name
                     String baseName = jobNo + "_" + (sbNo != null && !sbNo.equals("N/A") ? sbNo : "SB");
                     baseName = baseName.replaceAll("[^a-zA-Z0-9_-]", "_"); // Sanitize
 
-                    File sbFile = new File(outputDir, baseName + ".sb");
+                    // ICEGATE expects .sb.sb for signed shipping bills
+                    File sbFile = new File(outputDir, baseName + ".sb.sb");
 
-                    // 5. Save single .sb file with embedded signature
+                    // 4. Save as pure binary PKCS#7/CMS container
                     try (FileOutputStream fos = new FileOutputStream(sbFile)) {
-                        fos.write(signedContent.toString().getBytes("UTF-8"));
+                        fos.write(pkcs7Data);
                     }
-                    log("Saved signed file: " + sbFile.getName());
+                    log("Saved PKCS#7 signed file: " + sbFile.getName());
 
-                    // 6. Upload to server (optional)
+                    // 5. Upload to server (optional)
                     try {
                         log("Uploading to server...");
-                        apiClient.uploadSignedFile(id, signature);
+                        apiClient.uploadSignedFile(id, pkcs7Data);
                         log("Uploaded: " + jobNo);
                     } catch (Exception uploadErr) {
                         log("⚠ Upload failed (file saved locally): " + uploadErr.getMessage());

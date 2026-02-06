@@ -74,10 +74,30 @@ public class DscService {
     }
 
     /**
-     * Sign data and return PKCS#7/CMS SignedData format.
-     * This format includes the certificate chain and is required by ICEGATE.
+     * Sign data and return PKCS#7/CMS SignedData format (ATTACHED - data included).
+     * Uses SHA1withRSA for ICEGATE compatibility.
      */
     public byte[] sign(byte[] data) throws Exception {
+        return signInternal(data, false, "SHA1withRSA");
+    }
+
+    /**
+     * Sign data and return DETACHED PKCS#7/CMS signature (data NOT included).
+     * This is required for ICEGATE .sb file format.
+     */
+    public byte[] signDetached(byte[] data) throws Exception {
+        return signInternal(data, true, "SHA1withRSA");
+    }
+
+    /**
+     * Internal signing method with configurable options.
+     * 
+     * @param data      The data to sign
+     * @param detached  If true, creates detached signature (data not included in
+     *                  output)
+     * @param algorithm Signature algorithm (SHA1withRSA or SHA256withRSA)
+     */
+    private byte[] signInternal(byte[] data, boolean detached, String algorithm) throws Exception {
         if (keyStore == null || alias == null) {
             throw new Exception("DSC not initialized. Please login first.");
         }
@@ -104,7 +124,8 @@ public class DscService {
         JcaCertStore certStore = new JcaCertStore(Arrays.asList(certChain));
 
         // Create content signer using PKCS#11 provider
-        ContentSigner contentSigner = new JcaContentSignerBuilder("SHA256withRSA")
+        // ICEGATE requires SHA1withRSA for shipping bill signatures
+        ContentSigner contentSigner = new JcaContentSignerBuilder(algorithm)
                 .setProvider(pkcs11Provider)
                 .build(privateKey);
 
@@ -115,18 +136,57 @@ public class DscService {
                         new JcaDigestCalculatorProviderBuilder().build()).build(contentSigner, signingCert));
         generator.addCertificates(certStore);
 
-        // Generate PKCS#7 signed data (detached = false means data is included)
-        // For .sb.sig files, use detached = true (data NOT included, only signature)
-        CMSSignedData signedData = generator.generate(cmsData, false);
+        // Generate PKCS#7 signed data
+        // detached = true means signature only (no data embedded) - required for .sb
+        // files
+        // detached = false means data is included in the signature block
+        CMSSignedData signedData = generator.generate(cmsData, !detached);
 
         System.out.println(
-                "Generated PKCS#7/CMS signature with certificate: " + signingCert.getSubjectX500Principal().getName());
+                "Generated " + (detached ? "DETACHED " : "") + "PKCS#7/CMS signature (" + algorithm
+                        + ") with certificate: "
+                        + signingCert.getSubjectX500Principal().getName());
 
         return signedData.getEncoded();
     }
 
     public X509Certificate getCertificate() throws Exception {
         return (X509Certificate) keyStore.getCertificate(alias);
+    }
+
+    /**
+     * Sign data and return RAW RSA signature bytes (NOT PKCS#7).
+     * This is the format required by ICEGATE for .sb files.
+     * Uses SHA1withRSA for compatibility.
+     */
+    public byte[] signRaw(byte[] data) throws Exception {
+        if (keyStore == null || alias == null) {
+            throw new Exception("DSC not initialized. Please login first.");
+        }
+
+        PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, null);
+        X509Certificate cert = (X509Certificate) keyStore.getCertificate(alias);
+
+        // Create raw RSA signature using the PKCS#11 provider
+        java.security.Signature sig = java.security.Signature.getInstance("SHA1withRSA", pkcs11Provider);
+        sig.initSign(privateKey);
+        sig.update(data);
+        byte[] signature = sig.sign();
+
+        System.out.println("Generated RAW RSA signature (SHA1withRSA) with certificate: "
+                + cert.getSubjectX500Principal().getName());
+        System.out.println("Signature length: " + signature.length + " bytes");
+
+        return signature;
+    }
+
+    /**
+     * Get the certificate as Base64 encoded DER format.
+     */
+    public String getCertificateBase64() throws Exception {
+        X509Certificate cert = getCertificate();
+        byte[] encoded = cert.getEncoded();
+        return java.util.Base64.getEncoder().encodeToString(encoded);
     }
 
     // Getters for PdfSignerService
