@@ -20,6 +20,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LockIcon from "@mui/icons-material/Lock"; // Import LockIcon
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import AddExJobs from "./AddExJobs";
 import { formatDate } from "../../../utils/dateUtils";
 import { priorityFilter } from "../../../utils/filterUtils";
@@ -30,6 +31,7 @@ import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharG
 import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
 import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
 import { CUSTOM_HOUSE_OPTIONS, getOptionsForBranch } from "../../common/CustomHouseDropdown";
+import SBTrackDialog from "./SBTrackDialog";
 
 // --- Clean Enterprise Styles ---
 const s = {
@@ -355,6 +357,10 @@ const ExportJobsTable = () => {
   const [docsAnchorEl, setDocsAnchorEl] = useState(null);
   const [selectedDocJob, setSelectedDocJob] = useState(null);
 
+  // SB Track Dialog State
+  const [sbTrackOpen, setSbTrackOpen] = useState(false);
+  const [sbTrackJob, setSbTrackJob] = useState(null);
+
   // Fetch Exporters for DSR
   useEffect(() => {
     const fetchExporters = async () => {
@@ -534,6 +540,14 @@ const ExportJobsTable = () => {
     if (text) {
       navigator.clipboard.writeText(text);
       // Could show a snackbar here
+    }
+  };
+
+  const handleSBTrack = (job, e) => {
+    e.stopPropagation();
+    if (job.sb_no && job.sb_date && job.custom_house) {
+      setSbTrackJob(job);
+      setSbTrackOpen(true);
     }
   };
 
@@ -1619,25 +1633,43 @@ const ExportJobsTable = () => {
                               justifyContent: "space-between",
                             }}
                           >
-                            <div
-                              style={{
-                                fontWeight: "600",
-                                color: "#b91c1c",
-                                marginBottom: "2px",
-                              }}
-                            >
-                              {job.sb_no || "-"}
-                            </div>
-                            {job.sb_no && (
-                              <IconButton
-                                size="small"
-                                onClick={(e) => handleCopyText(job.sb_no, e)}
-                                style={{ padding: 2 }}
-                                title="Copy SB No"
+                            <Tooltip title={job.sb_no && job.sb_date && job.custom_house ? "Click to track SB on ICEGATE" : ""}>
+                              <div
+                                style={{
+                                  fontWeight: "600",
+                                  color: job.sb_no && job.sb_date && job.custom_house ? "#2563eb" : "#b91c1c",
+                                  marginBottom: "2px",
+                                  cursor: job.sb_no && job.sb_date && job.custom_house ? "pointer" : "default",
+                                  textDecoration: job.sb_no && job.sb_date && job.custom_house ? "underline" : "none",
+                                }}
+                                onClick={(e) => job.sb_no && job.sb_date && job.custom_house && handleSBTrack(job, e)}
                               >
-                                <ContentCopyIcon style={{ fontSize: 12 }} />
-                              </IconButton>
-                            )}
+                                {job.sb_no || "-"}
+                              </div>
+                            </Tooltip>
+                            <div style={{ display: "flex", alignItems: "center" }}>
+                              {job.sb_no && job.sb_date && job.custom_house && (
+                                <Tooltip title="Track on ICEGATE">
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => handleSBTrack(job, e)}
+                                    style={{ padding: 2 }}
+                                  >
+                                    <TrackChangesIcon style={{ fontSize: 12, color: "#2563eb" }} />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {job.sb_no && (
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => handleCopyText(job.sb_no, e)}
+                                  style={{ padding: 2 }}
+                                  title="Copy SB No"
+                                >
+                                  <ContentCopyIcon style={{ fontSize: 12 }} />
+                                </IconButton>
+                              )}
+                            </div>
                           </div>
                           <div style={{ color: "#4b5563", fontSize: "11px" }}>
                             {formatDate(job.sb_date)}
@@ -2315,6 +2347,18 @@ const ExportJobsTable = () => {
           </MenuItem>
         </ConcorForwardingNoteGenerator>
       </Menu>
+
+      {/* SB Track Dialog */}
+      <SBTrackDialog
+        open={sbTrackOpen}
+        onClose={() => {
+          setSbTrackOpen(false);
+          setSbTrackJob(null);
+        }}
+        sbNo={sbTrackJob?.sb_no}
+        sbDate={sbTrackJob?.sb_date}
+        customHouse={sbTrackJob?.custom_house}
+      />
     </>
   );
 };

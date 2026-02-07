@@ -35,7 +35,6 @@ function SelectIcdCode({ selectedUser }) {
     "ICD VIRAMGAM",
     "AIR AHMEDABAD",
     "AHMEDABAD AIR CARGO",
-    "ICD THAR DRY PORT",
     "THAR DRY PORT",
     "ICD VIROCHANNAGAR",
     "ICD VIROCHAN NAGAR",
