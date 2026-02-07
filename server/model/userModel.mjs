@@ -6,10 +6,10 @@ dotenv.config();
 // Create a separate connection for user database
 const USER_MONGODB_URI = (() => {
   if (process.env.NODE_ENV === "production")
-    return process.env.IMPORT_MONGODB_URI_PROD || process.env.PROD_MONGODB_URI;
+    return process.env.IMPORT_MONGODB_URI_PROD
   if (process.env.NODE_ENV === "server")
-    return process.env.USER_MONGODB_URI_SERVER || process.env.SERVER_MONGODB_URI;
-  return process.env.USER_MONGODB_URI || process.env.DEV_MONGODB_URI;
+    return process.env.IMPORT_MONGODB_URI_SERVER
+  return process.env.IMPORT_MONGODB_URI_DEV
 })();
 
 // Create dedicated connection for user database (fallbacks to main DB URIs if missing)
@@ -18,14 +18,13 @@ if (!USER_MONGODB_URI) {
     "⚠️ USER_MONGODB_URI not defined. Falling back to server or dev DB to avoid crash."
   );
 }
-const userDbConnection = mongoose.createConnection(
-  USER_MONGODB_URI || process.env.SERVER_MONGODB_URI || process.env.DEV_MONGODB_URI
-);
+const actualUserDbUri = USER_MONGODB_URI
+const userDbConnection = mongoose.createConnection(actualUserDbUri);
 
 userDbConnection.on("connected", () => {
   console.log(
     "🟢 User Database connected to:",
-    USER_MONGODB_URI?.split("@")[1]?.split("/")[0] || "User DB"
+    USER_MONGODB_URI || "User DB"
   );
 });
 
@@ -44,17 +43,7 @@ export const userSchema = new Schema({
   },
   role: { type: String },
 
-  transport_modules: [
-    {
-      type: String,
-    },
-  ],
-  export_modules: [
-    {
-      type: String,
-    },
-  ],
-  import_modules: [
+  modules: [
     {
       type: String,
     },

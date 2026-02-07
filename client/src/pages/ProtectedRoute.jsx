@@ -27,11 +27,8 @@ const ProtectedRoute = ({ children, requiredModule, fallbackPath = "/" }) => {
           `${import.meta.env.VITE_API_STRING}/get-user/${user.username || user.id}`
         );
 
-        // The user document stores permissions under different keys in different
-        // contexts (e.g. `export_modules`). Prefer `export_modules`, but fall
-        // back to `modules` for compatibility.
-        const modulesFromApi =
-          response?.data?.export_modules || response?.data?.modules || [];
+        // The user document stores permissions under the 'modules' key
+        const modulesFromApi = response?.data?.modules || [];
 
         setUserModules(modulesFromApi);
       } catch (err) {
