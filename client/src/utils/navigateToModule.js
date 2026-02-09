@@ -27,8 +27,13 @@ export const navigateToModule = (module, navigate) => {
     case "Accounts":
       return navigate("/accounts");
     case "Customer KYC":
-      return (window.location.href =
-        "http://eximcustomerkyc.s3-website.ap-south-1.amazonaws.com/customer-kyc");
+      const kycUrl = "http://eximcustomerkyc.s3-website.ap-south-1.amazonaws.com/customer-kyc";
+      const kycLink = document.createElement("a");
+      kycLink.href = kycUrl;
+      kycLink.target = "_blank";
+      kycLink.rel = "noopener noreferrer";
+      kycLink.click();
+      return;
     case "Exit Feedback":
       return navigate("/exit-feedback");
     case "e-Sanchit":
@@ -38,7 +43,13 @@ export const navigateToModule = (module, navigate) => {
     case "Export - Jobs":
       return navigate("/export-dsr");
     case "Export - VGM":
-      return window.location.href = "http://handover-odex.s3-website.ap-south-1.amazonaws.com";
+      const vgmUrl = "http://handover-odex.s3-website.ap-south-1.amazonaws.com";
+      const vgmLink = document.createElement("a");
+      vgmLink.href = vgmUrl;
+      vgmLink.target = "_blank";
+      vgmLink.rel = "noopener noreferrer";
+      vgmLink.click();
+      return;
     case "Export - Documentation":
       return navigate("/export-documentation");
     case "Export - ESanchit":

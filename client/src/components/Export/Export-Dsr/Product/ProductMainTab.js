@@ -152,9 +152,9 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
   );
 
   const recalcAmount = useCallback((prod) => {
-    const qty = Number(prod.quantity);
-    const rate = Number(prod.unitPrice);
-    const per = Number(prod.per);
+    const qty = Number(prod.quantity) || 0;
+    const rate = Number(prod.unitPrice) || 0;
+    const per = Number(prod.per) || 1;
     return (qty * rate) / per;
   }, []);
 
@@ -167,8 +167,8 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
 
       if (autoRecalc && field !== "amount") {
         const calculated = recalcAmount(current);
-        if (!isNaN(calculated)) {
-          current.amount = String(calculated);
+        if (!isNaN(calculated) && isFinite(calculated)) {
+          current.amount = formatAmount(calculated);
         }
       }
 
