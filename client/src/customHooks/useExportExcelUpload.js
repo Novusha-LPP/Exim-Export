@@ -538,9 +538,11 @@ function useExportExcelUpload(inputRef, onSuccess) {
                     third_party_address: extractedTPAddr,
 
                     port_of_discharge: getText("DischPort"),
-                    discharge_country: getText("DischCountry"), // Added
+                    discharge_country: getText("DischCountry"),
                     destination_port: getText("DestPort"),
-                    destination_country: getText("DestCountry"), // Added
+                    destination_country: getText("DestCountry"),
+
+                    goods_stuffed_at: getText("GoodsStuffedAt") === "F" ? "FACTORY" : getText("GoodsStuffedAt") === "D" ? "DOCK" : getText("GoodsStuffedAt"),
 
                     gross_weight_kg: getText("GrossWt"),
                     net_weight_kg: getText("NetWt"),
@@ -558,7 +560,7 @@ function useExportExcelUpload(inputRef, onSuccess) {
                     voyage_no: getText("VoyageNo"),
                     awb_bl_no: getText("MAWBNo") || getText("HAWBNo"),
                     awb_bl_date: parseExcelDate(getText("MAWBDate") || getText("HAWBDate")),
-                    consignmentType: getText("CargoType") === "C" ? "FCL" : "LCL",
+                    consignmentType: (getText("TransportMode") === "A") ? "AIR" : (getText("CargoType") === "C" ? "FCL" : "LCL"),
 
                     // Payment Mapping
                     nature_of_payment: (() => {

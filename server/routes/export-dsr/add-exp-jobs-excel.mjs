@@ -302,6 +302,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 egm_date,
 
                 // Other fields
+                goods_stuffed_at,
                 description,
                 hss_name,
                 cha,
@@ -571,6 +572,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 discharge_country: getUpdateValue(discharge_country, existingJob?.discharge_country),
                 destination_country: getUpdateValue(destination_country, existingJob?.destination_country),
                 destination_port: getUpdateValue(destination_port, existingJob?.destination_port),
+                goods_stuffed_at: getUpdateValue(goods_stuffed_at, existingJob?.goods_stuffed_at),
 
                 // Vessel/Flight
                 vessel_name: getUpdateValue(vessel_name, existingJob?.vessel_name),
