@@ -88,6 +88,16 @@ const cargoTypes = [
   { value: "ODC", label: "ODC" },
 ];
 
+// Static Port of Loading options
+const PORT_OF_LOADING_OPTIONS = [
+  { value: "INMUN1 - MUNDRA", label: "Mundra (INMUN1)" },
+  { value: "INIXY1 - KANDLA", label: "Kandla (INIXY1)" },
+  { value: "INPAV1 - PIPAVAV", label: "Pipavav (INPAV1)" },
+  { value: "INHZA1 - HAZIRA", label: "Hazira (INHZA1)" },
+  { value: "INNSA1 - NHAVA SHEVA", label: "Nhava Sheva (INNSA1)" },
+  { value: "INAMD4 - AHMEDABAD AIR PORT", label: "Ahmedabad Air Port" },
+];
+
 const getDefaultItem = (section) => {
   const defaults = {
     transporterDetails: {
@@ -106,6 +116,8 @@ const getDefaultItem = (section) => {
       portOfLoading: "",
       customSealNo: "",
       grossWeight: 0,
+      grossWeightCont: 0,
+      vgmWtInvoice: 0,
       maxGrossWeightKgs: 0,
       tareWeightKgs: 0,
       maxPayloadKgs: 0,
@@ -807,6 +819,40 @@ const OperationsTab = ({ formik }) => {
     }
   }, [formik.values.port_of_loading]);
 
+  // Auto-select Ahmedabad Air Port when transport mode is AIR
+  useEffect(() => {
+    if (isAir) {
+      const ahmedabadPort = "INAMD4 - AHMEDABAD AIR PORT";
+      if (toUpper(formik.values.port_of_loading || "") !== ahmedabadPort) {
+        formik.setFieldValue("port_of_loading", ahmedabadPort);
+      }
+    }
+  }, [isAir]);
+
+  // Auto-sync Shipping Line from job header to booking details
+  useEffect(() => {
+    const jobShippingLine = toUpper(formik.values.shipping_line_airline || "");
+    if (!jobShippingLine) return;
+
+    const currentOps = formik.values.operations || [];
+    let changed = false;
+    const nextOps = currentOps.map((op) => {
+      const bookingDetails = op.bookingDetails || [];
+      const updatedBooking = bookingDetails.map((b) => {
+        if (!b.shippingLineName && jobShippingLine) {
+          changed = true;
+          return { ...b, shippingLineName: jobShippingLine };
+        }
+        return b;
+      });
+      if (changed) return { ...op, bookingDetails: updatedBooking };
+      return op;
+    });
+    if (changed) {
+      formik.setFieldValue("operations", nextOps);
+    }
+  }, [formik.values.shipping_line_airline, formik.values.job_no]);
+
   // 1. Collect all unique container numbers from ALL sections of ALL operations
   const allOpContainersSet = new Set();
   operations.forEach((op) => {
@@ -1244,36 +1290,19 @@ const OperationsTab = ({ formik }) => {
         });
       }
 
+      // Auto-calculate VGM Wt. (invoice) = grossWeightCont + tareWeightKgs
+      if (section === "containerDetails" && (field === "grossWeightCont" || field === "tareWeightKgs")) {
+        updatedOp[section] = updatedOp[section].map((item, idx) => {
+          if (idx !== itemIndex) return item;
+          const gwCont = field === "grossWeightCont" ? Number(finalValue || 0) : Number(item.grossWeightCont || 0);
+          const tW = field === "tareWeightKgs" ? Number(finalValue || 0) : Number(item.tareWeightKgs || 0);
+          return { ...item, vgmWtInvoice: gwCont + tW };
+        });
+      }
+
       // SYNC: Port Of Loading with Header
       if (section === "containerDetails" && field === "portOfLoading") {
         formik.setFieldValue("port_of_loading", finalValue);
-      }
-
-      // Auto-calculate VGM WT (KG) in weighmentDetails
-      // VGM WT (KG) (weighment array) = Cargo Wt (KG) (transport/ carting array) - Tare Wt (KG) (contaner array)
-      if (
-        (section === "transporterDetails" && field === "grossWeightKgs") ||
-        (section === "containerDetails" && field === "tareWeightKgs")
-      ) {
-        if (updatedOp.weighmentDetails && updatedOp.weighmentDetails[itemIndex]) {
-          const cargoWt =
-            section === "transporterDetails" && field === "grossWeightKgs"
-              ? Number(finalValue || 0)
-              : Number(
-                updatedOp.transporterDetails?.[itemIndex]?.grossWeightKgs || 0,
-              );
-          const tareWtCont =
-            section === "containerDetails" && field === "tareWeightKgs"
-              ? Number(finalValue || 0)
-              : Number(
-                updatedOp.containerDetails?.[itemIndex]?.tareWeightKgs || 0,
-              );
-
-          updatedOp.weighmentDetails = updatedOp.weighmentDetails.map((w, idx) => {
-            if (idx !== itemIndex) return w;
-            return { ...w, tareWeight: cargoWt - tareWtCont };
-          });
-        }
       }
 
       return updatedOp;
@@ -1387,10 +1416,16 @@ const OperationsTab = ({ formik }) => {
         },
         { field: "containerSize", label: "Size (FT)", width: "160px", type: "select", options: containerTypes },
         { field: "cargoType", label: "Cargo Type", width: "120px", type: "select", options: cargoTypes },
-        { field: "portOfLoading", label: "Port Of Loading", width: "150px", type: "gateway-dropdown" },
+        { field: "portOfLoading", label: "Port Of Loading", width: "170px", type: "select", options: PORT_OF_LOADING_OPTIONS },
         {
           field: "grossWeight",
           label: "Max Gross Weight (KG)",
+          type: "number",
+          width: "100px",
+        },
+        {
+          field: "grossWeightCont",
+          label: "Gross Weight (KG)",
           type: "number",
           width: "100px",
         },
@@ -1401,11 +1436,17 @@ const OperationsTab = ({ formik }) => {
           width: "100px",
         },
         {
+          field: "vgmWtInvoice",
+          label: "VGM Wt. (invoice)",
+          type: "number",
+          width: "110px",
+          readOnly: true,
+        },
+        {
           field: "maxPayloadKgs",
           label: "Max Payload (KG)",
           type: "number",
           width: "100px",
-          // readOnly: false, // User wants this editable (VGM)
         },
         {
           field: "images",
@@ -1441,7 +1482,7 @@ const OperationsTab = ({ formik }) => {
         // removed shippingLineSealNo from here
         {
           field: "bookingDate",
-          label: "Booking",
+          label: "Date",
           type: "date",
           width: "130px",
         },
@@ -1453,12 +1494,12 @@ const OperationsTab = ({ formik }) => {
         !isAir && { field: "voyageNo", label: "Voyage", width: "100px" },
         !isAir && {
           field: "emptyPickUpLoc",
-          label: "Empty Pickup Location",
+          label: "Pickup Loc.",
           width: "140px",
         },
         !isAir && {
           field: "emptyDropLoc",
-          label: "Drop Location",
+          label: "Drop Loc.",
           width: "140px",
         },
         {
@@ -1506,16 +1547,8 @@ const OperationsTab = ({ formik }) => {
           field: "tareWeight",
           label: "VGM WT (KG)",
           type: "number",
-          width: "90px",
-          // Add warning logic if Tare > Container Gross
-          warningCheck: (val, row) => {
-            // Access container Details via activeOpIndex and row index (assuming synced order)
-            // However, row object doesn't have container details.
-            // We can check if `grossWeight` was passed in props or we access it from formik globally if possible.
-            // Since we can't easily access other rows here without major refactor,
-            // I'll leave the warningCheck as a marker for the renderer enhancement I'll do below.
-            return false;
-          }
+          width: "110px",
+          showVgmDiff: true,
         },
         {
           field: "images",
@@ -1862,133 +1895,158 @@ const TableSection = ({
                             ))}
                           </select>
                         ) : (
-                          <input
-                            type={
-                              col.type === "date" ||
-                                col.type === "datetime-local"
-                                ? "text"
-                                : col.type || "text"
-                            }
-                            value={
-                              item[col.field] === undefined ||
-                                item[col.field] === null ||
-                                (col.type === "number" &&
-                                  Number(item[col.field] || 0) === 0)
-                                ? ""
-                                : col.type === "date" ||
+                          <div style={{ position: "relative", width: "100%" }}>
+                            <input
+                              type={
+                                col.type === "date" ||
                                   col.type === "datetime-local"
-                                  ? formatDateForInput(
+                                  ? "text"
+                                  : col.type || "text"
+                              }
+                              value={
+                                item[col.field] === undefined ||
+                                  item[col.field] === null ||
+                                  (col.type === "number" &&
+                                    Number(item[col.field] || 0) === 0)
+                                  ? ""
+                                  : col.type === "date" ||
+                                    col.type === "datetime-local"
+                                    ? formatDateForInput(
+                                      item[col.field],
+                                      col.type,
+                                    )
+                                    : item[col.field]
+                              }
+                              placeholder={
+                                col.type === "number"
+                                  ? "0.00"
+                                  : col.placeholder ||
+                                  (col.type === "date" ? "dd-mm-yyyy" : "")
+                              }
+                              readOnly={!!col.readOnly}
+                              disabled={!!col.readOnly}
+                              onChange={(e) => {
+                                if (col.readOnly) return;
+                                onUpdate(
+                                  section,
+                                  rowIdx,
+                                  col.field,
+                                  col.type === "number"
+                                    ? e.target.value === ""
+                                      ? 0
+                                      : e.target.value
+                                    : e.target.value,
+                                );
+                              }}
+                              onDoubleClick={(e) => {
+                                if (col.readOnly) return;
+                                if (
+                                  col.type === "date" ||
+                                  col.type === "datetime-local"
+                                ) {
+                                  const pickerVal = formatDateForPicker(
                                     item[col.field],
                                     col.type,
-                                  )
-                                  : item[col.field]
-                            }
-                            placeholder={
-                              col.type === "number"
-                                ? "0.00"
-                                : col.placeholder ||
-                                (col.type === "date" ? "dd-mm-yyyy" : "")
-                            }
-                            onChange={(e) =>
-                              onUpdate(
-                                section,
-                                rowIdx,
-                                col.field,
-                                col.type === "number"
-                                  ? e.target.value === ""
-                                    ? 0
-                                    : e.target.value
-                                  : e.target.value,
-                              )
-                            }
-                            onDoubleClick={(e) => {
-                              if (
-                                col.type === "date" ||
-                                col.type === "datetime-local"
-                              ) {
-                                const pickerVal = formatDateForPicker(
-                                  item[col.field],
-                                  col.type,
-                                );
-                                if (pickerVal) e.target.value = pickerVal;
-                                e.target.type = col.type;
-                                e.target.showPicker && e.target.showPicker();
-                              }
-                            }}
-                            onBlur={(e) => {
-                              if (
-                                col.type === "date" ||
-                                col.type === "datetime-local"
-                              ) {
-                                e.target.type = "text";
-                              }
-                            }}
-                            onFocus={(e) => {
-                              if (
-                                section === "transporterDetails" &&
-                                (col.field === "grossWeightKgs" ||
-                                  col.field === "noOfPackages") &&
-                                !e.target.value
-                              ) {
-                                const shipmentGross =
-                                  formik.values.gross_weight_kg || "";
-                                const shipmentPkgs =
-                                  formik.values.total_no_of_pkgs || "";
-
-                                if (
-                                  col.field === "grossWeightKgs" &&
-                                  shipmentGross
-                                ) {
-                                  onUpdate(
-                                    section,
-                                    rowIdx,
-                                    col.field,
-                                    shipmentGross,
                                   );
-                                } else if (
-                                  col.field === "noOfPackages" &&
-                                  shipmentPkgs
-                                ) {
-                                  onUpdate(
-                                    section,
-                                    rowIdx,
-                                    col.field,
-                                    shipmentPkgs,
-                                  );
+                                  if (pickerVal) e.target.value = pickerVal;
+                                  e.target.type = col.type;
+                                  e.target.showPicker && e.target.showPicker();
                                 }
+                              }}
+                              onBlur={(e) => {
+                                if (
+                                  col.type === "date" ||
+                                  col.type === "datetime-local"
+                                ) {
+                                  e.target.type = "text";
+                                }
+                              }}
+                              onFocus={(e) => {
+                                if (col.readOnly) return;
+                                if (
+                                  section === "transporterDetails" &&
+                                  (col.field === "grossWeightKgs" ||
+                                    col.field === "noOfPackages") &&
+                                  !e.target.value
+                                ) {
+                                  const shipmentGross =
+                                    formik.values.gross_weight_kg || "";
+                                  const shipmentPkgs =
+                                    formik.values.total_no_of_pkgs || "";
+
+                                  if (
+                                    col.field === "grossWeightKgs" &&
+                                    shipmentGross
+                                  ) {
+                                    onUpdate(
+                                      section,
+                                      rowIdx,
+                                      col.field,
+                                      shipmentGross,
+                                    );
+                                  } else if (
+                                    col.field === "noOfPackages" &&
+                                    shipmentPkgs
+                                  ) {
+                                    onUpdate(
+                                      section,
+                                      rowIdx,
+                                      col.field,
+                                      shipmentPkgs,
+                                    );
+                                  }
+                                }
+                              }}
+                              style={{
+                                ...styles.cellInput,
+                                ...(col.readOnly ? { backgroundColor: "#f1f5f9", color: "#64748b", cursor: "not-allowed" } : {}),
+                                ...(col.showVgmDiff && (() => {
+                                  const vgmInv = Number(formik.values.operations[activeOpIndex]
+                                    ?.containerDetails?.[rowIdx]?.vgmWtInvoice || 0);
+                                  const vgmWt = Number(item.tareWeight || 0);
+                                  if (vgmInv > 0 && vgmWt > 0 && vgmInv !== vgmWt) {
+                                    return { border: "2px solid #ef4444" };
+                                  }
+                                  return {};
+                                })()),
+                              }}
+                              title={
+                                col.showVgmDiff ? (() => {
+                                  const vgmInv = Number(formik.values.operations[activeOpIndex]
+                                    ?.containerDetails?.[rowIdx]?.vgmWtInvoice || 0);
+                                  const vgmWt = Number(item.tareWeight || 0);
+                                  if (vgmInv > 0 && vgmWt > 0 && vgmInv !== vgmWt) {
+                                    const diff = vgmWt - vgmInv;
+                                    return `Difference: ${diff > 0 ? "+" : ""}${diff.toFixed(2)} KG from VGM Wt. (invoice)`;
+                                  }
+                                  return "";
+                                })() : ""
                               }
-                            }}
-                            // Validating Weighment Tare > Container Gross
-                            // Validating Weighment VGM WT > Cargo WT
-                            style={{
-                              ...styles.cellInput,
-                              border:
-                                section === "weighmentDetails" &&
-                                  col.field === "tareWeight" &&
-                                  formik.values.operations[activeOpIndex]
-                                    ?.transporterDetails?.[rowIdx]?.grossWeightKgs &&
-                                  Number(item.tareWeight) >
-                                  Number(
-                                    formik.values.operations[activeOpIndex]
-                                      .transporterDetails[rowIdx].grossWeightKgs,
-                                  )
-                                  ? "2px solid red"
-                                  : styles.cellInput.border,
-                            }}
-                            title={
-                              section === "weighmentDetails" &&
-                                col.field === "tareWeight" &&
-                                formik.values.operations[activeOpIndex]
-                                  ?.transporterDetails?.[rowIdx]?.grossWeightKgs &&
-                                Number(item.tareWeight) >
-                                Number(
-                                  formik.values.operations[activeOpIndex]
-                                    .transporterDetails[rowIdx].grossWeightKgs,
-                                )
-                                ? "Warning: VGM Weight is greater than Cargo Weight!"
-                                : ""
-                            }
-                          />
+                            />
+                            {/* Show VGM weight difference indicator */}
+                            {col.showVgmDiff && (() => {
+                              const vgmInv = Number(formik.values.operations[activeOpIndex]
+                                ?.containerDetails?.[rowIdx]?.vgmWtInvoice || 0);
+                              const vgmWt = Number(item.tareWeight || 0);
+                              if (vgmInv > 0 && vgmWt > 0 && vgmInv !== vgmWt) {
+                                const diff = vgmWt - vgmInv;
+                                return (
+                                  <span style={{
+                                    position: "absolute",
+                                    bottom: "-14px",
+                                    left: "4px",
+                                    fontSize: "9px",
+                                    fontWeight: 700,
+                                    color: "#ef4444",
+                                    whiteSpace: "nowrap",
+                                  }}>
+                                    Diff: {diff > 0 ? "+" : ""}{diff.toFixed(2)} KG
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
                         )}
                       </td>
                     ))}

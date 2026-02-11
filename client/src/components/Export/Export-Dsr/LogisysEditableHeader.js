@@ -346,6 +346,13 @@ const LogisysEditableHeader = ({
     if (toUpper(formik.values.transportMode) !== mode) {
       formik.setFieldValue("transportMode", mode);
     }
+    // Auto-select Ahmedabad Air Port for AIR consignment
+    if (isAir) {
+      const ahmedabadPort = "INAMD4 - AHMEDABAD AIR PORT";
+      if (toUpper(formik.values.port_of_loading || "") !== ahmedabadPort) {
+        formik.setFieldValue("port_of_loading", ahmedabadPort);
+      }
+    }
   }, [formik.values.consignmentType, formik.values.transportMode, formik.setFieldValue]);
 
   useEffect(() => {
@@ -594,12 +601,21 @@ const LogisysEditableHeader = ({
         {!isAirType && (
           <div style={{ flex: "1 1 auto", minWidth: 70, maxWidth: 110 }}>
             <div style={styles.label}>Port Of Loading</div>
-            <GatewayPortDropdown
-              fieldName="port_of_loading"
-              formik={formik}
-              placeholder="Select"
+            <select
+              name="port_of_loading"
+              value={formik.values.port_of_loading || ""}
+              onChange={(e) => formik.setFieldValue("port_of_loading", e.target.value)}
               disabled={!isEditable}
-            />
+              style={!isEditable ? styles.inputDisabled : { ...styles.input, cursor: "pointer" }}
+            >
+              <option value="">Select</option>
+              <option value="INMUN1 - MUNDRA">Mundra (INMUN1)</option>
+              <option value="INIXY1 - KANDLA">Kandla (INIXY1)</option>
+              <option value="INPAV1 - PIPAVAV">Pipavav (INPAV1)</option>
+              <option value="INHZA1 - HAZIRA">Hazira (INHZA1)</option>
+              <option value="INNSA1 - NHAVA SHEVA">Nhava Sheva (INNSA1)</option>
+              <option value="INAMD4 - AHMEDABAD AIR PORT">Ahmedabad Air Port</option>
+            </select>
           </div>
         )}
 

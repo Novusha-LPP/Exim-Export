@@ -423,7 +423,85 @@ function useExportExcelUpload(inputRef, onSuccess) {
                                 quantity: getText("DBKQty", pNode.getElementsByTagName("DBKDetails")[0]),
                                 unit: getText("DBKUnit", pNode.getElementsByTagName("DBKDetails")[0]),
                                 dbkUnder: getText("DBKUnder", pNode.getElementsByTagName("DBKDetails")[0])
-                            }
+                            },
+
+                            // EPCG Details
+                            epcgDetails: (() => {
+                                const epcgNodes = pNode.getElementsByTagName("EPCGDetail");
+                                if (!epcgNodes || epcgNodes.length === 0) return null;
+                                const items = [];
+                                for (let ep = 0; ep < epcgNodes.length; ep++) {
+                                    const eNode = epcgNodes[ep];
+                                    items.push({
+                                        regnNo: getText("RegnNo", eNode),
+                                        regnDate: getText("RegnDate", eNode),
+                                        itemSnoPartC: getText("ItemSNoPartC", eNode),
+                                        itemSnoPartE: getText("ItemSNoPartE", eNode),
+                                        rawMaterial: getText("RawMaterial", eNode),
+                                        quantity: getText("Quantity", eNode),
+                                        unit: getText("Unit", eNode),
+                                        exportQty: getText("ExportQty", eNode),
+                                        rawMaterialType: getText("RawMaterialType", eNode),
+                                    });
+                                }
+                                return {
+                                    isEpcgItem: true,
+                                    epcg_reg_obj: items.map(it => ({
+                                        regnNo: it.regnNo,
+                                        licDate: it.regnDate,
+                                        licRefNo: "",
+                                    })),
+                                    itemSnoPartE: items[0]?.itemSnoPartE || "",
+                                    exportQtyUnderLicence: parseFloat(items[0]?.exportQty) || 0,
+                                    epcgItems: items.map((it, idx) => ({
+                                        serialNumber: idx + 1,
+                                        itemSnoPartC: it.itemSnoPartC,
+                                        description: (it.rawMaterial || "").trim(),
+                                        quantity: parseFloat(it.quantity) || 0,
+                                        unit: it.unit,
+                                        itemType: it.rawMaterialType === "M" ? "Indigenous" : "Imported",
+                                    })),
+                                };
+                            })(),
+
+                            // DEEC (Advance Licence) Details
+                            deecDetails: (() => {
+                                const deecNodes = pNode.getElementsByTagName("DEECDetail");
+                                if (!deecNodes || deecNodes.length === 0) return null;
+                                const items = [];
+                                for (let dc = 0; dc < deecNodes.length; dc++) {
+                                    const dNode = deecNodes[dc];
+                                    items.push({
+                                        regnNo: getText("RegnNo", dNode),
+                                        regnDate: getText("RegnDate", dNode),
+                                        itemSnoPartC: getText("ItemSNoPartC", dNode),
+                                        itemSnoPartE: getText("ItemSNoPartE", dNode),
+                                        rawMaterial: getText("RawMaterial", dNode),
+                                        quantity: getText("Quantity", dNode),
+                                        unit: getText("Unit", dNode),
+                                        exportQty: getText("ExportQty", dNode),
+                                        rawMaterialType: getText("RawMaterialType", dNode),
+                                    });
+                                }
+                                return {
+                                    isDeecItem: true,
+                                    deec_reg_obj: items.map(it => ({
+                                        regnNo: it.regnNo,
+                                        licDate: it.regnDate,
+                                        licRefNo: "",
+                                    })),
+                                    itemSnoPartE: items[0]?.itemSnoPartE || "",
+                                    exportQtyUnderLicence: parseFloat(items[0]?.exportQty) || 0,
+                                    deecItems: items.map((it, idx) => ({
+                                        serialNumber: idx + 1,
+                                        itemSnoPartC: it.itemSnoPartC,
+                                        description: (it.rawMaterial || "").trim(),
+                                        quantity: parseFloat(it.quantity) || 0,
+                                        unit: it.unit,
+                                        itemType: it.rawMaterialType === "M" ? "Indigenous" : "Imported",
+                                    })),
+                                };
+                            })(),
                         });
                     }
                     detailedProductsPerInvoice.push(currentInvoiceProducts);
@@ -435,6 +513,9 @@ function useExportExcelUpload(inputRef, onSuccess) {
                     branch_code,
                     exporter: ((raw) => {
                         if (!raw) return "";
+                        if (raw.includes("AIA ENGINEERING LIMITED (EXPORT)")) {
+                            return "AIA ENGINEERING LIMITED";
+                        }
                         let clean = raw.split(/\r?\n/)[0];
                         if (clean.includes(" - ")) clean = clean.split(" - ")[0];
                         return clean.trim();

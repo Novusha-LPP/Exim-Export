@@ -1442,9 +1442,11 @@ const ExportJobsTable = () => {
                           >
                             {job.exporter}
                           </div>
-                          <div style={{ color: "#4b5563", fontSize: "11px" }}>
-                            {job.consignees?.[0]?.consignee_name || "-"}
-                          </div>
+                          {job.consignees?.[0]?.consignee_name
+                            ? job.consignees[0].consignee_name.length > 20
+                              ? `${job.consignees[0].consignee_name.substring(0, 20)}...`
+                              : job.consignees[0].consignee_name
+                            : "-"}
                           <div
                             style={{
                               color: "#6b7280",
