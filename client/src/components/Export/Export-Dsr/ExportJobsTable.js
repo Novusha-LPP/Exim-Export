@@ -15,6 +15,7 @@ import {
   Autocomplete,
   TextField,
   Menu,
+  Pagination,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -291,13 +292,16 @@ const ExportJobsTable = () => {
   // Pagination State
   const [page, setPage] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
-  const LIMIT = 20;
+  const LIMIT = 100;
+
+  // Sorting State
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedType, setSelectedMovementType] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("AMD");
   const [selectedExporterFilter, setSelectedExporterFilter] = useState("");
   const [selectedDetailedStatus, setSelectedDetailedStatus] = useState("");
   const [selectedCustomHouse, setSelectedCustomHouse] = useState("");
@@ -448,6 +452,8 @@ const ExportJobsTable = () => {
             goods_stuffed_at: selectedGoodsStuffedAt,
             page: page,
             limit: LIMIT,
+            sortKey: sortConfig.key,
+            sortOrder: sortConfig.direction,
           },
         },
       );
@@ -483,7 +489,16 @@ const ExportJobsTable = () => {
     selectedJobOwner,
     selectedGoodsStuffedAt,
     page,
+    sortConfig,
   ]);
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   // Reset page when tab/filters change
   useEffect(() => {
@@ -1274,7 +1289,18 @@ const ExportJobsTable = () => {
                     zIndex: 1,
                   }}
                 >
-                  <th style={s.th}>Job No / Owner</th>
+                  <th
+                    style={{ ...s.th, cursor: "pointer", userSelect: "none" }}
+                    onClick={() => handleSort('job_no')}
+                    title="Click to sort by Job Number"
+                  >
+                    Job No / Owner
+                    {sortConfig.key === 'job_no' && (
+                      <span style={{ marginLeft: "5px", fontSize: "10px" }}>
+                        {sortConfig.direction === 'asc' ? '▲' : '▼'}
+                      </span>
+                    )}
+                  </th>
                   <th style={s.th}>Exporter</th>
                   <th style={s.th}>KYC / Codes</th>
                   <th style={s.th}>Invoice</th>
@@ -1953,31 +1979,16 @@ const ExportJobsTable = () => {
             <div>
               Showing {jobs.length} of {totalRecords} Records
             </div>
-            <div>
-              <button
-                style={
-                  page === 1 ? { ...s.btnPage, ...s.btnDisabled } : s.btnPage
-                }
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Prev
-              </button>
-              <span style={{ margin: "0 10px" }}>
-                Page {page} of {totalPages || 1}
-              </span>
-              <button
-                style={
-                  page >= totalPages
-                    ? { ...s.btnPage, ...s.btnDisabled }
-                    : s.btnPage
-                }
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= totalPages}
-              >
-                Next
-              </button>
-            </div>
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={(e, value) => setPage(value)}
+              shape="rounded"
+              color="primary"
+              showFirstButton
+              showLastButton
+              size="small"
+            />
           </div>
         </div>
       </div >

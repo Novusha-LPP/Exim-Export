@@ -318,10 +318,19 @@ router.get("/exports/:status?", async (req, res) => {
 
     const skip = (page - 1) * limit;
 
+    // Sorting logic
+    const { sortKey, sortOrder } = req.query;
+    const sort = {};
+    if (sortKey) {
+      sort[sortKey] = sortOrder === "asc" ? 1 : -1;
+    } else {
+      sort.createdAt = -1; // Default sort
+    }
+
     // Execute queries in parallel
     const [jobs, totalCount] = await Promise.all([
       ExportJobModel.find(filter)
-        .sort({ createdAt: -1 })
+        .sort(sort)
         .skip(skip)
         .limit(parseInt(limit))
         .lean(),
