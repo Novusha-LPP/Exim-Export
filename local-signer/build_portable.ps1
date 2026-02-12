@@ -59,7 +59,7 @@ Set-Location $baseDir
 
 # Run Maven build
 Write-Host "Building project..."
-& "$mavenDir\bin\mvn.cmd" clean package -DskipTests -q
+& "$mavenDir\bin\mvn.cmd" clean package -DskipTests
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host ""

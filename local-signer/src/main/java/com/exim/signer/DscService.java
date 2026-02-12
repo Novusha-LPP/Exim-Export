@@ -157,7 +157,7 @@ public class DscService {
     /**
      * Sign data and return RAW RSA signature bytes (NOT PKCS#7).
      * This is the format required by ICEGATE for .sb files.
-     * Uses SHA1withRSA for compatibility.
+     * Uses SHA256withRSA as requested.
      */
     public byte[] signRaw(byte[] data) throws Exception {
         if (keyStore == null || alias == null) {
@@ -168,12 +168,12 @@ public class DscService {
         X509Certificate cert = (X509Certificate) keyStore.getCertificate(alias);
 
         // Create raw RSA signature using the PKCS#11 provider
-        java.security.Signature sig = java.security.Signature.getInstance("SHA1withRSA", pkcs11Provider);
+        java.security.Signature sig = java.security.Signature.getInstance("SHA256withRSA", pkcs11Provider);
         sig.initSign(privateKey);
         sig.update(data);
         byte[] signature = sig.sign();
 
-        System.out.println("Generated RAW RSA signature (SHA1withRSA) with certificate: "
+        System.out.println("Generated RAW RSA signature (SHA256withRSA) with certificate: "
                 + cert.getSubjectX500Principal().getName());
         System.out.println("Signature length: " + signature.length + " bytes");
 

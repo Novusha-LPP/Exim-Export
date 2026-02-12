@@ -176,47 +176,56 @@ public class Main extends JFrame {
 
             try {
                 // Read flat file content as raw bytes - DO NOT MODIFY!
+                // Logisys and other customs software generate files in specific formats
+                // that must be preserved exactly for ICEGATE validation
                 byte[] rawData = Files.readAllBytes(inputFile.toPath());
 
-                log("Input file size: " + rawData.length + " bytes");
-                log("Creating PKCS#7/CMS signed container...");
+                // Generate RAW RSA signature on the ORIGINAL bytes
+                // ICEGATE expects raw RSA signature in modern SHA256withRSA
+                byte[] signature = dscService.signRaw(rawData);
 
-                // Generate PKCS#7/CMS ATTACHED signature (data embedded in signature)
-                // This produces a binary DER-encoded PKCS#7 structure starting with 0x30
-                // 0x82...
-                byte[] pkcs7Data = dscService.sign(rawData);
+                // Base64 encode the signature (NO line wrapping - single line)
+                String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
 
-                log("PKCS#7 container size: " + pkcs7Data.length + " bytes");
-                log("First bytes: 0x" + String.format("%02X %02X %02X %02X",
-                        pkcs7Data[0], pkcs7Data[1], pkcs7Data[2], pkcs7Data[3]));
+                // Get certificate in Base64 (NO line wrapping - single line)
+                String certificateBase64 = dscService.getCertificateBase64();
 
-                // Generate output filename as .sb.sb (signed shipping bill)
+                // Generate output filename as .sb
                 String baseName = inputFile.getName();
-                // Remove extension if present
-                int dotPos = baseName.lastIndexOf('.');
-                if (dotPos > 0) {
-                    baseName = baseName.substring(0, dotPos);
+                if (baseName.endsWith(".txt")) {
+                    baseName = baseName.substring(0, baseName.length() - 4);
+                }
+                File sbFile = new File(outputDir, baseName + ".sb");
+
+                // Save .sb file in STRICT BINARY MODE
+                try (FileOutputStream fos = new FileOutputStream(sbFile)) {
+                    // 1. Write original raw data
+                    fos.write(rawData);
+
+                    // 2. Ensure trailing newline if not present (using standard CRLF for ICEGATE)
+                    if (rawData.length > 0 && rawData[rawData.length - 1] != '\n') {
+                        fos.write("\r\n".getBytes());
+                    }
+
+                    // 3. Append signature block in ICEGATE compatible format
+                    fos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\r\n").getBytes());
+                    fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\r\n").getBytes());
+                    fos.write("<SIGNER-VERSION>Exim Local Signer v1.0</SIGNER-VERSION>".getBytes());
                 }
 
-                // ICEGATE expects .sb.sb for signed shipping bills
-                File signedFile = new File(outputDir, baseName + ".sb.sb");
-
-                // Save as pure binary PKCS#7/CMS container
-                try (FileOutputStream fos = new FileOutputStream(signedFile)) {
-                    fos.write(pkcs7Data);
-                }
-
-                log("Saved PKCS#7 signed file: " + signedFile.getName());
+                log("Saved signed file: " + sbFile.getName());
+                log("Original file size: " + rawData.length + " bytes");
+                log("RAW Signature size: " + signature.length + " bytes");
+                log("Certificate size: " + certificateBase64.length() + " chars");
 
                 JOptionPane.showMessageDialog(this,
                         "File signed successfully!\n\n" +
-                                "Output: " + signedFile.getAbsolutePath() + "\n\n" +
-                                "Format: PKCS#7/CMS Binary Container\n" +
-                                "• Starts with 0x30 0x82 (ASN.1 DER)\n" +
-                                "• Contains embedded original data\n" +
-                                "• SHA1withRSA signature\n" +
-                                "• Full certificate chain\n\n" +
-                                "Ready to upload to ICEGATE!",
+                                "Output: " + sbFile.getAbsolutePath() + "\n\n" +
+                                "The .sb file contains:\n" +
+                                "• Original flat file content (UNCHANGED BINARY)\n" +
+                                "• RAW RSA signature (SHA256withRSA)\n" +
+                                "• X.509 Certificate\n\n" +
+                                "Format: ICEGATE compatible (Softlink style)!",
                         "Success", JOptionPane.INFORMATION_MESSAGE);
 
             } catch (Exception e) {
@@ -368,26 +377,49 @@ public class Main extends JFrame {
                     // 1. Keep content as-is (DO NOT normalize line endings!)
                     byte[] dataToSign = content.getBytes("ISO-8859-1");
 
-                    // 2. Generate PKCS#7/CMS ATTACHED signature (binary container)
-                    byte[] pkcs7Data = dscService.sign(dataToSign);
+                    // 2. Generate RAW RSA signature (NOT PKCS#7)
+                    byte[] signature = dscService.signRaw(dataToSign);
 
-                    // 3. Generate file name
+                    // 3. Base64 encode (NO line wrapping)
+                    String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
+
+                    // 4. Get certificate in Base64
+                    String certificateBase64 = dscService.getCertificateBase64();
+
+                    // 5. Create signed content in ICEGATE format
+                    StringBuilder signedContent = new StringBuilder();
+                    signedContent.append(content);
+                    if (!content.endsWith("\n") && !content.endsWith("\r\n")) {
+                        signedContent.append("\r\n");
+                    }
+
+                    // ICEGATE format: each tag with content on same line
+                    signedContent.append("<START-SIGNATURE>");
+                    signedContent.append(signatureBase64);
+                    signedContent.append("</START-SIGNATURE>\r\n");
+
+                    signedContent.append("<START-CERTIFICATE>");
+                    signedContent.append(certificateBase64);
+                    signedContent.append("</START-CERTIFICATE>\r\n");
+
+                    signedContent.append("<SIGNER-VERSION>Exim Local Signer v1.0</SIGNER-VERSION>");
+
+                    // 6. Generate file name
                     String baseName = jobNo + "_" + (sbNo != null && !sbNo.equals("N/A") ? sbNo : "SB");
                     baseName = baseName.replaceAll("[^a-zA-Z0-9_-]", "_"); // Sanitize
 
-                    // ICEGATE expects .sb.sb for signed shipping bills
-                    File sbFile = new File(outputDir, baseName + ".sb.sb");
+                    File sbFile = new File(outputDir, baseName + ".sb");
 
-                    // 4. Save as pure binary PKCS#7/CMS container
+                    // 7. Save .sb file - use ISO-8859-1 to preserve bytes
                     try (FileOutputStream fos = new FileOutputStream(sbFile)) {
-                        fos.write(pkcs7Data);
+                        fos.write(signedContent.toString().getBytes("ISO-8859-1"));
                     }
-                    log("Saved PKCS#7 signed file: " + sbFile.getName());
+                    log("Saved signed file: " + sbFile.getName());
 
-                    // 5. Upload to server (optional)
+                    // 6. Upload to server (optional)
                     try {
                         log("Uploading to server...");
-                        apiClient.uploadSignedFile(id, pkcs7Data);
+                        apiClient.uploadSignedFile(id, signature);
                         log("Uploaded: " + jobNo);
                     } catch (Exception uploadErr) {
                         log("⚠ Upload failed (file saved locally): " + uploadErr.getMessage());
