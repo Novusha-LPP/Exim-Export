@@ -608,9 +608,6 @@ const exportOperationSchema = new Schema(
       {
         transporterName: { type: String },
         vehicleNo: { type: String },
-        containerNo: { type: String },
-        driverName: { type: String },
-        contactNo: { type: String },
         noOfPackages: { type: Number },
         grossWeightKgs: { type: Number },
         images: [String],
@@ -1165,23 +1162,7 @@ exportJobSchema.pre("save", function (next) {
         (c) => c.containerNo === containerNo,
       );
 
-      // Only add per-container carting/transporter row if NOT Dock
-      // Because Dock jobs have independent carting rows (Gate In) not tied 1:1 to containers
-      if (!isDock) {
-        transporterDetails.push({
-          containerNo,
-          transporterName: "",
-          vehicleNo: "",
-          driverName: "",
-          contactNo: "",
-          noOfPackages: 0,
-          netWeightKgs: 0,
-          grossWeightKgs: container?.grossWeight || 0,
-          images: [],
-          cartingDate: null,
-          gateInDate: null,
-        });
-      }
+
 
       containerDetails.push({
         containerNo,
@@ -1210,20 +1191,15 @@ exportJobSchema.pre("save", function (next) {
       });
     }
 
-    // If Dock, ensure at least one empty row exists so the UI isn't broken
-    if (isDock && transporterDetails.length === 0) {
+    // Ensure at least one empty row exists so the UI isn't broken
+    if (transporterDetails.length === 0) {
       transporterDetails.push({
-        containerNo: "",
         transporterName: "",
         vehicleNo: "",
-        driverName: "",
-        contactNo: "",
         noOfPackages: 0,
-        netWeightKgs: 0,
         grossWeightKgs: 0,
         images: [],
         cartingDate: null,
-        gateInDate: null,
       });
     }
 
@@ -1283,36 +1259,7 @@ exportJobSchema.pre("save", function (next) {
           (c) => c.containerNo === containerNo,
         );
 
-        // 1. Transporter (Carting) Details
-        // Only if NOT Dock, as Dock has independent carting rows
-        if (!isDock) {
-          operation.transporterDetails = operation.transporterDetails || [];
-          let td = operation.transporterDetails.find(
-            (t) => t.containerNo === containerNo,
-          );
 
-          if (!td) {
-            // Insert new
-            operation.transporterDetails.push({
-              containerNo,
-              transporterName: "",
-              vehicleNo: "",
-              driverName: "",
-              contactNo: "",
-              noOfPackages: 0,
-              netWeightKgs: 0,
-              grossWeightKgs: container?.grossWeight || 0,
-              images: [],
-              cartingDate: null,
-              gateInDate: null,
-            });
-          } else {
-            // Optional: Update existing fields if needed
-            if (container?.grossWeight && !td.grossWeightKgs) {
-              td.grossWeightKgs = container.grossWeight;
-            }
-          }
-        }
 
         // 2. Container Details
         operation.containerDetails = operation.containerDetails || [];

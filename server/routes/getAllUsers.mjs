@@ -23,45 +23,18 @@ const USER_LIST_PROJECTION = {
 /**
  * GET /api/get-all-users
  * 
- * Returns paginated list of users with safe projection.
- * Prevents unbounded data fetches that caused bandwidth explosion.
+ * Returns all users with safe projection (no pagination).
  * 
- * Query params:
- * - page: Page number (default: 1)
- * - limit: Items per page (default: 50, max: 200)
- * 
- * @returns {{ users: Array, pagination: Object }}
+ * @returns {Array} - Array of user objects
  */
 router.get("/api/get-all-users", async (req, res) => {
   try {
-    const { page = 1, limit = 50 } = req.query;
+    const users = await UserModel.find({})
+      .select(USER_LIST_PROJECTION)
+      .lean()
+      .maxTimeMS(30000); // 30 second timeout
 
-    const safePage = Math.max(1, parseInt(page) || 1);
-    const safeLimit = Math.min(Math.max(1, parseInt(limit) || 50), 200);
-    const skip = (safePage - 1) * safeLimit;
-
-    const [users, totalCount] = await Promise.all([
-      UserModel.find({})
-        .select(USER_LIST_PROJECTION)
-        .skip(skip)
-        .limit(safeLimit)
-        .lean()
-        .maxTimeMS(30000), // 30 second timeout
-      UserModel.countDocuments({})
-    ]);
-
-    res.json({
-      success: true,
-      users,
-      pagination: {
-        currentPage: safePage,
-        pageSize: safeLimit,
-        totalPages: Math.ceil(totalCount / safeLimit),
-        totalCount,
-        hasNextPage: skip + safeLimit < totalCount,
-        hasPrevPage: safePage > 1
-      }
-    });
+    res.json(users);
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({

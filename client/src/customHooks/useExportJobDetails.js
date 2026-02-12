@@ -894,7 +894,22 @@ function useExportJobDetails(params, setFileSnackbar) {
         })),
         remarks: safeValue(data.remarks),
         job_owner: safeValue(data.job_owner),
-        invoices: safeValue(data.invoices, []),
+        invoices: safeValue(data.invoices, []).map((inv) => ({
+          ...inv,
+          products: (inv.products || []).map((prod) => ({
+            ...prod,
+            epcgDetails: safeValue(prod.epcgDetails, {
+              isEpcgItem: false,
+              epcgItems: [],
+              epcg_reg_obj: [getDefaultRegItem()],
+            }),
+            deecDetails: safeValue(prod.deecDetails, {
+              isDeecItem: false,
+              deecItems: [],
+              deec_reg_obj: [getDefaultRegItem()],
+            }),
+          })),
+        })),
         buyerThirdPartyInfo: safeValue(data.buyerThirdPartyInfo, {}),
         otherInfo: safeValue(data.otherInfo, {}),
         buyer_name: safeValue(data.buyer_name),
@@ -925,13 +940,13 @@ function useExportJobDetails(params, setFileSnackbar) {
         ),
         verified_by_examining_officer: safeValue(
           data.verified_by_examining_officer ||
-            data.annexC1Details?.verifiedByExaminingOfficer,
+          data.annexC1Details?.verifiedByExaminingOfficer,
           false,
         ),
         annex_seal_number: safeValue(
           data.annex_seal_number ||
-            data.annexC1Details?.sealNumber ||
-            data.stuffing_seal_no,
+          data.annexC1Details?.sealNumber ||
+          data.stuffing_seal_no,
         ), // Reference stuffing_seal_no
         annex_designation: safeValue(
           data.annex_designation || data.annexC1Details?.designation,
@@ -973,13 +988,13 @@ function useExportJobDetails(params, setFileSnackbar) {
           ),
           verifiedByExaminingOfficer: safeValue(
             data.verified_by_examining_officer ||
-              data.annexC1Details?.verifiedByExaminingOfficer,
+            data.annexC1Details?.verifiedByExaminingOfficer,
             false,
           ),
           sealNumber: safeValue(
             data.stuffing_seal_no ||
-              data.annex_seal_number ||
-              data.annexC1Details?.sealNumber,
+            data.annex_seal_number ||
+            data.annexC1Details?.sealNumber,
           ), // Sync from main seal number
           documents: safeValue(
             data.annex_c1_documents || data.annexC1Details?.documents,

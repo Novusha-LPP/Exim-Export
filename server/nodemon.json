@@ -1,6 +1,6 @@
 {
   "env": {
-    "NODE_ENV": "server"
+    "NODE_ENV": "development"
   },
   "watch": [
     "app.js",

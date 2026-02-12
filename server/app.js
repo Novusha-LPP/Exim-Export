@@ -78,6 +78,7 @@ import rodtepReRoutes from "./routes/export-dsr/rodtepReRoutes.js";
 import generateDSRReport from "./routes/export-dsr/generateDSRReport.mjs";
 import openPointsRoutes from "./routes/open-points/openPointsRoutes.mjs";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import sbTrack from "./routes/export-dsr/sbTrack.mjs";
 
 // REMOVED: Dangerous exception handlers that caused 3.1M log storm
 // Exception handlers are now in ./exceptionHandlers.js with:
@@ -224,6 +225,7 @@ app.use("/api", rodtepReRoutes);
 app.use(generateDSRReport);
 app.use(openPointsRoutes);
 app.use("/api", uploadRoutes);
+app.use(sbTrack);
 
 // s3 route
 

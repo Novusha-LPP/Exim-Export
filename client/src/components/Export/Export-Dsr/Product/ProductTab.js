@@ -1,5 +1,5 @@
 // ProductTab.js - UPDATED TO USE selectedProductIndex
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Box, Tabs, Tab, Typography, Divider, Chip } from "@mui/material";
 
 import ProductMainTab from "./ProductMainTab";
@@ -119,7 +119,12 @@ const getTabsForEximCode = (eximCode) => {
 const ProductTab = ({ formik, directories, params }) => {
   const [activeSubTab, setActiveSubTab] = useState(0);
   const [selectedInvoiceIndex, setSelectedInvoiceIndex] = useState(0);
-  const [selectedProductIndex, setSelectedProductIndex] = useState(0);
+  const [selectedProductIndex, setSelectedProductIndex] = useState(() => {
+    const invoices = formik.values.invoices || [];
+    const activeInvoice = invoices[0] || {};
+    const products = activeInvoice.products || [];
+    return products.length > 0 ? products.length - 1 : 0;
+  });
 
   const invoices = formik.values.invoices || [];
   const activeInvoice = invoices[selectedInvoiceIndex] || {};
@@ -132,13 +137,31 @@ const ProductTab = ({ formik, directories, params }) => {
   // Get tabs based on CURRENT SELECTED product's EXIM code
   const availableTabs = useMemo(() => getTabsForEximCode(eximCode), [eximCode]);
 
+  // Track previous products length to detect when a new product is added
+  const prevProductsLengthRef = useRef(products.length);
+
+  useEffect(() => {
+    // If a new product is added, switch to it (the last index)
+    if (products.length > prevProductsLengthRef.current) {
+      setSelectedProductIndex(products.length - 1);
+    }
+    // Update ref
+    prevProductsLengthRef.current = products.length;
+  }, [products.length]);
+
   const handleTabChange = (event, newValue) => {
     setActiveSubTab(newValue);
   };
 
   const handleInvoiceChange = (e) => {
-    setSelectedInvoiceIndex(parseInt(e.target.value));
-    setSelectedProductIndex(0); // Reset product selection when invoice changes
+    const newIndex = parseInt(e.target.value);
+    setSelectedInvoiceIndex(newIndex);
+
+    // Auto select last product
+    const invoices = formik.values.invoices || [];
+    const activeInvoice = invoices[newIndex] || {};
+    const products = activeInvoice.products || [];
+    setSelectedProductIndex(products.length > 0 ? products.length - 1 : 0);
   };
 
   const renderTabContent = (tabName) => {

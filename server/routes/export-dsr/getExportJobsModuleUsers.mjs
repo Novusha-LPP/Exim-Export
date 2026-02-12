@@ -7,16 +7,16 @@ const router = express.Router();
 router.get("/api/export-jobs-module-users", async (req, res) => {
   try {
     // Find all users that:
-    // 1. Have export_modules field (not null/undefined)
-    // 2. Have "export-jobs" in their export_modules array (case-insensitive)
+    // 1. Have modules field (not null/undefined)
+    // 2. Have "export-jobs" in their modules array (case-insensitive)
     const users = await UserModel.find({
-      export_modules: { $exists: true, $ne: null },
+      modules: { $exists: true, $ne: null },
       $expr: {
         $gt: [
           {
             $size: {
               $filter: {
-                input: "$export_modules",
+                input: "$modules",
                 as: "module",
                 cond: {
                   $regexMatch: {
@@ -31,7 +31,7 @@ router.get("/api/export-jobs-module-users", async (req, res) => {
           0,
         ],
       },
-    }).select("username first_name last_name id export_modules");
+    }).select("username first_name last_name id modules");
 
     const formattedUsers = users.map((user) => ({
       id: user._id,
@@ -39,7 +39,7 @@ router.get("/api/export-jobs-module-users", async (req, res) => {
       fullName:
         `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
         user.username,
-      modules: user.export_modules,
+      modules: user.modules,
     }));
 
     res.json({

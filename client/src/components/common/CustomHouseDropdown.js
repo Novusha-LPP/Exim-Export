@@ -5,40 +5,34 @@ import { createPortal } from "react-dom";
 const CUSTOM_HOUSE_OPTIONS = [
     {
         group: "Ahmedabad", branchCode: "AMD", items: [
-            { value: "AIR AHMEDABAD", label: "AIR AHMEDABAD", code: "INAMD4" },
-            { value: "AHMEDABAD AIR CARGO", label: "AHMEDABAD AIR CARGO", code: "INAMD4" },
-            { value: "ICD SABARMATI, AHMEDABAD", label: "ICD SABARMATI, AHMEDABAD", code: "INSBI6" },
-            { value: "ICD KHODIYAR", label: "ICD KHODIYAR", code: "INSBI6" },
-            { value: "ICD VIRAMGAM", label: "ICD VIRAMGAM", code: "INVGR6" },
+            { value: "AHMEDABAD AIR CARGO", label: "Ahmedabad Air Cargo", code: "INAMD4" },
+            { value: "ICD SABARMATI, AHMEDABAD", label: "ICD Sabarmati, Ahmedabad", code: "INSBI6" },
             { value: "ICD SACHANA", label: "ICD SACHANA", code: "INJKA6" },
-            { value: "ICD VIROCHANNAGAR", label: "ICD VIROCHANNAGAR", code: "INVCN6" },
-            { value: "ICD VIROCHAN NAGAR", label: "ICD VIROCHAN NAGAR", code: "INVCN6" },
-            { value: "ICD THAR DRY PORT", label: "ICD THAR DRY PORT", code: "INSAU6" },
+            { value: "ICD VIROCHAN NAGAR", label: "ICD Virochan Nagar", code: "INVCN6" },
             { value: "THAR DRY PORT", label: "THAR DRY PORT", code: "INSAU6" },
-            { value: "ICD SANAND", label: "ICD SANAND", code: "INSND6" },
         ]
     },
     {
         group: "Baroda", branchCode: "BRD", items: [
-            { value: "ANKLESHWAR ICD", label: "Ankleshwar ICD", code: "INAKV6" },
+            { value: "ANKLESHWAR ICD", label: "ANKLESHWAR ICD", code: "INAKV6" },
             { value: "ICD VARNAMA", label: "ICD VARNAMA", code: "INVRM6" },
         ]
     },
     {
         group: "Gandhidham", branchCode: "GIM", items: [
-            { value: "MUNDRA SEA", label: "Mundra Sea", code: "INMUN1" },
-            { value: "KANDLA SEA", label: "Kandla Sea", code: "INIXY1" },
+            { value: "MUNDRA SEA", label: "MUNDRA SEA", code: "INMUN1" },
+            { value: "KANDLA SEA", label: "KANDLA SEA", code: "INIXY1" },
         ]
     },
     {
         group: "Cochin", branchCode: "COK", items: [
-            { value: "COCHIN AIR CARGO", label: "Cochin Air Cargo", code: "INCOK4" },
-            { value: "COCHIN SEA", label: "Cochin Sea", code: "INCOK1" },
+            { value: "COCHIN AIR CARGO", label: "COCHIN AIR CARGO", code: "INCOK4" },
+            { value: "COCHIN SEA", label: "COCHIN SEA", code: "INCOK1" },
         ]
     },
     {
         group: "Hazira", branchCode: "HAZ", items: [
-            { value: "HAZIRA", label: "Hazira", code: "INHZA1" },
+            { value: "HAZIRA", label: "HAZIRA", code: "INHZA1" },
         ]
     },
 ];

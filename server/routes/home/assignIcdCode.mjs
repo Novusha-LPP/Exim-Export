@@ -41,7 +41,6 @@ router.post("/api/admin/assign-icd-code", async (req, res) => {
       "ICD VIRAMGAM",
       "AIR AHMEDABAD",
       "AHMEDABAD AIR CARGO",
-      "ICD THAR DRY PORT",
       "THAR DRY PORT",
       "ICD VIROCHANNAGAR",
       "ICD VIROCHAN NAGAR",

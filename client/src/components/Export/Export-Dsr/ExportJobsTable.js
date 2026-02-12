@@ -15,12 +15,14 @@ import {
   Autocomplete,
   TextField,
   Menu,
+  Pagination,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LockIcon from "@mui/icons-material/Lock"; // Import LockIcon
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import GavelIcon from "@mui/icons-material/Gavel"; // Import GavelIcon
+import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import AddExJobs from "./AddExJobs";
 import { formatDate } from "../../../utils/dateUtils";
 import { priorityFilter } from "../../../utils/filterUtils";
@@ -31,6 +33,7 @@ import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharG
 import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
 import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
 import { CUSTOM_HOUSE_OPTIONS, getOptionsForBranch } from "../../common/CustomHouseDropdown";
+import SBTrackDialog from "./SBTrackDialog";
 
 // --- Clean Enterprise Styles ---
 const s = {
@@ -290,13 +293,16 @@ const ExportJobsTable = () => {
   // Pagination State
   const [page, setPage] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
-  const LIMIT = 20;
+  const LIMIT = 100;
+
+  // Sorting State
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedType, setSelectedMovementType] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("AMD");
   const [selectedExporterFilter, setSelectedExporterFilter] = useState("");
   const [selectedDetailedStatus, setSelectedDetailedStatus] = useState("");
   const [selectedCustomHouse, setSelectedCustomHouse] = useState("");
@@ -355,6 +361,10 @@ const ExportJobsTable = () => {
   // Documents Menu State
   const [docsAnchorEl, setDocsAnchorEl] = useState(null);
   const [selectedDocJob, setSelectedDocJob] = useState(null);
+
+  // SB Track Dialog State
+  const [sbTrackOpen, setSbTrackOpen] = useState(false);
+  const [sbTrackJob, setSbTrackJob] = useState(null);
 
   // Fetch Exporters for DSR
   useEffect(() => {
@@ -443,6 +453,8 @@ const ExportJobsTable = () => {
             goods_stuffed_at: selectedGoodsStuffedAt,
             page: page,
             limit: LIMIT,
+            sortKey: sortConfig.key,
+            sortOrder: sortConfig.direction,
           },
         },
       );
@@ -478,7 +490,16 @@ const ExportJobsTable = () => {
     selectedJobOwner,
     selectedGoodsStuffedAt,
     page,
+    sortConfig,
   ]);
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   // Reset page when tab/filters change
   useEffect(() => {
@@ -535,6 +556,14 @@ const ExportJobsTable = () => {
     if (text) {
       navigator.clipboard.writeText(text);
       // Could show a snackbar here
+    }
+  };
+
+  const handleSBTrack = (job, e) => {
+    e.stopPropagation();
+    if (job.sb_no && job.sb_date && job.custom_house) {
+      setSbTrackJob(job);
+      setSbTrackOpen(true);
     }
   };
 
@@ -1281,7 +1310,18 @@ const ExportJobsTable = () => {
                     zIndex: 1,
                   }}
                 >
-                  <th style={s.th}>Job No / Owner</th>
+                  <th
+                    style={{ ...s.th, cursor: "pointer", userSelect: "none" }}
+                    onClick={() => handleSort('job_no')}
+                    title="Click to sort by Job Number"
+                  >
+                    Job No / Owner
+                    {sortConfig.key === 'job_no' && (
+                      <span style={{ marginLeft: "5px", fontSize: "10px" }}>
+                        {sortConfig.direction === 'asc' ? '▲' : '▼'}
+                      </span>
+                    )}
+                  </th>
                   <th style={s.th}>Exporter</th>
                   <th style={s.th}>KYC / Codes</th>
                   <th style={s.th}>Invoice</th>
@@ -1449,9 +1489,11 @@ const ExportJobsTable = () => {
                           >
                             {job.exporter}
                           </div>
-                          <div style={{ color: "#4b5563", fontSize: "11px" }}>
-                            {job.consignees?.[0]?.consignee_name || "-"}
-                          </div>
+                          {job.consignees?.[0]?.consignee_name
+                            ? job.consignees[0].consignee_name.length > 20
+                              ? `${job.consignees[0].consignee_name.substring(0, 20)}...`
+                              : job.consignees[0].consignee_name
+                            : "-"}
                           <div
                             style={{
                               color: "#6b7280",
@@ -1640,25 +1682,43 @@ const ExportJobsTable = () => {
                               justifyContent: "space-between",
                             }}
                           >
-                            <div
-                              style={{
-                                fontWeight: "600",
-                                color: "#b91c1c",
-                                marginBottom: "2px",
-                              }}
-                            >
-                              {job.sb_no || "-"}
-                            </div>
-                            {job.sb_no && (
-                              <IconButton
-                                size="small"
-                                onClick={(e) => handleCopyText(job.sb_no, e)}
-                                style={{ padding: 2 }}
-                                title="Copy SB No"
+                            <Tooltip title={job.sb_no && job.sb_date && job.custom_house ? "Click to track SB on ICEGATE" : ""}>
+                              <div
+                                style={{
+                                  fontWeight: "600",
+                                  color: job.sb_no && job.sb_date && job.custom_house ? "#2563eb" : "#b91c1c",
+                                  marginBottom: "2px",
+                                  cursor: job.sb_no && job.sb_date && job.custom_house ? "pointer" : "default",
+                                  textDecoration: job.sb_no && job.sb_date && job.custom_house ? "underline" : "none",
+                                }}
+                                onClick={(e) => job.sb_no && job.sb_date && job.custom_house && handleSBTrack(job, e)}
                               >
-                                <ContentCopyIcon style={{ fontSize: 12 }} />
-                              </IconButton>
-                            )}
+                                {job.sb_no || "-"}
+                              </div>
+                            </Tooltip>
+                            <div style={{ display: "flex", alignItems: "center" }}>
+                              {job.sb_no && job.sb_date && job.custom_house && (
+                                <Tooltip title="Track on ICEGATE">
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => handleSBTrack(job, e)}
+                                    style={{ padding: 2 }}
+                                  >
+                                    <TrackChangesIcon style={{ fontSize: 12, color: "#2563eb" }} />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {job.sb_no && (
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => handleCopyText(job.sb_no, e)}
+                                  style={{ padding: 2 }}
+                                  title="Copy SB No"
+                                >
+                                  <ContentCopyIcon style={{ fontSize: 12 }} />
+                                </IconButton>
+                              )}
+                            </div>
                           </div>
                           <div style={{ color: "#4b5563", fontSize: "11px" }}>
                             {formatDate(job.sb_date)}
@@ -1962,31 +2022,16 @@ const ExportJobsTable = () => {
             <div>
               Showing {jobs.length} of {totalRecords} Records
             </div>
-            <div>
-              <button
-                style={
-                  page === 1 ? { ...s.btnPage, ...s.btnDisabled } : s.btnPage
-                }
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Prev
-              </button>
-              <span style={{ margin: "0 10px" }}>
-                Page {page} of {totalPages || 1}
-              </span>
-              <button
-                style={
-                  page >= totalPages
-                    ? { ...s.btnPage, ...s.btnDisabled }
-                    : s.btnPage
-                }
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= totalPages}
-              >
-                Next
-              </button>
-            </div>
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={(e, value) => setPage(value)}
+              shape="rounded"
+              color="primary"
+              showFirstButton
+              showLastButton
+              size="small"
+            />
           </div>
         </div>
       </div >
@@ -2358,6 +2403,84 @@ const ExportJobsTable = () => {
           </MenuItem>
         </ConcorForwardingNoteGenerator>
       </Menu>
+
+      {/* SB Track Dialog */}
+      <SBTrackDialog
+        open={sbTrackOpen}
+        onClose={() => {
+          setSbTrackOpen(false);
+          setSbTrackJob(null);
+        }}
+        sbNo={sbTrackJob?.sb_no}
+        sbDate={sbTrackJob?.sb_date}
+        customHouse={sbTrackJob?.custom_house}
+        onUpdateStatus={async (updates) => {
+          if (!sbTrackJob || !updates) return;
+
+          try {
+            // 1. Fetch current job data
+            const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
+            const headers = { username: user.username || "unknown" };
+
+            const response = await axios.get(
+              `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(sbTrackJob.job_no)}`,
+              { headers }
+            );
+
+            let fullJob = null;
+            if (response.data) {
+              if (response.data.success && response.data.data) {
+                fullJob = response.data.data;
+              } else if (response.data.job_no || response.data._id) {
+                fullJob = response.data;
+              }
+            }
+
+            if (!fullJob) {
+              console.error("Failed to fetch job for update");
+              return;
+            }
+
+            // 2. Update status details
+            let operations = fullJob.operations || [];
+            if (operations.length === 0) {
+              operations = [{ statusDetails: [{}] }];
+            }
+
+            const op = operations[0];
+            const statusDetails = op.statusDetails || [{}];
+            const currentStatus = statusDetails[0] || {};
+
+            // Merge valid updates only
+            const newStatus = { ...currentStatus };
+            if (updates.goodsRegistrationDate) newStatus.goodsRegistrationDate = updates.goodsRegistrationDate;
+            if (updates.goodsReportDate) newStatus.goodsReportDate = updates.goodsReportDate;
+            if (updates.leoDate) newStatus.leoDate = updates.leoDate;
+
+            const newOperations = [...operations];
+            newOperations[0] = {
+              ...op,
+              statusDetails: [newStatus]
+            };
+
+            // 3. PUT Update
+            const payload = { ...fullJob, operations: newOperations };
+
+            await axios.put(
+              `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(sbTrackJob.job_no)}`,
+              payload,
+              { headers }
+            );
+
+            // Refresh table to show changes? Dates might not be visible in table but good to refresh.
+            fetchJobs();
+            // alert("Job updated with ICEGATE dates!"); // Optional feedback
+
+          } catch (err) {
+            console.error("Error updating job from SB Track:", err);
+          }
+        }}
+      />
     </>
   );
 };

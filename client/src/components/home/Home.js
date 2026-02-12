@@ -42,7 +42,7 @@ function Home() {
     getUser();
   }, [user]);
 
-  const categorizedModules = data?.export_modules?.reduce((acc, module) => {
+  const categorizedModules = data?.modules?.reduce((acc, module) => {
     const category = moduleCategories[module] || "Uncategorized";
     if (!acc[category]) acc[category] = [];
     acc[category].push(module);
@@ -61,6 +61,7 @@ function Home() {
     <div>
       {categorizedModules &&
         Object.keys(categorizedModules)
+          .filter((category) => category !== "Uncategorized") // Don't show uncategorized modules
           .sort()
           .map((category, idx) => (
             <div key={idx}>

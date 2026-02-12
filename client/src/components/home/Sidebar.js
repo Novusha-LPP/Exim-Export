@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/sidebar.scss";
 import { Avatar, IconButton, ListItemButton, Tooltip } from "@mui/material";
@@ -12,11 +12,34 @@ import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
 import HistoryIcon from '@mui/icons-material/History';
 import { UserContext } from "../../contexts/UserContext";
 import CurrencyRateDialog from "./CurrencyRateDialog.js"; // Import the dialog
+import axios from "axios";
 
 function Sidebar() {
   const navigate = useNavigate();
   const { user, setUser } = useContext(UserContext);
   const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
+
+  // Server-verified admin status (not from localStorage)
+  const [isVerifiedAdmin, setIsVerifiedAdmin] = useState(false);
+
+  // Verify admin role from server on mount
+  useEffect(() => {
+    async function verifyAdminRole() {
+      if (user?.username) {
+        try {
+          const res = await axios.get(
+            `${import.meta.env.VITE_API_STRING}/get-user/${user.username}`
+          );
+          // Only trust the role from the server response
+          setIsVerifiedAdmin(res.data?.role === "Admin");
+        } catch (error) {
+          console.error("Error verifying admin role:", error);
+          setIsVerifiedAdmin(false);
+        }
+      }
+    }
+    verifyAdminRole();
+  }, [user?.username]);
 
   const handleLogout = () => {
     setUser(null);
@@ -52,7 +75,8 @@ function Sidebar() {
         </ListItemButton>
       </Tooltip>
 
-      {user.role === "Admin" && (
+      {/* Only show admin features if server verified */}
+      {isVerifiedAdmin && (
         <Tooltip title="Assign Module" enterDelay={0} placement="right">
           <ListItemButton
             className="appbar-links"

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import Grid from "@mui/material/Grid";
 import List from "@mui/material/List";
 import Card from "@mui/material/Card";
@@ -10,6 +10,7 @@ import Checkbox from "@mui/material/Checkbox";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import axios from "axios";
+import { UserContext } from "../../contexts/UserContext.jsx";
 
 const allModules = [
   "Export - ESanchit",
@@ -36,6 +37,7 @@ function union(a, b) {
 }
 
 function AssignModule(props) {
+  const { user } = useContext(UserContext);
   const [checked, setChecked] = useState([]);
   const [right, setRight] = useState([]);
 
@@ -79,7 +81,7 @@ function AssignModule(props) {
     await axios.post(`${import.meta.env.VITE_API_STRING}/assign-modules`, {
       modules: leftChecked,
       username: props.selectedUser,
-      category: props.category,
+      requestingUser: user.username, // For server-side admin verification
     });
   };
 
@@ -93,31 +95,21 @@ function AssignModule(props) {
     await axios.post(`${import.meta.env.VITE_API_STRING}/unassign-modules`, {
       modules: rightChecked,
       username: props.selectedUser,
-      category: props.category,
+      requestingUser: user.username, // For server-side admin verification
     });
   };
 
 
   useEffect(() => {
     async function getUserModules() {
-      if (props.selectedUser && props.category) {
+      if (props.selectedUser) {
         try {
           const res = await axios(
             `${import.meta.env.VITE_API_STRING}/get-user/${props.selectedUser}`
           );
 
-          let userModules = [];
-          if (props.category === "Transport") {
-            userModules = res.data.transport_modules || [];
-          } else if (props.category === "Export") {
-            userModules = res.data.export_modules || [];
-          } else if (props.category === "Import") {
-            userModules = res.data.import_modules || [];
-          }
-
-          // Defensive: Log values
-          // console.log("userModules", userModules);
-          // console.log("allModules", allModules);
+          // Use single modules array
+          const userModules = res.data.modules || [];
 
           setRight([...userModules].sort());
 
@@ -143,7 +135,7 @@ function AssignModule(props) {
     }
 
     getUserModules();
-  }, [props.selectedUser, props.category, allModules]); // add allModules if it's derived async
+  }, [props.selectedUser]);
 
   const customList = (title, items) => (
     <Card>

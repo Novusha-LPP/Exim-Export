@@ -346,6 +346,13 @@ const LogisysEditableHeader = ({
     if (toUpper(formik.values.transportMode) !== mode) {
       formik.setFieldValue("transportMode", mode);
     }
+    // Auto-select Ahmedabad Air Port for AIR consignment
+    if (isAir) {
+      const ahmedabadPort = "INAMD4 - AHMEDABAD AIR PORT";
+      if (toUpper(formik.values.port_of_loading || "") !== ahmedabadPort) {
+        formik.setFieldValue("port_of_loading", ahmedabadPort);
+      }
+    }
   }, [formik.values.consignmentType, formik.values.transportMode, formik.setFieldValue]);
 
   useEffect(() => {
@@ -438,7 +445,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Job Number */}
-        <div style={{ flex: "0 0 auto", minWidth: 90 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 70 }}>
           <div style={styles.label}>Job No</div>
           {isNewJob ? (
             <input
@@ -487,7 +494,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Job Date */}
-        <div style={{ flex: "0 0 auto", minWidth: 85 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 70 }}>
           <div style={styles.label}>Job Date</div>
           <DateInput
             name="job_date"
@@ -502,7 +509,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* SB No */}
-        <div style={{ flex: "0 0 auto", minWidth: 60 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 50 }}>
           <div style={styles.label}>SB No</div>
           <input
             name="sb_no"
@@ -514,7 +521,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* SB Date */}
-        <div style={{ flex: "0 0 auto", minWidth: 85 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 70 }}>
           <div style={styles.label}>SB Date</div>
           <DateInput
             name="sb_date"
@@ -529,7 +536,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Job Owner */}
-        <div style={{ flex: "1 1 auto", minWidth: 90, maxWidth: 130 }}>
+        <div style={{ flex: "1 1 auto", minWidth: 70, maxWidth: 100 }}>
           <div style={styles.label}>Job Owner</div>
           <AutocompleteSelect
             name="job_owner"
@@ -548,7 +555,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Shipper */}
-        <div style={{ flex: "1 1 auto", minWidth: 100, maxWidth: 160 }}>
+        <div style={{ flex: "1 1 auto", minWidth: 80, maxWidth: 130 }}>
           <div style={styles.label}>Shipper</div>
           <input
             name="shipper"
@@ -568,7 +575,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Transport Mode */}
-        <div style={{ flex: "0 0 auto", minWidth: 50 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 40 }}>
           <div style={styles.label}>Mode</div>
           <input
             style={{ ...styles.inputDisabled, width: 50 }}
@@ -578,7 +585,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Custom House */}
-        <div style={{ flex: "1 1 auto", minWidth: 90, maxWidth: 160 }}>
+        <div style={{ flex: "1 1 auto", minWidth: 70, maxWidth: 130 }}>
           <div style={styles.label}>Custom House</div>
           <CustomHouseDropdown
             name="custom_house"
@@ -592,19 +599,28 @@ const LogisysEditableHeader = ({
 
         {/* Loading Port - Only show for non-AIR */}
         {!isAirType && (
-          <div style={{ flex: "1 1 auto", minWidth: 90, maxWidth: 140 }}>
+          <div style={{ flex: "1 1 auto", minWidth: 70, maxWidth: 110 }}>
             <div style={styles.label}>Port Of Loading</div>
-            <GatewayPortDropdown
-              fieldName="port_of_loading"
-              formik={formik}
-              placeholder="Select"
+            <select
+              name="port_of_loading"
+              value={formik.values.port_of_loading || ""}
+              onChange={(e) => formik.setFieldValue("port_of_loading", e.target.value)}
               disabled={!isEditable}
-            />
+              style={!isEditable ? styles.inputDisabled : { ...styles.input, cursor: "pointer" }}
+            >
+              <option value="">Select</option>
+              <option value="INMUN1 - MUNDRA">Mundra (INMUN1)</option>
+              <option value="INIXY1 - KANDLA">Kandla (INIXY1)</option>
+              <option value="INPAV1 - PIPAVAV">Pipavav (INPAV1)</option>
+              <option value="INHZA1 - HAZIRA">Hazira (INHZA1)</option>
+              <option value="INNSA1 - NHAVA SHEVA">Nhava Sheva (INNSA1)</option>
+              <option value="INAMD4 - AHMEDABAD AIR PORT">Ahmedabad Air Port</option>
+            </select>
           </div>
         )}
 
         {/* Consignment Type */}
-        <div style={{ flex: "0 0 auto", minWidth: 70 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 60 }}>
           <div style={styles.label}>Type</div>
           <AutocompleteSelect
             name="consignmentType"
@@ -613,7 +629,6 @@ const LogisysEditableHeader = ({
               { value: "FCL", label: "FCL" },
               { value: "LCL", label: "LCL" },
               { value: "AIR", label: "AIR" },
-              { value: "Break Bulk", label: "BB" },
             ]}
             onChange={formik.handleChange}
             placeholder="Type"
@@ -622,7 +637,7 @@ const LogisysEditableHeader = ({
         </div>
 
         {/* Goods Stuffed At */}
-        <div style={{ flex: "0 0 auto", minWidth: 70 }}>
+        <div style={{ flex: "0 0 auto", minWidth: 60 }}>
           <div style={styles.label}>Stuffed At</div>
           <AutocompleteSelect
             name="goods_stuffed_at"

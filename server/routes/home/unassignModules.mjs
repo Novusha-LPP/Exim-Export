@@ -1,14 +1,12 @@
 import express from "express";
 import UserModel from "../../model/userModel.mjs";
+import { requireAdmin } from "../../middleware/adminAuth.mjs";
 
 const router = express.Router();
 
-router.post("/api/unassign-modules", async (req, res) => {
-  const { modules, username, category } = req.body;
-
-  if (!["Transport", "Import", "Export"].includes(category)) {
-    return res.status(400).send("Invalid category");
-  }
+// Admin-only route: Unassign modules from a user
+router.post("/api/unassign-modules", requireAdmin, async (req, res) => {
+  const { modules, username } = req.body;
 
   try {
     const user = await UserModel.findOne({ username });
@@ -16,21 +14,10 @@ router.post("/api/unassign-modules", async (req, res) => {
       return res.status(404).send("User not found");
     }
 
-    // Fix: Use the modules array directly from req.body
-    // The modules should be an array of module names to remove
-    if (category === "Transport") {
-      user.transport_modules = (user.transport_modules || []).filter(
-        (module) => !modules.includes(module)
-      );
-    } else if (category === "Import") {
-      user.import_modules = (user.import_modules || []).filter(
-        (module) => !modules.includes(module)
-      );
-    } else if (category === "Export") {
-      user.export_modules = (user.export_modules || []).filter(
-        (module) => !modules.includes(module)
-      );
-    }
+    // Use single modules array - remove specified modules
+    user.modules = (user.modules || []).filter(
+      (module) => !modules.includes(module)
+    );
 
     await user.save();
     res.send(user);

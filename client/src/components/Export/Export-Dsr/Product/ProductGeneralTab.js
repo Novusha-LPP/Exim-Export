@@ -1287,7 +1287,11 @@ function ProductRow({
       const taxableValue =
         (parseFloat(product.amount) || 0) * invoiceExchangeRate;
 
+      const isTaxableManual =
+        product.igstCompensationCess?.isTaxableValueManual;
+
       if (
+        !isTaxableManual &&
         Math.abs(
           (product.igstCompensationCess?.taxableValueINR || 0) - taxableValue,
         ) > 0.01
@@ -1302,7 +1306,10 @@ function ProductRow({
       const rateValue = parseFloat(product.igstCompensationCess?.igstRate) || 0;
       const igstAmount = (taxableValue * rateValue) / 100;
 
+      const isManual = product.igstCompensationCess?.isIgstManual;
+
       if (
+        !isManual &&
         Math.abs(
           (product.igstCompensationCess?.igstAmountINR || 0) - igstAmount,
         ) > 0.01
@@ -1314,7 +1321,16 @@ function ProductRow({
         );
       }
     }
-  }, [product.amount, formik.values.exchange_rate, handleProductChange, index]);
+  }, [
+    product.amount,
+    formik.values.exchange_rate,
+    handleProductChange,
+    index,
+    product.igstCompensationCess?.igstPaymentStatus,
+    product.igstCompensationCess?.igstRate,
+    product.igstCompensationCess?.isIgstManual,
+    product.igstCompensationCess?.isTaxableValueManual,
+  ]);
 
   return (
     <div style={styles.card}>
@@ -1845,12 +1861,53 @@ function ProductRow({
         </div>
         <div style={{ display: "grid", gap: 8 }}>
           <div style={styles.field}>
-            <label style={styles.label}>Taxable Value (INR)</label>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <label style={styles.label}>Taxable Value (INR)</label>
+              {product.igstCompensationCess?.igstPaymentStatus ===
+                "Export Against Payment" && (
+                  <label
+                    style={{
+                      fontSize: 10,
+                      display: "flex",
+                      alignItems: "center",
+                      cursor: "pointer",
+                      color: "#16408f",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      style={{ cursor: "pointer", marginRight: 4 }}
+                      checked={
+                        product.igstCompensationCess?.isTaxableValueManual ||
+                        false
+                      }
+                      onChange={(e) =>
+                        handleProductChange(
+                          index,
+                          "igstCompensationCess.isTaxableValueManual",
+                          e.target.checked,
+                        )
+                      }
+                    />
+                    MANUAL
+                  </label>
+                )}
+            </div>
             <input
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus ===
-                  "Not Applicable"
+                  "Not Applicable" ||
+                  (product.igstCompensationCess?.igstPaymentStatus ===
+                    "Export Against Payment" &&
+                    !product.igstCompensationCess?.isTaxableValueManual)
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1866,21 +1923,62 @@ function ProductRow({
               }
               disabled={
                 product.igstCompensationCess?.igstPaymentStatus !==
-                "Export Under Bond – Not Paid"
+                "Export Under Bond – Not Paid" &&
+                product.igstCompensationCess?.igstPaymentStatus !==
+                "Export Against Payment"
               }
               readOnly={
                 product.igstCompensationCess?.igstPaymentStatus ===
-                "Export Against Payment"
+                "Export Against Payment" &&
+                !product.igstCompensationCess?.isTaxableValueManual
               }
             />
           </div>
           <div style={styles.field}>
-            <label style={styles.label}>IGST Amt (INR)</label>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <label style={styles.label}>IGST Amt (INR)</label>
+              {product.igstCompensationCess?.igstPaymentStatus ===
+                "Export Against Payment" && (
+                  <label
+                    style={{
+                      fontSize: 10,
+                      display: "flex",
+                      alignItems: "center",
+                      cursor: "pointer",
+                      color: "#16408f",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      style={{ cursor: "pointer", marginRight: 4 }}
+                      checked={
+                        product.igstCompensationCess?.isIgstManual || false
+                      }
+                      onChange={(e) =>
+                        handleProductChange(
+                          index,
+                          "igstCompensationCess.isIgstManual",
+                          e.target.checked,
+                        )
+                      }
+                    />
+                    MANUAL
+                  </label>
+                )}
+            </div>
             <input
               style={{
                 ...styles.input,
                 ...(product.igstCompensationCess?.igstPaymentStatus !==
-                  "Export Against Payment"
+                  "Export Against Payment" ||
+                  !product.igstCompensationCess?.isIgstManual
                   ? { background: "#e9ecef" }
                   : {}),
               }}
@@ -1898,6 +1996,7 @@ function ProductRow({
                 product.igstCompensationCess?.igstPaymentStatus !==
                 "Export Against Payment"
               }
+              readOnly={!product.igstCompensationCess?.isIgstManual}
             />
           </div>
           <div style={styles.field}>

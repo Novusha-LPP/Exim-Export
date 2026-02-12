@@ -302,6 +302,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 egm_date,
 
                 // Other fields
+                goods_stuffed_at,
                 description,
                 hss_name,
                 cha,
@@ -571,6 +572,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 discharge_country: getUpdateValue(discharge_country, existingJob?.discharge_country),
                 destination_country: getUpdateValue(destination_country, existingJob?.destination_country),
                 destination_port: getUpdateValue(destination_port, existingJob?.destination_port),
+                goods_stuffed_at: getUpdateValue(goods_stuffed_at, existingJob?.goods_stuffed_at),
 
                 // Vessel/Flight
                 vessel_name: getUpdateValue(vessel_name, existingJob?.vessel_name),
@@ -714,7 +716,51 @@ router.post("/api/jobs/add-job", async (req, res) => {
                                 unit: p.drawbackDetails?.unit || "",
                                 dbkUnder: p.drawbackDetails?.dbkUnder === "A" ? "Actual" : "Provisional",
                                 dbkAmount: parseFloat(p.drawbackDetails?.dbkAmount) || 0
-                            }]
+                            }],
+
+                            // EPCG Details (from XML)
+                            ...(p.epcgDetails ? {
+                                epcgDetails: {
+                                    isEpcgItem: p.epcgDetails.isEpcgItem || false,
+                                    itemSnoPartE: p.epcgDetails.itemSnoPartE || "",
+                                    exportQtyUnderLicence: p.epcgDetails.exportQtyUnderLicence || 0,
+                                    epcgItems: (p.epcgDetails.epcgItems || []).map((it, idx) => ({
+                                        serialNumber: it.serialNumber || idx + 1,
+                                        itemSnoPartC: it.itemSnoPartC || "",
+                                        description: it.description || "",
+                                        quantity: parseFloat(it.quantity) || 0,
+                                        unit: it.unit || "",
+                                        itemType: it.itemType || "Indigenous",
+                                    })),
+                                    epcg_reg_obj: (p.epcgDetails.epcg_reg_obj || []).map(r => ({
+                                        licRefNo: r.licRefNo || "",
+                                        regnNo: r.regnNo || "",
+                                        licDate: r.licDate || "",
+                                    })),
+                                }
+                            } : {}),
+
+                            // DEEC (Advance Licence) Details (from XML)
+                            ...(p.deecDetails ? {
+                                deecDetails: {
+                                    isDeecItem: p.deecDetails.isDeecItem || false,
+                                    itemSnoPartE: p.deecDetails.itemSnoPartE || "",
+                                    exportQtyUnderLicence: p.deecDetails.exportQtyUnderLicence || 0,
+                                    deecItems: (p.deecDetails.deecItems || []).map((it, idx) => ({
+                                        serialNumber: it.serialNumber || idx + 1,
+                                        itemSnoPartC: it.itemSnoPartC || "",
+                                        description: it.description || "",
+                                        quantity: parseFloat(it.quantity) || 0,
+                                        unit: it.unit || "",
+                                        itemType: it.itemType || "Indigenous",
+                                    })),
+                                    deec_reg_obj: (p.deecDetails.deec_reg_obj || []).map(r => ({
+                                        licRefNo: r.licRefNo || "",
+                                        regnNo: r.regnNo || "",
+                                        licDate: r.licDate || "",
+                                    })),
+                                }
+                            } : {}),
                         }));
                     } else {
                         // Legacy Dummy Product logic

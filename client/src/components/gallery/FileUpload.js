@@ -39,6 +39,7 @@ const FileUpload = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const { user } = useContext(UserContext);
+  const fileInputRef = React.useRef(null);
 
   const handleFileUpload = async (event) => {
     if (readOnly) return;
@@ -59,6 +60,11 @@ const FileUpload = ({
 
     setUploading(false);
     onFilesUploaded(uploadedFiles);
+
+    // Reset input value to allow re-uploading the same file if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const disabled = readOnly || uploading;
@@ -70,12 +76,12 @@ const FileUpload = ({
         type="button"
         style={styles.button(disabled)}
         disabled={disabled}
-        onClick={() => !disabled && document.getElementById(bucketPath).click()}
+        onClick={() => !disabled && fileInputRef.current?.click()}
       >
         {uploading ? "Uploading..." : "Browse"}
       </button>
       <input
-        id={bucketPath}
+        ref={fileInputRef}
         type="file"
         hidden
         multiple={multiple}

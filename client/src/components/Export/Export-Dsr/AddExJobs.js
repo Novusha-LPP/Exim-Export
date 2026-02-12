@@ -1100,6 +1100,8 @@ const AddExJobs = ({ onJobCreated }) => {
     setFormData((prev) => ({
       ...prev,
       transportMode: isAir ? "AIR" : "SEA",
+      // Auto-select Ahmedabad Air Port for AIR consignment
+      ...(isAir ? { port_of_loading: "INAMD4 - AHMEDABAD AIR PORT" } : {}),
     }));
   }, [formData.consignmentType]);
 
@@ -1721,11 +1723,22 @@ const AddExJobs = ({ onJobCreated }) => {
                   branchCode={formData.branch_code}
                 />
 
-                <GatewayPortDropdown
-                  label="Port of Loading"
-                  value={formData.port_of_loading}
-                  onChange={(val) => handleInputChange("port_of_loading", val)}
-                />
+                <div style={s.col}>
+                  <label style={s.label}>Port of Loading</label>
+                  <select
+                    style={s.select}
+                    value={formData.port_of_loading}
+                    onChange={(e) => handleInputChange("port_of_loading", e.target.value)}
+                  >
+                    <option value="">SELECT PORT</option>
+                    <option value="INMUN1 - MUNDRA">Mundra (INMUN1)</option>
+                    <option value="INIXY1 - KANDLA">Kandla (INIXY1)</option>
+                    <option value="INPAV1 - PIPAVAV">Pipavav (INPAV1)</option>
+                    <option value="INHZA1 - HAZIRA">Hazira (INHZA1)</option>
+                    <option value="INNSA1 - NHAVA SHEVA">Nhava Sheva (INNSA1)</option>
+                    <option value="INAMD4 - AHMEDABAD AIR PORT">Ahmedabad Air Port</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>

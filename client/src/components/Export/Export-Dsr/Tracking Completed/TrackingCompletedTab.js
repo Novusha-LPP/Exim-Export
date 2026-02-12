@@ -5,7 +5,7 @@ const getMilestones = (isAir) => [
   "SB Filed",
   "SB Receipt",
   "L.E.O",
-  isAir ? "File Handover to IATA" : "Container HO to Concor",
+  isAir ? "File Handover to IATA" : "Container HO",
   isAir ? "Departure" : "Rail Out",
   "Ready for Billing",
   "Billing Done",
