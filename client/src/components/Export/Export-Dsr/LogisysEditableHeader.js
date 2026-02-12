@@ -629,7 +629,6 @@ const LogisysEditableHeader = ({
               { value: "FCL", label: "FCL" },
               { value: "LCL", label: "LCL" },
               { value: "AIR", label: "AIR" },
-              { value: "Break Bulk", label: "BB" },
             ]}
             onChange={formik.handleChange}
             placeholder="Type"

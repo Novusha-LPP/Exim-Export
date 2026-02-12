@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { parse, format } from "date-fns";
 import {
     Dialog,
     DialogTitle,
@@ -64,7 +65,7 @@ function TabPanel({ children, value, index, ...other }) {
     );
 }
 
-function SBTrackDialog({ open, onClose, sbNo, sbDate, customHouse }) {
+function SBTrackDialog({ open, onClose, sbNo, sbDate, customHouse, onUpdateStatus }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [data, setData] = useState(null);
@@ -116,7 +117,47 @@ function SBTrackDialog({ open, onClose, sbNo, sbDate, customHouse }) {
             );
 
             if (response.data.success) {
-                setData(response.data.data);
+                const fetchedData = response.data.data;
+                setData(fetchedData);
+
+                // Extract dates and callback
+                if (onUpdateStatus && fetchedData.currentStatusModel?.[0]) {
+                    const status = fetchedData.currentStatusModel[0];
+                    const extractDate = (dateStr) => {
+                        if (!dateStr || dateStr === "N.A.") return null;
+                        try {
+                            // Try parsing "dd MMM yyyy HH:mm" e.g. "09 FEB 2026 15:02"
+                            // Date format in response seems to be "dd MMM yyyy HH:mm" or similar
+                            // Using Date.parse might work if month is English
+                            const d = new Date(dateStr);
+                            if (!isNaN(d.getTime())) {
+                                return format(d, "yyyy-MM-dd");
+                            }
+                            // Fallback using date-fns parse if necessary
+                            // Attempt more robust parsing if needed
+                            return null;
+                        } catch (e) {
+                            return null;
+                        }
+                    };
+
+                    const updates = {
+                        goodsRegistrationDate: extractDate(status.markDate),
+                        goodsReportDate: extractDate(status.examDate), // Verify mapping
+                        leoDate: extractDate(status.leoDate), // Verify mapping
+                    };
+
+                    // Filter out nulls
+                    const finalUpdates = {};
+                    if (updates.goodsRegistrationDate) finalUpdates.goodsRegistrationDate = updates.goodsRegistrationDate;
+                    if (updates.goodsReportDate) finalUpdates.goodsReportDate = updates.goodsReportDate;
+                    if (updates.leoDate) finalUpdates.leoDate = updates.leoDate;
+
+                    if (Object.keys(finalUpdates).length > 0) {
+                        onUpdateStatus(finalUpdates);
+                    }
+                }
+
             } else {
                 throw new Error(response.data.message || "Failed to fetch data");
             }
@@ -494,14 +535,9 @@ function SBTrackDialog({ open, onClose, sbNo, sbDate, customHouse }) {
             </DialogContent>
 
             <DialogActions>
-                <Button onClick={onClose} variant="outlined">
-                    Close
+                <Button onClick={fetchSBTrackData} variant="contained" disabled={loading}>
+                    Fetch
                 </Button>
-                {data && (
-                    <Button onClick={fetchSBTrackData} variant="contained" disabled={loading}>
-                        Refresh
-                    </Button>
-                )}
             </DialogActions>
         </Dialog>
     );

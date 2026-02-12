@@ -2371,6 +2371,72 @@ const ExportJobsTable = () => {
         sbNo={sbTrackJob?.sb_no}
         sbDate={sbTrackJob?.sb_date}
         customHouse={sbTrackJob?.custom_house}
+        onUpdateStatus={async (updates) => {
+          if (!sbTrackJob || !updates) return;
+
+          try {
+            // 1. Fetch current job data
+            const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
+            const headers = { username: user.username || "unknown" };
+
+            const response = await axios.get(
+              `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(sbTrackJob.job_no)}`,
+              { headers }
+            );
+
+            let fullJob = null;
+            if (response.data) {
+              if (response.data.success && response.data.data) {
+                fullJob = response.data.data;
+              } else if (response.data.job_no || response.data._id) {
+                fullJob = response.data;
+              }
+            }
+
+            if (!fullJob) {
+              console.error("Failed to fetch job for update");
+              return;
+            }
+
+            // 2. Update status details
+            let operations = fullJob.operations || [];
+            if (operations.length === 0) {
+              operations = [{ statusDetails: [{}] }];
+            }
+
+            const op = operations[0];
+            const statusDetails = op.statusDetails || [{}];
+            const currentStatus = statusDetails[0] || {};
+
+            // Merge valid updates only
+            const newStatus = { ...currentStatus };
+            if (updates.goodsRegistrationDate) newStatus.goodsRegistrationDate = updates.goodsRegistrationDate;
+            if (updates.goodsReportDate) newStatus.goodsReportDate = updates.goodsReportDate;
+            if (updates.leoDate) newStatus.leoDate = updates.leoDate;
+
+            const newOperations = [...operations];
+            newOperations[0] = {
+              ...op,
+              statusDetails: [newStatus]
+            };
+
+            // 3. PUT Update
+            const payload = { ...fullJob, operations: newOperations };
+
+            await axios.put(
+              `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(sbTrackJob.job_no)}`,
+              payload,
+              { headers }
+            );
+
+            // Refresh table to show changes? Dates might not be visible in table but good to refresh.
+            fetchJobs();
+            // alert("Job updated with ICEGATE dates!"); // Optional feedback
+
+          } catch (err) {
+            console.error("Error updating job from SB Track:", err);
+          }
+        }}
       />
     </>
   );
