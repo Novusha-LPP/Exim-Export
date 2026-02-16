@@ -189,7 +189,8 @@ public class Main extends JFrame {
                 // Construct EXACT data to sign: Clean Content + Single CRLF
                 java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
                 baos.write(rawData, 0, cleanLen);
-                baos.write(new byte[] { 13, 10 }); // Force nice Windows CRLF
+                // ICEGATE expects bare LF on the TREC line
+                baos.write(new byte[] { 10 });
                 byte[] dataToSign = baos.toByteArray();
 
                 // Generate RAW RSA signature on the EXACT bytes we will write
@@ -217,10 +218,11 @@ public class Main extends JFrame {
                     fos.write(dataToSign);
 
                     // 2. Append signature block in ICEGATE compatible format
-                    // Note: dataToSign guarantees we are at a new line
-                    fos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\r\n").getBytes());
-                    fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\r\n").getBytes());
-                    fos.write("<SIGNER-VERSION>Exim Local Signer v1.0</SIGNER-VERSION>".getBytes());
+                    // Note: dataToSign guarantees we end with \n
+                    // ICEGATE expects bare \n after closing tags also
+                    fos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\n").getBytes());
+                    fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\n").getBytes());
+                    fos.write("<SIGNER-VERSION>V-NCODE_01.05.2013</SIGNER-VERSION>".getBytes());
                 }
 
                 log("Saved signed file: " + sbFile.getName());
@@ -384,12 +386,16 @@ public class Main extends JFrame {
 
                     log("Signing Job: " + jobNo);
 
-                    // 1. Prepare CONTENT to sign (Must end with CRLF)
-                    // ICEGATE requires the content to end with a newline before the signature block
+                    // 1. Prepare CONTENT to sign (Must end with LF only for TREC line)
                     StringBuilder contentBuilder = new StringBuilder(content);
-                    if (!content.endsWith("\n") && !content.endsWith("\r\n")) {
-                        contentBuilder.append("\r\n");
+                    // Remove trailing CRLF or LF if present to normalize
+                    while (contentBuilder.length() > 0 && (contentBuilder.charAt(contentBuilder.length() - 1) == '\n'
+                            || contentBuilder.charAt(contentBuilder.length() - 1) == '\r')) {
+                        contentBuilder.setLength(contentBuilder.length() - 1);
                     }
+                    // Append single bare LF
+                    contentBuilder.append("\n");
+
                     String contentToSignStr = contentBuilder.toString();
 
                     // Convert to bytes for signing (ISO-8859-1 to preserve original chars)
@@ -407,18 +413,18 @@ public class Main extends JFrame {
 
                     // 5. Create signed content string in ICEGATE format
                     StringBuilder signedContent = new StringBuilder();
-                    signedContent.append(contentToSignStr); // Already includes required newline
+                    signedContent.append(contentToSignStr); // Already includes required bare newline
 
-                    // ICEGATE format: each tag with content on same line
+                    // ICEGATE format: each tag with content on same line, bare \n separator
                     signedContent.append("<START-SIGNATURE>");
                     signedContent.append(signatureBase64);
-                    signedContent.append("</START-SIGNATURE>\r\n");
+                    signedContent.append("</START-SIGNATURE>\n");
 
                     signedContent.append("<START-CERTIFICATE>");
                     signedContent.append(certificateBase64);
-                    signedContent.append("</START-CERTIFICATE>\r\n");
+                    signedContent.append("</START-CERTIFICATE>\n");
 
-                    signedContent.append("<SIGNER-VERSION>Exim Local Signer v1.0</SIGNER-VERSION>");
+                    signedContent.append("<SIGNER-VERSION>V-NCODE_01.05.2013</SIGNER-VERSION>");
 
                     // 6. Generate file name
                     String baseName = jobNo + "_" + (sbNo != null && !sbNo.equals("N/A") ? sbNo : "SB");
