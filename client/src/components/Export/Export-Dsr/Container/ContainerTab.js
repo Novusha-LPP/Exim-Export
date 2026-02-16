@@ -3,24 +3,8 @@ import DateInput from "../../../common/DateInput.js";
 import { styles, toUpperVal } from "../Product/commonStyles";
 
 const containerTypes = [
-  "20 STANDARD DRY",
-  "20 FLAT RACK",
-  "20 COLLAPSIBLE FLAT RACK",
-  "20 REEFER",
-  "20 TANK",
-  "20 OPEN TOP",
-  "20 HARD TOP",
-  "20 PLATFORM",
-  "40 STANDARD DRY",
-  "40 FLAT RACK",
-  "40 COLLAPSIBLE FLAT RACK",
-  "40 REEFER",
-  "40 TANK",
-  "40 OPEN TOP",
-  "40 HARD TOP",
-  "40 HIGH CUBE",
-  "40 REEFER HIGH CUBE",
-  "40 PLATFORM",
+  "20",
+  "40"
 ];
 
 const sealTypes = ["RFID"];

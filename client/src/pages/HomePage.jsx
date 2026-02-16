@@ -26,6 +26,9 @@ import AppbarComponent from "../components/home/AppbarComponent.js";
 import DrawerComponent from "../components/home/DrawerComponent.js";
 
 import Feedback from "../components/home/FeedBack.js";
+import ReportTabs from "../components/Report/ReportTabs.js";
+import MonthlyContainers from "../components/Report/monthlyContainers.js";
+import DetailedReport from "../components/Report/DetailedReport.js";
 import OpenPointsHome from "../components/open-points/OpenPointsHome.js";
 import ProjectWorkspace from "../components/open-points/ProjectWorkspace.js";
 import AnalyticsDashboard from "../components/open-points/AnalyticsDashboard.js";
@@ -220,6 +223,32 @@ function HomePage() {
             />
 
             <Route path="/feedback" element={<Feedback />} />
+
+            {/* Reports */}
+            <Route
+              path="/report"
+              element={
+                <ProtectedRoute requiredModule="Export - Reports">
+                  <ReportTabs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/report/monthly-containers"
+              element={
+                <ProtectedRoute requiredModule="Export - Reports">
+                  <MonthlyContainers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/report/detailed"
+              element={
+                <ProtectedRoute requiredModule="Export - Reports">
+                  <DetailedReport />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </Box>
       </Box>

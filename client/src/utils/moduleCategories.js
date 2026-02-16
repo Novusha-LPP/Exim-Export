@@ -9,4 +9,5 @@ export const moduleCategories = {
   "Export - VGM": "Export",
   "Export - Audit Trail": "Export",
   "Open Points": "Management",
+  "Export - Reports": "Export",
 };

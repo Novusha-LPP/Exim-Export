@@ -117,6 +117,15 @@ const styles = {
 
 const ChargesTab = ({ formik, directories, params }) => {
   const charges = formik.values.charges || [];
+  const fines = formik.values.fines || [];
+
+  // Fine type options with default amounts
+  const FINE_TYPES = [
+    { label: "Challan", defaultAmount: 1000 },
+    { label: "Fine by Officer", defaultAmount: 0 },
+    { label: "Notesheet Amount", defaultAmount: 500 },
+    { label: "Misc", defaultAmount: 0 },
+  ];
 
   // Initialize charges if empty, but only after job data is loaded (checked via job_no)
   useEffect(() => {
@@ -157,8 +166,39 @@ const ChargesTab = ({ formik, directories, params }) => {
     formik.setFieldValue("charges", updatedCharges);
   };
 
+  // Fine handlers
+  const handleAddFine = () => {
+    const newFine = {
+      fineType: "",
+      accountability: "",
+      amount: 0,
+      remarks: "",
+    };
+    formik.setFieldValue("fines", [...fines, newFine]);
+  };
+
+  const handleFineChange = (index, field, value) => {
+    formik.setFieldValue(`fines.${index}.${field}`, value);
+  };
+
+  const handleFineTypeChange = (index, value) => {
+    formik.setFieldValue(`fines.${index}.fineType`, value);
+    // Auto-fill amount based on type
+    const fineType = FINE_TYPES.find((t) => t.label === value);
+    if (fineType && fineType.defaultAmount > 0) {
+      formik.setFieldValue(`fines.${index}.amount`, fineType.defaultAmount);
+    }
+  };
+
+  const handleDeleteFine = (index) => {
+    const updatedFines = [...fines];
+    updatedFines.splice(index, 1);
+    formik.setFieldValue("fines", updatedFines);
+  };
+
   return (
     <div style={styles.page}>
+      {/* Charges Section */}
       <div style={styles.card}>
         <div style={styles.cardTitle}>Charges</div>
         <div style={styles.tableWrapper}>
@@ -189,7 +229,7 @@ const ChargesTab = ({ formik, directories, params }) => {
                     {index + 1}
                   </td>
                   <td style={styles.td}>
-                    <input 
+                    <input
                       type="text"
                       value={charge.particulars || ""}
                       onChange={(e) => handleInputChange(index, "particulars", e.target.value)}
@@ -245,6 +285,116 @@ const ChargesTab = ({ formik, directories, params }) => {
             onClick={traverseAndAddRow}
           >
             + Add Row
+          </button>
+        </div>
+      </div>
+
+      {/* Fine Section */}
+      <div style={styles.card}>
+        <div style={styles.cardTitle}>Fine</div>
+        <div style={styles.tableWrapper}>
+          <table style={{ ...styles.table, minWidth: 700 }}>
+            <thead>
+              <tr>
+                <th style={{ ...styles.th, width: 50 }}>SR NO</th>
+                <th style={{ ...styles.th, width: 200 }}>TYPE OF FINE</th>
+                <th style={{ ...styles.th, width: 180 }}>ACCOUNTABILITY</th>
+                <th style={{ ...styles.th, width: 150 }}>AMOUNT (₹)</th>
+                <th style={{ ...styles.th }}>REMARKS</th>
+                <th style={{ ...styles.th, width: 80, textAlign: "center" }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fines.length > 0 ? (
+                fines.map((fine, index) => (
+                  <tr key={index}>
+                    <td style={styles.td}>{index + 1}</td>
+                    <td style={styles.td}>
+                      <select
+                        value={fine.fineType || ""}
+                        onChange={(e) => handleFineTypeChange(index, e.target.value)}
+                        style={{ ...styles.input, cursor: "pointer" }}
+                      >
+                        <option value="">Select Type</option>
+                        {FINE_TYPES.map((ft) => (
+                          <option key={ft.label} value={ft.label}>
+                            {ft.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={styles.td}>
+                      <div style={{ display: "flex", gap: 12, alignItems: "center", minHeight: 24 }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                          <input
+                            type="radio"
+                            name={`fine_accountability_${index}`}
+                            value="By Us"
+                            checked={fine.accountability === "By Us"}
+                            onChange={(e) => handleFineChange(index, "accountability", e.target.value)}
+                            style={{ cursor: "pointer" }}
+                          />
+                          By Us
+                        </label>
+                        <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                          <input
+                            type="radio"
+                            name={`fine_accountability_${index}`}
+                            value="By Exporter"
+                            checked={fine.accountability === "By Exporter"}
+                            onChange={(e) => handleFineChange(index, "accountability", e.target.value)}
+                            style={{ cursor: "pointer" }}
+                          />
+                          By Exporter
+                        </label>
+                      </div>
+                    </td>
+                    <td style={styles.td}>
+                      <input
+                        type="number"
+                        value={fine.amount || ""}
+                        onChange={(e) => handleFineChange(index, "amount", parseFloat(e.target.value) || 0)}
+                        style={styles.input}
+                        placeholder="0"
+                      />
+                    </td>
+                    <td style={styles.td}>
+                      <input
+                        type="text"
+                        value={fine.remarks || ""}
+                        onChange={(e) => handleFineChange(index, "remarks", e.target.value)}
+                        style={styles.input}
+                        placeholder="Enter remarks"
+                      />
+                    </td>
+                    <td style={{ ...styles.td, textAlign: "center" }}>
+                      <button
+                        type="button"
+                        style={styles.linkButton}
+                        onClick={() => handleDeleteFine(index)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" style={{ ...styles.td, textAlign: "center", color: "#9ca3af", padding: "16px" }}>
+                    No fine entries. Click "+ Add Fine" to add one.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <button
+            type="button"
+            style={styles.smallButton}
+            onClick={handleAddFine}
+          >
+            + Add Fine
           </button>
         </div>
       </div>

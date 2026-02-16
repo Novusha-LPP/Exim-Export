@@ -22,6 +22,7 @@ const allModules = [
   "Export - Charges",
   "Directories",
   "Open Points",
+  "Export - Reports"
 ];
 
 function not(a, b) {

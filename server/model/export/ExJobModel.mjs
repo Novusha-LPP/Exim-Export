@@ -991,6 +991,19 @@ const exportJobSchema = new mongoose.Schema(
     milestoneviewuploaddocuments: { type: String, trim: true },
     milestonehandledby: { type: String, trim: true },
 
+    // Fine Report Fields
+    fine_amount: { type: Number, default: 0 },
+    fine_accountability: { type: String, trim: true }, // "By Us" or "By Exporter"
+    fine_remarks: { type: String, trim: true },
+    fines: [
+      {
+        fineType: { type: String, trim: true }, // "Challan", "Fine by Officer", "Notesheet Amount", "Misc"
+        accountability: { type: String, trim: true },
+        amount: { type: Number, default: 0 },
+        remarks: { type: String, trim: true },
+      },
+    ],
+
     // System Fields
     createdBy: { type: String },
     updatedBy: String,

@@ -11,16 +11,6 @@ const toUpper = (str) => (str ? str.toUpperCase() : "");
 const formatDateForInput = (dateVal, type = "date") => {
   if (!dateVal) return "";
 
-  // If it's a string and doesn't look like a full ISO string from the server,
-  // just return it as is to allow manual typing without auto-correction.
-  if (
-    typeof dateVal === "string" &&
-    !dateVal.includes("T") &&
-    !dateVal.includes("Z")
-  ) {
-    return dateVal;
-  }
-
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return dateVal;
@@ -42,6 +32,17 @@ const formatDateForInput = (dateVal, type = "date") => {
 
 const formatDateForPicker = (dateVal, type = "date") => {
   if (!dateVal) return "";
+
+  // Handle already formatted dd-mm-yyyy strings
+  if (typeof dateVal === 'string' && /^\d{2}-\d{2}-\d{4}/.test(dateVal)) {
+    const parts = dateVal.split(/[-/]/); // support - or /
+    if (parts.length === 3) {
+      const [d, m, y] = parts;
+      // Return yyyy-MM-dd
+      return `${y}-${m}-${d}`;
+    }
+  }
+
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return dateVal;
@@ -1309,6 +1310,53 @@ const OperationsTab = ({ formik }) => {
     });
 
     formik.setFieldValue("operations", newOperations);
+
+    // AUTO-SYNC: When billing date is set, update detailedStatus and milestones
+    if (section === "statusDetails" && field === "billingDocsSentDt" && value) {
+      // 1. Add "Billing Pending" to detailedStatus if not already present
+      const currentStatus = formik.values.detailedStatus || [];
+      if (!currentStatus.includes("Billing Pending")) {
+        formik.setFieldValue("detailedStatus", [...currentStatus, "Billing Pending"]);
+      }
+
+      // 2. Update the "Billing Pending" milestone
+      const milestones = formik.values.milestones || [];
+      const billingIdx = milestones.findIndex((m) => m.milestoneName === "Billing Pending");
+      if (billingIdx !== -1) {
+        // Convert the date to dd-mm-yyyy format for milestone
+        let milestoneDate = value;
+        if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+          const [y, m, d] = value.split("-");
+          milestoneDate = `${d}-${m}-${y}`;
+        }
+        const updatedMilestones = [...milestones];
+        updatedMilestones[billingIdx] = {
+          ...updatedMilestones[billingIdx],
+          actualDate: milestoneDate,
+          isCompleted: true,
+          isMandatory: true,
+        };
+        formik.setFieldValue("milestones", updatedMilestones);
+      }
+    }
+
+    // If billing date is cleared, remove "Billing Pending" from detailedStatus and reset milestone
+    if (section === "statusDetails" && field === "billingDocsSentDt" && !value) {
+      const currentStatus = formik.values.detailedStatus || [];
+      formik.setFieldValue("detailedStatus", currentStatus.filter((s) => s !== "Billing Pending"));
+
+      const milestones = formik.values.milestones || [];
+      const billingIdx = milestones.findIndex((m) => m.milestoneName === "Billing Pending");
+      if (billingIdx !== -1) {
+        const updatedMilestones = [...milestones];
+        updatedMilestones[billingIdx] = {
+          ...updatedMilestones[billingIdx],
+          actualDate: "",
+          isCompleted: false,
+        };
+        formik.setFieldValue("milestones", updatedMilestones);
+      }
+    }
   };
 
   const addItem = (section) => {
@@ -1665,87 +1713,6 @@ const OperationsTab = ({ formik }) => {
 };
 
 
-// const JobDetailedStatusSection = ({ formik }) => {
-//   const statuses = [
-//     "SB Filed",
-//     "SB Receipt",
-//     "L.E.O",
-//     "Container HO to Concor",
-//     "Rail Out",
-//     "Ready for Billing",
-//     "Billing Done",
-//   ];
-
-//   const currentStatusArray = formik.values.detailedStatus || [];
-
-//   const handleToggle = (status) => {
-//     let nextStatus;
-//     if (currentStatusArray.includes(status)) {
-//       nextStatus = currentStatusArray.filter((s) => s !== status);
-//     } else {
-//       nextStatus = [...currentStatusArray, status];
-//     }
-//     formik.setFieldValue("detailedStatus", nextStatus);
-//   };
-
-//   return (
-//     <div style={styles.sectionContainer}>
-//       <div style={styles.sectionHeader}>
-//         <h3 style={styles.sectionTitle}>Job Progress Checklist</h3>
-//       </div>
-//       <div
-//         style={{
-//           display: "flex",
-//           flexWrap: "wrap",
-//           gap: "20px",
-//           padding: "20px",
-//           backgroundColor: "#fff",
-//         }}
-//       >
-//         {statuses.map((status) => (
-//           <label
-//             key={status}
-//             style={{
-//               display: "flex",
-//               alignItems: "center",
-//               gap: "10px",
-//               cursor: "pointer",
-//               fontSize: "14px",
-//               fontWeight: "500",
-//               color: currentStatusArray.includes(status)
-//                 ? "#2563eb"
-//                 : "#4b5563",
-//               padding: "8px 12px",
-//               borderRadius: "6px",
-//               border: "1px solid",
-//               borderColor: currentStatusArray.includes(status)
-//                 ? "#bfdbfe"
-//                 : "#e5e7eb",
-//               backgroundColor: currentStatusArray.includes(status)
-//                 ? "#eff6ff"
-//                 : "#f9fafb",
-//               transition: "all 0.2s",
-//             }}
-//           >
-//             <input
-//               type="checkbox"
-//               checked={currentStatusArray.includes(status)}
-//               onChange={() => handleToggle(status)}
-//               style={{
-//                 width: "18px",
-//                 height: "18px",
-//                 cursor: "pointer",
-//               }}
-//             />
-//             {status}
-//           </label>
-//         ))}
-//       </div>
-//     </div>
-//   );
-// };
-
-// --- Sub-Components ---
 
 const TableSection = ({
   title,
@@ -1927,6 +1894,10 @@ const TableSection = ({
                               disabled={!!col.readOnly}
                               onChange={(e) => {
                                 if (col.readOnly) return;
+                                // Fix: Immediate switch back to text mode to show formatted date
+                                if (col.type === "date" || col.type === "datetime-local") {
+                                  e.target.type = "text";
+                                }
                                 onUpdate(
                                   section,
                                   rowIdx,
@@ -2212,6 +2183,7 @@ const StatusSection = ({
       label: "Billing",
       type: "date",
       width: 1,
+      disabledFn: (item) => !(item.billingDocsSentUpload && item.billingDocsSentUpload.length > 0),
     },
     {
       field: "billingDocsSentUpload",
@@ -2427,14 +2399,15 @@ const StatusSection = ({
               e.target.showPicker && e.target.showPicker();
             }}
             onBlur={(e) => (e.target.type = "text")}
-            onChange={(e) =>
+            onChange={(e) => {
+              e.target.type = "text"; // Fix: Switch back to text immediately
               onUpdate(
                 section,
                 rowIdx,
                 "handoverConcorTharSanganaRailRoadDate",
                 e.target.value,
-              )
-            }
+              );
+            }}
             style={{
               ...styles.cellInput,
               border: "1px solid #e2e8f0",
@@ -2447,36 +2420,54 @@ const StatusSection = ({
           />
         </div>
       </div>
-    ) : (
-      <input
-        type={
-          f.type === "date" || f.type === "datetime-local"
-            ? "text"
-            : f.type || "text"
-        }
-        value={
-          f.type === "date" || f.type === "datetime-local"
-            ? formatDateForInput(item[f.field] || "", f.type)
-            : item[f.field] || ""
-        }
-        onChange={(e) => onUpdate(section, rowIdx, f.field, e.target.value)}
-        onDoubleClick={(e) => {
-          if (f.type === "date" || f.type === "datetime-local") {
-            const pickerVal = formatDateForPicker(item[f.field], f.type);
-            if (pickerVal) e.target.value = pickerVal;
-            e.target.type = f.type;
-            e.target.showPicker && e.target.showPicker();
+    ) : (() => {
+      const isFieldDisabled = f.disabledFn ? f.disabledFn(item) : false;
+      return (
+        <input
+          type={
+            f.type === "date" || f.type === "datetime-local"
+              ? "text"
+              : f.type || "text"
           }
-        }}
-        onBlur={(e) => {
-          if (f.type === "date" || f.type === "datetime-local") {
-            e.target.type = "text";
+          value={
+            f.type === "date" || f.type === "datetime-local"
+              ? formatDateForInput(item[f.field] || "", f.type)
+              : item[f.field] || ""
           }
-        }}
-        style={styles.cellInput}
-        placeholder={f.type === "date" ? "dd-mm-yyyy" : ""}
-      />
-    );
+          disabled={isFieldDisabled}
+          onChange={(e) => {
+            if (isFieldDisabled) return;
+            // Fix: Immediate switch back to text mode to show formatted date
+            if (f.type === "date" || f.type === "datetime-local") {
+              e.target.type = "text";
+            }
+            onUpdate(section, rowIdx, f.field, e.target.value);
+          }}
+          onDoubleClick={(e) => {
+            if (isFieldDisabled) return;
+            if (f.type === "date" || f.type === "datetime-local") {
+              const pickerVal = formatDateForPicker(item[f.field], f.type);
+              if (pickerVal) e.target.value = pickerVal;
+              e.target.type = f.type;
+              e.target.showPicker && e.target.showPicker();
+            }
+          }}
+          onBlur={(e) => {
+            if (f.type === "date" || f.type === "datetime-local") {
+              e.target.type = "text";
+            }
+          }}
+          style={{
+            ...styles.cellInput,
+            ...(isFieldDisabled
+              ? { backgroundColor: "#f1f5f9", color: "#94a3b8", cursor: "not-allowed" }
+              : {}),
+          }}
+          placeholder={f.type === "date" ? "dd-mm-yyyy" : ""}
+          title={isFieldDisabled ? "Upload Bill Doc Copy first to enable this field" : ""}
+        />
+      );
+    })();
   };
 
   return (

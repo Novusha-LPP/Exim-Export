@@ -3,16 +3,15 @@ import DateInput from "../../../common/DateInput.js";
 
 const getMilestones = (isAir) => [
   "SB Filed",
-  "SB Receipt",
   "L.E.O",
   isAir ? "File Handover to IATA" : "Container HO",
   isAir ? "Departure" : "Rail Out",
-  "Ready for Billing",
+  "Billing Pending",
   "Billing Done",
 ];
 
 const getMandatoryNames = (isAir) =>
-  new Set(["SB Filed", "SB Receipt", "L.E.O", "Ready for Billing"]);
+  new Set(["SB Filed", "L.E.O", "Billing Pending"]);
 
 const TrackingCompletedTab = ({ formik, directories, params }) => {
   const [filter, setFilter] = useState("Show All");
@@ -55,13 +54,12 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
   // Define all possible system milestones to distinguish from custom ones
   const ALL_SYSTEM_MILESTONES = new Set([
     "SB Filed",
-    "SB Receipt",
     "L.E.O",
     "File Handover to IATA",
     "Container HO to Concor",
     "Departure",
     "Rail Out",
-    "Ready for Billing",
+    "Billing Pending",
     "Billing Done",
   ]);
 
@@ -133,6 +131,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
     // We filter out any milestone that is a SYSTEM milestone but NOT in the current mode
     const extras = ms.filter((m) => {
       const name = m.milestoneName;
+      if (!name) return false; // Ignore empty names
       // Keep if it is in the current base set (already handled in basePart? No, basePart creates NEW array)
       // Wait, basePart contains the *system* milestones for current mode.
       // We want 'extras' to be ONLY non-system milestones.
@@ -159,6 +158,92 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
     // The checks inside (isMissingRequired, hasInvalidSystem) prevent infinite loops
     // because once we align, those become false.
     formik.values.milestones,
+  ]);
+
+  // Sync milestones with source fields from operations/job details
+  useEffect(() => {
+    // Only proceed if initialized
+    if (!hasInitializedRef.current) return;
+
+    const op = formik.values.operations?.[0]?.statusDetails?.[0] || {};
+    const sbDate = formik.values.sb_date;
+
+    // Helper to map milestone name to source data
+    const getSource = (name) => {
+      // 1. SB Filed -> sb_date
+      if (name === "SB Filed") return { val: sbDate, isDoc: false };
+
+      // 2. L.E.O -> LEO (leoDate)
+      if (name === "L.E.O") return { val: op.leoDate, isDoc: false };
+
+      // 3. Container HO / File Handover -> Handover doc (handoverImageUpload)
+      if (name === "Container HO" || name === "File Handover to IATA") {
+        const docs = op.handoverImageUpload;
+        const dateVal = op.handoverForwardingNoteDate || op.handoverConcorTharSanganaRailRoadDate || "";
+        // Fix: Consider it "has docs" (completed) if either doc upload exists OR the date is set
+        const hasDocs = (Array.isArray(docs) && docs.length > 0) || !!dateVal;
+        return { val: dateVal, isDoc: true, hasDoc: hasDocs };
+      }
+
+      // 4. Rail Out / Departure -> Rail Reached (railOutReachedDate)
+      if (name === "Rail Out" || name === "Departure") return { val: op.railOutReachedDate, isDoc: false };
+
+      return null;
+    };
+
+    const currentMilestones = formik.values.milestones || [];
+    if (currentMilestones.length === 0) return;
+
+    let changed = false;
+    const newMilestones = currentMilestones.map((m) => {
+      const source = getSource(m.milestoneName);
+      if (!source) return m;
+
+      let updates = {};
+
+      if (source.isDoc) {
+        // Document-driven logic
+        if (source.hasDoc) {
+          if (!m.isCompleted) updates.isCompleted = true;
+          // Only update date if we have a valid one from source, otherwise keep existing manual or empty?
+          // User said "if Handover doc has value...". 
+          // If source date is valid, sync it.
+          if (source.val && m.actualDate !== source.val) updates.actualDate = source.val;
+        } else {
+          // If doc is removed, we likely uncheck it to stay in sync
+          if (m.isCompleted) {
+            updates.isCompleted = false;
+            updates.actualDate = "";
+          }
+        }
+      } else {
+        // Date-driven logic
+        if (source.val) {
+          if (!m.isCompleted) updates.isCompleted = true;
+          if (m.actualDate !== source.val) updates.actualDate = source.val;
+        } else {
+          if (m.isCompleted) {
+            updates.isCompleted = false;
+            updates.actualDate = "";
+          }
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        changed = true;
+        return { ...m, ...updates };
+      }
+      return m;
+    });
+
+    if (changed) {
+      formik.setFieldValue("milestones", newMilestones);
+    }
+  }, [
+    // Dependencies to trigger the check
+    formik.values.sb_date,
+    formik.values.operations,
+    formik.values.milestones
   ]);
 
   const handleMilestoneChange = (index, updates) => {
@@ -389,6 +474,10 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                     m.milestoneName
                   );
                   const isSelected = selectedIndex === realIndex;
+                  const isAutoMilestone =
+                    (currentBaseMilestones.includes(m.milestoneName) &&
+                      m.milestoneName !== "Billing Done") ||
+                    m.milestoneName === "Billing Pending";
                   return (
                     <tr
                       key={realIndex}
@@ -412,6 +501,14 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                         <span style={{ fontWeight: isBase ? 500 : 400 }}>
                           {m.milestoneName}
                         </span>
+                        {isAutoMilestone && (
+                          <span
+                            title="Auto-set from billing date in Operations tab"
+                            style={{ marginLeft: 4, fontSize: 10, color: "#94a3b8" }}
+                          >
+                            🔒
+                          </span>
+                        )}
                       </td>
                       <td style={{ padding: "4px 8px" }}>
                         <DateInput
@@ -422,16 +519,22 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                             border: "1px solid #bdc7d1",
                             borderRadius: 3,
                             height: 24,
-                            background:
-                              m.actualDate &&
+                            background: isAutoMilestone
+                              ? "#f1f5f9"
+                              : m.actualDate &&
                                 m.actualDate !== "dd-mm-yyyy" &&
                                 m.actualDate !== ""
                                 ? "#ecfdf3"
                                 : "#ffffff",
+                            ...(isAutoMilestone
+                              ? { color: "#64748b", cursor: "not-allowed" }
+                              : {}),
                           }}
                           value={m.actualDate || ""}
                           withTime={false}
+                          disabled={isAutoMilestone}
                           onChange={(e) => {
+                            if (isAutoMilestone) return;
                             const v = e.target.value;
                             if (!v) {
                               handleMilestoneChange(realIndex, {
@@ -450,7 +553,9 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                         <input
                           type="checkbox"
                           checked={!!m.isCompleted}
+                          disabled={isAutoMilestone}
                           onChange={(e) => {
+                            if (isAutoMilestone) return;
                             const isChecked = e.target.checked;
                             const updates = { isCompleted: isChecked };
 
@@ -481,7 +586,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
 
                             handleMilestoneChange(realIndex, updates);
                           }}
-                          style={{ cursor: "pointer" }}
+                          style={{ cursor: isAutoMilestone ? "not-allowed" : "pointer" }}
+                          title={isAutoMilestone ? "Auto-set from billing date in Operations tab" : ""}
                         />
                       </td>
                     </tr>

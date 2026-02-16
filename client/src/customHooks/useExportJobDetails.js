@@ -376,6 +376,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       // Charges and Billing
       // Charges and Billing
       charges: [],
+      fines: [],
 
       // AR Invoices
       arInvoices: [
@@ -1024,6 +1025,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         isJobtrackingEnabled: safeValue(data.isJobtrackingEnabled, false),
         isJobCanceled: safeValue(data.isJobCanceled, false),
         charges: safeValue(data.charges, []),
+        fines: safeValue(data.fines, []),
         arInvoices: safeValue(data.arInvoices, []),
         eSanchitDocuments: safeValue(data.eSanchitDocuments, []),
         products: safeValue(data.products, []).map((product) => ({

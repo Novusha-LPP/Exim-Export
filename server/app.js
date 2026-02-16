@@ -80,6 +80,13 @@ import openPointsRoutes from "./routes/open-points/openPointsRoutes.mjs";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import sbTrack from "./routes/export-dsr/sbTrack.mjs";
 
+// Report Routes
+import monthlyContainersReport from "./routes/report/monthlyContainers.mjs";
+import billingPendingReport from "./routes/report/getBillingPendingReport.mjs";
+import fineReport from "./routes/report/getFineReport.mjs";
+import exporterReport from "./routes/report/getExporterReport.mjs";
+import exportClearanceReport from "./routes/report/exportClearanceMonthly.mjs";
+
 // REMOVED: Dangerous exception handlers that caused 3.1M log storm
 // Exception handlers are now in ./exceptionHandlers.js with:
 // - Rate limiting (same error logged once per minute)
@@ -226,6 +233,13 @@ app.use(generateDSRReport);
 app.use(openPointsRoutes);
 app.use("/api", uploadRoutes);
 app.use(sbTrack);
+
+// Report Routes
+app.use(monthlyContainersReport);
+app.use(billingPendingReport);
+app.use(fineReport);
+app.use(exporterReport);
+app.use(exportClearanceReport);
 
 // s3 route
 

@@ -257,8 +257,7 @@ const getStatusColor = (statusValue) => {
     // Export Status Mappings
     case "SB Filed":
       return "#e6f3ff"; // Light Blue (Match Custom Clearance?)
-    case "SB Receipt":
-      return "#f0e6ff"; // Light Purple (Match BE Noted?)
+
     case "L.E.O":
       return "#e8f5e9"; // Light Green (Completed/Approved)
     case "Container HO to Concor":
@@ -267,8 +266,6 @@ const getStatusColor = (statusValue) => {
     case "Rail Out":
     case "Departure":
       return "#fbdbffff"; // Honeydew
-    case "Ready for Billing":
-      return "#ffe4e1"; // Misty rose
     case "Billing Pending":
       return "#ffe4e1";
     case "Billing Done":
@@ -1164,13 +1161,12 @@ const ExportJobsTable = () => {
                 </MenuItem>
                 {[
                   "SB Filed",
-                  "SB Receipt",
                   "L.E.O",
                   "Container HO to Concor",
                   "File Handover to IATA",
                   "Rail Out",
                   "Departure",
-                  "Ready for Billing",
+                  "Billing Pending",
                   "Billing Done",
                 ].map((status) => (
                   <MenuItem
