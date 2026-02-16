@@ -176,13 +176,26 @@ public class Main extends JFrame {
 
             try {
                 // Read flat file content as raw bytes - DO NOT MODIFY!
-                // Logisys and other customs software generate files in specific formats
-                // that must be preserved exactly for ICEGATE validation
                 byte[] rawData = Files.readAllBytes(inputFile.toPath());
 
-                // Generate RAW RSA signature on the ORIGINAL bytes
-                // ICEGATE expects raw RSA signature in modern SHA256withRSA
-                byte[] signature = dscService.signRaw(rawData);
+                // TRIM trailing newlines/CRLF from rawData to Avoid Extra Blank Lines
+                // ICEGATE validation fails if there are multiple newlines or none.
+                // We normalize it to exactly ONE CRLF after the content (TREC line).
+                int cleanLen = rawData.length;
+                while (cleanLen > 0 && (rawData[cleanLen - 1] == '\r' || rawData[cleanLen - 1] == '\n')) {
+                    cleanLen--;
+                }
+
+                // Construct EXACT data to sign: Clean Content + Single CRLF
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                baos.write(rawData, 0, cleanLen);
+                baos.write(new byte[] { 13, 10 }); // Force nice Windows CRLF
+                byte[] dataToSign = baos.toByteArray();
+
+                // Generate RAW RSA signature on the EXACT bytes we will write
+                // This fixes the hash mismatch issue where we were signing X but writing X +
+                // \r\n
+                byte[] signature = dscService.signRaw(dataToSign);
 
                 // Base64 encode the signature (NO line wrapping - single line)
                 String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
@@ -199,15 +212,12 @@ public class Main extends JFrame {
 
                 // Save .sb file in STRICT BINARY MODE
                 try (FileOutputStream fos = new FileOutputStream(sbFile)) {
-                    // 1. Write original raw data
-                    fos.write(rawData);
+                    // 1. Write the signed data (Original + Optional Newline)
+                    // This ensures the file content hash matches the signature hash exactly
+                    fos.write(dataToSign);
 
-                    // 2. Ensure trailing newline if not present (using standard CRLF for ICEGATE)
-                    if (rawData.length > 0 && rawData[rawData.length - 1] != '\n') {
-                        fos.write("\r\n".getBytes());
-                    }
-
-                    // 3. Append signature block in ICEGATE compatible format
+                    // 2. Append signature block in ICEGATE compatible format
+                    // Note: dataToSign guarantees we are at a new line
                     fos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\r\n").getBytes());
                     fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\r\n").getBytes());
                     fos.write("<SIGNER-VERSION>Exim Local Signer v1.0</SIGNER-VERSION>".getBytes());
@@ -374,10 +384,19 @@ public class Main extends JFrame {
 
                     log("Signing Job: " + jobNo);
 
-                    // 1. Keep content as-is (DO NOT normalize line endings!)
-                    byte[] dataToSign = content.getBytes("ISO-8859-1");
+                    // 1. Prepare CONTENT to sign (Must end with CRLF)
+                    // ICEGATE requires the content to end with a newline before the signature block
+                    StringBuilder contentBuilder = new StringBuilder(content);
+                    if (!content.endsWith("\n") && !content.endsWith("\r\n")) {
+                        contentBuilder.append("\r\n");
+                    }
+                    String contentToSignStr = contentBuilder.toString();
+
+                    // Convert to bytes for signing (ISO-8859-1 to preserve original chars)
+                    byte[] dataToSign = contentToSignStr.getBytes("ISO-8859-1");
 
                     // 2. Generate RAW RSA signature (NOT PKCS#7)
+                    // Signs the EXACT bytes that will be written (msg + newline)
                     byte[] signature = dscService.signRaw(dataToSign);
 
                     // 3. Base64 encode (NO line wrapping)
@@ -386,12 +405,9 @@ public class Main extends JFrame {
                     // 4. Get certificate in Base64
                     String certificateBase64 = dscService.getCertificateBase64();
 
-                    // 5. Create signed content in ICEGATE format
+                    // 5. Create signed content string in ICEGATE format
                     StringBuilder signedContent = new StringBuilder();
-                    signedContent.append(content);
-                    if (!content.endsWith("\n") && !content.endsWith("\r\n")) {
-                        signedContent.append("\r\n");
-                    }
+                    signedContent.append(contentToSignStr); // Already includes required newline
 
                     // ICEGATE format: each tag with content on same line
                     signedContent.append("<START-SIGNATURE>");
@@ -440,8 +456,9 @@ public class Main extends JFrame {
                                 "✓ " + finalCount + " jobs signed successfully\n" +
                                 "✓ Files saved to: " + outputDir.getAbsolutePath() + "\n\n" +
                                 "Each .sb file contains:\n" +
-                                "  • ICES 1.5 flat file content\n" +
-                                "  • Embedded PKCS#7 digital signature\n\n" +
+                                "  • ICES 1.5 flat file content (normalized)\n" +
+                                "  • RAW RSA signature (SHA256withRSA)\n" +
+                                "  • Embedded X.509 Certificate\n\n" +
                                 "Ready to upload to ICEGATE!",
                         "Success", JOptionPane.INFORMATION_MESSAGE);
                 fetchJobs(); // Refresh
