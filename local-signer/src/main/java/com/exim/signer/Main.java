@@ -43,7 +43,6 @@ public class Main extends JFrame {
 
         configPanel.add(new JLabel("DSC Driver (DLL):"));
         JPanel dllPanel = new JPanel(new BorderLayout());
-        // Updated to the 64-bit driver found in System32
         dllField = new JTextField("C:\\Windows\\System32\\CryptoIDA_pkcs11.dll");
         JButton linkBtn = new JButton("Browse");
         linkBtn.addActionListener(e -> {
@@ -70,7 +69,6 @@ public class Main extends JFrame {
         JPanel testPanel = new JPanel(new GridLayout(2, 1, 10, 10));
         testPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        // Option A: Detached Signature (for Shipping Bills .sb files)
         JPanel detachedPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JButton pickFileBtn = new JButton("Sign File (.sig) - For Shipping Bills");
         pickFileBtn.addActionListener(e -> signLocalFile());
@@ -78,7 +76,6 @@ public class Main extends JFrame {
         detachedPanel.add(new JLabel("Creates separate .sig file (for .sb flat files)"));
         testPanel.add(detachedPanel);
 
-        // Option B: Embedded PDF Signature (for e-Sanchit)
         JPanel padesPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JButton signPdfBtn = new JButton("Sign PDF (Embedded) - For e-Sanchit");
         signPdfBtn.addActionListener(e -> signPdfForESanchit());
@@ -91,7 +88,6 @@ public class Main extends JFrame {
         // TAB 2: Live Mode (ICEGATE Jobs)
         JPanel livePanel = new JPanel(new BorderLayout());
 
-        // Table Columns: Select, Job No, Exporter, SB No
         String[] columns = { "Select", "Job No", "Exporter", "SB No", "Content (Hidden)", "ID (Hidden)" };
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
@@ -100,7 +96,6 @@ public class Main extends JFrame {
             }
         };
         jobsTable = new JTable(tableModel);
-        // Hide content/ID columns if desired, but keep simple for now
 
         JScrollPane tableScroll = new JScrollPane(jobsTable);
         livePanel.add(tableScroll, BorderLayout.CENTER);
@@ -164,7 +159,6 @@ public class Main extends JFrame {
         if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             File inputFile = fileChooser.getSelectedFile();
 
-            // Ask for output directory
             JFileChooser folderChooser = new JFileChooser();
             folderChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
             folderChooser.setDialogTitle("Select Output Folder for Signed .sb File");
@@ -178,30 +172,22 @@ public class Main extends JFrame {
                 // Read flat file content as raw bytes - DO NOT MODIFY!
                 byte[] rawData = Files.readAllBytes(inputFile.toPath());
 
-                // TRIM trailing newlines/CRLF from rawData to Avoid Extra Blank Lines
-                // ICEGATE validation fails if there are multiple newlines or none.
-                // We normalize it to exactly ONE CRLF after the content (TREC line).
+                // Trim any trailing CR/LF, then append exactly one bare LF.
+                // ICEGATE expects the TREC line to end with \n (not \r\n).
                 int cleanLen = rawData.length;
                 while (cleanLen > 0 && (rawData[cleanLen - 1] == '\r' || rawData[cleanLen - 1] == '\n')) {
                     cleanLen--;
                 }
 
-                // Construct EXACT data to sign: Clean Content + Single CRLF
                 java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
                 baos.write(rawData, 0, cleanLen);
-                // ICEGATE expects bare LF on the TREC line
-                baos.write(new byte[] { 10 });
+                baos.write(new byte[] { 10 }); // bare LF — ICEGATE requirement on TREC line
                 byte[] dataToSign = baos.toByteArray();
 
-                // Generate RAW RSA signature on the EXACT bytes we will write
-                // This fixes the hash mismatch issue where we were signing X but writing X +
-                // \r\n
+                // Sign using SHA1withRSA — ICEGATE rejects SHA256withRSA
                 byte[] signature = dscService.signRaw(dataToSign);
 
-                // Base64 encode the signature (NO line wrapping - single line)
                 String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
-
-                // Get certificate in Base64 (NO line wrapping - single line)
                 String certificateBase64 = dscService.getCertificateBase64();
 
                 // Generate output filename as .sb
@@ -213,13 +199,8 @@ public class Main extends JFrame {
 
                 // Save .sb file in STRICT BINARY MODE
                 try (FileOutputStream fos = new FileOutputStream(sbFile)) {
-                    // 1. Write the signed data (Original + Optional Newline)
-                    // This ensures the file content hash matches the signature hash exactly
                     fos.write(dataToSign);
-
-                    // 2. Append signature block in ICEGATE compatible format
-                    // Note: dataToSign guarantees we end with \n
-                    // ICEGATE expects bare \n after closing tags also
+                    // Bare \n after each closing tag — matches ICEGATE accepted format exactly
                     fos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\n").getBytes());
                     fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\n").getBytes());
                     fos.write("<SIGNER-VERSION>V-NCODE_01.05.2013</SIGNER-VERSION>".getBytes());
@@ -235,9 +216,9 @@ public class Main extends JFrame {
                                 "Output: " + sbFile.getAbsolutePath() + "\n\n" +
                                 "The .sb file contains:\n" +
                                 "• Original flat file content (UNCHANGED BINARY)\n" +
-                                "• RAW RSA signature (SHA256withRSA)\n" +
+                                "• RAW RSA signature (SHA1withRSA)\n" +
                                 "• X.509 Certificate\n\n" +
-                                "Format: ICEGATE compatible (Softlink style)!",
+                                "Format: ICEGATE compatible!",
                         "Success", JOptionPane.INFORMATION_MESSAGE);
 
             } catch (Exception e) {
@@ -266,7 +247,6 @@ public class Main extends JFrame {
         if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             File inputFile = fileChooser.getSelectedFile();
 
-            // Create output file name
             String inputName = inputFile.getName();
             String baseName = inputName.endsWith(".pdf") ? inputName.substring(0, inputName.length() - 4) : inputName;
             File outputFile = new File(inputFile.getParent(), baseName + "_signed.pdf");
@@ -274,14 +254,12 @@ public class Main extends JFrame {
             try {
                 log("Signing PDF for e-Sanchit: " + inputFile.getName());
 
-                // Initialize PDF Signer with DSC credentials
                 PdfSignerService pdfSigner = new PdfSignerService();
                 pdfSigner.initialize(
                         dscService.getKeyStore(),
                         dscService.getAlias(),
                         dscService.getProvider());
 
-                // Sign the PDF
                 pdfSigner.signPdf(inputFile, outputFile, "Document Signing for ICEGATE e-Sanchit", "India");
 
                 log("PDF signed successfully: " + outputFile.getName());
@@ -307,7 +285,7 @@ public class Main extends JFrame {
             log("Fetching jobs...");
             JsonArray jobs = apiClient.getPendingJobs();
 
-            tableModel.setRowCount(0); // Clear
+            tableModel.setRowCount(0);
             for (JsonElement j : jobs) {
                 JsonObject job = j.getAsJsonObject();
                 String id = job.get("_id").getAsString();
@@ -319,8 +297,6 @@ public class Main extends JFrame {
                 if (job.has("flatFileContent")) {
                     content = job.get("flatFileContent").getAsString();
                 } else {
-                    // Generate Flat File Content Locally (ICES 1.5 Format) if API doesn't provide
-                    // it
                     content = generateFlatFileContent(jobNo, sbNo, exporter);
                 }
 
@@ -333,7 +309,6 @@ public class Main extends JFrame {
     }
 
     private String generateFlatFileContent(String jobNo, String sbNo, String exporter) {
-        // HREC...TREC Structure
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("ddMMyyyy");
         String dateStr = sdf.format(new java.util.Date());
 
@@ -365,13 +340,12 @@ public class Main extends JFrame {
             return;
         }
 
-        // Ask user for output directory
         JFileChooser folderChooser = new JFileChooser();
         folderChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         folderChooser.setDialogTitle("Select Output Folder for Signed Files");
 
         if (folderChooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
-            return; // User cancelled
+            return;
         }
         File outputDir = folderChooser.getSelectedFile();
 
@@ -381,64 +355,54 @@ public class Main extends JFrame {
                 try {
                     String jobNo = (String) tableModel.getValueAt(i, 1);
                     String sbNo = (String) tableModel.getValueAt(i, 3);
-                    String content = (String) tableModel.getValueAt(i, 4); // Flat File Content
+                    String content = (String) tableModel.getValueAt(i, 4);
                     String id = (String) tableModel.getValueAt(i, 5);
 
                     log("Signing Job: " + jobNo);
 
-                    // 1. Prepare CONTENT to sign (Must end with LF only for TREC line)
+                    // Trim trailing CR/LF, then append exactly one bare LF
+                    // ICEGATE requires TREC line to end with \n only (not \r\n)
                     StringBuilder contentBuilder = new StringBuilder(content);
-                    // Remove trailing CRLF or LF if present to normalize
-                    while (contentBuilder.length() > 0 && (contentBuilder.charAt(contentBuilder.length() - 1) == '\n'
-                            || contentBuilder.charAt(contentBuilder.length() - 1) == '\r')) {
+                    while (contentBuilder.length() > 0 &&
+                            (contentBuilder.charAt(contentBuilder.length() - 1) == '\n'
+                                    || contentBuilder.charAt(contentBuilder.length() - 1) == '\r')) {
                         contentBuilder.setLength(contentBuilder.length() - 1);
                     }
-                    // Append single bare LF
-                    contentBuilder.append("\n");
+                    contentBuilder.append("\n"); // bare LF
 
                     String contentToSignStr = contentBuilder.toString();
 
-                    // Convert to bytes for signing (ISO-8859-1 to preserve original chars)
+                    // Convert to bytes using ISO-8859-1 to preserve all original bytes including
+                    // 0x1D
                     byte[] dataToSign = contentToSignStr.getBytes("ISO-8859-1");
 
-                    // 2. Generate RAW RSA signature (NOT PKCS#7)
-                    // Signs the EXACT bytes that will be written (msg + newline)
+                    // Sign using SHA1withRSA — ICEGATE rejects SHA256withRSA
                     byte[] signature = dscService.signRaw(dataToSign);
 
-                    // 3. Base64 encode (NO line wrapping)
                     String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
-
-                    // 4. Get certificate in Base64
                     String certificateBase64 = dscService.getCertificateBase64();
 
-                    // 5. Create signed content string in ICEGATE format
+                    // Build .sb file content
                     StringBuilder signedContent = new StringBuilder();
-                    signedContent.append(contentToSignStr); // Already includes required bare newline
-
-                    // ICEGATE format: each tag with content on same line, bare \n separator
+                    signedContent.append(contentToSignStr);
                     signedContent.append("<START-SIGNATURE>");
                     signedContent.append(signatureBase64);
                     signedContent.append("</START-SIGNATURE>\n");
-
                     signedContent.append("<START-CERTIFICATE>");
                     signedContent.append(certificateBase64);
                     signedContent.append("</START-CERTIFICATE>\n");
-
                     signedContent.append("<SIGNER-VERSION>V-NCODE_01.05.2013</SIGNER-VERSION>");
 
-                    // 6. Generate file name
                     String baseName = jobNo + "_" + (sbNo != null && !sbNo.equals("N/A") ? sbNo : "SB");
-                    baseName = baseName.replaceAll("[^a-zA-Z0-9_-]", "_"); // Sanitize
+                    baseName = baseName.replaceAll("[^a-zA-Z0-9_-]", "_");
 
                     File sbFile = new File(outputDir, baseName + ".sb");
 
-                    // 7. Save .sb file - use ISO-8859-1 to preserve bytes
                     try (FileOutputStream fos = new FileOutputStream(sbFile)) {
                         fos.write(signedContent.toString().getBytes("ISO-8859-1"));
                     }
                     log("Saved signed file: " + sbFile.getName());
 
-                    // 6. Upload to server (optional)
                     try {
                         log("Uploading to server...");
                         apiClient.uploadSignedFile(id, signature);
@@ -463,11 +427,11 @@ public class Main extends JFrame {
                                 "✓ Files saved to: " + outputDir.getAbsolutePath() + "\n\n" +
                                 "Each .sb file contains:\n" +
                                 "  • ICES 1.5 flat file content (normalized)\n" +
-                                "  • RAW RSA signature (SHA256withRSA)\n" +
+                                "  • RAW RSA signature (SHA1withRSA)\n" +
                                 "  • Embedded X.509 Certificate\n\n" +
                                 "Ready to upload to ICEGATE!",
                         "Success", JOptionPane.INFORMATION_MESSAGE);
-                fetchJobs(); // Refresh
+                fetchJobs();
             });
         }).start();
     }
