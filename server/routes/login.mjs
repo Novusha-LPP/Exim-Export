@@ -38,6 +38,8 @@ router.post("/api/login", async (req, res) => {
           assigned_importer: user.assigned_importer,
           assigned_importer_name: user.assigned_importer_name,
           selected_icd_codes: user.selected_icd_codes,
+          selected_branches: user.selected_branches,
+          selected_ports: user.selected_ports,
         };
 
         return res.status(200).json(userResponse);

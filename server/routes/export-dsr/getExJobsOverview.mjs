@@ -1,5 +1,6 @@
 import express from "express";
 import ExJobModel from "../../model/export/ExJobModel.mjs";
+import UserModel from "../../model/userModel.mjs";
 
 const router = express.Router();
 
@@ -24,6 +25,25 @@ router.get("/api/get-exjobs-overview/:year", async (req, res) => {
 
     // Start building the match query
     const matchQuery = { $and: [{ year: year }] };
+
+    // Fetch user restrictions
+    const requesterUsername = req.headers["username"] || req.headers["x-username"];
+    if (requesterUsername) {
+      const requester = await UserModel.findOne({ username: requesterUsername });
+      if (requester && requester.role !== "Admin") {
+        if (requester.selected_branches && requester.selected_branches.length > 0) {
+          matchQuery.$and.push({ branch_code: { $in: requester.selected_branches } });
+        }
+        if (requester.selected_ports && requester.selected_ports.length > 0) {
+          matchQuery.$and.push({
+            $or: [
+              { custom_house: { $in: requester.selected_ports } },
+              { port_of_loading: { $in: requester.selected_ports } }
+            ]
+          });
+        }
+      }
+    }
 
     // Conditions based on status
     if (statusLower === "pending") {

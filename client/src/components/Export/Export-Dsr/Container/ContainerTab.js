@@ -39,10 +39,10 @@ function ContainerTab({ formik, onUpdate }) {
       const tw = Number(c.tareWeightKgs || 0);
       const targetSum = parseFloat((gw + tw).toFixed(3));
 
-      // Only auto-fill if it's 0 and the sum is non-zero
-      if (!c.grWtPlusTrWt && targetSum > 0) {
+      // Sync both legacy and new field names for safety
+      if ((!c.vgmWtInvoice || c.vgmWtInvoice === 0) && targetSum > 0) {
         changed = true;
-        return { ...c, grWtPlusTrWt: targetSum };
+        return { ...c, vgmWtInvoice: targetSum, grWtPlusTrWt: targetSum };
       }
       return c;
     });
@@ -64,10 +64,12 @@ function ContainerTab({ formik, onUpdate }) {
         type: "",
         pkgsStuffed: 0,
         grossWeight: 0,
+        maxGrossWeightKgs: 0,
         sealType: "RFID",
         shippingLineSealNo: "",
         tareWeightKgs: 0,
         grWtPlusTrWt: 0,
+        vgmWtInvoice: 0,
         maxPayloadKgs: 0,
         rfid: "",
       }];
@@ -111,7 +113,9 @@ function ContainerTab({ formik, onUpdate }) {
               const newD = { ...d };
 
               if (field === "type") newD.containerSize = value;
-              if (field === "grossWeight") newD.grossWeight = value; // Note: Operations sync might overwrite this from Transporter sum
+              if (field === "grossWeight") newD.grossWeight = value;
+              if (field === "maxGrossWeightKgs") newD.maxGrossWeightKgs = value;
+              if (field === "vgmWtInvoice") newD.vgmWtInvoice = value;
               if (field === "tareWeightKgs") newD.tareWeightKgs = value;
               if (field === "shippingLineSealNo") newD.shippingLineSealNo = value;
               if (field === "maxPayloadKgs") newD.maxPayloadKgs = value;
@@ -150,10 +154,12 @@ function ContainerTab({ formik, onUpdate }) {
       type: "",
       pkgsStuffed: 0,
       grossWeight: 0,
+      maxGrossWeightKgs: 0,
       sealType: "RFID",
       shippingLineSealNo: "",
       tareWeightKgs: 0,
       grWtPlusTrWt: 0,
+      vgmWtInvoice: 0,
       maxPayloadKgs: 0,
       rfid: "",
     });
@@ -211,6 +217,7 @@ function ContainerTab({ formik, onUpdate }) {
                 <th style={{ ...styles.th, width: 130 }}>GROSS WT</th>
                 <th style={{ ...styles.th, width: 130 }}>TARE WT</th>
                 <th style={{ ...styles.th, width: 130 }}>VGM WT</th>
+                <th style={{ ...styles.th, width: 130 }}>MAX PAYLOAD</th>
                 <th style={{ ...styles.th, width: 60, textAlign: "center" }}>
                   ACTION
                 </th>
@@ -220,7 +227,7 @@ function ContainerTab({ formik, onUpdate }) {
               {rows.length === 0 && (
                 <tr>
                   <td
-                    colSpan={11}
+                    colSpan={12}
                     style={{
                       ...styles.td,
                       textAlign: "center",
@@ -378,6 +385,22 @@ function ContainerTab({ formik, onUpdate }) {
                         handleFieldChange(
                           idx,
                           "tareWeightKgs",
+                          Number(e.target.value || 0),
+                        )
+                      }
+                      placeholder="0.00"
+                    />
+                  </td>
+
+                  <td style={styles.td}>
+                    <input
+                      type="number"
+                      style={styles.input}
+                      value={Number(row.vgmWtInvoice) === 0 ? "" : row.vgmWtInvoice}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          idx,
+                          "vgmWtInvoice",
                           Number(e.target.value || 0),
                         )
                       }

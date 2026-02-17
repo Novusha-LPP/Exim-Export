@@ -61,24 +61,8 @@ const formatDateForPicker = (dateVal, type = "date") => {
 };
 
 const containerTypes = [
-  "20 STANDARD DRY",
-  "20 FLAT RACK",
-  "20 COLLAPSIBLE FLAT RACK",
-  "20 REEFER",
-  "20 TANK",
-  "20 OPEN TOP",
-  "20 HARD TOP",
-  "20 PLATFORM",
-  "40 STANDARD DRY",
-  "40 FLAT RACK",
-  "40 COLLAPSIBLE FLAT RACK",
-  "40 REEFER",
-  "40 TANK",
-  "40 OPEN TOP",
-  "40 HARD TOP",
-  "40 HIGH CUBE",
-  "40 REEFER HIGH CUBE",
-  "40 PLATFORM",
+  "20 ft",
+  "40 ft",
 ];
 
 const cargoTypes = [
@@ -117,9 +101,8 @@ const getDefaultItem = (section) => {
       portOfLoading: "",
       customSealNo: "",
       grossWeight: 0,
-      grossWeightCont: 0,
-      vgmWtInvoice: 0,
       maxGrossWeightKgs: 0,
+      vgmWtInvoice: 0,
       tareWeightKgs: 0,
       maxPayloadKgs: 0,
       shippingLineSealNo: "",
@@ -140,6 +123,7 @@ const getDefaultItem = (section) => {
       shippingLineSealNo: "",
     },
     weighmentDetails: {
+      containerNo: "",
       weighBridgeName: "",
       regNo: "",
       address: "",
@@ -899,10 +883,9 @@ const OperationsTab = ({ formik }) => {
       let opIsDirty = false;
       const syncedOp = { ...op };
 
-      // 1. Collect all unique container numbers from Container Details only
+      // 1. Collect all unique container numbers from Container Details and Weighment Details
       const opUniqueContainers = new Set();
-      // Transporter details no longer has containerNo, so we only look at containerDetails
-      const sectionsToSync = isAir ? [] : ["containerDetails"];
+      const sectionsToSync = isAir ? [] : ["containerDetails", "weighmentDetails"];
 
       sectionsToSync.forEach((s) => {
         (syncedOp[s] || []).forEach((row) => {
@@ -912,9 +895,9 @@ const OperationsTab = ({ formik }) => {
         });
       });
 
-      // 2. Ensure Container Details represent all unique containers
+      // 2. Ensure synced sections represent all unique containers
       if (!isAir) {
-        ["containerDetails"].forEach((s) => {
+        sectionsToSync.forEach((s) => {
           const currentArr = [...(syncedOp[s] || [])];
           opUniqueContainers.forEach((cNo) => {
             const alreadyExists = currentArr.some(
@@ -950,16 +933,11 @@ const OperationsTab = ({ formik }) => {
       return; // Exit and wait for next render cycle
     }
 
-    // Phase B: Totals Sync (Sum up all operations)
-    let totalPkgs = 0;
-    let totalGross = 0;
-
-    // Also build a map of container details from transporterDetails to sync to master containers
+    // Build a map of container details from transporterDetails to sync to master containers
     const containerDetailsMap = new Map();
 
     operations.forEach((op) => {
       (op.transporterDetails || []).forEach((item) => {
-        totalPkgs += Number(item.noOfPackages || 0);
         // Container No removed from Transporter Details, so we don't map packages to containers here
       });
 
@@ -972,10 +950,13 @@ const OperationsTab = ({ formik }) => {
           if (!containerDetailsMap.has(cNo)) {
             containerDetailsMap.set(cNo, {
               grossWeight: 0,
+              maxGrossWeight: 0,
               netWeight: 0,
               noOfPackages: 0,
               tareWeightKgs: 0,
+              vgmWtInvoice: 0,
               shippingLineSealNo: "",
+              customSealNo: "",
               maxPayloadKgs: 0,
               containerSize: ""
             });
@@ -984,31 +965,35 @@ const OperationsTab = ({ formik }) => {
           const info = containerDetailsMap.get(cNo);
 
           // Sync Container-specific fields from containerDetails
-          if (item.grossWeight)
+          // Alignment:
+          // Operations.grossWeight -> Master.grossWeight (Cargo)
+          // Operations.maxGrossWeightKgs -> Master.maxGrossWeightKgs (Capacity)
+          if (item.grossWeight !== undefined)
             info.grossWeight = Number(item.grossWeight || 0);
-          if (item.tareWeightKgs)
+          if (item.maxGrossWeightKgs !== undefined)
+            info.maxGrossWeightKgs = Number(item.maxGrossWeightKgs || 0);
+          if (item.vgmWtInvoice !== undefined)
+            info.vgmWtInvoice = Number(item.vgmWtInvoice || 0);
+          if (item.tareWeightKgs !== undefined)
             info.tareWeightKgs = Number(item.tareWeightKgs || 0);
           if (item.shippingLineSealNo)
             info.shippingLineSealNo = item.shippingLineSealNo;
+          if (item.noOfPackages)
+            info.noOfPackages = Number(item.noOfPackages || 0);
+          if (item.netWeight)
+            info.netWeight = Number(item.netWeight || 0);
 
-          // Accumulate Global Gross Weight from Container Details
-          totalGross += Number(item.grossWeight || 0);
+          // Note: Global Gross Weight AND Packages sync to shipment header removed to prevent overwriting manual entry
 
-          if (item.maxPayloadKgs)
-            info.maxPayloadKgs = Number(item.maxPayloadKgs || 0);
           if (item.maxPayloadKgs)
             info.maxPayloadKgs = Number(item.maxPayloadKgs || 0);
           if (item.containerSize)
             info.containerSize = item.containerSize;
+          if (item.customSealNo)
+            info.customSealNo = item.customSealNo;
         }
       });
     });
-
-    // Only sync if we have a non-zero sum to avoid wiping global data during load or if details are missing
-    if (totalPkgs > 0 && Number(formik.values.total_no_of_pkgs || 0) !== totalPkgs)
-      formik.setFieldValue("total_no_of_pkgs", totalPkgs);
-    if (totalGross > 0 && Number(formik.values.gross_weight_kg || 0) !== totalGross)
-      formik.setFieldValue("gross_weight_kg", totalGross);
 
     // Phase C: Master Containers Sync (Updates formik.values.containers)
     // Only run this if NOT Air mode, as Air doesn't use the master containers list
@@ -1038,39 +1023,49 @@ const OperationsTab = ({ formik }) => {
         if (masterItemIdx === -1) {
           nextContainers.push({
             containerNo: no,
-            type: "",
+            type: opInfo.containerSize || "",
             sealNo: "",
             sealDate: "",
-            pkgsStuffed: opInfo.noOfPackages,
-            grossWeight: opInfo.grossWeight,
-            netWeight: opInfo.netWeight,
-            tareWeightKgs: opInfo.tareWeightKgs,
+            pkgsStuffed: opInfo.noOfPackages || 0,
+            grossWeight: opInfo.grossWeight || 0,
+            netWeight: opInfo.netWeight || 0,
+            tareWeightKgs: opInfo.tareWeightKgs || 0,
+            maxGrossWeightKgs: opInfo.maxGrossWeightKgs || 0,
+            vgmWtInvoice: opInfo.vgmWtInvoice || 0,
             shippingLineSealNo: opInfo.shippingLineSealNo || "",
+            sealNo: opInfo.customSealNo || "",
             maxPayloadKgs: opInfo.maxPayloadKgs || 0,
           });
           masterChanged = true;
         } else {
           // Sync weights/packages to master item if they differ
           const m = nextContainers[masterItemIdx];
-          if (
-            Number(m.grossWeight) !== opInfo.grossWeight ||
-            Number(m.netWeight) !== opInfo.netWeight ||
-            Number(m.pkgsStuffed) !== opInfo.noOfPackages ||
-            Number(m.tareWeightKgs || 0) !== opInfo.tareWeightKgs ||
-            (m.shippingLineSealNo || "") !== (opInfo.shippingLineSealNo || "") ||
-            Number(m.maxPayloadKgs || 0) !== (opInfo.maxPayloadKgs || 0) ||
-            (m.type || "") !== (opInfo.containerSize || "")
-          ) {
+
+          // Determine if any syncable field has changed
+          const grossChanged = Number(m.grossWeight || 0) !== opInfo.grossWeight;
+          const maxGrossChanged = Number(m.maxGrossWeightKgs || 0) !== opInfo.maxGrossWeightKgs;
+          const vgmChanged = Number(m.vgmWtInvoice || 0) !== opInfo.vgmWtInvoice;
+          const tareChanged = Number(m.tareWeightKgs || 0) !== opInfo.tareWeightKgs;
+          const sealChanged = (m.shippingLineSealNo || "") !== (opInfo.shippingLineSealNo || "");
+          const payloadChanged = Number(m.maxPayloadKgs || 0) !== (opInfo.maxPayloadKgs || 0);
+          const sealNoChanged = (m.sealNo || "") !== (opInfo.customSealNo || "");
+          const typeChanged = (m.type || "") !== (opInfo.containerSize || "");
+          const pkgsChanged = opInfo.noOfPackages > 0 && Number(m.pkgsStuffed || 0) !== opInfo.noOfPackages;
+          const netChanged = opInfo.netWeight > 0 && Number(m.netWeight || 0) !== opInfo.netWeight;
+
+          if (grossChanged || maxGrossChanged || vgmChanged || tareChanged || sealChanged || payloadChanged || sealNoChanged || typeChanged || pkgsChanged || netChanged) {
             nextContainers[masterItemIdx] = {
               ...m,
-              grossWeight: opInfo.grossWeight,
-              netWeight: opInfo.netWeight,
-              pkgsStuffed: opInfo.noOfPackages,
-              tareWeightKgs: opInfo.tareWeightKgs,
-              shippingLineSealNo:
-                opInfo.shippingLineSealNo || m.shippingLineSealNo || "",
-              maxPayloadKgs: opInfo.maxPayloadKgs,
-              type: opInfo.containerSize || m.type || "",
+              grossWeight: grossChanged ? opInfo.grossWeight : m.grossWeight,
+              maxGrossWeightKgs: maxGrossChanged ? opInfo.maxGrossWeightKgs : m.maxGrossWeightKgs,
+              vgmWtInvoice: vgmChanged ? opInfo.vgmWtInvoice : m.vgmWtInvoice,
+              tareWeightKgs: tareChanged ? opInfo.tareWeightKgs : m.tareWeightKgs,
+              shippingLineSealNo: sealChanged ? (opInfo.shippingLineSealNo || m.shippingLineSealNo || "") : m.shippingLineSealNo,
+              sealNo: sealNoChanged ? (opInfo.customSealNo || m.sealNo || "") : m.sealNo,
+              maxPayloadKgs: payloadChanged ? opInfo.maxPayloadKgs : m.maxPayloadKgs,
+              type: typeChanged ? (opInfo.containerSize || m.type || "") : m.type,
+              pkgsStuffed: pkgsChanged ? opInfo.noOfPackages : m.pkgsStuffed,
+              netWeight: netChanged ? opInfo.netWeight : m.netWeight,
             };
             masterChanged = true;
           }
@@ -1097,31 +1092,81 @@ const OperationsTab = ({ formik }) => {
       const syncedOp = { ...op };
       let opIsDirty = false;
 
-      // Sync master containers to Container Details
-      const cDetails = [...(syncedOp.containerDetails || [])];
+      // Sync master containers to Container & Weighment Details
+      const sectionsToUpdate = ["containerDetails", "weighmentDetails"];
 
-      masterContainers.forEach(mContainer => {
-        const mNo = (mContainer.containerNo || "").trim().toUpperCase();
-        if (!mNo) return; // Skip empty master containers (though ContainerTab might have initialized one)
+      sectionsToUpdate.forEach(secName => {
+        const currentArr = [...(syncedOp[secName] || [])];
 
-        const exists = cDetails.some(d => (d.containerNo || "").trim().toUpperCase() === mNo);
-        if (!exists) {
-          // Find empty slot to fill
-          const emptyIdx = cDetails.findIndex(d => !(d.containerNo || "").trim());
+        masterContainers.forEach(mContainer => {
+          const mNo = (mContainer.containerNo || "").trim().toUpperCase();
+          if (!mNo) return;
 
-          if (emptyIdx !== -1) {
-            cDetails[emptyIdx] = { ...cDetails[emptyIdx], containerNo: mNo };
-          } else {
-            cDetails.push({ ...getDefaultItem("containerDetails"), containerNo: mNo });
+          const exists = currentArr.some(d => (d.containerNo || "").trim().toUpperCase() === mNo);
+          if (!exists) {
+            const emptyIdx = currentArr.findIndex(d => !(d.containerNo || "").trim());
+
+            if (emptyIdx !== -1) {
+              currentArr[emptyIdx] = {
+                ...currentArr[emptyIdx],
+                containerNo: mNo,
+                grossWeight: Number(mContainer.grossWeight || 0),
+                maxGrossWeightKgs: Number(mContainer.maxGrossWeightKgs || 0),
+                vgmWtInvoice: Number(mContainer.vgmWtInvoice || 0) || (Number(mContainer.grossWeight || 0) + Number(mContainer.tareWeightKgs || 0)),
+                tareWeightKgs: Number(mContainer.tareWeightKgs || 0),
+                maxPayloadKgs: Number(mContainer.maxPayloadKgs || 0) || (Number(mContainer.maxGrossWeightKgs || 0) - Number(mContainer.tareWeightKgs || 0)),
+                containerSize: mContainer.type || "",
+                customSealNo: mContainer.sealNo || ""
+              };
+            } else {
+              currentArr.push({
+                ...getDefaultItem(secName),
+                containerNo: mNo,
+                grossWeight: Number(mContainer.grossWeight || 0),
+                maxGrossWeightKgs: Number(mContainer.maxGrossWeightKgs || 0),
+                vgmWtInvoice: Number(mContainer.vgmWtInvoice || 0) || (Number(mContainer.grossWeight || 0) + Number(mContainer.tareWeightKgs || 0)),
+                tareWeightKgs: Number(mContainer.tareWeightKgs || 0),
+                maxPayloadKgs: Number(mContainer.maxPayloadKgs || 0) || (Number(mContainer.maxGrossWeightKgs || 0) - Number(mContainer.tareWeightKgs || 0)),
+                containerSize: mContainer.type || "",
+                customSealNo: mContainer.sealNo || ""
+              });
+            }
+            opIsDirty = true;
+          } else if (secName === "containerDetails") {
+            // SYNC VALUES back from Master to Operations for existing rows
+            const idx = currentArr.findIndex(d => (d.containerNo || "").trim().toUpperCase() === mNo);
+            const d = currentArr[idx];
+            const m = mContainer;
+
+            if (
+              Number(d.grossWeight || 0) !== Number(m.grossWeight || 0) ||
+              Number(d.maxGrossWeightKgs || 0) !== Number(m.maxGrossWeightKgs || 0) ||
+              Number(d.tareWeightKgs || 0) !== Number(m.tareWeightKgs || 0) ||
+              Number(d.maxPayloadKgs || 0) !== Number(m.maxPayloadKgs || 0) ||
+              (d.containerSize || "") !== (m.type || "") ||
+              (d.shippingLineSealNo || "") !== (m.shippingLineSealNo || "") ||
+              (d.customSealNo || "") !== (m.sealNo || "")
+            ) {
+              currentArr[idx] = {
+                ...d,
+                grossWeight: Number(m.grossWeight || 0),
+                maxGrossWeightKgs: Number(m.maxGrossWeightKgs || 0),
+                tareWeightKgs: Number(m.tareWeightKgs || 0),
+                maxPayloadKgs: Number(m.maxGrossWeightKgs || 0) - Number(m.tareWeightKgs || 0),
+                vgmWtInvoice: Number(m.grossWeight || 0) + Number(m.tareWeightKgs || 0),
+                containerSize: m.type || "",
+                shippingLineSealNo: m.shippingLineSealNo || "",
+                customSealNo: m.sealNo || ""
+              };
+              opIsDirty = true;
+            }
           }
-          opIsDirty = true;
-        }
+        });
+        syncedOp[secName] = currentArr;
       });
-      syncedOp.containerDetails = cDetails;
-
-      syncedOp.containerDetails = cDetails;
 
       // Transporter Details Sync removed as containerNo field is gone
+      // (Optional: Weighment Details Sync now handled in the loop above)
 
       if (opIsDirty) opsChanged = true;
 
@@ -1137,53 +1182,8 @@ const OperationsTab = ({ formik }) => {
 
   // Auto-fill Transporter Gross Weight & Packages from Job Header
   // DEPENDENCY NOTE: We intentionally exclude 'operations' to prevent reverting user deletions
-  useEffect(() => {
-    const jobGross = parseFloat(formik.values.gross_weight_kg || 0);
-    const jobPkgs = parseFloat(formik.values.total_no_of_pkgs || 0);
-    if (!jobGross && !jobPkgs) return;
-
-    const currentOps = formik.values.operations || [];
-    let changed = false;
-
-    const nextOperations = currentOps.map((op) => {
-      const tDetails = op.transporterDetails || [];
-      // Only proceed if there are rows that need updating (empty/zero weight or pkgs)
-      const needsUpdate = tDetails.some(
-        (t) => !parseFloat(t.grossWeightKgs) || !parseFloat(t.noOfPackages),
-      );
-
-      if (!needsUpdate) return op;
-
-      const newDetails = tDetails.map((t) => {
-        let rowChanged = false;
-        const newRow = { ...t };
-
-        if (!parseFloat(t.grossWeightKgs) && jobGross) {
-          newRow.grossWeightKgs = jobGross;
-          rowChanged = true;
-        }
-        if (!parseFloat(t.noOfPackages) && jobPkgs) {
-          newRow.noOfPackages = jobPkgs;
-          rowChanged = true;
-        }
-
-        if (rowChanged) {
-          changed = true;
-          return newRow;
-        }
-        return t;
-      });
-      return { ...op, transporterDetails: newDetails };
-    });
-
-    if (changed) {
-      formik.setFieldValue("operations", nextOperations);
-    }
-  }, [
-    formik.values.gross_weight_kg,
-    formik.values.total_no_of_pkgs,
-    formik.values.job_no,
-  ]); // Run on mount (job load) or when global values change
+  // Auto-fill Transporter Gross Weight & Packages from Job Header removed as requested
+  // sync logic for shipment header fields has been disabled.
 
   // --- Actions ---
 
@@ -1198,11 +1198,7 @@ const OperationsTab = ({ formik }) => {
     }
 
     const tDefaults = getDefaultItem("transporterDetails");
-    // Pre-fill weight and packages for new operation's transporter
-    const jobGross = parseFloat(formik.values.gross_weight_kg || 0);
-    const jobPkgs = parseFloat(formik.values.total_no_of_pkgs || 0);
-    if (jobGross) tDefaults.grossWeightKgs = jobGross;
-    if (jobPkgs) tDefaults.noOfPackages = jobPkgs;
+    // Pre-filling from header removed as requested in new operations too
 
     const newOp = {
       transporterDetails: [tDefaults],
@@ -1239,7 +1235,7 @@ const OperationsTab = ({ formik }) => {
     const isLinkedContainerField =
       !isAir &&
       field === "containerNo" &&
-      ["transporterDetails", "containerDetails"].includes(
+      ["transporterDetails", "containerDetails", "weighmentDetails"].includes(
         section,
       );
 
@@ -1279,25 +1275,24 @@ const OperationsTab = ({ formik }) => {
         );
       }
 
-      // Auto-calculate Max Payload if Gross Weight or Tare Weight changes in Container Details
-      if (section === "containerDetails" && (field === "grossWeight" || field === "tareWeightKgs")) {
+      // Auto-calculate Max Payload if Max Gross Weight or Tare Weight changes in Container Details
+      if (section === "containerDetails" && (field === "maxGrossWeightKgs" || field === "tareWeightKgs")) {
         updatedOp[section] = updatedOp[section].map((item, idx) => {
           if (idx !== itemIndex) return item;
-          const gW = field === "grossWeight" ? Number(finalValue || 0) : Number(item.grossWeight || 0);
-          const tW = field === "tareWeightKgs" ? Number(finalValue || 0) : Number(item.tareWeightKgs || 0);
-          // Requirement: "Max Payload (KG) = gross weight + tare weight"
-          const payload = gW + tW;
+          const capacity = field === "maxGrossWeightKgs" ? Number(finalValue || 0) : Number(item.maxGrossWeightKgs || 0);
+          const tare = field === "tareWeightKgs" ? Number(finalValue || 0) : Number(item.tareWeightKgs || 0);
+          const payload = capacity - tare;
           return { ...item, maxPayloadKgs: payload };
         });
       }
 
-      // Auto-calculate VGM Wt. (invoice) = grossWeightCont + tareWeightKgs
-      if (section === "containerDetails" && (field === "grossWeightCont" || field === "tareWeightKgs")) {
+      // Auto-calculate VGM Wt. (invoice) = grossWeight (Cargo) + tareWeightKgs
+      if (section === "containerDetails" && (field === "grossWeight" || field === "tareWeightKgs")) {
         updatedOp[section] = updatedOp[section].map((item, idx) => {
           if (idx !== itemIndex) return item;
-          const gwCont = field === "grossWeightCont" ? Number(finalValue || 0) : Number(item.grossWeightCont || 0);
-          const tW = field === "tareWeightKgs" ? Number(finalValue || 0) : Number(item.tareWeightKgs || 0);
-          return { ...item, vgmWtInvoice: gwCont + tW };
+          const cargoWeight = field === "grossWeight" ? Number(finalValue || 0) : Number(item.grossWeight || 0);
+          const tare = field === "tareWeightKgs" ? Number(finalValue || 0) : Number(item.tareWeightKgs || 0);
+          return { ...item, vgmWtInvoice: cargoWeight + tare };
         });
       }
 
@@ -1365,14 +1360,7 @@ const OperationsTab = ({ formik }) => {
     if (!op) return;
 
     const newItem = getDefaultItem(section);
-    // Pre-fill gross weight for new transporter row
-    if (section === "transporterDetails") {
-      const jobGross = parseFloat(formik.values.gross_weight_kg || 0);
-      const jobPkgs = parseFloat(formik.values.total_no_of_pkgs || 0);
-      if (jobGross) newItem.grossWeightKgs = jobGross;
-      if (jobPkgs) newItem.noOfPackages = jobPkgs;
-    }
-
+    // Pre-filling from header removed as requested
     op[section] = [...(op[section] || []), newItem];
 
     newOperations[activeOpIndex] = op;
@@ -1466,13 +1454,13 @@ const OperationsTab = ({ formik }) => {
         { field: "cargoType", label: "Cargo Type", width: "120px", type: "select", options: cargoTypes },
         { field: "portOfLoading", label: "Port Of Loading", width: "170px", type: "select", options: PORT_OF_LOADING_OPTIONS },
         {
-          field: "grossWeight",
+          field: "maxGrossWeightKgs",
           label: "Max Gross Weight (KG)",
           type: "number",
           width: "100px",
         },
         {
-          field: "grossWeightCont",
+          field: "grossWeight",
           label: "Gross Weight (KG)",
           type: "number",
           width: "100px",
@@ -1573,6 +1561,7 @@ const OperationsTab = ({ formik }) => {
       formik={formik}
       activeOpIndex={activeOpIndex}
       columns={[
+        { field: "containerNo", label: "Container No.", width: "140px" },
         { field: "regNo", label: "Reg No/Slip No", width: "140px" },
         {
           field: "weighBridgeName",
@@ -1921,7 +1910,10 @@ const TableSection = ({
                                   );
                                   if (pickerVal) e.target.value = pickerVal;
                                   e.target.type = col.type;
-                                  e.target.showPicker && e.target.showPicker();
+                                  // Use setTimeout to ensure type change is processed before showPicker
+                                  setTimeout(() => {
+                                    if (e.target.showPicker) e.target.showPicker();
+                                  }, 10);
                                 }
                               }}
                               onBlur={(e) => {
@@ -1934,40 +1926,9 @@ const TableSection = ({
                               }}
                               onFocus={(e) => {
                                 if (col.readOnly) return;
-                                if (
-                                  section === "transporterDetails" &&
-                                  (col.field === "grossWeightKgs" ||
-                                    col.field === "noOfPackages") &&
-                                  !e.target.value
-                                ) {
-                                  const shipmentGross =
-                                    formik.values.gross_weight_kg || "";
-                                  const shipmentPkgs =
-                                    formik.values.total_no_of_pkgs || "";
-
-                                  if (
-                                    col.field === "grossWeightKgs" &&
-                                    shipmentGross
-                                  ) {
-                                    onUpdate(
-                                      section,
-                                      rowIdx,
-                                      col.field,
-                                      shipmentGross,
-                                    );
-                                  } else if (
-                                    col.field === "noOfPackages" &&
-                                    shipmentPkgs
-                                  ) {
-                                    onUpdate(
-                                      section,
-                                      rowIdx,
-                                      col.field,
-                                      shipmentPkgs,
-                                    );
-                                  }
-                                }
+                                // Auto-fill logic from header removed as requested
                               }}
+                              step={col.type === "datetime-local" ? "60" : undefined}
                               style={{
                                 ...styles.cellInput,
                                 ...(col.readOnly ? { backgroundColor: "#f1f5f9", color: "#64748b", cursor: "not-allowed" } : {}),

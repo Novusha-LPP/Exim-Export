@@ -2,6 +2,7 @@ import express from "express";
 import ExportJobModel from "../../model/export/ExJobModel.mjs";
 import ExJobModel from "../../model/export/ExJobModel.mjs";
 import auditMiddleware from "../../middleware/auditTrail.mjs";
+import UserModel from "../../model/userModel.mjs";
 
 const router = express.Router();
 
@@ -16,17 +17,38 @@ router.get("/dashboard-stats", async (req, res) => {
     } = req.query;
 
     const matchStage = {};
+    if (!matchStage.$and) matchStage.$and = [];
+
+    // Fetch user restrictions
+    const requesterUsername = req.headers["username"] || req.headers["x-username"];
+    if (requesterUsername) {
+      const requester = await UserModel.findOne({ username: requesterUsername });
+      if (requester && requester.role !== "Admin") {
+        if (requester.selected_branches && requester.selected_branches.length > 0) {
+          matchStage.$and.push({ branch_code: { $in: requester.selected_branches } });
+        }
+        if (requester.selected_ports && requester.selected_ports.length > 0) {
+          matchStage.$and.push({
+            $or: [
+              { custom_house: { $in: requester.selected_ports } },
+              { port_of_loading: { $in: requester.selected_ports } }
+            ]
+          });
+        }
+      }
+    }
 
     // 1. Build Match Stage (Filtering)
-    if (exporter) matchStage.exporter = { $regex: exporter, $options: "i" };
-    if (consignmentType) matchStage.consignmentType = consignmentType;
-    if (branch)
-      matchStage.branch_code = { $regex: `^${branch}$`, $options: "i" };
+    if (exporter) matchStage.$and.push({ exporter: { $regex: exporter, $options: "i" } });
+    if (consignmentType) matchStage.$and.push({ consignmentType: consignmentType });
+    if (branch) matchStage.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
 
     // Year filter - strict matching on the job_no suffix or createdAt
     if (year) {
-      matchStage.job_no = { $regex: `/${year}$`, $options: "i" };
+      matchStage.$and.push({ job_no: { $regex: `/${year}$`, $options: "i" } });
     }
+
+    if (matchStage.$and.length === 0) delete matchStage.$and;
 
     // 2. Run Aggregation
     const stats = await ExportJobModel.aggregate([
@@ -168,6 +190,29 @@ router.get("/exports/:status?", async (req, res) => {
 
     // Initialize $and array for complex queries
     if (!filter.$and) filter.$and = [];
+
+    // 1. Fetch user restrictions
+    const requesterUsername = req.headers["username"] || req.headers["x-username"];
+    if (requesterUsername) {
+      const requester = await UserModel.findOne({ username: requesterUsername });
+      if (requester && requester.role !== "Admin") {
+        // Enforce Branch Restriction
+        if (requester.selected_branches && requester.selected_branches.length > 0) {
+          filter.$and.push({
+            branch_code: { $in: requester.selected_branches }
+          });
+        }
+        // Enforce Port Restriction
+        if (requester.selected_ports && requester.selected_ports.length > 0) {
+          filter.$and.push({
+            $or: [
+              { custom_house: { $in: requester.selected_ports } },
+              { port_of_loading: { $in: requester.selected_ports } }
+            ]
+          });
+        }
+      }
+    }
 
     if (jobOwner) {
       filter.$and.push({

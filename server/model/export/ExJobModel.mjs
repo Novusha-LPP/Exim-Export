@@ -420,12 +420,16 @@ const containerDetailsSchema = new Schema(
     serialNumber: { type: Number },
     containerNo: { type: String },
     sealNo: String,
+    shippingLineSealNo: String,
     sealDate: { type: String, trim: true },
     type: {
       type: String,
     },
     pkgsStuffed: { type: Number, default: 0 }, // 'Pkgs Stuffed'
     grossWeight: { type: Number, default: 0 },
+    maxGrossWeightKgs: { type: Number, default: 0 },
+    vgmWtInvoice: { type: Number, default: 0 },
+    maxPayloadKgs: { type: Number, default: 0 },
     sealType: {
       type: String,
     },
@@ -626,6 +630,7 @@ const exportOperationSchema = new Schema(
         customSealNo: { type: String },
         grossWeight: { type: Number },
         maxGrossWeightKgs: { type: Number },
+        vgmWtInvoice: { type: Number },
         tareWeightKgs: { type: Number },
         maxPayloadKgs: { type: Number },
         images: [String],
@@ -1117,22 +1122,37 @@ exportJobSchema.pre("save", function (next) {
   let serialNum = 1;
 
   allContainerNos.forEach((containerNo) => {
+    const opData = this.getOperationDataForContainer(containerNo);
+
     if (existingContainerMap.has(containerNo)) {
-      // Keep existing container
+      // Update existing container with operation data
       const existing = existingContainerMap.get(containerNo);
       existing.serialNumber = serialNum++;
-      syncedContainers.push(existing);
+      existing.type = opData.containerSize || existing.type || "";
+      existing.pkgsStuffed = opData.noOfPackages || existing.pkgsStuffed || 0;
+      existing.grossWeight = opData.grossWeight || existing.grossWeight || 0;
+      existing.sealNo = opData.customSealNo || existing.sealNo || "";
+      existing.shippingLineSealNo = opData.shippingLineSealNo || existing.shippingLineSealNo || "";
+      existing.tareWeightKgs = opData.tareWeightKgs || existing.tareWeightKgs || 0;
+      existing.vgmWtInvoice = opData.vgmWtInvoice || existing.vgmWtInvoice || 0;
+      existing.maxGrossWeightKgs = opData.maxGrossWeightKgs || existing.maxGrossWeightKgs || 0;
+      existing.maxPayloadKgs = opData.maxPayloadKgs || existing.maxPayloadKgs || 0;
 
+      syncedContainers.push(existing);
     } else {
       // Create new container from operation data
-      const opData = this.getOperationDataForContainer(containerNo);
       const newContainer = {
         serialNumber: serialNum++,
         containerNo: containerNo,
         type: opData.containerSize || "",
         pkgsStuffed: opData.noOfPackages || 0,
         grossWeight: opData.grossWeight || 0,
-        sealNo: "",
+        sealNo: opData.customSealNo || "",
+        shippingLineSealNo: opData.shippingLineSealNo || "",
+        tareWeightKgs: opData.tareWeightKgs || 0,
+        vgmWtInvoice: opData.vgmWtInvoice || 0,
+        maxGrossWeightKgs: opData.maxGrossWeightKgs || 0,
+        maxPayloadKgs: opData.maxPayloadKgs || 0,
         sealDate: "",
         sealType: "",
         grWtPlusTrWt: 0,
@@ -1140,7 +1160,6 @@ exportJobSchema.pre("save", function (next) {
         rfid: "",
       };
       syncedContainers.push(newContainer);
-
     }
   });
 
@@ -1278,15 +1297,26 @@ exportJobSchema.pre("save", function (next) {
             containerSize: container?.type || "",
             containerType: "",
             cargoType: "Gen",
-            maxGrossWeightKgs: 0,
-            tareWeightKgs: 0,
-            maxPayloadKgs: 0,
+            customSealNo: container?.sealNo || "",
+            shippingLineSealNo: container?.shippingLineSealNo || "",
+            maxGrossWeightKgs: container?.maxGrossWeightKgs || 0,
+            tareWeightKgs: container?.tareWeightKgs || 0,
+            maxPayloadKgs: container?.maxPayloadKgs || 0,
+            grossWeight: container?.grossWeight || 0,
+            vgmWtInvoice: container?.vgmWtInvoice || 0,
             images: [],
           });
         } else {
-          // Update existing: Sync Size logic from main Container list
-          if (container?.type) {
-            cd.containerSize = container.type;
+          // Update existing: Sync values from master list where local is empty or to keep in sync
+          if (container) {
+            cd.containerSize = container.type || cd.containerSize;
+            cd.customSealNo = cd.customSealNo || container.sealNo || "";
+            cd.shippingLineSealNo = cd.shippingLineSealNo || container.shippingLineSealNo || "";
+            cd.grossWeight = cd.grossWeight || container.grossWeight || 0;
+            cd.tareWeightKgs = cd.tareWeightKgs || container.tareWeightKgs || 0;
+            cd.vgmWtInvoice = cd.vgmWtInvoice || container.vgmWtInvoice || 0;
+            cd.maxGrossWeightKgs = cd.maxGrossWeightKgs || container.maxGrossWeightKgs || 0;
+            cd.maxPayloadKgs = cd.maxPayloadKgs || container.maxPayloadKgs || 0;
           }
         }
 
@@ -1311,7 +1341,17 @@ exportJobSchema.pre("save", function (next) {
 
 // Helper method to extract operation data for a container
 exportJobSchema.methods.getOperationDataForContainer = function (containerNo) {
-  let result = { containerSize: "", grossWeight: 0, noOfPackages: 0 };
+  let result = {
+    containerSize: "",
+    grossWeight: 0,
+    noOfPackages: 0,
+    customSealNo: "",
+    shippingLineSealNo: "",
+    tareWeightKgs: 0,
+    vgmWtInvoice: 0,
+    maxGrossWeightKgs: 0,
+    maxPayloadKgs: 0
+  };
 
   (this.operations || []).forEach((op) => {
     const cd = (op.containerDetails || []).find(
@@ -1319,6 +1359,13 @@ exportJobSchema.methods.getOperationDataForContainer = function (containerNo) {
     );
     if (cd) {
       result.containerSize = cd.containerSize || result.containerSize;
+      result.customSealNo = cd.customSealNo || result.customSealNo;
+      result.shippingLineSealNo = cd.shippingLineSealNo || result.shippingLineSealNo;
+      result.tareWeightKgs = cd.tareWeightKgs || result.tareWeightKgs;
+      result.vgmWtInvoice = cd.vgmWtInvoice || result.vgmWtInvoice;
+      result.maxGrossWeightKgs = cd.maxGrossWeightKgs || result.maxGrossWeightKgs;
+      result.maxPayloadKgs = cd.maxPayloadKgs || result.maxPayloadKgs;
+      result.grossWeight = cd.grossWeight || result.grossWeight;
     }
 
     const wd = (op.weighmentDetails || []).find(
@@ -1333,7 +1380,7 @@ exportJobSchema.methods.getOperationDataForContainer = function (containerNo) {
     );
     if (td) {
       result.noOfPackages = td.noOfPackages || result.noOfPackages;
-      result.grossWeight = td.grossWeightKgs || result.grossWeight;
+      // result.grossWeight stays as whatever was higher
     }
   });
 

@@ -14,6 +14,7 @@ import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
 import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharGenerator";
 import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
 import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
+import VGMAuthorizationGenerator from "./StandardDocuments/VGMAuthorizationGenerator";
 
 // Helper function
 const toUpper = (str) => (str || "").toUpperCase();
@@ -746,6 +747,16 @@ const LogisysEditableHeader = ({
                 Forwarding Note (CONCOR)
               </MenuItem>
             </ConcorForwardingNoteGenerator>
+
+            <VGMAuthorizationGenerator jobNo={formik.values.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => setAnchorEl(null)}
+                sx={{ fontSize: 12, minWidth: 140 }}
+              >
+                VGM Authorization
+              </MenuItem>
+            </VGMAuthorizationGenerator>
           </Menu>
         </div>
       </div>

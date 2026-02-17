@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -22,6 +22,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LockIcon from "@mui/icons-material/Lock"; // Import LockIcon
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
+import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
 import AddExJobs from "./AddExJobs";
 import { formatDate } from "../../../utils/dateUtils";
 import { priorityFilter } from "../../../utils/filterUtils";
@@ -31,7 +32,9 @@ import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
 import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharGenerator";
 import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
 import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
+import VGMAuthorizationGenerator from "./StandardDocuments/VGMAuthorizationGenerator";
 import { CUSTOM_HOUSE_OPTIONS, getOptionsForBranch } from "../../common/CustomHouseDropdown";
+import { UserContext } from "../../../contexts/UserContext";
 import SBTrackDialog from "./SBTrackDialog";
 
 // --- Clean Enterprise Styles ---
@@ -279,31 +282,62 @@ const getStatusColor = (statusValue) => {
 };
 
 const ExportJobsTable = () => {
+  const { user } = useContext(UserContext);
+  const isAdmin = user?.role === "Admin";
+
+  // Filter Branch Options based on User Permissions
+  const allowedBranches = isAdmin ? [] : (user?.selected_branches || []);
+  const filteredBranchOptions = branchOptions.filter(b =>
+    isAdmin || b.code === "" || allowedBranches.includes(b.code)
+  );
+
   const navigate = useNavigate();
 
+  const FILTER_STORAGE_KEY = "export_jobs_filters";
+  const savedFilters = (() => {
+    try {
+      const saved = localStorage.getItem(FILTER_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  })();
+
+  const isInitialMount = useRef(true);
+  const isInitialSave = useRef(true);
+
   // State
-  const [activeTab, setActiveTab] = useState("Pending");
+  const [activeTab, setActiveTab] = useState(savedFilters.activeTab || "Pending");
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Pagination State
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(savedFilters.page || 1);
   const [totalRecords, setTotalRecords] = useState(0);
   const LIMIT = 100;
 
   // Sorting State
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState(savedFilters.sortConfig || { key: null, direction: 'asc' });
 
   // Filters
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedYear, setSelectedYear] = useState("");
-  const [selectedType, setSelectedMovementType] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("AMD");
-  const [selectedExporterFilter, setSelectedExporterFilter] = useState("");
-  const [selectedDetailedStatus, setSelectedDetailedStatus] = useState("");
-  const [selectedCustomHouse, setSelectedCustomHouse] = useState("");
-  const [selectedJobOwner, setSelectedJobOwner] = useState("");
-  const [selectedGoodsStuffedAt, setSelectedGoodsStuffedAt] = useState("");
+  const [searchQuery, setSearchQuery] = useState(savedFilters.searchQuery || "");
+  const [selectedYear, setSelectedYear] = useState(savedFilters.selectedYear || "");
+  const [selectedMovementType, setSelectedMovementType] = useState(savedFilters.selectedType || "");
+
+  // Determine initial branch
+  const initialBranch = (() => {
+    if (savedFilters.selectedBranch) {
+      if (isAdmin || allowedBranches.includes(savedFilters.selectedBranch)) return savedFilters.selectedBranch;
+    }
+    return allowedBranches.length > 0 ? allowedBranches[0] : "AMD";
+  })();
+
+  const [selectedBranch, setSelectedBranch] = useState(initialBranch);
+  const [selectedExporterFilter, setSelectedExporterFilter] = useState(savedFilters.selectedExporterFilter || "");
+  const [selectedDetailedStatus, setSelectedDetailedStatus] = useState(savedFilters.selectedDetailedStatus || "");
+  const [selectedCustomHouse, setSelectedCustomHouse] = useState(savedFilters.selectedCustomHouse || "");
+  const [selectedJobOwner, setSelectedJobOwner] = useState(savedFilters.selectedJobOwner || "");
+  const [selectedGoodsStuffedAt, setSelectedGoodsStuffedAt] = useState(savedFilters.selectedGoodsStuffedAt || "");
   const [customHouses, setCustomHouses] = useState([]); // Re-added customHouses state
   const [jobOwnersList, setJobOwnersList] = useState([]); // Stores fetched users for Job Owner dropdown
 
@@ -329,6 +363,58 @@ const ExportJobsTable = () => {
     if (!username) return null;
     const user = jobOwnersList.find((u) => u.username === username);
     return user ? user.fullName : username;
+  };
+
+  // Persist filters effect
+  useEffect(() => {
+    if (isInitialSave.current) {
+      isInitialSave.current = false;
+      return;
+    }
+    const filtersToSave = {
+      activeTab,
+      searchQuery,
+      selectedYear,
+      selectedType: selectedMovementType,
+      selectedBranch,
+      selectedExporterFilter,
+      selectedDetailedStatus,
+      selectedCustomHouse,
+      selectedJobOwner,
+      selectedGoodsStuffedAt,
+      page,
+      sortConfig,
+    };
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filtersToSave));
+  }, [
+    activeTab,
+    searchQuery,
+    selectedYear,
+    selectedMovementType,
+    selectedBranch,
+    selectedExporterFilter,
+    selectedDetailedStatus,
+    selectedCustomHouse,
+    selectedJobOwner,
+    selectedGoodsStuffedAt,
+    page,
+    sortConfig,
+  ]);
+
+  const handleClearFilters = () => {
+    setActiveTab("Pending");
+    setSearchQuery("");
+    setSelectedYear("");
+    setSelectedMovementType("");
+    setSelectedBranch("AMD");
+    setSelectedExporterFilter("");
+    setSelectedDetailedStatus("");
+    setSelectedCustomHouse("");
+    setSelectedJobOwner("");
+    setSelectedGoodsStuffedAt("");
+    setPage(1);
+    setSortConfig({ key: null, direction: 'asc' });
+    localStorage.removeItem(FILTER_STORAGE_KEY);
   };
 
   // Copy Modal State
@@ -378,7 +464,7 @@ const ExportJobsTable = () => {
     };
 
     fetchExporters();
-  }, [openDSRDialog]);
+  }, []);
 
   // Fetch Custom Houses list
   useEffect(() => {
@@ -440,7 +526,7 @@ const ExportJobsTable = () => {
             status: activeTab,
             search: searchQuery,
             year: selectedYear === "all" ? "" : selectedYear,
-            consignmentType: selectedType,
+            consignmentType: selectedMovementType,
             branch: selectedBranch,
             exporter: selectedExporterFilter,
             detailedStatus: selectedDetailedStatus,
@@ -478,7 +564,7 @@ const ExportJobsTable = () => {
     activeTab,
     searchQuery,
     selectedYear,
-    selectedType,
+    selectedMovementType,
     selectedBranch,
     selectedExporterFilter,
     selectedDetailedStatus,
@@ -499,12 +585,16 @@ const ExportJobsTable = () => {
 
   // Reset page when tab/filters change
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     setPage(1);
   }, [
     activeTab,
     searchQuery,
     selectedYear,
-    selectedType,
+    selectedMovementType,
     selectedBranch,
     selectedExporterFilter,
     selectedDetailedStatus,
@@ -1070,7 +1160,7 @@ const ExportJobsTable = () => {
             {/* Movement Type Filter */}
             <select
               style={s.select}
-              value={selectedType}
+              value={selectedMovementType}
               onChange={(e) => setSelectedMovementType(e.target.value)}
             >
               <option value="">All Movement</option>
@@ -1085,7 +1175,7 @@ const ExportJobsTable = () => {
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
             >
-              {branchOptions.map((branch) => (
+              {filteredBranchOptions.map((branch) => (
                 <option key={branch.code} value={branch.code}>
                   {branch.label}
                 </option>
@@ -1203,15 +1293,21 @@ const ExportJobsTable = () => {
               onChange={(e) => setSelectedCustomHouse(e.target.value)}
             >
               <option value="">All Custom Houses</option>
-              {getOptionsForBranch(selectedBranch).map((group) => (
-                <optgroup key={group.group} label={group.group}>
-                  {group.items.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
+              {getOptionsForBranch(selectedBranch).map((group) => {
+                const filteredItems = group.items.filter(item =>
+                  isAdmin || !user?.selected_ports?.length || user.selected_ports.includes(item.value)
+                );
+                if (filteredItems.length === 0) return null;
+                return (
+                  <optgroup key={group.group} label={group.group}>
+                    {filteredItems.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
             </select>
 
             {/* Goods Stuffed At Filter */}
@@ -1235,28 +1331,28 @@ const ExportJobsTable = () => {
               }}
             >
               <input
-                style={{ ...s.input, minWidth: "250px" }}
+                style={{ ...s.input, minWidth: "200px" }}
                 placeholder="Search by Job No, Exporter, Consignee..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              {/* <button
-                style={{
-                  padding: "0 15px",
-                  height: "30px",
-                  backgroundColor: "#2563eb",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "3px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                }}
-                onClick={() => setOpenDSRDialog(true)}
-              >
-                Download DSR
-              </button> */}
+              <Tooltip title="Clear All Filters">
+                <IconButton
+                  onClick={handleClearFilters}
+                  size="small"
+                  sx={{
+                    backgroundColor: "#f3f4f6",
+                    "&:hover": { backgroundColor: "#e5e7eb" },
+                    height: "30px",
+                    width: "30px",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <FilterAltOffIcon sx={{ fontSize: 18, color: "#4b5563" }} />
+                </IconButton>
+              </Tooltip>
             </div>
+
           </div>
 
           {/* Table */}
@@ -1410,7 +1506,19 @@ const ExportJobsTable = () => {
                           >
                             {formatDate(job.job_date)}
                           </div>
-
+                          <div
+                            style={{
+                              marginTop: "5px",
+                              padding: "2px 6px",
+                              width: "fit-content",
+                              borderRadius: "3px",
+                              fontSize: "10px",
+                              fontWeight: "600",
+                              color: "#030303ff",
+                            }}
+                          >
+                            {job.custom_house || "-"}
+                          </div>
                           <div
                             style={{
                               display: "flex",
@@ -1433,6 +1541,7 @@ const ExportJobsTable = () => {
                             >
                               {job.consignmentType || "-"}
                             </div>
+
                             {/* Job Owner */}
                             {job.job_owner && (
                               <div
@@ -2355,6 +2464,19 @@ const ExportJobsTable = () => {
             Forwarding Note (CONCOR)
           </MenuItem>
         </ConcorForwardingNoteGenerator>
+
+        <VGMAuthorizationGenerator jobNo={selectedDocJob?.job_no}>
+          <MenuItem
+            disableRipple
+            onClick={() => {
+              setDocsAnchorEl(null);
+              setSelectedDocJob(null);
+            }}
+            sx={{ fontSize: 13, minWidth: 150 }}
+          >
+            VGM Authorization
+          </MenuItem>
+        </VGMAuthorizationGenerator>
       </Menu>
 
       {/* SB Track Dialog */}

@@ -3,20 +3,17 @@ import UserModel from "../../model/userModel.mjs";
 
 const router = express.Router();
 
-// Route to assign ICD codes to a user
+// Route to Assign Branch, branches, and ports to a user
 router.post("/api/admin/assign-icd-code", async (req, res) => {
-  const { username, selectedIcdCodes, adminUsername } = req.body;
+  const { username, selectedIcdCodes, selectedBranches, selectedPorts, adminUsername } = req.body;
 
   try {
     // Validation
-    if (!username || !selectedIcdCodes || !adminUsername) {
+    if (!username || !adminUsername) {
       return res.status(400).json({
-        message: "Username, selected ICD codes, and admin username are required"
+        message: "Username and admin username are required"
       });
     }
-
-    // Ensure selectedIcdCodes is an array
-    const icdCodesArray = Array.isArray(selectedIcdCodes) ? selectedIcdCodes : [selectedIcdCodes];
 
     // Find the admin user
     const adminUser = await UserModel.findOne({ username: adminUsername });
@@ -32,7 +29,7 @@ router.post("/api/admin/assign-icd-code", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Valid ICD codes
+    // Valid ICD codes/Ports
     const validIcdCodes = [
       "ICD SACHANA",
       "ICD SANAND",
@@ -47,24 +44,44 @@ router.post("/api/admin/assign-icd-code", async (req, res) => {
       "HAZIRA"
     ];
 
-    // Validate all selected ICD codes
-    const invalidCodes = icdCodesArray.filter(code => !validIcdCodes.includes(code));
-    if (invalidCodes.length > 0) {
-      return res.status(400).json({
-        message: `Invalid ICD codes selected: ${invalidCodes.join(', ')}`
-      });
+    // Valid Branches
+    const validBranches = ["AMD", "BRD", "GIM", "HAZ", "COK"];
+
+    // Update ICD codes if provided
+    if (selectedIcdCodes) {
+      const icdCodesArray = Array.isArray(selectedIcdCodes) ? selectedIcdCodes : [selectedIcdCodes];
+      const invalidIcd = icdCodesArray.filter(code => !validIcdCodes.includes(code));
+      if (invalidIcd.length > 0) {
+        return res.status(400).json({ message: `Invalid ICD codes: ${invalidIcd.join(', ')}` });
+      }
+      targetUser.selected_icd_codes = [...new Set(icdCodesArray)];
     }
 
-    // Update the user's ICD codes (remove duplicates)
-    targetUser.selected_icd_codes = [...new Set(icdCodesArray)];
+    // Update Branches if provided
+    if (selectedBranches) {
+      const branchesArray = Array.isArray(selectedBranches) ? selectedBranches : [selectedBranches];
+      const invalidBranches = branchesArray.filter(b => !validBranches.includes(b));
+      if (invalidBranches.length > 0) {
+        return res.status(400).json({ message: `Invalid Branches: ${invalidBranches.join(', ')}` });
+      }
+      targetUser.selected_branches = [...new Set(branchesArray)];
+    }
+
+    // Update Ports if provided (treating same as ICD for now or separately if needed)
+    if (selectedPorts) {
+      const portsArray = Array.isArray(selectedPorts) ? selectedPorts : [selectedPorts];
+      // You can add port validation here if needed
+      targetUser.selected_ports = [...new Set(portsArray)];
+    }
+
     await targetUser.save();
 
     res.status(200).json({
-      message: `ICD codes "${icdCodesArray.join(', ')}" assigned to user "${username}" successfully`
+      message: `Assignments updated successfully for user "${username}"`
     });
 
   } catch (err) {
-    console.error("Error assigning ICD codes:", err);
+    console.error("Error assigning branch/ports:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -107,20 +124,33 @@ router.post("/api/admin/remove-icd-code", async (req, res) => {
       targetUser.selected_icd_codes = targetUser.selected_icd_codes.filter(
         code => !icdCodesToRemove.includes(code)
       );
-      await targetUser.save();
-
-      res.status(200).json({
-        message: `ICD codes "${icdCodesToRemove.join(', ')}" removed from user "${username}" successfully`
-      });
-    } else {
-      // Remove all ICD codes
-      targetUser.selected_icd_codes = [];
-      await targetUser.save();
-
-      res.status(200).json({
-        message: `All ICD codes removed from user "${username}" successfully`
-      });
     }
+
+    // Add removal logic for branches and ports if needed
+    const { branchesToRemove, portsToRemove } = req.body;
+    if (branchesToRemove && Array.isArray(branchesToRemove)) {
+      targetUser.selected_branches = targetUser.selected_branches.filter(
+        b => !branchesToRemove.includes(b)
+      );
+    }
+    if (portsToRemove && Array.isArray(portsToRemove)) {
+      targetUser.selected_ports = targetUser.selected_ports.filter(
+        p => !portsToRemove.includes(p)
+      );
+    }
+
+    // If no specific removals provided, and it's a "remove all" call (implied by lack of specific fields)
+    if (!icdCodesToRemove && !branchesToRemove && !portsToRemove) {
+      targetUser.selected_icd_codes = [];
+      targetUser.selected_branches = [];
+      targetUser.selected_ports = [];
+    }
+
+    await targetUser.save();
+
+    res.status(200).json({
+      message: `Assignments removed from user "${username}" successfully`
+    });
 
   } catch (err) {
     console.error("Error removing ICD codes:", err);

@@ -2,13 +2,11 @@ import * as React from "react";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Box from "@mui/material/Box";
-import "../../../styles/import-dsr.scss";
 import { SelectedYearContext } from "../../../contexts/SelectedYearContext";
 import useTabs from "../../../customHooks/useTabs";
 import { TabValueContext } from "../../../contexts/TabValueContext";
 import ExportDashboard from "./ExportDashboard";
 import ExportJobsTable from "./ExportJobsTable";
-import AddExJobs from "./AddExJobs";
 
 function DsrTabs() {
   const { a11yProps, CustomTabPanel } = useTabs();

@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import axios from "axios";
 import ConfirmDialog from "../../gallery/ConfirmDialog.js";
 import DateInput from "../../common/DateInput.js";
 import { currencyList } from "../../../utils/masterList.js";
+import { UserContext } from "../../../contexts/UserContext";
 
 // --- Ultra-Compact Enterprise Styles ---
 
@@ -1095,6 +1096,28 @@ const AddExJobs = ({ onJobCreated }) => {
   }, []);
 
   // inside AddExJobs.jsx, before component
+  const { user } = useContext(UserContext);
+  const isAdmin = user?.role === "Admin";
+  const userBranches = user?.selected_branches || [];
+  const userPorts = user?.selected_ports || [];
+
+  const allowedBranchOptions = [
+    { code: "BRD", label: "BRD - BARODA" },
+    { code: "GIM", label: "GIM - GANDHIDHAM" },
+    { code: "HAZ", label: "HAZ - HAZIRA" },
+    { code: "AMD", label: "AMD - AHMEDABAD" },
+    { code: "COK", label: "COK - COCHIN" },
+  ].filter(b => isAdmin || userBranches.includes(b.code));
+
+  const portOptions = [
+    { value: "INMUN1 - MUNDRA", label: "Mundra (INMUN1)" },
+    { value: "INIXY1 - KANDLA", label: "Kandla (INIXY1)" },
+    { value: "INPAV1 - PIPAVAV", label: "Pipavav (INPAV1)" },
+    { value: "INHZA1 - HAZIRA", label: "Hazira (INHZA1)" },
+    { value: "INNSA1 - NHAVA SHEVA", label: "Nhava Sheva (INNSA1)" },
+    { value: "INAMD4 - AHMEDABAD AIR PORT", label: "Ahmedabad Air Port" },
+  ].filter(p => isAdmin || !userPorts.length || userPorts.includes(p.value));
+
   useEffect(() => {
     const isAir = formData.consignmentType === "AIR";
     setFormData((prev) => ({
@@ -1116,13 +1139,7 @@ const AddExJobs = ({ onJobCreated }) => {
     }
   }, [formData.goods_stuffed_at, formData.consignmentType]);
 
-  const branchOptions = [
-    { code: "BRD", label: "BRD - BARODA" },
-    { code: "GIM", label: "GIM - GANDHIDHAM" },
-    { code: "HAZ", label: "HAZ - HAZIRA" },
-    { code: "AMD", label: "AMD - AHMEDABAD" },
-    { code: "COK", label: "COK - COCHIN" },
-  ];
+  // Removed static branchOptions since it's now computed as allowedBranchOptions
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -1293,8 +1310,9 @@ const AddExJobs = ({ onJobCreated }) => {
   };
 
   const handleClear = () => {
+    const defaultBranch = allowedBranchOptions.length > 0 ? allowedBranchOptions[0].code : "AMD";
     setFormData({
-      branch_code: "AMD",
+      branch_code: defaultBranch,
       exporter: "",
       job_owner: "",
       port_of_loading: "",
@@ -1497,7 +1515,7 @@ const AddExJobs = ({ onJobCreated }) => {
                       handleInputChange("branch_code", e.target.value)
                     }
                   >
-                    {branchOptions.map((b) => (
+                    {allowedBranchOptions.map((b) => (
                       <option key={b.code} value={b.code}>
                         {b.label}
                       </option>
@@ -1731,12 +1749,9 @@ const AddExJobs = ({ onJobCreated }) => {
                     onChange={(e) => handleInputChange("port_of_loading", e.target.value)}
                   >
                     <option value="">SELECT PORT</option>
-                    <option value="INMUN1 - MUNDRA">Mundra (INMUN1)</option>
-                    <option value="INIXY1 - KANDLA">Kandla (INIXY1)</option>
-                    <option value="INPAV1 - PIPAVAV">Pipavav (INPAV1)</option>
-                    <option value="INHZA1 - HAZIRA">Hazira (INHZA1)</option>
-                    <option value="INNSA1 - NHAVA SHEVA">Nhava Sheva (INNSA1)</option>
-                    <option value="INAMD4 - AHMEDABAD AIR PORT">Ahmedabad Air Port</option>
+                    {portOptions.map(p => (
+                      <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>
