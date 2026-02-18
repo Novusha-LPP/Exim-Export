@@ -10,6 +10,7 @@ import ExportJobFooter from "./ExportJobFooter.js";
 
 // Tabs for this module
 import OperationsTab from "./Operations/OperationsTab.jsx";
+import TrackingCompletedTab from "./Tracking Completed/TrackingCompletedTab.js";
 
 // Tab Panel Component
 function TabPanel(props) {
@@ -171,11 +172,15 @@ function EximOperationModule() {
             }}
           >
             <Tab label="Operation" />
+            <Tab label="Tracking Completed" />
           </Tabs>
         </Box>
 
         <TabPanel value={activeTab} index={0}>
           <OperationsTab job={data} formik={formik} />
+        </TabPanel>
+        <TabPanel value={activeTab} index={1}>
+          <TrackingCompletedTab job={data} formik={formik} />
         </TabPanel>
 
         <ExportJobFooter

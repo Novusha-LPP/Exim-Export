@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import DateInput from "../../../common/DateInput.js";
 import { styles, toUpperVal } from "../Product/commonStyles";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faTrash } from "@fortawesome/free-solid-svg-icons";
 
 const containerTypes = [
   "20",
@@ -169,6 +171,7 @@ function ContainerTab({ formik, onUpdate }) {
   };
 
   const handleDelete = (idx) => {
+    if (!window.confirm("Are you sure you want to delete this container?")) return;
     const list = (formik.values.containers || []).filter((_, i) => i !== idx);
     list.forEach((c, i) => {
       c.serialNumber = i + 1;
@@ -430,7 +433,7 @@ function ContainerTab({ formik, onUpdate }) {
                       style={styles.linkButton}
                       onClick={() => handleDelete(idx)}
                     >
-                      ✕
+                      <FontAwesomeIcon icon={faTrash} />
                     </button>
                   </td>
                 </tr>

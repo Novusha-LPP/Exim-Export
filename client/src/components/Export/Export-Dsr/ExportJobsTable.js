@@ -36,6 +36,8 @@ import VGMAuthorizationGenerator from "./StandardDocuments/VGMAuthorizationGener
 import { CUSTOM_HOUSE_OPTIONS, getOptionsForBranch } from "../../common/CustomHouseDropdown";
 import { UserContext } from "../../../contexts/UserContext";
 import SBTrackDialog from "./SBTrackDialog";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faShip, faAnchor } from "@fortawesome/free-solid-svg-icons";
 
 // --- Clean Enterprise Styles ---
 const s = {
@@ -43,7 +45,7 @@ const s = {
     fontFamily:
       "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
     backgroundColor: "#ffffff",
-    padding: "0 20px 20px 20px", // ⬅️ reduced
+    padding: "10px 15px", // Responsive padding
     minHeight: "100vh",
     color: "#333",
     fontSize: "12px",
@@ -143,8 +145,8 @@ const s = {
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    fontSize: "12px",
-    tableLayout: "fixed", // Enforce fixed widths
+    fontSize: "11px",
+    tableLayout: "auto", // Allow stretching
   },
   th: {
     padding: "8px 6px", // Reduced padding
@@ -164,7 +166,6 @@ const s = {
   td: {
     padding: "6px 6px", // Reduced padding
     borderBottom: "1px solid #dbdbdbff",
-    // borderRight: "1px solid #000000ff",
     color: "#1f2937",
     whiteSpace: "normal", // Allow wrapping
     wordBreak: "break-word", // Break long words
@@ -280,6 +281,27 @@ const getStatusColor = (statusValue) => {
       return "transparent";
   }
 };
+
+const buildShippingLineUrls = (num, containerFirst = "") => ({
+  MSC: "https://www.msc.com/en/track-a-shipment",
+  "M S C": "https://www.msc.com/en/track-a-shipment",
+  "MSC LINE": "https://www.msc.com/en/track-a-shipment",
+  "Maersk Line": `https://www.maersk.com/tracking/${num}`,
+  "CMA CGM AGENCIES INDIA PVT. LTD": "https://www.cma-cgm.com/ebusiness/tracking/search",
+  "Hapag-Lloyd": `https://www.hapag-lloyd.com/en/online-business/track/track-by-booking-solution.html?booking=${num}`,
+  "Trans Asia": `http://182.72.192.230/TASFREIGHT/AppTasnet/ContainerTracking.aspx?&containerno=${containerFirst}&booking=${num}`,
+  "ONE LINE": "https://ecomm.one-line.com/one-ecom/manage-shipment/cargo-tracking",
+  HMM: "https://www.hmm21.com/e-service/general/trackNTrace/TrackNTrace.do",
+  HYUNDI: "https://www.hmm21.com/e-service/general/trackNTrace/TrackNTrace.do",
+  "Cosco Container Lines": "https://elines.coscoshipping.com/ebusiness/cargotracking",
+  COSCO: "https://elines.coscoshipping.com/ebusiness/cargotracking",
+  "Unifeeder Agencies India Pvt Ltd": num
+    ? `https://www.unifeeder.cargoes.com/tracking?ID=${num.slice(0, 3)}%2F${num.slice(3, 6)}%2F${num.slice(6, 8)}%2F${num.slice(8)}`
+    : "#",
+  UNIFEEDER: num
+    ? `https://www.unifeeder.cargoes.com/tracking?ID=${num.slice(0, 3)}%2F${num.slice(3, 6)}%2F${num.slice(6, 8)}%2F${num.slice(8)}`
+    : "#",
+});
 
 const ExportJobsTable = () => {
   const { user } = useContext(UserContext);
@@ -1326,6 +1348,7 @@ const ExportJobsTable = () => {
               style={{
                 display: "flex",
                 flex: 1,
+                minWidth: "250px", // Ensure it doesn't get too small
                 justifyContent: "flex-end",
                 gap: "10px",
               }}
@@ -1359,17 +1382,16 @@ const ExportJobsTable = () => {
           <div style={s.tableContainer}>
             <table style={s.table}>
               <colgroup>
-                <col style={{ width: "120px" }} /> {/* Job No + Owner */}
-                <col style={{ width: "150px" }} /> {/* Exporter */}
-                <col style={{ width: "100px" }} /> {/* NEW: KYC/Codes */}
-                <col style={{ width: "100px" }} /> {/* Invoice */}
-                <col style={{ width: "80px" }} /> {/* SB */}
-                <col style={{ width: "80px" }} /> {/* Pkgs */}
-                <col style={{ width: "100px" }} /> {/* Port */}
-                <col style={{ width: "100px" }} /> {/* Placement */}
-                <col style={{ width: "80px" }} /> {/* Handover */}
-                <col style={{ width: "100px" }} /> {/* Docs */}
-                <col style={{ width: "60px" }} /> {/* Action */}
+                <col style={{ minWidth: "120px" }} /> {/* Job No + Owner + Pkgs */}
+                <col style={{ minWidth: "80px" }} /> {/* Exporter */}
+                <col style={{ minWidth: "100px" }} /> {/* KYC/Codes */}
+                <col style={{ minWidth: "100px" }} /> {/* Invoice */}
+                <col style={{ minWidth: "90px" }} /> {/* SB */}
+                <col style={{ minWidth: "160px" }} /> {/* Port */}
+                <col style={{ minWidth: "120px" }} /> {/* Container */}
+                <col style={{ minWidth: "85px" }} /> {/* Handover */}
+                <col style={{ minWidth: "180px" }} /> {/* Docs */}
+                <col style={{ minWidth: "80px" }} /> {/* Status */}
               </colgroup>
               <thead>
                 <tr
@@ -1397,7 +1419,6 @@ const ExportJobsTable = () => {
                   <th style={s.th}>KYC / Codes</th>
                   <th style={s.th}>Invoice</th>
                   <th style={s.th}>SB / Date</th>
-                  <th style={s.th}>No. of Pkgs</th>
                   <th style={s.th}>Port</th>
                   <th style={s.th}>Container</th>
                   <th style={s.th}>Handover</th>
@@ -1408,13 +1429,13 @@ const ExportJobsTable = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="11" style={s.message}>
+                    <td colSpan="10" style={s.message}>
                       Loading jobs...
                     </td>
                   </tr>
                 ) : jobs.length === 0 ? (
                   <tr>
-                    <td colSpan="11" style={s.message}>
+                    <td colSpan="10" style={s.message}>
                       No jobs found.
                     </td>
                   </tr>
@@ -1500,15 +1521,17 @@ const ExportJobsTable = () => {
                           <div
                             style={{
                               color: "#32363dff",
-                              fontSize: "11px",
+                              fontSize: "10px",
                               fontWeight: "normal",
+                              marginBottom: "4px"
                             }}
                           >
                             {formatDate(job.job_date)}
                           </div>
+
                           <div
                             style={{
-                              marginTop: "5px",
+                              marginTop: "2px",
                               padding: "2px 6px",
                               width: "fit-content",
                               borderRadius: "3px",
@@ -1559,6 +1582,16 @@ const ExportJobsTable = () => {
                               </div>
                             )}
                           </div>
+
+                          {/* Package Info repositioned here */}
+                          <div style={{ marginTop: "6px", fontSize: "10px" }}>
+                            <div style={{ fontWeight: "600", color: "#111" }}>
+                              {job.total_no_of_pkgs} {job.package_unit}
+                            </div>
+                            <div style={{ color: "#6b7280" }}>
+                              G: {job.gross_weight_kg} kg | N: {job.net_weight_kg} kg
+                            </div>
+                          </div>
                         </td>
 
                         {/* Column 3: Exporter */}
@@ -1569,6 +1602,8 @@ const ExportJobsTable = () => {
                               fontWeight: "600",
                               color: "#111",
                               marginBottom: "2px",
+                              maxWidth: "150px", // Prevent stretching
+                              wordBreak: "break-word"
                             }}
                           >
                             {job.exporter}
@@ -1587,6 +1622,60 @@ const ExportJobsTable = () => {
                           >
                             {job.buyerThirdPartyInfo?.buyer?.name || "-"}
                           </div>
+
+                          {/* Booking No section */}
+                          {(() => {
+                            const bookings = [];
+                            job.operations?.forEach((op) => {
+                              op.bookingDetails?.forEach((b) => {
+                                if (b.bookingNo && !bookings.includes(b.bookingNo)) {
+                                  bookings.push(b.bookingNo);
+                                }
+                              });
+                            });
+
+                            if (bookings.length > 0) {
+                              const firstBooking = bookings[0];
+                              return (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    marginTop: "4px",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      fontSize: "10px",
+                                      fontWeight: "700",
+                                      color: "#4b5563",
+                                    }}
+                                  >
+                                    Bk No:
+                                  </span>
+                                  <span
+                                    style={{ fontSize: "10px", color: "#1f2937" }}
+                                  >
+                                    {firstBooking}
+                                  </span>
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) =>
+                                      handleCopyText(firstBooking, e)
+                                    }
+                                    style={{ padding: 0 }}
+                                    title="Copy Booking No"
+                                  >
+                                    <ContentCopyIcon
+                                      style={{ fontSize: 10, color: "#6b7280" }}
+                                    />
+                                  </IconButton>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </td>
 
                         {/* NEW Column: KYC / Codes */}
@@ -1741,7 +1830,7 @@ const ExportJobsTable = () => {
                               </IconButton>
                             )}
                           </div>
-                          <div style={{ color: "#4b5563", fontSize: "11px" }}>
+                          <div style={{ color: "#4b5563", fontSize: "10px" }}>
                             {formatDate(job.invoices?.[0]?.invoiceDate)}
                           </div>
                           <div
@@ -1804,77 +1893,34 @@ const ExportJobsTable = () => {
                               )}
                             </div>
                           </div>
-                          <div style={{ color: "#4b5563", fontSize: "11px" }}>
+                          <div style={{ color: "#4b5563", fontSize: "10px" }}>
                             {formatDate(job.sb_date)}
                           </div>
                         </td>
 
-                        {/* Column 6: No. of Pkgs */}
+                        {/* Column 6: Port */}
                         <td style={s.td}>
-                          <div
-                            style={{ fontWeight: "600", marginBottom: "2px" }}
-                          >
-                            {job.total_no_of_pkgs} {job.package_unit}
-                          </div>
-                          <div style={{ color: "#4b5563", fontSize: "11px" }}>
-                            G: {job.gross_weight_kg} kg
-                          </div>
-                          <div style={{ color: "#4b5563", fontSize: "11px" }}>
-                            N: {job.net_weight_kg} kg
-                          </div>
-                        </td>
-
-                        {/* Column 7: Port */}
-                        <td style={s.td}>
-                          <div style={{ marginBottom: "4px" }}>
-                            <div
-                              style={{
-                                fontWeight: "600",
-                                fontSize: "11px",
-                                color: "#111",
-                              }}
-                            >
-                              Dest:
+                          <div style={{ marginBottom: "6px" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px", alignItems: "baseline" }}>
+                              <span style={{ fontWeight: "700", fontSize: "11px", color: "#111" }}>Dest:</span>
+                              <span style={{ fontSize: "11px", color: "#374151", fontWeight: "600" }}>{job.destination_port || "-"}</span>
                             </div>
-                            <div style={{ fontSize: "11px", color: "#374151" }}>
-                              {job.destination_port || "-"}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: "10px",
-                                color: "#6b7280",
-                                fontStyle: "italic",
-                              }}
-                            >
+                            <div style={{ fontSize: "10px", color: "#6b7280", fontStyle: "italic", paddingLeft: "35px" }}>
                               {job.destination_country || "-"}
                             </div>
                           </div>
                           <div>
-                            <div
-                              style={{
-                                fontWeight: "600",
-                                fontSize: "11px",
-                                color: "#111",
-                              }}
-                            >
-                              Discharge:
+                            <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px", alignItems: "baseline" }}>
+                              <span style={{ fontWeight: "700", fontSize: "11px", color: "#111" }}>Discharge:</span>
+                              <span style={{ fontSize: "11px", color: "#374151", fontWeight: "600" }}>{job.port_of_discharge || "-"}</span>
                             </div>
-                            <div style={{ fontSize: "11px", color: "#374151" }}>
-                              {job.port_of_discharge || "-"}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: "10px",
-                                color: "#6b7280",
-                                fontStyle: "italic",
-                              }}
-                            >
+                            <div style={{ fontSize: "10px", color: "#6b7280", fontStyle: "italic", paddingLeft: "60px" }}>
                               {job.discharge_country || "-"}
                             </div>
                           </div>
                         </td>
 
-                        {/* Column 8: Container Placement */}
+                        {/* Column 7: Container Placement */}
                         <td style={s.td}>
                           <div style={{ marginBottom: "2px" }}>
                             {job.containers && job.containers.length > 0 ? (
@@ -1889,32 +1935,95 @@ const ExportJobsTable = () => {
                                 }}
                               >
                                 {job.containers
-                                  .map((c) => c.containerNo)
-                                  .filter(Boolean)
-                                  .map((containerNo, index) => (
-                                    <div
-                                      key={index}
-                                      style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                      }}
-                                    >
-                                      <span>{containerNo}</span>
-                                      <IconButton
-                                        size="small"
-                                        onClick={(e) =>
-                                          handleCopyText(containerNo, e)
-                                        }
-                                        style={{ padding: 0 }}
-                                        title="Copy Container No"
+                                  .filter((c) => c.containerNo)
+                                  .map((container, index) => {
+                                    // const weightShortage = parseFloat(container.weight_shortage) || 0;
+                                    // const containerColor = getShortageColor(weightShortage);
+                                    // const tooltipText = getShortageText(weightShortage);
+
+                                    return (
+                                      <div
+                                        key={index}
+                                        style={{
+                                          display: "flex",
+                                          justifyContent: "space-between",
+                                          alignItems: "center",
+                                        }}
                                       >
-                                        <ContentCopyIcon
-                                          style={{ fontSize: 10 }}
-                                        />
-                                      </IconButton>
-                                    </div>
-                                  ))}
+                                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                          <a
+                                            href={`https://www.ldb.co.in/ldb/containersearch/39/${container.containerNo}/1726651147706`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                              fontWeight: "bold",
+                                              textDecoration: "none",
+                                              cursor: "pointer",
+                                              fontSize: "11px",
+                                              color: "#2563eb",
+                                            }}
+                                            onMouseOver={(e) =>
+                                              (e.target.style.textDecoration = "underline")
+                                            }
+                                            onMouseOut={(e) =>
+                                              (e.target.style.textDecoration = "none")
+                                            }
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            {container.containerNo}
+                                          </a>
+
+                                          {/* Shipping Line Tracking Link */}
+                                          {(() => {
+                                            const bookingDetail = job.operations?.[0]?.bookingDetails?.[0] || {};
+                                            const bookingNo = bookingDetail.bookingNo || "";
+                                            const containerFirst = job.containers?.[0]?.containerNo || "";
+                                            const urls = buildShippingLineUrls(bookingNo, containerFirst);
+
+                                            let linerRaw = bookingDetail.shippingLineName || job.shipping_line_airline || "";
+                                            // Handle cases like "MSC - MSC" by taking the part after " - "
+                                            let liner = linerRaw.includes(" - ") ? linerRaw.split(" - ").pop().trim() : linerRaw.trim();
+
+                                            const matchKey = Object.keys(urls).find(key => liner.toUpperCase().includes(key.toUpperCase()));
+                                            const url = matchKey ? urls[matchKey] : "#";
+
+                                            if (liner && url !== "#") {
+                                              return (
+                                                <Tooltip title={`Track on ${liner}`}>
+                                                  <a
+                                                    href={url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{ display: 'flex', alignItems: 'center' }}
+                                                  >
+                                                    <FontAwesomeIcon icon={faShip} style={{ fontSize: 10, color: "#2563eb" }} />
+                                                  </a>
+                                                </Tooltip>
+                                              );
+                                            }
+                                            return null;
+                                          })()}
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                                          <IconButton
+                                            size="small"
+                                            onClick={(e) =>
+                                              handleCopyText(container.containerNo, e)
+                                            }
+                                            style={{ padding: 0, marginLeft: 4 }}
+                                            title="Copy Container No"
+                                          >
+                                            <ContentCopyIcon
+                                              style={{ fontSize: 10 }}
+                                            />
+                                          </IconButton>
+                                          {container.size && <span style={{ fontSize: '10px', marginLeft: 4, color: '#6b7280' }}>| "{container.size}"</span>}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                               </div>
                             ) : (
                               <div
@@ -1928,48 +2037,53 @@ const ExportJobsTable = () => {
                               </div>
                             )}
                           </div>
-                          <div style={{ color: "#6b7280", fontSize: "11px" }}>
-                            <span style={{ fontSize: "10px" }}>Place:</span>{" "}
-                            {formatDate(
-                              job.operations?.[0]?.statusDetails?.[0]
-                                ?.containerPlacementDate,
-                              "dd-MM-yy"
-                            )}
+                          <div style={{ color: "#6b7280", fontSize: "10px" }}>
+                            <span>Place:</span>{" "}
+                            <span style={{ fontWeight: "500" }}>
+                              {formatDate(
+                                job.operations?.[0]?.statusDetails?.[0]
+                                  ?.containerPlacementDate,
+                                "dd-MM-yy"
+                              )}
+                            </span>
                           </div>
                         </td>
 
-                        {/* Column 9: Handover DATE */}
+                        {/* Column 8: Handover DATE */}
                         <td style={s.td}>
-                          <div style={{ marginBottom: "2px" }}>
-                            <span
-                              style={{ color: "#6b7280", fontSize: "10px" }}
-                            >
-                              {job.transportMode === "AIR" ||
-                                job.consignmentType === "LCL"
-                                ? "File:"
-                                : "Fwd:"}
-                            </span>{" "}
-                            {formatDate(
-                              job.operations?.[0]?.statusDetails?.[0]
-                                ?.handoverForwardingNoteDate,
-                              "dd-MM-yy"
-                            )}
+                          <div style={{ marginBottom: "2px", fontSize: "10px" }}>
+                            <span style={{ color: "#6b7280" }}>DHo:</span>{" "}
+                            <span style={{ fontWeight: "500" }}>
+                              {formatDate(
+                                job.operations?.[0]?.statusDetails?.[0]
+                                  ?.handoverForwardingNoteDate,
+                                "dd-MM-yy"
+                              )}
+                            </span>
                           </div>
-                          <div>
-                            <span
-                              style={{ color: "#6b7280", fontSize: "10px" }}
-                            >
-                              Rail:
-                            </span>{" "}
-                            {formatDate(
-                              job.operations?.[0]?.statusDetails?.[0]
-                                ?.railOutReachedDate,
-                              "dd-MM-yy"
-                            )}
+                          <div style={{ fontSize: "10px" }}>
+                            <span style={{ color: "#6b7280" }}>Rail:</span>{" "}
+                            <span style={{ fontWeight: "500" }}>
+                              {formatDate(
+                                job.operations?.[0]?.statusDetails?.[0]
+                                  ?.railOutReachedDate,
+                                "dd-MM-yy"
+                              )}
+                            </span>
+                          </div>
+                          <div style={{ marginTop: "2px", fontSize: "10px" }}>
+                            <span style={{ color: "#6b7280" }}>Leo:</span>{" "}
+                            <span style={{ fontWeight: "500" }}>
+                              {formatDate(
+                                job.operations?.[0]?.statusDetails?.[0]
+                                  ?.leoDate,
+                                "dd-MM-yy"
+                              )}
+                            </span>
                           </div>
                         </td>
 
-                        {/* Column 10: Docs */}
+                        {/* Column 9: Docs */}
                         <td style={s.td}>
                           <div
                             style={{
@@ -1994,7 +2108,7 @@ const ExportJobsTable = () => {
                                   whiteSpace: "nowrap",
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
-                                  maxWidth: "90px",
+                                  maxWidth: "160px",
                                 }}
                                 onClick={(e) => e.stopPropagation()}
                                 title={link.title}
@@ -2005,7 +2119,7 @@ const ExportJobsTable = () => {
                           </div>
                         </td>
 
-                        {/* Column 11: Copy Action */}
+                        {/* Column 10: Status */}
                         <td style={s.td}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                             <button

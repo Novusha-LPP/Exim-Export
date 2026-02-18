@@ -106,6 +106,7 @@ const getDefaultItem = (section) => {
       tareWeightKgs: 0,
       maxPayloadKgs: 0,
       shippingLineSealNo: "",
+      noOfPackages: 0,
       images: [],
     },
     bookingDetails: {
@@ -755,29 +756,29 @@ const OperationsTab = ({ formik }) => {
     }
   }, [formik.values.job_no, operations.length]);
 
-  // Sync ICD Port with Custom House if currently empty
+  // Sync ICD Port with Custom House
   useEffect(() => {
     const customHouse = toUpper(formik.values.custom_house || "");
-    if (customHouse && consignmentType !== "FCL") {
-      let changed = false;
-      const updatedOps = operations.map((op) => {
-        const statusDetails = op.statusDetails || [];
-        const updatedStatus = statusDetails.map((s) => {
-          if (!s.icdPort) {
-            changed = true;
-            return { ...s, icdPort: customHouse };
-          }
-          return s;
-        });
-        if (changed) return { ...op, statusDetails: updatedStatus };
-        return op;
-      });
+    if (!customHouse) return;
 
-      if (changed) {
-        formik.setFieldValue("operations", updatedOps);
-      }
+    let changed = false;
+    const updatedOps = operations.map((op) => {
+      const statusDetails = op.statusDetails || [];
+      const updatedStatus = statusDetails.map((s) => {
+        if (toUpper(s.icdPort || "") !== customHouse) {
+          changed = true;
+          return { ...s, icdPort: customHouse };
+        }
+        return s;
+      });
+      if (changed) return { ...op, statusDetails: updatedStatus };
+      return op;
+    });
+
+    if (changed) {
+      formik.setFieldValue("operations", updatedOps);
     }
-  }, [formik.values.custom_house, formik.values.consignmentType]);
+  }, [formik.values.custom_house, operations.length]);
 
   // Sync Port Of Loading between Header and Operations
   useEffect(() => {
@@ -824,7 +825,7 @@ const OperationsTab = ({ formik }) => {
     const nextOps = currentOps.map((op) => {
       const bookingDetails = op.bookingDetails || [];
       const updatedBooking = bookingDetails.map((b) => {
-        if (!b.shippingLineName && jobShippingLine) {
+        if (toUpper(b.shippingLineName || "") !== jobShippingLine) {
           changed = true;
           return { ...b, shippingLineName: jobShippingLine };
         }
@@ -836,7 +837,7 @@ const OperationsTab = ({ formik }) => {
     if (changed) {
       formik.setFieldValue("operations", nextOps);
     }
-  }, [formik.values.shipping_line_airline, formik.values.job_no]);
+  }, [formik.values.shipping_line_airline, formik.values.job_no, operations.length]);
 
   // 1. Collect all unique container numbers from ALL sections of ALL operations
   const allOpContainersSet = new Set();
@@ -883,45 +884,39 @@ const OperationsTab = ({ formik }) => {
       let opIsDirty = false;
       const syncedOp = { ...op };
 
-      // 1. Collect all unique container numbers from Container Details and Weighment Details
-      const opUniqueContainers = new Set();
-      const sectionsToSync = isAir ? [] : ["containerDetails", "weighmentDetails"];
+      // 1. Sync containerDetails and weighmentDetails by index (Strict Mirror)
+      if (!isAir && !isDockLCL) {
+        const cDet = [...(syncedOp.containerDetails || [])];
+        const wDet = [...(syncedOp.weighmentDetails || [])];
+        const maxLen = Math.max(cDet.length, wDet.length);
 
-      sectionsToSync.forEach((s) => {
-        (syncedOp[s] || []).forEach((row) => {
-          if (row.containerNo && row.containerNo.trim()) {
-            opUniqueContainers.add(row.containerNo.trim().toUpperCase());
+        // Ensure both arrays have at least one row if they are expected
+        const finalLen = maxLen === 0 ? 1 : maxLen;
+
+        while (cDet.length < finalLen) {
+          cDet.push(getDefaultItem("containerDetails"));
+          opIsDirty = true;
+        }
+        while (wDet.length < finalLen) {
+          wDet.push(getDefaultItem("weighmentDetails"));
+          opIsDirty = true;
+        }
+
+        // Mirror containerNumber by index
+        for (let i = 0; i < finalLen; i++) {
+          const cNo = (cDet[i].containerNo || "").trim().toUpperCase();
+          const wNo = (wDet[i].containerNo || "").trim().toUpperCase();
+
+          if (cNo !== wNo) {
+            // Priority: Take whichever is non-empty. If both non-empty, cNo wins.
+            const targetNo = cNo || wNo;
+            if (cDet[i].containerNo !== targetNo) cDet[i].containerNo = targetNo;
+            if (wDet[i].containerNo !== targetNo) wDet[i].containerNo = targetNo;
+            opIsDirty = true;
           }
-        });
-      });
-
-      // 2. Ensure synced sections represent all unique containers
-      if (!isAir) {
-        sectionsToSync.forEach((s) => {
-          const currentArr = [...(syncedOp[s] || [])];
-          opUniqueContainers.forEach((cNo) => {
-            const alreadyExists = currentArr.some(
-              (row) => (row.containerNo || "").trim().toUpperCase() === cNo,
-            );
-
-            if (!alreadyExists) {
-              const emptyIdx = currentArr.findIndex(
-                (row) => !(row.containerNo || "").trim(),
-              );
-
-              if (emptyIdx !== -1) {
-                currentArr[emptyIdx] = {
-                  ...currentArr[emptyIdx],
-                  containerNo: cNo,
-                };
-              } else {
-                currentArr.push({ ...getDefaultItem(s), containerNo: cNo });
-              }
-              opIsDirty = true;
-            }
-          });
-          syncedOp[s] = currentArr;
-        });
+        }
+        syncedOp.containerDetails = cDet;
+        syncedOp.weighmentDetails = wDet;
       }
 
       if (opIsDirty) opsModified = true;
@@ -1086,89 +1081,74 @@ const OperationsTab = ({ formik }) => {
     let opsChanged = false;
 
     const nextOperations = operations.map(op => {
-      // Logic similar to Phase A Intra-sync but sourced from Master
       if (isDockLCL) return op;
 
       const syncedOp = { ...op };
       let opIsDirty = false;
 
-      // Sync master containers to Container & Weighment Details
       const sectionsToUpdate = ["containerDetails", "weighmentDetails"];
 
       sectionsToUpdate.forEach(secName => {
         const currentArr = [...(syncedOp[secName] || [])];
+        let sectionDirty = false;
 
-        masterContainers.forEach(mContainer => {
-          const mNo = (mContainer.containerNo || "").trim().toUpperCase();
-          if (!mNo) return;
+        // 1. Match length with Master
+        while (currentArr.length < masterContainers.length) {
+          currentArr.push(getDefaultItem(secName));
+          sectionDirty = true;
+        }
+        // Optional: Should we remove rows if Master has fewer? Usually yes for strict sync.
+        if (currentArr.length > masterContainers.length && masterContainers.length > 0) {
+          currentArr.length = masterContainers.length;
+          sectionDirty = true;
+        }
 
-          const exists = currentArr.some(d => (d.containerNo || "").trim().toUpperCase() === mNo);
-          if (!exists) {
-            const emptyIdx = currentArr.findIndex(d => !(d.containerNo || "").trim());
+        // 2. Sync values from Master by index
+        masterContainers.forEach((m, idx) => {
+          if (idx >= currentArr.length) return;
+          const d = currentArr[idx];
+          const mNo = (m.containerNo || "").trim().toUpperCase();
 
-            if (emptyIdx !== -1) {
-              currentArr[emptyIdx] = {
-                ...currentArr[emptyIdx],
-                containerNo: mNo,
-                grossWeight: Number(mContainer.grossWeight || 0),
-                maxGrossWeightKgs: Number(mContainer.maxGrossWeightKgs || 0),
-                vgmWtInvoice: Number(mContainer.vgmWtInvoice || 0) || (Number(mContainer.grossWeight || 0) + Number(mContainer.tareWeightKgs || 0)),
-                tareWeightKgs: Number(mContainer.tareWeightKgs || 0),
-                maxPayloadKgs: Number(mContainer.maxPayloadKgs || 0) || (Number(mContainer.maxGrossWeightKgs || 0) - Number(mContainer.tareWeightKgs || 0)),
-                containerSize: mContainer.type || "",
-                customSealNo: mContainer.sealNo || ""
-              };
-            } else {
-              currentArr.push({
-                ...getDefaultItem(secName),
-                containerNo: mNo,
-                grossWeight: Number(mContainer.grossWeight || 0),
-                maxGrossWeightKgs: Number(mContainer.maxGrossWeightKgs || 0),
-                vgmWtInvoice: Number(mContainer.vgmWtInvoice || 0) || (Number(mContainer.grossWeight || 0) + Number(mContainer.tareWeightKgs || 0)),
-                tareWeightKgs: Number(mContainer.tareWeightKgs || 0),
-                maxPayloadKgs: Number(mContainer.maxPayloadKgs || 0) || (Number(mContainer.maxGrossWeightKgs || 0) - Number(mContainer.tareWeightKgs || 0)),
-                containerSize: mContainer.type || "",
-                customSealNo: mContainer.sealNo || ""
-              });
-            }
-            opIsDirty = true;
-          } else if (secName === "containerDetails") {
-            // SYNC VALUES back from Master to Operations for existing rows
-            const idx = currentArr.findIndex(d => (d.containerNo || "").trim().toUpperCase() === mNo);
-            const d = currentArr[idx];
-            const m = mContainer;
+          // Sync Container Number
+          if ((d.containerNo || "").trim().toUpperCase() !== mNo) {
+            currentArr[idx] = { ...currentArr[idx], containerNo: mNo };
+            sectionDirty = true;
+          }
 
+          // Sync other fields back to operations for existing containers
+          if (secName === "containerDetails" && mNo) {
+            const row = currentArr[idx];
             if (
-              Number(d.grossWeight || 0) !== Number(m.grossWeight || 0) ||
-              Number(d.maxGrossWeightKgs || 0) !== Number(m.maxGrossWeightKgs || 0) ||
-              Number(d.tareWeightKgs || 0) !== Number(m.tareWeightKgs || 0) ||
-              Number(d.maxPayloadKgs || 0) !== Number(m.maxPayloadKgs || 0) ||
-              (d.containerSize || "") !== (m.type || "") ||
-              (d.shippingLineSealNo || "") !== (m.shippingLineSealNo || "") ||
-              (d.customSealNo || "") !== (m.sealNo || "")
+              Number(row.grossWeight || 0) !== Number(m.grossWeight || 0) ||
+              Number(row.maxGrossWeightKgs || 0) !== Number(m.maxGrossWeightKgs || 0) ||
+              Number(row.tareWeightKgs || 0) !== Number(m.tareWeightKgs || 0) ||
+              Number(row.noOfPackages || 0) !== Number(m.pkgsStuffed || 0) ||
+              (row.containerSize || "") !== (m.type || "") ||
+              (row.shippingLineSealNo || "") !== (m.shippingLineSealNo || "") ||
+              (row.customSealNo || "") !== (m.sealNo || "")
             ) {
               currentArr[idx] = {
-                ...d,
+                ...row,
                 grossWeight: Number(m.grossWeight || 0),
                 maxGrossWeightKgs: Number(m.maxGrossWeightKgs || 0),
                 tareWeightKgs: Number(m.tareWeightKgs || 0),
+                noOfPackages: Number(m.pkgsStuffed || 0),
                 maxPayloadKgs: Number(m.maxGrossWeightKgs || 0) - Number(m.tareWeightKgs || 0),
                 vgmWtInvoice: Number(m.grossWeight || 0) + Number(m.tareWeightKgs || 0),
                 containerSize: m.type || "",
                 shippingLineSealNo: m.shippingLineSealNo || "",
                 customSealNo: m.sealNo || ""
               };
-              opIsDirty = true;
+              sectionDirty = true;
             }
           }
         });
-        syncedOp[secName] = currentArr;
+
+        if (sectionDirty) {
+          syncedOp[secName] = currentArr;
+          opIsDirty = true;
+        }
       });
-
-      // Transporter Details Sync removed as containerNo field is gone
-      // (Optional: Weighment Details Sync now handled in the loop above)
-
-      if (opIsDirty) opsChanged = true;
 
       if (opIsDirty) opsChanged = true;
       return syncedOp;
@@ -1260,7 +1240,7 @@ const OperationsTab = ({ formik }) => {
 
       // SYNC: If it's a linked container field, update other sections at same index
       if (isLinkedContainerField) {
-        ["transporterDetails", "containerDetails"].forEach(
+        ["containerDetails", "weighmentDetails"].forEach(
           (s) => {
             if (s === section) return;
             if (updatedOp[s] && updatedOp[s][itemIndex]) {
@@ -1441,6 +1421,12 @@ const OperationsTab = ({ formik }) => {
       columns={[
         { field: "containerNo", label: "Container No.", width: "140px" },
         {
+          field: "noOfPackages",
+          label: "Packages",
+          type: "number",
+          width: "100px",
+        },
+        {
           field: "shippingLineSealNo",
           label: "S/Line Seal No",
           width: "140px",
@@ -1455,19 +1441,19 @@ const OperationsTab = ({ formik }) => {
         { field: "portOfLoading", label: "Port Of Loading", width: "170px", type: "select", options: PORT_OF_LOADING_OPTIONS },
         {
           field: "maxGrossWeightKgs",
-          label: "Max Gross Weight (KG)",
+          label: "Max GW",
           type: "number",
           width: "100px",
         },
         {
           field: "grossWeight",
-          label: "Gross Weight (KG)",
+          label: "Gw",
           type: "number",
           width: "100px",
         },
         {
           field: "tareWeightKgs",
-          label: "Tare Wt (KG)",
+          label: "Tare Wt",
           type: "number",
           width: "100px",
         },
@@ -2057,8 +2043,9 @@ const StatusSection = ({
     {
       field: "icdPort",
       label: "ICD/Port",
-      type: "gateway-dropdown",
+      type: "text",
       width: 1,
+      readOnly: true,
     },
   ].filter((f) => !f.hidden);
 
@@ -2259,7 +2246,7 @@ const StatusSection = ({
               checked={item.railRoad === "rail"}
               onChange={() => onUpdate(section, rowIdx, "railRoad", "rail")}
             />
-            Rail
+            Rail out
           </label>
           <label
             style={{
@@ -2276,7 +2263,7 @@ const StatusSection = ({
               checked={item.railRoad === "road"}
               onChange={() => onUpdate(section, rowIdx, "railRoad", "road")}
             />
-            Road
+            Road out
           </label>
         </div>
 
@@ -2382,7 +2369,7 @@ const StatusSection = ({
         </div>
       </div>
     ) : (() => {
-      const isFieldDisabled = f.disabledFn ? f.disabledFn(item) : false;
+      const isFieldDisabled = f.disabledFn ? f.disabledFn(item) : (f.readOnly || false);
       return (
         <input
           type={
