@@ -33,6 +33,8 @@ import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharG
 import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
 import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
 import VGMAuthorizationGenerator from "./StandardDocuments/VGMAuthorizationGenerator";
+import FreightCertificateGenerator from "./StandardDocuments/FreightCertificateGenerator";
+import BillOfLadingGenerator from "./StandardDocuments/BillOfLadingGenerator";
 import { CUSTOM_HOUSE_OPTIONS, getOptionsForBranch } from "../../common/CustomHouseDropdown";
 import { UserContext } from "../../../contexts/UserContext";
 import SBTrackDialog from "./SBTrackDialog";
@@ -2591,6 +2593,32 @@ const ExportJobsTable = () => {
             VGM Authorization
           </MenuItem>
         </VGMAuthorizationGenerator>
+
+        <FreightCertificateGenerator jobNo={selectedDocJob?.job_no}>
+          <MenuItem
+            disableRipple
+            onClick={() => {
+              setDocsAnchorEl(null);
+              setSelectedDocJob(null);
+            }}
+            sx={{ fontSize: 13, minWidth: 150 }}
+          >
+            Freight Certificate
+          </MenuItem>
+        </FreightCertificateGenerator>
+
+        <BillOfLadingGenerator jobNo={selectedDocJob?.job_no}>
+          <MenuItem
+            disableRipple
+            onClick={() => {
+              setDocsAnchorEl(null);
+              setSelectedDocJob(null);
+            }}
+            sx={{ fontSize: 13, minWidth: 150 }}
+          >
+            Bill of Lading
+          </MenuItem>
+        </BillOfLadingGenerator>
       </Menu>
 
       {/* SB Track Dialog */}

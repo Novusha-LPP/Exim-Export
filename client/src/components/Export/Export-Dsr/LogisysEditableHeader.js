@@ -15,6 +15,8 @@ import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharG
 import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
 import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
 import VGMAuthorizationGenerator from "./StandardDocuments/VGMAuthorizationGenerator";
+import FreightCertificateGenerator from "./StandardDocuments/FreightCertificateGenerator";
+import BillOfLadingGenerator from "./StandardDocuments/BillOfLadingGenerator";
 
 // Helper function
 const toUpper = (str) => (str || "").toUpperCase();
@@ -757,6 +759,26 @@ const LogisysEditableHeader = ({
                 VGM Authorization
               </MenuItem>
             </VGMAuthorizationGenerator>
+
+            <FreightCertificateGenerator jobNo={formik.values.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => setAnchorEl(null)}
+                sx={{ fontSize: 12, minWidth: 140 }}
+              >
+                Freight Certificate
+              </MenuItem>
+            </FreightCertificateGenerator>
+
+            <BillOfLadingGenerator jobNo={formik.values.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => setAnchorEl(null)}
+                sx={{ fontSize: 12, minWidth: 140 }}
+              >
+                Bill of Lading
+              </MenuItem>
+            </BillOfLadingGenerator>
           </Menu>
         </div>
       </div>
