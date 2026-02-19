@@ -2619,6 +2619,27 @@ const ExportJobsTable = () => {
             Bill of Lading
           </MenuItem>
         </BillOfLadingGenerator>
+
+        <MenuItem
+          onClick={() => {
+            if (!selectedDocJob) return;
+            const downloadUrl = `${import.meta.env.VITE_API_STRING}/generate-sb-file/${selectedDocJob._id}`;
+            window.open(downloadUrl, "_blank");
+            setDocsAnchorEl(null);
+            setSelectedDocJob(null);
+          }}
+          sx={{
+            fontSize: 13,
+            minWidth: 150,
+            color: "#166534",
+            fontWeight: "bold",
+            borderTop: "1px solid #eee",
+            marginTop: "5px",
+            paddingTop: "8px"
+          }}
+        >
+          Export SB Flat File (.sb)
+        </MenuItem>
       </Menu>
 
       {/* SB Track Dialog */}

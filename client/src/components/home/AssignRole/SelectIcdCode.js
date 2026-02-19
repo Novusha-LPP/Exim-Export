@@ -21,6 +21,7 @@ import { UserContext } from "../../../contexts/UserContext";
 
 function SelectIcdCode({ selectedUser }) {
   const [selectedBranches, setSelectedBranches] = useState([]);
+  const [selectedIcdCodes, setSelectedIcdCodes] = useState([]);
   const [selectedPorts, setSelectedPorts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
@@ -36,18 +37,54 @@ function SelectIcdCode({ selectedUser }) {
     { code: "COK", label: "COK - COCHIN" },
   ];
 
-  const portOptions = [
-    { value: "INMUN1 - MUNDRA", label: "MUNDRA (INMUN1)" },
-    { value: "INIXY1 - KANDLA", label: "KANDLA (INIXY1)" },
-    { value: "INPAV1 - PIPAVAV", label: "PIPAVAV (INPAV1)" },
-    { value: "INHZA1 - HAZIRA", label: "HAZIRA (INHZA1)" },
-    { value: "INNSA1 - NHAVA SHEVA", label: "NHAVA SHEVA (INNSA1)" },
-    { value: "INAMD4 - AHMEDABAD AIR PORT", label: "AHMEDABAD AIR PORT (INAMD4)" },
+  const CUSTOM_HOUSE_OPTIONS = [
+    {
+      group: "Ahmedabad", branchCode: "AMD", items: [
+        { value: "AHMEDABAD AIR CARGO", label: "Ahmedabad Air Cargo", code: "INAMD4" },
+        { value: "ICD SABARMATI", label: "ICD Sabarmati", code: "INSBI6" },
+        { value: "ICD SACHANA", label: "ICD SACHANA", code: "INJKA6" },
+        { value: "ICD VIROCHAN NAGAR", label: "ICD Virochan Nagar", code: "INVCN6" },
+        { value: "THAR DRY PORT", label: "THAR DRY PORT", code: "INSAU6" },
+      ]
+    },
+    {
+      group: "Baroda", branchCode: "BRD", items: [
+        { value: "ANKLESHWAR ICD", label: "ANKLESHWAR ICD", code: "INAKV6" },
+        { value: "ICD VARNAMA", label: "ICD VARNAMA", code: "INVRM6" },
+      ]
+    },
+    {
+      group: "Gandhidham", branchCode: "GIM", items: [
+        { value: "MUNDRA SEA", label: "MUNDRA SEA", code: "INMUN1" },
+        { value: "KANDLA SEA", label: "KANDLA SEA", code: "INIXY1" },
+      ]
+    },
+    {
+      group: "Cochin", branchCode: "COK", items: [
+        { value: "COCHIN AIR CARGO", label: "COCHIN AIR CARGO", code: "INCOK4" },
+        { value: "COCHIN SEA", label: "COCHIN SEA", code: "INCOK1" },
+      ]
+    },
+    {
+      group: "Hazira", branchCode: "HAZ", items: [
+        { value: "HAZIRA", label: "HAZIRA", code: "INHZA1" },
+      ]
+    },
   ];
+
+  // Derive available ICD codes based on selected branches
+  const availableIcdOptions = CUSTOM_HOUSE_OPTIONS
+    .filter(branch => selectedBranches.includes(branch.branchCode))
+    .flatMap(branch => branch.items.map(item => ({
+      value: item.value,
+      label: `${item.label} (${item.code})`,
+      branch: branch.group
+    })));
 
   useEffect(() => {
     // Reset form when selected user changes
     setSelectedBranches([]);
+    setSelectedIcdCodes([]);
     setSelectedPorts([]);
     setMessage({ text: "", type: "" });
 
@@ -69,11 +106,15 @@ function SelectIcdCode({ selectedUser }) {
       const currentBranches = res.data.selected_branches || [];
       setSelectedBranches(currentBranches);
 
+      // Set current ICD codes
+      const currentIcdCodes = res.data.selected_icd_codes || [];
+      setSelectedIcdCodes(currentIcdCodes);
+
       // Set current ports
       const currentPorts = res.data.selected_ports || [];
       setSelectedPorts(currentPorts);
 
-      if (currentBranches.length > 0 || currentPorts.length > 0) {
+      if (currentBranches.length > 0 || currentPorts.length > 0 || currentIcdCodes.length > 0) {
         setMessage({
           text: `User has existing assignments.`,
           type: "info",
@@ -101,10 +142,11 @@ function SelectIcdCode({ selectedUser }) {
     // Basic validation
     if (
       (!selectedBranches || selectedBranches.length === 0) &&
-      (!selectedPorts || selectedPorts.length === 0)
+      (!selectedPorts || selectedPorts.length === 0) &&
+      (!selectedIcdCodes || selectedIcdCodes.length === 0)
     ) {
       setMessage({
-        text: "Please select at least one branch or port",
+        text: "Please select at least one branch, port or ICD code",
         type: "error",
       });
       return;
@@ -124,6 +166,7 @@ function SelectIcdCode({ selectedUser }) {
           username: selectedUser,
           selectedBranches: selectedBranches,
           selectedPorts: selectedPorts,
+          selectedIcdCodes: selectedIcdCodes,
           adminUsername: user.username,
         }
       );
@@ -138,6 +181,7 @@ function SelectIcdCode({ selectedUser }) {
         ...prev,
         selected_branches: selectedBranches,
         selected_ports: selectedPorts,
+        selected_icd_codes: selectedIcdCodes,
       }));
     } catch (error) {
       console.error("Error assigning ICD codes:", error);
@@ -167,7 +211,8 @@ function SelectIcdCode({ selectedUser }) {
   const handleRemoveAllIcdCodes = async () => {
     if (
       (!userData?.selected_branches || userData.selected_branches.length === 0) &&
-      (!userData?.selected_ports || userData.selected_ports.length === 0)
+      (!userData?.selected_ports || userData.selected_ports.length === 0) &&
+      (!userData?.selected_icd_codes || userData.selected_icd_codes.length === 0)
     ) {
       setMessage({ text: "No assignments to remove", type: "error" });
       return;
@@ -189,6 +234,7 @@ function SelectIcdCode({ selectedUser }) {
       });
       setSelectedBranches([]);
       setSelectedPorts([]);
+      setSelectedIcdCodes([]);
 
       // Update local user data
       setUserData((prev) => ({
@@ -260,7 +306,8 @@ function SelectIcdCode({ selectedUser }) {
 
       {/* Display current assignments */}
       {(userData?.selected_branches?.length > 0 ||
-        userData?.selected_ports?.length > 0) && (
+        userData?.selected_ports?.length > 0 ||
+        userData?.selected_icd_codes?.length > 0) && (
           <Alert severity="info" sx={{ mb: 2 }}>
             {userData?.selected_branches?.length > 0 && (
               <>
@@ -270,6 +317,19 @@ function SelectIcdCode({ selectedUser }) {
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: 1.5 }}>
                   {userData.selected_branches.map((code, index) => (
                     <Chip key={index} label={code} size="small" color="secondary" />
+                  ))}
+                </Box>
+              </>
+            )}
+
+            {userData?.selected_icd_codes?.length > 0 && (
+              <>
+                <Typography variant="body2" sx={{ mb: 0.5, fontWeight: "bold" }}>
+                  Assigned ICD Codes:
+                </Typography>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: 1.5 }}>
+                  {userData.selected_icd_codes.map((code, index) => (
+                    <Chip key={index} label={code} size="small" color="primary" />
                   ))}
                 </Box>
               </>
@@ -345,14 +405,14 @@ function SelectIcdCode({ selectedUser }) {
             </Select>
           </FormControl>
 
-          <FormControl fullWidth margin="normal" size="small">
-            <InputLabel id="ports-select-label">Assign Ship Port</InputLabel>
+          <FormControl fullWidth margin="normal" size="small" disabled={selectedBranches.length === 0}>
+            <InputLabel id="icd-codes-select-label">Assign ICD Codes</InputLabel>
             <Select
-              labelId="ports-select-label"
+              labelId="icd-codes-select-label"
               multiple
-              value={selectedPorts}
-              onChange={(e) => setSelectedPorts(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
-              input={<OutlinedInput label="Assign Ship Port" />}
+              value={selectedIcdCodes}
+              onChange={(e) => setSelectedIcdCodes(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+              input={<OutlinedInput label="Assign ICD Codes" />}
               renderValue={(selected) => (
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                   {selected.map((value) => (
@@ -361,14 +421,19 @@ function SelectIcdCode({ selectedUser }) {
                 </Box>
               )}
             >
-              {portOptions.map((port) => (
-                <MenuItem key={port.value} value={port.value}>
-                  <Checkbox checked={selectedPorts.indexOf(port.value) > -1} />
-                  <ListItemText primary={port.label} />
-                </MenuItem>
-              ))}
+              {availableIcdOptions.length === 0 ? (
+                <MenuItem disabled>Please select a branch first</MenuItem>
+              ) : (
+                availableIcdOptions.map((icd) => (
+                  <MenuItem key={icd.value} value={icd.value}>
+                    <Checkbox checked={selectedIcdCodes.indexOf(icd.value) > -1} />
+                    <ListItemText primary={icd.label} secondary={icd.branch} />
+                  </MenuItem>
+                ))
+              )}
             </Select>
           </FormControl>
+
 
           <Box sx={{ mt: 2, display: "flex", gap: 2, flexWrap: "wrap" }}>
             <Button
@@ -380,8 +445,9 @@ function SelectIcdCode({ selectedUser }) {
               {loading ? <CircularProgress size={24} /> : "Assign Branch"}
             </Button>
 
-            {userData?.selected_icd_codes &&
-              userData.selected_icd_codes.length > 0 && (
+            {((userData?.selected_icd_codes && userData.selected_icd_codes.length > 0) ||
+              userData?.selected_branches?.length > 0 ||
+              userData?.selected_ports?.length > 0) && (
                 <Button
                   onClick={handleRemoveAllIcdCodes}
                   variant="outlined"

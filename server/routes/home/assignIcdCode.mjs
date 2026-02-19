@@ -29,35 +29,18 @@ router.post("/api/admin/assign-icd-code", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Valid ICD codes/Ports
-    const validIcdCodes = [
-      "ICD SACHANA",
-      "ICD SANAND",
-      "ICD KHODIYAR",
-      "ICD SABARMATI, AHMEDABAD",
-      "ICD VIRAMGAM",
-      "AIR AHMEDABAD",
-      "AHMEDABAD AIR CARGO",
-      "THAR DRY PORT",
-      "ICD VIROCHANNAGAR",
-      "ICD VIROCHAN NAGAR",
-      "HAZIRA"
-    ];
+    // Branch to ICD mapping based on user requirements
+    const CUSTOM_HOUSE_MAPPING = {
+      "AMD": ["AHMEDABAD AIR CARGO", "ICD SABARMATI", "ICD SACHANA", "ICD VIROCHAN NAGAR", "THAR DRY PORT"],
+      "BRD": ["ANKLESHWAR ICD", "ICD VARNAMA"],
+      "GIM": ["MUNDRA SEA", "KANDLA SEA"],
+      "COK": ["COCHIN AIR CARGO", "COCHIN SEA"],
+      "HAZ": ["HAZIRA"]
+    };
 
-    // Valid Branches
     const validBranches = ["AMD", "BRD", "GIM", "HAZ", "COK"];
 
-    // Update ICD codes if provided
-    if (selectedIcdCodes) {
-      const icdCodesArray = Array.isArray(selectedIcdCodes) ? selectedIcdCodes : [selectedIcdCodes];
-      const invalidIcd = icdCodesArray.filter(code => !validIcdCodes.includes(code));
-      if (invalidIcd.length > 0) {
-        return res.status(400).json({ message: `Invalid ICD codes: ${invalidIcd.join(', ')}` });
-      }
-      targetUser.selected_icd_codes = [...new Set(icdCodesArray)];
-    }
-
-    // Update Branches if provided
+    // 1. Update Branches first so we can validate ICDs against THEM
     if (selectedBranches) {
       const branchesArray = Array.isArray(selectedBranches) ? selectedBranches : [selectedBranches];
       const invalidBranches = branchesArray.filter(b => !validBranches.includes(b));
@@ -65,6 +48,34 @@ router.post("/api/admin/assign-icd-code", async (req, res) => {
         return res.status(400).json({ message: `Invalid Branches: ${invalidBranches.join(', ')}` });
       }
       targetUser.selected_branches = [...new Set(branchesArray)];
+    }
+
+    // 2. Update ICD codes if provided, validating against assigned branches
+    if (selectedIcdCodes) {
+      const icdCodesArray = Array.isArray(selectedIcdCodes) ? selectedIcdCodes : [selectedIcdCodes];
+
+      // Determine which ICDs are allowed for this user's branches
+      const userBranches = targetUser.selected_branches || [];
+      const allowedCodes = [];
+
+      if (userBranches.length > 0) {
+        userBranches.forEach(b => {
+          if (CUSTOM_HOUSE_MAPPING[b]) {
+            allowedCodes.push(...CUSTOM_HOUSE_MAPPING[b]);
+          }
+        });
+      } else {
+        // Fallback: if no branches assigned, allow any code from the mapping
+        Object.values(CUSTOM_HOUSE_MAPPING).forEach(codes => allowedCodes.push(...codes));
+      }
+
+      const invalidIcd = icdCodesArray.filter(code => !allowedCodes.includes(code));
+      if (invalidIcd.length > 0) {
+        return res.status(400).json({
+          message: `Invalid ICD codes for assigned branches: ${invalidIcd.join(', ')}. Please ensure appropriate branches are selected.`
+        });
+      }
+      targetUser.selected_icd_codes = [...new Set(icdCodesArray)];
     }
 
     // Update Ports if provided (treating same as ICD for now or separately if needed)

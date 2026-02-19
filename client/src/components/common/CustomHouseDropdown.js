@@ -6,7 +6,7 @@ const CUSTOM_HOUSE_OPTIONS = [
     {
         group: "Ahmedabad", branchCode: "AMD", items: [
             { value: "AHMEDABAD AIR CARGO", label: "Ahmedabad Air Cargo", code: "INAMD4" },
-            { value: "ICD SABARMATI, AHMEDABAD", label: "ICD Sabarmati, Ahmedabad", code: "INSBI6" },
+            { value: "ICD SABARMATI", label: "ICD Sabarmati", code: "INSBI6" },
             { value: "ICD SACHANA", label: "ICD SACHANA", code: "INJKA6" },
             { value: "ICD VIROCHAN NAGAR", label: "ICD Virochan Nagar", code: "INVCN6" },
             { value: "THAR DRY PORT", label: "THAR DRY PORT", code: "INSAU6" },
