@@ -1,14 +1,16 @@
 package com.exim.signer;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.nio.file.Files;
-import java.security.*;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.Provider;
+import java.security.Security;
+import java.security.Signature;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Enumeration;
-import javax.security.auth.login.LoginException;
 
 import org.bouncycastle.cert.jcajce.JcaCertStore;
 import org.bouncycastle.cms.CMSProcessableByteArray;
@@ -26,87 +28,164 @@ public class DscService {
     private Provider pkcs11Provider;
     private String alias;
 
+    /**
+     * Login into DSC Token using PKCS11 DLL path and PIN.
+     */
     public void login(String pin, String dllPath) throws Exception {
-        // Create PKCS11 Config
-        // Escape backslashes for config
+
+        if (pin == null || pin.trim().isEmpty()) {
+            throw new Exception("PIN cannot be empty.");
+        }
+
+        if (dllPath == null || dllPath.trim().isEmpty()) {
+            throw new Exception("DLL Path cannot be empty.");
+        }
+
+        // Escape Windows path for PKCS11 config
         String sanitizedPath = dllPath.replace("\\", "\\\\");
-        String configContent = "name=eToken\nlibrary=" + sanitizedPath;
+
+        String configContent = "name=DSCToken\n" +
+                "library=" + sanitizedPath + "\n";
 
         File configFile = File.createTempFile("pkcs11-", ".cfg");
         configFile.deleteOnExit();
-        Files.writeString(configFile.toPath(), configContent);
+        Files.write(configFile.toPath(), configContent.getBytes());
 
-        // Load Provider
-        // Note: usage might vary across Java versions (9+)
-        // For simplicity using a standard reflection approach or SunPKCS11 constructor
-        // if available
-        // In Java 9+, use Provider.configure()
-
-        pkcs11Provider = Security.getProvider("SunPKCS11");
-        if (pkcs11Provider != null) {
-            pkcs11Provider = pkcs11Provider.configure(configFile.getAbsolutePath());
-            Security.addProvider(pkcs11Provider);
-        } else {
-            // Fallback or Error for environments without SunPKCS11
-            throw new Exception(
-                    "SunPKCS11 Provider not found. Please ensure you are using a standard OpenJDK/Oracle JDK.");
+        // Load SunPKCS11 provider
+        Provider baseProvider = Security.getProvider("SunPKCS11");
+        if (baseProvider == null) {
+            throw new Exception("SunPKCS11 provider not found. Use Oracle JDK / OpenJDK standard build.");
         }
 
-        // Load KeyStore
+        pkcs11Provider = baseProvider.configure(configFile.getAbsolutePath());
+        Security.addProvider(pkcs11Provider);
+
+        // Load KeyStore from token
         keyStore = KeyStore.getInstance("PKCS11", pkcs11Provider);
         keyStore.load(null, pin.toCharArray());
 
-        // Get Alias
+        // Select best signing alias
+        alias = findSigningAlias();
+
+        if (alias == null) {
+            throw new Exception("No valid signing certificate found in token.");
+        }
+
+        System.out.println("✅ DSC Login successful. Selected Alias: " + alias);
+    }
+
+    /**
+     * Find correct signing alias (certificate that has private key +
+     * DigitalSignature usage).
+     */
+    private String findSigningAlias() throws Exception {
+
         Enumeration<String> aliases = keyStore.aliases();
+
         while (aliases.hasMoreElements()) {
             String tempAlias = aliases.nextElement();
-            System.out.println("Checking alias: " + tempAlias);
-            if (keyStore.isKeyEntry(tempAlias)) {
-                alias = tempAlias;
-                System.out.println("Selected Signing Alias: " + alias);
-                break;
+
+            if (!keyStore.isKeyEntry(tempAlias)) {
+                continue;
+            }
+
+            Certificate certObj = keyStore.getCertificate(tempAlias);
+            if (!(certObj instanceof X509Certificate)) {
+                continue;
+            }
+
+            X509Certificate cert = (X509Certificate) certObj;
+
+            // Check KeyUsage if present
+            boolean[] usage = cert.getKeyUsage();
+
+            // usage[0] = digitalSignature
+            boolean isSigningCert = (usage == null || (usage.length > 0 && usage[0]));
+
+            if (isSigningCert) {
+                System.out.println("✔ Found signing alias: " + tempAlias);
+                System.out.println("   Subject: " + cert.getSubjectX500Principal());
+                return tempAlias;
             }
         }
 
-        if (alias == null) {
-            throw new Exception("No valid User Certificate (Private Key) found on token. Found CA certs only?");
-        }
+        return null;
     }
 
     /**
-     * Sign data and return PKCS#7/CMS SignedData format (ATTACHED - data included).
-     * Uses SHA1withRSA for ICEGATE compatibility.
+     * Get signing certificate.
      */
-    public byte[] sign(byte[] data) throws Exception {
-        return signInternal(data, false, "SHA1withRSA");
-    }
-
-    /**
-     * Sign data and return DETACHED PKCS#7/CMS signature (data NOT included).
-     * This is required for ICEGATE .sb file format.
-     */
-    public byte[] signDetached(byte[] data) throws Exception {
-        return signInternal(data, true, "SHA1withRSA");
-    }
-
-    /**
-     * Internal signing method with configurable options.
-     * 
-     * @param data      The data to sign
-     * @param detached  If true, creates detached signature (data not included in
-     *                  output)
-     * @param algorithm Signature algorithm (SHA1withRSA or SHA256withRSA)
-     */
-    private byte[] signInternal(byte[] data, boolean detached, String algorithm) throws Exception {
+    public X509Certificate getCertificate() throws Exception {
         if (keyStore == null || alias == null) {
-            throw new Exception("DSC not initialized. Please login first.");
+            throw new Exception("DSC not initialized. Call login() first.");
+        }
+        return (X509Certificate) keyStore.getCertificate(alias);
+    }
+
+    /**
+     * Get certificate as Base64 encoded DER string.
+     */
+    public String getCertificateBase64() throws Exception {
+        X509Certificate cert = getCertificate();
+        return java.util.Base64.getEncoder().encodeToString(cert.getEncoded());
+    }
+
+    /**
+     * RAW Signature (SHA1withRSA) required for ICEGATE .sb file signing.
+     * This matches NCode signing tool behavior.
+     */
+    public byte[] signRaw(byte[] data) throws Exception {
+
+        if (keyStore == null || alias == null) {
+            throw new Exception("DSC not initialized. Call login() first.");
+        }
+
+        if (data == null || data.length == 0) {
+            throw new Exception("No data provided for signing.");
         }
 
         PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, null);
-        Certificate[] certChain = keyStore.getCertificateChain(alias);
 
+        Signature signature = Signature.getInstance("SHA1withRSA", pkcs11Provider);
+        signature.initSign(privateKey);
+        signature.update(data);
+
+        byte[] signedBytes = signature.sign();
+
+        System.out.println("✅ RAW SHA1withRSA signature generated. Length: " + signedBytes.length);
+
+        return signedBytes;
+    }
+
+    /**
+     * Generate PKCS#7 (CMS) signature (ATTACHED).
+     * This is NOT used for ICEGATE SB file but useful for other cases.
+     */
+    public byte[] signPKCS7Attached(byte[] data) throws Exception {
+        return signPKCS7Internal(data, false);
+    }
+
+    /**
+     * Generate PKCS#7 (CMS) signature (DETACHED).
+     * This is NOT used for ICEGATE SB file but useful for XML / e-Sanchit.
+     */
+    public byte[] signPKCS7Detached(byte[] data) throws Exception {
+        return signPKCS7Internal(data, true);
+    }
+
+    /**
+     * Internal PKCS#7 signer.
+     */
+    private byte[] signPKCS7Internal(byte[] data, boolean detached) throws Exception {
+
+        if (keyStore == null || alias == null) {
+            throw new Exception("DSC not initialized. Call login() first.");
+        }
+
+        PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, null);
+
+        Certificate[] certChain = keyStore.getCertificateChain(alias);
         if (certChain == null || certChain.length == 0) {
-            // Fallback to single certificate
             Certificate cert = keyStore.getCertificate(alias);
             if (cert != null) {
                 certChain = new Certificate[] { cert };
@@ -117,79 +196,28 @@ public class DscService {
 
         X509Certificate signingCert = (X509Certificate) certChain[0];
 
-        // Create CMS signed data (PKCS#7 format)
         CMSTypedData cmsData = new CMSProcessableByteArray(data);
 
-        // Build certificate store
         JcaCertStore certStore = new JcaCertStore(Arrays.asList(certChain));
 
-        // Create content signer using PKCS#11 provider
-        // ICEGATE requires SHA1withRSA for shipping bill signatures
-        ContentSigner contentSigner = new JcaContentSignerBuilder(algorithm)
+        ContentSigner contentSigner = new JcaContentSignerBuilder("SHA1withRSA")
                 .setProvider(pkcs11Provider)
                 .build(privateKey);
 
-        // Create signed data generator
         CMSSignedDataGenerator generator = new CMSSignedDataGenerator();
         generator.addSignerInfoGenerator(
                 new JcaSignerInfoGeneratorBuilder(
                         new JcaDigestCalculatorProviderBuilder().build()).build(contentSigner, signingCert));
+
         generator.addCertificates(certStore);
 
-        // Generate PKCS#7 signed data
-        // detached = true means signature only (no data embedded) - required for .sb
-        // files
-        // detached = false means data is included in the signature block
+        // If detached=true -> do not include data in output
         CMSSignedData signedData = generator.generate(cmsData, !detached);
 
-        System.out.println(
-                "Generated " + (detached ? "DETACHED " : "") + "PKCS#7/CMS signature (" + algorithm
-                        + ") with certificate: "
-                        + signingCert.getSubjectX500Principal().getName());
-
+        System.out.println("✅ PKCS7 Signature generated (Detached=" + detached + ")");
         return signedData.getEncoded();
     }
 
-    public X509Certificate getCertificate() throws Exception {
-        return (X509Certificate) keyStore.getCertificate(alias);
-    }
-
-    /**
-     * Sign data and return RAW RSA signature bytes (NOT PKCS#7).
-     * This is the format required by ICEGATE for .sb files.
-     * Uses SHA256withRSA as requested.
-     */
-    public byte[] signRaw(byte[] data) throws Exception {
-        if (keyStore == null || alias == null) {
-            throw new Exception("DSC not initialized. Please login first.");
-        }
-
-        PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, null);
-        X509Certificate cert = (X509Certificate) keyStore.getCertificate(alias);
-
-        // Create raw RSA signature using the PKCS#11 provider
-        java.security.Signature sig = java.security.Signature.getInstance("SHA1withRSA", pkcs11Provider);
-        sig.initSign(privateKey);
-        sig.update(data);
-        byte[] signature = sig.sign();
-
-        System.out.println("Generated RAW RSA signature (SHA1withRSA) with certificate: "
-                + cert.getSubjectX500Principal().getName());
-        System.out.println("Signature length: " + signature.length + " bytes");
-
-        return signature;
-    }
-
-    /**
-     * Get the certificate as Base64 encoded DER format.
-     */
-    public String getCertificateBase64() throws Exception {
-        X509Certificate cert = getCertificate();
-        byte[] encoded = cert.getEncoded();
-        return java.util.Base64.getEncoder().encodeToString(encoded);
-    }
-
-    // Getters for PdfSignerService
     public KeyStore getKeyStore() {
         return keyStore;
     }
