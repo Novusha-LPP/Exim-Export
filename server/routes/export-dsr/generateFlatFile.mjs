@@ -1,7 +1,23 @@
+/**
+ * ICEGATE ICES 1.5 – Shipping Bill (CACHE01) Flat File Generator
+ * Matches message format spec v2.8 and verified against sample .sb files.
+ *
+ * Field Separator : ASCII 0x1D (Group Separator / ^])
+ * Record Separator: CRLF (\r\n)
+ * File naming     : <4-digit-jobno><YYYY>.sb  (e.g. 00012025.sb)
+ *
+ * Tables generated (in order):
+ *   HREC → <TABLE>SB → <TABLE>INVOICE → <TABLE>EXCHANGE → <TABLE>ITEM
+ *   → <TABLE>DBK → <TABLE>SW_INFO_TYPE → <TABLE>STATEMENT
+ *   → <TABLE>Supportingdocs (if eSanchitDocuments present) → <END-SB> → TREC
+ */
+
 import express from "express";
 import ExportJob from "../../model/export/ExJobModel.mjs";
 
 const router = express.Router();
+
+// ─── Lookup Maps ─────────────────────────────────────────────────────────────
 
 const CUSTOM_HOUSE_MAP = {
     "AHMEDABAD AIR CARGO": "INAMD4",
@@ -15,189 +31,482 @@ const CUSTOM_HOUSE_MAP = {
     "KANDLA SEA": "INIXY1",
     "COCHIN AIR CARGO": "INCOK4",
     "COCHIN SEA": "INCOK1",
-    "HAZIRA": "INHZA1"
+    "HAZIRA": "INHZA1",
 };
 
-// Help to format numbers for ICEGATE (e.g. 123.45 -> 123.450)
-const formatNum = (num, decimals = 3) => {
-    if (num === undefined || num === null || isNaN(num)) return "".padEnd(decimals + 2, "0").replace("0", "0.");
-    return parseFloat(num).toFixed(decimals);
+const STATE_CODE_MAP = {
+    "ANDHRA PRADESH": "02", "ARUNACHAL PRADESH": "03", "ASSAM": "04", "BIHAR": "05",
+    "CHHATTISGARH": "33", "GOA": "10", "GUJARAT": "24", "HARYANA": "06",
+    "HIMACHAL PRADESH": "07", "JHARKHAND": "34", "KARNATAKA": "15", "KERALA": "16",
+    "MADHYA PRADESH": "23", "MAHARASHTRA": "27", "MANIPUR": "14", "MEGHALAYA": "17",
+    "MIZORAM": "18", "NAGALAND": "13", "ODISHA": "21", "PUNJAB": "03", "RAJASTHAN": "08",
+    "SIKKIM": "11", "TAMIL NADU": "33", "TELANGANA": "36", "TRIPURA": "12",
+    "UTTAR PRADESH": "09", "UTTARAKHAND": "35", "WEST BENGAL": "19",
+    "DELHI": "07", "JAMMU AND KASHMIR": "01", "LADAKH": "37",
 };
 
-const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    // Handle both YYYY-MM-DD and other formats
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return "";
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}${mm}${dd}`;
+const COUNTRY_CODE_MAP = {
+    "INDIA": "IN", "UNITED ARAB EMIRATES": "AE", "UAE": "AE",
+    "USA": "US", "UNITED STATES": "US", "UNITED STATES OF AMERICA": "US",
+    "UK": "GB", "UNITED KINGDOM": "GB", "GERMANY": "DE", "FRANCE": "FR", "CHINA": "CN",
+    "JAPAN": "JP", "AUSTRALIA": "AU", "CANADA": "CA", "SINGAPORE": "SG", "MALAYSIA": "MY",
+    "SOUTH AFRICA": "ZA", "SAUDI ARABIA": "SA", "QATAR": "QA", "KUWAIT": "KW",
+    "OMAN": "OM", "BAHRAIN": "BH", "JORDAN": "JO", "TURKEY": "TR", "ITALY": "IT",
+    "SPAIN": "ES", "NETHERLANDS": "NL", "BELGIUM": "BE", "SWEDEN": "SE", "DENMARK": "DK",
+    "NORWAY": "NO", "FINLAND": "FI", "SWITZERLAND": "CH", "AUSTRIA": "AT", "POLAND": "PL",
+    "PORTUGAL": "PT", "GREECE": "GR", "MEXICO": "MX", "BRAZIL": "BR", "ARGENTINA": "AR",
+    "INDONESIA": "ID", "THAILAND": "TH", "VIETNAM": "VN", "SOUTH KOREA": "KR",
+    "TAIWAN": "TW", "HONG KONG": "HK", "NEW ZEALAND": "NZ", "ISRAEL": "IL",
 };
 
-const formatDateDDMMYYYY = (dateStr) => {
-    if (!dateStr) return "";
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return "";
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const yyyy = d.getFullYear();
-    return `${dd}${mm}${yyyy}`;
+const PORT_CODE_MAP = {
+    "DUBAI": "AEDXB", "ABU DHABI": "AEAUH", "SHARJAH": "AESHJ", "JEBEL ALI": "AEJEA",
+    "MUMBAI": "INBOM1", "NHAVA SHEVA": "INNSA1", "CHENNAI": "INMAA1", "KOLKATA": "INCCU1",
+    "COCHIN": "INCOK1", "KANDLA": "INIXY1", "MUNDRA": "INMUN1", "HAZIRA": "INHZA1",
+    "AHMEDABAD": "INAMD4", "INAMD4": "INAMD4", "INAMD4 - AHMEDABAD AIR PORT": "INAMD4",
+    "DELHI": "INDEL4", "DELHI AIR": "INDEL4", "MUMBAI AIR": "INBOM4",
+    "BANGALORE": "INBLR4", "HYDERABAD": "INHYD4", "CHENNAI AIR": "INMAA4",
+    "SINGAPORE": "SGSIN", "PORT KLANG": "MYPKG", "HAMBURG": "DEHAM",
+    "ROTTERDAM": "NLRTM", "ANTWERP": "BEANR", "NEW YORK": "USNYC",
+    "LOS ANGELES": "USLAX", "HOUSTON": "USHOU",
 };
 
-const getNumericJobNo = (jobNo) => {
-    if (!jobNo) return "";
-    const parts = jobNo.split('/');
-    // Extract numeric sequence (usually middle part like AMD/00123/25-26)
-    const seq = parts.find(p => /^\d+$/.test(p));
-    return seq || jobNo.replace(/[^0-9]/g, '').slice(0, 7);
+const PRICE_INCLUDES_MAP = {
+    "BOTH": "B", "FREIGHT": "F", "INSURANCE": "I", "NONE": "N",
+    "B": "B", "F": "F", "I": "I", "N": "N",
 };
 
-// Field Separator for ICEGATE is often GS (0x1D) but user sample shows concatenated
-// I will use NO delimiter as per user sample, but will add \x1D if it fails later
-const FS = "";
+// ─── Utility Functions ────────────────────────────────────────────────────────
+
+const FS = "\x1D";   // ASCII Group Separator  ^]
+const RS = "\r\n";   // CRLF record delimiter
+
+const pad = (s, n) => String(s ?? "").padStart(n, "0");
+const trunc = (s, n) => String(s ?? "").slice(0, n);
+const clean = (s) => String(s ?? "").trim();
+
+/** Returns YYYYMMDD for HREC, Licence, Container */
+const fmtDate = (d) => {
+    if (!d) return "";
+    let dt;
+    if (typeof d === "string") {
+        const s = clean(d);
+        if (/^\d{8}$/.test(s)) return s; // already YYYYMMDD
+        const parts = s.split(/[-/]/);
+        if (parts.length === 3) {
+            let day, month, year;
+            if (parts[2].length === 4) { day = parseInt(parts[0]); month = parts[1]; year = parseInt(parts[2]); }
+            else if (parts[0].length === 4) { year = parseInt(parts[0]); month = parts[1]; day = parseInt(parts[2]); }
+            if (year) {
+                const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+                let mIdx = months.indexOf(month.toUpperCase());
+                if (mIdx === -1) mIdx = parseInt(month) - 1;
+                dt = new Date(year, mIdx, day);
+            }
+        }
+    }
+    if (!dt) dt = new Date(d);
+    if (isNaN(dt)) return "";
+    return `${dt.getFullYear()}${pad(dt.getMonth() + 1, 2)}${pad(dt.getDate(), 2)}`;
+};
+
+/** Returns DDMMYYYY for Prefix, Invoice, Supportingdocs */
+const fmtDDMMYYYY = (d) => {
+    const ymd = fmtDate(d);
+    if (!ymd) return "";
+    return ymd.slice(6, 8) + ymd.slice(4, 6) + ymd.slice(0, 4); // DD + MM + YYYY
+};
+
+const cntry = (n) => COUNTRY_CODE_MAP[(n || "").toUpperCase()] || clean(n).slice(0, 2).toUpperCase();
+const prt = (n) => PORT_CODE_MAP[(n || "").toUpperCase()] || clean(n).slice(0, 6).toUpperCase();
+const stCd = (n) => STATE_CODE_MAP[(n || "").toUpperCase()] || "24";
+
+const jobNo4 = (j) => {
+    const parts = (j || "").split("/");
+    return parts.length > 1 ? pad(parts[1], 4) : pad((j || "").replace(/\D/g, ""), 4);
+};
+
+const split35 = (s) => {
+    const out = [];
+    const str = clean(s);
+    for (let i = 0; i < 5; i++) { out.push(str.slice(i * 35, (i + 1) * 35)); }
+    return out;
+};
+
+const expTypCode = (t) => {
+    const map = { "MANUFACTURER": "M", "MERCHANT": "R", "F": "F", "R": "R", "M": "M", "MANUFACTURER EXPORTER": "M" };
+    return map[(t || "").toUpperCase()] || "R";
+};
+
+const gstnTypCode = (g) => {
+    const str = clean(g || "");
+    if (str.length === 15) return "GSTN";
+    if (str.length === 10) return "PAN";
+    return "OTH";
+};
+
+/**
+ * Build one data row.
+ * prefix = "F^]LOC^]JOBNO^]JOBDATE^]^]" (5 fields, NO trailing ^])
+ * Result: prefix + ^] + f1 + ^] + f2 + ... + CRLF
+ */
+const row = (prefix, ...fields) => prefix + FS + fields.join(FS) + RS;
+
+// ─── Core Generator ───────────────────────────────────────────────────────────
+
+export function generateSBFlatFile(job) {
+    const loc = CUSTOM_HOUSE_MAP[(job.custom_house || "").toUpperCase()] || "INAMD4";
+    const j4 = jobNo4(job.job_no);
+    const jdtRecord = fmtDate(job.sb_date || new Date());
+    const jdtPrefix = fmtDDMMYYYY(job.sb_date || new Date());
+    const sid = clean(job.cha || "SURAJ").replace(/\s+/g, "").slice(0, 5).toUpperCase()
+        + clean(job.branch_code || "AMD").toUpperCase();
+
+    // Sequence number used in HREC and TREC (job number + DDMM of SB date)
+    const seq = j4 + jdtRecord.slice(6, 8) + jdtRecord.slice(4, 6);
+
+    // PH (Header Prefix): F^]LOC^]JOBNO4^]JOBDATE^]^]^] (6 fields total)
+    // PD (Data Prefix): F^]LOC^]JOBNO4^]JOBDATE^] (4 fields total)
+    const now = new Date();
+    const fdt = fmtDate(now); // YYYYMMDD for HREC
+    const ftm = pad(now.getHours(), 2) + pad(now.getMinutes(), 2); // HHMM for HREC
+
+    const PH = `F${FS}${loc}${FS}${j4}${FS}${jdtPrefix}${FS}${FS}`;
+    const PD = `F${FS}${loc}${FS}${j4}${FS}${jdtPrefix}`;
+
+    const invs = job.invoices || [];
+    const con0 = (job.consignees || [])[0] || {};
+    const byr = (job.buyerThirdPartyInfo || {}).buyer || {};
+    const adr = clean(job.exporter_address || "");
+    const cL = split35(clean(con0.consignee_name || ""));
+    const bNm = clean(byr.name || "");
+    const bL = split35(bNm + " " + clean(byr.addressLine1 || ""));
+    const pol = prt(job.port_of_loading || "");
+    const pod = prt(job.destination_port || job.port_of_discharge || "");
+    const iec = clean(job.ieCode || "");
+    const gid = clean(job.gstin || job.exporter_gstin || iec);
+    const mawb = clean(job.mbl_no || job.masterblno || "");
+    const hawb = clean(job.hbl_no || job.houseblno || "");
+    const nc = job.transportMode === "AIR" ? "P" : (job.nature_of_cargo || "C").slice(0, 2);
+    const stOr = stCd(job.state_of_origin || job.state || "GUJARAT");
+
+    let out = "";
+
+    // ── HREC ────────────────────────────────────────────────────────────────────
+    // HREC^]ZZ^]<SenderID>^]ZZ^]<ReceiverID/LocationCode>^]ICES1_5^]P^]^]CACHE01^]<Seq>^]<Date>^]<Time>
+    out += `HREC${FS}ZZ${FS}${sid}${FS}ZZ${FS}${loc}${FS}ICES1_5${FS}P${FS}${FS}CACHE01${FS}${seq}${FS}${fdt}${FS}${ftm}${RS}`;
+
+    // ── <TABLE>SB (Part 1/32) ────────────────────────────────────────────────────
+    // Fields 1-6 come from prefix (PH); fields 7-50 follow.
+    out += `<TABLE>SB${RS}`;
+    out += row(PH,
+        clean(job.cha_code || ((job.cha || "").toUpperCase().includes("SURAJ") ? "AAOFS1766LCH005" : job.cha || "")), // 7. CHA License Number
+        iec,                                            //  8. IEC Code
+        String(job.branch_sr_no || 0),                 //  9. Branch Sr No
+        trunc(clean(job.exporter || ""), 50),           // 10. Exporter Name
+        trunc(adr, 35),                                 // 11. Exporter Addr1
+        trunc(adr.slice(35), 35),                       // 12. Exporter Addr2
+        "",                                             // 13. City
+        "",                                             // 14. State
+        clean(job.exporter_pincode || ""),              // 15. PIN
+        expTypCode(job.exporter_type || ""),            // 16. Type of Exporter (F/R)
+        "P",                                            // 17. Exporter Class (P=Private)
+        stOr,                                           // 18. State of Origin
+        clean(job.adCode || job.ad_code || ""),         // 19. Authorized Dealer Code
+        "",                                             // 20. EPZ Code
+        cL[0] || "",                                    // 21. Consignee Name (row 1)
+        cL[1] || "",                                    // 22. Consignee Addr1
+        cL[2] || "",                                    // 23. Consignee Addr2
+        cL[3] || "",                                    // 24. Consignee Addr3
+        "",                                             // 25. Consignee Addr4
+        cntry(con0.consignee_country || ""),            // 26. Consignee Country
+        "",                                             // 27. NFEI Category
+        "", "",                                         // 28-29. RBI Waiver No/Date
+        pol,                                            // 30. Port of Loading
+        pod,                                            // 31. Port of Final Destination
+        cntry(job.destination_country || ""),           // 32. Country of Final Destination
+        cntry(job.discharge_country || job.destination_country || ""), // 33. Country of Discharge
+        pod,                                            // 34. Port of Discharge
+        "",                                             // 35. Seal Type
+        nc,                                             // 36. Nature of Cargo (P for AIR)
+        parseFloat(job.gross_weight_kg || 0).toFixed(3), // 37. Gross Weight
+        parseFloat(job.net_weight_kg || 0).toFixed(3), // 38. Net Weight
+        "KGS",                                          // 39. Unit of Measurement
+        clean(job.total_no_of_pkgs || ""),              // 40. Total Number of Packages
+        clean(job.marks_nos || ""),                     // 41. Marks & Numbers
+        "",                                             // 42. Number of Loose Packets
+        job.transportMode === "SEA" ? String((job.containers || []).length) : "", // 43. Number of Containers (blank for AIR)
+        mawb,                                           // 44. MAWB Number
+        hawb,                                           // 45. HAWB Number
+        "", "", "",                                     // 46-48. Amendment fields (blank for fresh)
+        gstnTypCode(gid),                               // 49. GSTN Type
+        gid,                                            // 50. GSTN ID
+    );
+
+    // ── <TABLE>INVOICE (Part 2/32) ───────────────────────────────────────────────
+    out += `<TABLE>INVOICE${RS}`;
+    invs.forEach((inv, i) => {
+        const fic = inv.freightInsuranceCharges || {};
+        const fAmt = parseFloat((fic.freight || {}).amount || 0).toFixed(2);
+        const iAmt = parseFloat((fic.insurance || {}).amount || 0).toFixed(2);
+        const invVal = parseFloat(inv.invoiceValue || fic.totalValue || 0).toFixed(2);
+        const curr = clean(inv.currency || "USD");
+
+        // Nature of Payment Mapping: Map full string to 2-char code
+        const natureFull = ((job.otherInfo || {}).natureOfPayment || "NA").toUpperCase();
+        const nopMap = {
+            "DELIVERY AGAINST ACCEPTANCE": "DA",
+            "DELIVERY AGAINST PAYMENT": "DP",
+            "DEFERRED": "DF",
+            "DIRECT": "DR",
+            "LETTER OF CREDIT": "LC",
+            "TELEGRAPHIC TRANSFER": "TT",
+            "NA": "OT"
+        };
+        const np = nopMap[natureFull] || natureFull.replace(/\s+/g, "").slice(0, 2) || "OT";
+        const pp = String((job.otherInfo || {}).paymentPeriod || "");
+
+        const af = PRICE_INCLUDES_MAP[(inv.priceIncludes || "N").toUpperCase()] || "N";
+
+        out += row(PH,
+            String(i + 1),                                //  7. Invoice Sr No
+            clean(inv.invoiceNumber || ""),               //  8. Actual Invoice Number
+            fmtDDMMYYYY(inv.invoiceDate),                 //  9. Invoice Date
+            curr,                                         // 10. Invoice Currency
+            (inv.termsOfInvoice || "FOB").toUpperCase(),  // 11. Nature of Contract
+            trunc(bNm, 35),                               // 12. Buyer Name
+            trunc(bL[0] || "", 35),                       // 13. Buyer Addr1
+            trunc(bL[1] || "", 35),                       // 14. Buyer Addr2
+            trunc(bL[2] || "", 35),                       // 15. Buyer Addr3
+            trunc(bL[3] || "", 35),                       // 16. Buyer Addr4
+            invVal,                                       // 17. Invoice Value
+            fAmt !== "0.00" ? curr : "",                  // 18. Freight Currency
+            fAmt !== "0.00" ? fAmt : "",                  // 19. Freight Amount
+            "", "", "", "",                               // 20-23. Commission/Dummy
+            iAmt !== "0.00" ? curr : "",                  // 24. Insurance Currency
+            iAmt !== "0.00" ? iAmt : "",                  // 25. Insurance Amount
+            "", "", "", "", "",                           // 26-30. Discount/Other/Dummy
+            af,                                           // 31. Add Freight (F/I/B/N)
+            String(inv.packing_charges || ""),            // 32. Packing Charges
+            clean(job.exporter_ref_no || ""),             // 33. Exporter Contract Number
+            np,                                           // 34. Nature of Payment
+            pp,                                           // 35. Period of Payment (days)
+            "",                                           // 36. Terms Place
+        );
+    });
+
+    // ── <TABLE>EXCHANGE (Part 3/32) ──────────────────────────────────────────────
+    // One row per unique currency. INR always first. Standard currencies → "Y".
+    out += `<TABLE>EXCHANGE${RS}`;
+    [...new Set(["INR", ...invs.map(inv => clean(inv.currency || "USD"))])].forEach(c => {
+        // Fields: 7.CurrCode 8.CurrName 9.UnitInRs 10.Rate 11.EffDate 12.IsStandard 13-15.Amend
+        out += row(PH, c, "", "", "", "", "Y", "", "", "");
+    });
+
+    // ── <TABLE>ITEM (Part 4/32) ──────────────────────────────────────────────────
+    out += `<TABLE>ITEM${RS}`;
+    invs.forEach((inv, ii) => {
+        (inv.products || []).forEach((p, pi) => {
+            const ig = p.igstCompensationCess || {};
+            const ist = ig.igstPaymentStatus || "LUT";
+            const desc = clean(p.description || "");
+            const uom = clean(p.qtyUnit || "KGS");
+            const qty = parseFloat(p.quantity || 0).toFixed(3);
+            const upr = parseFloat(p.unitPrice || 0).toFixed(5);
+            const pmv = parseFloat((p.pmvInfo || {}).totalPMV || 0).toFixed(2);
+            const sc = (p.eximCode || "19").split(" ")[0];  // Scheme Code (e.g. "19")
+
+            out += row(PD,
+                String(ii + 1), String(pi + 1),               //  5-6.  Invoice Sr No / Item Sr No
+                sc,                                            //  7.    Scheme Code
+                clean(p.ritc || ""),                           //  8.    RITC/ITCHS Code
+                trunc(desc, 40),                               //  9.    Description 1
+                trunc(desc.slice(40), 40),                     // 10.    Description 2
+                trunc(desc.slice(80), 40),                     // 11.    Description 3
+                uom,                                           // 12.    Unit of Measurement
+                qty,                                           // 13.    Quantity
+                upr,                                           // 14.    Unit Price
+                uom,                                           // 15.    Unit of Rate
+                "01",                                          // 16.    No of Units (per)
+                pmv,                                           // 17.    Present Market Value (Rs)
+                "",                                            // 18.    Job Work Notification No
+                "N",                                           // 19.    Third Party (N=No)
+                p.rewardItem ? "Y" : "N",                     // 20.    Reward Item
+                "", "", "",                                    // 21-23. Amendment (blank)
+                "", "", "", "", "", "", "", "",                // 24-31. Manufacturer details (blank)
+                "",                                            // 32.    Source State
+                "",                                            // 33.    Transit Country
+                "0",                                           // 34.    Accessory Status (0=none)
+                clean(p.endUse || "GNX200"),                   // 35.    End Use of Item
+                hawb,                                          // 36.    HAWB No
+                "",                                            // 37.    Total Package
+                ist,                                           // 38.    IGST Payment Status
+                ist === "P" ? parseFloat(ig.taxableValueINR || 0).toFixed(2) : "", // 39. Taxable Value
+                ist === "P" ? parseFloat(ig.igstAmountINR || 0).toFixed(2) : "", // 40. IGST Amount
+            );
+        });
+    });
+
+    // ── <TABLE>LICENCE (Part 11/32) ──────────────────────────────────────────────
+    // Show LICENCE if Scheme Code is 03 (DEEC) or 50 (EPCG)
+    const hasLicence = invs.some(inv => (inv.products || []).some(p => {
+        const sc = (p.eximCode || "").split(" ")[0];
+        return sc === "03" || sc === "50" || (p.deecDetails && p.deecDetails.isDeecItem) || (p.epcgDetails && p.epcgDetails.isEpcgItem);
+    }));
+
+    if (hasLicence) {
+        out += `<TABLE>LICENCE${RS}`;
+        invs.forEach((inv, ii) => {
+            (inv.products || []).forEach((p, pi) => {
+                const sc = (p.eximCode || "").split(" ")[0];
+                let licSr = 1;
+                const handleReg = (reg) => {
+                    out += row(PD,
+                        String(ii + 1), String(pi + 1),       // 5-6. Inv/Item Sr
+                        String(licSr++),                      // 7. Sr No
+                        clean(reg.regnNo || ""),              // 8. Registration No
+                        fmtDate(reg.licDate),                 // 9. Registration Date
+                        "1",                                  // 10. Item Sr No in Licence
+                        parseFloat(p.deecDetails?.exportQtyUnderLicence || p.epcgDetails?.exportQtyUnderLicence || 0).toFixed(3), // 11. Lic Qty
+                        parseFloat(p.quantity || 0).toFixed(3), // 12. Export Qty
+                        expTypCode(job.exporter_type)         // 13. Exp Type
+                    );
+                };
+                if (sc === "03" || (p.deecDetails && p.deecDetails.isDeecItem)) {
+                    (p.deecDetails?.deec_reg_obj || []).forEach(handleReg);
+                }
+                if (sc === "50" || (p.epcgDetails && p.epcgDetails.isEpcgItem)) {
+                    (p.epcgDetails?.epcg_reg_obj || []).forEach(handleReg);
+                }
+            });
+        });
+    }
+
+    out += `<TABLE>DBK${RS}`;
+    invs.forEach((inv, ii) => {
+        (inv.products || []).forEach((p, pi) => {
+            const sc = (p.eximCode || "").split(" ")[0];
+            if (sc === "03" || sc === "50") return;
+            if (!(p.eximCode || "").includes("19") && !(p.drawbackDetails && p.drawbackDetails.length > 0)) return;
+
+            (p.drawbackDetails || []).forEach(d => {
+                if (!d.dbkitem) return;
+                out += row(PD,
+                    String(ii + 1), String(pi + 1),            //  5-6.  Invoice Sr No / Item Sr No
+                    clean(d.dbkSrNo || ""),                     //  7.    DBK Schedule Serial Number
+                    parseFloat(d.quantity || p.quantity || 0).toFixed(3), // 8. Drawback Quantity
+                    "", "", "",                                 // 9-11. Amendment (blank)
+                );
+            });
+        });
+    });
+
+    const containers = job.containers || [];
+    if (job.transportMode === "SEA" && containers.length > 0) {
+        out += `<TABLE>CONTAINER${RS}`;
+        containers.forEach(c => {
+            out += row(PD,
+                clean(c.containerNo),
+                clean(c.type || "20").slice(0, 2),
+                clean(c.type || "GP").slice(-2),
+                clean(c.sealNo || c.shippingLineSealNo || ""),
+                fmtDate(c.sealDate || now),
+                clean(c.sealType || "RFID")
+            );
+        });
+    }
+
+    // ── <TABLE>SW_INFO_TYPE (Part 25/32) ─────────────────────────────────────────
+    out += `<TABLE>SW_INFO_TYPE${RS}`;
+    invs.forEach((inv, ii) => {
+        (inv.products || []).forEach((p, pi) => {
+            const qty = parseFloat(p.quantity || 0).toFixed(6);
+            const uom = clean(p.qtyUnit || "KGS");
+            const rc = (p.rodtepInfo || {}).claim === "Yes" ? "Claimed" : "Not Claimed";
+            [
+                ["1", "ORC", "STO", "24", "", "", ""],
+                ["2", "ORC", "DOO", "438", "", "", ""],
+                ["3", "CHR", "SQC", "", "", qty, uom],
+                ["4", "ORC", "EPT", "NCPTI", "", "", ""],
+                ["5", "DTY", "GCESS", "", "", "0.000000", "INR"],
+                ["6", "DTY", "RDT", "RODTEPY", rc, qty, uom],
+            ].forEach((r, rx) => {
+                out += row(PD, String(ii + 1), String(pi + 1), ...r);
+            });
+        });
+    });
+
+    // ── <TABLE>STATEMENT (Part 29/32) ────────────────────────────────────────────
+    out += `<TABLE>STATEMENT${RS}`;
+    invs.forEach((inv, ii) => {
+        (inv.products || []).forEach((p, pi) => {
+            const isDbk = (p.eximCode || "").includes("19");
+            out += row(PD,
+                String(ii + 1), String(pi + 1),
+                "1",
+                "DEC",
+                isDbk ? "DB001" : "RD001",
+                "",
+            );
+        });
+    });
+
+    // ── <TABLE>Supportingdocs (Part 30/32) ───────────────────────────────────────
+    const docs = job.eSanchitDocuments || [];
+    if (docs.length > 0) {
+        out += `<TABLE>Supportingdocs${RS}`;
+        docs.forEach((d, di) => {
+            out += row(PD,
+                clean(d.invSerialNo || "1"),
+                clean(d.itemSerialNo || "0"),
+                String(di + 1),
+                clean(d.irn || d.imageRefNo || ""),
+                clean(d.documentType || ""),
+                "",
+                trunc(adr, 70),
+                "", "",
+                clean(job.exporter_pincode || ""),
+                clean(d.documentReferenceNo || ""),
+                "",
+                fmtDDMMYYYY(d.dateOfIssue || ""),
+                "", "",
+                trunc(bNm, 70),
+                "", "", "",
+                clean(d.icegateFilename || "pdf"),
+                trunc(clean(job.exporter || ""), 70),
+                trunc(bNm, 70),
+                sid,
+            );
+        });
+    }
+
+    // ── <END-SB> ──────────────────────────────────────────────────────────────────
+    out += `<END-SB>${RS}`;
+
+    // ── TREC ──────────────────────────────────────────────────────────────────────
+    out += `TREC${FS}${seq}${RS}`;
+
+    // File name: <4-digit-job-no><4-digit-year>.sb  e.g. "00012025.sb"
+    const fileName = `${j4}${fdt.slice(0, 4)}.sb`;
+
+    return { content: out, fileName };
+}
+
+// ─── Express Route ────────────────────────────────────────────────────────────
 
 router.get("/api/generate-sb-file/:jobId", async (req, res) => {
     try {
         const job = await ExportJob.findById(req.params.jobId).lean();
         if (!job) return res.status(404).json({ success: false, message: "Job not found" });
 
-        const locationCode = CUSTOM_HOUSE_MAP[job.custom_house] || "UNKNOWN";
-        const jobNoNum = getNumericJobNo(job.job_no);
-        const jobDate = formatDate(job.job_date);
-        const filingDate = formatDateDDMMYYYY(new Date());
-        const hm = new Date().getHours().toString().padStart(2, '0') + new Date().getMinutes().toString().padStart(2, '0');
+        const { content, fileName } = generateSBFlatFile(job);
 
-        const senderId = `SURAJ${job.branch_code || "AMD"}`.toUpperCase();
-
-        // --- HREC ---
-        let content = `HREC${FS}ZZ${FS}${senderId}${FS}ZZ${FS}${locationCode}${FS}ICES1_5${FS}P${FS}CACHE01${FS}${jobNoNum}${FS}${filingDate}${FS}${hm}0102\n`;
-
-        // Common row prefix: Action + Location + JobNo + Date
-        const rowPrefix = `F${locationCode}${jobNoNum}${jobDate}`;
-
-        // --- SB Table ---
-        content += `<TABLE>SB\n`;
-        let sb = `${rowPrefix}`;
-        sb += `ABOFS1766`; // AEO Substring
-        sb += `LCH0050`; // LIC Code?
-        sb += (job.ieCode || "").padEnd(10, " ");
-        sb += `0`; // ??
-        sb += (job.exporter || "").slice(0, 50);
-        sb += (job.exporter_address || "").slice(0, 100);
-        // Add more fields if known...
-        content += sb + "\n";
-
-        // --- INVOICE Table ---
-        content += `<TABLE>INVOICE\n`;
-        const invoices = job.invoices || [];
-        invoices.forEach((inv, idx) => {
-            let invLine = `${rowPrefix}`;
-            invLine += (idx + 1).toString(); // Inv Serial 
-            invLine += (inv.invoiceNumber || "").slice(0, 20);
-            invLine += formatDate(inv.invoiceDate);
-            invLine += (inv.currency || "USD");
-            invLine += formatNum(inv.invoiceValue, 2);
-            // ...
-            content += invLine + "\n";
-        });
-
-        // --- EXCHANGE Table ---
-        content += `<TABLE>EXCHANGE\n`;
-        const currencies = [...new Set(invoices.map(i => i.currency || "USD"))];
-        currencies.forEach(curr => {
-            content += `${rowPrefix}${curr}${FS}Y\n`;
-        });
-
-        // --- ITEM Table ---
-        content += `<TABLE>ITEM\n`;
-        invoices.forEach((inv, invIdx) => {
-            (inv.products || []).forEach((prod, prodIdx) => {
-                let itemLine = `${rowPrefix}`;
-                itemLine += (invIdx + 1).toString();
-                itemLine += (prodIdx + 1).toString();
-                itemLine += (prod.ritc || "").padEnd(8, "0");
-                itemLine += (prod.description || "").slice(0, 50);
-                itemLine += (prod.qtyUnit || prod.socunit || "KGS");
-                itemLine += formatNum(prod.quantity, 3);
-                itemLine += formatNum(prod.unitPrice, 5);
-                content += itemLine + "\n";
-            });
-        });
-
-        // --- DBK Table ---
-        content += `<TABLE>DBK\n`;
-        invoices.forEach((inv, invIdx) => {
-            (inv.products || []).forEach((prod, prodIdx) => {
-                const dbk = (prod.drawbackDetails || [])[0];
-                if (dbk && dbk.dbkitem) {
-                    let dbkLine = `${rowPrefix}`;
-                    dbkLine += (invIdx + 1).toString();
-                    dbkLine += (prodIdx + 1).toString();
-                    dbkLine += (dbk.dbkSrNo || "").slice(0, 10);
-                    dbkLine += "B"; // Category
-                    dbkLine += formatNum(prod.quantity, 3);
-                    content += dbkLine + "\n";
-                }
-            });
-        });
-
-        // --- SW_INFO_TYPE ---
-        content += `<TABLE>SW_INFO_TYPE\n`;
-        invoices.forEach((inv, invIdx) => {
-            (inv.products || []).forEach((prod, prodIdx) => {
-                const i = invIdx + 1;
-                const p = prodIdx + 1;
-                // Standard Single Window rows from user sample
-                content += `${rowPrefix}${i}${p}1ORCSTO24\n`;
-                content += `${rowPrefix}${i}${p}2ORCDOO438\n`;
-                content += `${rowPrefix}${i}${p}3CHRSQC${formatNum(prod.quantity, 6)}KGS\n`;
-                content += `${rowPrefix}${i}${p}4ORCEPTNCPTI\n`;
-                content += `${rowPrefix}${i}${p}5DTYGCESS0.000000INR\n`;
-                content += `${rowPrefix}${i}${p}6DTYRDTRODTEPYClaimed${formatNum(prod.quantity, 6)}KGS\n`;
-            });
-        });
-
-        // --- STATEMENT ---
-        content += `<TABLE>STATEMENT\n`;
-        invoices.forEach((inv, invIdx) => {
-            (inv.products || []).forEach((prod, prodIdx) => {
-                content += `${rowPrefix}${invIdx + 1}${prodIdx + 1}1DECRD001\n`;
-            });
-        });
-
-        // --- Supportingdocs ---
-        content += `<TABLE>Supportingdocs\n`;
-        const docs = job.eSanchitDocuments || [];
-        if (docs.length > 0) {
-            docs.forEach(doc => {
-                let docLine = `${rowPrefix}`;
-                docLine += (doc.invSerialNo || "1");
-                docLine += (doc.itemSerialNo || "01");
-                docLine += formatDate(doc.dateOfIssue);
-                docLine += (doc.documentType || "380000").padEnd(6, " "); // Typical Invoice doc type
-                docLine += (doc.irn || "IRN00000000001");
-                docLine += (doc.documentReferenceNo || "DOCREF001");
-                docLine += (job.exporter_address || "").slice(0, 50).padEnd(50, " ");
-                docLine += (doc.icegateFilename || "pdf").padEnd(10, " ");
-                docLine += (job.exporter || "").slice(0, 50);
-                content += docLine + "\n";
-            });
-        }
-
-        content += `<END-SB>\n`;
-
-        // --- TREC ---
-        // TREC + JobNo + Time + Date
-        content += `TREC${jobNoNum}${hm}${formatDate(new Date())}\n`;
-
-        res.setHeader('Content-Type', 'text/plain');
-        res.setHeader('Content-Disposition', `attachment; filename="${job.job_no.replace(/\//g, '_')}.sb"`);
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
         res.send(content);
-
-    } catch (error) {
-        console.error("Flat file generation error:", error);
-        res.status(500).json({ success: false, message: error.message });
+    } catch (err) {
+        console.error("SB flat file generation error:", err);
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 
