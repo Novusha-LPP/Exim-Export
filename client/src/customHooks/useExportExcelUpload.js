@@ -71,16 +71,21 @@ function useExportExcelUpload(inputRef, onSuccess) {
             }
 
             // Validation: Check for export-specific keywords in the data
-            // You can customize this validation based on your requirements
-            const firstRow = allData[0];
-            const hasJobNoColumn = firstRow.some((cell) =>
-                String(cell || "")
-                    .toUpperCase()
-                    .includes("JOB")
-            );
+            // We scan the first 10 rows to find a header row
+            let hasJobNoColumn = false;
+            for (let i = 0; i < Math.min(10, allData.length); i++) {
+                const row = allData[i];
+                if (row.some((cell) => {
+                    const str = String(cell || "").toUpperCase();
+                    return str.includes("JOB") || str.includes("DOC_ID") || str.includes("DOC ID") || str.includes("SB");
+                })) {
+                    hasJobNoColumn = true;
+                    break;
+                }
+            }
 
             if (!hasJobNoColumn) {
-                setError("Error: The provided file doesn't appear to be a valid Export DSR file. Missing 'Job' column.");
+                setError("Error: The provided file doesn't appear to be a valid Export DSR file. Missing 'Job No' or 'Doc ID' column.");
                 setLoading(false);
                 if (inputRef?.current) inputRef.current.value = null;
                 return;
@@ -298,6 +303,15 @@ function useExportExcelUpload(inputRef, onSuccess) {
 
                 // Job Identification
                 const jobNoRaw = getText("Doc_ID");
+                
+                // XML validation for Doc_ID
+                if (!jobNoRaw) {
+                    setError("Error: The provided file doesn't appear to be a valid Export DSR file. Missing 'Job No' or 'Doc ID' column.");
+                    setLoading(false);
+                    if (inputRef?.current) inputRef.current.value = null;
+                    return;
+                }
+                
                 const { job_no, year, branch_code } = parseJobNumber(jobNoRaw);
 
                 // Container Details
@@ -678,11 +692,12 @@ function useExportExcelUpload(inputRef, onSuccess) {
 
             // Auto-detect header row: Find the row that contains "Job" column
             let headerRowIndex = 0;
-            for (let i = 0; i < Math.min(5, allData.length); i++) {
+            for (let i = 0; i < Math.min(10, allData.length); i++) {
                 const row = allData[i];
-                const hasJobColumn = row.some((cell) =>
-                    String(cell || "").toUpperCase().includes("JOB")
-                );
+                const hasJobColumn = row.some((cell) => {
+                    const str = String(cell || "").toUpperCase();
+                    return str.includes("JOB") || str.includes("DOC_ID") || str.includes("DOC ID") || str.includes("SB");
+                });
                 if (hasJobColumn) {
                     headerRowIndex = i;
                     console.log(`✅ Found header row at index ${i} (Row ${i + 1})`);
@@ -713,7 +728,10 @@ function useExportExcelUpload(inputRef, onSuccess) {
                 "job_no_": "job_no",
                 "job_number": "job_no",
                 "jobno": "job_no",
-
+                "doc_id": "job_no",
+                "docid": "job_no",
+                "doc_id_": "job_no",
+                
                 // Dates
                 "job_date": "job_date",
                 "jobdate": "job_date",
@@ -1094,6 +1112,13 @@ function useExportExcelUpload(inputRef, onSuccess) {
                 console.log(`   ⚠️ Records without job_no (first 5):`, withoutJobNo.slice(0, 5));
             }
 
+            if (withJobNo.length === 0) {
+                setError("Error: No valid Job Numbers found in the file. Please check the data format.");
+                setLoading(false);
+                if (inputRef?.current) inputRef.current.value = null;
+                return;
+            }
+
             console.log(`🎉 File processing complete! Total rows processed: ${modifiedData.length}`);
             console.log(`📤 Starting upload to server...`);
 
@@ -1124,6 +1149,9 @@ function useExportExcelUpload(inputRef, onSuccess) {
 
             console.log(`Starting chunked upload: ${modifiedData.length} records in ${totalChunks} chunks`);
 
+            let skippedCount = 0;
+            let successCount = 0;
+
             for (let i = 0; i < modifiedData.length; i += CHUNK_SIZE) {
                 const chunk = modifiedData.slice(i, i + CHUNK_SIZE);
                 const currentChunk = Math.floor(i / CHUNK_SIZE) + 1;
@@ -1146,6 +1174,12 @@ function useExportExcelUpload(inputRef, onSuccess) {
                         setError(`Failed to upload chunk ${currentChunk}`);
                         break;
                     }
+                    
+                    // Add the chunk statistics
+                    if (uploadResponse.data) {
+                        successCount += (uploadResponse.data.count || 0);
+                        skippedCount += (uploadResponse.data.skipped || 0);
+                    }
 
                     // Update progress
                     setProgress({ current: currentChunk, total: totalChunks });
@@ -1163,8 +1197,15 @@ function useExportExcelUpload(inputRef, onSuccess) {
             if (!failed) {
                 const endTime = Date.now();
                 const durationSeconds = ((endTime - startTime) / 1000).toFixed(2);
+                
+                if (skippedCount === modifiedData.length && successCount === 0) {
+                    setError(`Error: All ${skippedCount} records were skipped. Missing or invalid Job Numbers.`);
+                    setLoading(false);
+                    return;
+                }
+                
                 setUploadStats({
-                    count: modifiedData.length,
+                    count: successCount > 0 ? successCount : modifiedData.length,
                     timeTaken: durationSeconds,
                 });
 

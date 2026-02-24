@@ -430,7 +430,10 @@ function useExportJobDetails(params, setFileSnackbar) {
 
       // Milestone Tracking
       isJobtrackingEnabled: false,
+      jobtrackingCompletedDate: "",
       isJobCanceled: false,
+      jobCanceledDate: "",
+      cancellationReason: "",
       milestones: [
         {
           milestoneName: "",
@@ -706,6 +709,25 @@ function useExportJobDetails(params, setFileSnackbar) {
     },
     enableReinitialize: true,
     onSubmit: async (values) => {
+
+     
+      
+      // TC_SHP_037: Verify Sailing Date cannot be before Job Date
+      if (values.sailing_date && values.job_date) {
+        const sd = new Date(values.sailing_date);
+        const jd = new Date(values.job_date);
+        if (sd < jd) {
+          alert("Sailing Date cannot be before Job Date");
+          return Promise.reject(new Error("Validation failed: Sailing Date cannot be before Job Date"));
+        }
+      }
+
+      // TC_CAN_024: Verify Cancellation Reason is mandatory when cancelling a job
+      if (values.isJobCanceled && (!values.cancellationReason || !values.cancellationReason.trim())) {
+        alert("Cancellation reason is required");
+        return Promise.reject(new Error("Validation failed: Cancellation reason is required"));
+      }
+
       try {
         const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
         const headers = {
@@ -895,6 +917,11 @@ function useExportJobDetails(params, setFileSnackbar) {
         })),
         remarks: safeValue(data.remarks),
         job_owner: safeValue(data.job_owner),
+        isJobtrackingEnabled: safeValue(data.isJobtrackingEnabled, false),
+        jobtrackingCompletedDate: safeValue(data.jobtrackingCompletedDate),
+        isJobCanceled: safeValue(data.isJobCanceled, false),
+        jobCanceledDate: safeValue(data.jobCanceledDate),
+        cancellationReason: safeValue(data.cancellationReason),
         invoices: safeValue(data.invoices, []).map((inv) => ({
           ...inv,
           products: (inv.products || []).map((prod) => ({

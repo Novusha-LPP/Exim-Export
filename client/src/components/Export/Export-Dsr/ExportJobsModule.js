@@ -382,7 +382,7 @@ function ExportJobsModule() {
             },
             {
               label: "Tracking Completed",
-              component: <TrackingCompletedTab job={data} formik={formik} />,
+              component: <TrackingCompletedTab job={data} formik={formik} isAdmin={user?.role === "Admin"} />,
             },
           ];
 
@@ -396,6 +396,8 @@ function ExportJobsModule() {
         <ExportJobFooter
           onUpdate={formik.handleSubmit}
           onClose={handleUpdateAndClose}
+          isJobCanceled={formik.values.isJobCanceled}
+          isAdmin={user?.role === "Admin"}
         />
       </Paper>
       <Snackbar

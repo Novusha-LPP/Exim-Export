@@ -692,7 +692,7 @@ const exportJobSchema = new mongoose.Schema(
     sb_no: { type: String, trim: true },
     consignmentType: {
       type: String,
-      enum: ["FCL", "LCL", "AIR", "Break Bulk"],
+      enum: ["", "FCL", "LCL", "AIR", "Break Bulk"],
     },
     shipping_line_airline: { type: String, trim: true },
     branchSrNo: { type: String, trim: true },
@@ -806,6 +806,7 @@ const exportJobSchema = new mongoose.Schema(
         consignee_name: { type: String, trim: true },
         consignee_address: { type: String, trim: true },
         consignee_country: { type: String, trim: true },
+        consignee_email: { type: String, trim: true },
       },
     ],
 
@@ -988,7 +989,10 @@ const exportJobSchema = new mongoose.Schema(
 
     // Milestone Tracking
     isJobtrackingEnabled: { type: Boolean, default: false },
+    jobtrackingCompletedDate: { type: String, trim: true },
     isJobCanceled: { type: Boolean, default: false },
+    jobCanceledDate: { type: String, trim: true },
+    cancellationReason: { type: String, trim: true },
     milestones: [milestoneSchema],
     customerremark: { type: String, trim: true },
     shipmenttype: { type: String, trim: true },

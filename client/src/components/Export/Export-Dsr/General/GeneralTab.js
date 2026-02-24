@@ -204,6 +204,7 @@ const GeneralTab = ({ formik, directories }) => {
     consignee_name: "",
     consignee_address: "",
     consignee_country: "",
+    consignee_email: "",
   };
   const [consignees, setConsignees] = useState([{ ...emptyConsignee }]);
 
@@ -229,8 +230,16 @@ const GeneralTab = ({ formik, directories }) => {
   function handleFieldChange(field, value) {
     formik.setFieldValue(field, value);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => { }, 1000);
+    saveTimeoutRef.current = setTimeout(() => {
+      // Add email validation before save triggers naturally if we have auto-save
+    }, 1000);
   }
+
+  // Validate email format function
+  const isValidEmail = (email) => {
+    if (!email) return true; // Optional field
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
 
   // --- Consignee Autocomplete Logic ---
   const [consigneeList, setConsigneeList] = useState([]);
@@ -283,6 +292,7 @@ const GeneralTab = ({ formik, directories }) => {
     updated[idx].consignee_name = toUpper(consignee.consignee_name);
     updated[idx].consignee_address = toUpper(consignee.consignee_address || "");
     updated[idx].consignee_country = toUpper(consignee.consignee_country || "");
+    updated[idx].consignee_email = consignee.consignee_email || "";
     setConsignees(updated);
     formik.setFieldValue("consignees", updated);
 
@@ -869,6 +879,27 @@ const GeneralTab = ({ formik, directories }) => {
                 handleConsigneeChange(idx, "consignee_country", val)
               }
             />
+            <div style={{ flex: 1.5, position: "relative" }}>
+              <input
+                style={{
+                  border: "1px solid #cad3db",
+                  borderColor: consignee.consignee_email && !isValidEmail(consignee.consignee_email) ? "red" : "#cad3db",
+                  borderRadius: 4,
+                  fontSize: 13,
+                  padding: "2px 7px",
+                  width: "100%",
+                  boxSizing: "border-box",
+                }}
+                value={consignee.consignee_email || ""}
+                placeholder="Email Address"
+                onChange={(e) =>
+                  handleConsigneeChange(idx, "consignee_email", e.target.value)
+                }
+              />
+              {consignee.consignee_email && !isValidEmail(consignee.consignee_email) && (
+                <span style={{color: "red", fontSize: "10px", position: "absolute", bottom: "-14px", left: 0}}>Invalid Email Format</span>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => handleRemoveConsignee(idx)}

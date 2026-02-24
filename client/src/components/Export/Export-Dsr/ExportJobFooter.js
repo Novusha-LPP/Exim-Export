@@ -1,7 +1,8 @@
 import React from "react";
 import { Box, Button } from "@mui/material";
 
-const ExportJobFooter = ({ onUpdate, onClose, loading = false }) => {
+const ExportJobFooter = ({ onUpdate, onClose, loading = false, isJobCanceled = false, isAdmin = false }) => {
+  const isUpdateDisabled = loading || (isJobCanceled && !isAdmin);
   return (
     <Box
       sx={{
@@ -15,14 +16,14 @@ const ExportJobFooter = ({ onUpdate, onClose, loading = false }) => {
       <Button
         variant="contained"
         onClick={onUpdate}
-        disabled={loading}
+        disabled={isUpdateDisabled}
         sx={{
           position: "fixed",
           bottom: 25,
           right: 30,
           zIndex: 2000,
           minWidth: 110,
-          backgroundColor: "#1565c0",
+          backgroundColor: isUpdateDisabled ? "#ccc" : "#1565c0",
           color: "#fff",
           fontWeight: "bold",
           borderRadius: "30px",

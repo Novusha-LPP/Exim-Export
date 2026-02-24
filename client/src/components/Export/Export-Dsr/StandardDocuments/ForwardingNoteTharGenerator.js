@@ -55,6 +55,12 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       const containers = data.containers || [];
       const products = invoice.products || [];
 
+      // Extract User Information for Footer
+      const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
+      const generatedBy = user.first_name || user.user_first_name 
+        ? `${user.first_name || user.user_first_name || ""} ${user.last_name || user.user_last_name || ""}`.trim()
+        : user.username || "System User";
+
       // Fetch Currency Rates
       let exchangeRate = 1;
       try {
@@ -94,28 +100,45 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       const invInInr = (totalInvoiceVal * exchangeRate).toFixed(2);
 
       const shortenedDescription = products[0]?.description || "";
+      const hsnList = [...new Set(products.map(p => {
+        if (p.hsn_code || p.hsnCode || p.hsn) return p.hsn_code || p.hsnCode || p.hsn;
+        if (p.ritc) {
+          if (typeof p.ritc === 'object') return p.ritc.hsnCode || p.ritc.ritcCode;
+          return p.ritc;
+        }
+        return null;
+      }).filter(Boolean))].join(", ");
 
       let containersRows = "";
       let totalPkgs = 0;
       let totalWeight = 0;
 
       containers.forEach((c, idx) => {
-        const pkgs = Number(c.pkgsStuffed) || 0;
+        const pkgs = Number(c.pkgsStuffed) ;
+        const pkgsDisplay = pkgs ? `${pkgs} ${data.package_unit || "PKGS"}` : "";
+        
         const weight = Number(c.grossWeight) || 0;
         const weightMT = (weight / 1000).toFixed(3);
         totalPkgs += pkgs;
         totalWeight += weight;
+
+        const shipLine = booking.shippingLineName || "SURAJ FORWARDERS PVT. LTD.";
+        const sealDetail = c.sealNo || "";
+
+        let descDetails = shortenedDescription;
+        descDetails += `<br/><span style="font-size: 10px;">`;
+        if (hsnList) descDetails += `<b>HSN:</b> ${hsnList}<br/>`;
 
         containersRows += `
           <tr>
             <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${idx + 1}</td>
             <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${c.containerNo || ""}</td>
             <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${c.type?.match(/\d+/)?.[0] || "20"}</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${pkgs || ""}</td>
-            <td style="border: 1px solid black; padding: 4px; text-align: left; vertical-align: middle;">${shortenedDescription}</td>
+            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${pkgsDisplay}</td>
+            <td style="border: 1px solid black; padding: 4px; text-align: left; vertical-align: middle;">${descDetails}</td>
             <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${weightMT || ""}</td>
             <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${c.sealNo || ""}</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${booking.shippingLineSealNo || ""}</td>
+            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${c.shippingLineSealNo || ""}</td>
             <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${data.sb_no || ""}</td>
             <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${formatDate(data.sb_date)}</td>
           </tr>
@@ -143,7 +166,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         <div style="font-family: 'Helvetica', 'Arial', sans-serif; max-width: 1100px; margin: 0 auto; padding: 5px;">
           
           <!-- Header Section (Thar Specific) -->
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0px;">
              <div style="width: 200px;">
                 <img src="${thatLogo}" alt="Thar Dry Port" style="width: 200px; height: auto;" />
              </div>
@@ -156,7 +179,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
           </div>
 
           <!-- Title -->
-          <div style="text-align: center; margin-bottom: 10px;">
+          <div style="text-align: center; margin-bottom: 5px;">
              <h2 style="margin: 0; text-decoration: underline; font-weight: bold; font-size: 18px;">FORWARDING NOTE</h2>
              <p style="margin: 2px 0; font-weight: bold;">Mode By : ${statusDetails.railRoad ? statusDetails.railRoad.toUpperCase() : "Rail / Road"}</p>
              <p style="margin: 2px 0; font-weight: bold;">INVOICE NO:- ${data.invoices?.map((inv) => inv.invoiceNumber).join(", ") || ""}</p>
@@ -220,14 +243,22 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
                  <div>${data.sb_no || ""} / ${formatDate(data.sb_date)}</div>
               </td>
               <td style="border: 1px solid black; padding: 4px; vertical-align: top; word-break: break-word;">
-                 <div style="margin-bottom: 2px;"><strong>Port of Discharge</strong></div>
-                 <div>${data.port_of_discharge || ""}</div>
+                   <div style="display: flex; gap: 10px;">
+                  <div style="flex: 1;">
+                     <div style="margin-bottom: 2px;"><strong>Port of Discharge</strong></div>
+                     <div>${data.port_of_discharge || ""}</div>
+                  </div>
+                  <div style="flex: 1;">
+                     <div style="margin-bottom: 2px;"><strong>Country</strong></div>
+                     <div>${data.discharge_country || ""}</div>
+                  </div>
+                  </div>
               </td>
             </tr>
             <tr>
               <td style="border: 1px solid black; padding: 4px; vertical-align: top; word-break: break-word;">
                  <div style="margin-bottom: 2px;"><strong>Stuffing</strong></div>
-                 <div>${data.goods_stuffed_at === "Factory" ? "FACTORY" : "ICD (CFS)"}</div>
+                 <div>${data.goods_stuffed_at?.toString().toLowerCase() === "factory" ? "FACTORY" : "ICD (CFS)"}</div>
               </td>
               <td style="border: 1px solid black; padding: 4px; vertical-align: top; word-break: break-word;">
                  <div style="margin-bottom: 2px;"><strong>F.O.B./C.I.F. Value</strong></div>
@@ -305,18 +336,23 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
           <table style="width: 100%; margin-top: 10px; page-break-inside: avoid;">
             <tr style="page-break-inside: avoid;">
                 <td style="border: none; padding: 0;">
-                    <div style="border: 1px solid black; padding: 10px; margin-bottom: 20px; min-height: 40px; font-size: 12px;">
-                      <strong>Remarks, if any (PDA A/C/Cheque No):</strong>
+                    <div style="border: 1px solid black; padding: 5px; margin-bottom: 10px; min-height: 40px; font-size: 12px;">
+                      <strong>Remarks, if any (PDA A/C/Cheque No):</strong> ${booking.shippingLineName || "SURAJ FORWARDERS PVT. LTD."}
                     </div>
 
                     <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px;">
-                      <div>DATE ________________________</div>
+                      <div>DATE: ${formatDate(new Date())}</div>
                       <div style="text-align: right;">STAMP AND SIGNATURE OF SHIPPER OR AGENT (CHA)</div>
                     </div>
 
-                    <div style="border: 1px solid black; padding: 10px; margin-top: 30px; font-size: 12px;">
-                       <strong>CES (NS) PVT. LTD.</strong><br/>
-                       DATE & TIME OF BOOKING OR (EA) :
+                    <div style="border: 1px solid black; padding: 10px; margin-top: 15px; font-size: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
+                       <div>
+                         <strong>CES (NS) PVT. LTD.</strong><br/>
+                         DATE & TIME OF BOOKING OR (EA) : ${formatDate(new Date())}
+                       </div>
+                       <div style="font-size: 10px; color: #000000ff;">
+                         Generated by: ${generatedBy}
+                       </div>
                     </div>
                 </td>
             </tr>
@@ -353,7 +389,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         y: 15,
         width: 545,
         windowWidth: 900,
-        margin: [20, 15, 110, 15],
+        margin: [20, 15, 20, 15],
         autoPaging: 'slice',
       });
     } catch (error) {

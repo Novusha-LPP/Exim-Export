@@ -466,7 +466,7 @@ const InvoiceMainTab = ({ formik }) => {
                         handleInvChange(
                           index,
                           "invoiceNumber",
-                          e.target.value.toUpperCase(),
+                          e.target.value.toUpperCase().replace(/[^A-Z0-9\-\/]/g, ''),
                         )
                       }
                       placeholder="INVOICE NO"

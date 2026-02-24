@@ -362,7 +362,7 @@ const LogisysEditableHeader = ({
     const stuffed = toUpper(formik.values.goods_stuffed_at || "");
     const type = toUpper(formik.values.consignmentType || "");
 
-    if (stuffed === "FACTORY" && type !== "FCL") {
+    if (stuffed === "FACTORY" && type !== "FCL" && type !== "") {
       formik.setFieldValue("consignmentType", "FCL");
     }
 
@@ -629,9 +629,11 @@ const LogisysEditableHeader = ({
             name="consignmentType"
             value={formik.values.consignmentType}
             options={[
+              { value: "", label: "-Select-" },
               { value: "FCL", label: "FCL" },
               { value: "LCL", label: "LCL" },
               { value: "AIR", label: "AIR" },
+              { value: "Break Bulk", label: "Break Bulk" },
             ]}
             onChange={formik.handleChange}
             placeholder="Type"
