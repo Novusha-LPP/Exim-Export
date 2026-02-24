@@ -13,7 +13,7 @@ const getMilestones = (isAir) => [
 const getMandatoryNames = (isAir) =>
   new Set(["SB Filed", "L.E.O", "Billing Pending"]);
 
-const TrackingCompletedTab = ({ formik, directories, params }) => {
+const TrackingCompletedTab = ({ formik, directories, params, isAdmin }) => {
   const [filter, setFilter] = useState("Show All");
   const [exportJobsUsers, setExportJobsUsers] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0); // Default to first milestone
@@ -312,11 +312,16 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
               type="checkbox"
               checked={formik.values.isJobtrackingEnabled ?? false}
               onChange={(e) => {
-                if (e.target.checked) {
-                  handleFieldChange("isJobtrackingEnabled", true);
+                const isChecked = e.target.checked;
+                handleFieldChange("isJobtrackingEnabled", isChecked);
+                if (isChecked) {
+                  const today = new Date();
+                  const dateString = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+                  handleFieldChange("jobtrackingCompletedDate", dateString);
                   handleFieldChange("isJobCanceled", false);
+                  handleFieldChange("jobCanceledDate", "");
                 } else {
-                  handleFieldChange("isJobtrackingEnabled", false);
+                  handleFieldChange("jobtrackingCompletedDate", "");
                 }
               }}
               disabled={formik.values.isJobCanceled ?? false}
@@ -327,6 +332,11 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                     : "pointer",
               }}
             />
+            {formik.values.isJobtrackingEnabled && formik.values.jobtrackingCompletedDate && (
+              <span style={{ fontSize: 11, color: "#666", fontWeight: 500 }}>
+                ({formik.values.jobtrackingCompletedDate})
+              </span>
+            )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontWeight: 600 }}>Job Canceled</span>
@@ -334,21 +344,31 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
               type="checkbox"
               checked={formik.values.isJobCanceled ?? false}
               onChange={(e) => {
-                if (e.target.checked) {
-                  handleFieldChange("isJobCanceled", true);
+                const isChecked = e.target.checked;
+                handleFieldChange("isJobCanceled", isChecked);
+                if (isChecked) {
+                  const today = new Date();
+                  const dateString = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+                  handleFieldChange("jobCanceledDate", dateString);
                   handleFieldChange("isJobtrackingEnabled", false);
+                  handleFieldChange("jobtrackingCompletedDate", "");
                 } else {
-                  handleFieldChange("isJobCanceled", false);
+                  handleFieldChange("jobCanceledDate", "");
                 }
               }}
-              disabled={formik.values.isJobtrackingEnabled ?? false}
+              disabled={(formik.values.isJobtrackingEnabled ?? false) || (formik.values.isJobCanceled && !isAdmin)}
               style={{
                 cursor:
-                  formik.values.isJobtrackingEnabled ?? false
+                  ((formik.values.isJobtrackingEnabled ?? false) || (formik.values.isJobCanceled && !isAdmin))
                     ? "not-allowed"
                     : "pointer",
               }}
             />
+            {formik.values.isJobCanceled && formik.values.jobCanceledDate && (
+              <span style={{ fontSize: 11, color: "#d32f2f", fontWeight: 500 }}>
+                ({formik.values.jobCanceledDate})
+              </span>
+            )}
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -372,27 +392,48 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-
-        </div>
-        <div>
-          <div style={{ marginBottom: 4, fontWeight: 500 }}>
-            Customer Remark
+          <div>
+            <div style={{ marginBottom: 4, fontWeight: 500 }}>
+              Customer Remark
+            </div>
+            <textarea
+              rows={2}
+              style={{
+                width: "100%",
+                fontSize: 12,
+                padding: "4px 6px",
+                borderRadius: 3,
+                border: "1px solid #c4cdd7",
+                resize: "none",
+              }}
+              value={formik.values.customerremark || ""}
+              onChange={(e) =>
+                handleFieldChange("customerremark", e.target.value)
+              }
+            />
           </div>
-          <textarea
-            rows={2}
-            style={{
-              width: "100%",
-              fontSize: 12,
-              padding: "4px 6px",
-              borderRadius: 3,
-              border: "1px solid #c4cdd7",
-              resize: "none",
-            }}
-            value={formik.values.customerremark || ""}
-            onChange={(e) =>
-              handleFieldChange("customerremark", e.target.value)
-            }
-          />
+          {formik.values.isJobCanceled && (
+            <div>
+              <div style={{ marginBottom: 4, fontWeight: 500, color: "#d32f2f" }}>
+                Cancellation Reason <span style={{ color: "red" }}>*</span>
+              </div>
+              <textarea
+                rows={2}
+                style={{
+                  width: "100%",
+                  fontSize: 12,
+                  padding: "4px 6px",
+                  borderRadius: 3,
+                  border: "1px solid #ef5350",
+                  resize: "none",
+                }}
+                value={formik.values.cancellationReason || ""}
+                onChange={(e) =>
+                  handleFieldChange("cancellationReason", e.target.value)
+                }
+              />
+            </div>
+          )}
         </div>
       </div>
 

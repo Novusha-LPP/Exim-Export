@@ -809,6 +809,7 @@ const exportJobSchema = new mongoose.Schema(
         consignee_name: { type: String, trim: true },
         consignee_address: { type: String, trim: true },
         consignee_country: { type: String, trim: true },
+        consignee_email: { type: String, trim: true },
       },
     ],
 
@@ -991,7 +992,10 @@ const exportJobSchema = new mongoose.Schema(
 
     // Milestone Tracking
     isJobtrackingEnabled: { type: Boolean, default: false },
+    jobtrackingCompletedDate: { type: String, trim: true },
     isJobCanceled: { type: Boolean, default: false },
+    jobCanceledDate: { type: String, trim: true },
+    cancellationReason: { type: String, trim: true },
     milestones: [milestoneSchema],
     customerremark: { type: String, trim: true },
     shipmenttype: { type: String, trim: true },

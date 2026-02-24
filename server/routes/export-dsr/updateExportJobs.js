@@ -55,24 +55,30 @@ router.get("/dashboard-stats", async (req, res) => {
       { $match: matchStage },
       {
         $facet: {
-          // A. Counts (Same logic as before)
+          // A. Counts — aligned with the same logic used in /exports?status=X
           counts: [
             {
               $group: {
                 _id: null,
                 total: { $sum: 1 },
+                // Pending: status is pending/empty AND not tracking-enabled AND not cancelled
                 pending: {
                   $sum: {
                     $cond: [
                       {
                         $and: [
+                          // Not cancelled
+                          { $ne: ["$isJobCanceled", true] },
+                          { $ne: ["$status", "cancelled"] },
+                          // Not completed via tracking
+                          { $ne: ["$isJobtrackingEnabled", true] },
+                          // Status is pending or unset
                           {
                             $or: [
-                              { $eq: ["$status", "pending"] },
+                              { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "pending"] },
                               { $eq: [{ $ifNull: ["$status", ""] }, ""] },
                             ],
                           },
-                          { $ne: ["$isJobtrackingEnabled", true] },
                         ],
                       },
                       1,
@@ -80,13 +86,20 @@ router.get("/dashboard-stats", async (req, res) => {
                     ],
                   },
                 },
+                // Completed: explicit "completed" status OR jobTracking enabled (but not cancelled)
                 completed: {
                   $sum: {
                     $cond: [
                       {
-                        $or: [
-                          { $eq: ["$status", "completed"] },
-                          { $eq: ["$isJobtrackingEnabled", true] },
+                        $and: [
+                          { $ne: ["$isJobCanceled", true] },
+                          { $ne: ["$status", "cancelled"] },
+                          {
+                            $or: [
+                              { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "completed"] },
+                              { $eq: ["$isJobtrackingEnabled", true] },
+                            ],
+                          },
                         ],
                       },
                       1,
@@ -94,12 +107,13 @@ router.get("/dashboard-stats", async (req, res) => {
                     ],
                   },
                 },
+                // Cancelled: explicit "cancelled" status OR isJobCanceled flag
                 cancelled: {
                   $sum: {
                     $cond: [
                       {
                         $or: [
-                          { $eq: ["$status", "cancelled"] },
+                          { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "cancelled"] },
                           { $eq: ["$isJobCanceled", true] },
                         ],
                       },
@@ -111,16 +125,18 @@ router.get("/dashboard-stats", async (req, res) => {
               },
             },
           ],
-          // B. Monthly Trend - Aggregation
+          // B. Monthly Trend — group by year+month so filtering by year works correctly
           monthlyTrend: [
             {
               $group: {
-                // Ensure we have a valid date, otherwise fallback to null (which we filter out later)
-                _id: { $month: "$createdAt" },
+                _id: {
+                  year: { $year: "$createdAt" },
+                  month: { $month: "$createdAt" },
+                },
                 count: { $sum: 1 },
               },
             },
-            { $sort: { _id: 1 } },
+            { $sort: { "_id.year": 1, "_id.month": 1 } },
           ],
         },
       },

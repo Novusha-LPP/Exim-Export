@@ -1038,16 +1038,18 @@ const AddExJobs = ({ onJobCreated }) => {
     consignee_address: "",
     consignee_country: "",
   };
+  const [exporterError, setExporterError] = useState(false);
   const [formData, setFormData] = useState({
     branch_code: "AMD", // 👈 default
     exporter: "",
     job_owner: "",
     port_of_loading: "",
-    consignees: [{ ...emptyConsignee }],
+    consignees: [{ ...emptyConsignee, consignee_email: "" }],
     ieCode: "",
     panNo: "",
     job_no: "",
-    consignmentType: "FCL",
+    consignee_email_error: "",
+    consignmentType: "",
     discharge_country: "",
     custom_house: "",
     total_no_of_pkgs: "",
@@ -1131,7 +1133,7 @@ const AddExJobs = ({ onJobCreated }) => {
   useEffect(() => {
     const stuffed = toUpper(formData.goods_stuffed_at || "");
     const type = toUpper(formData.consignmentType || "");
-    if (stuffed === "FACTORY" && type !== "FCL") {
+    if (stuffed === "FACTORY" && type !== "FCL" && type !== "") {
       setFormData((prev) => ({ ...prev, consignmentType: "FCL" }));
     }
     if (type === "LCL" && stuffed !== "DOCK") {
@@ -1297,9 +1299,22 @@ const AddExJobs = ({ onJobCreated }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.exporter) {
-      showToast("Exporter Name is required", "error");
+      setExporterError(true);
       return;
     }
+    
+    // Validate emails format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    let emailError = false;
+    formData.consignees.forEach((c) => {
+      if (c.consignee_email && !emailRegex.test(c.consignee_email)) {
+        showToast("Invalid Email Format", "error");
+        emailError = true;
+      }
+    });
+
+    if (emailError) return;
+
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_API_STRING}/jobs/add-job-exp-man`,
@@ -1376,18 +1391,19 @@ const AddExJobs = ({ onJobCreated }) => {
                   <label style={s.label}>Exporter Name *</label>
                   <div style={s.comboWrapper}>
                     <input
-                      style={s.inputWithIcon}
+                      style={{...s.inputWithIcon, borderColor: exporterError ? "red" : "#d1d5db"}}
                       value={formData.exporter}
                       onChange={(e) => {
+                        setExporterError(false);
                         handleInputChange("exporter", e.target.value);
                         setShowDropdown(true);
                       }}
                       onFocus={() => setShowDropdown(true)}
                       placeholder="Select or Type Exporter..."
-                      required
                       autoComplete="off"
                     />
                     <span style={s.comboIcon}>▼</span>
+                    {exporterError && <span style={{ color: "red", fontSize: "10px", marginTop: "2px", display: "block" }}>Exporter Name is required.</span>}
                     {showDropdown && (
                       <div style={s.dropdownList}>
                         {loading ? (
@@ -1655,6 +1671,21 @@ const AddExJobs = ({ onJobCreated }) => {
                       }
                     />
                   </div>
+                  <div style={{ ...s.col, flex: 1.5 }}>
+                    <label style={s.label}>Email</label>
+                    <input
+                      style={s.input}
+                      placeholder="Email"
+                      value={item.consignee_email || ""}
+                      onChange={(e) =>
+                        handleConsigneeChange(
+                          idx,
+                          "consignee_email",
+                          e.target.value,
+                        )
+                      }
+                    />
+                  </div>
 
                   <div
                     style={{
@@ -1707,6 +1738,7 @@ const AddExJobs = ({ onJobCreated }) => {
                       handleInputChange("consignmentType", e.target.value)
                     }
                   >
+                    <option value="" disabled>-Select-</option>
                     <option value="FCL">FCL</option>
                     <option value="LCL">LCL</option>
                     <option value="AIR">AIR</option>
@@ -1752,10 +1784,10 @@ const AddExJobs = ({ onJobCreated }) => {
                   <label style={s.label}>Port of Loading</label>
                   <select
                     style={s.select}
-                    value={formData.port_of_loading}
+                    value={formData.port_of_loading || ""}
                     onChange={(e) => handleInputChange("port_of_loading", e.target.value)}
                   >
-                    <option value="">SELECT PORT</option>
+                    <option value="" disabled>SELECT PORT</option>
                     {portOptions.map(p => (
                       <option key={p.value} value={p.value}>{p.label}</option>
                     ))}
