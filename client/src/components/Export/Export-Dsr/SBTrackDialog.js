@@ -35,6 +35,7 @@ const CUSTOM_HOUSE_CODE_MAP = {
     "AHMEDABAD AIR CARGO": "INAMD4",
     "AIR AHMEDABAD": "INAMD4",
     "ICD SABARMATI": "INSBI6",
+    "ICD SABARMATI, AHMEDABAD": "INSBI6",
     "ICD KHODIYAR": "INSBI6",
     "ICD VIRAMGAM": "INVGR6",
     "ICD SACHANA": "INJKA6",
@@ -145,13 +146,30 @@ function SBTrackDialog({ open, onClose, sbNo, sbDate, customHouse, onUpdateStatu
                         goodsRegistrationDate: extractDate(status.markDate),
                         goodsReportDate: extractDate(status.examDate), // Verify mapping
                         leoDate: extractDate(status.leoDate), // Verify mapping
+
+                        drawback_scroll_no: status.custScrollNo && status.custScrollNo !== "N.A." ? status.custScrollNo : null,
+                        drawback_scroll_date: extractDate(status.scrollDate),
                     };
+
+                    const egmStatusList = fetchedData.egmStatusModel || [];
+                    if (egmStatusList.length > 0) {
+                        const firstEgm = egmStatusList[0];
+                        if (firstEgm.egmNo && firstEgm.egmNo !== "N.A.") updates.egm_no = firstEgm.egmNo;
+                        updates.egm_date = extractDate(firstEgm.egmDate);
+                    }
+
+                    const roslStatusList = fetchedData.roslStatusModel || [];
+                    if (roslStatusList.length > 0) {
+                        const rosl = roslStatusList[0];
+                        if (rosl.roslScrollNo && rosl.roslScrollNo !== "N.A.") updates.rosctl_scroll_no = rosl.roslScrollNo;
+                        updates.rosctl_scroll_date = extractDate(rosl.roslScrollDate);
+                    }
 
                     // Filter out nulls
                     const finalUpdates = {};
-                    if (updates.goodsRegistrationDate) finalUpdates.goodsRegistrationDate = updates.goodsRegistrationDate;
-                    if (updates.goodsReportDate) finalUpdates.goodsReportDate = updates.goodsReportDate;
-                    if (updates.leoDate) finalUpdates.leoDate = updates.leoDate;
+                    for (const key in updates) {
+                        if (updates[key]) finalUpdates[key] = updates[key];
+                    }
 
                     if (Object.keys(finalUpdates).length > 0) {
                         onUpdateStatus(finalUpdates);

@@ -143,19 +143,19 @@ const normalizeSealType = (type) => {
 
 /**
  * Helper to get value for update
- * Prioritizes the new value from Excel if it's not empty.
- * If new value is empty, preserves existing data.
+ * Prioritizes the existing value in database.
+ * If existing value is empty, uses the new value from Excel.
  * @param {any} newValue - New value from Excel
  * @param {any} existingValue - Existing value in database
  * @returns {any} - Value to use
  */
 function getUpdateValue(newValue, existingValue) {
-    // If Excel has data, use it (Source of Truth for import)
-    if (!isEmpty(newValue)) {
-        return newValue;
+    // If database already has data, use it (prioritize existing)
+    if (!isEmpty(existingValue)) {
+        return existingValue;
     }
-    // Otherwise keep existing
-    return existingValue;
+    // Otherwise use new value
+    return newValue;
 }
 
 /**
@@ -165,6 +165,36 @@ function getUpdateValue(newValue, existingValue) {
 router.post("/api/jobs/add-job", async (req, res) => {
     const jsonData = req.body;
     const CHUNK_SIZE = 500; // Process 500 jobs at a time
+
+    // Pre-process jsonData to ensure AIR jobs have formatted job numbers to avoid colliding with SEA jobs
+    jsonData.forEach((d) => {
+        if (!d.job_no || typeof d.job_no !== 'string') return;
+
+        const isAir = (d.transportMode && String(d.transportMode).toUpperCase().includes('AIR')) ||
+            (d.consignmentType && String(d.consignmentType).toUpperCase().includes('AIR')) ||
+            d.job_no.toUpperCase().includes('/AIR/');
+
+        if (isAir && !d.job_no.toUpperCase().includes('/AIR/')) {
+            let newJob = d.job_no;
+            if (newJob.toUpperCase().includes('/SEA/')) {
+                newJob = newJob.replace(/\/SEA\//i, '/AIR/');
+            }
+            else {
+                const parts = newJob.split('/');
+                const seqIndex = parts.findIndex(p => /^\d{3,}$/.test(p));
+                if (seqIndex > 0) {
+                    parts.splice(seqIndex, 0, 'AIR');
+                    newJob = parts.join('/');
+                } else if (parts.length >= 2) {
+                    parts.splice(1, 0, 'AIR');
+                    newJob = parts.join('/');
+                }
+            }
+            d.job_no = newJob;
+            d.transportMode = "AIR";
+            d.consignmentType = "AIR";
+        }
+    });
 
     console.log(`📊 [Backend] Starting to process ${jsonData.length} export jobs...`);
     const startTime = Date.now();
@@ -358,6 +388,10 @@ router.post("/api/jobs/add-job", async (req, res) => {
 
                 products_per_invoice, // Structured products array
 
+                // Locked fields
+                operations_locked_on,
+                financials_locked_on,
+
                 // Branch
                 branchSrNo,
             } = data;
@@ -415,6 +449,10 @@ router.post("/api/jobs/add-job", async (req, res) => {
                         // Normalize Year to YY-YY format (e.g. 2025-2026 -> 25-26)
                         targetYear = normalizeYear(targetYear);
 
+                        if (job_no && String(job_no).toUpperCase().includes('/AIR/')) {
+                            targetBranch += '-AIR';
+                        }
+
                         // Log what we are trying to update
                         console.log(`Title: Syncing Sequence | Job: ${job_no} | Branch: ${targetBranch} | Year: ${targetYear} | Seq: ${seqNum}`);
 
@@ -445,18 +483,18 @@ router.post("/api/jobs/add-job", async (req, res) => {
             let lineNoUpdate = existingJob?.line_no || "";
             let ieCodeUpdate = existingJob?.ieCode || "";
 
-            // Update if new value is provided in Excel
-            if (vessel_berthing && String(vessel_berthing).trim() !== "") {
+            // Update only if existing value is empty
+            if (isEmpty(vesselBerthingToUpdate) && vessel_berthing && String(vessel_berthing).trim() !== "") {
                 vesselBerthingToUpdate = String(vessel_berthing).trim();
             }
-            if (gateway_igm_date && String(gateway_igm_date).trim() !== "") {
+            if (isEmpty(gatewayIgmDateUpdate) && gateway_igm_date && String(gateway_igm_date).trim() !== "") {
                 gatewayIgmDateUpdate = String(gateway_igm_date).trim();
             }
-            if (line_no && String(line_no).trim() !== "") {
+            if (isEmpty(lineNoUpdate) && line_no && String(line_no).trim() !== "") {
                 lineNoUpdate = String(line_no).trim();
             }
             // ieCode now comes directly from frontend
-            if (ieCode) {
+            if (isEmpty(ieCodeUpdate) && ieCode) {
                 let formattedIeCode = String(ieCode).trim();
                 if (formattedIeCode.length < 10 && formattedIeCode.length > 0) {
                     formattedIeCode = formattedIeCode.padStart(10, "0");
@@ -465,7 +503,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
             }
 
             // Build consignees array if consignee info exists
-            // Prioritize spreadsheet data if provided, otherwise preserve existing
+            // Overwrite existing data if spreadsheet data exists, otherwise use existing data
             let consigneesToUpdate = existingJob?.consignees || [];
             if (consignee_name && String(consignee_name).trim() !== "") {
                 consigneesToUpdate = [{
@@ -473,6 +511,11 @@ router.post("/api/jobs/add-job", async (req, res) => {
                     consignee_address: consignee_address || "",
                     consignee_country: consignee_country || "",
                 }];
+            }
+
+            let existingCustomHouse = existingJob?.custom_house;
+            if (existingCustomHouse && existingCustomHouse.trim().toLowerCase() === "icd sabarmati, ahmedabad") {
+                existingCustomHouse = "ICD Sabarmati";
             }
 
             // Build the update data with all fields from the Excel
@@ -486,7 +529,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 branch_code: normalizeBranchCode(branch_code),
 
                 // Custom House
-                custom_house: getUpdateValue(custom_house, existingJob?.custom_house),
+                custom_house: getUpdateValue(custom_house, existingCustomHouse),
 
                 // Exporter
                 exporter: getUpdateValue(exporter, existingJob?.exporter),
@@ -558,8 +601,8 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 ieCode: ieCodeUpdate,
 
                 // Consignment/Transport
-                consignmentType: getUpdateValue(consignmentType, existingJob?.consignmentType),
-                transportMode: getUpdateValue(transportMode, existingJob?.transportMode),
+                consignmentType: (job_no && String(job_no).toUpperCase().includes('/AIR/')) ? "AIR" : getUpdateValue(consignmentType, existingJob?.consignmentType),
+                transportMode: (job_no && String(job_no).toUpperCase().includes('/AIR/')) ? "AIR" : getUpdateValue(transportMode, existingJob?.transportMode),
 
                 // Shipping Line
                 shipping_line_airline: getUpdateValue(shipping_line_airline, existingJob?.shipping_line_airline),
@@ -823,10 +866,29 @@ router.post("/api/jobs/add-job", async (req, res) => {
                     };
 
                     if (invoiceIndex >= 0) {
-                        // Update existing invoice
+                        const existingInvoice = existingInvoices[invoiceIndex];
+                        // Update existing invoice but prioritize DB data
                         existingInvoices[invoiceIndex] = {
-                            ...existingInvoices[invoiceIndex],
-                            ...invoiceData
+                            ...existingInvoice,
+                            invoiceDate: getUpdateValue(invoiceData.invoiceDate, existingInvoice.invoiceDate),
+                            currency: getUpdateValue(invoiceData.currency, existingInvoice.currency),
+                            invoiceValue: getUpdateValue(invoiceData.invoiceValue, existingInvoice.invoiceValue),
+                            productValue: getUpdateValue(invoiceData.productValue, existingInvoice.productValue),
+                            termsOfInvoice: getUpdateValue(invoiceData.termsOfInvoice, existingInvoice.termsOfInvoice),
+
+                            // Only update products if we got structured products from Excel,
+                            // OR if the existing invoice has NO products yet
+                            products: hasStructuredProducts ? invoiceProducts :
+                                (existingInvoice.products && existingInvoice.products.length > 0 ? existingInvoice.products : invoiceProducts),
+
+                            freightInsuranceCharges: {
+                                ...existingInvoice.freightInsuranceCharges,
+                                fobValue: { amount: getUpdateValue(invoiceData.freightInsuranceCharges.fobValue.amount, existingInvoice.freightInsuranceCharges?.fobValue?.amount) },
+                                commission: { amount: getUpdateValue(invoiceData.freightInsuranceCharges.commission.amount, existingInvoice.freightInsuranceCharges?.commission?.amount) },
+                                freight: { amount: getUpdateValue(invoiceData.freightInsuranceCharges.freight.amount, existingInvoice.freightInsuranceCharges?.freight?.amount) },
+                                insurance: { amount: getUpdateValue(invoiceData.freightInsuranceCharges.insurance.amount, existingInvoice.freightInsuranceCharges?.insurance?.amount) },
+                                discount: { amount: getUpdateValue(invoiceData.freightInsuranceCharges.discount.amount, existingInvoice.freightInsuranceCharges?.discount?.amount) }
+                            }
                         };
                     } else {
                         // Add new invoice
@@ -899,10 +961,10 @@ router.post("/api/jobs/add-job", async (req, res) => {
                             const sInfo = getSealInfoForIndex(containerIndexInMatch);
                             return {
                                 ...existingContainer,
-                                type: newContainerData.type,
-                                sealNo: sInfo.sealNo || existingContainer.sealNo,
-                                sealDate: sInfo.sealDate || existingContainer.sealDate,
-                                sealType: sInfo.sealType || existingContainer.sealType
+                                type: getUpdateValue(newContainerData.type, existingContainer.type),
+                                sealNo: getUpdateValue(sInfo.sealNo, existingContainer.sealNo) || "",
+                                sealDate: getUpdateValue(sInfo.sealDate, existingContainer.sealDate) || "",
+                                sealType: getUpdateValue(sInfo.sealType, existingContainer.sealType) || ""
                             };
                         }
                         return existingContainer;
@@ -957,6 +1019,38 @@ router.post("/api/jobs/add-job", async (req, res) => {
             const update = {
                 $set: updateData,
             };
+
+            // Process Operations Locked On -> billingDocsSentDt
+            if (operations_locked_on) {
+                update.$set["operations.0.statusDetails.0.billingDocsSentDt"] = operations_locked_on;
+                if (!update.$set.detailedStatus || update.$set.detailedStatus !== "Billing Done") {
+                    update.$set.detailedStatus = "Billing Pending";
+                }
+            }
+
+            // Process Financials Locked On -> Billing Done Milestone
+            if (financials_locked_on) {
+                update.$set.status = "Completed";
+                update.$set.detailedStatus = "Billing Done";
+
+                const hasMilestoneIdx = existingJob?.milestones?.findIndex(m => m.milestoneName === "Billing Done") ?? -1;
+
+                if (hasMilestoneIdx === -1) {
+                    update.$push = {
+                        milestones: {
+                            milestoneName: "Billing Done",
+                            actualDate: financials_locked_on,
+                            isCompleted: true,
+                            status: "Completed",
+                            isMandatory: true,
+                        }
+                    };
+                } else {
+                    update.$set[`milestones.${hasMilestoneIdx}.actualDate`] = financials_locked_on;
+                    update.$set[`milestones.${hasMilestoneIdx}.isCompleted`] = true;
+                    update.$set[`milestones.${hasMilestoneIdx}.status`] = "Completed";
+                }
+            }
 
             bulkOperations.push({
                 updateOne: {

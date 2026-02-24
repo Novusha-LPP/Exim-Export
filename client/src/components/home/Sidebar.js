@@ -13,6 +13,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import { UserContext } from "../../contexts/UserContext";
 import CurrencyRateDialog from "./CurrencyRateDialog.js"; // Import the dialog
 import axios from "axios";
+import { fetchUserWithCache, clearUserCache } from "../../utils/userCache.js";
 
 function Sidebar() {
   const navigate = useNavigate();
@@ -27,11 +28,9 @@ function Sidebar() {
     async function verifyAdminRole() {
       if (user?.username) {
         try {
-          const res = await axios.get(
-            `${import.meta.env.VITE_API_STRING}/get-user/${user.username}`
-          );
+          const userData = await fetchUserWithCache(user.username);
           // Only trust the role from the server response
-          setIsVerifiedAdmin(res.data?.role === "Admin");
+          setIsVerifiedAdmin(userData?.role === "Admin");
         } catch (error) {
           console.error("Error verifying admin role:", error);
           setIsVerifiedAdmin(false);
@@ -43,6 +42,7 @@ function Sidebar() {
 
   const handleLogout = () => {
     setUser(null);
+    clearUserCache();
     navigate("/");
     // Remove user from local storage
     localStorage.removeItem("exim_user");

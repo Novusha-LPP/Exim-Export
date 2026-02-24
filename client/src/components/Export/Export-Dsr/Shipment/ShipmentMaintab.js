@@ -136,7 +136,7 @@ function useCompactCountryDropdown(fieldName, formik) {
       } catch {
         setOpts([]);
       }
-    }, 220);
+    }, 800);
     return () => clearTimeout(t);
   }, [open, query, isTyping]);
 
@@ -172,11 +172,11 @@ function useCompactCountryDropdown(fieldName, formik) {
     },
     select: (i) => {
       if (opts[i]) {
-        setQuery(toUpper(opts[i].countryName || opts[i].country_name));
-        formik.setFieldValue(
-          fieldName,
-          toUpper(opts[i].countryName || opts[i].country_name),
-        );
+        const cName = toUpper(opts[i].countryName || opts[i].country_name || "");
+        const cCode = toUpper(opts[i].countryCode || opts[i].country_code || "");
+        const val = cCode ? `${cName} (${cCode})` : cName;
+        setQuery(val);
+        formik.setFieldValue(fieldName, val);
         setOpen(false);
         setActive(-1);
         setIsTyping(false);
@@ -308,7 +308,7 @@ function useGatewayPortDropdown(fieldName, formik) {
       } catch {
         setOpts([]);
       }
-    }, 220);
+    }, 800);
 
     return () => clearTimeout(t);
   }, [open, query, apiBase, isTyping]);
@@ -709,7 +709,7 @@ function usePortDropdown(fieldName, formik, onSelect, endpoint) {
       } catch {
         setOpts([]);
       }
-    }, 220);
+    }, 800);
     return () => clearTimeout(t);
   }, [open, query, isTyping, apiBase, endpoint]);
 
@@ -734,10 +734,10 @@ function usePortDropdown(fieldName, formik, onSelect, endpoint) {
       const pName = sel.portName || sel.name || "";
       const pDetails = sel.uneceCode || "";
 
-      // Format: PNAME (UNECECODE)
+      // Format: (CODE) NAME
       let value = toUpper(pName);
       if (pDetails) {
-        value += ` (${toUpper(pDetails)})`;
+        value = `(${toUpper(pDetails)}) ${value}`;
       }
 
       setQuery(value);
@@ -849,7 +849,7 @@ function PortField({
                   onMouseDown={() => d.select(i)}
                   onMouseEnter={() => d.setActive(i)}
                 >
-                  {toUpper(pName)} {pDetails && `(${toUpper(pDetails)})`}
+                  {pDetails && `(${toUpper(pDetails)}) `}{toUpper(pName)}
                   {opt.country && (
                     <span
                       style={{ marginLeft: 8, color: "#668", fontWeight: 400 }}
@@ -1246,6 +1246,68 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
     }
   }, [isAir]);
 
+  // Ensure country names are formatted with their respective codes (e.g. "SRI LANKA (LK)")
+  useEffect(() => {
+    const processCountryFieldTimeout = setTimeout(async () => {
+      const processCountryField = async (fieldName) => {
+        const val = formik.values[fieldName];
+        if (!val || val.includes("(")) return;
+
+        try {
+          const res = await fetch(`${apiBase}/countries?search=${encodeURIComponent(val)}`);
+          const data = await res.json();
+          const found = (data?.data || []).find((c) => toUpper(c.countryName || c.country_name) === toUpper(val));
+          if (found && found.countryCode) {
+            formik.setFieldValue(fieldName, ` (${toUpper(found.countryCode)}) ${toUpper(found.countryName)}`);
+          }
+        } catch (err) {
+          console.error(`Error formatting ${fieldName}:`, err);
+        }
+      };
+
+      if (formik.values.discharge_country && !formik.values.discharge_country.includes("(")) {
+        await processCountryField("discharge_country");
+      }
+      if (formik.values.destination_country && !formik.values.destination_country.includes("(")) {
+        await processCountryField("destination_country");
+      }
+    }, 1000);
+
+    return () => clearTimeout(processCountryFieldTimeout);
+  }, [formik.values.discharge_country, formik.values.destination_country]);
+
+  // Ensure port names are formatted with their respective codes (e.g. "COLOMBO (LKCMB)")
+  useEffect(() => {
+    const processPortFieldTimeout = setTimeout(async () => {
+      const processPortField = async (fieldName) => {
+        const val = formik.values[fieldName];
+        if (!val || val.includes("(")) return;
+
+        try {
+          const fetchUrl = `${apiBase}/${isAir ? "airPorts" : "seaPorts"}?search=${encodeURIComponent(val)}`;
+          const res = await fetch(fetchUrl);
+          const data = await res.json();
+          const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+          const found = arr.find((p) => toUpper(p.portName || p.name) === toUpper(val));
+          if (found && found.uneceCode) {
+            formik.setFieldValue(fieldName, `(${toUpper(found.uneceCode)}) ${toUpper(found.portName || found.name)}`);
+          }
+        } catch (err) {
+          console.error(`Error formatting ${fieldName}:`, err);
+        }
+      };
+
+      if (formik.values.port_of_discharge && !formik.values.port_of_discharge.includes("(")) {
+        await processPortField("port_of_discharge");
+      }
+      if (formik.values.destination_port && !formik.values.destination_port.includes("(")) {
+        await processPortField("destination_port");
+      }
+    }, 1000);
+
+    return () => clearTimeout(processPortFieldTimeout);
+  }, [formik.values.port_of_discharge, formik.values.destination_port, isAir]);
+
 
   const saveTimeoutRef = useRef(null);
 
@@ -1293,7 +1355,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                           (c) => (c.countryCode || "").toUpperCase() === country,
                         );
                         if (found) {
-                          country = toUpper(found.countryName);
+                          country = ` (${toUpper(found.countryCode)}) ${toUpper(found.countryName)}`;
                         }
                       } catch (err) {
                         console.error("Error fetching country name:", err);
@@ -1305,7 +1367,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                     const pDetails = opt.uneceCode || "";
                     let value = toUpper(pName);
                     if (pDetails) {
-                      value += ` (${toUpper(pDetails)})`;
+                      value = `(${toUpper(pDetails)}) ${value}`;
                     }
                     formik.setFieldValue("destination_port", value);
                   }}
@@ -1344,7 +1406,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                           (c) => (c.countryCode || "").toUpperCase() === country,
                         );
                         if (found) {
-                          country = toUpper(found.countryName);
+                          country = ` (${toUpper(found.countryCode)}) ${toUpper(found.countryName)}`;
                         }
                       } catch (err) {
                         console.error("Error fetching country name:", err);

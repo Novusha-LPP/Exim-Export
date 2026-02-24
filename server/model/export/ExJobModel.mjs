@@ -691,8 +691,7 @@ const exportJobSchema = new mongoose.Schema(
     description: { type: String, trim: true },
     sb_no: { type: String, trim: true },
     consignmentType: {
-      type: String,
-      enum: ["FCL", "LCL", "AIR", "Break Bulk"],
+      type: String, trim: true
     },
     shipping_line_airline: { type: String, trim: true },
     branchSrNo: { type: String, trim: true },
@@ -730,6 +729,10 @@ const exportJobSchema = new mongoose.Schema(
     destination_country: { type: String, trim: true },
     egm_no: { type: String, trim: true },
     egm_date: { type: String, trim: true },
+    drawback_scroll_no: { type: String, trim: true },
+    drawback_scroll_date: { type: String, trim: true },
+    rosctl_scroll_no: { type: String, trim: true },
+    rosctl_scroll_date: { type: String, trim: true },
     mbl_date: { type: String, trim: true },
     hbl_date: { type: String, trim: true },
     hbl_no: { type: String, trim: true },
@@ -775,7 +778,7 @@ const exportJobSchema = new mongoose.Schema(
     documents: { type: Object, default: {} },
 
     status: { type: String, trim: true },
-    detailedStatus: { type: [String], default: [] },
+    detailedStatus: { type: String, default: "" },
 
     ////////////////////////////////////////////////// Exporter Information
     exporter_address: { type: String, trim: true },

@@ -16,7 +16,7 @@ router.get("/api/report/billing-pending", async (req, res) => {
       {
         $match: {
           year: year,
-          detailedStatus: { $in: ["Billing Pending"] }
+          detailedStatus: "Billing Pending"
         }
       },
       {

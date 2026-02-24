@@ -372,9 +372,78 @@ router.get("/exports/:status?", async (req, res) => {
       sort.createdAt = -1; // Default sort
     }
 
+    // Selected fields to reduce payload size for the frontend table
+    const selectProjection = {
+      job_no: 1,
+      custom_house: 1,
+      job_date: 1,
+      consignmentType: 1,
+      job_owner: 1,
+      exporter: 1,
+      "consignees.consignee_name": 1,
+      "buyerThirdPartyInfo.buyer.name": 1,
+      ieCode: 1,
+      panNo: 1,
+      exporter_gstin: 1,
+      adCode: 1,
+      "invoices.invoiceNumber": 1,
+      "invoices.invoiceDate": 1,
+      "invoices.termsOfInvoice": 1,
+      "invoices.currency": 1,
+      "invoices.invoiceValue": 1,
+      "invoices.consigneeName": 1,
+      "invoices.invoice_no": 1,
+      "invoices.invoice_date": 1,
+      "invoices.invValue": 1,
+      sb_no: 1,
+      sb_date: 1,
+      destination_port: 1,
+      destination_country: 1,
+      port_of_discharge: 1,
+      discharge_country: 1,
+      "containers.containerNo": 1,
+      "containers.size": 1,
+      total_no_of_pkgs: 1,
+      package_unit: 1,
+      gross_weight_kg: 1,
+      net_weight_kg: 1,
+      shipping_line_airline: 1,
+      detailedStatus: 1,
+      status: 1,
+      statusDetails: 1,
+      "eSanchitDocuments.fileUrl": 1,
+      "eSanchitDocuments.documentType": 1,
+      "eSanchitDocuments.icegateFilename": 1,
+      isLocked: 1,
+      branch_code: 1,
+      transportMode: 1,
+      movement_type: 1,
+      "operations.bookingDetails.bookingNo": 1,
+      "operations.bookingDetails.shippingLineName": 1,
+      "operations.statusDetails.containerPlacementDate": 1,
+      "operations.statusDetails.handoverForwardingNoteDate": 1,
+      "operations.statusDetails.railOutReachedDate": 1,
+      "operations.statusDetails.leoDate": 1,
+      "operations.statusDetails.leoUpload": 1,
+      "operations.statusDetails.stuffingSheetUpload": 1,
+      "operations.statusDetails.stuffingPhotoUpload": 1,
+      "operations.statusDetails.eGatePassUpload": 1,
+      "operations.statusDetails.handoverImageUpload": 1,
+      "operations.statusDetails.billingDocsSentUpload": 1,
+      "operations.statusDetails.status": 1,
+      "operations.transporterDetails.images": 1,
+      "operations.bookingDetails.images": 1,
+      "operations.weighmentDetails.images": 1,
+      "operations.containerDetails.images": 1,
+      "operations.containerDetails.containerNo": 1,
+      lockedBy: 1,
+      lockedAt: 1
+    };
+
     // Execute queries in parallel
     const [jobs, totalCount] = await Promise.all([
       ExportJobModel.find(filter)
+        .select(selectProjection)
         .sort(sort)
         .skip(skip)
         .limit(parseInt(limit))
@@ -586,12 +655,15 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
 
     const updateData = { ...req.body, updatedAt: new Date() };
 
+    // Gracefully handle if detailedStatus arrives as an array from the frontend
+    if (Array.isArray(updateData.detailedStatus)) {
+      updateData.detailedStatus = updateData.detailedStatus.length > 0
+        ? String(updateData.detailedStatus[updateData.detailedStatus.length - 1])
+        : "";
+    }
+
     // Business Logic: If "Billing Done" is selected in detailedStatus, mark job as completed
-    if (
-      updateData.detailedStatus &&
-      Array.isArray(updateData.detailedStatus) &&
-      updateData.detailedStatus.includes("Billing Done")
-    ) {
+    if (updateData.detailedStatus === "Billing Done") {
       updateData.status = "Completed";
     }
 
@@ -632,12 +704,15 @@ router.patch(
       });
       updateObject.updatedAt = new Date();
 
+      // Gracefully handle if detailedStatus arrives as an array from the frontend
+      if (Array.isArray(updateObject.detailedStatus)) {
+        updateObject.detailedStatus = updateObject.detailedStatus.length > 0
+          ? String(updateObject.detailedStatus[updateObject.detailedStatus.length - 1])
+          : "";
+      }
+
       // Business Logic: If Billing Done is selected, mark as Completed
-      if (
-        updateObject.detailedStatus &&
-        Array.isArray(updateObject.detailedStatus) &&
-        updateObject.detailedStatus.includes("Billing Done")
-      ) {
+      if (updateObject.detailedStatus === "Billing Done") {
         updateObject.status = "Completed";
       }
 

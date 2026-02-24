@@ -35,14 +35,16 @@ const CUSTOM_HOUSE_MAP = {
 };
 
 const STATE_CODE_MAP = {
-    "ANDHRA PRADESH": "02", "ARUNACHAL PRADESH": "03", "ASSAM": "04", "BIHAR": "05",
-    "CHHATTISGARH": "33", "GOA": "10", "GUJARAT": "24", "HARYANA": "06",
-    "HIMACHAL PRADESH": "07", "JHARKHAND": "34", "KARNATAKA": "15", "KERALA": "16",
-    "MADHYA PRADESH": "23", "MAHARASHTRA": "27", "MANIPUR": "14", "MEGHALAYA": "17",
-    "MIZORAM": "18", "NAGALAND": "13", "ODISHA": "21", "PUNJAB": "03", "RAJASTHAN": "08",
-    "SIKKIM": "11", "TAMIL NADU": "33", "TELANGANA": "36", "TRIPURA": "12",
-    "UTTAR PRADESH": "09", "UTTARAKHAND": "35", "WEST BENGAL": "19",
-    "DELHI": "07", "JAMMU AND KASHMIR": "01", "LADAKH": "37",
+    "JAMMU AND KASHMIR": "01", "HIMACHAL PRADESH": "02", "PUNJAB": "03",
+    "CHANDIGARH": "04", "UTTARAKHAND": "05", "HARYANA": "06", "DELHI": "07",
+    "RAJASTHAN": "08", "UTTAR PRADESH": "09", "BIHAR": "10", "SIKKIM": "11",
+    "ARUNACHAL PRADESH": "12", "NAGALAND": "13", "MANIPUR": "14", "MIZORAM": "15",
+    "TRIPURA": "16", "MEGHALAYA": "17", "ASSAM": "18", "WEST BENGAL": "19",
+    "JHARKHAND": "20", "ODISHA": "21", "CHHATTISGARH": "22", "MADHYA PRADESH": "23",
+    "GUJARAT": "24", "DADRA AND NAGAR HAVELI AND DAMAN AND DIU": "26",
+    "MAHARASHTRA": "27", "ANDHRA PRADESH": "28", "KARNATAKA": "29", "GOA": "30",
+    "LAKSHADWEEP": "31", "KERALA": "32", "TAMIL NADU": "33", "PUDUCHERRY": "34",
+    "ANDAMAN AND NICOBAR ISLANDS": "35", "TELANGANA": "36", "LADAKH": "37",
 };
 
 const COUNTRY_CODE_MAP = {
@@ -57,6 +59,7 @@ const COUNTRY_CODE_MAP = {
     "PORTUGAL": "PT", "GREECE": "GR", "MEXICO": "MX", "BRAZIL": "BR", "ARGENTINA": "AR",
     "INDONESIA": "ID", "THAILAND": "TH", "VIETNAM": "VN", "SOUTH KOREA": "KR",
     "TAIWAN": "TW", "HONG KONG": "HK", "NEW ZEALAND": "NZ", "ISRAEL": "IL",
+    "SRI LANKA": "LK", "LK": "LK",
 };
 
 const PORT_CODE_MAP = {
@@ -68,7 +71,7 @@ const PORT_CODE_MAP = {
     "BANGALORE": "INBLR4", "HYDERABAD": "INHYD4", "CHENNAI AIR": "INMAA4",
     "SINGAPORE": "SGSIN", "PORT KLANG": "MYPKG", "HAMBURG": "DEHAM",
     "ROTTERDAM": "NLRTM", "ANTWERP": "BEANR", "NEW YORK": "USNYC",
-    "LOS ANGELES": "USLAX", "HOUSTON": "USHOU",
+    "LOS ANGELES": "USLAX", "HOUSTON": "USHOU", "COLOMBO": "LKCMB",
 };
 
 const PRICE_INCLUDES_MAP = {
@@ -85,7 +88,7 @@ const pad = (s, n) => String(s ?? "").padStart(n, "0");
 const trunc = (s, n) => String(s ?? "").slice(0, n);
 const clean = (s) => String(s ?? "").trim();
 
-/** Returns YYYYMMDD for HREC, Licence, Container */
+/** Returns YYYYMMDD for all fields (HREC, Invoice, etc.) */
 const fmtDate = (d) => {
     if (!d) return "";
     let dt;
@@ -110,15 +113,35 @@ const fmtDate = (d) => {
     return `${dt.getFullYear()}${pad(dt.getMonth() + 1, 2)}${pad(dt.getDate(), 2)}`;
 };
 
-/** Returns DDMMYYYY for Prefix, Invoice, Supportingdocs */
+/** Returns DDMMYYYY for Prefix */
 const fmtDDMMYYYY = (d) => {
     const ymd = fmtDate(d);
     if (!ymd) return "";
     return ymd.slice(6, 8) + ymd.slice(4, 6) + ymd.slice(0, 4); // DD + MM + YYYY
 };
 
-const cntry = (n) => COUNTRY_CODE_MAP[(n || "").toUpperCase()] || clean(n).slice(0, 2).toUpperCase();
-const prt = (n) => PORT_CODE_MAP[(n || "").toUpperCase()] || clean(n).slice(0, 6).toUpperCase();
+const cntry = (n) => {
+    if (Array.isArray(n)) n = n[0];
+    if (n && n.country) return clean(n.country).slice(0, 2).toUpperCase();
+    if (typeof n === 'string') {
+        const match = n.match(/\(([^)]+)\)/);
+        if (match) return clean(match[1]).toUpperCase();
+        return COUNTRY_CODE_MAP[n.toUpperCase()] || clean(n).slice(0, 2).toUpperCase();
+    }
+    return "";
+};
+
+const prt = (n) => {
+    if (Array.isArray(n)) n = n[0];
+    if (n && n.uneceCode) return clean(n.uneceCode).toUpperCase();
+    if (typeof n === 'string') {
+        const match = n.match(/\(([^)]+)\)/);
+        if (match) return clean(match[1]).toUpperCase();
+        return PORT_CODE_MAP[n.toUpperCase()] || clean(n).slice(0, 6).toUpperCase();
+    }
+    return "";
+};
+
 const stCd = (n) => STATE_CODE_MAP[(n || "").toUpperCase()] || "24";
 
 const jobNo4 = (j) => {
@@ -140,7 +163,7 @@ const expTypCode = (t) => {
 
 const gstnTypCode = (g) => {
     const str = clean(g || "");
-    if (str.length === 15) return "GSTN";
+    if (str.length === 15) return "GSN";
     if (str.length === 10) return "PAN";
     return "OTH";
 };
@@ -157,13 +180,13 @@ const row = (prefix, ...fields) => prefix + FS + fields.join(FS) + RS;
 export function generateSBFlatFile(job) {
     const loc = CUSTOM_HOUSE_MAP[(job.custom_house || "").toUpperCase()] || "INAMD4";
     const j4 = jobNo4(job.job_no);
-    const jdtRecord = fmtDate(job.sb_date || new Date());
     const jdtPrefix = fmtDDMMYYYY(job.sb_date || new Date());
+    const jdt = fmtDate(job.sb_date || new Date());
     const sid = clean(job.cha || "SURAJ").replace(/\s+/g, "").slice(0, 5).toUpperCase()
         + clean(job.branch_code || "AMD").toUpperCase();
 
     // Sequence number used in HREC and TREC (job number + DDMM of SB date)
-    const seq = j4 + jdtRecord.slice(6, 8) + jdtRecord.slice(4, 6);
+    const seq = j4 + jdt.slice(6, 8) + jdt.slice(4, 6);
 
     // PH (Header Prefix): F^]LOC^]JOBNO4^]JOBDATE^]^]^] (6 fields total)
     // PD (Data Prefix): F^]LOC^]JOBNO4^]JOBDATE^] (4 fields total)
@@ -229,11 +252,11 @@ export function generateSBFlatFile(job) {
         pod,                                            // 34. Port of Discharge
         "",                                             // 35. Seal Type
         nc,                                             // 36. Nature of Cargo (P for AIR)
-        parseFloat(job.gross_weight_kg || 0).toFixed(3), // 37. Gross Weight
-        parseFloat(job.net_weight_kg || 0).toFixed(3), // 38. Net Weight
+        parseFloat(job.gross_weight_kg || job.grossWeight || job.gross_weight || 0).toFixed(3), // 37. Gross Weight
+        parseFloat(job.net_weight_kg || job.netWeight || job.net_weight || 0).toFixed(3), // 38. Net Weight
         "KGS",                                          // 39. Unit of Measurement
-        clean(job.total_no_of_pkgs || ""),              // 40. Total Number of Packages
-        clean(job.marks_nos || ""),                     // 41. Marks & Numbers
+        clean(job.total_no_of_pkgs || job.totalPackages || job.packages || ""), // 40. Total Number of Packages
+        clean(job.marks_nos || job.marksAndNumbers || job.marksNumbers || ""), // 41. Marks & Numbers
         "",                                             // 42. Number of Loose Packets
         job.transportMode === "SEA" ? String((job.containers || []).length) : "", // 43. Number of Containers (blank for AIR)
         mawb,                                           // 44. MAWB Number
@@ -271,7 +294,7 @@ export function generateSBFlatFile(job) {
         out += row(PH,
             String(i + 1),                                //  7. Invoice Sr No
             clean(inv.invoiceNumber || ""),               //  8. Actual Invoice Number
-            fmtDDMMYYYY(inv.invoiceDate),                 //  9. Invoice Date
+            fmtDate(inv.invoiceDate),                     //  9. Invoice Date
             curr,                                         // 10. Invoice Currency
             (inv.termsOfInvoice || "FOB").toUpperCase(),  // 11. Nature of Contract
             trunc(bNm, 35),                               // 12. Buyer Name
@@ -308,7 +331,10 @@ export function generateSBFlatFile(job) {
     invs.forEach((inv, ii) => {
         (inv.products || []).forEach((p, pi) => {
             const ig = p.igstCompensationCess || {};
-            const ist = ig.igstPaymentStatus || "LUT";
+            const igstRaw = (ig.igstPaymentStatus || "").toUpperCase();
+            // If empty, contains "BOND", "NOT PAID", "NOT APPLICABLE", or "LUT" → LUT, else P
+            const isLUT = !igstRaw || igstRaw.includes("BOND") || igstRaw.includes("NOT") || igstRaw === "LUT";
+            const ist = isLUT ? "LUT" : "P";
             const desc = clean(p.description || "");
             const uom = clean(p.qtyUnit || "KGS");
             const qty = parseFloat(p.quantity || 0).toFixed(3);
@@ -337,10 +363,10 @@ export function generateSBFlatFile(job) {
                 "",                                            // 32.    Source State
                 "",                                            // 33.    Transit Country
                 "0",                                           // 34.    Accessory Status (0=none)
-                clean(p.endUse || "GNX200"),                   // 35.    End Use of Item
+                clean((p.endUse || "GNX200").split(" ")[0]),    // 35.    End Use of Item (code only)
                 hawb,                                          // 36.    HAWB No
                 "",                                            // 37.    Total Package
-                ist,                                           // 38.    IGST Payment Status
+                ist,                                           // 38.    IGST Payment Status (LUT or P)
                 ist === "P" ? parseFloat(ig.taxableValueINR || 0).toFixed(2) : "", // 39. Taxable Value
                 ist === "P" ? parseFloat(ig.igstAmountINR || 0).toFixed(2) : "", // 40. IGST Amount
             );
@@ -420,15 +446,26 @@ export function generateSBFlatFile(job) {
     out += `<TABLE>SW_INFO_TYPE${RS}`;
     invs.forEach((inv, ii) => {
         (inv.products || []).forEach((p, pi) => {
-            const qty = parseFloat(p.quantity || 0).toFixed(6);
-            const uom = clean(p.qtyUnit || "KGS");
+            const qty = parseFloat(p.socQuantity || 0).toFixed(6);
+            const uom = clean(p.socunit || "KGS");
             const rc = (p.rodtepInfo || {}).claim === "Yes" ? "Claimed" : "Not Claimed";
+            const pta = clean((p.ptaFtaInfo || "NCPTI").split(" ")[0]);
+            const cess = (p.compensationCessAmountINR || 0.000000).toFixed(6);
+
+            // Origin State: use product-level originState, fallback to job-level
+            const pStateRaw = clean(p.originState || job.state_of_origin || job.state || "GUJARAT");
+            const pStateCode = stCd(pStateRaw);
+
+            // Origin District: extract numeric code from "438 - AHMADABAD" format
+            const pDistRaw = clean(p.originDistrict || "");
+            const pDistCode = pDistRaw.split(/\s*-\s*/)[0] || "438";
+
             [
-                ["1", "ORC", "STO", "24", "", "", ""],
-                ["2", "ORC", "DOO", "438", "", "", ""],
-                ["3", "CHR", "SQC", "", "", qty, uom],
-                ["4", "ORC", "EPT", "NCPTI", "", "", ""],
-                ["5", "DTY", "GCESS", "", "", "0.000000", "INR"],
+                ["1", "ORC", "STO", pStateCode, "", "", ""],
+                ["2", "ORC", "DOO", pDistCode, "", "", ""],
+                ["3", "CHR", "SQC", qty, "0.000000", uom, ""],
+                ["4", "ORC", "EPT", pta, "", "", ""],
+                ["5", "DTY", "GCESS", cess, "", "0.000000", "INR"],
                 ["6", "DTY", "RDT", "RODTEPY", rc, qty, uom],
             ].forEach((r, rx) => {
                 out += row(PD, String(ii + 1), String(pi + 1), ...r);
@@ -468,7 +505,7 @@ export function generateSBFlatFile(job) {
                 clean(job.exporter_pincode || ""),
                 clean(d.documentReferenceNo || ""),
                 "",
-                fmtDDMMYYYY(d.dateOfIssue || ""),
+                fmtDate(d.dateOfIssue || ""),
                 "", "",
                 trunc(bNm, 70),
                 "", "", "",

@@ -21,7 +21,8 @@ router.get('/', async (req, res) => {
     if (search) {
       query.$or = [
         { portCode: { $regex: search, $options: 'i' } },
-        { portName: { $regex: search, $options: 'i' } }
+        { portName: { $regex: search, $options: 'i' } },
+        { uneceCode: { $regex: search, $options: 'i' } }
       ];
     }
 
@@ -64,7 +65,7 @@ router.post('/', async (req, res) => {
   try {
     const airPort = new AirPort(req.body);
     const savedAirPort = await airPort.save();
-    
+
     res.status(201).json({
       success: true,
       message: 'Air Port created successfully',
@@ -72,8 +73,8 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(400).json({ 
-        message: 'Port Code already exists' 
+      return res.status(400).json({
+        message: 'Port Code already exists'
       });
     }
     res.status(400).json({ message: error.message });
@@ -100,8 +101,8 @@ router.put('/:id', async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(400).json({ 
-        message: 'Port Code already exists' 
+      return res.status(400).json({
+        message: 'Port Code already exists'
       });
     }
     res.status(400).json({ message: error.message });

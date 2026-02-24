@@ -38,12 +38,18 @@ export const getNextJobSequence = async (branch, year) => {
  */
 async function initializeCounter(branch, year) {
     try {
+        // Handle custom format for AIR jobs e.g., branch argument 'AMD-AIR'
+        const isAirCounter = branch.endsWith('-AIR');
+        const baseBranch = isAirCounter ? branch.replace('-AIR', '') : branch;
+        const regexPrefix = isAirCounter ? `^${baseBranch}/AIR/` : `^${baseBranch}/[^/]+/`;
+
         // Find highest sequence in existing jobs
-        // Format: BRANCH/SEQUENCE/YEAR. Regex: ^BRANCH/
-        const jobs = await ExportJobModel.find({
-            job_no: { $regex: `^${branch}/`, $options: "i" },
+        const filter = {
+            job_no: { $regex: regexPrefix, $options: "i" },
             year: year
-        }, { job_no: 1 });
+        };
+
+        const jobs = await ExportJobModel.find(filter, { job_no: 1 });
 
         let maxSequence = 0;
 

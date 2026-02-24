@@ -1225,6 +1225,10 @@ const AddExJobs = ({ onJobCreated }) => {
   const handleDirectorySelect = (org) => {
     const ieCode = org.registrationDetails?.ieCode || "";
     const panNo = org.registrationDetails?.panNo || "";
+    let gstin = "";
+    if (org.branchInfo && org.branchInfo.length > 0) {
+      gstin = org.branchInfo[0].gstNo || org.branchInfo[0].gstin || "";
+    }
 
     const displayValue = ieCode || panNo;
 
@@ -1233,6 +1237,8 @@ const AddExJobs = ({ onJobCreated }) => {
       exporter: toUpper(org.organization),
       ieCode: toUpper(displayValue), // 👈 match state + input
       panNo: toUpper(panNo),
+      gstin: toUpper(gstin),
+      exporter_gstin: toUpper(gstin),
     }));
 
     setShowDropdown(false);
@@ -1502,6 +1508,7 @@ const AddExJobs = ({ onJobCreated }) => {
                     value={formData.year}
                     onChange={(e) => handleInputChange("year", e.target.value)}
                   >
+                    <option value="24-25">24-25</option>
                     <option value="25-26">25-26</option>
                     <option value="26-27">26-27</option>
                   </select>
@@ -1773,8 +1780,8 @@ const AddExJobs = ({ onJobCreated }) => {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 
