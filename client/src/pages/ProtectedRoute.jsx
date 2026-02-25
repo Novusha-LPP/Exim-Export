@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { CircularProgress, Box } from "@mui/material";
+import { fetchUserWithCache } from "../utils/userCache.js";
 
 const ProtectedRoute = ({ children, requiredModule, fallbackPath = "/" }) => {
   const [userModules, setUserModules] = useState(null);
@@ -23,12 +24,10 @@ const ProtectedRoute = ({ children, requiredModule, fallbackPath = "/" }) => {
           return;
         }
 
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/get-user/${user.username || user.id}`
-        );
+        const userData = await fetchUserWithCache(user.username || user.id);
 
         // The user document stores permissions under the 'modules' key
-        const modulesFromApi = response?.data?.modules || [];
+        const modulesFromApi = userData?.modules || [];
 
         setUserModules(modulesFromApi);
       } catch (err) {

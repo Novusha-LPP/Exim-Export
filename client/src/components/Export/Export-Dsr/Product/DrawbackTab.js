@@ -26,6 +26,10 @@ const getDefaultDrawback = (idx = 1) => ({
   rosctlAmount: 0,
   rosctlCategory: "", // "B" or "D"
   showRosctl: false,
+  drawback_scroll_no: "",
+  drawback_scroll_date: "",
+  rosctl_scroll_no: "",
+  rosctl_scroll_date: "",
 });
 
 const getJobDateFormatted = (jobDate) => {
@@ -837,6 +841,47 @@ const DrawbackTab = ({
                     >
                       ✕
                     </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={12} style={{ padding: "10px", backgroundColor: "#f9fafb" }}>
+                    <div style={{ display: "flex", gap: "15px", alignItems: "center", flexWrap: "wrap", border: "1px solid #e5e7eb", padding: "10px", borderRadius: "6px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>DBK Scroll No</span>
+                        <input
+                          style={styles.input}
+                          value={item.drawback_scroll_no || ""}
+                          onChange={(e) => handleDrawbackFieldChange(idx, "drawback_scroll_no", e.target.value)}
+                        />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>DBK Scroll Date</span>
+                        <input
+                          type="date"
+                          style={styles.input}
+                          value={item.drawback_scroll_date || ""}
+                          onChange={(e) => handleDrawbackFieldChange(idx, "drawback_scroll_date", e.target.value)}
+                        />
+                      </div>
+                      <div style={{ width: "1px", height: "40px", backgroundColor: "#d1d5db", margin: "0 10px" }} />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>ROSCTL Scroll No</span>
+                        <input
+                          style={styles.input}
+                          value={item.rosctl_scroll_no || ""}
+                          onChange={(e) => handleDrawbackFieldChange(idx, "rosctl_scroll_no", e.target.value)}
+                        />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>ROSCTL Scroll Date</span>
+                        <input
+                          type="date"
+                          style={styles.input}
+                          value={item.rosctl_scroll_date || ""}
+                          onChange={(e) => handleDrawbackFieldChange(idx, "rosctl_scroll_date", e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </td>
                 </tr>
                 {item.showRosctl && (

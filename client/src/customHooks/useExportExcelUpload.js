@@ -749,7 +749,6 @@ function useExportExcelUpload(inputRef, onSuccess) {
                 "flight_date": "flight_date",
                 "flightdate": "flight_date",
                 "gateway_igm_date": "gateway_igm_date",
-                "vessel_berthing": "vessel_berthing",
                 "egm_date": "egm_date",
                 "mbl_date": "mbl_date",
                 "hbl_date": "hbl_date",
@@ -955,6 +954,12 @@ function useExportExcelUpload(inputRef, onSuccess) {
                 "job_status": "status",
                 "jobstatus": "status",
 
+                // Locked Dates
+                "operations_locked_on": "operations_locked_on",
+                "operationslockedon": "operations_locked_on",
+                "financials_locked_on": "financials_locked_on",
+                "financialslockedon": "financials_locked_on",
+
                 // Branch
                 "branch_code": "branch_code",
                 "branchcode": "branch_code",
@@ -1002,8 +1007,8 @@ function useExportExcelUpload(inputRef, onSuccess) {
             const DATE_FIELDS = [
                 "job_date", "sb_date", "be_date", "invoice_date",
                 "awb_bl_date", "sailing_date", "flight_date",
-                "gateway_igm_date", "vessel_berthing", "egm_date",
-                "mbl_date", "hbl_date"
+                "gateway_igm_date", "egm_date",
+                "mbl_date", "hbl_date", "operations_locked_on", "financials_locked_on"
             ];
 
             // Transform each row
@@ -1062,6 +1067,14 @@ function useExportExcelUpload(inputRef, onSuccess) {
                         }
                         else if (mappedField === "consignee_country") {
                             modifiedItem.consignee_country = value;
+                        }
+                        // Format specific Custom House value
+                        else if (mappedField === "custom_house" && value) {
+                            let customHouseVal = String(value).trim();
+                            if (customHouseVal.toLowerCase() === "icd sabarmati, ahmedabad") {
+                                customHouseVal = "ICD Sabarmati";
+                            }
+                            modifiedItem.custom_house = customHouseVal;
                         }
                         // Default: use the mapped field name
                         else {

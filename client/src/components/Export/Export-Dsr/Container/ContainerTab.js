@@ -3,6 +3,7 @@ import DateInput from "../../../common/DateInput.js";
 import { styles, toUpperVal } from "../Product/commonStyles";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import * as XLSX from "xlsx";
 
 const containerTypes = [
   "20",
@@ -172,17 +173,95 @@ function ContainerTab({ formik, onUpdate }) {
 
   const handleDelete = (idx) => {
     if (!window.confirm("Are you sure you want to delete this container?")) return;
+    const deletedContainer = (formik.values.containers || [])[idx];
+    const deletedNo = (deletedContainer?.containerNo || "").trim().toUpperCase();
+
+    // Remove from master containers list
     const list = (formik.values.containers || []).filter((_, i) => i !== idx);
     list.forEach((c, i) => {
       c.serialNumber = i + 1;
     });
     formik.setFieldValue("containers", list);
+
+    // Also directly remove from operations (OperationsTab may not be mounted)
+    const operations = formik.values.operations || [];
+    if (operations.length > 0) {
+      let opsChanged = false;
+      const nextOps = operations.map(op => {
+        const syncedOp = { ...op };
+        let dirty = false;
+
+        ["containerDetails", "weighmentDetails"].forEach(secName => {
+          const arr = syncedOp[secName] || [];
+          if (arr.length > list.length) {
+            // Truncate to match master length
+            syncedOp[secName] = arr.slice(0, list.length);
+            dirty = true;
+          }
+          // Also remove by container number if it matches the deleted one
+          if (deletedNo && arr.some(d => (d.containerNo || "").trim().toUpperCase() === deletedNo)) {
+            syncedOp[secName] = arr.filter(d => (d.containerNo || "").trim().toUpperCase() !== deletedNo);
+            dirty = true;
+          }
+        });
+
+        // Re-sync remaining container numbers by index from master
+        ["containerDetails", "weighmentDetails"].forEach(secName => {
+          const current = syncedOp[secName] || [];
+          list.forEach((m, i) => {
+            if (i < current.length) {
+              const mNo = (m.containerNo || "").trim().toUpperCase();
+              if ((current[i].containerNo || "").trim().toUpperCase() !== mNo) {
+                current[i] = { ...current[i], containerNo: mNo };
+                dirty = true;
+              }
+            }
+          });
+        });
+
+        if (dirty) opsChanged = true;
+        return syncedOp;
+      });
+
+      if (opsChanged) {
+        formik.setFieldValue("operations", nextOps);
+      }
+    }
+
     if (editingIndex === idx) setEditingIndex(null);
     else if (editingIndex > idx) setEditingIndex(editingIndex - 1);
     // debouncedSave();
   };
 
   const rows = formik.values.containers || [];
+
+  const exportToExcel = () => {
+    if (!rows || rows.length === 0) {
+      alert("No container data available to export.");
+      return;
+    }
+
+    const exportData = rows.map((r, index) => ({
+      "Sr No": index + 1,
+      "Container No": r.containerNo || "",
+      "Seal No": r.sealNo || "",
+      "Seal Date": r.sealDate || "",
+      "Type": r.type || "",
+      "Pkgs Stuffed": r.pkgsStuffed || 0,
+      "Gross Weight (Kg)": r.grossWeight || 0,
+      "Tare Weight (Kg)": r.tareWeightKgs || 0,
+      "S Line Seal": r.shippingLineSealNo || "",
+      "RFID": r.rfid || "",
+      "Max Payload (KG)": r.maxPayloadKgs || 0,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Containers");
+
+    const jobNo = formik.values.job_no ? formik.values.job_no.replace(/\//g, "-") : "Job";
+    XLSX.writeFile(workbook, `Containers_${jobNo}.xlsx`);
+  };
 
   return (
     <div style={styles.page}>
@@ -196,8 +275,12 @@ function ContainerTab({ formik, onUpdate }) {
             display: "flex",
             justifyContent: "flex-end",
             marginBottom: 10,
+            gap: "10px",
           }}
         >
+          <button type="button" style={{ ...styles.addBtn, backgroundColor: "#10b981", color: "#fff" }} onClick={exportToExcel}>
+            <span style={{ marginRight: "5px" }}>📥</span> EXPORT EXCEL
+          </button>
           <button type="button" style={styles.addBtn} onClick={handleAdd}>
             ＋ NEW CONTAINER
           </button>

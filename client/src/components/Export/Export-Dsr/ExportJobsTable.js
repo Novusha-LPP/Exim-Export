@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useContext } from "react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import * as XLSX from "xlsx";
 import {
   Dialog,
   DialogTitle,
@@ -38,6 +39,7 @@ import BillOfLadingGenerator from "./StandardDocuments/BillOfLadingGenerator";
 import { CUSTOM_HOUSE_OPTIONS, getOptionsForBranch } from "../../common/CustomHouseDropdown";
 import { UserContext } from "../../../contexts/UserContext";
 import SBTrackDialog from "./SBTrackDialog";
+import ContainerTrackDialog from "./ContainerTrackDialog";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faShip, faAnchor } from "@fortawesome/free-solid-svg-icons";
 
@@ -472,6 +474,10 @@ const ExportJobsTable = () => {
   const [sbTrackOpen, setSbTrackOpen] = useState(false);
   const [sbTrackJob, setSbTrackJob] = useState(null);
 
+  // Container Track Dialog State
+  const [containerTrackOpen, setContainerTrackOpen] = useState(false);
+  const [containerTrackContainers, setContainerTrackContainers] = useState([]);
+
   // Fetch Exporters for DSR
   useEffect(() => {
     const fetchExporters = async () => {
@@ -534,6 +540,139 @@ const ExportJobsTable = () => {
     } catch (err) {
       console.error("Error downloading DSR:", err);
       alert("Failed to download DSR report");
+    } finally {
+      setDSRLoading(false);
+    }
+  };
+
+  const handleDownloadTableDSR = async () => {
+    if (!selectedExporter) {
+      alert("Please select an exporter");
+      return;
+    }
+    setDSRLoading(true);
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_STRING}/exports`,
+        {
+          params: {
+            exporter: selectedExporter,
+            limit: 5000,
+          },
+        }
+      );
+      if (response.data.success) {
+        const jobsToExport = response.data.data.jobs || [];
+        if (jobsToExport.length === 0) {
+          alert("No jobs found for this exporter.");
+          return;
+        }
+
+        const exportData = jobsToExport.map((job) => {
+          const rowData = {};
+
+          // Column 1: Job No
+          let jobNoCol = [];
+          if (job.job_no) jobNoCol.push(job.job_no);
+          if (job.custom_house) jobNoCol.push(job.custom_house);
+          if (job.movement_type) jobNoCol.push(job.movement_type);
+          rowData["Job No"] = jobNoCol.join(" | ");
+
+          // Column 2: Consignee Name
+          let consigneeCol = [];
+          if (job.consignees?.[0]?.consignee_name) consigneeCol.push(job.consignees[0].consignee_name);
+          else if (job.invoices?.[0]?.consigneeName) consigneeCol.push(job.invoices[0].consigneeName);
+          rowData["Consignee Name"] = consigneeCol.join(" | ") || "";
+
+          // Column 3: Invoice
+          let invCol = [];
+          if (job.invoices && job.invoices.length > 0) {
+            job.invoices.forEach(inv => {
+              let invStr = [];
+              if (inv.invoice_no) invStr.push(inv.invoice_no);
+              if (inv.invoice_date) invStr.push(formatDate(inv.invoice_date, "dd-MM-yy"));
+              if (inv.invValue && inv.currency) invStr.push(`${inv.currency} ${inv.invValue}`);
+              if (invStr.length > 0) invCol.push(invStr.join(", "));
+            });
+          }
+          rowData["Invoice"] = invCol.join(" | ");
+
+          // Column 4: SB / Date
+          let sbCol = [];
+          if (job.sb_no) sbCol.push(job.sb_no);
+          if (job.sb_date) sbCol.push(job.sb_date);
+          rowData["SB / Date"] = sbCol.join(" | ");
+
+          // Column 5: Port
+          let portCol = [];
+          if (job.destination_port) portCol.push(`Dest: ${job.destination_port}`);
+          if (job.discharge_port) portCol.push(`Discharge: ${job.discharge_port}`);
+          rowData["Port"] = portCol.join(" | ");
+
+          // Column 6: Container
+          let contCol = [];
+          if (job.total_no_of_pkgs) contCol.push(`Pkgs: ${job.total_no_of_pkgs} ${job.package_unit || ""}`);
+          if (job.gross_weight_kg) contCol.push(`G: ${job.gross_weight_kg} kg`);
+          if (job.net_weight_kg) contCol.push(`N: ${job.net_weight_kg} kg`);
+
+          if (job.containers && job.containers.length > 0) {
+            job.containers.forEach(c => {
+              let cStr = [];
+              if (c.containerNo) cStr.push(`Cont: ${c.containerNo}`);
+              if (c.size) cStr.push(`Size: ${c.size}`);
+              if (cStr.length > 0) contCol.push(cStr.join(", "));
+            });
+          }
+          const placeDate = job.operations?.[0]?.statusDetails?.[0]?.containerPlacementDate;
+          if (placeDate) contCol.push(`Place: ${formatDate(placeDate, "dd-MM-yy")}`);
+          rowData["Container"] = contCol.join(" | ");
+
+          // Column 7: Handover
+          let handCol = [];
+          const opDetails = job.operations?.[0]?.statusDetails?.[0] || {};
+          if (opDetails.handoverForwardingNoteDate) handCol.push(`DHo: ${formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}`);
+          if (opDetails.railOutReachedDate) handCol.push(`Rail: ${formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}`);
+          if (opDetails.leoDate) handCol.push(`Leo: ${formatDate(opDetails.leoDate, "dd-MM-yy")}`);
+          rowData["Handover"] = handCol.join(" | ");
+
+          // Column 8: Status
+          let statusCol = [];
+          if (job.statusDetails && job.statusDetails[0]?.status) statusCol.push(job.statusDetails[0].status);
+          else if (job.status) statusCol.push(job.status);
+          rowData["Status"] = statusCol.join(" | ");
+
+          // Remove entirely empty columns dynamically as per user rule:
+          // "IF DHo HAS NO VALUE OR "" THEN DONT SHOW THAT FIELD AT ALL SAME LOGIC FOR ALL FIELDS"
+          // We already omit empty fields inside the columns using `if()`, but if the column itself is empty we delete it
+          Object.keys(rowData).forEach(key => {
+            if (!rowData[key] || rowData[key].trim() === "") {
+              delete rowData[key];
+            }
+          });
+
+          return rowData;
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        var wscols = [
+          { wch: 25 }, { wch: 30 }, { wch: 30 },
+          { wch: 20 }, { wch: 25 }, { wch: 40 },
+          { wch: 25 }, { wch: 15 }
+        ];
+        worksheet['!cols'] = wscols;
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "DSR Report");
+
+        const dateStr = format(new Date(), "yyyyMMdd");
+        XLSX.writeFile(workbook, `Table_DSR_${selectedExporter}_${dateStr}.xlsx`);
+        setOpenDSRDialog(false);
+      } else {
+        alert("Failed to fetch jobs data");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error generating table DSR report");
     } finally {
       setDSRLoading(false);
     }
@@ -1177,6 +1316,7 @@ const ExportJobsTable = () => {
               onChange={(e) => setSelectedYear(e.target.value)}
             >
               <option value="">All Years</option>
+              <option value="24-25">24-25</option>
               <option value="25-26">25-26</option>
               <option value="26-27">26-27</option>
             </select>
@@ -1384,16 +1524,16 @@ const ExportJobsTable = () => {
           <div style={s.tableContainer}>
             <table style={s.table}>
               <colgroup>
-                <col style={{ minWidth: "120px" }} /> {/* Job No + Owner + Pkgs */}
-                <col style={{ minWidth: "80px" }} /> {/* Exporter */}
-                <col style={{ minWidth: "100px" }} /> {/* KYC/Codes */}
-                <col style={{ minWidth: "100px" }} /> {/* Invoice */}
-                <col style={{ minWidth: "90px" }} /> {/* SB */}
-                <col style={{ minWidth: "160px" }} /> {/* Port */}
-                <col style={{ minWidth: "120px" }} /> {/* Container */}
-                <col style={{ minWidth: "85px" }} /> {/* Handover */}
-                <col style={{ minWidth: "180px" }} /> {/* Docs */}
-                <col style={{ minWidth: "80px" }} /> {/* Status */}
+                <col style={{ minWidth: "120px" }} />
+                <col style={{ minWidth: "80px" }} />
+                <col style={{ minWidth: "100px" }} />
+                <col style={{ minWidth: "100px" }} />
+                <col style={{ minWidth: "90px" }} />
+                <col style={{ minWidth: "160px" }} />
+                <col style={{ minWidth: "120px" }} />
+                <col style={{ minWidth: "85px" }} />
+                <col style={{ minWidth: "180px" }} />
+                <col style={{ minWidth: "80px" }} />
               </colgroup>
               <thead>
                 <tr
@@ -1445,10 +1585,9 @@ const ExportJobsTable = () => {
                   jobs.map((job, idx) => {
                     const rowBg =
                       getStatusColor(
-                        (Array.isArray(job.detailedStatus) &&
-                          job.detailedStatus.length > 0
+                        (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
                           ? job.detailedStatus[job.detailedStatus.length - 1]
-                          : job.status) || "",
+                          : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status) || "",
                       ) || "#ffffff";
                     return (
                       <tr
@@ -1585,15 +1724,6 @@ const ExportJobsTable = () => {
                             )}
                           </div>
 
-                          {/* Package Info repositioned here */}
-                          <div style={{ marginTop: "6px", fontSize: "10px" }}>
-                            <div style={{ fontWeight: "600", color: "#111" }}>
-                              {job.total_no_of_pkgs} {job.package_unit}
-                            </div>
-                            <div style={{ color: "#6b7280" }}>
-                              G: {job.gross_weight_kg} kg | N: {job.net_weight_kg} kg
-                            </div>
-                          </div>
                         </td>
 
                         {/* Column 3: Exporter */}
@@ -1628,13 +1758,17 @@ const ExportJobsTable = () => {
                           {/* Booking No section */}
                           {(() => {
                             const bookings = [];
-                            job.operations?.forEach((op) => {
-                              op.bookingDetails?.forEach((b) => {
-                                if (b.bookingNo && !bookings.includes(b.bookingNo)) {
-                                  bookings.push(b.bookingNo);
+                            if (Array.isArray(job.operations)) {
+                              job.operations.forEach((op) => {
+                                if (Array.isArray(op.bookingDetails)) {
+                                  op.bookingDetails.forEach((b) => {
+                                    if (b.bookingNo && !bookings.includes(b.bookingNo)) {
+                                      bookings.push(b.bookingNo);
+                                    }
+                                  });
                                 }
                               });
-                            });
+                            }
 
                             if (bookings.length > 0) {
                               const firstBooking = bookings[0];
@@ -2006,6 +2140,21 @@ const ExportJobsTable = () => {
                                             }
                                             return null;
                                           })()}
+
+                                          {/* CONCOR Container Track Button */}
+                                          <Tooltip title="Track on CONCOR India">
+                                            <IconButton
+                                              size="small"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setContainerTrackContainers(job.containers || []);
+                                                setContainerTrackOpen(true);
+                                              }}
+                                              style={{ padding: 0, marginLeft: 2 }}
+                                            >
+                                              <FontAwesomeIcon icon={faAnchor} style={{ fontSize: 10, color: "#7c3aed" }} />
+                                            </IconButton>
+                                          </Tooltip>
                                         </div>
 
                                         <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -2039,7 +2188,15 @@ const ExportJobsTable = () => {
                               </div>
                             )}
                           </div>
-                          <div style={{ color: "#6b7280", fontSize: "10px" }}>
+                          <div style={{ color: "#6b7280", fontSize: "10px", marginTop: "4px" }}>
+                            <div style={{ fontWeight: "600" }}>
+                              {job.total_no_of_pkgs} {job.package_unit}
+                            </div>
+                            <div>
+                              G: {job.gross_weight_kg} kg | N: {job.net_weight_kg} kg
+                            </div>
+                          </div>
+                          <div style={{ color: "#6b7280", fontSize: "10px", marginTop: "2px" }}>
                             <span>Place:</span>{" "}
                             <span style={{ fontWeight: "500" }}>
                               {formatDate(
@@ -2179,12 +2336,9 @@ const ExportJobsTable = () => {
                               borderRadius: "4px",
                             }}
                           >
-                            {Array.isArray(job.detailedStatus) &&
-                              job.detailedStatus.length > 0
-                              ? job.detailedStatus[
-                              job.detailedStatus.length - 1
-                              ]
-                              : job.status || "-"}
+                            {Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
+                              ? job.detailedStatus[job.detailedStatus.length - 1]
+                              : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status || "-"}
                           </div>
                         </td>
                       </tr>
@@ -2480,6 +2634,17 @@ const ExportJobsTable = () => {
               style={{
                 ...modalStyles.submitButton,
                 padding: "8px 20px",
+                backgroundColor: dsrLoading ? "#cbd5e1" : "#2563eb",
+              }}
+              onClick={handleDownloadTableDSR}
+              disabled={dsrLoading}
+            >
+              {dsrLoading ? "Generating..." : "Download Table DSR"}
+            </button>
+            <button
+              style={{
+                ...modalStyles.submitButton,
+                padding: "8px 20px",
                 backgroundColor: dsrLoading ? "#cbd5e1" : "#059669",
               }}
               onClick={handleDownloadDSR}
@@ -2701,7 +2866,15 @@ const ExportJobsTable = () => {
               statusDetails: [newStatus]
             };
 
-            // 3. PUT Update
+            // 3. Update job-level fields
+            if (updates.egm_no) fullJob.egm_no = updates.egm_no;
+            if (updates.egm_date) fullJob.egm_date = updates.egm_date;
+            if (updates.drawback_scroll_no) fullJob.drawback_scroll_no = updates.drawback_scroll_no;
+            if (updates.drawback_scroll_date) fullJob.drawback_scroll_date = updates.drawback_scroll_date;
+            if (updates.rosctl_scroll_no) fullJob.rosctl_scroll_no = updates.rosctl_scroll_no;
+            if (updates.rosctl_scroll_date) fullJob.rosctl_scroll_date = updates.rosctl_scroll_date;
+
+            // 4. PUT Update
             const payload = { ...fullJob, operations: newOperations };
 
             await axios.put(
@@ -2718,6 +2891,16 @@ const ExportJobsTable = () => {
             console.error("Error updating job from SB Track:", err);
           }
         }}
+      />
+
+      {/* Container Track Dialog */}
+      <ContainerTrackDialog
+        open={containerTrackOpen}
+        onClose={() => {
+          setContainerTrackOpen(false);
+          setContainerTrackContainers([]);
+        }}
+        containers={containerTrackContainers}
       />
     </>
   );

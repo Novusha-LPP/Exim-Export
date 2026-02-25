@@ -721,6 +721,9 @@ const OperationsTab = ({ formik }) => {
   const operations = formik.values.operations || [];
   const [activeOpIndex, setActiveOpIndex] = useState(0);
 
+  // Guard ref to prevent infinite ping-pong between sync phases
+  const syncingRef = useRef(false);
+
   // Flags for mode detection
   const transportMode = toUpper(formik.values.transportMode || "");
   const isAir = transportMode === "AIR";
@@ -868,10 +871,19 @@ const OperationsTab = ({ formik }) => {
   const syncStatus = isSynced ? "Synced" : "Out of Sync";
 
   // 4. Auto-sync Effect: Keeps operations consistent and updates the main containers array
+  // Stable serialized key for container numbers (prevents dependency reference changes)
+  const masterContainerKey = JSON.stringify(
+    (formik.values.containers || []).map(c => (c.containerNo || "").trim().toUpperCase())
+  );
+  const opsContainerKey = JSON.stringify(
+    operations.map(op => (op.containerDetails || []).map(d => (d.containerNo || "").trim().toUpperCase()))
+  );
+
   useEffect(() => {
     // SECURITY: Do not run sync logic if the form hasn't loaded its job data yet.
     // This prevents wiping container lists during the initial render "flicker".
     if (!formik.values.job_no || operations.length === 0) return;
+    if (syncingRef.current) return;
 
     // Phase A: Intra-operation Sync (Propagate Unique Containers across sections)
     let opsModified = false;
@@ -923,8 +935,10 @@ const OperationsTab = ({ formik }) => {
       return syncedOp;
     });
 
-    if (opsModified) {
+    if (opsModified && JSON.stringify(operations) !== JSON.stringify(nextOperations)) {
+      syncingRef.current = true;
       formik.setFieldValue("operations", nextOperations);
+      setTimeout(() => { syncingRef.current = false; }, 100);
       return; // Exit and wait for next render cycle
     }
 
@@ -991,91 +1005,63 @@ const OperationsTab = ({ formik }) => {
     });
 
     // Phase C: Master Containers Sync (Updates formik.values.containers)
-    // Only run this if NOT Air mode, as Air doesn't use the master containers list
+    // IMPORTANT: Master (ContainerTab) is the SOURCE OF TRUTH for which containers exist.
+    // Phase C may only UPDATE field values on existing master containers — NEVER add new ones.
+    // Adding containers from Operations is handled by the user explicitly in ContainerTab.
     if (!isAir) {
       const currentMaster = formik.values.containers || [];
+      let masterChanged = false;
 
-      // 1. Reconcile existing containers (Filter out those removed from operations)
-      let nextContainers = currentMaster.filter((c) => {
-        const uNo = (c.containerNo || "").trim().toUpperCase();
-        return uNo && opContainerNos.includes(uNo);
-      });
+      const nextContainers = currentMaster.map(m => {
+        const mNo = (m.containerNo || "").trim().toUpperCase();
+        if (!mNo) return m;
 
-      let masterChanged = nextContainers.length !== currentMaster.length;
+        const opInfo = containerDetailsMap.get(mNo);
+        if (!opInfo) return m;
 
-      // 2. Update existing or add new ones to match Operations
-      opContainerNos.forEach((no) => {
-        let masterItemIdx = nextContainers.findIndex(
-          (c) => (c.containerNo || "").trim().toUpperCase() === no,
-        );
-        const opInfo = containerDetailsMap.get(no) || {
-          grossWeight: 0,
-          netWeight: 0,
-          noOfPackages: 0,
-          tareWeightKgs: 0,
-        };
+        // Only sync field values — don't change which containers exist
+        const grossChanged = Number(m.grossWeight || 0) !== opInfo.grossWeight;
+        const maxGrossChanged = Number(m.maxGrossWeightKgs || 0) !== opInfo.maxGrossWeightKgs;
+        const vgmChanged = Number(m.vgmWtInvoice || 0) !== opInfo.vgmWtInvoice;
+        const tareChanged = Number(m.tareWeightKgs || 0) !== opInfo.tareWeightKgs;
+        const sealChanged = (m.shippingLineSealNo || "") !== (opInfo.shippingLineSealNo || "");
+        const payloadChanged = Number(m.maxPayloadKgs || 0) !== (opInfo.maxPayloadKgs || 0);
+        const sealNoChanged = (m.sealNo || "") !== (opInfo.customSealNo || "");
+        const typeChanged = (m.type || "") !== (opInfo.containerSize || "");
+        const pkgsChanged = opInfo.noOfPackages > 0 && Number(m.pkgsStuffed || 0) !== opInfo.noOfPackages;
+        const netChanged = opInfo.netWeight > 0 && Number(m.netWeight || 0) !== opInfo.netWeight;
 
-        if (masterItemIdx === -1) {
-          nextContainers.push({
-            containerNo: no,
-            type: opInfo.containerSize || "",
-            sealNo: "",
-            sealDate: "",
-            pkgsStuffed: opInfo.noOfPackages || 0,
-            grossWeight: opInfo.grossWeight || 0,
-            netWeight: opInfo.netWeight || 0,
-            tareWeightKgs: opInfo.tareWeightKgs || 0,
-            maxGrossWeightKgs: opInfo.maxGrossWeightKgs || 0,
-            vgmWtInvoice: opInfo.vgmWtInvoice || 0,
-            shippingLineSealNo: opInfo.shippingLineSealNo || "",
-            sealNo: opInfo.customSealNo || "",
-            maxPayloadKgs: opInfo.maxPayloadKgs || 0,
-          });
+        if (grossChanged || maxGrossChanged || vgmChanged || tareChanged || sealChanged || payloadChanged || sealNoChanged || typeChanged || pkgsChanged || netChanged) {
           masterChanged = true;
-        } else {
-          // Sync weights/packages to master item if they differ
-          const m = nextContainers[masterItemIdx];
-
-          // Determine if any syncable field has changed
-          const grossChanged = Number(m.grossWeight || 0) !== opInfo.grossWeight;
-          const maxGrossChanged = Number(m.maxGrossWeightKgs || 0) !== opInfo.maxGrossWeightKgs;
-          const vgmChanged = Number(m.vgmWtInvoice || 0) !== opInfo.vgmWtInvoice;
-          const tareChanged = Number(m.tareWeightKgs || 0) !== opInfo.tareWeightKgs;
-          const sealChanged = (m.shippingLineSealNo || "") !== (opInfo.shippingLineSealNo || "");
-          const payloadChanged = Number(m.maxPayloadKgs || 0) !== (opInfo.maxPayloadKgs || 0);
-          const sealNoChanged = (m.sealNo || "") !== (opInfo.customSealNo || "");
-          const typeChanged = (m.type || "") !== (opInfo.containerSize || "");
-          const pkgsChanged = opInfo.noOfPackages > 0 && Number(m.pkgsStuffed || 0) !== opInfo.noOfPackages;
-          const netChanged = opInfo.netWeight > 0 && Number(m.netWeight || 0) !== opInfo.netWeight;
-
-          if (grossChanged || maxGrossChanged || vgmChanged || tareChanged || sealChanged || payloadChanged || sealNoChanged || typeChanged || pkgsChanged || netChanged) {
-            nextContainers[masterItemIdx] = {
-              ...m,
-              grossWeight: grossChanged ? opInfo.grossWeight : m.grossWeight,
-              maxGrossWeightKgs: maxGrossChanged ? opInfo.maxGrossWeightKgs : m.maxGrossWeightKgs,
-              vgmWtInvoice: vgmChanged ? opInfo.vgmWtInvoice : m.vgmWtInvoice,
-              tareWeightKgs: tareChanged ? opInfo.tareWeightKgs : m.tareWeightKgs,
-              shippingLineSealNo: sealChanged ? (opInfo.shippingLineSealNo || m.shippingLineSealNo || "") : m.shippingLineSealNo,
-              sealNo: sealNoChanged ? (opInfo.customSealNo || m.sealNo || "") : m.sealNo,
-              maxPayloadKgs: payloadChanged ? opInfo.maxPayloadKgs : m.maxPayloadKgs,
-              type: typeChanged ? (opInfo.containerSize || m.type || "") : m.type,
-              pkgsStuffed: pkgsChanged ? opInfo.noOfPackages : m.pkgsStuffed,
-              netWeight: netChanged ? opInfo.netWeight : m.netWeight,
-            };
-            masterChanged = true;
-          }
+          return {
+            ...m,
+            grossWeight: grossChanged ? opInfo.grossWeight : m.grossWeight,
+            maxGrossWeightKgs: maxGrossChanged ? opInfo.maxGrossWeightKgs : m.maxGrossWeightKgs,
+            vgmWtInvoice: vgmChanged ? opInfo.vgmWtInvoice : m.vgmWtInvoice,
+            tareWeightKgs: tareChanged ? opInfo.tareWeightKgs : m.tareWeightKgs,
+            shippingLineSealNo: sealChanged ? (opInfo.shippingLineSealNo || m.shippingLineSealNo || "") : m.shippingLineSealNo,
+            sealNo: sealNoChanged ? (opInfo.customSealNo || m.sealNo || "") : m.sealNo,
+            maxPayloadKgs: payloadChanged ? opInfo.maxPayloadKgs : m.maxPayloadKgs,
+            type: typeChanged ? (opInfo.containerSize || m.type || "") : m.type,
+            pkgsStuffed: pkgsChanged ? opInfo.noOfPackages : m.pkgsStuffed,
+            netWeight: netChanged ? opInfo.netWeight : m.netWeight,
+          };
         }
+        return m;
       });
 
-      if (masterChanged) {
+      if (masterChanged && JSON.stringify(currentMaster) !== JSON.stringify(nextContainers)) {
+        syncingRef.current = true;
         formik.setFieldValue("containers", nextContainers);
+        setTimeout(() => { syncingRef.current = false; }, 100);
       }
     }
-  }, [operations]); // Watch operations to trigger sync
+  }, [opsContainerKey]); // Stable serialized key prevents reference-change loops
 
   // Phase D: Master -> Operations Sync (Syncs newly added containers from ContainerTab to Operations)
   useEffect(() => {
     if (!formik.values.job_no || operations.length === 0 || isAir) return;
+    if (syncingRef.current) return;
 
     const masterContainers = formik.values.containers || [];
     let opsChanged = false;
@@ -1097,8 +1083,8 @@ const OperationsTab = ({ formik }) => {
           currentArr.push(getDefaultItem(secName));
           sectionDirty = true;
         }
-        // Optional: Should we remove rows if Master has fewer? Usually yes for strict sync.
-        if (currentArr.length > masterContainers.length && masterContainers.length > 0) {
+        // Strict truncating sync (allows deleting the last container row safely)
+        if (currentArr.length > masterContainers.length) {
           currentArr.length = masterContainers.length;
           sectionDirty = true;
         }
@@ -1154,11 +1140,13 @@ const OperationsTab = ({ formik }) => {
       return syncedOp;
     });
 
-    if (opsChanged) {
+    if (opsChanged && JSON.stringify(operations) !== JSON.stringify(nextOperations)) {
+      syncingRef.current = true;
       formik.setFieldValue("operations", nextOperations);
+      setTimeout(() => { syncingRef.current = false; }, 100);
     }
 
-  }, [formik.values.containers]); // Watch master list
+  }, [masterContainerKey]); // Stable serialized key prevents reference-change loops
 
   // Auto-fill Transporter Gross Weight & Packages from Job Header
   // DEPENDENCY NOTE: We intentionally exclude 'operations' to prevent reverting user deletions
@@ -1288,10 +1276,10 @@ const OperationsTab = ({ formik }) => {
 
     // AUTO-SYNC: When billing date is set, update detailedStatus and milestones
     if (section === "statusDetails" && field === "billingDocsSentDt" && value) {
-      // 1. Add "Billing Pending" to detailedStatus if not already present
-      const currentStatus = formik.values.detailedStatus || [];
-      if (!currentStatus.includes("Billing Pending")) {
-        formik.setFieldValue("detailedStatus", [...currentStatus, "Billing Pending"]);
+      // 1. Set "Billing Pending" to detailedStatus if not already present
+      const currentStatus = formik.values.detailedStatus;
+      if (currentStatus !== "Billing Pending") {
+        formik.setFieldValue("detailedStatus", "Billing Pending");
       }
 
       // 2. Update the "Billing Pending" milestone
@@ -1317,8 +1305,10 @@ const OperationsTab = ({ formik }) => {
 
     // If billing date is cleared, remove "Billing Pending" from detailedStatus and reset milestone
     if (section === "statusDetails" && field === "billingDocsSentDt" && !value) {
-      const currentStatus = formik.values.detailedStatus || [];
-      formik.setFieldValue("detailedStatus", currentStatus.filter((s) => s !== "Billing Pending"));
+      const currentStatus = formik.values.detailedStatus;
+      if (currentStatus === "Billing Pending") {
+        formik.setFieldValue("detailedStatus", "");
+      }
 
       const milestones = formik.values.milestones || [];
       const billingIdx = milestones.findIndex((m) => m.milestoneName === "Billing Pending");
@@ -1352,10 +1342,36 @@ const OperationsTab = ({ formik }) => {
     const op = { ...newOperations[activeOpIndex] };
     if (!op) return;
 
+    // Get the container number being deleted (for syncing to master)
+    const deletedRow = (op[section] || [])[itemIndex];
+    const deletedNo = (deletedRow?.containerNo || "").trim().toUpperCase();
+
     op[section] = (op[section] || []).filter((_, i) => i !== itemIndex);
 
+    // If deleting from containerDetails or weighmentDetails, also delete from the mirror section
+    if (section === "containerDetails") {
+      op.weighmentDetails = (op.weighmentDetails || []).filter((_, i) => i !== itemIndex);
+    } else if (section === "weighmentDetails") {
+      op.containerDetails = (op.containerDetails || []).filter((_, i) => i !== itemIndex);
+    }
+
     newOperations[activeOpIndex] = op;
+    syncingRef.current = true;
     formik.setFieldValue("operations", newOperations);
+
+    // Also remove from master containers list so Phase D doesn't re-add it
+    if ((section === "containerDetails" || section === "weighmentDetails") && deletedNo) {
+      const masterContainers = formik.values.containers || [];
+      const nextMaster = masterContainers.filter(
+        c => (c.containerNo || "").trim().toUpperCase() !== deletedNo
+      );
+      if (nextMaster.length !== masterContainers.length) {
+        nextMaster.forEach((c, i) => { c.serialNumber = i + 1; });
+        formik.setFieldValue("containers", nextMaster);
+      }
+    }
+
+    setTimeout(() => { syncingRef.current = false; }, 150);
   };
 
   // --- Render Helpers ---
