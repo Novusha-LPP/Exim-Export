@@ -1419,56 +1419,56 @@ const OperationsTab = ({ formik }) => {
       formik={formik}
       activeOpIndex={activeOpIndex}
       columns={[
-        { field: "containerNo", label: "Container No.", width: "140px" },
+        { field: "containerNo", label: <>Container<br />No.</>, width: "70px" },
         {
           field: "noOfPackages",
-          label: "Packages",
+          label: "PKGs",
           type: "number",
-          width: "100px",
+          width: "70px",
         },
         {
           field: "shippingLineSealNo",
-          label: "S/Line Seal No",
-          width: "140px",
+          label: <>S/Line<br />Seal No</>,
+          width: "80px",
         },
         {
           field: "customSealNo",
-          label: "Custom Seal No",
-          width: "140px",
+          label: <>Custom<br />Seal No</>,
+          width: "80px",
         },
-        { field: "containerSize", label: "Size (FT)", width: "160px", type: "select", options: containerTypes },
-        { field: "cargoType", label: "Cargo Type", width: "120px", type: "select", options: cargoTypes },
-        { field: "portOfLoading", label: "Port Of Loading", width: "170px", type: "select", options: PORT_OF_LOADING_OPTIONS },
+        { field: "containerSize", label: <>Size<br />(FT)</>, width: "70px", type: "select", options: containerTypes },
+        { field: "cargoType", label: "Cargo Type", width: "130px", type: "select", options: cargoTypes },
+        { field: "portOfLoading", label: <>Port Of<br />Loading</>, width: "140px", type: "select", options: PORT_OF_LOADING_OPTIONS },
         {
           field: "maxGrossWeightKgs",
           label: "Max GW",
           type: "number",
-          width: "100px",
+          width: "50px",
         },
         {
           field: "grossWeight",
           label: "Gw",
           type: "number",
-          width: "100px",
+          width: "70px",
         },
         {
           field: "tareWeightKgs",
           label: "Tare Wt",
           type: "number",
-          width: "100px",
+          width: "70px",
         },
         {
           field: "vgmWtInvoice",
-          label: "VGM Wt. (invoice)",
+          label: <>VGM Wt.<br />(invoice)</>,
           type: "number",
-          width: "110px",
+          width: "70px",
           readOnly: true,
         },
         {
           field: "maxPayloadKgs",
-          label: "Max Payload (KG)",
+          label: <>Max<br />Payload<br />(KG)</>,
           type: "number",
-          width: "100px",
+          width: "50px",
         },
         {
           field: "images",
@@ -1867,21 +1867,29 @@ const TableSection = ({
                               }
                               readOnly={!!col.readOnly}
                               disabled={!!col.readOnly}
+                              maxLength={col.field === "containerNo" ? 11 : undefined}
                               onChange={(e) => {
                                 if (col.readOnly) return;
                                 // Fix: Immediate switch back to text mode to show formatted date
                                 if (col.type === "date" || col.type === "datetime-local") {
                                   e.target.type = "text";
                                 }
+
+                                let val = e.target.value;
+                                if (col.field === "containerNo") {
+                                  // Restrict to alphanumeric only
+                                  val = val.replace(/[^a-zA-Z0-9]/g, "");
+                                }
+
                                 onUpdate(
                                   section,
                                   rowIdx,
                                   col.field,
                                   col.type === "number"
-                                    ? e.target.value === ""
+                                    ? val === ""
                                       ? 0
-                                      : e.target.value
-                                    : e.target.value,
+                                      : val
+                                    : val,
                                 );
                               }}
                               onDoubleClick={(e) => {
@@ -2443,6 +2451,8 @@ const StatusSection = ({
               key={rowIdx}
               style={{ borderBottom: "2px solid #e2e8f0", padding: "10px 0" }}
             >
+              <div style={styles.tableWrapper}>
+                <div style={{ minWidth: "1000px" }}>
               {/* Row 1 Grid */}
               <div
                 style={{
@@ -2555,6 +2565,8 @@ const StatusSection = ({
                     {renderCell(f, item, rowIdx)}
                   </div>
                 ))}
+              </div>
+                </div>
               </div>
 
               <div
@@ -2944,6 +2956,7 @@ const styles = {
   },
   table: {
     width: "100%",
+    minWidth: "max-content",
     borderCollapse: "collapse",
     fontSize: "12px",
     tableLayout: "auto", // Changed from fixed to auto for dynamic column widths
