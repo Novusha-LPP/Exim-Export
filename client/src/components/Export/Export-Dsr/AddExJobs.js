@@ -587,52 +587,40 @@ function useGatewayPortDropdown(value, onChange, priorityList = []) {
       setOpts([]);
       return;
     }
-    const searchVal = (query || "").trim();
-    const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
-      searchVal,
-    )}`;
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        let options = Array.isArray(data?.data)
-          ? data.data
-          : Array.isArray(data)
-            ? data
-            : [];
+    const searchVal = (query || "").trim().toUpperCase();
+    const staticOpts = [
+      { unece_code: "INMUN1", name: "MUNDRA" },
+      { unece_code: "INIXY1", name: "KANDLA" },
+      { unece_code: "INPAV1", name: "PIPAVAV" },
+      { unece_code: "INHZA1", name: "HAZIRA" },
+      { unece_code: "INNSA1", name: "NHAVA SHEVA" },
+      { unece_code: "INAMD4", name: "AHMEDABAD AIR PORT" }
+    ];
 
-        // Apply Priority Sorting
-        if (priorityList.length > 0) {
-          options.sort((a, b) => {
-            const nameA = (a.name || "").toUpperCase();
-            const nameB = (b.name || "").toUpperCase();
+    // Apply Priority Sorting
+    let options = staticOpts.filter(opt =>
+      `${opt.unece_code} ${opt.name}`.toUpperCase().includes(searchVal)
+    );
 
-            // Find index in priority list (checking if name INCLUDES priority keyword)
-            const pIndexA = priorityList.findIndex((p) =>
-              nameA.includes(p.toUpperCase()),
-            );
-            const pIndexB = priorityList.findIndex((p) =>
-              nameB.includes(p.toUpperCase()),
-            );
+    if (priorityList.length > 0) {
+      options.sort((a, b) => {
+        const nameA = (a.name || "").toUpperCase();
+        const nameB = (b.name || "").toUpperCase();
+        const pIndexA = priorityList.findIndex((p) =>
+          nameA.includes(p.toUpperCase()),
+        );
+        const pIndexB = priorityList.findIndex((p) =>
+          nameB.includes(p.toUpperCase()),
+        );
+        if (pIndexA !== -1 && pIndexB !== -1) return pIndexA - pIndexB;
+        if (pIndexA !== -1) return -1;
+        if (pIndexB !== -1) return 1;
+        return 0;
+      });
+    }
 
-            // Both in priority list -> sort by order in priority list
-            if (pIndexA !== -1 && pIndexB !== -1) return pIndexA - pIndexB;
-            // Only A in priority -> A first
-            if (pIndexA !== -1) return -1;
-            // Only B in priority -> B first
-            if (pIndexB !== -1) return 1;
-            // Neither -> keep original order
-            return 0;
-          });
-        }
-
-        setOpts(options);
-      } catch {
-        setOpts([]);
-      }
-    }, 220);
-    return () => clearTimeout(t);
-  }, [open, query, apiBase, priorityList]); // added priorityList dependency
+    setOpts(options);
+  }, [open, query, priorityList]);
 
   useEffect(() => {
     function close(e) {

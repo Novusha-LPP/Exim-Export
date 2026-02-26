@@ -17,6 +17,7 @@ const DocumentEditorDialog = ({
     initialContent,
     title = "Edit Document",
     onSave,
+    pdfOptions = {},
 }) => {
     const editorRef = useRef(null);
     const [saving, setSaving] = useState(false);
@@ -34,19 +35,25 @@ const DocumentEditorDialog = ({
             });
 
             try {
-                await doc.html(content, {
-                    callback: function (doc) {
-                        doc.save(`${title.replace(/\s+/g, "_")}.pdf`);
-                        if (onSave) onSave(content);
-                        setSaving(false);
-                        onClose();
-                    },
+                const defaultOptions = {
                     x: 15,
                     y: 15,
                     width: 545,
                     windowWidth: 900,
                     margin: [20, 15, 110, 15],
                     autoPaging: 'slice',
+                };
+                
+                const finalOptions = { ...defaultOptions, ...pdfOptions };
+
+                await doc.html(content, {
+                    ...finalOptions,
+                    callback: function (doc) {
+                        doc.save(`${title.replace(/\s+/g, "_")}.pdf`);
+                        if (onSave) onSave(content);
+                        setSaving(false);
+                        onClose();
+                    }
                 });
             } catch (error) {
                 console.error("Error generating PDF:", error);

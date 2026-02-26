@@ -115,31 +115,21 @@ function useGatewayPortDropdown(fieldName, formik) {
       return;
     }
 
-    // When dropdown opens, fetch all options (empty search)
-    // Only use query for search if user is actively typing
-    const searchVal = isTyping ? (query || "").trim() : "";
-    const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
-      searchVal
-    )}`;
+    const searchVal = isTyping ? (query || "").trim().toUpperCase() : "";
+    const staticOpts = [
+      { unece_code: "INMUN1", name: "MUNDRA" },
+      { unece_code: "INIXY1", name: "KANDLA" },
+      { unece_code: "INPAV1", name: "PIPAVAV" },
+      { unece_code: "INHZA1", name: "HAZIRA" },
+      { unece_code: "INNSA1", name: "NHAVA SHEVA" },
+      { unece_code: "INAMD4", name: "AHMEDABAD AIR PORT" }
+    ];
 
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        setOpts(
-          Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-              ? data
-              : []
-        );
-      } catch {
-        setOpts([]);
-      }
-    }, 220);
-
-    return () => clearTimeout(t);
-  }, [open, query, apiBase, isTyping]);
+    const filtered = staticOpts.filter(opt =>
+      `${opt.unece_code} ${opt.name}`.toUpperCase().includes(searchVal)
+    );
+    setOpts(filtered);
+  }, [open, query, isTyping]);
 
   useEffect(() => {
     function close(e) {

@@ -54,7 +54,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       const booking = operations.bookingDetails?.[0] || {};
       const invoice = data.invoices?.[0] || {};
       const statusDetails = operations.statusDetails?.[0] || {};
-      const containers = data.containers || [];
+      const containers = data.containers?.length > 0 ? data.containers : (data.operations?.[0]?.containerDetails || []);
       const products = invoice.products || [];
 
       // Extract User Information for Footer
@@ -65,16 +65,17 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
 
       // Mapping values
       const consignorName = data.exporter || "";
-      const vesselName = booking.vesselName || "";
+      const vesselName = data.vessel_name || "";
       const agentCha = "SURAJ FORWARDERS & SHIPPING AGENCIES";
       const cutOffDate = formatDate(booking.vesselCutOffDate);
       const dischargeCountry = data.discharge_country || "";
       const exporterAddress = data.exporter || "";
-      const gatewayPort = booking.portOfLoading || "";
+      const gatewayPort = data.gateway_port || booking.portOfLoading || "";
       const shippingBillNo = data.sb_no || "";
       const portOfDischarge = data.port_of_discharge || "";
-      const stuffingType = data.goods_stuffed_at?.toString().toLowerCase() === "factory" ? "FACTORY" : "ICD (CFS)";
+      const stuffingType = data.goods_stuffed_at?.toString().toLowerCase() === "factory" ? "FACTORY" : "ICD (CFS) / FACTORY";
       const shippingLineName = booking.shippingLineName || "";
+      const fobvalue= data.invoices?.[0]?.freightInsuranceCharges.fobValue.amount || "";
 
       const hsnList = [...new Set(products.map(p => {
         if (p.hsn_code || p.hsnCode || p.hsn) return p.hsn_code || p.hsnCode || p.hsn;
@@ -108,6 +109,25 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
           </tr>
         `;
       });
+
+      // Calculate spacer to prevent certifications from breaking across pages
+      // jsPDF 'slice' mode renders HTML as one tall canvas then slices at page boundaries.
+      // CSS page-break-inside has no effect, so we manually compute a spacer.
+      const headerHeight = 510;     // approximate px height of rows 1-9 + table header row
+      const containerRowHeight = 60; // each container row is 60px
+      const certFooterHeight = 380;  // certifications (6 rows) + footer section
+      // A4=842pt, margins [15,0,15,0], usable=812pt. Scale: 595/900≈0.661. Page height in px ≈ 812/0.661 ≈ 1228
+      const pageHeightPx = 1228;
+
+      const contentBeforeCert = headerHeight + (containers.length * containerRowHeight);
+      const currentPagePos = contentBeforeCert % pageHeightPx;
+      const remainingOnPage = pageHeightPx - currentPagePos;
+
+      let spacerHtml = '';
+      if (remainingOnPage < certFooterHeight && remainingOnPage > 0) {
+        // Not enough room on current page — push certifications to next page
+        spacerHtml = `<div style="height: ${remainingOnPage + 10}px;"></div>`;
+      }
 
       const template = `
         <div style="width: 900px; font-family: 'Arial', sans-serif; color: #000; padding: 0 22px; box-sizing: border-box; line-height: 1.2;">
@@ -230,7 +250,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
                 <div style="font-size: 10px; font-weight: bold;">${stuffingType}</div>
               </td>
               <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
-                <div style="font-size: 10px;"><b>F.O.B./C.I.F. Value :</b></div>
+                <div style="font-size: 10px;"><b>F.O.B./C.I.F. Value : ${fobvalue}</b></div>
               </td>
             </tr>
 
@@ -256,18 +276,29 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
             </tr>
             ${containersRows}
 
-            <!-- CERTIFICATIONS (AS TABLE ROWS FOR PERFECT BORDERS) -->
-            <tr><td style="border: 1px solid black; padding: 8px 4px; font-weight: bold; font-size: 7px; text-align: center;">1</td><td colspan="9" style="border: 1px solid black; padding: 8px 4px; font-size: 10px;">I do hereby certify that I have satisfied by self description, marks, quantity, measurement and weight of goods consigned by me have been correctly entered in the note.</td></tr>
-            <tr><td style="border: 1px solid black; padding: 8px 4px; font-weight: bold; font-size: 7px; text-align: center;">2</td><td colspan="9" style="border: 1px solid black; padding: 8px 4px; font-size: 10px; text-align: center; font-weight: bold;">I hereby certify that the goods described above are in goods order and condition at the time of dispatch.</td></tr>
-            <tr><td style="border: 1px solid black; padding: 8px 4px; font-weight: bold; font-size: 7px; text-align: center;">3</td><td colspan="9" style="border: 1px solid black; padding: 8px 4px; font-size: 10px; text-align: center; font-weight: bold;">I hereby certify that goods are not classified as dangerous in Indian Railway. Road Tariff of my IMO regulations.</td></tr>
-            <tr><td style="border: 1px solid black; padding: 8px 4px; font-weight: bold; font-size: 7px; text-align: center;">4</td><td colspan="9" style="border: 1px solid black; padding: 8px 4px; font-size: 10px; text-align: center; font-weight: bold;">It is certify that rated tonnage of the commitment (5) has been exceeded.</td></tr>
-            <tr><td style="border: 1px solid black; padding: 8px 4px; font-weight: bold; font-size: 7px; text-align: center;">5</td><td colspan="9" style="border: 1px solid black; padding: 8px 4px; font-size: 10px; text-align: center; font-weight: bold;">IF THE CONTAINER WEIGHT, IS NOT SPECIFIED THEIR TARE WEIGHT, IT WILL BE TAKEN AS 2.3 TONS FOR 20' & 4.6 TONS FOR 40'</td></tr>
-            <tr><td style="border: 1px solid black; padding: 8px 4px; font-weight: bold; font-size: 7px; text-align: center;">6</td><td colspan="9" style="border: 1px solid black; padding: 8px 4px; font-size: 10px; text-align: center; font-weight: bold;">I understand that the principal terms and conditions applying to the carriage of above containers are subject to the conditions and liabilities as specified in the Indian Railway Act 1989, as amended from time to time.</td></tr>
+          </table>
 
-            <!-- FOOTER SIGNATURE SECTION -->
+          ${spacerHtml}
+          <!-- CERTIFICATIONS + FOOTER wrapped together -->
+          <div style="margin-top: -1px;">
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid black; table-layout: fixed; box-sizing: border-box;">
+            <colgroup>
+              <col style="width: 3%;">
+              <col style="width: 97%;">
+            </colgroup>
+            <tr><td style="border: 1px solid black; padding: 6px 4px; font-weight: bold; font-size: 7px; text-align: center; vertical-align: middle;">1</td><td style="border: 1px solid black; padding: 6px 4px; font-size: 10px;">I do hereby certify that I have satisfied by self description, marks, quantity, measurement and weight of goods consigned by me have been correctly entered in the note.</td></tr>
+            <tr><td style="border: 1px solid black; padding: 6px 4px; font-weight: bold; font-size: 7px; text-align: center; vertical-align: middle;">2</td><td style="border: 1px solid black; padding: 6px 4px; font-size: 10px; text-align: center; font-weight: bold;">I hereby certify that the goods described above are in goods order and condition at the time of dispatch.</td></tr>
+            <tr><td style="border: 1px solid black; padding: 6px 4px; font-weight: bold; font-size: 7px; text-align: center; vertical-align: middle;">3</td><td style="border: 1px solid black; padding: 6px 4px; font-size: 10px; text-align: center; font-weight: bold;">I hereby certify that goods are not classified as dangerous in Indian Railway. Road Tariff of my IMO regulations.</td></tr>
+            <tr><td style="border: 1px solid black; padding: 6px 4px; font-weight: bold; font-size: 7px; text-align: center; vertical-align: middle;">4</td><td style="border: 1px solid black; padding: 6px 4px; font-size: 10px; text-align: center; font-weight: bold;">It is certify that rated tonnage of the commitment (5) has been exceeded.</td></tr>
+            <tr><td style="border: 1px solid black; padding: 6px 4px; font-weight: bold; font-size: 7px; text-align: center; vertical-align: middle;">5</td><td style="border: 1px solid black; padding: 6px 4px; font-size: 10px; text-align: center; font-weight: bold;">IF THE CONTAINER WEIGHT, IS NOT SPECIFIED THEIR TARE WEIGHT, IT WILL BE TAKEN AS 2.3 TONS FOR 20' & 4.6 TONS FOR 40'</td></tr>
+            <tr><td style="border: 1px solid black; padding: 6px 4px; font-weight: bold; font-size: 7px; text-align: center; vertical-align: middle;">6</td><td style="border: 1px solid black; padding: 6px 4px; font-size: 10px; text-align: center; font-weight: bold;">I understand that the principal terms and conditions applying to the carriage of above containers are subject to the conditions and liabilities as specified in the Indian Railway Act 1989, as amended from time to time.</td></tr>
+          </table>
+
+          <!-- FOOTER SIGNATURE SECTION -->
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid black; table-layout: fixed; box-sizing: border-box; margin-top: -1px;">
             <tr>
-              <td colspan="10" style="border: 1px solid black; padding: 10px 5px; vertical-align: top; height: 80px;">
-                <table style="width: 100%; border-collapse: collapse; height: 100%;">
+              <td colspan="2" style="border: 1px solid black; padding: 10px 5px; vertical-align: top; min-height: 70px;">
+                <table style="width: 100%; border-collapse: collapse;">
                   <tr>
                     <td style="width: 50%; vertical-align: top; padding: 5px;">
                       <div style="font-size: 10px; font-weight: bold; margin-bottom: 30px;">PDA A/C/Cheque No):</div>
@@ -281,24 +312,24 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
                 </table>
               </td>
             </tr>
-            <tr style="height: 40px;">
-              <td colspan="7" style="border: 1px solid black; padding: 5px; vertical-align: bottom;">
+            <tr>
+              <td style="border: 1px solid black; padding: 5px; vertical-align: bottom; width: 70%;">
                 <div style="font-size: 10px; font-weight: bold;">DATE : ${formatDate(new Date())}</div>
               </td>
-              <td colspan="3" style="border: 1px solid black; padding: 5px; text-align: center; vertical-align: top;">
+              <td style="border: 1px solid black; padding: 5px; text-align: center; vertical-align: top; width: 30%;">
                 <div style="font-size: 10px; font-weight: bold;">STAMP AND SIGNATURE</div>
               </td>
             </tr>
-
-            <!-- HPCSL USE ONLY -->
-            <tr style="height: 50px;">
-              <td colspan="10" style="border: 1px solid black; padding: 5px; vertical-align: top;">
+            <tr>
+              <td colspan="2" style="border: 1px solid black; padding: 5px; vertical-align: top; min-height: 40px;">
                 <div style="font-size: 10px; font-weight: bold; text-decoration: underline; margin-bottom: 5px;">(HPCSL USE ONLY)</div>
                 <div style="font-size: 10px; font-weight: bold;">DATE & TIME OF BOOKING OR (EA) :</div>
               </td>
             </tr>
           </table>
+          </div>
         </div>
+
       `;
 
       setHtmlContent(template);
@@ -374,6 +405,13 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         onClose={() => setEditorOpen(false)}
         initialContent={htmlContent}
         title={`Forwarding Note (Thar) - ${jobNo}`}
+        pdfOptions={{
+          x: 0,
+          y: 15,
+          width: 595,
+          windowWidth: 900,
+          margin: [15, 0, 15, 0],
+        }}
       />
     </>
   );
