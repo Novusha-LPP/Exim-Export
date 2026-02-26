@@ -66,6 +66,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       // Mapping values
       const consignorName = data.exporter || "";
       const vesselName = data.vessel_name || "";
+      const Bookingno = booking.bookingNo || "";
       const agentCha = "SURAJ FORWARDERS & SHIPPING AGENCIES";
       const cutOffDate = formatDate(booking.vesselCutOffDate);
       const dischargeCountry = data.discharge_country || "";
@@ -110,6 +111,18 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         `;
       });
 
+      if (containers.length > 0) {
+        containersRows += `
+          <tr style="height: 30px;">
+            <td colspan="3" style="border: 1px solid black; padding: 5px; text-align: right; font-size: 10px; font-weight: bold; vertical-align: middle;">Total:</td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: middle;">${data.total_no_of_pkgs || ""}</td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: middle;"></td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: middle;">${data.gross_weight_kg || ""}</td>
+            <td colspan="4" style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: middle;"></td>
+          </tr>
+        `;
+      }
+
       // Calculate spacer to prevent certifications from breaking across pages
       // jsPDF 'slice' mode renders HTML as one tall canvas then slices at page boundaries.
       // CSS page-break-inside has no effect, so we manually compute a spacer.
@@ -119,7 +132,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       // A4=842pt, margins [15,0,15,0], usable=812pt. Scale: 595/900≈0.661. Page height in px ≈ 812/0.661 ≈ 1228
       const pageHeightPx = 1228;
 
-      const contentBeforeCert = headerHeight + (containers.length * containerRowHeight);
+      const contentBeforeCert = headerHeight + (containers.length * containerRowHeight) + (containers.length > 0 ? 30 : 0);
       const currentPagePos = contentBeforeCert % pageHeightPx;
       const remainingOnPage = pageHeightPx - currentPagePos;
 
@@ -202,7 +215,8 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
                 <div style="font-size: 11px; font-weight: bold;">${consignorName}</div>
               </td>
               <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
-                <div style="font-size: 11px; font-weight: bold;">VESSEL NAME : ${vesselName}</div>
+                <div style="font-size: 11px; font-weight: bold; margin-bottom: 5px;">VESSEL NAME : ${vesselName}</div>
+                <div style="font-size: 11px; font-weight: bold;">BOOKING NO : ${Bookingno}</div>
               </td>
             </tr>
 
