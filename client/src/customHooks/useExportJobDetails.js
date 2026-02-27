@@ -699,6 +699,7 @@ function useExportJobDetails(params, setFileSnackbar) {
 
       // CHA Details
       cha: "",
+      icegateId: "RAJANSFPL",
       masterblno: "",
       houseblno: "",
 
@@ -710,8 +711,8 @@ function useExportJobDetails(params, setFileSnackbar) {
     enableReinitialize: true,
     onSubmit: async (values) => {
 
-     
-      
+
+
       // TC_SHP_037: Verify Sailing Date cannot be before Job Date
       if (values.sailing_date && values.job_date) {
         const sd = new Date(values.sailing_date);

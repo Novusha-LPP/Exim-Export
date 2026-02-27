@@ -727,28 +727,7 @@ const ESanchitEditDialog = ({
                 value={safeDoc.irn}
                 onChange={(v) => handleFieldChange("irn", v)}
               />
-              <div style={s.fieldGroup}>
-                <span style={s.label}>ICEGATE ID</span>
-                <select
-                  style={s.select}
-                  value={safeDoc.icegateIdSelect || ""}
-                  onChange={(e) =>
-                    handleFieldChange("icegateIdSelect", e.target.value)
-                  }
-                >
-                  <option value="">-- Select --</option>
-                  <option value="RAJANSFPL - GCard - RAJANSFPL">
-                    RAJANSFPL - GCard - RAJANSFPL
-                  </option>
-                  <option value="SURAJAHD - FCard - SURAJAHD">
-                    SURAJAHD - FCard - SURAJAHD
-                  </option>
-                  <option value="SURAJAMD - GCard - SURAJAMD">
-                    SURAJAMD - GCard - SURAJAMD
-                  </option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
+
               <Field
                 label="ICEGATE Filename"
                 value={safeDoc.icegateFilename}
