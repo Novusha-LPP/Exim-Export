@@ -653,6 +653,21 @@ const LogisysEditableHeader = ({
           />
         </div>
 
+
+        {/* ICEGATE ID */}
+        <div style={{ flex: "0 0 auto", minWidth: 80 }}>
+          <div style={styles.label}>ICEGATE ID</div>
+          <select
+            name="icegateId"
+            value={formik.values.icegateId || "RAJANSFPL"}
+            onChange={(e) => formik.setFieldValue("icegateId", e.target.value)}
+            style={{ ...styles.input, cursor: "pointer", paddingRight: 4 }}
+          >
+            <option value="RAJANSFPL">RAJANSFPL</option>
+            <option value="SURAJAMD">SURAJAMD</option>
+          </select>
+        </div>
+
         {/* Documents Button */}
         <div style={{ flex: "0 0 auto" }}>
           <button
