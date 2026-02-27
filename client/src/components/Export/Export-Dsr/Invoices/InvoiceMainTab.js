@@ -310,6 +310,14 @@ const InvoiceMainTab = ({ formik }) => {
   const handleInvChange = (index, field, value) => {
     const updatedInvoices = [...invoices];
     const invoice = updatedInvoices[index] || {};
+
+    if (field === "invoiceValue" || field === "productValue") {
+      if (parseFloat(value) < 0) {
+        alert("Value cannot be negative");
+        return;
+      }
+    }
+
     const updatedInvoice = { ...invoice, [field]: value };
 
     if (field === "termsOfInvoice") {
@@ -365,6 +373,10 @@ const InvoiceMainTab = ({ formik }) => {
   };
 
   const handleFieldChange = (field, value) => {
+    if (field === "exchange_rate" && parseFloat(value) < 0) {
+      alert("Exchange rate cannot be negative");
+      return;
+    }
     formik.setFieldValue(field, value);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {

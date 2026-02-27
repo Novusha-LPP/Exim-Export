@@ -83,12 +83,26 @@ function ContainerTab({ formik, onUpdate }) {
 
   const handleFieldChange = (idx, field, value) => {
     const list = [...(formik.values.containers || [])];
+
+    if (field === "containerNo") {
+      const val = value.toUpperCase().trim();
+      // Basic format validation: 4 letters + 7 digits
+      if (val && !/^[A-Z]{4}\d{7}$/.test(val)) {
+        // We allow typing, but we could show a warning or just not sync yet.
+        // For now, let's just update the value and we could add a visual error later.
+      }
+
+      // Duplicate check
+      const isDuplicate = list.some((c, i) => i !== idx && c.containerNo === val);
+      if (isDuplicate && val !== "") {
+        alert(`Container Number ${val} is already added.`);
+        return; 
+      }
+    }
+
     list[idx][field] = value;
 
-    // Auto-calculate sum (VGM = Gross + Tare) - keeping for legacy or if needed, but user wants Max Payload in that column
-    // The user requested "VGM WT = Max Payload (KG)". We will bind the column to maxPayloadKgs. 
-    // We can still calc grWtPlusTrWt in background if needed, but prioritising user request.
-
+    // Auto-calculate sum (VGM = Gross + Tare)
     formik.setFieldValue("containers", list);
 
     // Sync to Operations Tab
@@ -106,7 +120,6 @@ function ContainerTab({ formik, onUpdate }) {
         );
 
         if (hasContainer) {
-
           let detailsChanged = false;
           const newCDetails = cDetails.map((d) => {
             if (
@@ -143,8 +156,6 @@ function ContainerTab({ formik, onUpdate }) {
         formik.setFieldValue("operations", newOps);
       }
     }
-
-    // debouncedSave();
   };
 
   const handleAdd = () => {

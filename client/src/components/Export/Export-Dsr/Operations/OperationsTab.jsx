@@ -808,29 +808,70 @@ const OperationsTab = ({ formik }) => {
     }
   }, [isAir]);
 
-  // Auto-sync Shipping Line from job header to booking details
+  // Auto-sync Header fields (Shipping Line, Vessel/Flight, Voyage, Booking No/Date) to booking details
   useEffect(() => {
     const jobShippingLine = toUpper(formik.values.shipping_line_airline || "");
-    if (!jobShippingLine) return;
+    const jobVessel = toUpper(
+      (isAir ? formik.values.flight_no : formik.values.vessel_name) || "",
+    );
+    const jobVoyage = toUpper(formik.values.voyage_no || "");
+    const jobBookingNo = toUpper(formik.values.booking_no || "");
+    const jobBookingDate = formik.values.booking_date || "";
 
     const currentOps = formik.values.operations || [];
     let changed = false;
     const nextOps = currentOps.map((op) => {
       const bookingDetails = op.bookingDetails || [];
       const updatedBooking = bookingDetails.map((b) => {
+        let bChanged = false;
+        const newB = { ...b };
+
         if (toUpper(b.shippingLineName || "") !== jobShippingLine) {
+          newB.shippingLineName = jobShippingLine;
+          bChanged = true;
+        }
+        if (toUpper(b.vesselName || "") !== jobVessel) {
+          newB.vesselName = jobVessel;
+          bChanged = true;
+        }
+        // Voyage only exists for Sea (not Air)
+        if (!isAir && toUpper(b.voyageNo || "") !== jobVoyage) {
+          newB.voyageNo = jobVoyage;
+          bChanged = true;
+        }
+        if (toUpper(b.bookingNo || "") !== jobBookingNo) {
+          newB.bookingNo = jobBookingNo;
+          bChanged = true;
+        }
+        if ((b.bookingDate || "") !== jobBookingDate) {
+          newB.bookingDate = jobBookingDate;
+          bChanged = true;
+        }
+
+        if (bChanged) {
           changed = true;
-          return { ...b, shippingLineName: jobShippingLine };
+          return newB;
         }
         return b;
       });
       if (changed) return { ...op, bookingDetails: updatedBooking };
       return op;
     });
+
     if (changed) {
       formik.setFieldValue("operations", nextOps);
     }
-  }, [formik.values.shipping_line_airline, formik.values.job_no, operations.length]);
+  }, [
+    formik.values.shipping_line_airline,
+    formik.values.vessel_name,
+    formik.values.flight_no,
+    formik.values.voyage_no,
+    formik.values.booking_no,
+    formik.values.booking_date,
+    formik.values.job_no,
+    operations.length,
+    isAir,
+  ]);
 
   // 1. Collect all unique container numbers from ALL sections of ALL operations
   const allOpContainersSet = new Set();
@@ -1190,6 +1231,19 @@ const OperationsTab = ({ formik }) => {
     const transportMode = toUpper(formik.values.transportMode || "");
     const isAir = transportMode === "AIR";
 
+    // Validation: LEO date cannot be before SB Date
+    if (section === "statusDetails" && field === "leoDate" && value) {
+      const sbDate = formik.values.shipping_bill_date;
+      if (sbDate) {
+        const leo = new Date(value);
+        const sb = new Date(sbDate);
+        if (leo < sb) {
+          alert("LEO date cannot be before SB Filed date");
+          return;
+        }
+      }
+    }
+
     const isLinkedContainerField =
       !isAir &&
       field === "containerNo" &&
@@ -1257,6 +1311,25 @@ const OperationsTab = ({ formik }) => {
       // SYNC: Port Of Loading with Header
       if (section === "containerDetails" && field === "portOfLoading") {
         formik.setFieldValue("port_of_loading", finalValue);
+      }
+
+      // SYNC: Booking Details with Header (VISE VERSA)
+      if (section === "bookingDetails") {
+        if (field === "vesselName") {
+          formik.setFieldValue(isAir ? "flight_no" : "vessel_name", finalValue);
+        }
+        if (field === "voyageNo") {
+          formik.setFieldValue("voyage_no", finalValue);
+        }
+        if (field === "shippingLineName") {
+          formik.setFieldValue("shipping_line_airline", finalValue);
+        }
+        if (field === "bookingNo") {
+          formik.setFieldValue("booking_no", finalValue);
+        }
+        if (field === "bookingDate") {
+          formik.setFieldValue("booking_date", finalValue);
+        }
       }
 
       return updatedOp;

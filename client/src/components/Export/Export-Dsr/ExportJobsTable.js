@@ -2049,9 +2049,15 @@ const ExportJobsTable = () => {
                             <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px", alignItems: "baseline" }}>
                               <span style={{ fontWeight: "700", fontSize: "11px", color: "#111" }}>Discharge:</span>
                               <span style={{ fontSize: "11px", color: "#374151", fontWeight: "600" }}>{job.port_of_discharge || "-"}</span>
+                             
                             </div>
                             <div style={{ fontSize: "10px", color: "#6b7280", fontStyle: "italic", paddingLeft: "60px" }}>
                               {job.discharge_country || "-"}
+                              
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px", alignItems: "baseline" }}>
+                              <span style={{ fontWeight: "700", fontSize: "11px", color: "#111" }}>POL:</span>
+                              <span style={{ fontSize: "11px", color: "#374151", fontWeight: "600" }}>{job.port_of_loading}</span>
                             </div>
                           </div>
                         </td>

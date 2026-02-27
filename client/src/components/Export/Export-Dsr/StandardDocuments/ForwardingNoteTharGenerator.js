@@ -66,9 +66,11 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       // Mapping values
       const consignorName = data.exporter || "";
       const vesselName = data.vessel_name || "";
+      console.log(data);
       const Bookingno = booking.bookingNo || "";
       const agentCha = "SURAJ FORWARDERS & SHIPPING AGENCIES";
-      const cutOffDate = formatDate(booking.vesselCutOffDate);
+      const cutOffDate = formatDate(booking.bookingDate );
+      const portofLoading = data.port_of_loading || "";
       const dischargeCountry = data.discharge_country || "";
       const exporterAddress = data.exporter || "";
       const gatewayPort = data.gateway_port || booking.portOfLoading || "";
@@ -254,6 +256,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
               </td>
               <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
                 <div style="font-size: 10px;"><b>Port of Discharge : ${portOfDischarge}</b></div>
+                  // <div style="font-size: 10px;"><b>Port of Loading : ${portofLoading}</b></div>
               </td>
             </tr>
 

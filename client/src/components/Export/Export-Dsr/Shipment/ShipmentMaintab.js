@@ -1316,6 +1316,14 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
     saveTimeoutRef.current = setTimeout(() => autoSave(formik.values), 1100);
   }
 
+  // Auto-sync No of Containers from Container tab
+  useEffect(() => {
+    const containerCount = (formik.values.containers || []).length;
+    if (formik.values.no_of_containers !== containerCount) {
+      formik.setFieldValue("no_of_containers", containerCount);
+    }
+  }, [formik.values.containers]);
+
   return (
     <div style={styles.page}>
       <div style={styles.row}>
@@ -1463,7 +1471,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
               </div>
             </div>
 
-            {/* Row 4: Voyage No | Flight/Sailing Date */}
+            {/* Row 4: Voyage No | Booking No */}
             <div style={styles.split}>
               <div style={styles.half}>
                 {!isAir && (
@@ -1484,6 +1492,25 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
               </div>
               <div style={styles.half}>
                 <div style={styles.field}>
+                  <div style={styles.label}>BOOKING NO</div>
+                  <input
+                    style={styles.input}
+                    value={toUpper(formik.values.booking_no || "")}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "booking_no",
+                        e.target.value.toUpperCase(),
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 5: Sailing Date | Booking Date */}
+            <div style={styles.split}>
+              <div style={styles.half}>
+                <div style={styles.field}>
                   <div style={styles.label}>
                     {isAir ? "FLIGHT DATE" : "SAILING DATE"}
                   </div>
@@ -1499,6 +1526,18 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                         isAir ? "flight_date" : "sailing_date",
                         e.target.value,
                       )
+                    }
+                  />
+                </div>
+              </div>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>BOOKING DATE</div>
+                  <DateInput
+                    style={styles.input}
+                    value={formik.values.booking_date || ""}
+                    onChange={(e) =>
+                      handleFieldChange("booking_date", e.target.value)
                     }
                   />
                 </div>

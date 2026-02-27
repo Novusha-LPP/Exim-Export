@@ -211,12 +211,23 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
       const value = current[field];
 
       switch (field) {
-        case "quantity":
-          current[field] = formatQty(value);
-          break;
-        case "socQuantity":
-          current[field] = formatSocQty(value);
-          break;
+    case "quantity":
+      if (Number(value) <= 0 && value !== "") {
+        alert("Quantity must be greater than zero");
+        current[field] = "";
+      } else {
+        current[field] = formatQty(value);
+      }
+      break;
+    case "ritc":
+      if (value && !/^\d+$/.test(value)) {
+        alert("HSN Code must be numeric");
+        current[field] = "";
+      }
+      break;
+    case "socQuantity":
+      current[field] = formatSocQty(value);
+      break;
         case "unitPrice":
           current[field] = formatUnitPrice(value);
           break;

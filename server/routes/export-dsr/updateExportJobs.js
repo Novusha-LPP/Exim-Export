@@ -434,6 +434,7 @@ router.get("/exports/:status?", async (req, res) => {
       branch_code: 1,
       transportMode: 1,
       movement_type: 1,
+      port_of_loading: 1,
       "operations.bookingDetails.bookingNo": 1,
       "operations.bookingDetails.shippingLineName": 1,
       "operations.statusDetails.containerPlacementDate": 1,

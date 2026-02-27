@@ -146,6 +146,10 @@ const ChargesTab = ({ formik, directories, params }) => {
   };
 
   const handleInputChange = (index, field, value) => {
+    if ((field === "buying" || field === "selling") && parseFloat(value) <= 0 && value !== "") {
+      alert("Amount must be greater than zero");
+      return;
+    }
     formik.setFieldValue(`charges.${index}.${field}`, value);
   };
 
@@ -178,6 +182,10 @@ const ChargesTab = ({ formik, directories, params }) => {
   };
 
   const handleFineChange = (index, field, value) => {
+    if (field === "amount" && parseFloat(value) <= 0 && value !== "") {
+      alert("Amount must be greater than zero");
+      return;
+    }
     formik.setFieldValue(`fines.${index}.${field}`, value);
   };
 
