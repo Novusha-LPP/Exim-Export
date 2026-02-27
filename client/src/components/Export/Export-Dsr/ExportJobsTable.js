@@ -17,6 +17,7 @@ import {
   TextField,
   Menu,
   Pagination,
+  CircularProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -24,6 +25,8 @@ import LockIcon from "@mui/icons-material/Lock"; // Import LockIcon
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import { uploadFileToS3 } from "../../../utils/awsFileUpload";
 import AddExJobs from "./AddExJobs";
 import { formatDate } from "../../../utils/dateUtils";
 import { priorityFilter } from "../../../utils/filterUtils";
@@ -306,6 +309,86 @@ const buildShippingLineUrls = (num, containerFirst = "") => ({
     ? `https://www.unifeeder.cargoes.com/tracking?ID=${num.slice(0, 3)}%2F${num.slice(3, 6)}%2F${num.slice(6, 8)}%2F${num.slice(8)}`
     : "#",
 });
+
+const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSuccess }) => {
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const result = await uploadFileToS3(file, "export_docs");
+      const url = result.Location;
+
+      const newOperations = JSON.parse(JSON.stringify(job.operations || []));
+
+      if (!newOperations[0]) newOperations[0] = {};
+
+      if (uploadType === "section") {
+        if (!Array.isArray(newOperations[0][field])) newOperations[0][field] = [];
+
+        while (newOperations[0][field].length <= idx) {
+          newOperations[0][field].push({});
+        }
+
+        const currentFiles = Array.isArray(newOperations[0][field][idx].images)
+          ? newOperations[0][field][idx].images
+          : [];
+        newOperations[0][field][idx].images = [...currentFiles, url];
+      } else {
+        if (!newOperations[0].statusDetails) newOperations[0].statusDetails = [{}];
+        if (!newOperations[0].statusDetails[0]) newOperations[0].statusDetails[0] = {};
+
+        const currentFiles = Array.isArray(newOperations[0].statusDetails[0][field])
+          ? newOperations[0].statusDetails[0][field]
+          : [];
+        newOperations[0].statusDetails[0][field] = [...currentFiles, url];
+      }
+
+      const payload = { ...job, operations: newOperations };
+
+      await axios.put(
+        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(job.job_no)}`,
+        payload
+      );
+
+      if (onSuccess) onSuccess(url);
+    } catch (err) {
+      console.error("Quick upload err:", err);
+      // alert("Failed to upload document.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <>
+      <IconButton
+        size="small"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={uploading}
+        style={{ padding: "1px", marginLeft: "2px" }}
+        title="Quick Upload Document"
+      >
+        {uploading ? (
+          <CircularProgress size={12} style={{ color: "#16408f" }} />
+        ) : (
+          <CloudUploadIcon style={{ fontSize: "14px", color: "#16408f" }} />
+        )}
+      </IconButton>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        style={{ display: "none" }}
+      />
+    </>
+  );
+};
 
 const ExportJobsTable = () => {
   const { user } = useContext(UserContext);
@@ -993,39 +1076,40 @@ const ExportJobsTable = () => {
       job.eSanchitDocuments.forEach((doc, idx) => {
         if (doc.fileUrl) {
           let title =
-            doc.documentType || doc.icegateFilename || `eSanchit ${idx + 1}`;
+            `eSanchit ${idx + 1}`;
 
           if (title === "380") title = "Commercial Invoice";
 
-          links.push({ title, url: doc.fileUrl });
+          links.push({ title, url: doc.fileUrl, field: null });
         }
       });
     }
 
     // 2. Operations Documents
     const ops = job.operations && job.operations[0];
-    if (ops) {
-      // Status Details
-      const status = ops.statusDetails && ops.statusDetails[0];
-      if (status) {
-        const statusFiles = [
-          { field: "leoUpload", title: "LEO" },
-          { field: "stuffingSheetUpload", title: "Stuffing Sheet" },
-          { field: "stuffingPhotoUpload", title: "Stuffing Photo" },
-          { field: "eGatePassUpload", title: "Gate Pass" },
-          { field: "handoverImageUpload", title: "HO/DOC Copy" },
-          { field: "billingDocsSentUpload", title: "Bill Doc Copy" },
-        ];
+    const status = ops ? (ops.statusDetails && ops.statusDetails[0]) || {} : {};
 
-        statusFiles.forEach((f) => {
-          if (Array.isArray(status[f.field])) {
-            status[f.field].forEach((url, i) => {
-              if (url) links.push({ title: f.title, url });
-            });
-          }
+    const statusFiles = [
+      { field: "leoUpload", title: "LEO" },
+      { field: "stuffingSheetUpload", title: "Stuffing Sheet" },
+      { field: "stuffingPhotoUpload", title: "Stuffing Photo" },
+      { field: "eGatePassUpload", title: "Gate Pass" },
+      { field: "handoverImageUpload", title: "HO/DOC Copy" },
+      { field: "billingDocsSentUpload", title: "Bill Doc Copy" },
+    ];
+
+    statusFiles.forEach((f) => {
+      const urls = Array.isArray(status[f.field]) ? status[f.field] : [];
+      if (urls.length > 0) {
+        urls.forEach((url) => {
+          if (url) links.push({ title: f.title, url, field: f.field });
         });
+      } else {
+        links.push({ title: f.title, url: null, field: f.field });
       }
+    });
 
+    if (ops) {
       // Other Sections
       const sections = [
         { field: "transporterDetails", title: "Transporter" },
@@ -1034,14 +1118,21 @@ const ExportJobsTable = () => {
       ];
 
       sections.forEach((s) => {
-        if (
-          ops[s.field] &&
-          ops[s.field][0] &&
-          Array.isArray(ops[s.field][0].images)
-        ) {
-          ops[s.field][0].images.forEach((url, i) => {
-            if (url) links.push({ title: s.title, url });
+        if (ops[s.field] && Array.isArray(ops[s.field]) && ops[s.field].length > 0) {
+          ops[s.field].forEach((item, index) => {
+            const urls = Array.isArray(item.images) ? item.images : [];
+            const displayTitle = ops[s.field].length > 1 ? `${s.title} ${index + 1}` : s.title;
+
+            if (urls.length > 0) {
+              urls.forEach((url) => {
+                if (url) links.push({ title: displayTitle, url, field: s.field, uploadType: "section", idx: index });
+              });
+            } else {
+              links.push({ title: displayTitle, url: null, field: s.field, uploadType: "section", idx: index });
+            }
           });
+        } else {
+          links.push({ title: s.title, url: null, field: s.field, uploadType: "section", idx: 0 });
         }
       });
 
@@ -1050,7 +1141,7 @@ const ExportJobsTable = () => {
         ops.containerDetails.forEach((cd, idx) => {
           if (Array.isArray(cd.images)) {
             cd.images.forEach((url, i) => {
-              if (url) links.push({ title: "container img", url });
+              if (url) links.push({ title: "container img", url, field: null });
             });
           }
         });
@@ -2049,11 +2140,11 @@ const ExportJobsTable = () => {
                             <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px", alignItems: "baseline" }}>
                               <span style={{ fontWeight: "700", fontSize: "11px", color: "#111" }}>Discharge:</span>
                               <span style={{ fontSize: "11px", color: "#374151", fontWeight: "600" }}>{job.port_of_discharge || "-"}</span>
-                             
+
                             </div>
                             <div style={{ fontSize: "10px", color: "#6b7280", fontStyle: "italic", paddingLeft: "60px" }}>
                               {job.discharge_country || "-"}
-                              
+
                             </div>
                             <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px", alignItems: "baseline" }}>
                               <span style={{ fontWeight: "700", fontSize: "11px", color: "#111" }}>POL:</span>
@@ -2246,6 +2337,16 @@ const ExportJobsTable = () => {
                               )}
                             </span>
                           </div>
+                          <div style={{ marginTop: "2px", fontSize: "10px" }}>
+                            <span style={{ color: "#6b7280" }}>Bill:</span>{" "}
+                            <span style={{ fontWeight: "500" }}>
+                              {formatDate(
+                                job.operations?.[0]?.statusDetails?.[0]
+                                  ?.billingDocsSentDt,
+                                "dd-MM-yy"
+                              )}
+                            </span>
+                          </div>
                         </td>
 
                         {/* Column 9: Docs */}
@@ -2259,27 +2360,89 @@ const ExportJobsTable = () => {
                             }}
                           >
                             {getDocumentLinks(job).map((link, i) => (
-                              <a
-                                key={i}
-                                href={link.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  fontSize: "10px",
-                                  color: "#2563eb",
-                                  textDecoration: "underline",
-                                  fontWeight: "600",
-                                  display: "block",
-                                  whiteSpace: "nowrap",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  maxWidth: "160px",
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                title={link.title}
-                              >
-                                {link.title}
-                              </a>
+                              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
+                                {link.url ? (
+                                  <a
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      fontSize: "10px",
+                                      color: "#2563eb",
+                                      textDecoration: "underline",
+                                      fontWeight: "600",
+                                      display: "inline-block",
+                                      whiteSpace: "nowrap",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      maxWidth: "140px",
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    title={link.title}
+                                  >
+                                    {link.title}
+                                  </a>
+                                ) : (
+                                  <span
+                                    style={{
+                                      fontSize: "10px",
+                                      color: "#9ca3af",
+                                      fontWeight: "600",
+                                      display: "inline-block",
+                                      whiteSpace: "nowrap",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      maxWidth: "140px",
+                                    }}
+                                    title={link.title}
+                                  >
+                                    {link.title}
+                                  </span>
+                                )}
+
+                                {link.field && (
+                                  <div onClick={(e) => e.stopPropagation()}>
+                                    <QuickUploadButton
+                                      job={job}
+                                      field={link.field}
+                                      uploadType={link.uploadType || "status"}
+                                      idx={link.idx || 0}
+                                      onSuccess={(url) => {
+                                        setJobs((prevJobs) =>
+                                          prevJobs.map((j) => {
+                                            if (j._id === job._id) {
+                                              const newOps = JSON.parse(JSON.stringify(j.operations || []));
+                                              if (!newOps[0]) newOps[0] = {};
+
+                                              if (link.uploadType === "section") {
+                                                if (!Array.isArray(newOps[0][link.field])) newOps[0][link.field] = [];
+                                                while (newOps[0][link.field].length <= (link.idx || 0)) {
+                                                  newOps[0][link.field].push({});
+                                                }
+                                                const currFiles = Array.isArray(newOps[0][link.field][link.idx || 0].images)
+                                                  ? newOps[0][link.field][link.idx || 0].images
+                                                  : [];
+                                                newOps[0][link.field][link.idx || 0].images = [...currFiles, url];
+                                              } else {
+                                                if (!newOps[0].statusDetails) newOps[0].statusDetails = [{}];
+                                                if (!newOps[0].statusDetails[0]) newOps[0].statusDetails[0] = {};
+
+                                                const currFiles = Array.isArray(newOps[0].statusDetails[0][link.field])
+                                                  ? newOps[0].statusDetails[0][link.field]
+                                                  : [];
+                                                newOps[0].statusDetails[0][link.field] = [...currFiles, url];
+                                              }
+
+                                              return { ...j, operations: newOps };
+                                            }
+                                            return j;
+                                          })
+                                        );
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
                             ))}
                           </div>
                         </td>

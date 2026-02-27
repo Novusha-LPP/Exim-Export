@@ -447,6 +447,7 @@ router.get("/exports/:status?", async (req, res) => {
       "operations.statusDetails.eGatePassUpload": 1,
       "operations.statusDetails.handoverImageUpload": 1,
       "operations.statusDetails.billingDocsSentUpload": 1,
+      "operations.statusDetails.billingDocsSentDt": 1,
       "operations.statusDetails.status": 1,
       "operations.transporterDetails.images": 1,
       "operations.bookingDetails.images": 1,
