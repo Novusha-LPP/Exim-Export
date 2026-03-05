@@ -394,6 +394,9 @@ router.post("/api/jobs/add-job", async (req, res) => {
 
                 // Branch
                 branchSrNo,
+
+                // LEO Date
+                leo_date,
             } = data;
 
             // CRITICAL: Skip rows that don't have a job number
@@ -504,13 +507,30 @@ router.post("/api/jobs/add-job", async (req, res) => {
 
             // Build consignees array if consignee info exists
             // Overwrite existing data if spreadsheet data exists, otherwise use existing data
-            let consigneesToUpdate = existingJob?.consignees || [];
-            if (consignee_name && String(consignee_name).trim() !== "") {
-                consigneesToUpdate = [{
-                    consignee_name: consignee_name,
-                    consignee_address: consignee_address || "",
-                    consignee_country: consignee_country || "",
-                }];
+            let consigneesToUpdate = existingJob?.consignees ? [...existingJob.consignees] : [];
+            const hasNewConsigneeData = (consignee_name && String(consignee_name).trim() !== "") ||
+                (consignee_address && String(consignee_address).trim() !== "") ||
+                (consignee_country && String(consignee_country).trim() !== "");
+
+            if (hasNewConsigneeData) {
+                if (consigneesToUpdate.length > 0) {
+                    consigneesToUpdate[0] = { ...consigneesToUpdate[0] };
+                    if (consignee_name && String(consignee_name).trim() !== "") {
+                        consigneesToUpdate[0].consignee_name = consignee_name;
+                    }
+                    if (consignee_address && String(consignee_address).trim() !== "") {
+                        consigneesToUpdate[0].consignee_address = consignee_address;
+                    }
+                    if (consignee_country && String(consignee_country).trim() !== "") {
+                        consigneesToUpdate[0].consignee_country = consignee_country;
+                    }
+                } else {
+                    consigneesToUpdate = [{
+                        consignee_name: consignee_name || "",
+                        consignee_address: consignee_address || "",
+                        consignee_country: consignee_country || "",
+                    }];
+                }
             }
 
             let existingCustomHouse = existingJob?.custom_house;
@@ -667,6 +687,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
                     delete updateData[key];
                 }
             });
+
 
             // Build invoices array if invoice data exists
             // Excel has invoice data at top level, but schema stores it in invoices array
@@ -1028,6 +1049,11 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 }
             }
 
+            // Process LEO Date -> operations.0.statusDetails.0.leoDate
+            if (leo_date && String(leo_date).trim() !== "") {
+                update.$set["operations.0.statusDetails.0.leoDate"] = String(leo_date).trim();
+            }
+
             // Process Financials Locked On -> Billing Done Milestone
             if (financials_locked_on) {
                 update.$set.status = "Completed";
@@ -1084,16 +1110,11 @@ router.post("/api/jobs/add-job", async (req, res) => {
 
         // Execute remaining operations
         if (bulkOperations.length > 0) {
-            console.log(
-                `💾 [Backend] Writing final chunk of ${bulkOperations.length} jobs to database...`
-            );
             await ExportJobModel.bulkWrite(bulkOperations, { ordered: false });
-            console.log(`✅ [Backend] Final chunk written successfully.`);
         }
 
         // Update sequence counters in bulk at the end
         if (maxSequences.size > 0) {
-            console.log(`🆙 [Backend] Syncing job sequences for ${maxSequences.size} branch/year combinations...`);
             for (const [key, maxSeq] of maxSequences.entries()) {
                 const [branch, year] = key.split('|');
                 try {
@@ -1120,9 +1141,8 @@ router.post("/api/jobs/add-job", async (req, res) => {
         }
 
         const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
-        console.log(
-            `🎉 [Backend] Processing complete! Processed: ${processedCount}, Skipped: ${skippedCount}, Time: ${totalTime}s`
-        );
+
+
 
         res.status(200).json({
             success: true,

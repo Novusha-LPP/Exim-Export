@@ -3,6 +3,8 @@ import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 import {
   Dialog,
   DialogTitle,
@@ -659,38 +661,39 @@ const ExportJobsTable = () => {
           if (job.job_no) jobNoCol.push(job.job_no);
           if (job.custom_house) jobNoCol.push(job.custom_house);
           if (job.movement_type) jobNoCol.push(job.movement_type);
-          rowData["Job No"] = jobNoCol.join(" | ");
+          rowData["Job No"] = jobNoCol.join("\n");
 
           // Column 2: Consignee Name
           let consigneeCol = [];
           if (job.consignees?.[0]?.consignee_name) consigneeCol.push(job.consignees[0].consignee_name);
           else if (job.invoices?.[0]?.consigneeName) consigneeCol.push(job.invoices[0].consigneeName);
-          rowData["Consignee Name"] = consigneeCol.join(" | ") || "";
+          rowData["Consignee Name"] = consigneeCol.join("\n") || "";
 
           // Column 3: Invoice
           let invCol = [];
           if (job.invoices && job.invoices.length > 0) {
             job.invoices.forEach(inv => {
-              let invStr = [];
-              if (inv.invoice_no) invStr.push(inv.invoice_no);
-              if (inv.invoice_date) invStr.push(formatDate(inv.invoice_date, "dd-MM-yy"));
-              if (inv.invValue && inv.currency) invStr.push(`${inv.currency} ${inv.invValue}`);
-              if (invStr.length > 0) invCol.push(invStr.join(", "));
+              if (inv.invoiceNumber) invCol.push(inv.invoiceNumber);
+              if (inv.invoiceDate) invCol.push(formatDate(inv.invoiceDate, "dd-MM-yy"));
+              if (inv.invoiceValue && inv.currency) invCol.push(`${inv.currency} ${inv.invoiceValue}`);
             });
           }
-          rowData["Invoice"] = invCol.join(" | ");
+          rowData["Invoice"] = invCol.join("\n");
 
           // Column 4: SB / Date
           let sbCol = [];
           if (job.sb_no) sbCol.push(job.sb_no);
           if (job.sb_date) sbCol.push(job.sb_date);
-          rowData["SB / Date"] = sbCol.join(" | ");
+          rowData["SB / Date"] = sbCol.join("\n");
 
           // Column 5: Port
           let portCol = [];
           if (job.destination_port) portCol.push(`Dest: ${job.destination_port}`);
-          if (job.discharge_port) portCol.push(`Discharge: ${job.discharge_port}`);
-          rowData["Port"] = portCol.join(" | ");
+          if (job.destination_country) portCol.push(job.destination_country);
+          if (job.port_of_discharge) portCol.push(`Discharge: ${job.port_of_discharge}`);
+          if (job.discharge_country) portCol.push(job.discharge_country);
+          if (job.port_of_loading) portCol.push(`POL: ${job.port_of_loading}`);
+          rowData["Port"] = portCol.join("\n");
 
           // Column 6: Container
           let contCol = [];
@@ -700,15 +703,13 @@ const ExportJobsTable = () => {
 
           if (job.containers && job.containers.length > 0) {
             job.containers.forEach(c => {
-              let cStr = [];
-              if (c.containerNo) cStr.push(`Cont: ${c.containerNo}`);
-              if (c.size) cStr.push(`Size: ${c.size}`);
-              if (cStr.length > 0) contCol.push(cStr.join(", "));
+              if (c.containerNo) contCol.push(`Cont: ${c.containerNo}`);
+              if (c.size) contCol.push(`Size: ${c.size}`);
             });
           }
           const placeDate = job.operations?.[0]?.statusDetails?.[0]?.containerPlacementDate;
           if (placeDate) contCol.push(`Place: ${formatDate(placeDate, "dd-MM-yy")}`);
-          rowData["Container"] = contCol.join(" | ");
+          rowData["Container"] = contCol.join("\n");
 
           // Column 7: Handover
           let handCol = [];
@@ -716,39 +717,95 @@ const ExportJobsTable = () => {
           if (opDetails.handoverForwardingNoteDate) handCol.push(`DHo: ${formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}`);
           if (opDetails.railOutReachedDate) handCol.push(`Rail: ${formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}`);
           if (opDetails.leoDate) handCol.push(`Leo: ${formatDate(opDetails.leoDate, "dd-MM-yy")}`);
-          rowData["Handover"] = handCol.join(" | ");
+          rowData["Handover"] = handCol.join("\n");
 
           // Column 8: Status
           let statusCol = [];
-          if (job.statusDetails && job.statusDetails[0]?.status) statusCol.push(job.statusDetails[0].status);
-          else if (job.status) statusCol.push(job.status);
-          rowData["Status"] = statusCol.join(" | ");
+          const statusValue = (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
+            ? job.detailedStatus[job.detailedStatus.length - 1]
+            : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status) || "-";
+          statusCol.push(statusValue);
+          rowData["Status"] = statusCol.join("\n");
+
+          // We also attach raw status for color reference (removed later if needed, but it helps below)
+          rowData["_StatusColorRef"] = statusValue;
 
           // Remove entirely empty columns dynamically as per user rule:
-          // "IF DHo HAS NO VALUE OR "" THEN DONT SHOW THAT FIELD AT ALL SAME LOGIC FOR ALL FIELDS"
-          // We already omit empty fields inside the columns using `if()`, but if the column itself is empty we delete it
           Object.keys(rowData).forEach(key => {
-            if (!rowData[key] || rowData[key].trim() === "") {
+            if (key !== "_StatusColorRef" && (!rowData[key] || rowData[key].trim() === "")) {
               delete rowData[key];
             }
           });
 
           return rowData;
         });
+        // Use ExcelJS
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("DSR Report");
 
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
-        var wscols = [
-          { wch: 25 }, { wch: 30 }, { wch: 30 },
-          { wch: 20 }, { wch: 25 }, { wch: 40 },
-          { wch: 25 }, { wch: 15 }
+        // Define columns based on our structure map
+        worksheet.columns = [
+          { header: "Job No", key: "Job No", width: 25 },
+          { header: "Consignee Name", key: "Consignee Name", width: 30 },
+          { header: "Invoice", key: "Invoice", width: 30 },
+          { header: "SB / Date", key: "SB / Date", width: 15 },
+          { header: "Port", key: "Port", width: 25 },
+          { header: "Container", key: "Container", width: 30 },
+          { header: "Handover", key: "Handover", width: 20 },
+          { header: "Status", key: "Status", width: 20 },
         ];
-        worksheet['!cols'] = wscols;
 
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "DSR Report");
+        // Format Headers
+        worksheet.getRow(1).eachCell((cell) => {
+          cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FF2C5AA0" }, // Custom Blue
+          };
+          cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+          cell.border = {
+            top: { style: "thin" }, left: { style: "thin" },
+            bottom: { style: "thin" }, right: { style: "thin" }
+          };
+        });
 
+        // Add Data Rows and Format
+        exportData.forEach((rowObj) => {
+          const newRow = worksheet.addRow(rowObj);
+
+          // Apply styling to all cells in the row
+          newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            cell.alignment = { vertical: "top", horizontal: "left", wrapText: true };
+            cell.border = {
+              top: { style: "thin" }, left: { style: "thin" },
+              bottom: { style: "thin" }, right: { style: "thin" }
+            };
+
+            // Apply background color if available
+            if (rowObj["_StatusColorRef"]) {
+              const colorHex = getStatusColor(rowObj["_StatusColorRef"]).replace("#", "");
+              if (colorHex !== "transparent") {
+                let finalHex = colorHex;
+                if (finalHex.length === 8) finalHex = finalHex.substring(0, 6); // RRGGBBAA -> RRGGBB
+                if (finalHex.length === 4) finalHex = finalHex.substring(0, 3);
+                // Standardize to 6 chars ARGB for exceljs (opaque)
+                if (finalHex.length === 6) {
+                  cell.fill = {
+                    type: "pattern",
+                    pattern: "solid",
+                    fgColor: { argb: "FF" + finalHex }
+                  };
+                }
+              }
+            }
+          });
+        });
+
+        // Export file
+        const buffer = await workbook.xlsx.writeBuffer();
         const dateStr = format(new Date(), "yyyyMMdd");
-        XLSX.writeFile(workbook, `Table_DSR_${selectedExporter}_${dateStr}.xlsx`);
+        saveAs(new Blob([buffer]), `Table_DSR_${selectedExporter}_${dateStr}.xlsx`);
         setOpenDSRDialog(false);
       } else {
         alert("Failed to fetch jobs data");
@@ -2239,19 +2296,21 @@ const ExportJobsTable = () => {
                                           })()}
 
                                           {/* CONCOR Container Track Button */}
-                                          <Tooltip title="Track on CONCOR India">
-                                            <IconButton
-                                              size="small"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setContainerTrackContainers(job.containers || []);
-                                                setContainerTrackOpen(true);
-                                              }}
-                                              style={{ padding: 0, marginLeft: 2 }}
-                                            >
-                                              <FontAwesomeIcon icon={faAnchor} style={{ fontSize: 10, color: "#7c3aed" }} />
-                                            </IconButton>
-                                          </Tooltip>
+                                          {job.custom_house?.toUpperCase().includes("ICD") && (
+                                            <Tooltip title="Track on CONCOR India">
+                                              <IconButton
+                                                size="small"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setContainerTrackContainers(job.containers || []);
+                                                  setContainerTrackOpen(true);
+                                                }}
+                                                style={{ padding: 0, marginLeft: 2 }}
+                                              >
+                                                <FontAwesomeIcon icon={faAnchor} style={{ fontSize: 10, color: "#7c3aed" }} />
+                                              </IconButton>
+                                            </Tooltip>
+                                          )}
                                         </div>
 
                                         <div style={{ display: 'flex', alignItems: 'center' }}>

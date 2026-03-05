@@ -54,7 +54,11 @@ function useExportExcelUpload(inputRef, onSuccess) {
     const validateAndProcessFile = async (event, file) => {
         try {
             const content = event.target.result;
-            const workbook = xlsx.read(content, { type: "binary" });
+            const workbook = xlsx.read(content, {
+                type: "binary",
+                cellDates: false,
+                dateNF: 'dd-mm-yyyy'
+            });
 
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
@@ -107,56 +111,65 @@ function useExportExcelUpload(inputRef, onSuccess) {
     const parseExcelDate = (value) => {
         if (!value) return "";
 
-        // If it's a number (Excel serial date)
-        if (!isNaN(value) && typeof value === "number") {
+        // Normalize if it's already a formatted number string
+        const valStr = String(value).trim();
+        if (valStr === "") return "";
+
+        // 1. If it's a number (Excel serial date - can be number or string representation)
+        if (!isNaN(valStr) && !/[-/]/.test(valStr)) {
+            const numValue = Number(valStr);
             const excelEpoch = new Date(1899, 11, 30);
-            const jsDate = new Date(excelEpoch.getTime() + value * 86400000);
+            const jsDate = new Date(excelEpoch.getTime() + numValue * 86400000);
             const year = jsDate.getFullYear();
             const month = String(jsDate.getMonth() + 1).padStart(2, "0");
             const day = String(jsDate.getDate()).padStart(2, "0");
-            return `${year}-${month}-${day}`;
+            return `${day}-${month}-${year}`; // RETURN DD-MM-YYYY
         }
 
-        // If it's a string, try to parse various formats
-        if (typeof value === "string") {
-            // Format: DD/MM/YYYY or DD/MM/YYYY HH:MM
-            const dateParts = value.split(" ")[0].split("/");
-            if (dateParts.length === 3) {
-                const day = String(dateParts[0]).padStart(2, "0");
-                const month = String(dateParts[1]).padStart(2, "0");
-                const year = String(dateParts[2]);
-                return `${year}-${month}-${day}`;
-            }
+        // 2. Handle strings (DMY, ISO, MonthName)
+        const raw = valStr.split(" ")[0].split("T")[0];
 
-            // Format: DD-MMM-YYYY or DD/MMM/YYYY (e.g., 15-Jan-2025 or 15/Jan/2025)
-            // Handle lists by mapping each part
-            if (value.includes(",")) {
-                return value.split(",").map(v => parseExcelDate(v.trim())).join(", ");
-            }
+        // a. Handle Lists (comma separated)
+        if (raw.includes(",")) {
+            return raw.split(",").map(v => parseExcelDate(v.trim())).join(", ");
+        }
 
-            const monthMatch = value.match(/^(\d{1,2})[-/]([A-Za-z]{3})[-/](\d{4})$/);
-            if (monthMatch) {
-                const day = monthMatch[1].padStart(2, "0");
-                const month = monthMatch[2];
-                const year = monthMatch[3];
-                const monthMapping = {
-                    Jan: "01", Feb: "02", Mar: "03", Apr: "04",
-                    May: "05", Jun: "06", Jul: "07", Aug: "08",
-                    Sep: "09", Oct: "10", Nov: "11", Dec: "12",
-                };
-                const formattedMonth = monthMapping[month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()];
-                if (formattedMonth) {
-                    return `${year}-${formattedMonth}-${day}`;
-                }
+        // b. Handle DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY or DD-MM-YY
+        const dmYMatch = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
+        if (dmYMatch && !/^\d{4}/.test(raw)) { // Avoid matching YYYY-MM-DD
+            const day = dmYMatch[1].padStart(2, "0");
+            const month = dmYMatch[2].padStart(2, "0");
+            let year = dmYMatch[3];
+            if (year.length === 2) {
+                year = parseInt(year) < 50 ? `20${year}` : `19${year}`;
             }
+            return `${day}-${month}-${year}`; // RETURN DD-MM-YYYY
+        }
 
-            // Format: YYYY-MM-DD (already correct)
-            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-                return value;
+        // c. Handle YYYY-MM-DD (ISO) → convert to DD-MM-YYYY
+        if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+            const parts = raw.split("-");
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+
+        // d. Handle DD-MMM-YYYY (e.g., 15-Jan-2025)
+        const monthMatch = raw.match(/^(\d{1,2})[-/]([A-Za-z]{3})[-/](\d{4})$/);
+        if (monthMatch) {
+            const day = monthMatch[1].padStart(2, "0");
+            const monthName = monthMatch[2];
+            const year = monthMatch[3];
+            const monthMapping = {
+                Jan: "01", Feb: "02", Mar: "03", Apr: "04",
+                May: "05", Jun: "06", Jul: "07", Aug: "08",
+                Sep: "09", Oct: "10", Nov: "11", Dec: "12",
+            };
+            const formattedMonth = monthMapping[monthName.charAt(0).toUpperCase() + monthName.slice(1).toLowerCase()];
+            if (formattedMonth) {
+                return `${day}-${formattedMonth}-${year}`;
             }
         }
 
-        return String(value);
+        return valStr;
     };
 
     /**
@@ -303,7 +316,7 @@ function useExportExcelUpload(inputRef, onSuccess) {
 
                 // Job Identification
                 const jobNoRaw = getText("Doc_ID");
-                
+
                 // XML validation for Doc_ID
                 if (!jobNoRaw) {
                     setError("Error: The provided file doesn't appear to be a valid Export DSR file. Missing 'Job No' or 'Doc ID' column.");
@@ -311,7 +324,7 @@ function useExportExcelUpload(inputRef, onSuccess) {
                     if (inputRef?.current) inputRef.current.value = null;
                     return;
                 }
-                
+
                 const { job_no, year, branch_code } = parseJobNumber(jobNoRaw);
 
                 // Container Details
@@ -539,8 +552,9 @@ function useExportExcelUpload(inputRef, onSuccess) {
                     transportMode: getText("TransportMode") === "S" ? "SEA" : getText("TransportMode") === "A" ? "AIR" : getText("TransportMode"),
                     sb_no: getText("SBNo"),
                     sb_date: parseExcelDate(getText("SBDate")),
-                    consignee_name: getText("Consignee"),
-                    consignee_country: getText("ConsigneeCountry"),
+                    // Avoid overriding or creating consignee details via XML upload
+                    // consignee_name: getText("Consignee"),
+                    // consignee_country: getText("ConsigneeCountry"),
 
                     // Corrected Mapping based on user feedback:
                     // Use extracted Invoice Buyer details. If missing, assume NO update or handle gracefully.
@@ -666,7 +680,11 @@ function useExportExcelUpload(inputRef, onSuccess) {
     const handleFileRead = async (event) => {
         try {
             const content = event.target.result;
-            const workbook = xlsx.read(content, { type: "binary" });
+            const workbook = xlsx.read(content, {
+                type: "binary",
+                cellDates: false,
+                dateNF: 'dd-mm-yyyy'
+            });
 
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
@@ -710,7 +728,12 @@ function useExportExcelUpload(inputRef, onSuccess) {
             console.log(`📍 Data starts from row ${dataStartRow + 1} (index ${dataStartRow})`);
 
             // Read data with the correct range (using header row as reference)
-            const jsonData = xlsx.utils.sheet_to_json(worksheet, { range: headerRowIndex });
+            // Use raw: false and dateNF to ensure dates are read as dd-mm-yyyy strings
+            const jsonData = xlsx.utils.sheet_to_json(worksheet, {
+                range: headerRowIndex,
+                raw: false,
+                dateNF: 'dd-mm-yyyy'
+            });
 
             // Debug: Log the first data row to see the keys
             if (jsonData.length > 0) {
@@ -731,7 +754,7 @@ function useExportExcelUpload(inputRef, onSuccess) {
                 "doc_id": "job_no",
                 "docid": "job_no",
                 "doc_id_": "job_no",
-                
+
                 // Dates
                 "job_date": "job_date",
                 "jobdate": "job_date",
@@ -862,6 +885,10 @@ function useExportExcelUpload(inputRef, onSuccess) {
                 "voyage_no": "voyage_no",
                 "voyageno": "voyage_no",
                 "voyage": "voyage_no",
+                "booking_no": "booking_no",
+                "bookingno": "booking_no",
+                "booking_date": "booking_date",
+                "bookingdate": "booking_date",
 
                 // Ports
                 "port_of_loading": "port_of_loading",
@@ -1001,6 +1028,14 @@ function useExportExcelUpload(inputRef, onSuccess) {
                 "cont_seal_type": "seal_type",
                 "exim_scheme": "exim_scheme",
                 "eximscheme": "exim_scheme",
+
+                // LEO Date
+                "l_e_o": "leo_date",
+                "leo": "leo_date",
+                "leo_date": "leo_date",
+                "gate_in": "gate_in",
+                "gate_on_date": "gate_in",
+                "gatein": "gate_in",
             };
 
             // Date fields that need date parsing
@@ -1008,7 +1043,9 @@ function useExportExcelUpload(inputRef, onSuccess) {
                 "job_date", "sb_date", "be_date", "invoice_date",
                 "awb_bl_date", "sailing_date", "flight_date",
                 "gateway_igm_date", "egm_date",
-                "mbl_date", "hbl_date", "operations_locked_on", "financials_locked_on"
+                "mbl_date", "hbl_date", "operations_locked_on", "financials_locked_on",
+                "sb_filed", "sb_receipt", "rail_out", "ready_for_billing",
+                "container_ho_to_concor", "gate_in", "container_placement", "booking_date"
             ];
 
             // Transform each row
@@ -1028,8 +1065,8 @@ function useExportExcelUpload(inputRef, onSuccess) {
                             continue;
                         }
 
-                        // Handle date fields
-                        if (DATE_FIELDS.includes(mappedField)) {
+                        // Handle all date fields (including LEO date)
+                        if (DATE_FIELDS.includes(mappedField) || mappedField === "leo_date") {
                             modifiedItem[mappedField] = parseExcelDate(value);
                         }
                         // Handle job number - special parsing
@@ -1187,7 +1224,7 @@ function useExportExcelUpload(inputRef, onSuccess) {
                         setError(`Failed to upload chunk ${currentChunk}`);
                         break;
                     }
-                    
+
                     // Add the chunk statistics
                     if (uploadResponse.data) {
                         successCount += (uploadResponse.data.count || 0);
@@ -1210,13 +1247,13 @@ function useExportExcelUpload(inputRef, onSuccess) {
             if (!failed) {
                 const endTime = Date.now();
                 const durationSeconds = ((endTime - startTime) / 1000).toFixed(2);
-                
+
                 if (skippedCount === modifiedData.length && successCount === 0) {
                     setError(`Error: All ${skippedCount} records were skipped. Missing or invalid Job Numbers.`);
                     setLoading(false);
                     return;
                 }
-                
+
                 setUploadStats({
                     count: successCount > 0 ? successCount : modifiedData.length,
                     timeTaken: durationSeconds,

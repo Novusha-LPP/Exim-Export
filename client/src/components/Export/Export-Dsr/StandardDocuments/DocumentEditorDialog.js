@@ -18,6 +18,7 @@ const DocumentEditorDialog = ({
     title = "Edit Document",
     onSave,
     pdfOptions = {},
+    customSave,
 }) => {
     const editorRef = useRef(null);
     const [saving, setSaving] = useState(false);
@@ -25,13 +26,28 @@ const DocumentEditorDialog = ({
     const handleSave = async () => {
         if (editorRef.current) {
             setSaving(true);
+
+            // If a customSave function is provided, use it instead of the default HTML-to-PDF
+            if (customSave) {
+                try {
+                    const content = editorRef.current.getContent();
+                    await customSave(content);
+                    setSaving(false);
+                    onClose();
+                } catch (error) {
+                    console.error("Error in custom save:", error);
+                    setSaving(false);
+                }
+                return;
+            }
+
             const content = editorRef.current.getContent();
 
             // Convert HTML to PDF using jsPDF
             const doc = new jsPDF({
-                orientation: "portrait",
-                unit: "pt",
-                format: "a4",
+                orientation: pdfOptions.orientation || "portrait",
+                unit: pdfOptions.unit || "pt",
+                format: pdfOptions.format || "a4",
             });
 
             try {
@@ -43,7 +59,7 @@ const DocumentEditorDialog = ({
                     margin: [20, 15, 110, 15],
                     autoPaging: 'slice',
                 };
-                
+
                 const finalOptions = { ...defaultOptions, ...pdfOptions };
 
                 await doc.html(content, {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useFormik } from "formik";
+import { formatDate } from "../utils/dateUtils";
 
 function useExportJobDetails(params, setFileSnackbar) {
   const [data, setData] = useState(null);
@@ -111,6 +112,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       gr_no: "",
       rbi_waiver_no: "",
       notify: "",
+      booking_date: "",
 
       // Commercial Fields
       currency: "",
@@ -808,7 +810,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         job_no: safeValue(data.job_no),
         year: safeValue(data.year),
         custom_house: safeValue(data.custom_house),
-        job_date: safeValue(data.job_date),
+        job_date: formatDate(safeValue(data.job_date)),
         exporter: safeValue(data.exporter),
         description: safeValue(data.description),
         sb_no: safeValue(data.sb_no),
@@ -835,7 +837,8 @@ function useExportJobDetails(params, setFileSnackbar) {
         bank_dealer: safeValue(data.bank_dealer),
         ac_number: safeValue(data.ac_number || data.bank_account_number),
         adCode: safeValue(data.adCode || data.ad_code),
-        sb_date: safeValue(data.sb_date),
+        booking_date: formatDate(safeValue(data.booking_date)),
+        sb_date: formatDate(safeValue(data.sb_date)),
         rbi_app_no: safeValue(data.rbi_app_no),
         gr_waived: safeValue(data.gr_waived, false),
         gr_no: safeValue(data.gr_no),
@@ -847,19 +850,19 @@ function useExportJobDetails(params, setFileSnackbar) {
         destination_port: safeValue(data.destination_port),
         destination_country: safeValue(data.destination_country),
         egm_no: safeValue(data.egm_no),
-        egm_date: safeValue(data.egm_date),
-        mbl_date: safeValue(data.mbl_date),
-        hbl_date: safeValue(data.hbl_date),
+        egm_date: formatDate(safeValue(data.egm_date)),
+        mbl_date: formatDate(safeValue(data.mbl_date)),
+        hbl_date: formatDate(safeValue(data.hbl_date)),
         hbl_no: safeValue(data.hbl_no),
         mbl_no: safeValue(data.mbl_no),
         transhipper_code: safeValue(data.transhipper_code),
         pre_carriage_by: safeValue(data.pre_carriage_by),
         gateway_port: safeValue(data.gateway_port),
         state_of_origin: safeValue(data.state_of_origin),
-        sailing_date: safeValue(data.sailing_date),
+        sailing_date: formatDate(safeValue(data.sailing_date)),
         vessel_name: safeValue(data.vessel_name),
         flight_no: safeValue(data.flight_no),
-        flight_date: safeValue(data.flight_date),
+        flight_date: formatDate(safeValue(data.flight_date)),
         voyage_no: safeValue(data.voyage_no),
         nature_of_cargo: safeValue(data.nature_of_cargo),
         total_no_of_pkgs: safeValue(data.total_no_of_pkgs),
@@ -915,16 +918,17 @@ function useExportJobDetails(params, setFileSnackbar) {
         containers: safeValue(data.containers, []).map((c) => ({
           ...c,
           tareWeightKgs: c.tareWeightKgs || c.sealDeviceId || 0,
+          sealDate: formatDate(safeValue(c.sealDate)),
         })),
         remarks: safeValue(data.remarks),
         job_owner: safeValue(data.job_owner),
-        isJobtrackingEnabled: safeValue(data.isJobtrackingEnabled, false),
-        jobtrackingCompletedDate: safeValue(data.jobtrackingCompletedDate),
+        jobtrackingCompletedDate: formatDate(safeValue(data.jobtrackingCompletedDate)),
         isJobCanceled: safeValue(data.isJobCanceled, false),
-        jobCanceledDate: safeValue(data.jobCanceledDate),
+        jobCanceledDate: formatDate(safeValue(data.jobCanceledDate)),
         cancellationReason: safeValue(data.cancellationReason),
         invoices: safeValue(data.invoices, []).map((inv) => ({
           ...inv,
+          invoiceDate: formatDate(safeValue(inv.invoiceDate)),
           products: (inv.products || []).map((prod) => ({
             ...prod,
             epcgDetails: safeValue(prod.epcgDetails, {
@@ -955,9 +959,9 @@ function useExportJobDetails(params, setFileSnackbar) {
           data.branch_sr_no || data.annexC1Details?.branchSerialNo,
           0,
         ),
-        examination_date: safeValue(
+        examination_date: formatDate(safeValue(
           data.examination_date || data.annexC1Details?.examinationDate,
-        ),
+        )),
         examining_officer: safeValue(
           data.examining_officer || data.annexC1Details?.examiningOfficer,
         ),
@@ -1003,9 +1007,9 @@ function useExportJobDetails(params, setFileSnackbar) {
             data.branch_sr_no || data.annexC1Details?.branchSerialNo,
             0,
           ),
-          examinationDate: safeValue(
+          examinationDate: formatDate(safeValue(
             data.examination_date || data.annexC1Details?.examinationDate,
-          ),
+          )),
           examiningOfficer: safeValue(
             data.examining_officer || data.annexC1Details?.examiningOfficer,
           ),
@@ -1042,7 +1046,10 @@ function useExportJobDetails(params, setFileSnackbar) {
           ),
         }),
         freightInsuranceCharges: safeValue(data.freightInsuranceCharges, {}),
-        milestones: safeValue(data.milestones, []),
+        milestones: safeValue(data.milestones, []).map((m) => ({
+          ...m,
+          actualDate: formatDate(safeValue(m.actualDate)),
+        })),
         customerremark: safeValue(data.customerremark),
         shipmenttype: safeValue(data.shipmenttype, "International"),
         milestoneremarks: safeValue(data.milestoneremarks),
@@ -1097,10 +1104,25 @@ function useExportJobDetails(params, setFileSnackbar) {
           percentageOfFobValue: d.percentageOfFobValue || "1.5% of FOB Value",
         })),
         documents: safeValue(data.documents, {}),
-        stuffing_date: safeValue(data.stuffing_date),
+        stuffing_date: formatDate(safeValue(data.stuffing_date)),
         stuffing_supervisor: safeValue(data.stuffing_supervisor),
         stuffing_remarks: safeValue(data.stuffing_remarks),
-        operations: safeValue(data.operations, []),
+        operations: safeValue(data.operations, []).map((op) => ({
+          ...op,
+          statusDetails: (op.statusDetails || []).map((s) => ({
+            ...s,
+            leoDate: formatDate(safeValue(s.leoDate)),
+            billingDocsSentDt: formatDate(safeValue(s.billingDocsSentDt)),
+          })),
+          bookingDetails: (op.bookingDetails || []).map((b) => ({
+            ...b,
+            bookingDate: formatDate(safeValue(b.bookingDate)),
+          })),
+          weighmentDetails: (op.weighmentDetails || []).map((w) => ({
+            ...w,
+            dateTime: formatDate(safeValue(w.dateTime), "dd-MM-yyyy HH:mm"),
+          })),
+        })),
         cfs: safeValue(data.cfs),
         cha: safeValue(data.cha),
         masterblno: safeValue(data.masterblno),

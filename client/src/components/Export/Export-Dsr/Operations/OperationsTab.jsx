@@ -5,30 +5,9 @@ import ImagePreview from "../../../gallery/ImagePreview";
 import zIndex from "@mui/material/styles/zIndex";
 import { priorityFilter } from "../../../../utils/filterUtils";
 
-// Helper
 const toUpper = (str) => (str ? str.toUpperCase() : "");
 
-const formatDateForInput = (dateVal, type = "date") => {
-  if (!dateVal) return "";
-
-  try {
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return dateVal;
-
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-
-    if (type === "datetime-local") {
-      const hours = String(d.getHours()).padStart(2, "0");
-      const minutes = String(d.getMinutes()).padStart(2, "0");
-      return `${day}-${month}-${year} ${hours}:${minutes}`;
-    }
-    return `${day}-${month}-${year}`;
-  } catch (e) {
-    return dateVal;
-  }
-};
+import { formatDate } from "../../../../utils/dateUtils";
 
 const formatDateForPicker = (dateVal, type = "date") => {
   if (!dateVal) return "";
@@ -484,7 +463,7 @@ function useGatewayPortDropdown(fieldName, formik) {
       { unece_code: "INAMD4", name: "AHMEDABAD AIR PORT" }
     ];
 
-    const filtered = staticOpts.filter(opt => 
+    const filtered = staticOpts.filter(opt =>
       `${opt.unece_code} ${opt.name}`.toUpperCase().includes(searchVal)
     );
     setOpts(filtered);
@@ -817,6 +796,8 @@ const OperationsTab = ({ formik }) => {
     const jobVoyage = toUpper(formik.values.voyage_no || "");
     const jobBookingNo = toUpper(formik.values.booking_no || "");
     const jobBookingDate = formik.values.booking_date || "";
+    const jobLeoDate = formik.values.leo_date || "";
+    const jobGateInDate = formik.values.gate_in || "";
 
     const currentOps = formik.values.operations || [];
     let changed = false;
@@ -854,7 +835,29 @@ const OperationsTab = ({ formik }) => {
         }
         return b;
       });
-      if (changed) return { ...op, bookingDetails: updatedBooking };
+
+      const statusDetails = op.statusDetails || [];
+      const updatedStatus = statusDetails.map((s) => {
+        let sChanged = false;
+        const newS = { ...s };
+
+        if ((s.leoDate || "") !== jobLeoDate) {
+          newS.leoDate = jobLeoDate;
+          sChanged = true;
+        }
+        if ((s.gateInDate || "") !== jobGateInDate) {
+          newS.gateInDate = jobGateInDate;
+          sChanged = true;
+        }
+
+        if (sChanged) {
+          changed = true;
+          return newS;
+        }
+        return s;
+      });
+
+      if (changed) return { ...op, bookingDetails: updatedBooking, statusDetails: updatedStatus };
       return op;
     });
 
@@ -868,6 +871,8 @@ const OperationsTab = ({ formik }) => {
     formik.values.voyage_no,
     formik.values.booking_no,
     formik.values.booking_date,
+    formik.values.leo_date,
+    formik.values.gate_in,
     formik.values.job_no,
     operations.length,
     isAir,
@@ -1256,7 +1261,27 @@ const OperationsTab = ({ formik }) => {
 
       const updatedOp = { ...op };
       const currentSection = op[section] || [];
-      const finalValue = field === "containerNo" ? toUpper(value) : value;
+      let finalValue = field === "containerNo" ? toUpper(value) : value;
+
+      // PROJECT-WIDE FIX: Ensure all dates are saved in dd-MM-yyyy format in the payload/DB
+      const lowerField = field.toLowerCase();
+      const isDateField = lowerField.includes("date") || lowerField.includes("dt") || lowerField.includes("time");
+
+      if (isDateField && value && typeof value === "string") {
+        // Only transform if it's clearly from a native picker (yyyy-mm-dd)
+        // Otherwise, simply hold the value exactly as the user typed it or format it
+        if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+          const formatStr = value.includes("T") ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy";
+          finalValue = formatDate(value, formatStr);
+        } else if (/^\d{2}-\d{2}-\d{4}/.test(value)) {
+          // Already in correct format, keep it
+          finalValue = value;
+        } else if (value.length >= 8) {
+          // Attempt parsing any other long strings to standard format
+          const d = formatDate(value);
+          if (d) finalValue = d;
+        }
+      }
 
       // Update the targeted field (handling virtual rows if the array is empty)
       if (currentSection.length === 0 && itemIndex === 0) {
@@ -1930,13 +1955,7 @@ const TableSection = ({
                                   (col.type === "number" &&
                                     Number(item[col.field] || 0) === 0)
                                   ? ""
-                                  : col.type === "date" ||
-                                    col.type === "datetime-local"
-                                    ? formatDateForInput(
-                                      item[col.field],
-                                      col.type,
-                                    )
-                                    : item[col.field]
+                                  : item[col.field]
                               }
                               placeholder={
                                 col.type === "number"
@@ -1952,6 +1971,8 @@ const TableSection = ({
                                 // Fix: Immediate switch back to text mode to show formatted date
                                 if (col.type === "date" || col.type === "datetime-local") {
                                   e.target.type = "text";
+                                  // Small timeout ensures the DOM has updated the type before we set the formatted value
+                                  // although React should handle this via the controlled 'value' prop.
                                 }
 
                                 let val = e.target.value;
@@ -2420,10 +2441,7 @@ const StatusSection = ({
 
           <input
             type="text"
-            value={formatDateForInput(
-              item.handoverConcorTharSanganaRailRoadDate || "",
-              "date",
-            )}
+            value={item.handoverConcorTharSanganaRailRoadDate || ""}
             onDoubleClick={(e) => {
               const pickerVal = formatDateForPicker(
                 item.handoverConcorTharSanganaRailRoadDate,
@@ -2464,11 +2482,7 @@ const StatusSection = ({
               ? "text"
               : f.type || "text"
           }
-          value={
-            f.type === "date" || f.type === "datetime-local"
-              ? formatDateForInput(item[f.field] || "", f.type)
-              : item[f.field] || ""
-          }
+          value={item[f.field] || ""}
           disabled={isFieldDisabled}
           onChange={(e) => {
             if (isFieldDisabled) return;
@@ -2532,119 +2546,119 @@ const StatusSection = ({
             >
               <div style={styles.tableWrapper}>
                 <div style={{ minWidth: "1000px" }}>
-              {/* Row 1 Grid */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${r1Cols}, 1fr)`,
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "4px 4px 0 0",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Headers 1 */}
-                {row1Fields.map((f) => (
+                  {/* Row 1 Grid */}
                   <div
-                    key={`h1-${f.field}`}
                     style={{
-                      ...styles.th,
-                      borderBottom: "1px solid #cbd5e1",
-                      borderRight: "1px solid #e2e8f0",
+                      display: "grid",
+                      gridTemplateColumns: `repeat(${r1Cols}, 1fr)`,
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "4px 4px 0 0",
+                      overflow: "hidden",
                     }}
                   >
-                    {f.label}
+                    {/* Headers 1 */}
+                    {row1Fields.map((f) => (
+                      <div
+                        key={`h1-${f.field}`}
+                        style={{
+                          ...styles.th,
+                          borderBottom: "1px solid #cbd5e1",
+                          borderRight: "1px solid #e2e8f0",
+                        }}
+                      >
+                        {f.label}
+                      </div>
+                    ))}
+                    {/* Data 1 */}
+                    {row1Fields.map((f) => (
+                      <div
+                        key={`d1-${f.field}`}
+                        style={{ ...styles.td, borderRight: "1px solid #e2e8f0" }}
+                      >
+                        {renderCell(f, item, rowIdx)}
+                      </div>
+                    ))}
                   </div>
-                ))}
-                {/* Data 1 */}
-                {row1Fields.map((f) => (
-                  <div
-                    key={`d1-${f.field}`}
-                    style={{ ...styles.td, borderRight: "1px solid #e2e8f0" }}
-                  >
-                    {renderCell(f, item, rowIdx)}
-                  </div>
-                ))}
-              </div>
 
-              {/* Row 2 Grid */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${r2Cols}, 1fr)`,
-                  border: "1px solid #e2e8f0",
-                  borderTop: "none",
-                  borderRadius: "0",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Headers 2 */}
-                {row2Fields.map((f) => (
+                  {/* Row 2 Grid */}
                   <div
-                    key={`h2-${f.field}`}
                     style={{
-                      ...styles.th,
-                      gridColumn: `span ${f.width || 1}`,
-                      borderBottom: "1px solid #cbd5e1",
-                      borderRight: "1px solid #e2e8f0",
+                      display: "grid",
+                      gridTemplateColumns: `repeat(${r2Cols}, 1fr)`,
+                      border: "1px solid #e2e8f0",
+                      borderTop: "none",
+                      borderRadius: "0",
+                      overflow: "hidden",
                     }}
                   >
-                    {f.label}
+                    {/* Headers 2 */}
+                    {row2Fields.map((f) => (
+                      <div
+                        key={`h2-${f.field}`}
+                        style={{
+                          ...styles.th,
+                          gridColumn: `span ${f.width || 1}`,
+                          borderBottom: "1px solid #cbd5e1",
+                          borderRight: "1px solid #e2e8f0",
+                        }}
+                      >
+                        {f.label}
+                      </div>
+                    ))}
+                    {/* Data 2 */}
+                    {row2Fields.map((f) => (
+                      <div
+                        key={`d2-${f.field}`}
+                        style={{
+                          ...styles.td,
+                          gridColumn: `span ${f.width || 1}`,
+                          borderRight: "1px solid #e2e8f0",
+                        }}
+                      >
+                        {renderCell(f, item, rowIdx)}
+                      </div>
+                    ))}
                   </div>
-                ))}
-                {/* Data 2 */}
-                {row2Fields.map((f) => (
-                  <div
-                    key={`d2-${f.field}`}
-                    style={{
-                      ...styles.td,
-                      gridColumn: `span ${f.width || 1}`,
-                      borderRight: "1px solid #e2e8f0",
-                    }}
-                  >
-                    {renderCell(f, item, rowIdx)}
-                  </div>
-                ))}
-              </div>
 
-              {/* Row 3 Grid */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${r3Cols}, 1fr)`,
-                  border: "1px solid #e2e8f0",
-                  borderTop: "none",
-                  borderRadius: "0 0 4px 4px",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Headers 3 */}
-                {row3Fields.map((f) => (
+                  {/* Row 3 Grid */}
                   <div
-                    key={`h3-${f.field}`}
                     style={{
-                      ...styles.th,
-                      gridColumn: `span ${f.width || 1}`,
-                      borderBottom: "1px solid #cbd5e1",
-                      borderRight: "1px solid #e2e8f0",
+                      display: "grid",
+                      gridTemplateColumns: `repeat(${r3Cols}, 1fr)`,
+                      border: "1px solid #e2e8f0",
+                      borderTop: "none",
+                      borderRadius: "0 0 4px 4px",
+                      overflow: "hidden",
                     }}
                   >
-                    {f.label}
+                    {/* Headers 3 */}
+                    {row3Fields.map((f) => (
+                      <div
+                        key={`h3-${f.field}`}
+                        style={{
+                          ...styles.th,
+                          gridColumn: `span ${f.width || 1}`,
+                          borderBottom: "1px solid #cbd5e1",
+                          borderRight: "1px solid #e2e8f0",
+                        }}
+                      >
+                        {f.label}
+                      </div>
+                    ))}
+                    {/* Data 3 */}
+                    {row3Fields.map((f) => (
+                      <div
+                        key={`d3-${f.field}`}
+                        style={{
+                          ...styles.td,
+                          gridColumn: `span ${f.width || 1}`,
+                          borderRight: "1px solid #e2e8f0",
+                        }}
+                      >
+                        {renderCell(f, item, rowIdx)}
+                      </div>
+                    ))}
                   </div>
-                ))}
-                {/* Data 3 */}
-                {row3Fields.map((f) => (
-                  <div
-                    key={`d3-${f.field}`}
-                    style={{
-                      ...styles.td,
-                      gridColumn: `span ${f.width || 1}`,
-                      borderRight: "1px solid #e2e8f0",
-                    }}
-                  >
-                    {renderCell(f, item, rowIdx)}
-                  </div>
-                ))}
-              </div>
                 </div>
               </div>
 

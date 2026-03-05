@@ -1032,11 +1032,10 @@ const AddExJobs = ({ onJobCreated }) => {
     exporter: "",
     job_owner: "",
     port_of_loading: "",
-    consignees: [{ ...emptyConsignee, consignee_email: "" }],
+    consignees: [{ ...emptyConsignee }],
     ieCode: "",
     panNo: "",
     job_no: "",
-    consignee_email_error: "",
     consignmentType: "",
     discharge_country: "",
     custom_house: "",
@@ -1290,18 +1289,6 @@ const AddExJobs = ({ onJobCreated }) => {
       setExporterError(true);
       return;
     }
-    
-    // Validate emails format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    let emailError = false;
-    formData.consignees.forEach((c) => {
-      if (c.consignee_email && !emailRegex.test(c.consignee_email)) {
-        showToast("Invalid Email Format", "error");
-        emailError = true;
-      }
-    });
-
-    if (emailError) return;
 
     try {
       const response = await axios.post(
@@ -1379,7 +1366,7 @@ const AddExJobs = ({ onJobCreated }) => {
                   <label style={s.label}>Exporter Name *</label>
                   <div style={s.comboWrapper}>
                     <input
-                      style={{...s.inputWithIcon, borderColor: exporterError ? "red" : "#d1d5db"}}
+                      style={{ ...s.inputWithIcon, borderColor: exporterError ? "red" : "#d1d5db" }}
                       value={formData.exporter}
                       onChange={(e) => {
                         setExporterError(false);
@@ -1659,21 +1646,7 @@ const AddExJobs = ({ onJobCreated }) => {
                       }
                     />
                   </div>
-                  <div style={{ ...s.col, flex: 1.5 }}>
-                    <label style={s.label}>Email</label>
-                    <input
-                      style={s.input}
-                      placeholder="Email"
-                      value={item.consignee_email || ""}
-                      onChange={(e) =>
-                        handleConsigneeChange(
-                          idx,
-                          "consignee_email",
-                          e.target.value,
-                        )
-                      }
-                    />
-                  </div>
+
 
                   <div
                     style={{

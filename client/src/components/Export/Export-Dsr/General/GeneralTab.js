@@ -231,7 +231,6 @@ const GeneralTab = ({ formik, directories }) => {
     formik.setFieldValue(field, value);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-      // Add email validation before save triggers naturally if we have auto-save
     }, 1000);
   }
 
@@ -879,27 +878,6 @@ const GeneralTab = ({ formik, directories }) => {
                 handleConsigneeChange(idx, "consignee_country", val)
               }
             />
-            <div style={{ flex: 1.5, position: "relative" }}>
-              <input
-                style={{
-                  border: "1px solid #cad3db",
-                  borderColor: consignee.consignee_email && !isValidEmail(consignee.consignee_email) ? "red" : "#cad3db",
-                  borderRadius: 4,
-                  fontSize: 13,
-                  padding: "2px 7px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                }}
-                value={consignee.consignee_email || ""}
-                placeholder="Email Address"
-                onChange={(e) =>
-                  handleConsigneeChange(idx, "consignee_email", e.target.value)
-                }
-              />
-              {consignee.consignee_email && !isValidEmail(consignee.consignee_email) && (
-                <span style={{color: "red", fontSize: "10px", position: "absolute", bottom: "-14px", left: 0}}>Invalid Email Format</span>
-              )}
-            </div>
             <button
               type="button"
               onClick={() => handleRemoveConsignee(idx)}

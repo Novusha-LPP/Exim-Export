@@ -582,9 +582,8 @@ router.get("/api/export-checklist/:job_no", async (req, res) => {
     }
 
     const pdfBuffer = await generateExportChecklist(job_no);
-    const filename = `Export-CheckList-${job_no}-${
-      new Date().toISOString().split("T")[0]
-    }.pdf`;
+    const filename = `Export-CheckList-${job_no}-${new Date().toISOString().split("T")[0]
+      }.pdf`;
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
