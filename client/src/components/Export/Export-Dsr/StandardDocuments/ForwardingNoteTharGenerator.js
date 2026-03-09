@@ -59,7 +59,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
 
       // Extract User Information for Footer
       const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
-      const generatedBy = (user.first_name || user.user_first_name 
+      const generatedBy = (user.first_name || user.user_first_name
         ? `${user.first_name || user.user_first_name || ""} ${user.last_name || user.user_last_name || ""}`.trim()
         : user.username || "System User").toUpperCase();
 
@@ -69,7 +69,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       console.log(data);
       const Bookingno = booking.bookingNo || "";
       const agentCha = "SURAJ FORWARDERS & SHIPPING AGENCIES";
-      const cutOffDate = formatDate(booking.bookingDate );
+      const cutOffDate = formatDate(booking.bookingDate);
       const portofLoading = data.port_of_loading || "";
       const dischargeCountry = data.discharge_country || "";
       const exporterAddress = data.exporter || "";
@@ -78,7 +78,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       const portOfDischarge = data.port_of_discharge || "";
       const stuffingType = data.goods_stuffed_at?.toString().toLowerCase() === "factory" ? "FACTORY" : "ICD (CFS) / FACTORY";
       const shippingLineName = booking.shippingLineName || "";
-      const fobvalue= data.invoices?.[0]?.freightInsuranceCharges.fobValue.amount || "";
+      const fobvalue = data.invoices?.[0]?.freightInsuranceCharges.fobValue.amount || "";
 
       const hsnList = [...new Set(products.map(p => {
         if (p.hsn_code || p.hsnCode || p.hsn) return p.hsn_code || p.hsnCode || p.hsn;
@@ -96,7 +96,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         const pkgs = Number(c.pkgsStuffed) || 0;
         const pkgsDisplay = pkgs ? `${pkgs}` : "";
         const weight = Number(c.grossWeight) || 0;
-        
+
         containersRows += `
           <tr style="height: 60px;">
             <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: top;">${i + 1}</td>
@@ -196,6 +196,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
                     </td>
                     <td style="width: 30%; vertical-align: top; text-align: right; padding: 5px;">
                       <div style="font-weight: bold; font-size: 11px; padding-bottom: 10px;">INVOICE NO.: ${data.invoices?.[0]?.invoiceNumber || ""}</div>
+                      ${data.exporter_ref_no ? `<div style="font-weight: bold; font-size: 11px; padding-bottom: 10px;">EXPORTER REF NO.: ${data.exporter_ref_no}</div>` : ""}
                       <div style="font-weight: bold; font-size: 10px;">Cargo : Non Hazardous</div>
                     </td>
                   </tr>
@@ -256,7 +257,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
               </td>
               <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
                 <div style="font-size: 10px;"><b>Port of Discharge : ${portOfDischarge}</b></div>
-                  // <div style="font-size: 10px;"><b>Port of Loading : ${portofLoading}</b></div>
+                <div style="font-size: 10px;"><b>Port of Loading : ${portofLoading}</b></div>
               </td>
             </tr>
 
