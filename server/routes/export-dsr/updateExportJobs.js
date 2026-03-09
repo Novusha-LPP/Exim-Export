@@ -352,17 +352,7 @@ router.get("/exports/:status?", async (req, res) => {
 
     if (detailedStatus) {
       filter.$and.push({
-        $or: [
-          { detailedStatus: detailedStatus },
-          {
-            milestones: {
-              $elemMatch: {
-                milestoneName: detailedStatus,
-                isCompleted: true,
-              },
-            },
-          },
-        ],
+        detailedStatus: detailedStatus,
       });
     }
 

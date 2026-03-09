@@ -170,29 +170,64 @@ router.post("/api/jobs/add-job", async (req, res) => {
     jsonData.forEach((d) => {
         if (!d.job_no || typeof d.job_no !== 'string') return;
 
-        const isAir = (d.transportMode && String(d.transportMode).toUpperCase().includes('AIR')) ||
-            (d.consignmentType && String(d.consignmentType).toUpperCase().includes('AIR')) ||
-            d.job_no.toUpperCase().includes('/AIR/');
+        let isAir = false;
+        let isSea = false;
+        const jobNoUpper = d.job_no.toUpperCase();
 
-        if (isAir && !d.job_no.toUpperCase().includes('/AIR/')) {
-            let newJob = d.job_no;
-            if (newJob.toUpperCase().includes('/SEA/')) {
-                newJob = newJob.replace(/\/SEA\//i, '/AIR/');
-            }
-            else {
-                const parts = newJob.split('/');
-                const seqIndex = parts.findIndex(p => /^\d{3,}$/.test(p));
-                if (seqIndex > 0) {
-                    parts.splice(seqIndex, 0, 'AIR');
-                    newJob = parts.join('/');
-                } else if (parts.length >= 2) {
-                    parts.splice(1, 0, 'AIR');
-                    newJob = parts.join('/');
-                }
-            }
-            d.job_no = newJob;
+        if (jobNoUpper.includes('/AIR/')) {
+            isAir = true;
+        } else if (jobNoUpper.includes('/SEA/')) {
+            isSea = true;
+        } else {
+            isAir = (d.transportMode && String(d.transportMode).toUpperCase().includes('AIR')) ||
+                (d.consignmentType && String(d.consignmentType).toUpperCase().includes('AIR'));
+            isSea = (d.transportMode && String(d.transportMode).toUpperCase().includes('SEA')) ||
+                (d.consignmentType && ['FCL', 'LCL'].includes(String(d.consignmentType).toUpperCase())) ||
+                (!isAir); // Default to Sea if not Air
+        }
+
+        if (isAir) {
             d.transportMode = "AIR";
             d.consignmentType = "AIR";
+            if (!jobNoUpper.includes('/AIR/')) {
+                let newJob = d.job_no;
+                if (newJob.toUpperCase().includes('/SEA/')) {
+                    newJob = newJob.replace(/\/SEA\//i, '/AIR/');
+                }
+                else {
+                    const parts = newJob.split('/');
+                    const seqIndex = parts.findIndex(p => /^\d{3,}$/.test(p));
+                    if (seqIndex > 0) {
+                        parts.splice(seqIndex, 0, 'AIR');
+                        newJob = parts.join('/');
+                    } else if (parts.length >= 2) {
+                        parts.splice(1, 0, 'AIR');
+                        newJob = parts.join('/');
+                    }
+                }
+                d.job_no = newJob;
+            }
+        } else if (isSea) {
+            d.transportMode = "SEA";
+            // if we are here it's Sea. Consignment might still be whatever it was (LCL or FCL)
+            if (!jobNoUpper.includes('/SEA/')) {
+                let newJob = d.job_no;
+                if (newJob.toUpperCase().includes('/AIR/')) {
+                    newJob = newJob.replace(/\/AIR\//i, '/SEA/');
+                }
+                else {
+                    const parts = newJob.split('/');
+                    const seqIndex = parts.findIndex(p => /^\d{3,}$/.test(p));
+                    if (seqIndex > 0) {
+                        parts.splice(seqIndex, 0, 'SEA');
+                        newJob = parts.join('/');
+                    } else if (parts.length >= 2) {
+                        parts.splice(1, 0, 'SEA');
+                        newJob = parts.join('/');
+                    }
+                }
+                d.job_no = newJob;
+            }
         }
     });
 
@@ -452,13 +487,12 @@ router.post("/api/jobs/add-job", async (req, res) => {
                         // Normalize Year to YY-YY format (e.g. 2025-2026 -> 25-26)
                         targetYear = normalizeYear(targetYear);
 
+                        // Build target structure - default to SEA if not AIR
                         if (job_no && String(job_no).toUpperCase().includes('/AIR/')) {
                             targetBranch += '-AIR';
+                        } else if (job_no && String(job_no).toUpperCase().includes('/SEA/')) {
+                            targetBranch += '-SEA';
                         }
-
-                        // Log what we are trying to update
-                        console.log(`Title: Syncing Sequence | Job: ${job_no} | Branch: ${targetBranch} | Year: ${targetYear} | Seq: ${seqNum}`);
-
                         if (targetBranch && targetYear && !isNaN(seqNum)) {
                             const key = `${targetBranch}|${targetYear}`;
                             const currentMax = maxSequences.get(key) || 0;
@@ -621,8 +655,8 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 ieCode: ieCodeUpdate,
 
                 // Consignment/Transport
-                consignmentType: (job_no && String(job_no).toUpperCase().includes('/AIR/')) ? "AIR" : getUpdateValue(consignmentType, existingJob?.consignmentType),
-                transportMode: (job_no && String(job_no).toUpperCase().includes('/AIR/')) ? "AIR" : getUpdateValue(transportMode, existingJob?.transportMode),
+                consignmentType: (job_no && String(job_no).toUpperCase().includes('/AIR/')) ? "AIR" : (job_no && String(job_no).toUpperCase().includes('/SEA/')) ? "FCL" : getUpdateValue(consignmentType, existingJob?.consignmentType),
+                transportMode: (job_no && String(job_no).toUpperCase().includes('/AIR/')) ? "AIR" : (job_no && String(job_no).toUpperCase().includes('/SEA/')) ? "SEA" : getUpdateValue(transportMode, existingJob?.transportMode),
 
                 // Shipping Line
                 shipping_line_airline: getUpdateValue(shipping_line_airline, existingJob?.shipping_line_airline),

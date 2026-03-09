@@ -476,6 +476,29 @@ const ExportJobsTable = () => {
     return user ? user.fullName : username;
   };
 
+  // Gate In modal states (only for operation module)
+  const isOperationModule = window.location.pathname.startsWith("/export-operation");
+  const [gateInModalOpen, setGateInModalOpen] = useState(false);
+  const [gateInJobs, setGateInJobs] = useState([]);
+  const [gateInLoading, setGateInLoading] = useState(false);
+
+  const handleOpenGateInJobs = async () => {
+    setGateInModalOpen(true);
+    setGateInLoading(true);
+    try {
+      const resp = await axios.get(
+        `${import.meta.env.VITE_API_STRING}/operation-pending-jobs?gateInTenDays=true`
+      );
+      if (resp.data.success) {
+        setGateInJobs(resp.data.data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setGateInLoading(false);
+    }
+  };
+
   // Persist filters effect
   useEffect(() => {
     if (isInitialSave.current) {
@@ -822,8 +845,13 @@ const ExportJobsTable = () => {
   const fetchJobs = async () => {
     setLoading(true);
     try {
+      let endpoint = `${import.meta.env.VITE_API_STRING}/exports`;
+      if (isOperationModule) {
+        endpoint = `${import.meta.env.VITE_API_STRING}/operation-jobs`;
+      }
+
       const response = await axios.get(
-        `${import.meta.env.VITE_API_STRING}/exports`,
+        endpoint,
         {
           params: {
             status: activeTab,
@@ -1401,6 +1429,29 @@ const ExportJobsTable = () => {
                   onClick={() => setOpenAddDialog(true)}
                 >
                   + Create Job
+                </button>
+              </div>
+            )}
+
+            {/* Gate In Pending Button - Only for Export Operation module */}
+            {isOperationModule && (
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  style={{
+                    ...s.btnPrimary,
+                    padding: "8px 20px",
+                    height: "auto",
+                    backgroundColor: "#f59e0b",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    fontSize: "13px",
+                  }}
+                  onClick={handleOpenGateInJobs}
+                >
+                  Gate In Pending
                 </button>
               </div>
             )}
@@ -3130,6 +3181,72 @@ const ExportJobsTable = () => {
         }}
         containers={containerTrackContainers}
       />
+
+      {/* Gate In Pending Jobs Modal */}
+      <Dialog
+        open={gateInModalOpen}
+        onClose={() => setGateInModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Gate In Pending (&le; 10 Days)</DialogTitle>
+        <DialogContent>
+          {gateInLoading ? (
+            <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>
+              Loading jobs...
+            </div>
+          ) : gateInJobs.length === 0 ? (
+            <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>
+              No pending Gate In jobs within the last 10 days found.
+            </div>
+          ) : (
+            <div
+              style={{ border: "1px solid #e0e0e0", borderRadius: "4px", overflow: "hidden" }}
+            >
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                <thead style={{ backgroundColor: "#f5f5f5" }}>
+                  <tr>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>Job No</th>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>SB No</th>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>Exporter</th>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>Gate In Date</th>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gateInJobs.map((j, i) => (
+                    <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa", borderBottom: "1px solid #e0e0e0" }}>
+                      <td style={{ padding: "8px" }}>{j.job_no}</td>
+                      <td style={{ padding: "8px" }}>{j.sb_no}</td>
+                      <td style={{ padding: "8px" }}>{j.exporter}</td>
+                      <td style={{ padding: "8px" }}>{j.gateInDate}</td>
+                      <td style={{ padding: "8px" }}>
+                        <button
+                          style={{
+                            padding: "4px 10px",
+                            backgroundColor: "#fff",
+                            color: "#2563eb",
+                            border: "1px solid #2563eb",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            fontSize: "12px"
+                          }}
+                          onClick={() => {
+                            setGateInModalOpen(false);
+                            navigate(`/export-operation/job/${encodeURIComponent(j.job_no)}`);
+                          }}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

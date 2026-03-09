@@ -175,10 +175,10 @@ function useExportExcelUpload(inputRef, onSuccess) {
     /**
      * Parse job number to extract components and convert to BRANCH/JOB_NO/YEAR format
      * Input formats could be:
-     *   - AMD/EXP/SEA/00001/25-26 => AMD/00001/25-26
-     *   - AMD/EXP/AIR/00123/25-26 => AMD/00123/25-26
+     *   - AMD/EXP/SEA/00001/25-26 => AMD/SEA/00001/25-26
+     *   - AMD/EXP/AIR/00123/25-26 => AMD/AIR/00123/25-26
      *   - AMD/00123/25-26 => AMD/00123/25-26 (already correct)
-     * Output format: BRANCH/JOB_NO/YEAR (e.g., AMD/00001/25-26)
+     * Output format: BRANCH/[MODE]/JOB_NO/YEAR (e.g., AMD/SEA/00001/25-26)
      */
     const parseJobNumber = (jobNoValue) => {
         if (!jobNoValue) return { job_no: "", year: "", branch_code: "" };
@@ -214,14 +214,20 @@ function useExportExcelUpload(inputRef, onSuccess) {
                 }
             }
 
-            // Build the formatted job_no: BRANCH/JOB_NO/YEAR
+            // Extract Transport Mode from Original String
+            let mode = "";
+            if (originalValue.includes("/AIR/")) mode = "/AIR";
+            else if (originalValue.includes("/SEA/")) mode = "/SEA";
+
+            // Build the formatted job_no: BRANCH/[MODE]/JOB_NO/YEAR
             if (branch_code && jobSequence && year) {
-                const formatted_job_no = `${branch_code}/${jobSequence}/${year}`;
+                const formatted_job_no = `${branch_code}${mode}/${jobSequence}/${year}`;
                 console.log(`🔄 Job No. converted: "${originalValue}" => "${formatted_job_no}"`);
                 return {
                     job_no: formatted_job_no,
                     year: year,
                     branch_code: branch_code,
+                    detectedTransportMode: mode === "/AIR" ? "AIR" : mode === "/SEA" ? "SEA" : null
                 };
             }
         }
@@ -1075,6 +1081,12 @@ function useExportExcelUpload(inputRef, onSuccess) {
                             modifiedItem.job_no = parsed.job_no;
                             if (parsed.year) modifiedItem.year = parsed.year;
                             if (parsed.branch_code) modifiedItem.branch_code = parsed.branch_code;
+
+                            // If transport mode was detected from the job number and not yet set
+                            if (parsed.detectedTransportMode && (!item.transportMode && !item.consignmentType)) {
+                                modifiedItem.transportMode = parsed.detectedTransportMode;
+                                modifiedItem.consignmentType = parsed.detectedTransportMode === "AIR" ? "AIR" : "FCL";
+                            }
                         }
                         // Handle IE Code - ensure 10 characters
                         else if (mappedField === "ieCode") {

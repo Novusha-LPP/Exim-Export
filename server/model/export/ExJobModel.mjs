@@ -1480,9 +1480,18 @@ exportJobSchema.pre("save", function (next) {
   }
 
   // 1. Bi-directional sync between detailedStatus and milestones
-  const detailedSet = new Set(this.detailedStatus || []);
+  // Prevent string casting bug by handling detailedStatus as a single string item
+  const currentStatusItems = [];
+  if (typeof this.detailedStatus === "string" && this.detailedStatus.trim() !== "") {
+    currentStatusItems.push(this.detailedStatus);
+  } else if (Array.isArray(this.detailedStatus)) {
+    // Legacy support if somehow array
+    currentStatusItems.push(...this.detailedStatus);
+  }
 
-  // A. Update detailedStatus based on Milestones (handling unchecks)
+  const detailedSet = new Set(currentStatusItems);
+
+  // A. Update detailedSet based on Milestones (handling unchecks)
   (this.milestones || []).forEach((m) => {
     if (m.milestoneName) {
       if (m.isCompleted) {
@@ -1493,13 +1502,16 @@ exportJobSchema.pre("save", function (next) {
     }
   });
 
-  // B. Update Milestones based on detailedStatus (handling unchecks)
+  // B. Update Milestones based on detailedSet (handling unchecks)
+  let latestCompletedMilestone = "";
+
   if (this.milestones && this.milestones.length > 0) {
     this.milestones.forEach((m) => {
       if (detailedSet.has(m.milestoneName)) {
         if (!m.isCompleted) {
           m.isCompleted = true;
         }
+        latestCompletedMilestone = m.milestoneName; // Always sequentially track the highest completed
         // Auto-fill date if missing or still using old placeholder
         if (!m.actualDate || m.actualDate.startsWith("dd-")) {
           const d = new Date();
@@ -1522,9 +1534,19 @@ exportJobSchema.pre("save", function (next) {
         }
       }
     });
-  }
 
-  this.detailedStatus = Array.from(detailedSet);
+    // Make sure detailedStatus is a primitive String and properly reflects the latest tracked tracking progression point.
+    // If milestones were populated, we'll force it to the highest chronological milestone achieved.
+    if (latestCompletedMilestone) {
+      this.detailedStatus = latestCompletedMilestone;
+    } else {
+      // If no milestones are checked but they typed something custom
+      this.detailedStatus = Array.from(detailedSet).pop() || "";
+    }
+  } else {
+    // If there are no milestones array to reference, simply store the topmost status
+    this.detailedStatus = Array.from(detailedSet).pop() || "";
+  }
 
   // 2. Business Logic: If Billing Done is selected, mark as Completed
   if (this.detailedStatus.includes("Billing Done")) {
