@@ -326,7 +326,7 @@ router.post("/api/jobs/suggest-sequence", async (req, res) => {
 
     // Get the current max sequence from our centralized counter
     const isAir = (req.body.transportMode && req.body.transportMode.toUpperCase() === 'AIR') || (req.body.consignmentType && req.body.consignmentType.toUpperCase() === 'AIR');
-    const branchToQuery = isAir ? `${branch_code.toUpperCase()}-AIR` : branch_code.toUpperCase();
+    const branchToQuery = isAir ? `${branch_code.toUpperCase()}-AIR` : `${branch_code.toUpperCase()}-SEA`;
 
     const sequenceDoc = await JobSequence.findOne({
       branch: branchToQuery,

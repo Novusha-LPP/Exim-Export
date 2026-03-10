@@ -758,6 +758,60 @@ const ExportChecklistGenerator = ({
       yPos = pdf.lastAutoTable.finalY + 10;
     }
 
+    if (data.deecData && data.deecData.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("DEEC DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
+
+      const deecHeaders = [
+        "Sr No",
+        "Regn No\nDate",
+        "Item SNo\n(Part-C)",
+        "Item SNo\n(Part-E)",
+        "Raw Material",
+        "Quantity",
+        "Export Quantity",
+        "Indigenous/\nImported",
+        "Inv No",
+        "Item No",
+      ];
+
+      pdf.autoTable({
+        head: [deecHeaders],
+        body: data.deecData.map((d) => [
+          d.srNo,
+          d.regnNoDate,
+          d.itemSnoPartC,
+          d.itemSnoPartE,
+          d.rawMaterial,
+          d.quantity,
+          d.exportQuantity,
+          d.indigenousImported,
+          d.invNo,
+          d.itemNo,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+          overflow: "linebreak",
+        },
+        headStyles: {
+          fillColor: [220, 220, 220],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: FONT_SIZES.tableHeader,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
+
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
+
     // VESSEL DETAILS - compact table
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(FONT_SIZES.sectionHeader);
@@ -1151,7 +1205,20 @@ const ExportChecklistGenerator = ({
           exportJob.invoices?.[0]?.invoiceDate ||
           exportJob.sb_date ||
           new Date();
-        const dt = new Date(dateRaw);
+
+        const parseDateString = (ds) => {
+          if (!ds) return new Date();
+          if (typeof ds === 'string') {
+            const parts = ds.substring(0, 10).split('-');
+            // if DD-MM-YYYY format
+            if (parts.length === 3 && parts[0].length === 2 && parts[2].length === 4) {
+              return new Date(parts[2], parts[1] - 1, parts[0]);
+            }
+          }
+          return new Date(ds);
+        };
+        const dt = parseDateString(dateRaw);
+
         const dd = String(dt.getDate()).padStart(2, "0");
         const mm = String(dt.getMonth() + 1).padStart(2, "0");
         const yyyy = dt.getFullYear();
@@ -1688,6 +1755,113 @@ const ExportChecklistGenerator = ({
             });
           });
           return rosctlRows;
+        })(),
+
+        // DEEC Details Data
+        deecData: (() => {
+          const deecRows = [];
+          allProducts?.forEach((product, productIndex) => {
+            const invoice =
+              exportJob.invoices?.find((inv) =>
+                inv.products?.some(
+                  (p) => p.serialNumber === product.serialNumber,
+                ),
+              ) || exportJob.invoices?.[0];
+            const invNo = invoice?.invoiceNumber || "";
+            const itemNo = product.serialNumber || (productIndex + 1).toString();
+
+            if (product.deecDetails) {
+              const deec = product.deecDetails;
+              const regObj = deec.deec_reg_obj?.[0] || {};
+              // Build date/no safely from multiple formats
+              const regnDisplay = regObj.regnNo ? `${regObj.regnNo}\n${regObj.licDate ? formatDate(regObj.licDate) : ""}` : "";
+
+              if (deec.deecItems && deec.deecItems.length > 0) {
+                deec.deecItems.forEach((item, itemIdx) => {
+                  deecRows.push({
+                    srNo: deecRows.length + 1,
+                    regnNoDate: regnDisplay,
+                    itemSnoPartC: item.itemSnoPartC || "",
+                    itemSnoPartE: deec.itemSnoPartE || "",
+                    rawMaterial: item.description || product.description || "",
+                    quantity: `${item.quantity || 0} ${item.unit || "MTS"}`,
+                    exportQuantity: `${deec.exportQtyUnderLicence || 0} ${item.unit || "MTS"}`,
+                    indigenousImported: item.itemType || "Imported",
+                    invNo: invNo || "1",
+                    itemNo: itemNo,
+                  });
+                });
+              } else if (regObj.regnNo) {
+                // Even if no specific part-C items, we might want to log it if it has a Registration NO.
+                deecRows.push({
+                  srNo: deecRows.length + 1,
+                  regnNoDate: regnDisplay,
+                  itemSnoPartC: "",
+                  itemSnoPartE: deec.itemSnoPartE || "",
+                  rawMaterial: product.description || "",
+                  quantity: `0 MTS`,
+                  exportQuantity: `${deec.exportQtyUnderLicence || 0} MTS`,
+                  indigenousImported: "Imported",
+                  invNo: invNo || "1",
+                  itemNo: itemNo,
+                });
+              }
+            }
+          });
+          return deecRows;
+        })(),
+
+        // EPCG Details Data
+        epcgData: (() => {
+          const epcgRows = [];
+          allProducts?.forEach((product, productIndex) => {
+            const invoice =
+              exportJob.invoices?.find((inv) =>
+                inv.products?.some(
+                  (p) => p.serialNumber === product.serialNumber,
+                ),
+              ) || exportJob.invoices?.[0];
+            const invNo = invoice?.invoiceNumber || "";
+            const itemNo = product.serialNumber || (productIndex + 1).toString();
+
+            if (product.epcgDetails) {
+              const epcg = product.epcgDetails;
+              const regObj = epcg.epcg_reg_obj?.[0] || {};
+              // Build date/no safely from multiple formats
+              const regnDisplay = regObj.regnNo ? `${regObj.regnNo}\n${regObj.licDate ? formatDate(regObj.licDate) : ""}` : "";
+
+              if (epcg.epcgItems && epcg.epcgItems.length > 0) {
+                epcg.epcgItems.forEach((item, itemIdx) => {
+                  epcgRows.push({
+                    srNo: epcgRows.length + 1,
+                    regnNoDate: regnDisplay,
+                    itemSnoPartC: item.itemSnoPartC || "",
+                    itemSnoPartE: epcg.itemSnoPartE || "",
+                    rawMaterial: item.description || product.description || "",
+                    quantity: `${item.quantity || 0} ${item.unit || "MTS"}`,
+                    exportQuantity: `${epcg.exportQtyUnderLicence || 0} ${item.unit || "MTS"}`,
+                    indigenousImported: item.itemType || "Imported",
+                    invNo: invNo || "1",
+                    itemNo: itemNo,
+                  });
+                });
+              } else if (regObj.regnNo) {
+                epcgRows.push({
+                  srNo: epcgRows.length + 1,
+                  regnNoDate: regnDisplay,
+                  itemSnoPartC: "",
+                  itemSnoPartE: epcg.itemSnoPartE || "",
+                  rawMaterial: product.description || "",
+                  quantity: `0 MTS`,
+                  exportQuantity: `${epcg.exportQtyUnderLicence || 0} MTS`,
+                  indigenousImported: "Imported",
+                  invNo: invNo || "1",
+                  itemNo: itemNo,
+                });
+              }
+            }
+          });
+          return epcgRows;
         })(),
 
         // Vessel & Container Details

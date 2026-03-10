@@ -1499,9 +1499,11 @@ const AddExJobs = ({ onJobCreated }) => {
                     value={formData.year}
                     onChange={(e) => handleInputChange("year", e.target.value)}
                   >
-                    <option value="24-25">24-25</option>
                     <option value="25-26">25-26</option>
-                    <option value="26-27">26-27</option>
+                    <option value="24-25">24-25</option>
+                    <option value="23-24">23-24</option>
+                    <option value="22-23">22-23</option>
+                    <option value="21-22">21-22</option>
                   </select>
                 </div>
                 <div style={{ ...s.col, maxWidth: "160px" }}>

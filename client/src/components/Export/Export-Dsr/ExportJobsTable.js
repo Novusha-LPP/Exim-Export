@@ -273,7 +273,7 @@ const getStatusColor = (statusValue) => {
 
     case "L.E.O":
       return "#e8f5e9"; // Light Green (Completed/Approved)
-    case "Container HO to Concor":
+    case "Container HO":
     case "File Handover to IATA":
       return "#ffffe0"; // Light Yellow
     case "Rail Out":
@@ -390,6 +390,17 @@ const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSucce
       />
     </>
   );
+};
+
+// Helper to determine current Indian financial year (starts April)
+const getCurrentFinancialYear = () => {
+  const today = new Date();
+  const month = today.getMonth(); // 0-based: 0=Jan, 3=April
+  const year = today.getFullYear();
+  if (month < 3) {
+    return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+  }
+  return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
 };
 
 const ExportJobsTable = () => {
@@ -572,6 +583,8 @@ const ExportJobsTable = () => {
   const [openDSRDialog, setOpenDSRDialog] = useState(false);
   const [exporters, setExporters] = useState([]);
   const [selectedExporter, setSelectedExporter] = useState("");
+  const [dsrYear, setDsrYear] = useState(getCurrentFinancialYear());
+  const [dsrOnlyPending, setDsrOnlyPending] = useState(true);
   const [dsrLoading, setDSRLoading] = useState(false);
 
   // Documents Menu State
@@ -631,7 +644,11 @@ const ExportJobsTable = () => {
       const response = await axios.get(
         `${import.meta.env.VITE_API_STRING}/export-dsr/generate-dsr-report`,
         {
-          params: { exporter: selectedExporter },
+          params: {
+            exporter: selectedExporter,
+            year: dsrYear,
+            onlyPending: dsrOnlyPending
+          },
           responseType: "blob",
         },
       );
@@ -665,6 +682,8 @@ const ExportJobsTable = () => {
         {
           params: {
             exporter: selectedExporter,
+            year: dsrYear,
+            status: dsrOnlyPending ? "Pending" : "all",
             limit: 5000,
           },
         }
@@ -683,7 +702,7 @@ const ExportJobsTable = () => {
           let jobNoCol = [];
           if (job.job_no) jobNoCol.push(job.job_no);
           if (job.custom_house) jobNoCol.push(job.custom_house);
-          if (job.movement_type) jobNoCol.push(job.movement_type);
+          if (job.consignmentType) jobNoCol.push(job.consignmentType);
           rowData["Job No"] = jobNoCol.join("\n");
 
           // Column 2: Consignee Name
@@ -1515,9 +1534,11 @@ const ExportJobsTable = () => {
               onChange={(e) => setSelectedYear(e.target.value)}
             >
               <option value="">All Years</option>
-              <option value="24-25">24-25</option>
               <option value="25-26">25-26</option>
-              <option value="26-27">26-27</option>
+              <option value="24-25">24-25</option>
+              <option value="23-24">23-24</option>
+              <option value="22-23">22-23</option>
+              <option value="21-22">21-22</option>
             </select>
 
             {/* Movement Type Filter */}
@@ -1615,7 +1636,7 @@ const ExportJobsTable = () => {
                 {[
                   "SB Filed",
                   "L.E.O",
-                  "Container HO to Concor",
+                  "Container HO",
                   "File Handover to IATA",
                   "Rail Out",
                   "Departure",
@@ -2900,6 +2921,8 @@ const ExportJobsTable = () => {
               )}
             />
           </div>
+
+          {/* Year and Pending options removed as per user requirement - default is set to current year (25-26) and pending only */}
           <div
             style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}
           >

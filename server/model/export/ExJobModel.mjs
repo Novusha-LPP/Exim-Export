@@ -1505,13 +1505,32 @@ exportJobSchema.pre("save", function (next) {
   // B. Update Milestones based on detailedSet (handling unchecks)
   let latestCompletedMilestone = "";
 
+  // Define priority order to find the "highest" milestone regardless of array position
+  const isAir = (this.job_no && String(this.job_no).toUpperCase().includes('/AIR/'));
+  const milestonePriority = [
+    "SB Filed",
+    "L.E.O",
+    isAir ? "File Handover to IATA" : "Container HO",
+    isAir ? "Departure" : "Rail Out",
+    "Billing Pending",
+    "Billing Done"
+  ];
+
   if (this.milestones && this.milestones.length > 0) {
     this.milestones.forEach((m) => {
       if (detailedSet.has(m.milestoneName)) {
         if (!m.isCompleted) {
           m.isCompleted = true;
         }
-        latestCompletedMilestone = m.milestoneName; // Always sequentially track the highest completed
+
+        // Determine if this milestone is "higher" than the current latest
+        const currentPriority = milestonePriority.indexOf(m.milestoneName);
+        const latestPriority = milestonePriority.indexOf(latestCompletedMilestone);
+
+        if (currentPriority >= latestPriority) {
+          latestCompletedMilestone = m.milestoneName;
+        }
+
         // Auto-fill date if missing or still using old placeholder
         if (!m.actualDate || m.actualDate.startsWith("dd-")) {
           const d = new Date();
