@@ -55,7 +55,15 @@ router.post(
 
         const sequenceStr = job_no.padStart(5, "0");
         const isAir = (transportMode && transportMode.toUpperCase() === 'AIR') || (req.body.consignmentType && req.body.consignmentType.toUpperCase() === 'AIR');
-        newJobNo = isAir ? `${branch_code}/AIR/${sequenceStr}/${yearFormat}` : `${branch_code}/${sequenceStr}/${yearFormat}`;
+        const isSea = (transportMode && transportMode.toUpperCase() === 'SEA') || (req.body.consignmentType && ['FCL', 'LCL'].includes(req.body.consignmentType?.toUpperCase() || '')) || !isAir;
+
+        if (isAir) {
+          newJobNo = `${branch_code}/AIR/${sequenceStr}/${yearFormat}`;
+        } else if (isSea) {
+          newJobNo = `${branch_code}/SEA/${sequenceStr}/${yearFormat}`;
+        } else {
+          newJobNo = `${branch_code}/${sequenceStr}/${yearFormat}`;
+        }
 
         // Check for duplicates
         const existingJob = await ExportJobModel.findOne({
@@ -75,16 +83,25 @@ router.post(
         }
 
         // Update the central counter if manual sequence is higher
-        const branchSeqArg = isAir ? `${branch_code}-AIR` : branch_code;
+        const branchSeqArg = isAir ? `${branch_code}-AIR` : `${branch_code}-SEA`;
         await updateJobSequenceIfHigher(branchSeqArg, yearFormat, parseInt(job_no, 10));
 
       } else {
         // --- AUTO GENERATED JOB NUMBER ---
         // Use the centralized atomic generator
         const isAir = (transportMode && transportMode.toUpperCase() === 'AIR') || (req.body.consignmentType && req.body.consignmentType.toUpperCase() === 'AIR');
-        const branchSeqArg = isAir ? `${branch_code}-AIR` : branch_code;
+        const isSea = (transportMode && transportMode.toUpperCase() === 'SEA') || (req.body.consignmentType && ['FCL', 'LCL'].includes(req.body.consignmentType?.toUpperCase() || '')) || !isAir;
+
+        const branchSeqArg = isAir ? `${branch_code}-AIR` : `${branch_code}-SEA`;
         const nextSequenceStr = await getNextJobSequence(branchSeqArg, yearFormat);
-        newJobNo = isAir ? `${branch_code}/AIR/${nextSequenceStr}/${yearFormat}` : `${branch_code}/${nextSequenceStr}/${yearFormat}`;
+
+        if (isAir) {
+          newJobNo = `${branch_code}/AIR/${nextSequenceStr}/${yearFormat}`;
+        } else if (isSea) {
+          newJobNo = `${branch_code}/SEA/${nextSequenceStr}/${yearFormat}`;
+        } else {
+          newJobNo = `${branch_code}/${nextSequenceStr}/${yearFormat}`;
+        }
       }
 
       // Date Handling
@@ -193,7 +210,15 @@ router.post(
 
         const sequenceStr = manualSequence.padStart(5, "0");
         const isAir = (transportMode && transportMode.toUpperCase() === 'AIR') || (req.body.consignmentType && req.body.consignmentType.toUpperCase() === 'AIR');
-        newJobNo = isAir ? `${branch_code}/AIR/${sequenceStr}/${year}` : `${branch_code}/${sequenceStr}/${year}`;
+        const isSea = (transportMode && transportMode.toUpperCase() === 'SEA') || (req.body.consignmentType && ['FCL', 'LCL'].includes(req.body.consignmentType?.toUpperCase() || '')) || !isAir;
+
+        if (isAir) {
+          newJobNo = `${branch_code}/AIR/${sequenceStr}/${year}`;
+        } else if (isSea) {
+          newJobNo = `${branch_code}/SEA/${sequenceStr}/${year}`;
+        } else {
+          newJobNo = `${branch_code}/${sequenceStr}/${year}`;
+        }
 
         const existingJob = await ExportJobModel.findOne({
           job_no: { $regex: `^${newJobNo}$`, $options: "i" },
@@ -207,15 +232,24 @@ router.post(
         }
 
         // Update counter
-        const branchSeqArg = isAir ? `${branch_code}-AIR` : branch_code;
+        const branchSeqArg = isAir ? `${branch_code}-AIR` : `${branch_code}-SEA`;
         await updateJobSequenceIfHigher(branchSeqArg, year, parseInt(manualSequence, 10));
 
       } else {
         // Auto Generation Logic
         const isAir = (transportMode && transportMode.toUpperCase() === 'AIR') || (req.body.consignmentType && req.body.consignmentType.toUpperCase() === 'AIR');
-        const branchSeqArg = isAir ? `${branch_code}-AIR` : branch_code;
+        const isSea = (transportMode && transportMode.toUpperCase() === 'SEA') || (req.body.consignmentType && ['FCL', 'LCL'].includes(req.body.consignmentType?.toUpperCase() || '')) || !isAir;
+
+        const branchSeqArg = isAir ? `${branch_code}-AIR` : `${branch_code}-SEA`;
         const nextSequenceStr = await getNextJobSequence(branchSeqArg, year);
-        newJobNo = isAir ? `${branch_code}/AIR/${nextSequenceStr}/${year}` : `${branch_code}/${nextSequenceStr}/${year}`;
+
+        if (isAir) {
+          newJobNo = `${branch_code}/AIR/${nextSequenceStr}/${year}`;
+        } else if (isSea) {
+          newJobNo = `${branch_code}/SEA/${nextSequenceStr}/${year}`;
+        } else {
+          newJobNo = `${branch_code}/${nextSequenceStr}/${year}`;
+        }
       }
 
       // Prepare New Job Data
@@ -292,7 +326,7 @@ router.post("/api/jobs/suggest-sequence", async (req, res) => {
 
     // Get the current max sequence from our centralized counter
     const isAir = (req.body.transportMode && req.body.transportMode.toUpperCase() === 'AIR') || (req.body.consignmentType && req.body.consignmentType.toUpperCase() === 'AIR');
-    const branchToQuery = isAir ? `${branch_code.toUpperCase()}-AIR` : branch_code.toUpperCase();
+    const branchToQuery = isAir ? `${branch_code.toUpperCase()}-AIR` : `${branch_code.toUpperCase()}-SEA`;
 
     const sequenceDoc = await JobSequence.findOne({
       branch: branchToQuery,

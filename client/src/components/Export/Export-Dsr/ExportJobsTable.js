@@ -273,7 +273,7 @@ const getStatusColor = (statusValue) => {
 
     case "L.E.O":
       return "#e8f5e9"; // Light Green (Completed/Approved)
-    case "Container HO to Concor":
+    case "Container HO":
     case "File Handover to IATA":
       return "#ffffe0"; // Light Yellow
     case "Rail Out":
@@ -392,6 +392,17 @@ const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSucce
   );
 };
 
+// Helper to determine current Indian financial year (starts April)
+const getCurrentFinancialYear = () => {
+  const today = new Date();
+  const month = today.getMonth(); // 0-based: 0=Jan, 3=April
+  const year = today.getFullYear();
+  if (month < 3) {
+    return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+  }
+  return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+};
+
 const ExportJobsTable = () => {
   const { user } = useContext(UserContext);
   const isAdmin = user?.role === "Admin";
@@ -476,6 +487,29 @@ const ExportJobsTable = () => {
     return user ? user.fullName : username;
   };
 
+  // Gate In modal states (only for operation module)
+  const isOperationModule = window.location.pathname.startsWith("/export-operation");
+  const [gateInModalOpen, setGateInModalOpen] = useState(false);
+  const [gateInJobs, setGateInJobs] = useState([]);
+  const [gateInLoading, setGateInLoading] = useState(false);
+
+  const handleOpenGateInJobs = async () => {
+    setGateInModalOpen(true);
+    setGateInLoading(true);
+    try {
+      const resp = await axios.get(
+        `${import.meta.env.VITE_API_STRING}/operation-pending-jobs?gateInTenDays=true`
+      );
+      if (resp.data.success) {
+        setGateInJobs(resp.data.data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setGateInLoading(false);
+    }
+  };
+
   // Persist filters effect
   useEffect(() => {
     if (isInitialSave.current) {
@@ -549,6 +583,8 @@ const ExportJobsTable = () => {
   const [openDSRDialog, setOpenDSRDialog] = useState(false);
   const [exporters, setExporters] = useState([]);
   const [selectedExporter, setSelectedExporter] = useState("");
+  const [dsrYear, setDsrYear] = useState(getCurrentFinancialYear());
+  const [dsrOnlyPending, setDsrOnlyPending] = useState(true);
   const [dsrLoading, setDSRLoading] = useState(false);
 
   // Documents Menu State
@@ -608,7 +644,11 @@ const ExportJobsTable = () => {
       const response = await axios.get(
         `${import.meta.env.VITE_API_STRING}/export-dsr/generate-dsr-report`,
         {
-          params: { exporter: selectedExporter },
+          params: {
+            exporter: selectedExporter,
+            year: dsrYear,
+            onlyPending: dsrOnlyPending
+          },
           responseType: "blob",
         },
       );
@@ -642,6 +682,8 @@ const ExportJobsTable = () => {
         {
           params: {
             exporter: selectedExporter,
+            year: dsrYear,
+            status: dsrOnlyPending ? "Pending" : "all",
             limit: 5000,
           },
         }
@@ -660,7 +702,7 @@ const ExportJobsTable = () => {
           let jobNoCol = [];
           if (job.job_no) jobNoCol.push(job.job_no);
           if (job.custom_house) jobNoCol.push(job.custom_house);
-          if (job.movement_type) jobNoCol.push(job.movement_type);
+          if (job.consignmentType) jobNoCol.push(job.consignmentType);
           rowData["Job No"] = jobNoCol.join("\n");
 
           // Column 2: Consignee Name
@@ -822,8 +864,13 @@ const ExportJobsTable = () => {
   const fetchJobs = async () => {
     setLoading(true);
     try {
+      let endpoint = `${import.meta.env.VITE_API_STRING}/exports`;
+      if (isOperationModule) {
+        endpoint = `${import.meta.env.VITE_API_STRING}/operation-jobs`;
+      }
+
       const response = await axios.get(
-        `${import.meta.env.VITE_API_STRING}/exports`,
+        endpoint,
         {
           params: {
             status: activeTab,
@@ -1404,6 +1451,29 @@ const ExportJobsTable = () => {
                 </button>
               </div>
             )}
+
+            {/* Gate In Pending Button - Only for Export Operation module */}
+            {isOperationModule && (
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  style={{
+                    ...s.btnPrimary,
+                    padding: "8px 20px",
+                    height: "auto",
+                    backgroundColor: "#f59e0b",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    fontSize: "13px",
+                  }}
+                  onClick={handleOpenGateInJobs}
+                >
+                  Gate In Pending
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Tabs */}
@@ -1464,9 +1534,11 @@ const ExportJobsTable = () => {
               onChange={(e) => setSelectedYear(e.target.value)}
             >
               <option value="">All Years</option>
-              <option value="24-25">24-25</option>
               <option value="25-26">25-26</option>
-              <option value="26-27">26-27</option>
+              <option value="24-25">24-25</option>
+              <option value="23-24">23-24</option>
+              <option value="22-23">22-23</option>
+              <option value="21-22">21-22</option>
             </select>
 
             {/* Movement Type Filter */}
@@ -1564,7 +1636,7 @@ const ExportJobsTable = () => {
                 {[
                   "SB Filed",
                   "L.E.O",
-                  "Container HO to Concor",
+                  "Container HO",
                   "File Handover to IATA",
                   "Rail Out",
                   "Departure",
@@ -2849,6 +2921,8 @@ const ExportJobsTable = () => {
               )}
             />
           </div>
+
+          {/* Year and Pending options removed as per user requirement - default is set to current year (25-26) and pending only */}
           <div
             style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}
           >
@@ -3130,6 +3204,72 @@ const ExportJobsTable = () => {
         }}
         containers={containerTrackContainers}
       />
+
+      {/* Gate In Pending Jobs Modal */}
+      <Dialog
+        open={gateInModalOpen}
+        onClose={() => setGateInModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Gate In Pending (&le; 10 Days)</DialogTitle>
+        <DialogContent>
+          {gateInLoading ? (
+            <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>
+              Loading jobs...
+            </div>
+          ) : gateInJobs.length === 0 ? (
+            <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>
+              No pending Gate In jobs within the last 10 days found.
+            </div>
+          ) : (
+            <div
+              style={{ border: "1px solid #e0e0e0", borderRadius: "4px", overflow: "hidden" }}
+            >
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                <thead style={{ backgroundColor: "#f5f5f5" }}>
+                  <tr>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>Job No</th>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>SB No</th>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>Exporter</th>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>Gate In Date</th>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gateInJobs.map((j, i) => (
+                    <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa", borderBottom: "1px solid #e0e0e0" }}>
+                      <td style={{ padding: "8px" }}>{j.job_no}</td>
+                      <td style={{ padding: "8px" }}>{j.sb_no}</td>
+                      <td style={{ padding: "8px" }}>{j.exporter}</td>
+                      <td style={{ padding: "8px" }}>{j.gateInDate}</td>
+                      <td style={{ padding: "8px" }}>
+                        <button
+                          style={{
+                            padding: "4px 10px",
+                            backgroundColor: "#fff",
+                            color: "#2563eb",
+                            border: "1px solid #2563eb",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            fontSize: "12px"
+                          }}
+                          onClick={() => {
+                            setGateInModalOpen(false);
+                            navigate(`/export-operation/job/${encodeURIComponent(j.job_no)}`);
+                          }}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

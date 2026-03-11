@@ -170,29 +170,64 @@ router.post("/api/jobs/add-job", async (req, res) => {
     jsonData.forEach((d) => {
         if (!d.job_no || typeof d.job_no !== 'string') return;
 
-        const isAir = (d.transportMode && String(d.transportMode).toUpperCase().includes('AIR')) ||
-            (d.consignmentType && String(d.consignmentType).toUpperCase().includes('AIR')) ||
-            d.job_no.toUpperCase().includes('/AIR/');
+        let isAir = false;
+        let isSea = false;
+        const jobNoUpper = d.job_no.toUpperCase();
 
-        if (isAir && !d.job_no.toUpperCase().includes('/AIR/')) {
-            let newJob = d.job_no;
-            if (newJob.toUpperCase().includes('/SEA/')) {
-                newJob = newJob.replace(/\/SEA\//i, '/AIR/');
-            }
-            else {
-                const parts = newJob.split('/');
-                const seqIndex = parts.findIndex(p => /^\d{3,}$/.test(p));
-                if (seqIndex > 0) {
-                    parts.splice(seqIndex, 0, 'AIR');
-                    newJob = parts.join('/');
-                } else if (parts.length >= 2) {
-                    parts.splice(1, 0, 'AIR');
-                    newJob = parts.join('/');
-                }
-            }
-            d.job_no = newJob;
+        if (jobNoUpper.includes('/AIR/')) {
+            isAir = true;
+        } else if (jobNoUpper.includes('/SEA/')) {
+            isSea = true;
+        } else {
+            isAir = (d.transportMode && String(d.transportMode).toUpperCase().includes('AIR')) ||
+                (d.consignmentType && String(d.consignmentType).toUpperCase().includes('AIR'));
+            isSea = (d.transportMode && String(d.transportMode).toUpperCase().includes('SEA')) ||
+                (d.consignmentType && ['FCL', 'LCL'].includes(String(d.consignmentType).toUpperCase())) ||
+                (!isAir); // Default to Sea if not Air
+        }
+
+        if (isAir) {
             d.transportMode = "AIR";
             d.consignmentType = "AIR";
+            if (!jobNoUpper.includes('/AIR/')) {
+                let newJob = d.job_no;
+                if (newJob.toUpperCase().includes('/SEA/')) {
+                    newJob = newJob.replace(/\/SEA\//i, '/AIR/');
+                }
+                else {
+                    const parts = newJob.split('/');
+                    const seqIndex = parts.findIndex(p => /^\d{3,}$/.test(p));
+                    if (seqIndex > 0) {
+                        parts.splice(seqIndex, 0, 'AIR');
+                        newJob = parts.join('/');
+                    } else if (parts.length >= 2) {
+                        parts.splice(1, 0, 'AIR');
+                        newJob = parts.join('/');
+                    }
+                }
+                d.job_no = newJob;
+            }
+        } else if (isSea) {
+            d.transportMode = "SEA";
+            // if we are here it's Sea. Consignment might still be whatever it was (LCL or FCL)
+            if (!jobNoUpper.includes('/SEA/')) {
+                let newJob = d.job_no;
+                if (newJob.toUpperCase().includes('/AIR/')) {
+                    newJob = newJob.replace(/\/AIR\//i, '/SEA/');
+                }
+                else {
+                    const parts = newJob.split('/');
+                    const seqIndex = parts.findIndex(p => /^\d{3,}$/.test(p));
+                    if (seqIndex > 0) {
+                        parts.splice(seqIndex, 0, 'SEA');
+                        newJob = parts.join('/');
+                    } else if (parts.length >= 2) {
+                        parts.splice(1, 0, 'SEA');
+                        newJob = parts.join('/');
+                    }
+                }
+                d.job_no = newJob;
+            }
         }
     });
 
@@ -452,13 +487,12 @@ router.post("/api/jobs/add-job", async (req, res) => {
                         // Normalize Year to YY-YY format (e.g. 2025-2026 -> 25-26)
                         targetYear = normalizeYear(targetYear);
 
+                        // Build target structure - default to SEA if not AIR
                         if (job_no && String(job_no).toUpperCase().includes('/AIR/')) {
                             targetBranch += '-AIR';
+                        } else if (job_no && String(job_no).toUpperCase().includes('/SEA/')) {
+                            targetBranch += '-SEA';
                         }
-
-                        // Log what we are trying to update
-                        console.log(`Title: Syncing Sequence | Job: ${job_no} | Branch: ${targetBranch} | Year: ${targetYear} | Seq: ${seqNum}`);
-
                         if (targetBranch && targetYear && !isNaN(seqNum)) {
                             const key = `${targetBranch}|${targetYear}`;
                             const currentMax = maxSequences.get(key) || 0;
@@ -621,8 +655,8 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 ieCode: ieCodeUpdate,
 
                 // Consignment/Transport
-                consignmentType: (job_no && String(job_no).toUpperCase().includes('/AIR/')) ? "AIR" : getUpdateValue(consignmentType, existingJob?.consignmentType),
-                transportMode: (job_no && String(job_no).toUpperCase().includes('/AIR/')) ? "AIR" : getUpdateValue(transportMode, existingJob?.transportMode),
+                consignmentType: (job_no && String(job_no).toUpperCase().includes('/AIR/')) ? "AIR" : (job_no && String(job_no).toUpperCase().includes('/SEA/')) ? "FCL" : getUpdateValue(consignmentType, existingJob?.consignmentType),
+                transportMode: (job_no && String(job_no).toUpperCase().includes('/AIR/')) ? "AIR" : (job_no && String(job_no).toUpperCase().includes('/SEA/')) ? "SEA" : getUpdateValue(transportMode, existingJob?.transportMode),
 
                 // Shipping Line
                 shipping_line_airline: getUpdateValue(shipping_line_airline, existingJob?.shipping_line_airline),
@@ -1037,6 +1071,58 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 updateData.jobNumber = updateData.job_no;
             }
 
+            const isAir_local = (job_no && String(job_no).toUpperCase().includes('/AIR/'));
+
+            // Prepare milestones based on uploaded fields
+            let milestonesList = existingJob?.milestones ? [...existingJob.milestones] : [];
+            const triggerFields = [
+                { name: "SB Filed", date: updateData.sb_date },
+                { name: "L.E.O", date: leo_date },
+                { name: isAir_local ? "File Handover to IATA" : "Container HO", date: data.container_ho_to_concor || data.handover_date || data.handover_forwarding_note_date },
+                { name: isAir_local ? "Departure" : "Rail Out", date: data.rail_out || data.rail_out_date || data.railOutReachedDate },
+                { name: "Billing Pending", date: operations_locked_on },
+                { name: "Billing Done", date: financials_locked_on }
+            ];
+
+            let highestMilestone = existingJob?.detailedStatus || "";
+            const milestonePriority = [
+                "SB Filed",
+                "L.E.O",
+                isAir_local ? "File Handover to IATA" : "Container HO",
+                isAir_local ? "Departure" : "Rail Out",
+                "Billing Pending",
+                "Billing Done"
+            ];
+
+            triggerFields.forEach(tf => {
+                if (tf.date && String(tf.date).trim() !== "") {
+                    const dStr = String(tf.date).trim();
+                    const existingIdx = milestonesList.findIndex(m => m.milestoneName === tf.name);
+
+                    if (existingIdx === -1) {
+                        milestonesList.push({
+                            milestoneName: tf.name,
+                            actualDate: dStr,
+                            isCompleted: true,
+                            isMandatory: ["SB Filed", "L.E.O", "Billing Pending"].includes(tf.name)
+                        });
+                    } else if (!milestonesList[existingIdx].isCompleted || milestonesList[existingIdx].actualDate !== dStr) {
+                        milestonesList[existingIdx].isCompleted = true;
+                        milestonesList[existingIdx].actualDate = dStr;
+                    }
+
+                    // Update highest milestone if this one has higher priority
+                    if (milestonePriority.indexOf(tf.name) >= milestonePriority.indexOf(highestMilestone)) {
+                        highestMilestone = tf.name;
+                    }
+                }
+            });
+
+            if (milestonesList.length > 0) {
+                updateData.milestones = milestonesList;
+                updateData.detailedStatus = highestMilestone;
+            }
+
             const update = {
                 $set: updateData,
             };
@@ -1044,9 +1130,6 @@ router.post("/api/jobs/add-job", async (req, res) => {
             // Process Operations Locked On -> billingDocsSentDt
             if (operations_locked_on) {
                 update.$set["operations.0.statusDetails.0.billingDocsSentDt"] = operations_locked_on;
-                if (!update.$set.detailedStatus || update.$set.detailedStatus !== "Billing Done") {
-                    update.$set.detailedStatus = "Billing Pending";
-                }
             }
 
             // Process LEO Date -> operations.0.statusDetails.0.leoDate
@@ -1054,28 +1137,9 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 update.$set["operations.0.statusDetails.0.leoDate"] = String(leo_date).trim();
             }
 
-            // Process Financials Locked On -> Billing Done Milestone
+            // Process Financials Locked On -> Mark as Completed
             if (financials_locked_on) {
                 update.$set.status = "Completed";
-                update.$set.detailedStatus = "Billing Done";
-
-                const hasMilestoneIdx = existingJob?.milestones?.findIndex(m => m.milestoneName === "Billing Done") ?? -1;
-
-                if (hasMilestoneIdx === -1) {
-                    update.$push = {
-                        milestones: {
-                            milestoneName: "Billing Done",
-                            actualDate: financials_locked_on,
-                            isCompleted: true,
-                            status: "Completed",
-                            isMandatory: true,
-                        }
-                    };
-                } else {
-                    update.$set[`milestones.${hasMilestoneIdx}.actualDate`] = financials_locked_on;
-                    update.$set[`milestones.${hasMilestoneIdx}.isCompleted`] = true;
-                    update.$set[`milestones.${hasMilestoneIdx}.status`] = "Completed";
-                }
             }
 
             bulkOperations.push({

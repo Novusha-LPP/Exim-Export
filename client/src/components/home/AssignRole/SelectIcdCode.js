@@ -258,6 +258,16 @@ function SelectIcdCode({ selectedUser }) {
     setSelectedIcdCodes(typeof value === "string" ? value.split(",") : value);
   };
 
+  const handleSelectAllBranches = () => {
+    const allBranchCodes = branchOptions.map(branch => branch.code);
+    setSelectedBranches(allBranchCodes);
+  };
+
+  const handleSelectAllIcdCodes = () => {
+    const allIcdValues = availableIcdOptions.map(option => option.value);
+    setSelectedIcdCodes(allIcdValues);
+  };
+
   return (
     <Paper elevation={3} sx={{ p: 3, mt: 2 }}>
       <Box
@@ -380,6 +390,15 @@ function SelectIcdCode({ selectedUser }) {
         </Alert>
       ) : (
         <Box component="form" onSubmit={handleSubmit}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mb: -1, mt: 1 }}>
+            <Button
+              size="small"
+              onClick={handleSelectAllBranches}
+              sx={{ fontSize: "11px", textTransform: "none", py: 0 }}
+            >
+              Select All Branches
+            </Button>
+          </Box>
           <FormControl fullWidth margin="normal" size="small">
             <InputLabel id="branches-select-label">Assign Branch</InputLabel>
             <Select
@@ -404,6 +423,18 @@ function SelectIcdCode({ selectedUser }) {
               ))}
             </Select>
           </FormControl>
+
+          {selectedBranches.length > 0 && (
+            <Box sx={{ display: "flex", justifyContent: "flex-end", mb: -1, mt: 1 }}>
+              <Button
+                size="small"
+                onClick={handleSelectAllIcdCodes}
+                sx={{ fontSize: "11px", textTransform: "none", py: 0 }}
+              >
+                Select All ICD Codes
+              </Button>
+            </Box>
+          )}
 
           <FormControl fullWidth margin="normal" size="small" disabled={selectedBranches.length === 0}>
             <InputLabel id="icd-codes-select-label">Assign ICD Codes</InputLabel>

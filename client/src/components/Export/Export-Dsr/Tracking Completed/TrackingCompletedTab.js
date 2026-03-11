@@ -56,7 +56,7 @@ const TrackingCompletedTab = ({ formik, directories, params, isAdmin }) => {
     "SB Filed",
     "L.E.O",
     "File Handover to IATA",
-    "Container HO to Concor",
+    "Container HO",
     "Departure",
     "Rail Out",
     "Billing Pending",

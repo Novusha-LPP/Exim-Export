@@ -26,23 +26,23 @@ import { useNavigate } from "react-router-dom";
 
 // ─── Theme Colors (matches Job Tab: white bg, blue accents) ───────────────────
 const THEME = {
-  blue:      "#2563eb",
-  blueSoft:  "#eff6ff",
+  blue: "#2563eb",
+  blueSoft: "#eff6ff",
   blueHover: "#1d4ed8",
-  amber:     "#f59e0b",
+  amber: "#f59e0b",
   amberSoft: "#fffbeb",
-  green:     "#10b981",
+  green: "#10b981",
   greenSoft: "#ecfdf5",
-  red:       "#ef4444",
-  redSoft:   "#fef2f2",
-  text:      "#111827",
+  red: "#ef4444",
+  redSoft: "#fef2f2",
+  text: "#111827",
   textMuted: "#6b7280",
-  border:    "#e5e7eb",
-  bg:        "#f3f4f6",
-  white:     "#ffffff",
+  border: "#e5e7eb",
+  bg: "#f3f4f6",
+  white: "#ffffff",
 };
 
-const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 // ─── Custom Tooltip for Bar Chart ─────────────────────────────────────────────
 const BarTooltip = ({ active, payload, label }) => {
@@ -109,8 +109,8 @@ const StatCard = ({ title, value, color, softColor, icon }) => (
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const ExportDashboard = () => {
-  const [exporters, setExporters]   = useState([]);
-  const [stats, setStats]           = useState({ total: 0, pending: 0, completed: 0, cancelled: 0 });
+  const [exporters, setExporters] = useState([]);
+  const [stats, setStats] = useState({ total: 0, pending: 0, completed: 0, cancelled: 0 });
   const [monthlyData, setMonthlyData] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -165,7 +165,7 @@ const ExportDashboard = () => {
           const trend = Array(12).fill(0).map((_, i) => {
             const targetMonth = i + 1;
             let count = 0;
-            
+
             monthlyTrend.forEach((m) => {
               const mMonth = typeof m._id === "object" ? m._id.month : m._id;
               if (mMonth === targetMonth) {
@@ -221,9 +221,9 @@ const ExportDashboard = () => {
 
   // Pie data — values directly from server (fixed bugs TC_EXP_002, TC_DASH_002)
   const rawPieData = [
-    { name: "Active / Pending", value: stats.pending,   color: THEME.amber },
-    { name: "Completed",        value: stats.completed, color: THEME.green },
-    { name: "Cancelled",        value: stats.cancelled, color: THEME.red   },
+    { name: "Active / Pending", value: stats.pending, color: THEME.amber },
+    { name: "Completed", value: stats.completed, color: THEME.green },
+    { name: "Cancelled", value: stats.cancelled, color: THEME.red },
   ].filter((d) => d.value > 0);
 
   const totalPieValue = rawPieData.reduce((acc, cur) => acc + cur.value, 0) || 1;
@@ -234,8 +234,8 @@ const ExportDashboard = () => {
   // Search-filtered monthly data (TC_DASH_003 suggestion — filter months by label)
   const filteredMonthlyData = searchQuery
     ? monthlyData.filter((m) =>
-        m.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      m.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : monthlyData;
 
   const inProgress = stats.total - stats.pending - stats.completed - stats.cancelled;
@@ -313,7 +313,7 @@ const ExportDashboard = () => {
               <span style={{ fontWeight: 700, color: THEME.text, textTransform: "uppercase", fontSize: 8, letterSpacing: "0.02em" }}>Last Updated</span>
               <span style={{ fontWeight: 600, color: THEME.blue }}>{formatDate(lastUpdated)} {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
             </div>
-            
+
             <button
               id="dashboard-upload-btn"
               className="dash-btn"
@@ -342,21 +342,21 @@ const ExportDashboard = () => {
                 </>
               ) : (
                 <>
-                  <span style={{ fontSize: 16 }}>📊</span> 
+                  <span style={{ fontSize: 16 }}>📊</span>
                   <span>Import Excel</span>
                 </>
               )}
             </button>
           </div>
-            <input
-              type="file"
-              ref={inputRef}
-              onChange={handleFileUpload}
-              accept=".xlsx,.xls,.csv,.xml,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/xml,application/xml"
-              style={{ display: "none" }}
-            />
-          </div>
+          <input
+            type="file"
+            ref={inputRef}
+            onChange={handleFileUpload}
+            accept=".xlsx,.xls,.csv,.xml,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/xml,application/xml"
+            style={{ display: "none" }}
+          />
         </div>
+      </div>
 
       {/* ── Filters Row ── */}
       <div style={{
@@ -372,7 +372,7 @@ const ExportDashboard = () => {
         alignItems: "flex-end",
       }}>
 
-         <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: "2 1 200px", minWidth: 180 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: "2 1 200px", minWidth: 180 }}>
           <label style={{ fontSize: 10, fontWeight: 700, color: THEME.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Search
           </label>
@@ -393,14 +393,16 @@ const ExportDashboard = () => {
         </div>
 
         {[
-    
+
           {
             key: "year", label: "Year",
             options: [
               { value: "", label: "All Time" },
-              { value: "24-25", label: "2024-2025" },
-              { value: "25-26", label: "2025-2026" },
-              { value: "26-27", label: "2026-2027" },
+              { value: "25-26", label: "25-26" },
+              { value: "24-25", label: "24-25" },
+              { value: "23-24", label: "23-24" },
+              { value: "22-23", label: "22-23" },
+              { value: "21-22", label: "21-22" },
             ],
           },
           {
@@ -561,8 +563,8 @@ const ExportDashboard = () => {
               <AreaChart data={filteredMonthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorJobs" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={THEME.blue} stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor={THEME.blue} stopOpacity={0}/>
+                    <stop offset="5%" stopColor={THEME.blue} stopOpacity={0.1} />
+                    <stop offset="95%" stopColor={THEME.blue} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={THEME.border} />
@@ -577,16 +579,16 @@ const ExportDashboard = () => {
                   tick={{ fill: THEME.textMuted, fontSize: 11, fontWeight: 500 }}
                   allowDecimals={false}
                 />
-                <Tooltip 
-                  content={<BarTooltip />} 
-                  cursor={{ stroke: THEME.blue, strokeWidth: 1, strokeDasharray: "4 4" }} 
+                <Tooltip
+                  content={<BarTooltip />}
+                  cursor={{ stroke: THEME.blue, strokeWidth: 1, strokeDasharray: "4 4" }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="jobs" 
-                  stroke={THEME.blue} 
+                <Area
+                  type="monotone"
+                  dataKey="jobs"
+                  stroke={THEME.blue}
                   strokeWidth={3}
-                  fillOpacity={1} 
+                  fillOpacity={1}
                   fill="url(#colorJobs)"
                   activeDot={{ r: 6, strokeWidth: 0, fill: THEME.blue }}
                 />
@@ -714,9 +716,9 @@ const ExportDashboard = () => {
                       <span style={{
                         padding: "3px 8px", borderRadius: 12, fontSize: 10, fontWeight: 600,
                         background: (job.status || "Pending").toLowerCase() === "completed" ? THEME.greenSoft :
-                                    (job.status || "Pending").toLowerCase() === "cancelled" ? THEME.redSoft : THEME.amberSoft,
+                          (job.status || "Pending").toLowerCase() === "cancelled" ? THEME.redSoft : THEME.amberSoft,
                         color: (job.status || "Pending").toLowerCase() === "completed" ? THEME.green :
-                               (job.status || "Pending").toLowerCase() === "cancelled" ? THEME.red : THEME.amber,
+                          (job.status || "Pending").toLowerCase() === "cancelled" ? THEME.red : THEME.amber,
                       }}>
                         {job.status || "Pending"}
                       </span>

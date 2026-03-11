@@ -796,8 +796,6 @@ const OperationsTab = ({ formik }) => {
     const jobVoyage = toUpper(formik.values.voyage_no || "");
     const jobBookingNo = toUpper(formik.values.booking_no || "");
     const jobBookingDate = formik.values.booking_date || "";
-    const jobLeoDate = formik.values.leo_date || "";
-    const jobGateInDate = formik.values.gate_in || "";
 
     const currentOps = formik.values.operations || [];
     let changed = false;
@@ -837,25 +835,7 @@ const OperationsTab = ({ formik }) => {
       });
 
       const statusDetails = op.statusDetails || [];
-      const updatedStatus = statusDetails.map((s) => {
-        let sChanged = false;
-        const newS = { ...s };
-
-        if ((s.leoDate || "") !== jobLeoDate) {
-          newS.leoDate = jobLeoDate;
-          sChanged = true;
-        }
-        if ((s.gateInDate || "") !== jobGateInDate) {
-          newS.gateInDate = jobGateInDate;
-          sChanged = true;
-        }
-
-        if (sChanged) {
-          changed = true;
-          return newS;
-        }
-        return s;
-      });
+      const updatedStatus = statusDetails; // Leaving unchanged for sync, you can remove the entire block later
 
       if (changed) return { ...op, bookingDetails: updatedBooking, statusDetails: updatedStatus };
       return op;

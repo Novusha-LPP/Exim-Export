@@ -40,8 +40,17 @@ async function initializeCounter(branch, year) {
     try {
         // Handle custom format for AIR jobs e.g., branch argument 'AMD-AIR'
         const isAirCounter = branch.endsWith('-AIR');
-        const baseBranch = isAirCounter ? branch.replace('-AIR', '') : branch;
-        const regexPrefix = isAirCounter ? `^${baseBranch}/AIR/` : `^${baseBranch}/[^/]+/`;
+        const isSeaCounter = branch.endsWith('-SEA');
+        let baseBranch = branch;
+        if (isAirCounter) {
+            baseBranch = branch.replace('-AIR', '');
+        } else if (isSeaCounter) {
+            baseBranch = branch.replace('-SEA', '');
+        }
+
+        const regexPrefix = isAirCounter ? `^${baseBranch}/AIR/`
+            : isSeaCounter ? `^${baseBranch}/SEA/`
+                : `^${baseBranch}/[^/]+/`;
 
         // Find highest sequence in existing jobs
         const filter = {

@@ -19,9 +19,12 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
     }
 
     // Build filter - support year to reduce dataset
-    const { year } = req.query;
+    const { year, onlyPending } = req.query;
     const filter = { exporter };
     if (year) filter.year = year;
+    if (onlyPending === "true") {
+      filter.status = { $nin: ["Completed", "Cancelled"] };
+    }
 
     // Fetch jobs with LIMIT to prevent unbounded data fetch
     // Max 1000 jobs per report to prevent bandwidth explosion

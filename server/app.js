@@ -80,6 +80,8 @@ import openPointsRoutes from "./routes/open-points/openPointsRoutes.mjs";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import sbTrack from "./routes/export-dsr/sbTrack.mjs";
 import generateFlatFile from "./routes/export-dsr/generateFlatFile.mjs";
+import operationPendingJobs from "./routes/export-dsr/operationPendingJobs.mjs";
+import operationListJobs from "./routes/export-dsr/operationListJobs.mjs";
 
 // Report Routes
 import monthlyContainersReport from "./routes/report/monthlyContainers.mjs";
@@ -235,6 +237,8 @@ app.use(openPointsRoutes);
 app.use("/api", uploadRoutes);
 app.use(sbTrack);
 app.use(generateFlatFile);
+app.use(operationPendingJobs);
+app.use(operationListJobs);
 
 // Report Routes
 app.use(monthlyContainersReport);

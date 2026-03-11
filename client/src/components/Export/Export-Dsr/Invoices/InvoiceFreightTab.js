@@ -168,10 +168,17 @@ const InvoiceFreightTab = ({ formik }) => {
       rowKeys.forEach((k) => {
         const row = nextCharges[k] || {};
         const code = (row.currency || "").toUpperCase();
-        if (code && rateMap[code]) {
-          const newRate = rateMap[code];
-          if (row.exchangeRate !== newRate) {
-            nextCharges[k] = { ...row, exchangeRate: newRate };
+
+        if (code) {
+          let expectedRate = undefined;
+          if (code === "INR") {
+            expectedRate = 1;
+          } else if (rateMap[code]) {
+            expectedRate = rateMap[code];
+          }
+
+          if (expectedRate !== undefined && row.exchangeRate !== expectedRate) {
+            nextCharges[k] = { ...row, exchangeRate: expectedRate };
             invModified = true;
           }
         }
@@ -259,7 +266,13 @@ const InvoiceFreightTab = ({ formik }) => {
 
     if (!adjustedProductVal) return 0;
 
-    const rowRate = Number(data.exchangeRate || 0); // rowCur → INR
+    // IMPORTANT: Fallback to the real exchange rate if data.exchangeRate is missing
+    const effectiveCurrency = (data.currency || invoiceCurrency).toUpperCase();
+    const fallbackRate = effectiveCurrency === 'INR' ? 1 :
+      effectiveCurrency === invoiceCurrency ? invoiceExchangeRate :
+        getRateForCurrency(effectiveCurrency);
+
+    const rowRate = Number(data.exchangeRate || fallbackRate || 0); // rowCur → INR
     if (!rowRate || !invoiceExchangeRate) return 0;
 
     // Step 1: product value (adjusted) to INR
@@ -278,12 +291,14 @@ const InvoiceFreightTab = ({ formik }) => {
       return Number(data.amount || 0);
     }
 
+    // Only use explicit amount if user actually typed something and didn't erase it
     if (
       data.amount !== undefined &&
       data.amount !== null &&
-      data.amount !== ""
+      data.amount !== "" &&
+      !isNaN(data.amount)
     ) {
-      return Number(data.amount || 0);
+      return Number(data.amount);
     }
 
     const rate = Number(data.rate || 0);
@@ -317,7 +332,12 @@ const InvoiceFreightTab = ({ formik }) => {
       const rowAmount = getAmount(k, row, baseValue);
       if (!rowAmount) return;
 
-      const rowRate = Number(row.exchangeRate || 0); // rowCur → INR
+      const effectiveCurrency = (row.currency || invoiceCurrency).toUpperCase();
+      const fallbackRate = effectiveCurrency === 'INR' ? 1 :
+        effectiveCurrency === invoiceCurrency ? invoiceExchangeRate :
+          getRateForCurrency(effectiveCurrency);
+
+      const rowRate = Number(row.exchangeRate || fallbackRate || 0); // rowCur → INR
       const amountInInvoice = rowToInvoiceCurrency(rowAmount, rowRate);
 
       if (k === "commission") {
@@ -486,6 +506,8 @@ const InvoiceFreightTab = ({ formik }) => {
 
     next[sectionKey] = currentSection;
 
+    // Reset amount = 0 if exchange rate changed without an explicit amount update?
+    // Not strictly necessary but keeping for clean state. Let's just update formik as before.
     formik.setFieldValue(
       `invoices[${selectedInvoiceIndex}].freightInsuranceCharges`,
       next,
@@ -725,16 +747,24 @@ const InvoiceFreightTab = ({ formik }) => {
                       ...(disabled ? styles.disabled : {}),
                     }}
                     value={(() => {
+                      // Note: For FOB row, `data.amount` comes from `effectiveCharges.fobValue.amount`
+                      // which is ALREADY computed by computeFOBCharges!
+                      if (isFOB) {
+                        if (data.amount !== undefined && data.amount !== null && data.amount !== 0) {
+                          return typeof data.amount === "number" ? data.amount.toFixed(2) : data.amount;
+                        }
+                        // if computed FOB is exactly 0, show nothing or 0.00
+                        return "";
+                      }
+
+                      // For non-FOB rows:
                       if (
                         data.amount !== undefined &&
                         data.amount !== null &&
                         data.amount !== "" &&
+                        !isNaN(data.amount) &&
                         data.amount !== 0
                       ) {
-                        // For FOB row, always show 2 decimal places
-                        if (isFOB && typeof data.amount === "number") {
-                          return data.amount.toFixed(2);
-                        }
                         return data.amount;
                       }
                       if (
@@ -747,16 +777,15 @@ const InvoiceFreightTab = ({ formik }) => {
                     })()}
                     placeholder="0.00"
                     disabled={disabled}
-                    onChange={(e) =>
-                      !disabled &&
+                    onChange={(e) => {
+                      if (disabled) return;
+                      const raw = e.target.value;
                       handleChange(
                         row.key,
                         "amount",
-                        e.target.value === ""
-                          ? 0
-                          : parseFloat(e.target.value || "0"),
-                      )
-                    }
+                        raw === "" ? "" : parseFloat(raw || "0"),
+                      );
+                    }}
                   />
                 </div>
               </div>

@@ -352,17 +352,7 @@ router.get("/exports/:status?", async (req, res) => {
 
     if (detailedStatus) {
       filter.$and.push({
-        $or: [
-          { detailedStatus: detailedStatus },
-          {
-            milestones: {
-              $elemMatch: {
-                milestoneName: detailedStatus,
-                isCompleted: true,
-              },
-            },
-          },
-        ],
+        detailedStatus: detailedStatus,
       });
     }
 
@@ -695,7 +685,11 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
       return res.status(404).json({ message: "Export job not found" });
     }
 
-    await updatedExportJob.save(); // This WILL trigger pre-save
+    // Force Mongoose to run pre-save hook calculation for milestones and status
+    updatedExportJob.markModified("milestones");
+    updatedExportJob.markModified("detailedStatus");
+    await updatedExportJob.save();
+
     res.json({
       message: "Export job updated successfully",
       data: updatedExportJob,
@@ -743,6 +737,11 @@ router.patch(
       if (!updatedExportJob) {
         return res.status(404).json({ message: "Export job not found" });
       }
+
+      // Force Pre-Save calculations for milestones and detailedStatus
+      updatedExportJob.markModified("milestones");
+      updatedExportJob.markModified("detailedStatus");
+      await updatedExportJob.save();
 
       res.json({
         message: "Fields updated successfully",

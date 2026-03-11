@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Typography, Button, Box, Paper, Tabs, Tab } from "@mui/material";
+import { Typography, Button, Box, Paper, Tabs, Tab, Snackbar, Alert } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { UserContext } from "../../../contexts/UserContext";
 import useExportJobDetails from "../../../customHooks/useExportJobDetails.js";
@@ -188,6 +188,23 @@ function EximOperationModule() {
           onClose={handleUpdateAndClose}
         />
       </Paper>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={fileSnackbar}
+        autoHideDuration={3000}
+        onClose={() => setFileSnackbar(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setFileSnackbar(false)}
+          severity="success"
+          sx={{ width: "100%" }}
+          variant="filled"
+        >
+          Job updated successfully!
+        </Alert>
+      </Snackbar>
     </>
   );
 }
