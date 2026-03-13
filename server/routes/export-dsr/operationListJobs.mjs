@@ -8,6 +8,7 @@ const router = express.Router();
 router.get("/api/operation-jobs/:status?", async (req, res) => {
     try {
         const {
+            status,
             page = 1,
             limit = 10,
             search = "",
@@ -20,6 +21,9 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             jobOwner = "",
             detailedStatus = "",
         } = { ...req.params, ...req.query };
+
+        // Normalize status to lowercase, fallback to "pending"
+        const normalizedStatus = (status || "pending").toLowerCase();
 
         const filter = {};
         if (!filter.$and) filter.$and = [];
@@ -46,22 +50,54 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         }
 
         // --- MANDATORY BASE CONDITIONS FOR OPERATION MODULE ---
-        // 1. Job must be pending
-        filter.$and.push({
-            status: { $regex: "^pending$", $options: "i" }
-        });
+        // 1. Handle main document status
+        if (normalizedStatus === "cancelled") {
+            filter.$and.push({
+                status: { $regex: "^cancelled$", $options: "i" }
+            });
+        } else {
+            // Default to pending for 'pending' and 'billing ready'
+            filter.$and.push({
+                status: { $regex: "^pending$", $options: "i" }
+            });
+        }
+
         // 2. sb_no must exist
         filter.$and.push({
             sb_no: { $exists: true, $nin: [null, ""] }
         });
-        // 3. NEGATIVE CONDITION: if billingDocsSentDt exist this job shouldn't come in the response
-        filter.$and.push({
-            $and: [
-                {
-                    "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] }
-                }
-            ]
-        });
+
+        // 3. Status-specific additional Conditions
+        if (normalizedStatus === "billing ready") {
+            // For "Billing Ready", the job must be pending, BUT it must have BOTH
+            // handoverForwardingNoteDate AND handoverImageUpload present.
+            // Also, it should NOT have billingDocsSentDt.
+            filter.$and.push({
+                $and: [
+                    { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
+                    { "operations.statusDetails.handoverImageUpload": { $exists: true, $not: { $size: 0 } } },
+                    { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } }
+                ]
+            });
+        } else if (normalizedStatus === "pending") {
+            // For standard "Pending", exclude rows that have billingDocsSentDt.
+            // We'll exclude them from standard pending if they have both handover details
+            filter.$and.push({
+                $and: [
+                    { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
+                    {
+                        $or: [
+                            { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
+                            { "operations.statusDetails.handoverImageUpload": { $exists: false } },
+                            { "operations.statusDetails.handoverImageUpload": { $size: 0 } },
+                        ]
+                    }
+                ]
+            });
+        } else if (normalizedStatus === "cancelled") {
+            // Cancelled jobs shouldn't filter out anything specific by default, 
+            // but we might want to exclude billed ones if desired. Usually cancelled just means status = cancelled.
+        }
         // --------------------------------------------------------
 
         if (jobOwner) filter.$and.push({ job_owner: { $regex: jobOwner, $options: "i" } });

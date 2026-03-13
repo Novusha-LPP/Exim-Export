@@ -1123,19 +1123,50 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 updateData.detailedStatus = highestMilestone;
             }
 
+            // =========================================================================
+            // ✅ CORRECT OPERATIONS UPDATE (Prevents "0" key nesting bug)
+            // =========================================================================
+            let operationsToUpdate = [...(existingJob?.operations || [])];
+            
+            // If operations is not an array, reset it
+            if (!Array.isArray(operationsToUpdate)) operationsToUpdate = [];
+
+            // Initialize at least one operation if none exists
+            if (operationsToUpdate.length === 0) {
+                operationsToUpdate = [{
+                    transporterDetails: [],
+                    containerDetails: [],
+                    bookingDetails: [],
+                    weighmentDetails: [],
+                    statusDetails: [{}]
+                }];
+            }
+
+            // Ensure first operation has at least one statusDetails object
+            if (!operationsToUpdate[0].statusDetails || !Array.isArray(operationsToUpdate[0].statusDetails) || operationsToUpdate[0].statusDetails.length === 0) {
+                operationsToUpdate[0].statusDetails = [{}];
+            } else {
+                // Make a shallow copy of the first status object to be safe
+                operationsToUpdate[0].statusDetails = [...operationsToUpdate[0].statusDetails];
+                operationsToUpdate[0].statusDetails[0] = { ...operationsToUpdate[0].statusDetails[0] };
+            }
+
+            // Safely propagate dates from Excel to the first operation's status details
+            if (operations_locked_on) {
+                operationsToUpdate[0].statusDetails[0].billingDocsSentDt = String(operations_locked_on).trim();
+            }
+            if (leo_date && String(leo_date).trim() !== "") {
+                operationsToUpdate[0].statusDetails[0].leoDate = String(leo_date).trim();
+            }
+
+            // Include in main updateData
+            updateData.operations = operationsToUpdate;
+
             const update = {
                 $set: updateData,
             };
 
-            // Process Operations Locked On -> billingDocsSentDt
-            if (operations_locked_on) {
-                update.$set["operations.0.statusDetails.0.billingDocsSentDt"] = operations_locked_on;
-            }
-
-            // Process LEO Date -> operations.0.statusDetails.0.leoDate
-            if (leo_date && String(leo_date).trim() !== "") {
-                update.$set["operations.0.statusDetails.0.leoDate"] = String(leo_date).trim();
-            }
+            // Process Financials Locked On -> Mark as Completed
 
             // Process Financials Locked On -> Mark as Completed
             if (financials_locked_on) {

@@ -5,6 +5,7 @@ import axios from "axios";
 import { Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import DocumentEditorDialog from "./DocumentEditorDialog";
 import logo from "../../../../assets/images/Frieghttablogo.png";
+import { imageToBase64 } from "../../../../utils/imageUtils";
 
 const FreightCertificateGenerator = ({ jobNo, children }) => {
   const [editorOpen, setEditorOpen] = useState(false);
@@ -58,6 +59,14 @@ const FreightCertificateGenerator = ({ jobNo, children }) => {
       const freightAmount = data.invoices?.[0]?.freightInsuranceCharges?.freight?.amount || "";
       const freightDisplay = `${freightAmount} ${freightCurrency}`;
 
+      // Pre-load logo as base64
+      let logoSrc = logo;
+      try {
+        logoSrc = await imageToBase64(logo);
+      } catch (err) {
+        console.warn("Failed to convert logo to base64", err);
+      }
+
       // Styles
       const blueColor = "#424242ff";
       const blackColor = "#000000";
@@ -68,7 +77,7 @@ const FreightCertificateGenerator = ({ jobNo, children }) => {
             
             <!-- Header -->
             <div style="text-align: center; margin-bottom: 20px;">
-                <img src="${logo}" style="width: 200px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto;" />
+                <img src="${logoSrc}" style="width: 200px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto;" />
                 <div style="color: ${blueColor}; font-weight: bold; font-size: 18px; text-decoration: underline; margin-top: 10px;">FREIGHT CERTIFICATE</div>
             </div>
 

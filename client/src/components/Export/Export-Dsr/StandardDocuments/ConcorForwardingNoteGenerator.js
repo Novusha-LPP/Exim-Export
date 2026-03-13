@@ -7,6 +7,7 @@ import DocumentEditorDialog from "./DocumentEditorDialog";
 
 // Import the logo properly for Vite
 import concorLogo from "../../../../assets/images/concor.png";
+import { imageToBase64 } from "../../../../utils/imageUtils";
 
 const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
   const [editorOpen, setEditorOpen] = useState(false);
@@ -35,8 +36,16 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       const exportJob = response.data;
       setJobData(exportJob);
 
+      // Pre-load logo as base64
+      let logoBase64 = concorLogo;
+      try {
+        logoBase64 = await imageToBase64(concorLogo);
+      } catch (err) {
+        console.warn("Failed to convert concorLogo to base64", err);
+      }
+
       // Generate HTML for the editor
-      const template = generateHTML(exportJob);
+      const template = generateHTML(exportJob, logoBase64);
       setHtmlContent(template);
       setChoiceOpen(true);
     } catch (err) {
@@ -45,7 +54,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
     }
   };
 
-  const generateHTML = (exportJob) => {
+  const generateHTML = (exportJob, logoSrc = concorLogo) => {
     const containers = exportJob.containers || [];
     const operations = exportJob.operations?.[0] || {};
     const booking = operations.bookingDetails?.[0] || {};
@@ -84,7 +93,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       <div style="width: 1140px; margin: 5px auto; font-family: Helvetica, Arial, sans-serif; color: black; background: white;">
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 2px; table-layout: fixed;">
           <tr>
-            <td style="width: 70px; text-align: left; vertical-align: middle; border: none; padding: 0;"><img src="${concorLogo}" style="height: 50px; width: auto;"/></td>
+            <td style="width: 70px; text-align: left; vertical-align: middle; border: none; padding: 0;"><img src="${logoSrc}" style="height: 50px; width: auto;"/></td>
             <td style="text-align: center; vertical-align: middle; border: none; padding: 0;">
               <div style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;">CONTAINER CORPORATION OF INDIA LIMITED (CONCOR)</div>
               <div style="font-size: 8px; margin-top: 1px;">FORWARDING NOTE FOR GENERAL AND DANGEROUS MERCHANDISE</div>
@@ -94,7 +103,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
                 <span style="display: inline-block; width: 45%; text-align: left; padding-left: 20px; margin-bottom: 10px;">INV  ${invoice.invoiceNumber || ""}</span>
               </div>
             </td>
-            <td style="width: 70px; text-align: right; vertical-align: middle; border: none; padding: 0;"><img src="${concorLogo}" style="height: 50px; width: auto;"/></td>
+            <td style="width: 70px; text-align: right; vertical-align: middle; border: none; padding: 0;"><img src="${logoSrc}" style="height: 50px; width: auto;"/></td>
           </tr>
         </table>
 
@@ -329,9 +338,19 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       const logoSize = 10 * headerScale;
 
       try {
-        doc.addImage(concorLogo, "PNG", leftMargin + 1, yPos + 0.5, logoSize, logoSize);
-        doc.addImage(concorLogo, "PNG", pageWidth - rightMargin - logoSize - 1, yPos + 1, logoSize, logoSize);
-      } catch (err) { }
+        // Pre-load logo for addImage
+        const logoBase64 = await imageToBase64(concorLogo);
+        doc.addImage(logoBase64, "PNG", leftMargin + 1, yPos + 0.5, logoSize, logoSize);
+        doc.addImage(logoBase64, "PNG", pageWidth - rightMargin - logoSize - 1, yPos + 1, logoSize, logoSize);
+      } catch (err) {
+        console.warn("Failed to pre-load logo for addImage, trying direct URL", err);
+        try {
+          doc.addImage(concorLogo, "PNG", leftMargin + 1, yPos + 0.5, logoSize, logoSize);
+          doc.addImage(concorLogo, "PNG", pageWidth - rightMargin - logoSize - 1, yPos + 1, logoSize, logoSize);
+        } catch (innerErr) {
+          console.error("Critical logo loading failure", innerErr);
+        }
+      }
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11 * headerScale);

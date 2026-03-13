@@ -4,6 +4,7 @@ import { MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Button } f
 import jsPDF from "jspdf";
 import DocumentEditorDialog from "./DocumentEditorDialog";
 import thatLogo from "../../../../assets/images/that-logo.png";
+import { imageToBase64 } from "../../../../utils/imageUtils";
 
 const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
   const [editorOpen, setEditorOpen] = useState(false);
@@ -49,6 +50,14 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`
       );
       const data = response.data;
+
+      // Pre-load logo as base64 to ensure it appears in PDF
+      let logoSrc = thatLogo;
+      try {
+        logoSrc = await imageToBase64(thatLogo);
+      } catch (err) {
+        console.warn("Failed to convert logo to base64, using original path", err);
+      }
       // Calculations and Data Mapping
       const operations = data.operations?.[0] || {};
       const booking = operations.bookingDetails?.[0] || {};
@@ -77,7 +86,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       const shippingBillNo = data.sb_no || "";
       const portOfDischarge = data.port_of_discharge || "";
       const stuffingType = data.goods_stuffed_at?.toString().toLowerCase() === "factory" ? "FACTORY" : "ICD (CFS) / FACTORY";
-      const shippingLineName = booking.shippingLineName || "";
+      const shippingLineName = data.shipping_line_airline || booking.shippingLineName || "";
       const fobvalue = data.invoices?.[0]?.freightInsuranceCharges.fobValue.amount || "";
 
       const hsnList = [...new Set(products.map(p => {
@@ -162,7 +171,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
             <!-- ROW 1: Logo & Header Information -->
             <tr style="height: 100px;">
               <td colspan="4" style="border: 1px solid black; padding: 5px; text-align: center; vertical-align: middle;">
-                <img src="${thatLogo}" alt="Logo" style="max-width: 150px; height: auto;" />
+                <img src="${logoSrc}" alt="Logo" style="max-width: 150px; height: auto;" />
               </td>
               <td colspan="4" style="border: 1px solid black; padding: 5px; vertical-align: bottom; text-align: center;">
                 <div style="font-weight: bold; font-size: 14px; margin-bottom: 15px;">HPCSL CONSIGNMENT NOTE</div>
@@ -214,8 +223,8 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
             <!-- ROW 4: Consignor and Vessel -->
             <tr style="height: 50px;">
               <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
-                <div style="font-size: 10px; margin-bottom: 5px;"><b>Name of Consignor (S/Line) :</b> ${booking.shippingLineName || ""}</div>
-                <div style="font-size: 11px; font-weight: bold;">${consignorName}</div>
+                <div style="font-size: 10px; margin-bottom: 5px;"><b>Name of Consignor (S/Line) :</b></div>
+                <div style="font-size: 11px; font-weight: bold;">${shippingLineName}</div>
               </td>
               <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
                 <div style="font-size: 11px; font-weight: bold; margin-bottom: 5px;">VESSEL NAME : ${vesselName}</div>

@@ -428,8 +428,16 @@ const ExportJobsTable = () => {
   const isInitialMount = useRef(true);
   const isInitialSave = useRef(true);
 
+  // Determine if it's the export operation module early
+  const isOperationModule = window.location.pathname.startsWith("/export-operation");
+
   // State
-  const [activeTab, setActiveTab] = useState(savedFilters.activeTab || "Pending");
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = savedFilters.activeTab || "Pending";
+    if (isOperationModule && saved === "Completed") return "Billing Ready";
+    if (!isOperationModule && saved === "Billing Ready") return "Completed";
+    return saved;
+  });
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -488,7 +496,6 @@ const ExportJobsTable = () => {
   };
 
   // Gate In modal states (only for operation module)
-  const isOperationModule = window.location.pathname.startsWith("/export-operation");
   const [gateInModalOpen, setGateInModalOpen] = useState(false);
   const [gateInJobs, setGateInJobs] = useState([]);
   const [gateInLoading, setGateInLoading] = useState(false);
@@ -584,8 +591,15 @@ const ExportJobsTable = () => {
   const [exporters, setExporters] = useState([]);
   const [selectedExporter, setSelectedExporter] = useState("");
   const [dsrYear, setDsrYear] = useState(getCurrentFinancialYear());
-  const [dsrOnlyPending, setDsrOnlyPending] = useState(true);
+  const [dsrOnlyPending, setDsrOnlyPending] = useState(false);
   const [dsrLoading, setDSRLoading] = useState(false);
+
+  // Documents Expand/Collapse State
+  const [expandedDocs, setExpandedDocs] = useState({});
+  const toggleDocs = (e, id) => {
+    e.stopPropagation();
+    setExpandedDocs((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // Documents Menu State
   const [docsAnchorEl, setDocsAnchorEl] = useState(null);
@@ -1493,36 +1507,56 @@ const ExportJobsTable = () => {
                 }
               ></span>
             </button>
-            <button
-              style={
-                activeTab === "Completed" ? { ...s.tab, ...s.activeTab } : s.tab
-              }
-              onClick={() => setActiveTab("Completed")}
-            >
-              Completed{" "}
-              <span
+            {isOperationModule ? (
+              <button
                 style={
-                  activeTab === "Completed"
-                    ? { ...s.badge, ...s.activeBadge }
-                    : s.badge
+                  activeTab === "Billing Ready" ? { ...s.tab, ...s.activeTab } : s.tab
                 }
-              ></span>
-            </button>
-            <button
-              style={
-                activeTab === "Cancelled" ? { ...s.tab, ...s.activeTab } : s.tab
-              }
-              onClick={() => setActiveTab("Cancelled")}
-            >
-              Cancelled{" "}
-              <span
+                onClick={() => setActiveTab("Billing Ready")}
+              >
+                Billing Ready{" "}
+                <span
+                  style={
+                    activeTab === "Billing Ready"
+                      ? { ...s.badge, ...s.activeBadge }
+                      : s.badge
+                  }
+                ></span>
+              </button>
+            ) : (
+              <button
                 style={
-                  activeTab === "Cancelled"
-                    ? { ...s.badge, ...s.activeBadge }
-                    : s.badge
+                  activeTab === "Completed" ? { ...s.tab, ...s.activeTab } : s.tab
                 }
-              ></span>
-            </button>
+                onClick={() => setActiveTab("Completed")}
+              >
+                Completed{" "}
+                <span
+                  style={
+                    activeTab === "Completed"
+                      ? { ...s.badge, ...s.activeBadge }
+                      : s.badge
+                  }
+                ></span>
+              </button>
+            )}
+            {!isOperationModule && (
+              <button
+                style={
+                  activeTab === "Cancelled" ? { ...s.tab, ...s.activeTab } : s.tab
+                }
+                onClick={() => setActiveTab("Cancelled")}
+              >
+                Cancelled{" "}
+                <span
+                  style={
+                    activeTab === "Cancelled"
+                      ? { ...s.badge, ...s.activeBadge }
+                      : s.badge
+                  }
+                ></span>
+              </button>
+            )}
           </div>
 
           {/* Filters */}
@@ -2490,91 +2524,122 @@ const ExportJobsTable = () => {
                               gap: "4px",
                             }}
                           >
-                            {getDocumentLinks(job).map((link, i) => (
-                              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
-                                {link.url ? (
-                                  <a
-                                    href={link.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{
-                                      fontSize: "10px",
-                                      color: "#2563eb",
-                                      textDecoration: "underline",
-                                      fontWeight: "600",
-                                      display: "inline-block",
-                                      whiteSpace: "nowrap",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                      maxWidth: "140px",
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    title={link.title}
-                                  >
-                                    {link.title}
-                                  </a>
-                                ) : (
-                                  <span
-                                    style={{
-                                      fontSize: "10px",
-                                      color: "#9ca3af",
-                                      fontWeight: "600",
-                                      display: "inline-block",
-                                      whiteSpace: "nowrap",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                      maxWidth: "140px",
-                                    }}
-                                    title={link.title}
-                                  >
-                                    {link.title}
-                                  </span>
-                                )}
+                            {(() => {
+                              const docLinks = getDocumentLinks(job);
+                              const isExpanded = expandedDocs[job._id];
+                              const visibleLinks = isExpanded ? docLinks : docLinks.slice(0, 1);
 
-                                {link.field && (
-                                  <div onClick={(e) => e.stopPropagation()}>
-                                    <QuickUploadButton
-                                      job={job}
-                                      field={link.field}
-                                      uploadType={link.uploadType || "status"}
-                                      idx={link.idx || 0}
-                                      onSuccess={(url) => {
-                                        setJobs((prevJobs) =>
-                                          prevJobs.map((j) => {
-                                            if (j._id === job._id) {
-                                              const newOps = JSON.parse(JSON.stringify(j.operations || []));
-                                              if (!newOps[0]) newOps[0] = {};
+                              if (docLinks.length === 0) {
+                                return <span style={{ fontSize: "10px", color: "#9ca3af" }}>No Attachments</span>;
+                              }
 
-                                              if (link.uploadType === "section") {
-                                                if (!Array.isArray(newOps[0][link.field])) newOps[0][link.field] = [];
-                                                while (newOps[0][link.field].length <= (link.idx || 0)) {
-                                                  newOps[0][link.field].push({});
-                                                }
-                                                const currFiles = Array.isArray(newOps[0][link.field][link.idx || 0].images)
-                                                  ? newOps[0][link.field][link.idx || 0].images
-                                                  : [];
-                                                newOps[0][link.field][link.idx || 0].images = [...currFiles, url];
-                                              } else {
-                                                if (!newOps[0].statusDetails) newOps[0].statusDetails = [{}];
-                                                if (!newOps[0].statusDetails[0]) newOps[0].statusDetails[0] = {};
+                              return (
+                                <>
+                                  {visibleLinks.map((link, i) => (
+                                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
+                                      {link.url ? (
+                                        <a
+                                          href={link.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          style={{
+                                            fontSize: "10px",
+                                            color: "#2563eb",
+                                            textDecoration: "underline",
+                                            fontWeight: "600",
+                                            display: "inline-block",
+                                            whiteSpace: "nowrap",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            maxWidth: "140px",
+                                          }}
+                                          onClick={(e) => e.stopPropagation()}
+                                          title={link.title}
+                                        >
+                                          {link.title}
+                                        </a>
+                                      ) : (
+                                        <span
+                                          style={{
+                                            fontSize: "10px",
+                                            color: "#9ca3af",
+                                            fontWeight: "600",
+                                            display: "inline-block",
+                                            whiteSpace: "nowrap",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            maxWidth: "140px",
+                                          }}
+                                          title={link.title}
+                                        >
+                                          {link.title}
+                                        </span>
+                                      )}
 
-                                                const currFiles = Array.isArray(newOps[0].statusDetails[0][link.field])
-                                                  ? newOps[0].statusDetails[0][link.field]
-                                                  : [];
-                                                newOps[0].statusDetails[0][link.field] = [...currFiles, url];
-                                              }
+                                      {link.field && (
+                                        <div onClick={(e) => e.stopPropagation()}>
+                                          <QuickUploadButton
+                                            job={job}
+                                            field={link.field}
+                                            uploadType={link.uploadType || "status"}
+                                            idx={link.idx || 0}
+                                            onSuccess={(url) => {
+                                              setJobs((prevJobs) =>
+                                                prevJobs.map((j) => {
+                                                  if (j._id === job._id) {
+                                                    const newOps = JSON.parse(JSON.stringify(j.operations || []));
+                                                    if (!newOps[0]) newOps[0] = {};
 
-                                              return { ...j, operations: newOps };
-                                            }
-                                            return j;
-                                          })
-                                        );
+                                                    if (link.uploadType === "section") {
+                                                      if (!Array.isArray(newOps[0][link.field])) newOps[0][link.field] = [];
+                                                      while (newOps[0][link.field].length <= (link.idx || 0)) {
+                                                        newOps[0][link.field].push({});
+                                                      }
+                                                      const currFiles = Array.isArray(newOps[0][link.field][link.idx || 0].images)
+                                                        ? newOps[0][link.field][link.idx || 0].images
+                                                        : [];
+                                                      newOps[0][link.field][link.idx || 0].images = [...currFiles, url];
+                                                    } else {
+                                                      if (!newOps[0].statusDetails) newOps[0].statusDetails = [{}];
+                                                      if (!newOps[0].statusDetails[0]) newOps[0].statusDetails[0] = {};
+
+                                                      const currFiles = Array.isArray(newOps[0].statusDetails[0][link.field])
+                                                        ? newOps[0].statusDetails[0][link.field]
+                                                        : [];
+                                                      newOps[0].statusDetails[0][link.field] = [...currFiles, url];
+                                                    }
+
+                                                    return { ...j, operations: newOps };
+                                                  }
+                                                  return j;
+                                                })
+                                              );
+                                            }}
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                  {docLinks.length > 1 && (
+                                    <div
+                                      onClick={(e) => toggleDocs(e, job._id)}
+                                      style={{
+                                        fontSize: "10px",
+                                        color: "#4b5563",
+                                        cursor: "pointer",
+                                        fontWeight: "700",
+                                        marginTop: "2px",
+                                        display: "inline-block",
+                                        textAlign: "left",
+                                        userSelect: "none"
                                       }}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                                    >
+                                      {isExpanded ? "Hide Docs ▲" : `+${docLinks.length - 1} more ▼`}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                         </td>
 
@@ -2922,7 +2987,7 @@ const ExportJobsTable = () => {
             />
           </div>
 
-          {/* Year and Pending options removed as per user requirement - default is set to current year (25-26) and pending only */}
+          {/* Year and Pending options removed - default is current year with both Pending & Completed jobs included */}
           <div
             style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}
           >

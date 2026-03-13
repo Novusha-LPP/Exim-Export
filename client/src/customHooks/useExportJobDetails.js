@@ -1107,33 +1107,42 @@ function useExportJobDetails(params, setFileSnackbar) {
         stuffing_date: formatDate(safeValue(data.stuffing_date)),
         stuffing_supervisor: safeValue(data.stuffing_supervisor),
         stuffing_remarks: safeValue(data.stuffing_remarks),
-        operations: safeValue(data.operations, []).map((op) => ({
-          ...op,
-          statusDetails: (op.statusDetails || []).map((s) => ({
-            ...s,
-            leoDate: formatDate(safeValue(s.leoDate)),
-            billingDocsSentDt: formatDate(safeValue(s.billingDocsSentDt)),
-            goodsRegistrationDate: formatDate(safeValue(s.goodsRegistrationDate)),
-            goodsReportDate: formatDate(safeValue(s.goodsReportDate)),
-            stuffingDate: formatDate(safeValue(s.stuffingDate)),
-            eGatePassCopyDate: formatDate(safeValue(s.eGatePassCopyDate)),
-            handoverForwardingNoteDate: formatDate(safeValue(s.handoverForwardingNoteDate)),
-            handoverConcorTharSanganaRailRoadDate: formatDate(safeValue(s.handoverConcorTharSanganaRailRoadDate)),
-            hoToConsoleDate: formatDate(safeValue(s.hoToConsoleDate)),
-            hoToConsoleDate2: formatDate(safeValue(s.hoToConsoleDate2)),
-            containerPlacementDate: formatDate(safeValue(s.containerPlacementDate)),
-            gateInDate: formatDate(safeValue(s.gateInDate)),
-            railOutReachedDate: formatDate(safeValue(s.railOutReachedDate)),
-          })),
-          bookingDetails: (op.bookingDetails || []).map((b) => ({
-            ...b,
-            bookingDate: formatDate(safeValue(b.bookingDate)),
-          })),
-          weighmentDetails: (op.weighmentDetails || []).map((w) => ({
-            ...w,
-            dateTime: formatDate(safeValue(w.dateTime), "dd-MM-yyyy HH:mm"),
-          })),
-        })),
+        operations: safeValue(data.operations, []).map((operation) => {
+          // Normalization: Fix for corrupted data where MongoDB dot-notation created objects with key "0" instead of arrays
+          const op = operation["0"] ? { ...operation, ...operation["0"] } : operation;
+          
+          return {
+            ...op,
+            statusDetails: safeValue(op.statusDetails || op["0"]?.statusDetails, []).map((status) => {
+              // Same fix for statusDetails nested under "0"
+              const s = status["0"] ? { ...status, ...status["0"] } : status;
+              return {
+                ...s,
+                leoDate: formatDate(safeValue(s.leoDate)),
+                billingDocsSentDt: formatDate(safeValue(s.billingDocsSentDt)),
+                goodsRegistrationDate: formatDate(safeValue(s.goodsRegistrationDate)),
+                goodsReportDate: formatDate(safeValue(s.goodsReportDate)),
+                stuffingDate: formatDate(safeValue(s.stuffingDate)),
+                eGatePassCopyDate: formatDate(safeValue(s.eGatePassCopyDate)),
+                handoverForwardingNoteDate: formatDate(safeValue(s.handoverForwardingNoteDate)),
+                handoverConcorTharSanganaRailRoadDate: formatDate(safeValue(s.handoverConcorTharSanganaRailRoadDate)),
+                hoToConsoleDate: formatDate(safeValue(s.hoToConsoleDate)),
+                hoToConsoleDate2: formatDate(safeValue(s.hoToConsoleDate2)),
+                containerPlacementDate: formatDate(safeValue(s.containerPlacementDate)),
+                gateInDate: formatDate(safeValue(s.gateInDate)),
+                railOutReachedDate: formatDate(safeValue(s.railOutReachedDate)),
+              };
+            }),
+            bookingDetails: safeValue(op.bookingDetails || op["0"]?.bookingDetails, []).map((b) => ({
+              ...b,
+              bookingDate: formatDate(safeValue(b.bookingDate)),
+            })),
+            weighmentDetails: safeValue(op.weighmentDetails || op["0"]?.weighmentDetails, []).map((w) => ({
+              ...w,
+              dateTime: formatDate(safeValue(w.dateTime), "dd-MM-yyyy HH:mm"),
+            })),
+          };
+        }),
         cfs: safeValue(data.cfs),
         cha: safeValue(data.cha),
         masterblno: safeValue(data.masterblno),

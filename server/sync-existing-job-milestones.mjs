@@ -4,7 +4,7 @@ import ExJobModel from "./model/export/ExJobModel.mjs";
 
 dotenv.config();
 
-const MONGO_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/export";
+const MONGO_URI = process.env.MONGO_URI;
 
 mongoose.connect(MONGO_URI, {
     useNewUrlParser: true,
