@@ -541,7 +541,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
 
             // Build consignees array if consignee info exists
             // Overwrite existing data if spreadsheet data exists, otherwise use existing data
-            let consigneesToUpdate = existingJob?.consignees ? [...existingJob.consignees] : [];
+            let consigneesToUpdate = Array.isArray(existingJob?.consignees) ? [...existingJob.consignees] : [];
             const hasNewConsigneeData = (consignee_name && String(consignee_name).trim() !== "") ||
                 (consignee_address && String(consignee_address).trim() !== "") ||
                 (consignee_country && String(consignee_country).trim() !== "");
@@ -728,7 +728,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
             if (invoice_number && String(invoice_number).trim() !== "") {
                 const invoice_number_raw = String(invoice_number);
                 const invNumbers = invoice_number_raw.split(',').map(s => s.trim()).filter(s => s !== "");
-                let existingInvoices = existingJob?.invoices || [];
+                let existingInvoices = Array.isArray(existingJob?.invoices) ? [...existingJob.invoices] : [];
 
                 // Helper to get array from comma-separated string
                 const getList = (val) => val ? String(val).split(',').map(s => s.trim()) : [];
@@ -1006,7 +1006,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
             if (container_nos && Array.isArray(container_nos)) {
                 if (existingJob) {
                     // Merge container sizes with existing containers
-                    const existingContainers = existingJob.containers || [];
+                    const existingContainers = Array.isArray(existingJob.containers) ? [...existingJob.containers] : [];
                     const updatedContainers = existingContainers.map((existingContainer) => {
                         const newContainerData = container_nos.find(
                             (c) => c.containerNo === existingContainer.containerNo
@@ -1074,7 +1074,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
             const isAir_local = (job_no && String(job_no).toUpperCase().includes('/AIR/'));
 
             // Prepare milestones based on uploaded fields
-            let milestonesList = existingJob?.milestones ? [...existingJob.milestones] : [];
+            let milestonesList = Array.isArray(existingJob?.milestones) ? [...existingJob.milestones] : [];
             const triggerFields = [
                 { name: "SB Filed", date: updateData.sb_date },
                 { name: "L.E.O", date: leo_date },
@@ -1126,10 +1126,10 @@ router.post("/api/jobs/add-job", async (req, res) => {
             // =========================================================================
             // ✅ CORRECT OPERATIONS UPDATE (Prevents "0" key nesting bug)
             // =========================================================================
-            let operationsToUpdate = [...(existingJob?.operations || [])];
-            
-            // If operations is not an array, reset it
-            if (!Array.isArray(operationsToUpdate)) operationsToUpdate = [];
+            let existingOpsRaw = existingJob?.operations;
+            let operationsToUpdate = Array.isArray(existingOpsRaw) 
+                ? [...existingOpsRaw] 
+                : (existingOpsRaw && existingOpsRaw["0"] ? [existingOpsRaw["0"]] : []);
 
             // Initialize at least one operation if none exists
             if (operationsToUpdate.length === 0) {
