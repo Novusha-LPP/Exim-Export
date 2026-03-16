@@ -161,9 +161,9 @@ const ExportDashboard = () => {
           const { total, pending, completed, cancelled, monthlyTrend } = res.data.data;
           setStats({ total, pending, completed, cancelled });
 
-          // Build 12-month array. If no year filter, sum same months across years.
-          const trend = Array(12).fill(0).map((_, i) => {
-            const targetMonth = i + 1;
+          // Build 12-month array following Financial Year (Apr to Mar)
+          const FY_MONTH_ORDER = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
+          const trend = FY_MONTH_ORDER.map((targetMonth) => {
             let count = 0;
 
             monthlyTrend.forEach((m) => {
@@ -173,7 +173,7 @@ const ExportDashboard = () => {
               }
             });
 
-            return { name: MONTH_NAMES[i], jobs: count };
+            return { name: MONTH_NAMES[targetMonth - 1], jobs: count };
           });
           setMonthlyData(trend);
         }
@@ -723,7 +723,7 @@ const ExportDashboard = () => {
                         {job.status || "Pending"}
                       </span>
                     </td>
-                    <td style={{ padding: "12px 10px", color: THEME.text }}>{formatDate(job.createdAt)}</td>
+                    <td style={{ padding: "12px 10px", color: THEME.text }}>{formatDate(job.job_date || job.createdAt)}</td>
                     <td style={{ padding: "12px 10px", color: THEME.text, maxWidth: 200, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{job.exporter}</td>
                     <td style={{ padding: "12px 10px", color: THEME.text, textAlign: "right", fontWeight: 500 }}>{job.invoice_value ? `${job.currency || ''} ${job.invoice_value}` : "-"}</td>
                     <td style={{ padding: "12px 10px", textAlign: "center" }}>

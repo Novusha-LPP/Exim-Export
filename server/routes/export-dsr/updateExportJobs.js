@@ -43,9 +43,49 @@ router.get("/dashboard-stats", async (req, res) => {
     if (consignmentType) matchStage.$and.push({ consignmentType: consignmentType });
     if (branch) matchStage.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
 
-    // Year filter - strict matching on the job_no suffix or createdAt
-    if (year) {
-      matchStage.$and.push({ job_no: { $regex: `/${year}$`, $options: "i" } });
+    // Year filter - prioritizes job_date, falls back to createdAt
+    if (year && year !== "all") {
+      const parts = year.split("-");
+      if (parts.length === 2) {
+        const startYY = parseInt(parts[0]);
+        const endYY = parseInt(parts[1]);
+        const startDate = new Date(Date.UTC(2000 + startYY, 3, 1)); // April 1st
+        const endDate = new Date(Date.UTC(2000 + endYY, 2, 31, 23, 59, 59, 999)); // March 31st
+
+        matchStage.$and.push({
+          $expr: {
+            $let: {
+              vars: {
+                effDate: {
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $ne: ["$job_date", null] },
+                        { $ne: ["$job_date", ""] },
+                        { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
+                      ]
+                    },
+                    then: {
+                      $dateFromString: {
+                        dateString: "$job_date",
+                        format: "%d-%m-%Y",
+                        onError: "$createdAt"
+                      }
+                    },
+                    else: "$createdAt"
+                  }
+                }
+              },
+              in: {
+                $and: [
+                  { $gte: ["$$effDate", startDate] },
+                  { $lte: ["$$effDate", endDate] }
+                ]
+              }
+            }
+          }
+        });
+      }
     }
 
     if (matchStage.$and.length === 0) delete matchStage.$and;
@@ -125,13 +165,36 @@ router.get("/dashboard-stats", async (req, res) => {
               },
             },
           ],
-          // B. Monthly Trend — group by year+month so filtering by year works correctly
+          // B. Monthly Trend — group by year+month of effective date
           monthlyTrend: [
+            {
+              $addFields: {
+                effectiveDate: {
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $ne: ["$job_date", null] },
+                        { $ne: ["$job_date", ""] },
+                        { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
+                      ]
+                    },
+                    then: {
+                      $dateFromString: {
+                        dateString: "$job_date",
+                        format: "%d-%m-%Y",
+                        onError: "$createdAt"
+                      }
+                    },
+                    else: "$createdAt"
+                  }
+                }
+              }
+            },
             {
               $group: {
                 _id: {
-                  year: { $year: "$createdAt" },
-                  month: { $month: "$createdAt" },
+                  year: { $year: "$effectiveDate" },
+                  month: { $month: "$effectiveDate" },
                 },
                 count: { $sum: 1 },
               },
@@ -304,11 +367,8 @@ router.get("/exports/:status?", async (req, res) => {
           // 2. Search in Invoices Array (Invoice Number)
           { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
 
-          // 3. Search in Containers Array (Container Number)
-          { "containers.containerNo": { $regex: search, $options: "i" } },
-
-          // 4. Search in Operations (Alternative Container source)
-          { "operations.containerDetails.containerNo": { $regex: search, $options: "i" } }
+          // 4. Search in Containers Array
+          { "containers.containerNo": { $regex: search, $options: "i" } }
         ],
       });
     }
@@ -337,11 +397,49 @@ router.get("/exports/:status?", async (req, res) => {
       });
     }
 
-    // Year filter - extract from job_no (format: BRANCH/SEQ/YEAR)
-    if (year) {
-      filter.$and.push({
-        job_no: { $regex: `/${year}$`, $options: "i" },
-      });
+    // Year filter - prioritizes job_date, falls back to createdAt (Apr-Mar cycle)
+    if (year && year !== "all") {
+      const parts = year.split("-");
+      if (parts.length === 2) {
+        const startYY = parseInt(parts[0]);
+        const endYY = parseInt(parts[1]);
+        const startDate = new Date(Date.UTC(2000 + startYY, 3, 1)); // April 1st
+        const endDate = new Date(Date.UTC(2000 + endYY, 2, 31, 23, 59, 59, 999)); // March 31st
+
+        filter.$and.push({
+          $expr: {
+            $let: {
+              vars: {
+                effDate: {
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $ne: ["$job_date", null] },
+                        { $ne: ["$job_date", ""] },
+                        { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
+                      ]
+                    },
+                    then: {
+                      $dateFromString: {
+                        dateString: "$job_date",
+                        format: "%d-%m-%Y",
+                        onError: "$createdAt"
+                      }
+                    },
+                    else: "$createdAt"
+                  }
+                }
+              },
+              in: {
+                $and: [
+                  { $gte: ["$$effDate", startDate] },
+                  { $lte: ["$$effDate", endDate] }
+                ]
+              }
+            }
+          }
+        });
+      }
     }
 
     if (req.query.customHouse) {
@@ -408,7 +506,7 @@ router.get("/exports/:status?", async (req, res) => {
       port_of_discharge: 1,
       discharge_country: 1,
       "containers.containerNo": 1,
-      "containers.size": 1,
+      "containers.type": 1,
       total_no_of_pkgs: 1,
       package_unit: 1,
       gross_weight_kg: 1,
@@ -441,9 +539,9 @@ router.get("/exports/:status?", async (req, res) => {
       "operations.statusDetails.status": 1,
       "operations.transporterDetails.images": 1,
       "operations.bookingDetails.images": 1,
-      "operations.weighmentDetails.images": 1,
-      "operations.containerDetails.images": 1,
-      "operations.containerDetails.containerNo": 1,
+      "containers.images": 1,
+      "containers.weighmentImages": 1,
+      "containers.containerNo": 1,
       lockedBy: 1,
       lockedAt: 1
     };

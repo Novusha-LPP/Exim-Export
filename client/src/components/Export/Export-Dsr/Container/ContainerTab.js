@@ -1,65 +1,132 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import DateInput from "../../../common/DateInput.js";
-import { styles, toUpperVal } from "../Product/commonStyles";
+import { toUpperVal } from "../Product/commonStyles";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faTrash, faBox, faScaleBalanced } from "@fortawesome/free-solid-svg-icons";
 import * as XLSX from "xlsx";
+import FileUpload from "../../../gallery/FileUpload";
+import ImagePreview from "../../../gallery/ImagePreview";
 
-const containerTypes = [
-  "20",
-  "40"
-];
+const containerTypes = ["20", "40"];
 
-const sealTypes = ["RFID"];
+const styles = {
+  page: {
+    fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
+    fontSize: 12,
+    color: "#1f2933",
+    padding: 12,
+    background: "#f5f7fb",
+  },
+  card: {
+    background: "#ffffff",
+    border: "1px solid #d2d8e4",
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 12,
+    boxShadow: "0 0 0 1px rgba(15, 23, 42, 0.02)",
+  },
+  cardTitle: {
+    fontWeight: 700,
+    color: "#16408f",
+    fontSize: 13,
+    marginBottom: 10,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  tableWrapper: {
+    border: "1px solid #d2d8e4",
+    borderRadius: 6,
+    background: "#ffffff",
+    marginBottom: 10,
+    overflowX: "auto",
+    maxHeight: 400,
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+  },
+  th: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#ffffff",
+    background: "#16408f",
+    padding: "8px 6px",
+    textAlign: "left",
+    position: "sticky",
+    top: 0,
+    zIndex: 10,
+    whiteSpace: "nowrap",
+    textTransform: 'uppercase'
+  },
+  td: {
+    padding: "6px 6px",
+    borderBottom: "1px solid #e0e5f0",
+    verticalAlign: "middle",
+  },
+  input: {
+    width: "100%",
+    fontSize: 12,
+    padding: "3px 6px",
+    border: "1px solid #c4ccd8",
+    borderRadius: 3,
+    height: 26,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+    fontWeight: 600,
+  },
+  readOnlyInput: {
+    backgroundColor: '#edf2f7',
+    border: '1px solid #cbd5e0',
+    color: '#4a5568',
+  },
+  select: {
+    width: "100%",
+    fontSize: 12,
+    padding: "2px 4px",
+    border: "1px solid #c4ccd8",
+    borderRadius: 3,
+    height: 26,
+    background: "#f7fafc",
+    outline: "none",
+    boxSizing: "border-box",
+    fontWeight: 600,
+  },
+  btnAction: {
+    padding: "4px 10px",
+    fontSize: 11,
+    borderRadius: 4,
+    border: "1px solid #16408f",
+    background: "#16408f",
+    color: "#ffffff",
+    cursor: "pointer",
+    fontWeight: 600,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px'
+  },
+  btnSecondary: {
+    background: '#ffffff',
+    color: '#16408f',
+    border: '1px solid #16408f',
+  },
+  trashBtn: {
+    color: '#e53e3e',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '14px'
+  }
+};
 
-function ContainerTab({ formik, onUpdate }) {
-  const [editingIndex, setEditingIndex] = useState(null);
-  const saveTimeoutRef = useRef(null);
-
+function ContainerTab({ formik }) {
   const stuffedAt = (formik.values.goods_stuffed_at || "").toUpperCase();
   const showSLineSeal = stuffedAt === "FACTORY";
 
-  const autoSave = useCallback(
-    async (values) => {
-      if (onUpdate) await onUpdate(values);
-    },
-    [onUpdate],
-  );
-
-  // const debouncedSave = () => {
-  //   if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-  //   saveTimeoutRef.current = setTimeout(() => {
-  //     autoSave(formik.values);
-  //   }, 900);
-  // };
-
-  // Sync grWtPlusTrWt for existing rows if it's 0 but weights are present
-  useEffect(() => {
-    const list = formik.values.containers || [];
-    let changed = false;
-    const newList = list.map((c) => {
-      const gw = Number(c.grossWeight || 0);
-      const tw = Number(c.tareWeightKgs || 0);
-      const targetSum = parseFloat((gw + tw).toFixed(3));
-
-      // Sync both legacy and new field names for safety
-      if ((!c.vgmWtInvoice || c.vgmWtInvoice === 0) && targetSum > 0) {
-        changed = true;
-        return { ...c, vgmWtInvoice: targetSum, grWtPlusTrWt: targetSum };
-      }
-      return c;
-    });
-
-    if (changed) {
-      formik.setFieldValue("containers", newList);
-    }
-  }, [formik.values.containers?.length]); // Run primarily on load or when rows added
-
-  // Initialize with one empty row if empty
   useEffect(() => {
     if (formik.values.job_no && (!formik.values.containers || formik.values.containers.length === 0)) {
-      // We use a slight timeout or direct update to ensure we don't conflict with initial fetch
-      const list = [{
+      formik.setFieldValue("containers", [{
         serialNumber: 1,
         containerNo: "",
         sealNo: "",
@@ -71,91 +138,42 @@ function ContainerTab({ formik, onUpdate }) {
         sealType: "RFID",
         shippingLineSealNo: "",
         tareWeightKgs: 0,
-        grWtPlusTrWt: 0,
         vgmWtInvoice: 0,
         maxPayloadKgs: 0,
-        rfid: "",
-      }];
-      formik.setFieldValue("containers", list);
-      setEditingIndex(0);
+        images: [],
+        weighBridgeName: "",
+        weighmentRegNo: "",
+        weighmentDateTime: "",
+        weighmentVehicleNo: "",
+        weighmentTareWeight: 0, // This is Cargo Tare Wt in DB
+        weighmentAddress: "",
+        weighmentImages: [],
+      }]);
     }
-  }, [formik.values.job_no]);
+  }, [formik.values.job_no, formik.setFieldValue]);
 
   const handleFieldChange = (idx, field, value) => {
     const list = [...(formik.values.containers || [])];
-
     if (field === "containerNo") {
       const val = value.toUpperCase().trim();
-      // Basic format validation: 4 letters + 7 digits
-      if (val && !/^[A-Z]{4}\d{7}$/.test(val)) {
-        // We allow typing, but we could show a warning or just not sync yet.
-        // For now, let's just update the value and we could add a visual error later.
-      }
-
-      // Duplicate check
-      const isDuplicate = list.some((c, i) => i !== idx && c.containerNo === val);
-      if (isDuplicate && val !== "") {
-        alert(`Container Number ${val} is already added.`);
-        return; 
+      if (list.some((c, i) => i !== idx && c.containerNo === val && val !== "")) {
+        alert(`Duplicate Container: ${val}`);
+        return;
       }
     }
-
     list[idx][field] = value;
 
-    // Auto-calculate sum (VGM = Gross + Tare)
-    formik.setFieldValue("containers", list);
+    const gw = Number(list[idx].grossWeight || 0);
+    const tw = Number(list[idx].tareWeightKgs || 0);
+    const maxGw = Number(list[idx].maxGrossWeightKgs || 0);
 
-    // Sync to Operations Tab
-    const containerNo = list[idx].containerNo;
-    if (containerNo) {
-      const operations = formik.values.operations || [];
-      let opsChanged = false;
-
-      const newOps = operations.map((op) => {
-        const cDetails = op.containerDetails || [];
-        const hasContainer = cDetails.some(
-          (d) =>
-            (d.containerNo || "").trim().toUpperCase() ===
-            containerNo.trim().toUpperCase(),
-        );
-
-        if (hasContainer) {
-          let detailsChanged = false;
-          const newCDetails = cDetails.map((d) => {
-            if (
-              (d.containerNo || "").trim().toUpperCase() ===
-              containerNo.trim().toUpperCase()
-            ) {
-              const newD = { ...d };
-
-              if (field === "type") newD.containerSize = value;
-              if (field === "grossWeight") newD.grossWeight = value;
-              if (field === "maxGrossWeightKgs") newD.maxGrossWeightKgs = value;
-              if (field === "vgmWtInvoice") newD.vgmWtInvoice = value;
-              if (field === "tareWeightKgs") newD.tareWeightKgs = value;
-              if (field === "shippingLineSealNo") newD.shippingLineSealNo = value;
-              if (field === "maxPayloadKgs") newD.maxPayloadKgs = value;
-
-              if (JSON.stringify(newD) !== JSON.stringify(d)) {
-                detailsChanged = true;
-                return newD;
-              }
-            }
-            return d;
-          });
-
-          if (detailsChanged) {
-            opsChanged = true;
-            return { ...op, containerDetails: newCDetails };
-          }
-        }
-        return op;
-      });
-
-      if (opsChanged) {
-        formik.setFieldValue("operations", newOps);
-      }
+    if (field === "grossWeight" || field === "tareWeightKgs") {
+      list[idx].vgmWtInvoice = parseFloat((gw + tw).toFixed(3));
     }
+    if (field === "maxGrossWeightKgs" || field === "tareWeightKgs") {
+      list[idx].maxPayloadKgs = parseFloat((maxGw - tw).toFixed(3));
+    }
+    formik.setFieldValue("containers", list);
   };
 
   const handleAdd = () => {
@@ -172,363 +190,212 @@ function ContainerTab({ formik, onUpdate }) {
       sealType: "RFID",
       shippingLineSealNo: "",
       tareWeightKgs: 0,
-      grWtPlusTrWt: 0,
       vgmWtInvoice: 0,
       maxPayloadKgs: 0,
-      rfid: "",
+      images: [],
+      weighBridgeName: "",
+      weighmentRegNo: "",
+      weighmentDateTime: "",
+      weighmentVehicleNo: "",
+      weighmentTareWeight: 0,
+      weighmentAddress: "",
+      weighmentImages: [],
     });
     formik.setFieldValue("containers", list);
-    setEditingIndex(list.length - 1);
-    // debouncedSave();
   };
 
   const handleDelete = (idx) => {
-    if (!window.confirm("Are you sure you want to delete this container?")) return;
-    const deletedContainer = (formik.values.containers || [])[idx];
-    const deletedNo = (deletedContainer?.containerNo || "").trim().toUpperCase();
-
-    // Remove from master containers list
+    if (!window.confirm("Delete record?")) return;
     const list = (formik.values.containers || []).filter((_, i) => i !== idx);
-    list.forEach((c, i) => {
-      c.serialNumber = i + 1;
-    });
+    list.forEach((c, i) => { c.serialNumber = i + 1; });
     formik.setFieldValue("containers", list);
-
-    // Also directly remove from operations (OperationsTab may not be mounted)
-    const operations = formik.values.operations || [];
-    if (operations.length > 0) {
-      let opsChanged = false;
-      const nextOps = operations.map(op => {
-        const syncedOp = { ...op };
-        let dirty = false;
-
-        ["containerDetails", "weighmentDetails"].forEach(secName => {
-          const arr = syncedOp[secName] || [];
-          if (arr.length > list.length) {
-            // Truncate to match master length
-            syncedOp[secName] = arr.slice(0, list.length);
-            dirty = true;
-          }
-          // Also remove by container number if it matches the deleted one
-          if (deletedNo && arr.some(d => (d.containerNo || "").trim().toUpperCase() === deletedNo)) {
-            syncedOp[secName] = arr.filter(d => (d.containerNo || "").trim().toUpperCase() !== deletedNo);
-            dirty = true;
-          }
-        });
-
-        // Re-sync remaining container numbers by index from master
-        ["containerDetails", "weighmentDetails"].forEach(secName => {
-          const current = syncedOp[secName] || [];
-          list.forEach((m, i) => {
-            if (i < current.length) {
-              const mNo = (m.containerNo || "").trim().toUpperCase();
-              if ((current[i].containerNo || "").trim().toUpperCase() !== mNo) {
-                current[i] = { ...current[i], containerNo: mNo };
-                dirty = true;
-              }
-            }
-          });
-        });
-
-        if (dirty) opsChanged = true;
-        return syncedOp;
-      });
-
-      if (opsChanged) {
-        formik.setFieldValue("operations", nextOps);
-      }
-    }
-
-    if (editingIndex === idx) setEditingIndex(null);
-    else if (editingIndex > idx) setEditingIndex(editingIndex - 1);
-    // debouncedSave();
   };
 
   const rows = formik.values.containers || [];
 
   const exportToExcel = () => {
-    if (!rows || rows.length === 0) {
-      alert("No container data available to export.");
-      return;
-    }
-
-    const exportData = rows.map((r, index) => ({
-      "Sr No": index + 1,
-      "Container No": r.containerNo || "",
-      "Seal No": r.sealNo || "",
-      "Seal Date": r.sealDate || "",
-      "Type": r.type || "",
-      "Pkgs Stuffed": r.pkgsStuffed || 0,
-      "Gross Weight (Kg)": r.grossWeight || 0,
-      "Tare Weight (Kg)": r.tareWeightKgs || 0,
-      "S Line Seal": r.shippingLineSealNo || "",
-      "RFID": r.rfid || "",
-      "Max Payload (KG)": r.maxPayloadKgs || 0,
+    if (!rows.length) return;
+    const exportData = rows.map((r, i) => ({
+      Sr: i + 1,
+      Container: r.containerNo,
+      Seal: r.sealNo,
+      Date: r.sealDate,
+      Type: r.type,
+      CargoWt: r.grossWeight,
+      TareWt: r.tareWeightKgs,
+      VGM: r.vgmWtInvoice
     }));
-
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Containers");
-
-    const jobNo = formik.values.job_no ? formik.values.job_no.replace(/\//g, "-") : "Job";
-    XLSX.writeFile(workbook, `Containers_${jobNo}.xlsx`);
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Containers");
+    XLSX.writeFile(wb, `Containers_${formik.values.job_no || 'List'}.xlsx`);
   };
 
   return (
     <div style={styles.page}>
-      <div style={{ ...styles.cardTitle, marginBottom: 8 }}>
-        CONTAINER DETAILS
-      </div>
-
+      {/* SECTION 1: CONTAINER INFO */}
       <div style={styles.card}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            marginBottom: 10,
-            gap: "10px",
-          }}
-        >
-          <button type="button" style={{ ...styles.addBtn, backgroundColor: "#10b981", color: "#fff" }} onClick={exportToExcel}>
-            <span style={{ marginRight: "5px" }}>📥</span> EXPORT EXCEL
-          </button>
-          <button type="button" style={styles.addBtn} onClick={handleAdd}>
-            ＋ NEW CONTAINER
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={styles.cardTitle}>
+            <FontAwesomeIcon icon={faBox} /> CONTAINER DETAILS
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="button" style={{ ...styles.btnAction, ...styles.btnSecondary }} onClick={exportToExcel}>Export</button>
+            <button type="button" style={styles.btnAction} onClick={handleAdd}>+ New Row</button>
+          </div>
         </div>
 
-        <div style={styles.tableContainer}>
-          <table style={{ ...styles.table, minWidth: 1400 }}>
+        <div style={styles.tableWrapper}>
+          <table style={styles.table}>
             <thead>
               <tr>
-                <th style={{ ...styles.th, width: 20 }}>#</th>
-                <th style={{ ...styles.th, width: 120 }}>CONTAINER NO</th>
-                <th style={{ ...styles.th, width: 80 }}>SEAL NO</th>
-                <th style={{ ...styles.th, width: 100 }}>SEAL TYPE</th>
-                <th style={{ ...styles.th, width: 100 }}>SEAL DATE</th>
-                {showSLineSeal && (
-                  <th style={{ ...styles.th, width: 150 }}>S/L SEAL NO</th>
-                )}
-                <th style={{ ...styles.th, width: 180 }}>TYPE</th>
-                <th style={{ ...styles.th, width: 100 }}>PKGS</th>
-                <th style={{ ...styles.th, width: 130 }}>GROSS WT</th>
-                <th style={{ ...styles.th, width: 130 }}>TARE WT</th>
-                <th style={{ ...styles.th, width: 130 }}>VGM WT</th>
-                <th style={{ ...styles.th, width: 130 }}>MAX PAYLOAD</th>
-                <th style={{ ...styles.th, width: 60, textAlign: "center" }}>
-                  ACTION
-                </th>
+                <th style={{ ...styles.th, width: 40, textAlign: 'center' }}>#</th>
+                <th style={{ ...styles.th, width: 140 }}>Container No</th>
+                <th style={{ ...styles.th, width: 110 }}>Seal No</th>
+                <th style={{ ...styles.th, width: 100 }}>Seal Date</th>
+                {showSLineSeal && <th style={{ ...styles.th, width: 110 }}>S/L Seal</th>}
+                <th style={{ ...styles.th, width: 60 }}>Size</th>
+                <th style={{ ...styles.th, width: 50 }}>Pkgs</th>
+                <th style={{ ...styles.th, width: 85 }}>Gross Wt</th>
+                <th style={{ ...styles.th, width: 85 }}>Tare Wt</th>
+                <th style={{ ...styles.th, width: 85 }}>Max GW</th>
+                <th style={{ ...styles.th, width: 85 }}>Max Payload</th>
+                <th style={{ ...styles.th, width: 100 }}>Photos</th>
+                <th style={{ ...styles.th, width: 40, textAlign: 'center' }}>Act</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={12}
-                    style={{
-                      ...styles.td,
-                      textAlign: "center",
-                      padding: 20,
-                      color: "#94a3b8",
-                    }}
-                  >
-                    NO CONTAINERS ADDED. CLICK "NEW CONTAINER" TO START.
-                  </td>
+                  <td colSpan={13} style={{ ...styles.td, textAlign: 'center', color: '#94a3b8', padding: 20 }}>No containers found.</td>
                 </tr>
               )}
-
               {rows.map((row, idx) => (
                 <tr key={idx}>
-                  <td
-                    style={{
-                      ...styles.td,
-                      textAlign: "center",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {row.serialNumber}
-                  </td>
-
+                  <td style={{ ...styles.td, textAlign: 'center', color: '#64748b', fontWeight: 700 }}>{row.serialNumber}</td>
                   <td style={styles.td}>
-                    <input
-                      style={styles.input}
-                      value={toUpperVal(row.containerNo || "")}
-                      onChange={(e) =>
-                        handleFieldChange(
-                          idx,
-                          "containerNo",
-                          toUpperVal(e.target.value),
-                        )
-                      }
-                      placeholder="CONT. NO"
-                    />
+                    <input style={styles.input} value={toUpperVal(row.containerNo || "")}
+                      onChange={(e) => handleFieldChange(idx, "containerNo", toUpperVal(e.target.value))} placeholder="CONT. NO" />
                   </td>
-
                   <td style={styles.td}>
-                    <input
-                      style={styles.input}
-                      value={toUpperVal(row.sealNo || "")}
-                      onChange={(e) =>
-                        handleFieldChange(
-                          idx,
-                          "sealNo",
-                          toUpperVal(e.target.value),
-                        )
-                      }
-                      placeholder="SEAL NO"
-                    />
+                    <input style={styles.input} value={toUpperVal(row.sealNo || "")}
+                      onChange={(e) => handleFieldChange(idx, "sealNo", toUpperVal(e.target.value))} placeholder="SEAL ID" />
                   </td>
-
                   <td style={styles.td}>
-                    <select
-                      style={styles.select}
-                      value={row.sealType || ""}
-                      onChange={(e) =>
-                        handleFieldChange(idx, "sealType", e.target.value)
-                      }
-                    >
-                      <option value="">-- SELECT --</option>
-                      {sealTypes.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
+                    <DateInput style={styles.input} value={row.sealDate || ""} onChange={(e) => handleFieldChange(idx, "sealDate", e.target.value)} />
                   </td>
-
-                  <td style={styles.td}>
-                    <DateInput
-                      style={styles.input}
-                      value={row.sealDate || ""}
-                      onChange={(e) =>
-                        handleFieldChange(idx, "sealDate", e.target.value)
-                      }
-                    />
-                  </td>
-
                   {showSLineSeal && (
-                    <td>
-                      <input
-                        style={styles.input}
-                        value={toUpperVal(row.shippingLineSealNo || "")}
-                        onChange={(e) =>
-                          handleFieldChange(
-                            idx,
-                            "shippingLineSealNo",
-                            toUpperVal(e.target.value),
-                          )
-                        }
-                        placeholder="S/LINE SEAL NO"
-                      />
+                    <td style={styles.td}>
+                      <input style={styles.input} value={toUpperVal(row.shippingLineSealNo || "")}
+                        onChange={(e) => handleFieldChange(idx, "shippingLineSealNo", toUpperVal(e.target.value))} placeholder="LINE SEAL" />
                     </td>
                   )}
-
                   <td style={styles.td}>
-                    <select
-                      style={styles.select}
-                      value={row.type || ""}
-                      onChange={(e) =>
-                        handleFieldChange(idx, "type", e.target.value)
-                      }
-                    >
-                      <option value="">-- SELECT --</option>
-                      {containerTypes.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
+                    <select style={styles.select} value={row.type || ""} onChange={(e) => handleFieldChange(idx, "type", e.target.value)}>
+                      <option value="">Select</option>
+                      {containerTypes.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </td>
-
                   <td style={styles.td}>
-                    <input
-                      type="number"
-                      style={styles.input}
-                      value={Number(row.pkgsStuffed) === 0 ? "" : row.pkgsStuffed}
-                      // User can edit, but it might be overwritten by OperationsSync if connected
-                      onChange={(e) =>
-                        handleFieldChange(
-                          idx,
-                          "pkgsStuffed",
-                          Number(e.target.value || 0),
-                        )
-                      }
-                      placeholder="0.00"
-                    />
+                    <input type="number" style={styles.input} value={row.pkgsStuffed || ""}
+                      onChange={(e) => handleFieldChange(idx, "pkgsStuffed", Number(e.target.value || 0))} />
                   </td>
-
                   <td style={styles.td}>
-                    <input
-                      type="number"
-                      style={styles.input}
-                      value={Number(row.grossWeight) === 0 ? "" : row.grossWeight}
-                      onChange={(e) =>
-                        handleFieldChange(
-                          idx,
-                          "grossWeight",
-                          Number(e.target.value || 0),
-                        )
-                      }
-                      placeholder="0.00"
-                    />
+                    <input type="number" style={styles.input} value={row.grossWeight || ""}
+                      onChange={(e) => handleFieldChange(idx, "grossWeight", Number(e.target.value || 0))} />
                   </td>
-
                   <td style={styles.td}>
-                    <input
-                      type="number"
-                      style={styles.input}
-                      value={Number(row.tareWeightKgs) === 0 ? "" : row.tareWeightKgs}
-                      onChange={(e) =>
-                        handleFieldChange(
-                          idx,
-                          "tareWeightKgs",
-                          Number(e.target.value || 0),
-                        )
-                      }
-                      placeholder="0.00"
-                    />
+                    <input type="number" style={styles.input} value={row.tareWeightKgs || ""}
+                      onChange={(e) => handleFieldChange(idx, "tareWeightKgs", Number(e.target.value || 0))} />
                   </td>
-
                   <td style={styles.td}>
-                    <input
-                      type="number"
-                      style={styles.input}
-                      value={Number(row.vgmWtInvoice) === 0 ? "" : row.vgmWtInvoice}
-                      onChange={(e) =>
-                        handleFieldChange(
-                          idx,
-                          "vgmWtInvoice",
-                          Number(e.target.value || 0),
-                        )
-                      }
-                      placeholder="0.00"
-                    />
+                    <input type="number" style={styles.input} value={row.maxGrossWeightKgs || ""}
+                      onChange={(e) => handleFieldChange(idx, "maxGrossWeightKgs", Number(e.target.value || 0))} />
                   </td>
-
                   <td style={styles.td}>
-                    <input
-                      type="number"
-                      style={styles.input}
-                      value={Number(row.maxPayloadKgs) === 0 ? "" : row.maxPayloadKgs}
-                      onChange={(e) =>
-                        handleFieldChange(
-                          idx,
-                          "maxPayloadKgs",
-                          Number(e.target.value || 0),
-                        )
-                      }
-                      placeholder="0.00"
-                    />
+                    <input style={{ ...styles.input, ...styles.readOnlyInput }} value={row.maxPayloadKgs || ""} readOnly disabled />
                   </td>
-
-                  <td style={{ ...styles.td, textAlign: "center" }}>
-                    <button
-                      type="button"
-                      style={styles.linkButton}
-                      onClick={() => handleDelete(idx)}
-                    >
+                  <td style={styles.td}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <FileUpload bucketPath="container_images" multiple={true}
+                        onFilesUploaded={(urls) => handleFieldChange(idx, "images", [...(row.images || []), ...urls])} />
+                      <ImagePreview images={row.images || []} onDeleteImage={(iIdx) => handleFieldChange(idx, "images", (row.images || []).filter((_, i) => i !== iIdx))} />
+                    </div>
+                  </td>
+                  <td style={{ ...styles.td, textAlign: 'center' }}>
+                    <button type="button" style={styles.trashBtn} onClick={() => handleDelete(idx)}>
                       <FontAwesomeIcon icon={faTrash} />
                     </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* SECTION 2: WEIGHMENT INFO */}
+      <div style={styles.card}>
+        <div style={styles.cardTitle}>
+          <FontAwesomeIcon icon={faScaleBalanced} /> WEIGHMENT DETAILS
+        </div>
+
+        <div style={styles.tableWrapper}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={{ ...styles.th, width: 40, textAlign: 'center' }}>#</th>
+                <th style={{ ...styles.th, width: 140 }}>Container No</th>
+                <th style={{ ...styles.th, width: 120 }}>Reg / Slip No</th>
+                <th style={{ ...styles.th, width: 160 }}>Weighbridge Name</th>
+                <th style={{ ...styles.th, width: 200 }}>Weighbridge Address</th>
+                <th style={{ ...styles.th, width: 150 }}>Date & Time</th>
+                <th style={{ ...styles.th, width: 110 }}>Vehicle No</th>
+                <th style={{ ...styles.th, width: 90 }}>VGM WT (KG)</th>
+                <th style={{ ...styles.th, width: 120 }}>Images</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={9} style={{ ...styles.td, textAlign: 'center', color: '#94a3b8', padding: 20 }}>Add containers above to fill weighment.</td>
+                </tr>
+              )}
+              {rows.map((row, idx) => (
+                <tr key={idx}>
+                  <td style={{ ...styles.td, textAlign: 'center', color: '#64748b', fontWeight: 700 }}>{row.serialNumber}</td>
+                  <td style={styles.td}>
+                    <input style={{ ...styles.input, ...styles.readOnlyInput }} value={toUpperVal(row.containerNo || "")} readOnly disabled />
+                  </td>
+                  <td style={styles.td}>
+                    <input style={styles.input} value={toUpperVal(row.weighmentRegNo || "")}
+                      onChange={(e) => handleFieldChange(idx, "weighmentRegNo", toUpperVal(e.target.value))} placeholder="SLIP NO" />
+                  </td>
+                  <td style={styles.td}>
+                    <input style={styles.input} value={toUpperVal(row.weighBridgeName || "")}
+                      onChange={(e) => handleFieldChange(idx, "weighBridgeName", toUpperVal(e.target.value))} placeholder="BRIDGE NAME" />
+                  </td>
+                  <td style={styles.td}>
+                    <input style={styles.input} value={row.weighmentAddress || ""}
+                      onChange={(e) => handleFieldChange(idx, "weighmentAddress", e.target.value)} placeholder="ADDRESS" />
+                  </td>
+                  <td style={styles.td}>
+                    <input type="datetime-local" style={styles.input} value={row.weighmentDateTime || ""}
+                      onChange={(e) => handleFieldChange(idx, "weighmentDateTime", e.target.value)} />
+                  </td>
+                  <td style={styles.td}>
+                    <input style={styles.input} value={toUpperVal(row.weighmentVehicleNo || "")}
+                      onChange={(e) => handleFieldChange(idx, "weighmentVehicleNo", toUpperVal(e.target.value))} placeholder="VEHICLE NO" />
+                  </td>
+                  <td style={styles.td}>
+                    <input style={{ ...styles.input, ...styles.readOnlyInput }} value={row.vgmWtInvoice || ""} readOnly disabled />
+                  </td>
+                  <td style={styles.td}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <FileUpload bucketPath="weighment_images" multiple={true}
+                        onFilesUploaded={(urls) => handleFieldChange(idx, "weighmentImages", [...(row.weighmentImages || []), ...urls])} />
+                      <ImagePreview images={row.weighmentImages || []} onDeleteImage={(i) => handleFieldChange(idx, "weighmentImages", (row.weighmentImages || []).filter((_, ix) => ix !== i))} />
+                    </div>
                   </td>
                 </tr>
               ))}

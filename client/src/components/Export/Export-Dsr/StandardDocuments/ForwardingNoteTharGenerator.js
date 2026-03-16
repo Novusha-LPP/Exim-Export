@@ -13,16 +13,21 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      if (
-        typeof dateString === "string" &&
-        /^\d{1,2}-\d{1,2}-\d{4}/.test(dateString)
-      ) {
-        return dateString;
+    
+    // Handle string inputs like "09-03-2026" carefully to avoid MM-DD-YYYY misinterpretation
+    if (typeof dateString === "string") {
+      const match = dateString.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+      if (match) {
+        const day = match[1].padStart(2, "0");
+        const month = match[2].padStart(2, "0");
+        const year = match[3];
+        return `${day}.${month}.${year}`;
       }
-      return dateString;
     }
+
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    
     return date
       .toLocaleDateString("en-GB", {
         day: "2-digit",
@@ -76,9 +81,9 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       const consignorName = data.exporter || "";
       const vesselName = data.vessel_name || "";
       console.log(data);
-      const Bookingno = booking.bookingNo || "";
+      const Bookingno = data.booking_no || booking.bookingNo || "";
       const agentCha = "SURAJ FORWARDERS & SHIPPING AGENCIES";
-      const cutOffDate = formatDate(booking.bookingDate);
+      const cutOffDate = formatDate(data.cut_off_date || booking.bookingDate || data.booking_date);
       const portofLoading = data.port_of_loading || "";
       const dischargeCountry = data.discharge_country || "";
       const exporterAddress = data.exporter || "";
@@ -266,7 +271,6 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
               </td>
               <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
                 <div style="font-size: 10px;"><b>Port of Discharge : ${portOfDischarge}</b></div>
-                <div style="font-size: 10px;"><b>Port of Loading : ${portofLoading}</b></div>
               </td>
             </tr>
 

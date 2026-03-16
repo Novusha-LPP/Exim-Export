@@ -1,5 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Alert } from "@mui/material";
+import FileUpload from "../../../gallery/FileUpload";
+import ImagePreview from "../../../gallery/ImagePreview";
 import DateInput from "../../../common/DateInput.js";
 import { states } from "../../../../utils/masterList";
 import { natureOfCargo } from "../../../../utils/masterList";
@@ -1629,6 +1631,98 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                     }
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Row 8: Forwarder | Cut off Date */}
+            <div style={styles.split}>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>FORWARDER</div>
+                  <input
+                    style={styles.input}
+                    placeholder="ENTER FORWARDER"
+                    value={toUpper(formik.values.forwarder || "")}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "forwarder",
+                        e.target.value.toUpperCase(),
+                      )
+                    }
+                  />
+                </div>
+              </div>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>CUT OFF DATE</div>
+                  <DateInput
+                    style={styles.input}
+                    value={formik.values.cut_off_date || ""}
+                    onChange={(e) =>
+                      handleFieldChange("cut_off_date", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 9: Pickup Loc | Drop Loc */}
+            <div style={styles.split}>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>PICKUP LOC.</div>
+                  <input
+                    style={styles.input}
+                    placeholder="ENTER PICKUP LOCATION"
+                    value={toUpper(formik.values.pickup_loc || "")}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "pickup_loc",
+                        e.target.value.toUpperCase(),
+                      )
+                    }
+                  />
+                </div>
+              </div>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>DROP LOC.</div>
+                  <input
+                    style={styles.input}
+                    placeholder="ENTER DROP LOCATION"
+                    value={toUpper(formik.values.drop_loc || "")}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "drop_loc",
+                        e.target.value.toUpperCase(),
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 10: Booking Copy Upload */}
+            <div style={{ marginTop: 10, padding: 10, background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+              <div style={styles.label}>BOOKING COPY UPLOAD</div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 5 }}>
+                <FileUpload
+                  bucketPath="booking_copy_uploads"
+                  multiple={true}
+                  acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
+                  onFilesUploaded={(newUrls) => {
+                    const current = formik.values.booking_copy || [];
+                    handleFieldChange("booking_copy", [...current, ...newUrls]);
+                  }}
+                />
+                <ImagePreview
+                  images={formik.values.booking_copy || []}
+                  onDeleteImage={(idx) => {
+                    const current = formik.values.booking_copy || [];
+                    const updated = current.filter((_, i) => i !== idx);
+                    handleFieldChange("booking_copy", updated);
+                  }}
+                />
               </div>
             </div>
 

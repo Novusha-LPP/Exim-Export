@@ -228,7 +228,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
           : [{ containerNo: "", containerSize: "", sealNo: "" }];
 
       // Booking Details for S/Line Seal No
-      const booking = data.operations?.[0]?.bookingDetails?.[0] || {};
+      const booking = activeOp.bookingDetails?.[0] || {};
       const sLineSealNo = booking.shippingLineSealNo || "";
 
       const containerBody = containerRows.map((c) => [

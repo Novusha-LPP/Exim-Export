@@ -2,43 +2,42 @@
 import React, { useState, useContext } from "react";
 import { UserContext } from "../../contexts/UserContext";
 import ConfirmDialog from "./ConfirmDialog";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faFileAlt, faTrash } from "@fortawesome/free-solid-svg-icons";
 
-const tableStyles = {
-  wrapper: { marginTop: 4, maxHeight: 140, overflowY: "auto" },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    fontSize: 11,
+const styles = {
+  wrapper: { 
+    marginTop: 4, 
+    display: 'flex', 
+    flexDirection: 'column', 
+    gap: '6px' 
   },
-  th: {
-    textAlign: "left",
-    padding: "4px 6px",
-    background: "#f1f5f9",
-    borderBottom: "1px solid #e2e8f0",
-    fontWeight: 700,
-    color: "#1f2933",
-  },
-  td: {
-    padding: "4px 6px",
-    borderBottom: "1px solid #e5e7eb",
-    fontSize: 11,
+  item: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '2px 0'
   },
   link: {
     textDecoration: "none",
-    color: "#1d4ed8",
-    fontWeight: 500,
+    color: "#64748b",
+    fontSize: 14,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   deleteBtn: {
-    padding: "1px 6px",
-    fontSize: 11,
-    borderRadius: 3,
-    border: "1px solid #e53e3e",
-    background: "#fff5f5",
-    color: "#c53030",
+    padding: 0,
+    background: "none",
+    border: "none",
+    color: "#dc2626",
     cursor: "pointer",
-    fontWeight: 600,
+    fontSize: 14,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  empty: { fontSize: 11, color: "#6b7280", marginTop: 4 },
+  empty: { fontSize: 11, color: "#94a3b8", marginTop: 4 },
 };
 
 const ImagePreview = ({
@@ -108,52 +107,41 @@ const ImagePreview = ({
   };
 
   return (
-    <div style={tableStyles.wrapper}>
+    <div style={styles.wrapper}>
       {imageArray.length > 0 ? (
-        <table style={tableStyles.table}>
-          <thead>
-            <tr>
-              <th style={tableStyles.th}>File Name</th>
-              {!readOnly && <th style={tableStyles.th}>Action</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {imageArray.map((link, index) => (
-              <tr key={index}>
-                <td style={tableStyles.td}>
-                  {link ? (
-                    <a
-                      href={link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={tableStyles.link}
-                      onClick={(e) => {
-                        if (onImageClick) onImageClick(index, link);
-                      }}
-                    >
-                      {extractFileName(link)}
-                    </a>
-                  ) : (
-                    "Invalid link"
-                  )}
-                </td>
-                {!readOnly && (
-                  <td style={tableStyles.td}>
-                    <button
-                      type="button"
-                      style={tableStyles.deleteBtn}
-                      onClick={() => handleDeleteClick(index)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        imageArray.map((link, index) => (
+          <div key={index} style={styles.item}>
+            {link ? (
+              <a
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={styles.link}
+                title={extractFileName(link)}
+                onClick={(e) => {
+                  if (onImageClick) onImageClick(index, link);
+                }}
+              >
+                <FontAwesomeIcon icon={faFileAlt} />
+              </a>
+            ) : (
+              <span style={{ fontSize: 11, color: '#64748b' }}>N/A</span>
+            )}
+            
+            {!readOnly && (
+              <button
+                type="button"
+                style={styles.deleteBtn}
+                onClick={() => handleDeleteClick(index)}
+                title="Delete document"
+              >
+                <FontAwesomeIcon icon={faTrash} />
+              </button>
+            )}
+          </div>
+        ))
       ) : (
-        <div style={tableStyles.empty}>No document uploaded yet.</div>
+        <div style={styles.empty}>No document.</div>
       )}
       {!readOnly && (
         <ConfirmDialog

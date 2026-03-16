@@ -1127,17 +1127,20 @@ router.post("/api/jobs/add-job", async (req, res) => {
             // ✅ CORRECT OPERATIONS UPDATE (Prevents "0" key nesting bug)
             // =========================================================================
             let existingOpsRaw = existingJob?.operations;
-            let operationsToUpdate = Array.isArray(existingOpsRaw) 
-                ? [...existingOpsRaw] 
-                : (existingOpsRaw && existingOpsRaw["0"] ? [existingOpsRaw["0"]] : []);
+            let operationsToUpdate = [];
+            
+            // Strictly enforce ONLY ONE operation object in the array
+            if (Array.isArray(existingOpsRaw) && existingOpsRaw.length > 0) {
+                operationsToUpdate = [existingOpsRaw[0]];
+            } else if (existingOpsRaw && existingOpsRaw["0"]) {
+                operationsToUpdate = [existingOpsRaw["0"]];
+            }
 
             // Initialize at least one operation if none exists
             if (operationsToUpdate.length === 0) {
                 operationsToUpdate = [{
                     transporterDetails: [],
-                    containerDetails: [],
                     bookingDetails: [],
-                    weighmentDetails: [],
                     statusDetails: [{}]
                 }];
             }

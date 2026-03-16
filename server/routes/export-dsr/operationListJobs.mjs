@@ -113,7 +113,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                     { sb_no: { $regex: search, $options: "i" } },
                     { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
                     { "containers.containerNo": { $regex: search, $options: "i" } },
-                    { "operations.containerDetails.containerNo": { $regex: search, $options: "i" } }
+                    { "containers.containerNo": { $regex: search, $options: "i" } }
                 ],
             });
         }
@@ -158,8 +158,8 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             "operations.statusDetails.handoverImageUpload": 1, "operations.statusDetails.billingDocsSentUpload": 1,
             "operations.statusDetails.billingDocsSentDt": 1, "operations.statusDetails.status": 1,
             "operations.transporterDetails.images": 1, "operations.bookingDetails.images": 1,
-            "operations.weighmentDetails.images": 1, "operations.containerDetails.images": 1,
-            "operations.containerDetails.containerNo": 1, lockedBy: 1, lockedAt: 1
+            "containers.images": 1, "containers.weighmentImages": 1,
+            "containers.containerNo": 1, lockedBy: 1, lockedAt: 1
         };
 
         const [jobs, totalCount] = await Promise.all([

@@ -760,7 +760,7 @@ const ExportJobsTable = () => {
           if (job.containers && job.containers.length > 0) {
             job.containers.forEach(c => {
               if (c.containerNo) contCol.push(`Cont: ${c.containerNo}`);
-              if (c.size) contCol.push(`Size: ${c.size}`);
+              if (c.type) contCol.push(`Size: ${c.type}`);
             });
           }
           const placeDate = job.operations?.[0]?.statusDetails?.[0]?.containerPlacementDate;
@@ -1232,7 +1232,6 @@ const ExportJobsTable = () => {
       const sections = [
         { field: "transporterDetails", title: "Transporter" },
         { field: "bookingDetails", title: "Booking" },
-        { field: "weighmentDetails", title: "Weighment" },
       ];
 
       sections.forEach((s) => {
@@ -1253,17 +1252,29 @@ const ExportJobsTable = () => {
           links.push({ title: s.title, url: null, field: s.field, uploadType: "section", idx: 0 });
         }
       });
+    }
 
-      // Container Details (Special mention "container img")
-      if (ops.containerDetails && Array.isArray(ops.containerDetails)) {
-        ops.containerDetails.forEach((cd, idx) => {
-          if (Array.isArray(cd.images)) {
-            cd.images.forEach((url, i) => {
-              if (url) links.push({ title: "container img", url, field: null });
-            });
-          }
-        });
-      }
+    // 3. Container & Weighment Images (from Job Containers)
+    if (job.containers && Array.isArray(job.containers)) {
+      job.containers.forEach((cd, idx) => {
+        const prefix = job.containers.length > 1 ? `Cont ${idx + 1}` : "Cont";
+        // Container Photos
+        if (Array.isArray(cd.images)) {
+          cd.images.forEach((url) => {
+            if (url) links.push({ title: `${prefix} Photo`, url, field: null });
+          });
+        } else if (!cd.images || cd.images.length === 0) {
+          links.push({ title: `${prefix} Photo`, url: null, field: null });
+        }
+        // Weighment Slip Photos
+        if (Array.isArray(cd.weighmentImages)) {
+          cd.weighmentImages.forEach((url) => {
+            if (url) links.push({ title: `${prefix} Weighment`, url, field: null });
+          });
+        } else if (!cd.weighmentImages || cd.weighmentImages.length === 0) {
+          links.push({ title: `${prefix} Weighment`, url: null, field: null });
+        }
+      });
     }
 
     return links;
@@ -2012,6 +2023,9 @@ const ExportJobsTable = () => {
                           {/* Booking No section */}
                           {(() => {
                             const bookings = [];
+                            if (job.booking_no) {
+                              bookings.push(job.booking_no);
+                            }
                             if (Array.isArray(job.operations)) {
                               job.operations.forEach((op) => {
                                 if (Array.isArray(op.bookingDetails)) {
@@ -2372,11 +2386,11 @@ const ExportJobsTable = () => {
                                           {/* Shipping Line Tracking Link */}
                                           {(() => {
                                             const bookingDetail = job.operations?.[0]?.bookingDetails?.[0] || {};
-                                            const bookingNo = bookingDetail.bookingNo || "";
+                                            const bookingNo = job.booking_no || bookingDetail.bookingNo || "";
                                             const containerFirst = job.containers?.[0]?.containerNo || "";
                                             const urls = buildShippingLineUrls(bookingNo, containerFirst);
 
-                                            let linerRaw = bookingDetail.shippingLineName || job.shipping_line_airline || "";
+                                            let linerRaw = job.shipping_line_airline || bookingDetail.shippingLineName || "";
                                             // Handle cases like "MSC - MSC" by taking the part after " - "
                                             let liner = linerRaw.includes(" - ") ? linerRaw.split(" - ").pop().trim() : linerRaw.trim();
 
@@ -3233,13 +3247,27 @@ const ExportJobsTable = () => {
               statusDetails: [newStatus]
             };
 
-            // 3. Update job-level fields
+            // 3. Update fields
             if (updates.egm_no) fullJob.egm_no = updates.egm_no;
             if (updates.egm_date) fullJob.egm_date = updates.egm_date;
-            if (updates.drawback_scroll_no) fullJob.drawback_scroll_no = updates.drawback_scroll_no;
-            if (updates.drawback_scroll_date) fullJob.drawback_scroll_date = updates.drawback_scroll_date;
-            if (updates.rosctl_scroll_no) fullJob.rosctl_scroll_no = updates.rosctl_scroll_no;
-            if (updates.rosctl_scroll_date) fullJob.rosctl_scroll_date = updates.rosctl_scroll_date;
+
+            // Update drawback fields (now inside drawbackDetailsSchema within products of invoices)
+            if (updates.drawback_scroll_no || updates.drawback_scroll_date || updates.rosctl_scroll_no || updates.rosctl_scroll_date) {
+              if (fullJob.invoices && fullJob.invoices.length > 0) {
+                const firstInv = fullJob.invoices[0];
+                if (firstInv.products && firstInv.products.length > 0) {
+                  const firstProd = firstInv.products[0];
+                  if (!firstProd.drawbackDetails || firstProd.drawbackDetails.length === 0) {
+                    firstProd.drawbackDetails = [{}];
+                  }
+                  const firstDbk = firstProd.drawbackDetails[0];
+                  if (updates.drawback_scroll_no) firstDbk.drawback_scroll_no = updates.drawback_scroll_no;
+                  if (updates.drawback_scroll_date) firstDbk.drawback_scroll_date = updates.drawback_scroll_date;
+                  if (updates.rosctl_scroll_no) firstDbk.rosctl_scroll_no = updates.rosctl_scroll_no;
+                  if (updates.rosctl_scroll_date) firstDbk.rosctl_scroll_date = updates.rosctl_scroll_date;
+                }
+              }
+            }
 
             // 4. PUT Update
             const payload = { ...fullJob, operations: newOperations };

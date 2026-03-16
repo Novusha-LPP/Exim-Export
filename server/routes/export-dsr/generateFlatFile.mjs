@@ -263,10 +263,7 @@ function validateJobData(job) {
         const isLCL = (job.consignmentType || "").toUpperCase() === "LCL";
         const isPortStuffing = ["DOCK", "PORT", "CFS"].includes((job.goods_stuffed_at || "").toUpperCase());
         if (!isLCL && !isPortStuffing) {
-            let containers = job.containers || [];
-            if (job.operations?.[0]?.containerDetails?.length > 0) {
-                containers = job.operations[0].containerDetails;
-            }
+            const containers = job.containers || [];
             if (containers.length === 0) {
                 errors.push("Transport mode is SEA, but no Container details are provided.");
             }
@@ -582,10 +579,7 @@ export function generateSBFlatFile(job) {
         if (c.containerNo) sealDateMap[c.containerNo.toUpperCase()] = c.sealDate;
     });
 
-    let containers = job.containers || [];
-    if (job.operations?.[0]?.containerDetails?.length > 0) {
-        containers = job.operations[0].containerDetails;
-    }
+    const containers = job.containers || [];
 
     const isLCL = (job.consignmentType || "").toUpperCase() === "LCL";
     const isPortStuffing = ["DOCK", "PORT", "CFS"].includes((job.goods_stuffed_at || "").toUpperCase());

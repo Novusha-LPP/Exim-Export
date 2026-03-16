@@ -72,14 +72,14 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
         $addFields: {
           containerNumbers: {
             $map: {
-              input: { $ifNull: ["$firstOp.containerDetails", []] },
+              input: { $ifNull: ["$containers", []] },
               as: "c",
               in: "$$c.containerNo",
             },
           },
           sizeCounts: {
             $reduce: {
-              input: { $ifNull: ["$firstOp.containerDetails", []] },
+              input: { $ifNull: ["$containers", []] },
               initialValue: { ft20: 0, ft40: 0 },
               in: {
                 ft20: {
@@ -100,7 +100,7 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
           teus: {
             $sum: {
               $map: {
-                input: { $ifNull: ["$firstOp.containerDetails", []] },
+                input: { $ifNull: ["$containers", []] },
                 as: "c",
                 in: {
                   $cond: [
@@ -268,7 +268,7 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
             $cond: [
               { $eq: ["$consignmentType", "LCL"] },
               1,
-              { $size: { $ifNull: ["$firstOp.containerDetails", []] } },
+              { $size: { $ifNull: ["$containers", []] } },
             ],
           },
           noOfContrSize: 1,

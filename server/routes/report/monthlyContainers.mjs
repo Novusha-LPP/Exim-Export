@@ -67,7 +67,7 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
                   {
                     $size: {
                       $filter: {
-                        input: { $ifNull: ["$operations.containerDetails", []] },
+                        input: { $ifNull: ["$containers", []] },
                         as: "container",
                         cond: { $eq: ["$$container.containerSize", "20"] },
                       },
@@ -86,7 +86,7 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
                   {
                     $size: {
                       $filter: {
-                        input: { $ifNull: ["$operations.containerDetails", []] },
+                        input: { $ifNull: ["$containers", []] },
                         as: "container",
                         cond: { $eq: ["$$container.containerSize", "40"] },
                       },

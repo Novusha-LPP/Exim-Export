@@ -213,6 +213,11 @@ const drawbackDetailsSchema = new Schema(
     rosctlAmount: { type: Number, default: 0 },
     rosctlCategory: { type: String, trim: true }, // "B" or "D"
     showRosctl: { type: Boolean, default: false },
+    drawback_scroll_date: { type: String, trim: true },
+    drawback_scroll_no: { type: String, trim: true },
+    rosctl_scroll_no: { type: String, trim: true },
+    rosctl_scroll_date: { type: String, trim: true },
+
   },
   { _id: true },
 );
@@ -425,7 +430,7 @@ const containerDetailsSchema = new Schema(
     type: {
       type: String,
     },
-    pkgsStuffed: { type: Number, default: 0 }, // 'Pkgs Stuffed'
+    pkgsStuffed: { type: Number, default: 0 },
     grossWeight: { type: Number, default: 0 },
     maxGrossWeightKgs: { type: Number, default: 0 },
     vgmWtInvoice: { type: Number, default: 0 },
@@ -436,7 +441,16 @@ const containerDetailsSchema = new Schema(
     grWtPlusTrWt: { type: Number, default: 0 },
     tareWeightKgs: { type: Number, default: 0 },
     sealDeviceId: String,
-    rfid: String, // If needed for RFID field
+    rfid: String,
+    images: [String],
+    // Weighment Details
+    weighBridgeName: { type: String, trim: true },
+    weighmentRegNo: { type: String, trim: true },
+    weighmentDateTime: { type: String, trim: true },
+    weighmentVehicleNo: { type: String, trim: true },
+    weighmentTareWeight: { type: Number, default: 0 },
+    weighmentAddress: { type: String, trim: true },
+    weighmentImages: [String],
   },
   { _id: true },
 );
@@ -619,24 +633,6 @@ const exportOperationSchema = new Schema(
       },
     ],
 
-    containerDetails: [
-      {
-        containerNo: { type: String, trim: true },
-        shippingLineSealNo: { type: String, trim: true },
-        containerSize: { type: String, trim: true },
-        containerType: { type: String, trim: true },
-        cargoType: { type: String, default: "GEN", trim: true },
-        portOfLoading: { type: String, trim: true },
-        customSealNo: { type: String, trim: true },
-        grossWeight: { type: Number },
-        maxGrossWeightKgs: { type: Number },
-        vgmWtInvoice: { type: Number },
-        tareWeightKgs: { type: Number },
-        maxPayloadKgs: { type: Number },
-        images: [String],
-      },
-    ],
-
     bookingDetails: [
       {
         shippingLineName: { type: String, trim: true },
@@ -648,18 +644,6 @@ const exportOperationSchema = new Schema(
         portOfLoading: { type: String, trim: true },
         emptyPickUpLoc: { type: String, trim: true },
         emptyDropLoc: { type: String, trim: true },
-        images: [String],
-      },
-    ],
-
-    weighmentDetails: [
-      {
-        weighBridgeName: { type: String, trim: true },
-        regNo: { type: String, trim: true },
-        dateTime: { type: String, trim: true },
-        vehicleNo: { type: String, trim: true },
-        tareWeight: { type: Number, trim: true },
-        address: { type: String, trim: true },
         images: [String],
       },
     ],
@@ -729,10 +713,6 @@ const exportJobSchema = new mongoose.Schema(
     destination_country: { type: String, trim: true },
     egm_no: { type: String, trim: true },
     egm_date: { type: String, trim: true },
-    drawback_scroll_no: { type: String, trim: true },
-    drawback_scroll_date: { type: String, trim: true },
-    rosctl_scroll_no: { type: String, trim: true },
-    rosctl_scroll_date: { type: String, trim: true },
     mbl_date: { type: String, trim: true },
     hbl_date: { type: String, trim: true },
     hbl_no: { type: String, trim: true },
@@ -750,6 +730,11 @@ const exportJobSchema = new mongoose.Schema(
     nature_of_cargo: { type: String, trim: true },
     booking_no: { type: String, trim: true },
     booking_date: { type: String, trim: true },
+    forwarder: { type: String, trim: true },
+    pickup_loc: { type: String, trim: true },
+    drop_loc: { type: String, trim: true },
+    cut_off_date: { type: String, trim: true },
+    booking_copy: [String],
     leo_date: { type: String, trim: true },
     gate_in: { type: String, trim: true },
     loose_pkgs: { type: String, trim: true },
@@ -1060,287 +1045,21 @@ const exportJobSchema = new mongoose.Schema(
 );
 
 exportJobSchema.pre("save", function (next) {
-
-
-  // CLEANUP: If Dock (FCL or LCL), remove containerNo from all Transporter (Carting) Details
-  // This ensures that Carting Details are treated as independent "Gate In" entries for loose goods,
-  // not tied 1:1 to the output containers.
-  const isDock =
-    this.goods_stuffed_at?.toUpperCase() === "DOCK" ||
-    this.goods_stuffed_at?.toUpperCase() === "DOCKS";
-
-  if (isDock) {
-    (this.operations || []).forEach((op) => {
-      (op.transporterDetails || []).forEach((td) => {
-        if (td.containerNo) {
-
-          td.containerNo = "";
-        }
-      });
-    });
+  // Enforce ONLY ONE operation
+  if (this.operations && this.operations.length > 1) {
+    this.operations = [this.operations[0]];
   }
 
-  // ========================================
-  // COLLECT ALL UNIQUE CONTAINER NUMBERS FROM BOTH SOURCES
-  // ========================================
-
-  // From containers array
-  const containerNosFromContainers = new Set(
-    (this.containers || [])
-      .map((c) => c.containerNo)
-      .filter((c) => c && typeof c === "string" && c.trim().length > 0)
-      .map((c) => c.trim().toUpperCase()),
-  );
-
-  // From operations - CHECK ALL ARRAYS (transporterDetails, containerDetails, weighmentDetails)
-  const containerNosFromOperations = new Set();
-  (this.operations || []).forEach((op) => {
-    // Get from transporterDetails array
-    (op.transporterDetails || []).forEach((td) => {
-      if (td.containerNo && td.containerNo.trim().length > 0)
-        containerNosFromOperations.add(td.containerNo.trim().toUpperCase());
-    });
-    // Get from containerDetails array
-    (op.containerDetails || []).forEach((cd) => {
-      if (cd.containerNo && cd.containerNo.trim().length > 0)
-        containerNosFromOperations.add(cd.containerNo.trim().toUpperCase());
-    });
-    // Get from weighmentDetails array
-    (op.weighmentDetails || []).forEach((wd) => {
-      if (wd.containerNo && wd.containerNo.trim().length > 0)
-        containerNosFromOperations.add(wd.containerNo.trim().toUpperCase());
-    });
-  });
-
-  // Merge all unique container numbers
-  const allContainerNos = new Set([
-    ...containerNosFromContainers,
-    ...containerNosFromOperations,
-  ]);
-
-
-  // ========================================
-  // STEP 1: SYNC CONTAINERS ARRAY
-  // ========================================
-  const existingContainers = this.containers || [];
-  const existingContainerMap = new Map(
-    existingContainers.map((c) => [c.containerNo, c]),
-  );
-
-  // Create missing containers from operations
-  const syncedContainers = [];
-  let serialNum = 1;
-
-  allContainerNos.forEach((containerNo) => {
-    const opData = this.getOperationDataForContainer(containerNo);
-
-    if (existingContainerMap.has(containerNo)) {
-      // Update existing container with operation data
-      const existing = existingContainerMap.get(containerNo);
-      existing.serialNumber = serialNum++;
-      existing.type = opData.containerSize || existing.type || "";
-      existing.pkgsStuffed = opData.noOfPackages || existing.pkgsStuffed || 0;
-      existing.grossWeight = opData.grossWeight || existing.grossWeight || 0;
-      existing.sealNo = opData.customSealNo || existing.sealNo || "";
-      existing.shippingLineSealNo = opData.shippingLineSealNo || existing.shippingLineSealNo || "";
-      existing.tareWeightKgs = opData.tareWeightKgs || existing.tareWeightKgs || 0;
-      existing.vgmWtInvoice = opData.vgmWtInvoice || existing.vgmWtInvoice || 0;
-      existing.maxGrossWeightKgs = opData.maxGrossWeightKgs || existing.maxGrossWeightKgs || 0;
-      existing.maxPayloadKgs = opData.maxPayloadKgs || existing.maxPayloadKgs || 0;
-
-      syncedContainers.push(existing);
-    } else {
-      // Create new container from operation data
-      const newContainer = {
-        serialNumber: serialNum++,
-        containerNo: containerNo,
-        type: opData.containerSize || "",
-        pkgsStuffed: opData.noOfPackages || 0,
-        grossWeight: opData.grossWeight || 0,
-        sealNo: opData.customSealNo || "",
-        shippingLineSealNo: opData.shippingLineSealNo || "",
-        tareWeightKgs: opData.tareWeightKgs || 0,
-        vgmWtInvoice: opData.vgmWtInvoice || 0,
-        maxGrossWeightKgs: opData.maxGrossWeightKgs || 0,
-        maxPayloadKgs: opData.maxPayloadKgs || 0,
-        sealDate: "",
-        sealType: "",
-        grWtPlusTrWt: 0,
-        sealDeviceId: "",
-        rfid: "",
-      };
-      syncedContainers.push(newContainer);
-    }
-  });
-
-  this.containers = syncedContainers;
-
-
-  // ========================================
-  // STEP 2: SYNC OPERATIONS ARRAY
-  // ========================================
-
-  // If no operations exist, create one operation with all containers
+  // Ensure at least one operation exists
   if (!this.operations || this.operations.length === 0) {
-
-
-    const transporterDetails = [];
-    const containerDetails = [];
-    const weighmentDetails = [];
-
-    // IsDock check is already defined above
-
-    allContainerNos.forEach((containerNo) => {
-      const container = syncedContainers.find(
-        (c) => c.containerNo === containerNo,
-      );
-
-
-
-      containerDetails.push({
-        containerNo,
-        containerSize: container?.type || "",
-        containerType: "",
-        cargoType: "Gen",
-        maxGrossWeightKgs: 0,
-        tareWeightKgs: 2250,
-        maxPayloadKgs: 28230,
-        images: [],
-      });
-
-      // 3. Weighment Details
-      // REMOVED: Weighment Details should be fully independent and not tied to the container list.
-    });
-
-    // If no weighment rows exist at all, add one empty row to prevent UI issues
-    if (weighmentDetails.length === 0) {
-      weighmentDetails.push({
-        weighBridgeName: "",
-        regNo: "",
-        dateTime: "",
-        vehicleNo: "",
-        tareWeight: 0,
-        address: "",
-      });
-    }
-
-    // Ensure at least one empty row exists so the UI isn't broken
-    if (transporterDetails.length === 0) {
-      transporterDetails.push({
-        transporterName: "",
-        vehicleNo: "",
-        noOfPackages: 0,
-        grossWeightKgs: 0,
-        images: [],
-        cartingDate: null,
-      });
-    }
-
-    this.operations = [
-      {
-        transporterDetails,
-        containerDetails,
-        weighmentDetails,
-        bookingDetails: [
-          {
-            shippingLineName: "",
-            bookingNo: "",
-            bookingDate: null,
-            vesselName: "",
-            voyageNo: "",
-            portOfLoading: "",
-            emptyPickUpLoc: "",
-            emptyDropLoc: "",
-            validity: "",
-            images: [],
-          },
-        ],
-        statusDetails: [
-          {
-            rms: "",
-            goodsRegistrationDate: null,
-            leoDate: null,
-            leoUpload: [],
-            stuffingDate: null,
-            stuffingSheetUpload: [],
-            stuffingPhotoUpload: [],
-            eGatePassCopyDate: null,
-            eGatePassUpload: [],
-            handoverForwardingNoteDate: null,
-            handoverImageUpload: [],
-            handoverConcorTharSanganaRailRoadDate: null,
-            billingDocsSentDt: null,
-            billingDocsSentUpload: [],
-            billingDocsStatus: "",
-            railRoad: "",
-            concorPrivate: "",
-            privateTransporterName: "",
-            hoToConsoleDate: null,
-            hoToConsoleDate2: null,
-            hoToConsoleName: "",
-            containerPlacementDate: null,
-          },
-        ],
-      },
-    ];
-  } else {
-    // Update existing operation(s)
-    this.operations.forEach((operation) => {
-      // Iterate over ALL valid containers to Upsert (Update or Insert) details
-      allContainerNos.forEach((containerNo) => {
-        const container = syncedContainers.find(
-          (c) => c.containerNo === containerNo,
-        );
-
-
-
-        // 2. Container Details
-        operation.containerDetails = operation.containerDetails || [];
-        let cd = operation.containerDetails.find(
-          (c) => c.containerNo === containerNo,
-        );
-
-        if (!cd) {
-          // Insert new
-          operation.containerDetails.push({
-            containerNo,
-            containerSize: container?.type || "",
-            containerType: "",
-            cargoType: "Gen",
-            customSealNo: container?.sealNo || "",
-            shippingLineSealNo: container?.shippingLineSealNo || "",
-            maxGrossWeightKgs: container?.maxGrossWeightKgs || 0,
-            tareWeightKgs: container?.tareWeightKgs || 0,
-            maxPayloadKgs: container?.maxPayloadKgs || 0,
-            grossWeight: container?.grossWeight || 0,
-            vgmWtInvoice: container?.vgmWtInvoice || 0,
-            images: [],
-          });
-        } else {
-          // Update existing: Sync values from master list where local is empty or to keep in sync
-          if (container) {
-            cd.containerSize = container.type || cd.containerSize;
-            cd.customSealNo = cd.customSealNo || container.sealNo || "";
-            cd.shippingLineSealNo = cd.shippingLineSealNo || container.shippingLineSealNo || "";
-            cd.grossWeight = cd.grossWeight || container.grossWeight || 0;
-            cd.tareWeightKgs = cd.tareWeightKgs || container.tareWeightKgs || 0;
-            cd.vgmWtInvoice = cd.vgmWtInvoice || container.vgmWtInvoice || 0;
-            cd.maxGrossWeightKgs = cd.maxGrossWeightKgs || container.maxGrossWeightKgs || 0;
-            cd.maxPayloadKgs = cd.maxPayloadKgs || container.maxPayloadKgs || 0;
-          }
-        }
-
-        // 3. Weighment Details
-        // REMOVED: Weighment Details should be fully independent and not tied to the container list.
-      });
-    });
+    this.operations = [{
+      transporterDetails: [],
+      bookingDetails: [],
+      statusDetails: []
+    }];
   }
 
-
-
-  // ========================================
-  // STEP 3: SEAL SYNC
-  // ========================================
+  // Sync stuffing_seal_no with annexC1Details
   if (this.stuffing_seal_no) {
     this.annexC1Details = this.annexC1Details || {};
     this.annexC1Details.sealNumber = this.stuffing_seal_no;
@@ -1348,54 +1067,6 @@ exportJobSchema.pre("save", function (next) {
 
   next();
 });
-
-// Helper method to extract operation data for a container
-exportJobSchema.methods.getOperationDataForContainer = function (containerNo) {
-  let result = {
-    containerSize: "",
-    grossWeight: 0,
-    noOfPackages: 0,
-    customSealNo: "",
-    shippingLineSealNo: "",
-    tareWeightKgs: 0,
-    vgmWtInvoice: 0,
-    maxGrossWeightKgs: 0,
-    maxPayloadKgs: 0
-  };
-
-  (this.operations || []).forEach((op) => {
-    const cd = (op.containerDetails || []).find(
-      (c) => c.containerNo === containerNo,
-    );
-    if (cd) {
-      result.containerSize = cd.containerSize || result.containerSize;
-      result.customSealNo = cd.customSealNo || result.customSealNo;
-      result.shippingLineSealNo = cd.shippingLineSealNo || result.shippingLineSealNo;
-      result.tareWeightKgs = cd.tareWeightKgs || result.tareWeightKgs;
-      result.vgmWtInvoice = cd.vgmWtInvoice || result.vgmWtInvoice;
-      result.maxGrossWeightKgs = cd.maxGrossWeightKgs || result.maxGrossWeightKgs;
-      result.maxPayloadKgs = cd.maxPayloadKgs || result.maxPayloadKgs;
-      result.grossWeight = cd.grossWeight || result.grossWeight;
-    }
-
-    const wd = (op.weighmentDetails || []).find(
-      (w) => w.containerNo === containerNo,
-    );
-    if (wd) {
-      result.grossWeight = wd.grossWeight || result.grossWeight;
-    }
-
-    const td = (op.transporterDetails || []).find(
-      (t) => t.containerNo === containerNo,
-    );
-    if (td) {
-      result.noOfPackages = td.noOfPackages || result.noOfPackages;
-      // result.grossWeight stays as whatever was higher
-    }
-  });
-
-  return result;
-};
 
 // Remove redundant indexes and add compound indexes
 exportJobSchema.index({ jobNumber: 1 }, { unique: true });

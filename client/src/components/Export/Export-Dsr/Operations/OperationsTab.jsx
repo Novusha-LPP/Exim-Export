@@ -72,46 +72,6 @@ const getDefaultItem = (section) => {
       images: [],
       cartingDate: "",
     },
-    containerDetails: {
-      containerNo: "",
-      containerSize: "",
-      containerType: "",
-      cargoType: "GEN",
-      portOfLoading: "",
-      customSealNo: "",
-      grossWeight: 0,
-      maxGrossWeightKgs: 0,
-      vgmWtInvoice: 0,
-      tareWeightKgs: 0,
-      maxPayloadKgs: 0,
-      shippingLineSealNo: "",
-      noOfPackages: 0,
-      images: [],
-    },
-    bookingDetails: {
-      shippingLineName: "",
-      forwarderName: "",
-      bookingNo: "",
-      bookingDate: "",
-      vesselName: "",
-      voyageNo: "",
-      portOfLoading: "",
-      emptyPickUpLoc: "",
-      emptyDropLoc: "",
-      images: [],
-      containerPlacementDate: "",
-      shippingLineSealNo: "",
-    },
-    weighmentDetails: {
-      containerNo: "",
-      weighBridgeName: "",
-      regNo: "",
-      address: "",
-      dateTime: "",
-      vehicleNo: "",
-      tareWeight: 0,
-      images: [],
-    },
     statusDetails: {
       gateInDate: "",
       rms: "RMS", // Default
@@ -719,11 +679,6 @@ const OperationsTab = ({ formik }) => {
         statusDetails: [statusDefaults],
       };
 
-      if (!isAir) {
-        newOp.containerDetails = [getDefaultItem("containerDetails")];
-        newOp.weighmentDetails = [getDefaultItem("weighmentDetails")];
-      }
-
       formik.setFieldValue("operations", [newOp]);
     }
   }, [formik.values.job_no, operations.length]);
@@ -752,30 +707,6 @@ const OperationsTab = ({ formik }) => {
     }
   }, [formik.values.custom_house, operations.length]);
 
-  // Sync Port Of Loading between Header and Operations
-  useEffect(() => {
-    const headerPol = toUpper(formik.values.port_of_loading || "");
-    // Propagate header POL to all containers in all operations
-    let polChanged = false;
-    const nextOps = operations.map((op) => {
-      const containerDetails = op.containerDetails || [];
-      let opPolChanged = false;
-      const updatedCD = containerDetails.map((cd) => {
-        if (toUpper(cd.portOfLoading) !== headerPol) {
-          polChanged = true;
-          opPolChanged = true;
-          return { ...cd, portOfLoading: headerPol };
-        }
-        return cd;
-      });
-      if (opPolChanged) return { ...op, containerDetails: updatedCD };
-      return op;
-    });
-
-    if (polChanged) {
-      formik.setFieldValue("operations", nextOps);
-    }
-  }, [formik.values.port_of_loading]);
 
   // Auto-select Ahmedabad Air Port when transport mode is AIR
   useEffect(() => {
@@ -858,358 +789,7 @@ const OperationsTab = ({ formik }) => {
     isAir,
   ]);
 
-  // 1. Collect all unique container numbers from ALL sections of ALL operations
-  const allOpContainersSet = new Set();
-  operations.forEach((op) => {
-    ["transporterDetails", "containerDetails"].forEach(
-      (sec) => {
-        (op[sec] || []).forEach((item) => {
-          if (item.containerNo && item.containerNo.trim()) {
-            allOpContainersSet.add(item.containerNo.trim().toUpperCase());
-          }
-        });
-      },
-    );
-  });
-  const opContainerNos = Array.from(allOpContainersSet);
-
-  // 2. Get master list container numbers
-  const masterContainers = formik.values.containers || [];
-  const masterContainerNos = masterContainers.map((c) =>
-    (c.containerNo || "").toUpperCase(),
-  );
-
-  // 3. Check Sync Status
-  const isSynced =
-    opContainerNos.length === masterContainerNos.length &&
-    opContainerNos.every((no) => masterContainerNos.includes(no));
-
-  const syncStatus = isSynced ? "Synced" : "Out of Sync";
-
-  // 4. Auto-sync Effect: Keeps operations consistent and updates the main containers array
-  // Stable serialized key for container numbers (prevents dependency reference changes)
-  const masterContainerKey = JSON.stringify(
-    (formik.values.containers || []).map(c => (c.containerNo || "").trim().toUpperCase())
-  );
-  const opsContainerKey = JSON.stringify(
-    operations.map(op => (op.containerDetails || []).map(d => (d.containerNo || "").trim().toUpperCase()))
-  );
-
-  useEffect(() => {
-    // SECURITY: Do not run sync logic if the form hasn't loaded its job data yet.
-    // This prevents wiping container lists during the initial render "flicker".
-    if (!formik.values.job_no || operations.length === 0) return;
-    if (syncingRef.current) return;
-
-    // Phase A: Intra-operation Sync (Propagate Unique Containers across sections)
-    let opsModified = false;
-    const nextOperations = operations.map((op) => {
-      // If Dock LCL, we DO NOT sync anything between sections.
-      if (isDockLCL) {
-        return op;
-      }
-
-      let opIsDirty = false;
-      const syncedOp = { ...op };
-
-      // 1. Sync containerDetails and weighmentDetails by index (Strict Mirror)
-      if (!isAir && !isDockLCL) {
-        const cDet = [...(syncedOp.containerDetails || [])];
-        const wDet = [...(syncedOp.weighmentDetails || [])];
-        const maxLen = Math.max(cDet.length, wDet.length);
-
-        // Ensure both arrays have at least one row if they are expected
-        const finalLen = maxLen === 0 ? 1 : maxLen;
-
-        while (cDet.length < finalLen) {
-          cDet.push(getDefaultItem("containerDetails"));
-          opIsDirty = true;
-        }
-        while (wDet.length < finalLen) {
-          wDet.push(getDefaultItem("weighmentDetails"));
-          opIsDirty = true;
-        }
-
-        // Mirror containerNumber by index
-        for (let i = 0; i < finalLen; i++) {
-          const cNo = (cDet[i].containerNo || "").trim().toUpperCase();
-          const wNo = (wDet[i].containerNo || "").trim().toUpperCase();
-
-          if (cNo !== wNo) {
-            // Priority: Take whichever is non-empty. If both non-empty, cNo wins.
-            const targetNo = cNo || wNo;
-            if (cDet[i].containerNo !== targetNo) cDet[i].containerNo = targetNo;
-            if (wDet[i].containerNo !== targetNo) wDet[i].containerNo = targetNo;
-            opIsDirty = true;
-          }
-        }
-        syncedOp.containerDetails = cDet;
-        syncedOp.weighmentDetails = wDet;
-      }
-
-      if (opIsDirty) opsModified = true;
-      return syncedOp;
-    });
-
-    if (opsModified && JSON.stringify(operations) !== JSON.stringify(nextOperations)) {
-      syncingRef.current = true;
-      formik.setFieldValue("operations", nextOperations);
-      setTimeout(() => { syncingRef.current = false; }, 100);
-      return; // Exit and wait for next render cycle
-    }
-
-    // Build a map of container details from transporterDetails to sync to master containers
-    const containerDetailsMap = new Map();
-
-    operations.forEach((op) => {
-      (op.transporterDetails || []).forEach((item) => {
-        // Container No removed from Transporter Details, so we don't map packages to containers here
-      });
-
-      // Also grab grossWeight, tareWeightKgs and shippingLineSealNo from containerDetails
-      (op.containerDetails || []).forEach((item) => {
-        if (item.containerNo) {
-          const cNo = item.containerNo.trim().toUpperCase();
-
-          // Ensure entry exists (it might not if not in transporterDetails)
-          if (!containerDetailsMap.has(cNo)) {
-            containerDetailsMap.set(cNo, {
-              grossWeight: 0,
-              maxGrossWeight: 0,
-              netWeight: 0,
-              noOfPackages: 0,
-              tareWeightKgs: 0,
-              vgmWtInvoice: 0,
-              shippingLineSealNo: "",
-              customSealNo: "",
-              maxPayloadKgs: 0,
-              containerSize: ""
-            });
-          }
-
-          const info = containerDetailsMap.get(cNo);
-
-          // Sync Container-specific fields from containerDetails
-          // Alignment:
-          // Operations.grossWeight -> Master.grossWeight (Cargo)
-          // Operations.maxGrossWeightKgs -> Master.maxGrossWeightKgs (Capacity)
-          if (item.grossWeight !== undefined)
-            info.grossWeight = Number(item.grossWeight || 0);
-          if (item.maxGrossWeightKgs !== undefined)
-            info.maxGrossWeightKgs = Number(item.maxGrossWeightKgs || 0);
-          if (item.vgmWtInvoice !== undefined)
-            info.vgmWtInvoice = Number(item.vgmWtInvoice || 0);
-          if (item.tareWeightKgs !== undefined)
-            info.tareWeightKgs = Number(item.tareWeightKgs || 0);
-          if (item.shippingLineSealNo)
-            info.shippingLineSealNo = item.shippingLineSealNo;
-          if (item.noOfPackages)
-            info.noOfPackages = Number(item.noOfPackages || 0);
-          if (item.netWeight)
-            info.netWeight = Number(item.netWeight || 0);
-
-          // Note: Global Gross Weight AND Packages sync to shipment header removed to prevent overwriting manual entry
-
-          if (item.maxPayloadKgs)
-            info.maxPayloadKgs = Number(item.maxPayloadKgs || 0);
-          if (item.containerSize)
-            info.containerSize = item.containerSize;
-          if (item.customSealNo)
-            info.customSealNo = item.customSealNo;
-        }
-      });
-    });
-
-    // Phase C: Master Containers Sync (Updates formik.values.containers)
-    // IMPORTANT: Master (ContainerTab) is the SOURCE OF TRUTH for which containers exist.
-    // Phase C may only UPDATE field values on existing master containers — NEVER add new ones.
-    // Adding containers from Operations is handled by the user explicitly in ContainerTab.
-    if (!isAir) {
-      const currentMaster = formik.values.containers || [];
-      let masterChanged = false;
-
-      const nextContainers = currentMaster.map(m => {
-        const mNo = (m.containerNo || "").trim().toUpperCase();
-        if (!mNo) return m;
-
-        const opInfo = containerDetailsMap.get(mNo);
-        if (!opInfo) return m;
-
-        // Only sync field values — don't change which containers exist
-        const grossChanged = Number(m.grossWeight || 0) !== opInfo.grossWeight;
-        const maxGrossChanged = Number(m.maxGrossWeightKgs || 0) !== opInfo.maxGrossWeightKgs;
-        const vgmChanged = Number(m.vgmWtInvoice || 0) !== opInfo.vgmWtInvoice;
-        const tareChanged = Number(m.tareWeightKgs || 0) !== opInfo.tareWeightKgs;
-        const sealChanged = (m.shippingLineSealNo || "") !== (opInfo.shippingLineSealNo || "");
-        const payloadChanged = Number(m.maxPayloadKgs || 0) !== (opInfo.maxPayloadKgs || 0);
-        const sealNoChanged = (m.sealNo || "") !== (opInfo.customSealNo || "");
-        const typeChanged = (m.type || "") !== (opInfo.containerSize || "");
-        const pkgsChanged = opInfo.noOfPackages > 0 && Number(m.pkgsStuffed || 0) !== opInfo.noOfPackages;
-        const netChanged = opInfo.netWeight > 0 && Number(m.netWeight || 0) !== opInfo.netWeight;
-
-        if (grossChanged || maxGrossChanged || vgmChanged || tareChanged || sealChanged || payloadChanged || sealNoChanged || typeChanged || pkgsChanged || netChanged) {
-          masterChanged = true;
-          return {
-            ...m,
-            grossWeight: grossChanged ? opInfo.grossWeight : m.grossWeight,
-            maxGrossWeightKgs: maxGrossChanged ? opInfo.maxGrossWeightKgs : m.maxGrossWeightKgs,
-            vgmWtInvoice: vgmChanged ? opInfo.vgmWtInvoice : m.vgmWtInvoice,
-            tareWeightKgs: tareChanged ? opInfo.tareWeightKgs : m.tareWeightKgs,
-            shippingLineSealNo: sealChanged ? (opInfo.shippingLineSealNo || m.shippingLineSealNo || "") : m.shippingLineSealNo,
-            sealNo: sealNoChanged ? (opInfo.customSealNo || m.sealNo || "") : m.sealNo,
-            maxPayloadKgs: payloadChanged ? opInfo.maxPayloadKgs : m.maxPayloadKgs,
-            type: typeChanged ? (opInfo.containerSize || m.type || "") : m.type,
-            pkgsStuffed: pkgsChanged ? opInfo.noOfPackages : m.pkgsStuffed,
-            netWeight: netChanged ? opInfo.netWeight : m.netWeight,
-          };
-        }
-        return m;
-      });
-
-      if (masterChanged && JSON.stringify(currentMaster) !== JSON.stringify(nextContainers)) {
-        syncingRef.current = true;
-        formik.setFieldValue("containers", nextContainers);
-        setTimeout(() => { syncingRef.current = false; }, 100);
-      }
-    }
-  }, [opsContainerKey]); // Stable serialized key prevents reference-change loops
-
-  // Phase D: Master -> Operations Sync (Syncs newly added containers from ContainerTab to Operations)
-  useEffect(() => {
-    if (!formik.values.job_no || operations.length === 0 || isAir) return;
-    if (syncingRef.current) return;
-
-    const masterContainers = formik.values.containers || [];
-    let opsChanged = false;
-
-    const nextOperations = operations.map(op => {
-      if (isDockLCL) return op;
-
-      const syncedOp = { ...op };
-      let opIsDirty = false;
-
-      const sectionsToUpdate = ["containerDetails", "weighmentDetails"];
-
-      sectionsToUpdate.forEach(secName => {
-        const currentArr = [...(syncedOp[secName] || [])];
-        let sectionDirty = false;
-
-        // 1. Match length with Master
-        while (currentArr.length < masterContainers.length) {
-          currentArr.push(getDefaultItem(secName));
-          sectionDirty = true;
-        }
-        // Strict truncating sync (allows deleting the last container row safely)
-        if (currentArr.length > masterContainers.length) {
-          currentArr.length = masterContainers.length;
-          sectionDirty = true;
-        }
-
-        // 2. Sync values from Master by index
-        masterContainers.forEach((m, idx) => {
-          if (idx >= currentArr.length) return;
-          const d = currentArr[idx];
-          const mNo = (m.containerNo || "").trim().toUpperCase();
-
-          // Sync Container Number
-          if ((d.containerNo || "").trim().toUpperCase() !== mNo) {
-            currentArr[idx] = { ...currentArr[idx], containerNo: mNo };
-            sectionDirty = true;
-          }
-
-          // Sync other fields back to operations for existing containers
-          if (secName === "containerDetails" && mNo) {
-            const row = currentArr[idx];
-            if (
-              Number(row.grossWeight || 0) !== Number(m.grossWeight || 0) ||
-              Number(row.maxGrossWeightKgs || 0) !== Number(m.maxGrossWeightKgs || 0) ||
-              Number(row.tareWeightKgs || 0) !== Number(m.tareWeightKgs || 0) ||
-              Number(row.noOfPackages || 0) !== Number(m.pkgsStuffed || 0) ||
-              (row.containerSize || "") !== (m.type || "") ||
-              (row.shippingLineSealNo || "") !== (m.shippingLineSealNo || "") ||
-              (row.customSealNo || "") !== (m.sealNo || "")
-            ) {
-              currentArr[idx] = {
-                ...row,
-                grossWeight: Number(m.grossWeight || 0),
-                maxGrossWeightKgs: Number(m.maxGrossWeightKgs || 0),
-                tareWeightKgs: Number(m.tareWeightKgs || 0),
-                noOfPackages: Number(m.pkgsStuffed || 0),
-                maxPayloadKgs: Number(m.maxGrossWeightKgs || 0) - Number(m.tareWeightKgs || 0),
-                vgmWtInvoice: Number(m.grossWeight || 0) + Number(m.tareWeightKgs || 0),
-                containerSize: m.type || "",
-                shippingLineSealNo: m.shippingLineSealNo || "",
-                customSealNo: m.sealNo || ""
-              };
-              sectionDirty = true;
-            }
-          }
-        });
-
-        if (sectionDirty) {
-          syncedOp[secName] = currentArr;
-          opIsDirty = true;
-        }
-      });
-
-      if (opIsDirty) opsChanged = true;
-      return syncedOp;
-    });
-
-    if (opsChanged && JSON.stringify(operations) !== JSON.stringify(nextOperations)) {
-      syncingRef.current = true;
-      formik.setFieldValue("operations", nextOperations);
-      setTimeout(() => { syncingRef.current = false; }, 100);
-    }
-
-  }, [masterContainerKey]); // Stable serialized key prevents reference-change loops
-
-  // Auto-fill Transporter Gross Weight & Packages from Job Header
-  // DEPENDENCY NOTE: We intentionally exclude 'operations' to prevent reverting user deletions
-  // Auto-fill Transporter Gross Weight & Packages from Job Header removed as requested
-  // sync logic for shipment header fields has been disabled.
-
   // --- Actions ---
-
-  const addOperation = () => {
-    const transportMode = toUpper(formik.values.transportMode || "");
-    const isAir = transportMode === "AIR";
-    const customHouse = formik.values.custom_house || "";
-
-    const statusDefaults = { ...getDefaultItem("statusDetails") };
-    if (toUpper(formik.values.consignmentType || "") !== "FCL") {
-      statusDefaults.icdPort = toUpper(customHouse);
-    }
-
-    const tDefaults = getDefaultItem("transporterDetails");
-    // Pre-filling from header removed as requested in new operations too
-
-    const newOp = {
-      transporterDetails: [tDefaults],
-      bookingDetails: [getDefaultItem("bookingDetails")],
-      statusDetails: [statusDefaults],
-    };
-
-    if (!isAir) {
-      newOp.containerDetails = [getDefaultItem("containerDetails")];
-      newOp.weighmentDetails = [getDefaultItem("weighmentDetails")];
-    }
-
-    const newOps = [...operations, newOp];
-    formik.setFieldValue("operations", newOps);
-    setActiveOpIndex(newOps.length - 1);
-  };
-
-  const deleteOperation = (index, e) => {
-    e.stopPropagation();
-    if (operations.length > 1) {
-      const newOps = operations.filter((_, i) => i !== index);
-      formik.setFieldValue("operations", newOps);
-      if (activeOpIndex >= newOps.length) {
-        setActiveOpIndex(newOps.length - 1);
-      }
-    }
-  };
 
   const updateField = (section, itemIndex, field, value) => {
     const currentOps = formik.values.operations || [];
@@ -1229,12 +809,7 @@ const OperationsTab = ({ formik }) => {
       }
     }
 
-    const isLinkedContainerField =
-      !isAir &&
-      field === "containerNo" &&
-      ["transporterDetails", "containerDetails", "weighmentDetails"].includes(
-        section,
-      );
+    const isLinkedContainerField = false;
 
     const newOperations = currentOps.map((op, opIdx) => {
       if (opIdx !== activeOpIndex) return op;
@@ -1275,43 +850,6 @@ const OperationsTab = ({ formik }) => {
         });
       }
 
-      // SYNC: If it's a linked container field, update other sections at same index
-      if (isLinkedContainerField) {
-        ["containerDetails", "weighmentDetails"].forEach(
-          (s) => {
-            if (s === section) return;
-            if (updatedOp[s] && updatedOp[s][itemIndex]) {
-              const row = {
-                ...updatedOp[s][itemIndex],
-                containerNo: finalValue,
-              };
-              updatedOp[s] = [...updatedOp[s]];
-              updatedOp[s][itemIndex] = row;
-            }
-          },
-        );
-      }
-
-      // Auto-calculate Max Payload if Max Gross Weight or Tare Weight changes in Container Details
-      if (section === "containerDetails" && (field === "maxGrossWeightKgs" || field === "tareWeightKgs")) {
-        updatedOp[section] = updatedOp[section].map((item, idx) => {
-          if (idx !== itemIndex) return item;
-          const capacity = field === "maxGrossWeightKgs" ? Number(finalValue || 0) : Number(item.maxGrossWeightKgs || 0);
-          const tare = field === "tareWeightKgs" ? Number(finalValue || 0) : Number(item.tareWeightKgs || 0);
-          const payload = capacity - tare;
-          return { ...item, maxPayloadKgs: payload };
-        });
-      }
-
-      // Auto-calculate VGM Wt. (invoice) = grossWeight (Cargo) + tareWeightKgs
-      if (section === "containerDetails" && (field === "grossWeight" || field === "tareWeightKgs")) {
-        updatedOp[section] = updatedOp[section].map((item, idx) => {
-          if (idx !== itemIndex) return item;
-          const cargoWeight = field === "grossWeight" ? Number(finalValue || 0) : Number(item.grossWeight || 0);
-          const tare = field === "tareWeightKgs" ? Number(finalValue || 0) : Number(item.tareWeightKgs || 0);
-          return { ...item, vgmWtInvoice: cargoWeight + tare };
-        });
-      }
 
       // SYNC: Port Of Loading with Header
       if (section === "containerDetails" && field === "portOfLoading") {
@@ -1410,36 +948,10 @@ const OperationsTab = ({ formik }) => {
     const op = { ...newOperations[activeOpIndex] };
     if (!op) return;
 
-    // Get the container number being deleted (for syncing to master)
-    const deletedRow = (op[section] || [])[itemIndex];
-    const deletedNo = (deletedRow?.containerNo || "").trim().toUpperCase();
-
     op[section] = (op[section] || []).filter((_, i) => i !== itemIndex);
 
-    // If deleting from containerDetails or weighmentDetails, also delete from the mirror section
-    if (section === "containerDetails") {
-      op.weighmentDetails = (op.weighmentDetails || []).filter((_, i) => i !== itemIndex);
-    } else if (section === "weighmentDetails") {
-      op.containerDetails = (op.containerDetails || []).filter((_, i) => i !== itemIndex);
-    }
-
     newOperations[activeOpIndex] = op;
-    syncingRef.current = true;
     formik.setFieldValue("operations", newOperations);
-
-    // Also remove from master containers list so Phase D doesn't re-add it
-    if ((section === "containerDetails" || section === "weighmentDetails") && deletedNo) {
-      const masterContainers = formik.values.containers || [];
-      const nextMaster = masterContainers.filter(
-        c => (c.containerNo || "").trim().toUpperCase() !== deletedNo
-      );
-      if (nextMaster.length !== masterContainers.length) {
-        nextMaster.forEach((c, i) => { c.serialNumber = i + 1; });
-        formik.setFieldValue("containers", nextMaster);
-      }
-    }
-
-    setTimeout(() => { syncingRef.current = false; }, 150);
   };
 
   // --- Render Helpers ---
@@ -1492,186 +1004,12 @@ const OperationsTab = ({ formik }) => {
       onUpdate={updateField}
       onAdd={addItem}
       onDelete={deleteItem}
-      defaultOpen={false}
+      defaultOpen={true}
     />
   );
 
-  const containerSection = !isAir && (
-    <TableSection
-      title="Container Details"
-      data={activeOperation.containerDetails || []}
-      formik={formik}
-      activeOpIndex={activeOpIndex}
-      columns={[
-        { field: "containerNo", label: <>Container<br />No.</>, width: "70px" },
-        {
-          field: "noOfPackages",
-          label: "PKGs",
-          type: "number",
-          width: "70px",
-        },
-        {
-          field: "shippingLineSealNo",
-          label: <>S/Line<br />Seal No</>,
-          width: "80px",
-        },
-        {
-          field: "customSealNo",
-          label: <>Custom<br />Seal No</>,
-          width: "80px",
-        },
-        { field: "containerSize", label: <>Size<br />(FT)</>, width: "70px", type: "select", options: containerTypes },
-        { field: "cargoType", label: "Cargo Type", width: "130px", type: "select", options: cargoTypes },
-        { field: "portOfLoading", label: <>Port Of<br />Loading</>, width: "140px", type: "select", options: PORT_OF_LOADING_OPTIONS },
-        {
-          field: "maxGrossWeightKgs",
-          label: "Max GW",
-          type: "number",
-          width: "50px",
-        },
-        {
-          field: "grossWeight",
-          label: "Gw",
-          type: "number",
-          width: "70px",
-        },
-        {
-          field: "tareWeightKgs",
-          label: "Tare Wt",
-          type: "number",
-          width: "70px",
-        },
-        {
-          field: "vgmWtInvoice",
-          label: <>VGM Wt.<br />(invoice)</>,
-          type: "number",
-          width: "70px",
-          readOnly: true,
-        },
-        {
-          field: "maxPayloadKgs",
-          label: <>Max<br />Payload<br />(KG)</>,
-          type: "number",
-          width: "50px",
-        },
-        {
-          field: "images",
-          label: "Images",
-          type: "upload",
-          width: "180px",
-          bucketPath: "container_images",
-        },
-      ]}
-      section="containerDetails"
-      onUpdate={updateField}
-      onAdd={addItem}
-      onDelete={deleteItem}
-      defaultOpen={false}
-    />
-  );
 
-  const bookingSection = !isAir && !isLCL && (
-    <TableSection
-      title="Booking Details"
-      data={activeOperation.bookingDetails || []}
-      formik={formik}
-      activeOpIndex={activeOpIndex}
-      columns={[
-        {
-          field: "shippingLineName",
-          label: isAir ? "Air Line" : "Shipping Line",
-          width: "200px",
-          type: "shipping-dropdown",
-        },
-        { field: "forwarderName", label: "Forwarder", width: "150px" },
-        { field: "bookingNo", label: "Booking No.", width: "140px" },
-        // removed shippingLineSealNo from here
-        {
-          field: "bookingDate",
-          label: "Date",
-          type: "date",
-          width: "130px",
-        },
-        {
-          field: "vesselName",
-          label: isAir ? "Flight Name" : "Vessel",
-          width: "150px",
-        },
-        !isAir && { field: "voyageNo", label: "Voyage", width: "100px" },
-        !isAir && {
-          field: "emptyPickUpLoc",
-          label: "Pickup Loc.",
-          width: "140px",
-        },
-        !isAir && {
-          field: "emptyDropLoc",
-          label: "Drop Loc.",
-          width: "140px",
-        },
-        {
-          field: "images",
-          label: "Images",
-          type: "upload",
-          width: "180px",
-          bucketPath: "booking_images",
-        },
-      ].filter(Boolean)}
-      section="bookingDetails"
-      onUpdate={updateField}
-      onAdd={addItem}
-      onDelete={deleteItem}
-      defaultOpen={false}
-    />
-  );
 
-  const weighmentSection = !isAir && !isLCL && (
-    <TableSection
-      title="Weighment Details"
-      data={activeOperation.weighmentDetails || []}
-      formik={formik}
-      activeOpIndex={activeOpIndex}
-      columns={[
-        { field: "containerNo", label: "Container No.", width: "140px" },
-        { field: "regNo", label: "Reg No/Slip No", width: "140px" },
-        {
-          field: "weighBridgeName",
-          label: "Weighbridge Name",
-          width: "180px",
-        },
-        {
-          field: "address",
-          label: "Weighbridge Address",
-          width: "180px",
-        },
-        {
-          field: "dateTime",
-          label: "Weighment Date & Time",
-          type: "datetime-local",
-          width: "160px",
-        },
-        { field: "vehicleNo", label: "Vehicle No.", width: "120px" },
-        {
-          field: "tareWeight",
-          label: "VGM WT (KG)",
-          type: "number",
-          width: "110px",
-          showVgmDiff: true,
-        },
-        {
-          field: "images",
-          label: "Images",
-          type: "upload",
-          width: "180px",
-          bucketPath: "weighment_images",
-        },
-      ]}
-      section="weighmentDetails"
-      onUpdate={updateField}
-      onAdd={addItem}
-      onDelete={deleteItem}
-      defaultOpen={false}
-    />
-  );
 
   const statusSection = (
     <StatusSection
@@ -1686,39 +1024,32 @@ const OperationsTab = ({ formik }) => {
       isAir={isAir}
       consignmentType={toUpper(formik.values.consignmentType || "")}
       customHouse={toUpper(formik.values.custom_house || "")}
-      defaultOpen={false}
+      defaultOpen={true}
     />
   );
 
   let renderedContent;
   if (isDock && isLCL) {
-    // Dock + LCL Order: Carting -> Status -> Weighment (ONLY these 3)
+    // Dock + LCL Order: Carting -> Status
     renderedContent = (
       <>
         {transporterSection}
         {statusSection}
-        {weighmentSection}
       </>
     );
   } else if (isFCL) {
-    // FCL Order (Dock or Factory): Carting/Transport -> Status -> Booking -> Container -> Weighment
+    // FCL Order (Dock or Factory): Carting/Transport -> Status -> Booking
     renderedContent = (
       <>
         {transporterSection}
         {statusSection}
-        {bookingSection}
-        {containerSection}
-        {weighmentSection}
       </>
     );
   } else {
-    // Standard Order (e.g. Air, Other): Transporter -> Container -> Booking -> Weighment -> Status
+    // Standard Order (e.g. Air, Other): Transporter -> Booking -> Status
     renderedContent = (
       <>
         {transporterSection}
-        {containerSection}
-        {bookingSection}
-        {weighmentSection}
         {statusSection}
       </>
     );
@@ -1726,44 +1057,6 @@ const OperationsTab = ({ formik }) => {
 
   return (
     <div style={styles.container}>
-      {/* Top Bar: Operations Tabs & Global Actions */}
-      <div style={styles.topBar}>
-        <div style={styles.tabsScroll}>
-          {operations.map((op, idx) => (
-            <div
-              key={idx}
-              onClick={() => setActiveOpIndex(idx)}
-              style={{
-                ...styles.opTab,
-                ...(activeOpIndex === idx ? styles.opTabActive : {}),
-              }}
-            >
-              <span style={styles.opTabText}>Operation {idx + 1}</span>
-              {operations.length > 1 && (
-                <span
-                  onClick={(e) => deleteOperation(idx, e)}
-                  style={styles.opTabClose}
-                  title="Remove Operation"
-                >
-                  Delete
-                </span>
-              )}
-            </div>
-          ))}
-          <button onClick={addOperation} style={styles.addOpButton}>
-            + New Op
-          </button>
-        </div>
-        <div style={styles.statusBadge}>
-          <span
-            style={{
-              ...styles.statusDot,
-              background: syncStatus === "Synced" ? "#10b981" : "#f59e0b",
-            }}
-          />
-          {syncStatus}
-        </div>
-      </div>
 
       {/* Main Content Area */}
       <div style={styles.contentArea}>{renderedContent}</div>
@@ -2901,75 +2194,6 @@ const styles = {
     backgroundColor: "#f8fafc",
     padding: "16px",
     minHeight: "100%",
-  },
-  topBar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "16px",
-    background: "linear-gradient(to bottom, #ffffff, #f8fafc)",
-    padding: "12px 16px",
-    borderRadius: "8px",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-    border: "1px solid #e2e8f0",
-  },
-  tabsScroll: {
-    display: "flex",
-    gap: "8px",
-    overflowX: "auto",
-    paddingBottom: "2px",
-    alignItems: "center",
-    flex: 1,
-  },
-  opTab: {
-    padding: "8px 16px",
-    borderRadius: "6px",
-    background: "#ffffff",
-    color: "#64748b",
-    fontSize: "13px",
-    fontWeight: "600",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    border: "1px solid #e2e8f0",
-    transition: "all 0.2s ease",
-    userSelect: "none",
-    whiteSpace: "nowrap",
-  },
-  opTabActive: {
-    background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
-    color: "#ffffff",
-    borderColor: "#2563eb",
-    boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)",
-  },
-  opTabText: {
-    whiteSpace: "nowrap",
-    fontSize: "13px",
-    fontWeight: "600",
-  },
-  opTabClose: {
-    fontSize: "11px",
-    lineHeight: 1,
-    padding: "3px 6px",
-    borderRadius: "4px",
-    marginLeft: "4px",
-    background: "rgba(255, 255, 255, 0.25)",
-    color: "#fff",
-    cursor: "pointer",
-    transition: "background 0.2s",
-  },
-  addOpButton: {
-    padding: "8px 16px",
-    borderRadius: "6px",
-    border: "1px dashed #cbd5e1",
-    background: "#ffffff",
-    color: "#64748b",
-    fontSize: "13px",
-    fontWeight: "600",
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-    transition: "all 0.2s",
   },
   statusBadge: {
     display: "flex",

@@ -107,7 +107,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
             <td style="border: 1px solid black; padding: 4px; text-align: left; vertical-align: middle;">${shortenedDescription}</td>
             <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${weightMT || ""}</td>
             <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${c.sealNo || ""}</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${booking.shippingLineSealNo || ""}</td>
+            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${c.shippingLineSealNo || ""}</td>
             <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${data.sb_no || ""}</td>
             <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${formatDate(data.sb_date)}</td>
           </tr>
@@ -168,13 +168,12 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
           <!-- Details Table -->
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px;">
             <tr>
-              <td style="border: 1px solid black; padding: 4px; width: 40%; vertical-align: top;">
                 <div style="margin-bottom: 2px;"><strong>Shipping Line</strong></div>
-                <div>${booking.shippingLineName || ""}</div>
+                <div>${data.shipping_line_airline || booking.shippingLineName || ""}</div>
               </td>
               <td style="border: 1px solid black; padding: 4px; width: 60%; vertical-align: top;">
                 <div style="margin-bottom: 2px;"><strong>Booking No</strong></div>
-                <div>${booking.bookingNo || ""}</div>
+                <div>${data.booking_no || booking.bookingNo || ""}</div>
               </td>
             </tr>
             <tr>
@@ -203,7 +202,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
               </td>
               <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
                  <div style="margin-bottom: 2px;"><strong>Gateway Port</strong></div>
-                 <div>${data.gateway_port || booking.portOfLoading || ""}</div>
+                 <div>${data.gateway_port || booking.portOfLoading || data.port_of_loading || ""}</div>
               </td>
             </tr>
             <tr>
@@ -230,7 +229,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
             <tr>
               <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
                  <div style="margin-bottom: 2px;"><strong>VESSEL NAME AND VOYAGE</strong></div>
-                 <div>${booking.vesselName || ""} ${booking.voyageNo || ""}</div>
+                 <div>${data.vessel_name || booking.vesselName || ""} ${data.voyage_no || booking.voyageNo || ""}</div>
               </td>
               <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
                  <div style="margin-bottom: 2px;"><strong>LEO Date</strong></div>
