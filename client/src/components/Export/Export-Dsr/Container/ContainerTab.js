@@ -122,7 +122,7 @@ const styles = {
 
 function ContainerTab({ formik }) {
   const stuffedAt = (formik.values.goods_stuffed_at || "").toUpperCase();
-  const showSLineSeal = stuffedAt === "FACTORY";
+  // const showSLineSeal = stuffedAt === "FACTORY";
 
   useEffect(() => {
     if (formik.values.job_no && (!formik.values.containers || formik.values.containers.length === 0)) {
@@ -253,7 +253,7 @@ function ContainerTab({ formik }) {
                 <th style={{ ...styles.th, width: 140 }}>Container No</th>
                 <th style={{ ...styles.th, width: 110 }}>Seal No</th>
                 <th style={{ ...styles.th, width: 100 }}>Seal Date</th>
-                {showSLineSeal && <th style={{ ...styles.th, width: 110 }}>S/L Seal</th>}
+                {/* {showSLineSeal && */}<th style={{ ...styles.th, width: 110 }}>S/L Seal</th>
                 <th style={{ ...styles.th, width: 60 }}>Size</th>
                 <th style={{ ...styles.th, width: 50 }}>Pkgs</th>
                 <th style={{ ...styles.th, width: 85 }}>Gross Wt</th>
@@ -284,12 +284,11 @@ function ContainerTab({ formik }) {
                   <td style={styles.td}>
                     <DateInput style={styles.input} value={row.sealDate || ""} onChange={(e) => handleFieldChange(idx, "sealDate", e.target.value)} />
                   </td>
-                  {showSLineSeal && (
-                    <td style={styles.td}>
-                      <input style={styles.input} value={toUpperVal(row.shippingLineSealNo || "")}
-                        onChange={(e) => handleFieldChange(idx, "shippingLineSealNo", toUpperVal(e.target.value))} placeholder="LINE SEAL" />
-                    </td>
-                  )}
+                  {/* {showSLineSeal && */}
+                  <td style={styles.td}>
+                    <input style={styles.input} value={toUpperVal(row.shippingLineSealNo || "")}
+                      onChange={(e) => handleFieldChange(idx, "shippingLineSealNo", toUpperVal(e.target.value))} placeholder="LINE SEAL" />
+                  </td>
                   <td style={styles.td}>
                     <select style={styles.select} value={row.type || ""} onChange={(e) => handleFieldChange(idx, "type", e.target.value)}>
                       <option value="">Select</option>
