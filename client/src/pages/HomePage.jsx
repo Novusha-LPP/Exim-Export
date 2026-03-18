@@ -80,7 +80,7 @@ function HomePage() {
             <Route
               path="/all-users"
               element={
-                <ProtectedRoute requiredModule="Audit Trail">
+                <ProtectedRoute requiredModule="Export - Audit Trail">
                   <AllUsersPage />
                 </ProtectedRoute>
               }

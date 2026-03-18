@@ -319,6 +319,7 @@ const GeneralTab = ({ formik, directories }) => {
   function onExporterInput(e) {
     const val = toUpperVal(e);
     handleFieldChange("exporter", val);
+    handleFieldChange("bank_index", ""); // Reset bank selection
   }
 
   function handleRemoveConsignee(idx) {
@@ -369,43 +370,48 @@ const GeneralTab = ({ formik, directories }) => {
         }`,
       );
 
-    if (!shouldUpdate) return;
-
-    const updates = {
-      exporter: toUpper(exp.organization),
-      exporter_type: toUpper(exp.generalInfo?.exporterType || ""),
-      exporter_address: toUpper(
-        `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""
-        }`,
-      ),
-      branch_sno: toUpper(branch.branchCode || "0"),
-      branchSrNo: toUpper(branch.branchCode || "0"),
-      state: toUpper(branch.state || ""),
-      ieCode: toUpper(effectiveIe),
-      gstin: toUpper(branch.gstNo || ""),
-      gstinMainBranch: toUpper(branch.gstNo || ""),
-      regn_no: toUpper(branch.gstNo || ""),
-      exporter_gstin: toUpper(branch.gstNo || ""),
-    };
-
-    Object.entries(updates).forEach(([key, val]) =>
-      formik.setFieldValue(key, val),
-    );
-
-    if (exp.bankDetails?.[0]) {
-      const bank = exp.bankDetails[0];
-      formik.setFieldValue(
-        "bank_dealer",
-        `${toUpper(bank.entityName)} ${toUpper(bank.branchLocation)}`,
+    if (shouldUpdate) {
+      Object.entries(updates).forEach(([key, val]) =>
+        formik.setFieldValue(key, val),
       );
-      formik.setFieldValue("bank_name", toUpper(bank.entityName));
-      formik.setFieldValue("ac_number", toUpper(bank.accountNumber));
-      formik.setFieldValue("bank_account_number", toUpper(bank.accountNumber));
-      formik.setFieldValue("ad_code", toUpper(bank.adCode));
-      formik.setFieldValue("adCode", toUpper(bank.adCode));
+    }
+
+    const bankIdxVal = formik.values.bank_index;
+    let bank;
+
+    if (exp.bankDetails && exp.bankDetails.length > 0) {
+      if (bankIdxVal !== undefined && bankIdxVal !== "" && exp.bankDetails[bankIdxVal]) {
+        bank = exp.bankDetails[bankIdxVal];
+      } else {
+        // Find default or first
+        const defaultIdx = exp.bankDetails.findIndex((b) => b.isDefault);
+        const finalIdx = defaultIdx >= 0 ? defaultIdx : 0;
+        bank = exp.bankDetails[finalIdx];
+        if (bankIdxVal !== finalIdx) {
+          formik.setFieldValue("bank_index", finalIdx);
+        }
+      }
+    }
+
+    if (bank) {
+      const bankDealerVal = `${toUpper(bank.entityName)} ${toUpper(bank.branchLocation)}`;
+      if (getVal("bank_dealer") !== bankDealerVal) {
+        formik.setFieldValue("bank_dealer", bankDealerVal);
+      }
+      if (getVal("bank_name") !== toUpper(bank.entityName)) {
+        formik.setFieldValue("bank_name", toUpper(bank.entityName));
+      }
+      if (getVal("ac_number") !== toUpper(bank.accountNumber)) {
+        formik.setFieldValue("ac_number", toUpper(bank.accountNumber));
+        formik.setFieldValue("bank_account_number", toUpper(bank.accountNumber));
+      }
+      if (getVal("ad_code") !== toUpper(bank.adCode)) {
+        formik.setFieldValue("ad_code", toUpper(bank.adCode));
+        formik.setFieldValue("adCode", toUpper(bank.adCode));
+      }
     }
     // eslint-disable-next-line
-  }, [directories, formik.values.exporter, formik.values.branch_index]);
+  }, [directories, formik.values.exporter, formik.values.branch_index, formik.values.bank_index]);
 
   function handleIsBuyerToggle() {
     const isBuyer = !formik.values.isBuyer;
@@ -470,6 +476,7 @@ const GeneralTab = ({ formik, directories }) => {
             const val = e.target.value;
             handleFieldChange("exporter", val);
             handleFieldChange("branch_index", 0);
+            handleFieldChange("bank_index", "");
             onExporterInput({ target: { value: val } });
           }}
           placeholder="Select Exporter"
@@ -492,7 +499,7 @@ const GeneralTab = ({ formik, directories }) => {
     const currentBranchIndex = formik.values.branch_index || 0;
 
     return (
-      <div>
+      <div style={{ marginBottom: 4 }}>
         <div style={{ fontSize: 11, color: "#666" }}>Select Branch</div>
         <select
           value={currentBranchIndex}
@@ -506,13 +513,55 @@ const GeneralTab = ({ formik, directories }) => {
             padding: "2px 7px",
             height: 28,
             width: "100%",
-            marginBottom: 3,
+            background: "#fff",
           }}
         >
           {branches.map((b, i) => (
             <option key={i} value={i}>
               {toUpper(b.branchName || b.branchCode || `BRANCH ${i + 1}`)} -{" "}
               {toUpper(b.city || "")}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  function bankSelectField() {
+    const exporterName = getVal("exporter");
+    const exp = exporters.find(
+      (ex) => toUpper(ex.organization) === exporterName,
+    );
+
+    if (!exp || !exp.bankDetails || exp.bankDetails.length <= 1) {
+      return null;
+    }
+
+    const banksList = exp.bankDetails || [];
+    const currentBankIndex = formik.values.bank_index || 0;
+
+    return (
+      <div style={{ marginBottom: 4 }}>
+        <div style={{ fontSize: 11, color: "#666" }}>Select Bank</div>
+        <select
+          value={currentBankIndex}
+          onChange={(e) =>
+            handleFieldChange("bank_index", parseInt(e.target.value))
+          }
+          style={{
+            border: "1px solid #cad3db",
+            borderRadius: 4,
+            fontSize: 13,
+            padding: "2px 7px",
+            height: 28,
+            width: "100%",
+            background: "#fff",
+          }}
+        >
+          {banksList.map((b, i) => (
+            <option key={i} value={i}>
+              {toUpper(b.entityName)} - {toUpper(b.branchLocation)}
+              {b.isDefault ? " (DEFAULT)" : ""}
             </option>
           ))}
         </select>
@@ -629,6 +678,7 @@ const GeneralTab = ({ formik, directories }) => {
           >
             Bank Details
           </div>
+          {bankSelectField()}
           {bankInputField()}
           <div style={{ display: "flex", gap: 10 }}>
             {field("A/C Number", "ac_number")}
