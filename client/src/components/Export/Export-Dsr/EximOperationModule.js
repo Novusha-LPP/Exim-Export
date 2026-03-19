@@ -90,11 +90,12 @@ function EximOperationModule() {
     setSearchParams({ tab: newValue.toString() });
   };
 
-  const handleUpdateAndClose = async () => {
+  const handleClose = async () => {
     try {
-      await formik.submitForm();
+      window.close();
       navigate("/export-operation");
     } catch (error) {
+      window.close();
       navigate("/export-operation");
     }
   };
@@ -185,22 +186,29 @@ function EximOperationModule() {
 
         <ExportJobFooter
           onUpdate={formik.handleSubmit}
-          onClose={handleUpdateAndClose}
+          onClose={handleClose}
         />
       </Paper>
 
-      {/* Success Snackbar */}
       <Snackbar
         open={fileSnackbar}
-        autoHideDuration={3000}
+        autoHideDuration={4000}
         onClose={() => setFileSnackbar(false)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{ mt: 2, mr: 2, zIndex: 9999 }}
       >
         <Alert
           onClose={() => setFileSnackbar(false)}
           severity="success"
-          sx={{ width: "100%" }}
           variant="filled"
+          sx={{
+            width: "100%",
+            borderRadius: "8px",
+            boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
+            fontWeight: 500,
+            fontSize: "0.95rem",
+            alignItems: "center"
+          }}
         >
           Job updated successfully!
         </Alert>

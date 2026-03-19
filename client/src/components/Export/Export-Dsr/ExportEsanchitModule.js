@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Typography, Button, Box, Paper, Tabs, Tab } from "@mui/material";
+import { Typography, Button, Box, Paper, Tabs, Tab, Snackbar, Alert } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { UserContext } from "../../../contexts/UserContext";
 import useExportJobDetails from "../../../customHooks/useExportJobDetails.js";
@@ -89,11 +89,12 @@ function ExportEsanchitModule() {
     setSearchParams({ tab: newValue.toString() });
   };
 
-  const handleUpdateAndClose = async () => {
+  const handleClose = async () => {
     try {
-      await formik.submitForm();
+      window.close();
       navigate("/export-esanchit");
     } catch (error) {
+      window.close();
       navigate("/export-esanchit");
     }
   };
@@ -180,9 +181,33 @@ function ExportEsanchitModule() {
 
         <ExportJobFooter
           onUpdate={formik.handleSubmit}
-          onClose={handleUpdateAndClose}
+          onClose={handleClose}
         />
       </Paper>
+
+      <Snackbar
+        open={fileSnackbar}
+        autoHideDuration={4000}
+        onClose={() => setFileSnackbar(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{ mt: 2, mr: 2, zIndex: 9999 }}
+      >
+        <Alert
+          onClose={() => setFileSnackbar(false)}
+          severity="success"
+          variant="filled"
+          sx={{
+            width: "100%",
+            borderRadius: "8px",
+            boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
+            fontWeight: 500,
+            fontSize: "0.95rem",
+            alignItems: "center"
+          }}
+        >
+          Job updated successfully!
+        </Alert>
+      </Snackbar>
     </>
   );
 }

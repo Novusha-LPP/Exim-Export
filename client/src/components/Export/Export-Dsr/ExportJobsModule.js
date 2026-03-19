@@ -197,14 +197,15 @@ function ExportJobsModule() {
     setSearchParams({ tab: newValue.toString() });
   };
 
-  const handleUpdateAndClose = async () => {
+  const handleClose = async () => {
     try {
-      await formik.submitForm();
       await unlockJob(); // Unlock before navigating away
+      window.close();
       navigate("/export-dsr");
     } catch (error) {
-      console.error("Error during auto-update on close:", error);
+      console.error("Error during close:", error);
       await unlockJob(); // Still try to unlock even on error
+      window.close();
       navigate("/export-dsr");
     }
   };
@@ -395,31 +396,32 @@ function ExportJobsModule() {
 
         <ExportJobFooter
           onUpdate={formik.handleSubmit}
-          onClose={handleUpdateAndClose}
+          onClose={handleClose}
           isJobCanceled={formik.values.isJobCanceled}
           isAdmin={user?.role === "Admin"}
         />
       </Paper>
       <Snackbar
         open={fileSnackbar}
-        autoHideDuration={3000}
+        autoHideDuration={4000}
         onClose={() => setFileSnackbar(false)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-        sx={{ marginLeft: "50px" }}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{ mt: 2, mr: 2, zIndex: 9999 }}
       >
         <Alert
           onClose={() => setFileSnackbar(false)}
           severity="success"
+          variant="filled"
           sx={{
             width: "100%",
-            backgroundColor: "black",
-            color: "white",
-            "& .MuiAlert-icon": {
-              color: "white",
-            },
+            borderRadius: "8px",
+            boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
+            fontWeight: 500,
+            fontSize: "0.95rem",
+            alignItems: "center"
           }}
         >
-          Job Update successfully
+          Job updated successfully!
         </Alert>
       </Snackbar>
     </>

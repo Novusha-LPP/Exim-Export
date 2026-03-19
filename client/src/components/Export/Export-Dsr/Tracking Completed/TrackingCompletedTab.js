@@ -307,38 +307,6 @@ const TrackingCompletedTab = ({ formik, directories, params, isAdmin }) => {
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontWeight: 600 }}>Job Tracking Completed</span>
-            <input
-              type="checkbox"
-              checked={formik.values.isJobtrackingEnabled ?? false}
-              onChange={(e) => {
-                const isChecked = e.target.checked;
-                handleFieldChange("isJobtrackingEnabled", isChecked);
-                if (isChecked) {
-                  const today = new Date();
-                  const dateString = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
-                  handleFieldChange("jobtrackingCompletedDate", dateString);
-                  handleFieldChange("isJobCanceled", false);
-                  handleFieldChange("jobCanceledDate", "");
-                } else {
-                  handleFieldChange("jobtrackingCompletedDate", "");
-                }
-              }}
-              disabled={formik.values.isJobCanceled ?? false}
-              style={{
-                cursor:
-                  formik.values.isJobCanceled ?? false
-                    ? "not-allowed"
-                    : "pointer",
-              }}
-            />
-            {formik.values.isJobtrackingEnabled && formik.values.jobtrackingCompletedDate && (
-              <span style={{ fontSize: 11, color: "#666", fontWeight: 500 }}>
-                ({formik.values.jobtrackingCompletedDate})
-              </span>
-            )}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontWeight: 600 }}>Job Canceled</span>
             <input
               type="checkbox"
@@ -350,16 +318,14 @@ const TrackingCompletedTab = ({ formik, directories, params, isAdmin }) => {
                   const today = new Date();
                   const dateString = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
                   handleFieldChange("jobCanceledDate", dateString);
-                  handleFieldChange("isJobtrackingEnabled", false);
-                  handleFieldChange("jobtrackingCompletedDate", "");
                 } else {
                   handleFieldChange("jobCanceledDate", "");
                 }
               }}
-              disabled={(formik.values.isJobtrackingEnabled ?? false) || (formik.values.isJobCanceled && !isAdmin)}
+              disabled={(formik.values.isJobCanceled && !isAdmin)}
               style={{
                 cursor:
-                  ((formik.values.isJobtrackingEnabled ?? false) || (formik.values.isJobCanceled && !isAdmin))
+                  ((formik.values.isJobCanceled && !isAdmin))
                     ? "not-allowed"
                     : "pointer",
               }}
