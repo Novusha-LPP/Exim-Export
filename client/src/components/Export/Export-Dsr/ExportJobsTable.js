@@ -1096,7 +1096,7 @@ const ExportJobsTable = () => {
 
     // Validate year format
     if (!/^\d{2}-\d{2}$/.test(copyForm.year)) {
-      setCopyError("Financial Year must be in format YY-YY (e.g., 25-26)");
+      setCopyError("Financial Year must be in format YY-YY (e.g., 26-27)");
       return;
     }
 
@@ -1579,6 +1579,7 @@ const ExportJobsTable = () => {
               onChange={(e) => setSelectedYear(e.target.value)}
             >
               <option value="">All Years</option>
+              <option value="26-27">26-27</option>
               <option value="25-26">25-26</option>
               <option value="24-25">24-25</option>
               <option value="23-24">23-24</option>
@@ -2824,7 +2825,7 @@ const ExportJobsTable = () => {
                 <input
                   style={s.input}
                   type="text"
-                  placeholder="e.g., 25-26"
+                  placeholder="e.g., 26-27"
                   value={copyForm.year}
                   onChange={(e) =>
                     setCopyForm({ ...copyForm, year: e.target.value })
@@ -2832,7 +2833,7 @@ const ExportJobsTable = () => {
                   required
                 />
                 <div style={modalStyles.infoText}>
-                  Format: YY-YY (e.g., 25-26 for 2025-2026)
+                  Format: YY-YY (e.g., 26-27 for 2026-2027)
                 </div>
               </div>
 
