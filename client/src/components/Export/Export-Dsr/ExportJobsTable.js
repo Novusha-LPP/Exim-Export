@@ -1723,9 +1723,20 @@ const ExportJobsTable = () => {
             >
               <option value="">All Custom Houses</option>
               {getOptionsForBranch(selectedBranch).map((group) => {
-                const filteredItems = group.items.filter(item =>
-                  isAdmin || !user?.selected_ports?.length || user.selected_ports.includes(item.value)
-                );
+                const combinedRestrictions = [
+                  ...(user?.selected_ports || []),
+                  ...(user?.selected_icd_codes || [])
+                ].map(r => String(r).toUpperCase());
+
+                const filteredItems = group.items.filter(item => {
+                  const itemValue = String(item.value).toUpperCase();
+                  const itemCode = String(item.code).toUpperCase();
+
+                  return isAdmin ||
+                    combinedRestrictions.length === 0 ||
+                    combinedRestrictions.includes(itemValue) ||
+                    combinedRestrictions.some(r => r === itemCode || r.startsWith(`${itemCode} -`));
+                });
                 if (filteredItems.length === 0) return null;
                 return (
                   <optgroup key={group.group} label={group.group}>

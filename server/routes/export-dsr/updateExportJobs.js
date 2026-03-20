@@ -24,14 +24,32 @@ router.get("/dashboard-stats", async (req, res) => {
     if (requesterUsername) {
       const requester = await UserModel.findOne({ username: requesterUsername });
       if (requester && requester.role !== "Admin") {
-        if (requester.selected_branches && requester.selected_branches.length > 0) {
-          matchStage.$and.push({ branch_code: { $in: requester.selected_branches } });
+        const branchRestrictions = requester.selected_branches || [];
+        if (branchRestrictions.length > 0) {
+          matchStage.$and.push({ branch_code: { $in: branchRestrictions } });
         }
-        if (requester.selected_ports && requester.selected_ports.length > 0) {
+
+        const portRestrictions = requester.selected_ports || [];
+        const icdRestrictions = requester.selected_icd_codes || [];
+        const combinedRestrictions = [...new Set([...portRestrictions, ...icdRestrictions])];
+
+        if (combinedRestrictions.length > 0) {
+          const finalRestrictions = [];
+          combinedRestrictions.forEach(res => {
+            finalRestrictions.push(res);
+            if (res.includes(" - ")) {
+              finalRestrictions.push(res.split(" - ")[0].trim());
+            }
+          });
+
+          const combinedRegexStr = finalRestrictions.map(r =>
+            `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+          ).join('|');
+
           matchStage.$and.push({
             $or: [
-              { custom_house: { $in: requester.selected_ports } },
-              { port_of_loading: { $in: requester.selected_ports } }
+              { custom_house: { $regex: combinedRegexStr, $options: "i" } },
+              { port_of_loading: { $regex: combinedRegexStr, $options: "i" } }
             ]
           });
         }
@@ -276,17 +294,35 @@ router.get("/exports/:status?", async (req, res) => {
       const requester = await UserModel.findOne({ username: requesterUsername });
       if (requester && requester.role !== "Admin") {
         // Enforce Branch Restriction
-        if (requester.selected_branches && requester.selected_branches.length > 0) {
+        const branchRestrictions = requester.selected_branches || [];
+        if (branchRestrictions.length > 0) {
           filter.$and.push({
-            branch_code: { $in: requester.selected_branches }
+            branch_code: { $in: branchRestrictions }
           });
         }
-        // Enforce Port Restriction
-        if (requester.selected_ports && requester.selected_ports.length > 0) {
+
+        // Enforce Port & ICD Restriction
+        const portRestrictions = requester.selected_ports || [];
+        const icdRestrictions = requester.selected_icd_codes || [];
+        const combinedRestrictions = [...new Set([...portRestrictions, ...icdRestrictions])];
+
+        if (combinedRestrictions.length > 0) {
+          const finalRestrictions = [];
+          combinedRestrictions.forEach(res => {
+            finalRestrictions.push(res);
+            if (res.includes(" - ")) {
+              finalRestrictions.push(res.split(" - ")[0].trim());
+            }
+          });
+
+          const combinedRegexStr = finalRestrictions.map(r =>
+            `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+          ).join('|');
+
           filter.$and.push({
             $or: [
-              { custom_house: { $in: requester.selected_ports } },
-              { port_of_loading: { $in: requester.selected_ports } }
+              { custom_house: { $regex: combinedRegexStr, $options: "i" } },
+              { port_of_loading: { $regex: combinedRegexStr, $options: "i" } }
             ]
           });
         }
