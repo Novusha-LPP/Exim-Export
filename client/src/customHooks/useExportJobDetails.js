@@ -441,6 +441,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       jobtrackingCompletedDate: "",
       isJobCanceled: false,
       jobCanceledDate: "",
+      isLocked: false,
       cancellationReason: "",
       milestones: [
         {
@@ -937,6 +938,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         jobtrackingCompletedDate: formatDate(safeValue(data.jobtrackingCompletedDate)),
         isJobCanceled: safeValue(data.isJobCanceled, false),
         jobCanceledDate: formatDate(safeValue(data.jobCanceledDate)),
+        isLocked: safeValue(data.isLocked, false),
         cancellationReason: safeValue(data.cancellationReason),
         invoices: safeValue(data.invoices, []).map((inv) => ({
           ...inv,
@@ -1071,6 +1073,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         milestonehandledby: safeValue(data.milestonehandledby),
         isJobtrackingEnabled: safeValue(data.isJobtrackingEnabled, false),
         isJobCanceled: safeValue(data.isJobCanceled, false),
+        isLocked: safeValue(data.isLocked, false),
         charges: safeValue(data.charges, []),
         fines: safeValue(data.fines, []),
         arInvoices: safeValue(data.arInvoices, []),

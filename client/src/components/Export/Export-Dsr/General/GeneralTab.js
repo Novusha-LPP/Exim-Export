@@ -358,17 +358,20 @@ const GeneralTab = ({ formik, directories }) => {
     const panFromDir = exp.registrationDetails?.panNo || "";
     const effectiveIe = ieFromDir || panFromDir;
 
+    const updates = {
+      ieCode: toUpper(effectiveIe),
+      gstin: toUpper(branch.gstNo || ""),
+      exporter_type: toUpper(exp.generalInfo?.exporterType || ""),
+      exporter_address: toUpper(
+        `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""}`
+      ),
+    };
+
     const shouldUpdate =
-      getVal("ieCode") !== toUpper(effectiveIe) ||
-      getVal("gstin") !==
-      toUpper(branch.gstNo || "") ||
-      getVal("exporter_type") !==
-      toUpper(exp.generalInfo?.exporterType || "") ||
-      getVal("exporter_address") !==
-      toUpper(
-        `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""
-        }`,
-      );
+      getVal("ieCode") !== updates.ieCode ||
+      getVal("gstin") !== updates.gstin ||
+      getVal("exporter_type") !== updates.exporter_type ||
+      getVal("exporter_address") !== updates.exporter_address;
 
     if (shouldUpdate) {
       Object.entries(updates).forEach(([key, val]) =>
