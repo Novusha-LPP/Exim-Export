@@ -434,8 +434,8 @@ const ExportJobsTable = () => {
   // State
   const [activeTab, setActiveTab] = useState(() => {
     const saved = savedFilters.activeTab || "Pending";
-    if (isOperationModule && saved === "Completed") return "Billing Ready";
-    if (!isOperationModule && saved === "Billing Ready") return "Completed";
+    if (isOperationModule && (saved === "Completed" || saved === "Billing Ready")) return "Op Completed";
+    if (!isOperationModule && (saved === "Op Completed" || saved === "Billing Ready")) return "Completed";
     return saved;
   });
   const [jobs, setJobs] = useState([]);
@@ -1518,17 +1518,68 @@ const ExportJobsTable = () => {
                 }
               ></span>
             </button>
+            {!isOperationModule && (
+              <button
+                style={
+                  activeTab === "Booking Pending" ? { ...s.tab, ...s.activeTab } : s.tab
+                }
+                onClick={() => setActiveTab("Booking Pending")}
+              >
+                Booking Pending{" "}
+                <span
+                  style={
+                    activeTab === "Booking Pending"
+                      ? { ...s.badge, ...s.activeBadge }
+                      : s.badge
+                  }
+                ></span>
+              </button>
+            )}
+            {!isOperationModule && (
+              <button
+                style={
+                  activeTab === "Handover Pending" ? { ...s.tab, ...s.activeTab } : s.tab
+                }
+                onClick={() => setActiveTab("Handover Pending")}
+              >
+                Handover Pending{" "}
+                <span
+                  style={
+                    activeTab === "Handover Pending"
+                      ? { ...s.badge, ...s.activeBadge }
+                      : s.badge
+                  }
+                ></span>
+              </button>
+            )}
+            {!isOperationModule && (
+              <button
+                style={
+                  activeTab === "Billing Pending" ? { ...s.tab, ...s.activeTab } : s.tab
+                }
+                onClick={() => setActiveTab("Billing Pending")}
+              >
+                Billing Pending{" "}
+                <span
+                  style={
+                    activeTab === "Billing Pending"
+                      ? { ...s.badge, ...s.activeBadge }
+                      : s.badge
+                  }
+                ></span>
+              </button>
+            )}
             {isOperationModule ? (
               <button
                 style={
-                  activeTab === "Billing Ready" ? { ...s.tab, ...s.activeTab } : s.tab
+                  activeTab === "Op Completed" ? { ...s.tab, ...s.activeTab } : s.tab
                 }
-                onClick={() => setActiveTab("Billing Ready")}
+                onClick={() => setActiveTab("Op Completed")}
               >
-                Billing Ready{" "}
+                Op Completed{" "}
                 <span
                   style={
-                    activeTab === "Billing Ready"
+                    activeTab === "Op Completed"
                       ? { ...s.badge, ...s.activeBadge }
                       : s.badge
                   }

@@ -380,6 +380,83 @@ router.get("/exports/:status?", async (req, res) => {
             { isJobCanceled: true },
           ],
         });
+      } else if (statusLower === "booking pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            {
+              $or: [
+                { isJobtrackingEnabled: false },
+                { isJobtrackingEnabled: { $exists: false } },
+              ],
+            },
+          ],
+          goods_stuffed_at: "DOCK",
+          consignmentType: "FCL",
+          sb_no: { $exists: true, $ne: "" },
+          $or: [
+            { "operations.statusDetails.leoDate": { $exists: false } },
+            { "operations.statusDetails.leoDate": null },
+            { "operations.statusDetails.leoDate": "" }
+          ]
+        });
+      } else if (statusLower === "handover pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            {
+              $or: [
+                { isJobtrackingEnabled: false },
+                { isJobtrackingEnabled: { $exists: false } },
+              ],
+            },
+          ],
+          "operations.statusDetails.leoDate": { $exists: true, $ne: null, $ne: "" },
+          $or: [
+            { "operations.statusDetails.handoverForwardingNoteDate": { $exists: false } },
+            { "operations.statusDetails.handoverForwardingNoteDate": null },
+            { "operations.statusDetails.handoverForwardingNoteDate": "" }
+          ]
+        });
+      } else if (statusLower === "billing pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            {
+              $or: [
+                { isJobtrackingEnabled: false },
+                { isJobtrackingEnabled: { $exists: false } },
+              ],
+            },
+          ],
+          "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $ne: null, $ne: "" },
+          $or: [
+            { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
+            { "operations.statusDetails.billingDocsSentDt": null },
+            { "operations.statusDetails.billingDocsSentDt": "" }
+          ]
+        });
       } else {
         filter.$and.push({
           status: { $regex: `^${status}$`, $options: "i" },

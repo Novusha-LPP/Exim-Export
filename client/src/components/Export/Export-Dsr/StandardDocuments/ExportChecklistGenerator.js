@@ -1390,8 +1390,8 @@ const ExportChecklistGenerator = ({
             (p) => parseFloat(p.rosctlInfo?.amountINR) > 0,
           );
 
-          if (hasRodtep) return "DBK + RODTEP (INR)";
-          if (hasRosctl) return "DBK + ROSCTL (INR)";
+          if (hasRodtep) return "DBK (INR)";
+          if (hasRosctl) return "ROSCTL (INR)";
           return "DBK (INR)";
         })(),
         dbkStr: (() => {
@@ -1405,13 +1405,6 @@ const ExportChecklistGenerator = ({
               return sum + productDbk;
             }, 0) || 0;
 
-          // Calculate total RODTEP amount
-          const totalRodtepAmount =
-            allProducts?.reduce(
-              (sum, p) => sum + (parseFloat(p.rodtepInfo?.amountINR) || 0),
-              0,
-            ) || 0;
-
           // Calculate total ROSCTL amount (if available)
           const totalRosctlAmount =
             allProducts?.reduce(
@@ -1419,12 +1412,19 @@ const ExportChecklistGenerator = ({
               0,
             ) || 0;
 
-          // DBK + RODTEP or DBK + ROSCTL (only one can be present)
-          return (
-            totalDbkAmount +
-            totalRodtepAmount +
-            totalRosctlAmount
-          ).toFixed(2);
+          // Check if RODTEP is available
+          const hasRodtep = allProducts?.some(
+            (p) => parseFloat(p.rodtepInfo?.amountINR) > 0,
+          );
+
+          // Check if ROSCTL is available
+          const hasRosctl = allProducts?.some(
+            (p) => parseFloat(p.rosctlInfo?.amountINR) > 0,
+          );
+
+          if (hasRodtep) return totalDbkAmount.toFixed(2);
+          if (hasRosctl) return totalRosctlAmount.toFixed(2);
+          return totalDbkAmount.toFixed(2);
         })(),
         rbiWaiverNo: exportJob.rbi_waiver_no || "",
         dbkBankAcNo: "", // Not found in data structure

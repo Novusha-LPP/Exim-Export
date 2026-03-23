@@ -53,7 +53,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                         }
                     });
 
-                    const combinedRegexStr = finalRestrictions.map(r => 
+                    const combinedRegexStr = finalRestrictions.map(r =>
                         `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
                     ).join('|');
 
@@ -110,6 +110,34 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                             { "operations.statusDetails.handoverImageUpload": { $size: 0 } },
                         ]
                     }
+                ]
+            });
+        } else if (normalizedStatus === "booking pending") {
+            filter.$and.push({
+                goods_stuffed_at: "DOCK",
+                consignmentType: "FCL",
+                $or: [
+                    { "operations.statusDetails.leoDate": { $exists: false } },
+                    { "operations.statusDetails.leoDate": null },
+                    { "operations.statusDetails.leoDate": "" }
+                ]
+            });
+        } else if (normalizedStatus === "handover pending") {
+            filter.$and.push({
+                "operations.statusDetails.leoDate": { $exists: true, $nin: [null, ""] },
+                $or: [
+                    { "operations.statusDetails.handoverForwardingNoteDate": { $exists: false } },
+                    { "operations.statusDetails.handoverForwardingNoteDate": null },
+                    { "operations.statusDetails.handoverForwardingNoteDate": "" }
+                ]
+            });
+        } else if (normalizedStatus === "billing pending" || normalizedStatus === "op completed") {
+            filter.$and.push({
+                "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] },
+                $or: [
+                    { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
+                    { "operations.statusDetails.billingDocsSentDt": null },
+                    { "operations.statusDetails.billingDocsSentDt": "" }
                 ]
             });
         } else if (normalizedStatus === "cancelled") {
