@@ -463,6 +463,7 @@ const ExportJobsTable = () => {
   })();
 
   const [selectedBranch, setSelectedBranch] = useState(initialBranch);
+  const [selectedMonth, setSelectedMonth] = useState(savedFilters.selectedMonth || "");
   const [selectedExporterFilter, setSelectedExporterFilter] = useState(savedFilters.selectedExporterFilter || "");
   const [selectedDetailedStatus, setSelectedDetailedStatus] = useState(savedFilters.selectedDetailedStatus || "");
   const [selectedCustomHouse, setSelectedCustomHouse] = useState(savedFilters.selectedCustomHouse || "");
@@ -529,6 +530,7 @@ const ExportJobsTable = () => {
       selectedYear,
       selectedType: selectedMovementType,
       selectedBranch,
+      selectedMonth,
       selectedExporterFilter,
       selectedDetailedStatus,
       selectedCustomHouse,
@@ -544,6 +546,7 @@ const ExportJobsTable = () => {
     selectedYear,
     selectedMovementType,
     selectedBranch,
+    selectedMonth,
     selectedExporterFilter,
     selectedDetailedStatus,
     selectedCustomHouse,
@@ -559,6 +562,7 @@ const ExportJobsTable = () => {
     setSelectedYear("");
     setSelectedMovementType("");
     setSelectedBranch("AMD");
+    setSelectedMonth("");
     setSelectedExporterFilter("");
     setSelectedDetailedStatus("");
     setSelectedCustomHouse("");
@@ -895,7 +899,7 @@ const ExportJobsTable = () => {
             exporter: selectedExporterFilter,
             detailedStatus: selectedDetailedStatus,
             customHouse: selectedCustomHouse,
-            jobOwner: selectedJobOwner, // Added job owner filter
+            month: selectedMonth,
             goods_stuffed_at: selectedGoodsStuffedAt,
             page: page,
             limit: LIMIT,
@@ -934,6 +938,7 @@ const ExportJobsTable = () => {
     selectedDetailedStatus,
     selectedCustomHouse,
     selectedJobOwner,
+    selectedMonth,
     selectedGoodsStuffedAt,
     page,
     sortConfig,
@@ -964,6 +969,7 @@ const ExportJobsTable = () => {
     selectedDetailedStatus,
     selectedCustomHouse,
     selectedJobOwner,
+    selectedMonth,
     selectedGoodsStuffedAt,
   ]);
 
@@ -995,9 +1001,25 @@ const ExportJobsTable = () => {
       }
     }
     if (job.job_no) {
-      navigate(`job/${encodeURIComponent(job.job_no)}`, {
-        state: { fromJobList: true },
-      });
+      // Determine base path for navigation
+      const currentPath = window.location.pathname;
+      let targetPath = `job/${encodeURIComponent(job.job_no)}`;
+
+      if (currentPath.includes("export-dsr")) {
+        targetPath = `/export-dsr/job/${encodeURIComponent(job.job_no)}`;
+      } else if (currentPath.includes("export-operation")) {
+        targetPath = `/export-operation/job/${encodeURIComponent(job.job_no)}`;
+      } else if (currentPath.includes("export-documentation")) {
+        targetPath = `/export-documentation/job/${encodeURIComponent(job.job_no)}`;
+      } else if (currentPath.includes("export-esanchit")) {
+        targetPath = `/export-esanchit/job/${encodeURIComponent(job.job_no)}`;
+      } else if (currentPath.includes("export-charges")) {
+        targetPath = `/export-charges/job/${encodeURIComponent(job.job_no)}`;
+      }
+
+      // Open in new window
+      const url = `${window.location.origin}${targetPath}`;
+      window.open(url, `job_${job.job_no.replace(/[^a-zA-Z0-9]/g, '_')}`, "width=1400,height=900,scrollbars=yes,resizable=yes");
     }
   };
 
@@ -1636,6 +1658,26 @@ const ExportJobsTable = () => {
               <option value="23-24">23-24</option>
               <option value="22-23">22-23</option>
               <option value="21-22">21-22</option>
+            </select>
+            {/* Month Filter */}
+            <select
+              style={s.select}
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              <option value="">All Months</option>
+              <option value="1">January</option>
+              <option value="2">February</option>
+              <option value="3">March</option>
+              <option value="4">April</option>
+              <option value="5">May</option>
+              <option value="6">June</option>
+              <option value="7">July</option>
+              <option value="8">August</option>
+              <option value="9">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
             </select>
 
             {/* Movement Type Filter */}

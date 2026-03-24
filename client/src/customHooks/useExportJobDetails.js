@@ -76,6 +76,8 @@ function useExportJobDetails(params, setFileSnackbar) {
   const safeValue = (value, defaultVal = "") =>
     value === undefined || value === null ? defaultVal : value;
 
+  const safeArray = (val) => (Array.isArray(val) ? val : []);
+
   const formik = useFormik({
     initialValues: {
       // Basic job info
@@ -1122,13 +1124,13 @@ function useExportJobDetails(params, setFileSnackbar) {
         stuffing_date: formatDate(safeValue(data.stuffing_date)),
         stuffing_supervisor: safeValue(data.stuffing_supervisor),
         stuffing_remarks: safeValue(data.stuffing_remarks),
-        operations: safeValue(data.operations, []).map((operation) => {
+        operations: safeArray(data.operations).map((operation) => {
           // Normalization: Fix for corrupted data where MongoDB dot-notation created objects with key "0" instead of arrays
           const op = operation["0"] ? { ...operation, ...operation["0"] } : operation;
           
           return {
             ...op,
-            statusDetails: safeValue(op.statusDetails || op["0"]?.statusDetails, []).map((status) => {
+            statusDetails: safeArray(op.statusDetails || op["0"]?.statusDetails).map((status) => {
               // Same fix for statusDetails nested under "0"
               const s = status["0"] ? { ...status, ...status["0"] } : status;
               return {
@@ -1148,11 +1150,11 @@ function useExportJobDetails(params, setFileSnackbar) {
                 railOutReachedDate: formatDate(safeValue(s.railOutReachedDate)),
               };
             }),
-            bookingDetails: safeValue(op.bookingDetails || op["0"]?.bookingDetails, []).map((b) => ({
+            bookingDetails: safeArray(op.bookingDetails || op["0"]?.bookingDetails).map((b) => ({
               ...b,
               bookingDate: formatDate(safeValue(b.bookingDate)),
             })),
-            weighmentDetails: safeValue(op.weighmentDetails || op["0"]?.weighmentDetails, []).map((w) => ({
+            weighmentDetails: safeArray(op.weighmentDetails || op["0"]?.weighmentDetails).map((w) => ({
               ...w,
               dateTime: formatDate(safeValue(w.dateTime), "dd-MM-yyyy HH:mm"),
             })),

@@ -591,8 +591,8 @@ const GeneralTab = ({ formik, directories }) => {
           }}
         />
         <datalist id="bank-list">
-          {banks.map((opt) => (
-            <option key={opt.label} value={opt.label}>
+          {banks.map((opt, i) => (
+            <option key={`${opt.label}_${i}`} value={opt.label}>
               {opt.label}
             </option>
           ))}

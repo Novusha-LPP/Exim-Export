@@ -281,6 +281,7 @@ router.get("/exports/:status?", async (req, res) => {
       year = "",
       detailedStatus = "",
       jobOwner = "",
+      month = "",
     } = { ...req.params, ...req.query };
 
     const filter = {};
@@ -400,7 +401,7 @@ router.get("/exports/:status?", async (req, res) => {
           ],
           goods_stuffed_at: "DOCK",
           consignmentType: "FCL",
-          sb_no: { $exists: true, $ne: "" },
+          sb_no: { $type: "string", $ne: "" },
           $or: [
             { "operations.statusDetails.leoDate": { $exists: false } },
             { "operations.statusDetails.leoDate": null },
@@ -425,7 +426,7 @@ router.get("/exports/:status?", async (req, res) => {
               ],
             },
           ],
-          "operations.statusDetails.leoDate": { $exists: true, $ne: null, $ne: "" },
+          "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
           $or: [
             { "operations.statusDetails.handoverForwardingNoteDate": { $exists: false } },
             { "operations.statusDetails.handoverForwardingNoteDate": null },
@@ -450,7 +451,7 @@ router.get("/exports/:status?", async (req, res) => {
               ],
             },
           ],
-          "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $ne: null, $ne: "" },
+          "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
           $or: [
             { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
             { "operations.statusDetails.billingDocsSentDt": null },
@@ -553,6 +554,39 @@ router.get("/exports/:status?", async (req, res) => {
           }
         });
       }
+    }
+
+    if (month && !isNaN(month)) {
+      filter.$and.push({
+        $expr: {
+          $let: {
+            vars: {
+              effDate: {
+                $cond: {
+                  if: {
+                    $and: [
+                      { $ne: ["$job_date", null] },
+                      { $ne: ["$job_date", ""] },
+                      { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
+                    ]
+                  },
+                  then: {
+                    $dateFromString: {
+                      dateString: "$job_date",
+                      format: "%d-%m-%Y",
+                      onError: "$createdAt"
+                    }
+                  },
+                  else: "$createdAt"
+                }
+              }
+            },
+            in: {
+              $eq: [{ $month: "$$effDate" }, parseInt(month)]
+            }
+          }
+        }
+      });
     }
 
     if (req.query.customHouse) {

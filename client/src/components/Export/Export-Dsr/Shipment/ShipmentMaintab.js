@@ -1305,6 +1305,16 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
 
   const saveTimeoutRef = useRef(null);
 
+  // Auto-sync No of Containers from Container tab
+  useEffect(() => {
+    if (!isAir && Number(formik.values.no_of_containers)) {
+      const containerCount = (formik.values.containers || []).length;
+      if (containerCount > 1 && formik.values.no_of_containers !== containerCount) {
+        formik.setFieldValue("no_of_containers", containerCount);
+      }
+    }
+  }, [formik.values.containers, isAir, formik.values.no_of_containers, formik.setFieldValue]);
+
   // Compact auto-save
   const autoSave = useCallback(
     async (values) => {
@@ -1319,12 +1329,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
   }
 
   // Auto-sync No of Containers from Container tab
-  useEffect(() => {
-    const containerCount = (formik.values.containers || []).length;
-    if (formik.values.no_of_containers !== containerCount) {
-      formik.setFieldValue("no_of_containers", containerCount);
-    }
-  }, [formik.values.containers]);
+
 
   return (
     <div style={styles.page}>
@@ -1918,9 +1923,14 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                 <div style={styles.half}>
                   <div style={styles.label}>GROSS WEIGHT</div>
                   <input
-                    style={styles.input}
+                    style={{
+                      ...styles.input,
+                      backgroundColor: (!isAir && !Number(formik.values.no_of_containers)) ? '#edf2f7' : '#f7fafc',
+                      cursor: (!isAir && !Number(formik.values.no_of_containers)) ? 'not-allowed' : 'text'
+                    }}
                     type="number"
                     step="0.001"
+                    disabled={!isAir && !Number(formik.values.no_of_containers)}
                     value={
                       Number(formik.values.gross_weight_kg) === 0
                         ? ""
@@ -1935,7 +1945,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                         handleFieldChange("gross_weight_kg", val.toFixed(3));
                       }
                     }}
-                    placeholder="0.00"
+                    placeholder={(!isAir && !Number(formik.values.no_of_containers)) ? "Fill Containers first" : "0.00"}
                   />
                 </div>
                 <UnitDropdownField
@@ -1950,9 +1960,14 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                 <div style={styles.half}>
                   <div style={styles.label}>NET WEIGHT</div>
                   <input
-                    style={styles.input}
+                    style={{
+                      ...styles.input,
+                      backgroundColor: (!isAir && !Number(formik.values.no_of_containers)) ? '#edf2f7' : '#f7fafc',
+                      cursor: (!isAir && !Number(formik.values.no_of_containers)) ? 'not-allowed' : 'text'
+                    }}
                     type="number"
                     step="0.001"
+                    disabled={!isAir && !Number(formik.values.no_of_containers)}
                     value={
                       Number(formik.values.net_weight_kg) === 0
                         ? ""
@@ -1967,7 +1982,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                         handleFieldChange("net_weight_kg", val.toFixed(3));
                       }
                     }}
-                    placeholder="0.00"
+                    placeholder={(!isAir && !Number(formik.values.no_of_containers)) ? "Fill Containers first" : "0.00"}
                   />
                 </div>
                 <UnitDropdownField

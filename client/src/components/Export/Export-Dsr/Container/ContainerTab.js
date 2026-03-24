@@ -9,6 +9,12 @@ import ImagePreview from "../../../gallery/ImagePreview";
 
 const containerTypes = ["20", "40"];
 
+const isValidContainer = (val) => {
+  if (!val) return true;
+  const regex = /^[A-Z]{4}\d{7}$/;
+  return regex.test(val);
+};
+
 const styles = {
   page: {
     fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
@@ -129,6 +135,8 @@ function ContainerTab({ formik }) {
       formik.setFieldValue("containers", [{
         serialNumber: 1,
         containerNo: "",
+        isValid: true,
+        showWarning: false,
         sealNo: "",
         sealDate: "",
         type: "",
@@ -152,6 +160,35 @@ function ContainerTab({ formik }) {
     }
   }, [formik.values.job_no, formik.setFieldValue]);
 
+  // Sync Gross Weight and Pkgs from Shipment Tab if No of Containers is 1
+  useEffect(() => {
+    const noOfCont = Number(formik.values.no_of_containers || 0);
+    const pkgs = Number(formik.values.total_no_of_pkgs || 0);
+    const gw = Number(formik.values.gross_weight_kg || 0);
+
+    if (noOfCont === 1 && formik.values.containers && formik.values.containers.length === 1) {
+      const container = formik.values.containers[0];
+      if (container.pkgsStuffed !== pkgs || container.grossWeight !== gw) {
+        const newList = [...formik.values.containers];
+        newList[0] = {
+          ...newList[0],
+          pkgsStuffed: pkgs,
+          grossWeight: gw,
+          // Recalculate VGM if needed
+          vgmWtInvoice: parseFloat((gw + Number(newList[0].tareWeightKgs || 0)).toFixed(3))
+        };
+        formik.setFieldValue("containers", newList);
+      }
+    }
+  }, [
+    formik.values.no_of_containers,
+    formik.values.total_no_of_pkgs,
+    formik.values.gross_weight_kg,
+    formik.setFieldValue
+  ]);
+
+  const [timeouts, setTimeouts] = useState({});
+
   const handleFieldChange = (idx, field, value) => {
     const list = [...(formik.values.containers || [])];
     if (field === "containerNo") {
@@ -159,6 +196,28 @@ function ContainerTab({ formik }) {
       if (list.some((c, i) => i !== idx && c.containerNo === val && val !== "")) {
         alert(`Duplicate Container: ${val}`);
         return;
+      }
+
+      const valid = isValidContainer(val);
+      list[idx].isValid = valid;
+
+      // Clear existing timeout for this row
+      if (timeouts[idx]) {
+        clearTimeout(timeouts[idx]);
+      }
+
+      if (!valid && val !== "") {
+        // Delay showing warning
+        const timer = setTimeout(() => {
+          const freshList = [...formik.values.containers];
+          if (!isValidContainer(freshList[idx].containerNo)) {
+            freshList[idx].showWarning = true;
+            formik.setFieldValue("containers", freshList);
+          }
+        }, 1000);
+        setTimeouts(prev => ({ ...prev, [idx]: timer }));
+      } else {
+        list[idx].showWarning = false;
       }
     }
     list[idx][field] = value;
@@ -181,6 +240,8 @@ function ContainerTab({ formik }) {
     list.push({
       serialNumber: list.length + 1,
       containerNo: "",
+      isValid: true,
+      showWarning: false,
       sealNo: "",
       sealDate: "",
       type: "",
@@ -274,8 +335,20 @@ function ContainerTab({ formik }) {
                 <tr key={idx}>
                   <td style={{ ...styles.td, textAlign: 'center', color: '#64748b', fontWeight: 700 }}>{row.serialNumber}</td>
                   <td style={styles.td}>
-                    <input style={styles.input} value={toUpperVal(row.containerNo || "")}
-                      onChange={(e) => handleFieldChange(idx, "containerNo", toUpperVal(e.target.value))} placeholder="CONT. NO" />
+                    <div>
+                      <input
+                        style={styles.input}
+                        value={toUpperVal(row.containerNo || "")}
+                        onChange={(e) => handleFieldChange(idx, "containerNo", toUpperVal(e.target.value))}
+                        placeholder="CONT. NO"
+                        maxLength={11}
+                      />
+                      {row.showWarning && (
+                        <div style={{ color: "#e53e3e", fontSize: "9px", marginTop: "2px", fontWeight: "700", lineHeight: "1" }}>
+                          Invalid Format (AAAA1234567)
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td style={styles.td}>
                     <input style={styles.input} value={toUpperVal(row.sealNo || "")}

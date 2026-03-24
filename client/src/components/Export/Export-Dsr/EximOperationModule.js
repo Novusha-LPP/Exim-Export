@@ -11,6 +11,7 @@ import ExportJobFooter from "./ExportJobFooter.js";
 // Tabs for this module
 import OperationsTab from "./Operations/OperationsTab.jsx";
 import TrackingCompletedTab from "./Tracking Completed/TrackingCompletedTab.js";
+import ContainerTab from "./Container/ContainerTab.js";
 
 // Tab Panel Component
 function TabPanel(props) {
@@ -173,6 +174,7 @@ function EximOperationModule() {
             }}
           >
             <Tab label="Operation" />
+            {data.custom_house === "ICD SABARMATI" && <Tab label="Container" />}
             <Tab label="Tracking Completed" />
           </Tabs>
         </Box>
@@ -180,9 +182,21 @@ function EximOperationModule() {
         <TabPanel value={activeTab} index={0}>
           <OperationsTab job={data} formik={formik} />
         </TabPanel>
-        <TabPanel value={activeTab} index={1}>
-          <TrackingCompletedTab job={data} formik={formik} />
-        </TabPanel>
+
+        {data.custom_house === "ICD SABARMATI" ? (
+          <>
+            <TabPanel value={activeTab} index={1}>
+              <ContainerTab formik={formik} />
+            </TabPanel>
+            <TabPanel value={activeTab} index={2}>
+              <TrackingCompletedTab job={data} formik={formik} />
+            </TabPanel>
+          </>
+        ) : (
+          <TabPanel value={activeTab} index={1}>
+            <TrackingCompletedTab job={data} formik={formik} />
+          </TabPanel>
+        )}
 
         <ExportJobFooter
           onUpdate={formik.handleSubmit}

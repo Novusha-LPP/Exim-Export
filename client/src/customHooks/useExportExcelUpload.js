@@ -1121,7 +1121,7 @@ function useExportExcelUpload(inputRef, onSuccess) {
                         else if (mappedField === "custom_house" && value) {
                             let customHouseVal = String(value).trim();
                             if (customHouseVal.toLowerCase() === "icd sabarmati, ahmedabad") {
-                                customHouseVal = "ICD Sabarmati";
+                                customHouseVal = "ICD SABARMATI";
                             }
                             modifiedItem.custom_house = customHouseVal;
                         }

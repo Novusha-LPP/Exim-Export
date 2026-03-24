@@ -569,7 +569,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
 
             let existingCustomHouse = existingJob?.custom_house;
             if (existingCustomHouse && existingCustomHouse.trim().toLowerCase() === "icd sabarmati, ahmedabad") {
-                existingCustomHouse = "ICD Sabarmati";
+                existingCustomHouse = "ICD SABARMATI";
             }
 
             // Build the update data with all fields from the Excel
@@ -1128,7 +1128,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
             // =========================================================================
             let existingOpsRaw = existingJob?.operations;
             let operationsToUpdate = [];
-            
+
             // Strictly enforce ONLY ONE operation object in the array
             if (Array.isArray(existingOpsRaw) && existingOpsRaw.length > 0) {
                 operationsToUpdate = [existingOpsRaw[0]];

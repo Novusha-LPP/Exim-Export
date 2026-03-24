@@ -299,7 +299,7 @@ function GatewayPortDropdown({
             >
               {filtered.map((port, i) => (
                 <div
-                  key={port._id || port.unece_code || port.name || i}
+                  key={`${port.unece_code}_${port.name}_${i}`}
                   style={styles.acItem(d.active === i)}
                   onMouseDown={(e) => {
                     e.preventDefault();
@@ -561,8 +561,8 @@ const LogisysEditableHeader = ({
             style={!isEditable ? styles.inputDisabled : styles.input}
           />
           <datalist id="shipper-list">
-            {shipperOpts.map((opt) => (
-              <option key={opt.value} value={opt.value}>
+            {shipperOpts.map((opt, i) => (
+              <option key={`${opt.value}_${i}`} value={opt.value}>
                 {opt.label}
               </option>
             ))}
