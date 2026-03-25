@@ -191,10 +191,19 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
       current.ritc = toUpper(ritcValue);
 
       if (origin && origin.unit) {
-        const u = origin.unit.toUpperCase();
-        const matched = unitCodes.find((c) => c === u || c.startsWith(u));
+        let u = origin.unit.toUpperCase().trim();
+        // specific hardcoded maps for common API responses
+        if (u === "KG") u = "KGS";
+        if (u === "PC" || u === "U" || u === "NO") u = "PCS"; // Default U or NO to PCS if needed, or rely on startsWith
+
+        let matched = unitCodes.find((c) => c === u);
+        if (!matched) {
+          matched = unitCodes.find((c) => c.startsWith(u) || u.startsWith(c));
+        }
         if (matched) {
           current.socunit = matched;
+        } else {
+          current.socunit = u; // fallback
         }
       }
 
@@ -211,23 +220,23 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
       const value = current[field];
 
       switch (field) {
-    case "quantity":
-      if (Number(value) <= 0 && value !== "") {
-        alert("Quantity must be greater than zero");
-        current[field] = "";
-      } else {
-        current[field] = formatQty(value);
-      }
-      break;
-    case "ritc":
-      if (value && !/^\d+$/.test(value)) {
-        alert("HSN Code must be numeric");
-        current[field] = "";
-      }
-      break;
-    case "socQuantity":
-      current[field] = formatSocQty(value);
-      break;
+        case "quantity":
+          if (Number(value) <= 0 && value !== "") {
+            alert("Quantity must be greater than zero");
+            current[field] = "";
+          } else {
+            current[field] = formatQty(value);
+          }
+          break;
+        case "ritc":
+          if (value && !/^\d+$/.test(value)) {
+            alert("HSN Code must be numeric");
+            current[field] = "";
+          }
+          break;
+        case "socQuantity":
+          current[field] = formatSocQty(value);
+          break;
         case "unitPrice":
           current[field] = formatUnitPrice(value);
           break;

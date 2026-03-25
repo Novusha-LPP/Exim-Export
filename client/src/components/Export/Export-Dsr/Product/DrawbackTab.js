@@ -132,11 +132,8 @@ const DrawbackTab = ({
         let newItem = { ...item };
         let changedLocal = false;
 
-        if (
-          String(item.quantity) !== String(pQty) ||
-          String(item.unit) !== String(pUnit) ||
-          String(item.dbkCapunit) !== String(pUnit)
-        ) {
+        // Only sync quantity/unit if they are empty
+        if (!item.quantity && !item.unit && !item.dbkCapunit) {
           newItem.quantity = pQty;
           newItem.unit = pUnit;
           newItem.dbkCapunit = pUnit;
@@ -200,8 +197,8 @@ const DrawbackTab = ({
     currentDbk[rowIndex].dbkCap = item.drawback_cap || 0;
 
     currentDbk[rowIndex].quantity = product.quantity || 0;
-    currentDbk[rowIndex].unit = product.qtyUnit || "";
-    currentDbk[rowIndex].dbkCapunit = product.qtyUnit || "";
+    currentDbk[rowIndex].unit = item.unit || product.qtyUnit || "";
+    currentDbk[rowIndex].dbkCapunit = item.unit || product.qtyUnit || "";
 
     const invoiceCurrency = activeInvoice?.currency;
     let productAmount = parseFloat(product.amount || 0);
@@ -294,6 +291,12 @@ const DrawbackTab = ({
           currentDbk[rowIndex].slCap = slEntry ? slEntry.cap_per_unit : 0;
           currentDbk[rowIndex].ctlRate = ctlEntry ? ctlEntry.rate : 0;
           currentDbk[rowIndex].ctlCap = ctlEntry ? ctlEntry.cap_per_unit : 0;
+
+          // Use Unit from ROSCTL response if available
+          if (slEntry && slEntry.unit) {
+            currentDbk[rowIndex].unit = slEntry.unit;
+            currentDbk[rowIndex].dbkCapunit = slEntry.unit;
+          }
 
           // Calculate ROSCTL Amount inline
           const qty = parseFloat(currentDbk[rowIndex].quantity || 0);
@@ -422,9 +425,10 @@ const DrawbackTab = ({
         currentDbk[rowIndex].dbkCap = item.drawback_cap || 0;
 
         // Pull Quantity & Unit from ProductMainTab (corresponding index)
+        // Pull Quantity & Unit
         currentDbk[rowIndex].quantity = product.quantity || 0;
-        currentDbk[rowIndex].unit = product.qtyUnit || "";
-        currentDbk[rowIndex].dbkCapunit = product.qtyUnit || "";
+        currentDbk[rowIndex].unit = item.unit || product.qtyUnit || "";
+        currentDbk[rowIndex].dbkCapunit = item.unit || product.qtyUnit || "";
 
         // Pull FOB Value (INR) using standardized calculation
         const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
@@ -511,6 +515,11 @@ const DrawbackTab = ({
         currentDbk[rowIndex].slCap = slEntry ? slEntry.cap_per_unit : 0;
         currentDbk[rowIndex].ctlRate = ctlEntry ? ctlEntry.rate : 0;
         currentDbk[rowIndex].ctlCap = ctlEntry ? ctlEntry.cap_per_unit : 0;
+
+        if (slEntry && slEntry.unit) {
+            currentDbk[rowIndex].unit = slEntry.unit;
+            currentDbk[rowIndex].dbkCapunit = slEntry.unit;
+        }
 
         // Calculate Amount
         calculateRosctlAmount(currentDbk[rowIndex]);
@@ -718,13 +727,9 @@ const DrawbackTab = ({
                   </td>
                   <td style={styles.td}>
                     <input
-                      style={{
-                        ...styles.input,
-                        backgroundColor: "#e9ecef",
-                        color: "#495057",
-                      }}
+                      style={styles.input}
                       value={item.unit || ""}
-                      disabled
+                      onChange={(e) => handleDrawbackFieldChange(idx, "unit", e.target.value)}
                     />
                   </td>
                   <td style={styles.td}>
@@ -792,13 +797,8 @@ const DrawbackTab = ({
                   </td>
                   <td style={styles.td}>
                     <input
-                      style={{
-                        ...styles.input,
-                        backgroundColor: "#e9ecef",
-                        color: "#495057",
-                      }}
+                      style={styles.input}
                       value={item.dbkCapunit ?? ""}
-                      disabled
                       onChange={(e) =>
                         handleDrawbackFieldChange(
                           idx,

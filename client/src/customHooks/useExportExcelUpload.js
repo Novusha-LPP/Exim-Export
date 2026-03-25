@@ -864,6 +864,13 @@ function useExportExcelUpload(inputRef, onSuccess) {
                 // Consignment Type
                 "consignment_type": "consignmentType",
                 "consignmenttype": "consignmentType",
+                "consignment": "consignmentType",
+                "consignm": "consignmentType",
+                "consignmen": "consignmentType",
+                "consignmen_": "consignmentType",
+                "consignment_": "consignmentType",
+                "consignmenttyp": "consignmentType",
+                "consignm_type": "consignmentType",
                 "cons_type": "consignmentType",
                 "constype": "consignmentType",
                 "type": "consignmentType",
@@ -1064,7 +1071,12 @@ function useExportExcelUpload(inputRef, onSuccess) {
                         const value = item[key];
 
                         // Get the mapped field name, or use the transformed key if not in mapping
-                        const mappedField = FIELD_MAPPING[transformedKey] || transformedKey;
+                        let mappedField = FIELD_MAPPING[transformedKey] || transformedKey;
+
+                        // Fallback: any header starting with "consign" maps to consignmentType
+                        if (mappedField === transformedKey && transformedKey.startsWith("consign")) {
+                            mappedField = "consignmentType";
+                        }
 
                         // Skip certain fields
                         if (["noofconts", "noofcontsbytype", "sr_no", "sno", "__rownum__"].includes(transformedKey)) {

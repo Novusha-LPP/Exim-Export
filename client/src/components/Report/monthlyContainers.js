@@ -42,7 +42,10 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
+import { 
+  LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid, Legend, ResponsiveContainer 
+} from 'recharts';
+import { getOptionsForBranch, getAllOptions } from '../common/CustomHouseDropdown';
 
 // Custom dot component with growth/decline indicators
 const CustomDot = ({ cx, cy, payload, dataKey, index, allData }) => {
@@ -222,8 +225,17 @@ const MonthlyContainers = () => {
   const [popperOpen, setPopperOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedRowData, setSelectedRowData] = useState(null);
-  const [selectedICD, setSelectedICD] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
+  const [selectedCustomHouse, setSelectedCustomHouse] = useState("");
   const navigate = useNavigate();
+
+  const BRANCH_OPTIONS = [
+    { value: "AMD", label: "Ahmedabad" },
+    { value: "BRD", label: "Baroda" },
+    { value: "GIM", label: "Gandhidham" },
+    { value: "COK", label: "Cochin" },
+    { value: "HAZ", label: "Hazira" },
+  ];
 
   const years = [
     { value: "26-27", label: "26-27" },
@@ -282,9 +294,11 @@ const MonthlyContainers = () => {
     setError("");
     try {
       const apiBase = import.meta.env.VITE_API_STRING || "";
-      // Add ICD as query parameter if selected
-      const icdParam = selectedICD ? `?custom_house=${encodeURIComponent(selectedICD)}` : "";
-      const res = await axios.get(`${apiBase}/report/monthly-containers/${year}/${month}${icdParam}`);
+      const params = new URLSearchParams();
+      if (selectedCustomHouse) params.append("custom_house", selectedCustomHouse);
+      if (selectedBranch) params.append("branch_code", selectedBranch);
+      
+      const res = await axios.get(`${apiBase}/report/monthly-containers/${year}/${month}?${params.toString()}`);
       setData(res.data);
     } catch (err) {
       setError("Failed to fetch data");
@@ -295,7 +309,7 @@ const MonthlyContainers = () => {
 
   useEffect(() => {
     fetchData();
-  }, [year, month, selectedICD]);
+  }, [year, month, selectedCustomHouse, selectedBranch]);
 
   const handleSort = (column) => {
     const isAsc = sortColumn === column && sortDirection === 'asc';
@@ -525,18 +539,45 @@ const MonthlyContainers = () => {
               </Box>
 
               <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel id="icd-label">ICD Code</InputLabel>
+                <InputLabel id="branch-label">Branch</InputLabel>
                 <Select
-                  labelId="icd-label"
-                  value={selectedICD}
-                  onChange={(e) => setSelectedICD(e.target.value)}
-                  label="ICD Code"
+                  labelId="branch-label"
+                  value={selectedBranch}
+                  onChange={(e) => {
+                    setSelectedBranch(e.target.value);
+                    setSelectedCustomHouse(""); // Reset custom house when branch changes
+                  }}
+                  label="Branch"
                   sx={{ borderRadius: 2 }}
                 >
-                  <MenuItem value="">All ICDs</MenuItem>
-                  <MenuItem value="ICD SANAND">ICD SANAND</MenuItem>
-                  <MenuItem value="ICD KHODIYAR">ICD KHODIYAR</MenuItem>
-                  <MenuItem value="ICD SACHANA">ICD SACHANA</MenuItem>
+                  <MenuItem value="">All Branches</MenuItem>
+                  {BRANCH_OPTIONS.map(opt => (
+                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <InputLabel id="custom-house-label">Custom House</InputLabel>
+                <Select
+                  labelId="custom-house-label"
+                  value={selectedCustomHouse}
+                  onChange={(e) => setSelectedCustomHouse(e.target.value)}
+                  label="Custom House"
+                  sx={{ borderRadius: 2 }}
+                >
+                  <MenuItem value="">All Custom Houses</MenuItem>
+                  {selectedBranch ? (
+                    getOptionsForBranch(selectedBranch).map(group => 
+                      group.items.map(item => (
+                        <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
+                      ))
+                    )
+                  ) : (
+                    getAllOptions().map(item => (
+                      <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
+                    ))
+                  )}
                 </Select>
               </FormControl>
 

@@ -117,7 +117,10 @@ const RITCSearchableDropdown = ({
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
-      return;
+      // If there's no initial value, skip fetching on first render
+      if (!query) {
+        return;
+      }
     }
 
     // allow fetch even if closed (for paste-and-tab support)

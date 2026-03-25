@@ -291,7 +291,14 @@ const InvoiceFreightTab = ({ formik }) => {
       return Number(data.amount || 0);
     }
 
-    // Only use explicit amount if user actually typed something and didn't erase it
+    // NEW LOGIC: If a percentage rate exists, it ALWAYS takes precedence
+    // This allows the amount to correctly re-calculate when the base (product value) changes.
+    const rate = Number(data.rate || 0);
+    if (rate !== 0) {
+      return (Number(baseValue || 0) * rate) / 100;
+    }
+
+    // Fallback to explicit amount if no rate is specified
     if (
       data.amount !== undefined &&
       data.amount !== null &&
@@ -301,8 +308,7 @@ const InvoiceFreightTab = ({ formik }) => {
       return Number(data.amount);
     }
 
-    const rate = Number(data.rate || 0);
-    return (Number(baseValue || 0) * rate) / 100;
+    return 0;
   };
 
   // Compute FOB in INR from all other row amounts
@@ -316,6 +322,7 @@ const InvoiceFreightTab = ({ formik }) => {
     if (!rawInvoiceVal || !invoiceExchangeRate) return charges;
 
     let totalNonFOBInInvoice = 0;
+    const nextCharges = { ...charges };
 
     [
       "freight",
@@ -326,11 +333,15 @@ const InvoiceFreightTab = ({ formik }) => {
     ].forEach((k) => {
       const row = charges[k] || {};
 
-      // Recompute the non-FOB row amount the same way the UI does,
-      // instead of relying on row.amount (which is not stored for non-FOB rows)
       const baseValue = getBaseValue(k, row);
       const rowAmount = getAmount(k, row, baseValue);
-      if (!rowAmount) return;
+      
+      // Update the amount in the object so it gets saved to the DB
+      // We only do this if a rate is present (meaning it's a calculated field)
+      const nextRow = { ...row };
+      if (rowAmount && (row.rate || row.amount)) {
+          nextRow.amount = Number(rowAmount.toFixed(2));
+      }
 
       const effectiveCurrency = (row.currency || invoiceCurrency).toUpperCase();
       const fallbackRate = effectiveCurrency === 'INR' ? 1 :
@@ -341,35 +352,24 @@ const InvoiceFreightTab = ({ formik }) => {
       const amountInInvoice = rowToInvoiceCurrency(rowAmount, rowRate);
 
       if (k === "commission") {
-        // Commission Logic: Only subtract if it exceeds 12.5% of base value
         const baseValueRowCur = getBaseValue(k, row);
-
-        // Convert Base Value from Row Currency -> Invoice Currency to compare apples to apples
-        // baseValueRowCur corresponds to Adjusted Product Value converted to Row Currency.
-        // So inversely, convert it back to Invoice Currency.
-        // rowRate is Row->INR. invoiceExchangeRate is Invoice->INR.
-        // baseInINR = baseValueRowCur * rowRate
-        // baseInInvoice = baseInINR / invoiceExchangeRate
-        const baseValueInInvoice =
-          (baseValueRowCur * rowRate) / invoiceExchangeRate;
-
+        const baseValueInInvoice = (baseValueRowCur * rowRate) / invoiceExchangeRate;
         const threshold = (12.5 / 100) * baseValueInInvoice;
 
         if (amountInInvoice > threshold) {
-          // Subtract the excess amount
           const excess = amountInInvoice - threshold;
           totalNonFOBInInvoice += excess;
         }
-        // If <= 12.5%, we deduct NOTHING from the Invoice Value to get FOB.
       } else {
         totalNonFOBInInvoice += amountInInvoice;
       }
+      
+      nextCharges[k] = nextRow;
     });
 
     const fobInInvoice = invoiceVal - totalNonFOBInInvoice;
     const fobInINR = fobInInvoice * invoiceExchangeRate;
 
-    const nextCharges = { ...charges };
     const existingFob = nextCharges.fobValue || {};
     const fobCurrency = (existingFob.currency || "INR").toUpperCase();
 
@@ -488,6 +488,13 @@ const InvoiceFreightTab = ({ formik }) => {
 
     const currentSection = { ...(next[sectionKey] || {}) };
     currentSection[field] = value;
+
+    // Mutually exclusive: rate vs amount
+    if (field === "rate" && value !== "" && Number(value) !== 0) {
+      currentSection.amount = ""; // Clear manual amount when rate is set
+    } else if (field === "amount" && value !== "" && Number(value) !== 0) {
+      currentSection.rate = ""; // Clear rate when manual amount is set
+    }
 
     // if currency changed, auto-set exchangeRate from rateMap
     if (field === "currency") {

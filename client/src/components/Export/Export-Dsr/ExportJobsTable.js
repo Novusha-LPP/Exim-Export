@@ -47,6 +47,8 @@ import SBTrackDialog from "./SBTrackDialog";
 import ContainerTrackDialog from "./ContainerTrackDialog";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faShip, faAnchor } from "@fortawesome/free-solid-svg-icons";
+import QuestionAnswerIcon from "@mui/icons-material/QuestionAnswer";
+import RaiseQueryDialog from "./Queries/RaiseQueryDialog";
 
 // --- Clean Enterprise Styles ---
 const s = {
@@ -616,6 +618,10 @@ const ExportJobsTable = () => {
   // Container Track Dialog State
   const [containerTrackOpen, setContainerTrackOpen] = useState(false);
   const [containerTrackContainers, setContainerTrackContainers] = useState([]);
+
+  // Query Dialog State
+  const [queryDialogOpen, setQueryDialogOpen] = useState(false);
+  const [queryDialogJob, setQueryDialogJob] = useState(null);
 
   // Fetch Exporters for DSR
   useEffect(() => {
@@ -2807,6 +2813,33 @@ const ExportJobsTable = () => {
                               Docs
                               <ArrowDropDownIcon sx={{ fontSize: 14, ml: 0.3 }} />
                             </button>
+                            <button
+                              style={{
+                                background: "#2563eb",
+                                border: "none",
+                                color: "#fff",
+                                padding: "3px 8px",
+                                borderRadius: 4,
+                                fontWeight: 600,
+                                fontSize: 11,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "4px",
+                                width: "100%",
+                              }}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setQueryDialogJob(job);
+                                setQueryDialogOpen(true);
+                              }}
+                              title="Raise a query for this job"
+                            >
+                              <QuestionAnswerIcon sx={{ fontSize: 12 }} />
+                              Query
+                            </button>
                           </div>
                           <div
                             style={{
@@ -3468,6 +3501,20 @@ const ExportJobsTable = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Raise Query Dialog */}
+      <RaiseQueryDialog
+        open={queryDialogOpen}
+        onClose={() => {
+          setQueryDialogOpen(false);
+          setQueryDialogJob(null);
+        }}
+        job={queryDialogJob}
+        onQueryRaised={() => {
+          // Optionally show a success notification
+          console.log("Query raised successfully");
+        }}
+      />
     </>
   );
 };

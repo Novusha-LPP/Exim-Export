@@ -82,6 +82,7 @@ import sbTrack from "./routes/export-dsr/sbTrack.mjs";
 import generateFlatFile from "./routes/export-dsr/generateFlatFile.mjs";
 import operationPendingJobs from "./routes/export-dsr/operationPendingJobs.mjs";
 import operationListJobs from "./routes/export-dsr/operationListJobs.mjs";
+import queryRoutes from "./routes/export-dsr/queryRoutes.mjs";
 
 // Report Routes
 import monthlyContainersReport from "./routes/report/monthlyContainers.mjs";
@@ -239,6 +240,7 @@ app.use(sbTrack);
 app.use(generateFlatFile);
 app.use(operationPendingJobs);
 app.use(operationListJobs);
+app.use(queryRoutes);
 
 // Report Routes
 app.use(monthlyContainersReport);

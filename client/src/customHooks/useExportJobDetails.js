@@ -788,10 +788,6 @@ function useExportJobDetails(params, setFileSnackbar) {
           setFileSnackbar(true);
           setTimeout(() => setFileSnackbar(false), 3000);
         }
-
-        setTimeout(() => {
-          window.close();
-        }, 500);
       } catch (error) {
         console.error("Error updating export job:", error);
         throw error;

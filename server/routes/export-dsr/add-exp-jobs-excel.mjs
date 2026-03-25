@@ -259,10 +259,6 @@ router.post("/api/jobs/add-job", async (req, res) => {
             `✅ [Backend] Found ${existingJobsMap.size} existing jobs. Building bulk operations...`
         );
 
-        // Debug: Log sample of incoming data
-        if (jsonData.length > 0) {
-            console.log(`📝 [Backend] Sample incoming data (first record):`, JSON.stringify(jsonData[0], null, 2));
-        }
 
         const bulkOperations = [];
         let processedCount = 0;
@@ -440,18 +436,6 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 continue;
             }
 
-            // Debug logging for the first job to see what's being received
-            if (processedCount === 0) {
-                console.log(`🔍 [Backend] First job data sample:`, {
-                    job_no,
-                    port_of_discharge,
-                    destination_port,
-                    custom_house,
-                    invoice_number,
-                    invoice_date,
-                    exporter
-                });
-            }
 
             // Sync the job sequence counter if this is a valid job number
             // Format expected: BRANCH/SEQUENCE/YEAR (e.g. AMD/00123/25-26)
@@ -655,7 +639,13 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 ieCode: ieCodeUpdate,
 
                 // Consignment/Transport
-                consignmentType: (job_no && String(job_no).toUpperCase().includes('/AIR/')) ? "AIR" : (job_no && String(job_no).toUpperCase().includes('/SEA/')) ? "FCL" : getUpdateValue(consignmentType, existingJob?.consignmentType),
+                consignmentType: (() => {
+                    if (job_no && String(job_no).toUpperCase().includes('/AIR/')) return "AIR";
+                    if (consignmentType && ['FCL', 'LCL'].includes(String(consignmentType).toUpperCase())) return String(consignmentType).toUpperCase();
+                    if (existingJob?.consignmentType) return existingJob.consignmentType;
+                    if (job_no && String(job_no).toUpperCase().includes('/SEA/')) return "FCL";
+                    return getUpdateValue(consignmentType, existingJob?.consignmentType);
+                })(),
                 transportMode: (job_no && String(job_no).toUpperCase().includes('/AIR/')) ? "AIR" : (job_no && String(job_no).toUpperCase().includes('/SEA/')) ? "SEA" : getUpdateValue(transportMode, existingJob?.transportMode),
 
                 // Shipping Line

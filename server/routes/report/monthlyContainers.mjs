@@ -6,7 +6,7 @@ const router = express.Router();
 // Route: /api/report/monthly-containers/:year/:month
 router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
   const { year, month } = req.params;
-  const { custom_house } = req.query;
+  const { custom_house, branch_code } = req.query;
   const monthInt = parseInt(month);
 
   try {
@@ -18,7 +18,12 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
 
     // Add custom_house filter if provided
     if (custom_house) {
-      baseMatch.custom_house = custom_house;
+      baseMatch.custom_house = { $regex: new RegExp(`^${custom_house}$`, 'i') };
+    }
+    
+    // Add branch_code filter if provided
+    if (branch_code) {
+      baseMatch.branch_code = branch_code;
     }
 
     // Dynamic grouping
@@ -134,10 +139,8 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
       ExJobModel.aggregate([
         {
           $match: {
-            year,
+            ...baseMatch,
             sb_no: { $ne: null, $ne: "" },
-            exporter: { $ne: null, $ne: "" },
-            ...(custom_house ? { custom_house } : {}),
           },
         },
         {
@@ -200,11 +203,7 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
       // LEO COUNT (monthly, exporter-wise)
       ExJobModel.aggregate([
         {
-          $match: {
-            year,
-            exporter: { $ne: null, $ne: "" },
-            ...(custom_house ? { custom_house } : {}),
-          },
+          $match: baseMatch,
         },
         { $unwind: { path: "$operations", preserveNullAndEmptyArrays: false } },
         { $unwind: { path: "$operations.statusDetails", preserveNullAndEmptyArrays: false } },
@@ -248,10 +247,8 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
       ExJobModel.aggregate([
         {
           $match: {
-            year,
+            ...baseMatch,
             consignmentType: "AIR",
-            exporter: { $ne: null, $ne: "" },
-            ...(custom_house ? { custom_house } : {}),
           },
         },
         { $unwind: { path: "$operations", preserveNullAndEmptyArrays: false } },

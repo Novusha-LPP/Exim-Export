@@ -50,6 +50,16 @@
  * FIX 43 – LICENCE: also emit EPCG licences (epcgDetails.epcg_reg_obj) after DEEC rows
  *           licSr counter is shared so EPCG rows continue numbering from DEEC rows
  * FIX 44 – getUnitIndicator: "SET"/"SETS"/"UNIT"/"UNITS" -> "N" (EPCG items are counted)
+ * FIX 45 – Supportingdocs [13-14]: issuing party addr1/addr2 split at 70 chars each (not comma within 35)
+ *           ICES spec: Addr1 = C(70), Addr2 = C(70). Comma-split logic caused addr2 > 70 → ICEGATE rejection
+ * FIX 46 – INVOICE [21]: commission RATE (%) emitted when stored in fic.commission.rate (5 decimals)
+ *           Logisys sends rate (e.g. "2.00000") + currency + amount; rate blank only when not stored
+ * FIX 47 – SW_INFO_TYPE DTY/RDT: only emit for free SBs (sc=00/19) or when RoDTEP is claimed
+ *           For DBK (60), RoSCTL, Advance Licence (03), EPCG (50) — skip row entirely (Logisys confirmed)
+ *           Previous code emitted RODTEPN "Not Claimed" for all schemes — wrong
+ * FIX 48 – DBK quantity: use d.quantity (drawback schedule unit e.g. KGS) NOT p.quantity (invoice unit e.g. PCS)
+ *           Logisys: 10464 PCS item → DBK qty = 3997.248 KGS. Falling back to p.quantity gives wrong unit.
+ *           If d.quantity not stored, send blank (not zero) to avoid wrong data in Customs record
  */
 
 import express from "express";
@@ -379,6 +389,7 @@ export function generateSBFlatFile(job) {
 
 
     let out = "";
+    const loosePktsFinal = loosePkts || loosePktsA || "";
 
     // ══════════════════════════════════════════════════════════════════════════
     // <TABLE>SB  — 50 fields [0-49]
@@ -420,8 +431,8 @@ export function generateSBFlatFile(job) {
         "KGS",                                                              // [38]
         clean(String(job.total_no_of_pkgs || job.totalPackages || "")),   // [39]
         preserveSpaces(job.marks_nos || job.marksAndNumbers || ""),       // [40] FIX 40
-        loosePktsA,                                                         // [41] (loose pkts slot A)
-        loosePkts,                                                          // [42] Loose Packets — FIX 33
+        loosePktsFinal,   // ONLY ONE FIELD
+
         String(emitContainer ? containers.length : ""),                   // [43] No. of Containers — FIX 34
         mawb,                                                               // [44]
         hawb,                                                               // [45]
@@ -459,10 +470,16 @@ export function generateSBFlatFile(job) {
         const iAmt = iAmtRaw > 0 ? iAmtRaw.toFixed(2) : "";
         const iCurr = iAmtRaw > 0 ? curr : "";
 
-        // Commission — FIX 41: read fic.commission, emit in [22-23]
+        // Commission — FIX 41: read fic.commission, emit rate+currency+amount in [21-23]
+        // Logisys sends commission RATE (e.g. 2.00000%) in [21] when stored in DB
+        // If only amount is stored (no rate), [21] stays blank (amount-only mode)
         const commAmtRaw = parseFloat((fic.commission || {}).amount || 0);
+        const commRateRaw = parseFloat((fic.commission || {}).rate || (fic.commission || {}).exchangeRate || 0);
         const commAmt = commAmtRaw > 0 ? commAmtRaw.toFixed(2) : "";
         const commCurr = commAmtRaw > 0 ? curr : "";
+        // FIX 46: send commission rate (%) only when it is explicitly stored and non-zero
+        // Format matches Logisys: 5 decimal places (e.g. "2.00000")
+        const commRate = commRateRaw > 0 ? commRateRaw.toFixed(5) : "";
 
         // Discount
         const discAmtRaw = parseFloat((fic.discount || {}).amount || 0);
@@ -510,7 +527,7 @@ export function generateSBFlatFile(job) {
             "",                            // [18] Insurance Rate
             iCurr,                         // [19] Insurance Currency
             iAmt,                          // [20] Insurance Amount
-            "",                            // [21] Commission Rate (blank — amount-only mode)
+            commRate,                      // [21] Commission Rate (%) — FIX 46: 5 decimals when stored
             commCurr,                      // [22] Commission Currency — FIX 41
             commAmt,                       // [23] Commission Amount   — FIX 41
             "",                            // [24] Discount Rate
@@ -666,10 +683,16 @@ export function generateSBFlatFile(job) {
                 if (!d.dbkitem && !d.dbkSrNo) return;
                 let dbkId = clean(d.dbkSrNo || d.dbkitem || "");
                 if (dbkId && !dbkId.endsWith("B")) dbkId += "B";
+                // FIX 48: DBK quantity MUST be the drawback schedule quantity (in schedule unit e.g. KGS)
+                // NOT the invoice quantity (which may be in PCS, MTS, etc.)
+                // Logisys: 10464 PCS item → DBK qty = 3997.248 KGS (the drawback-schedule-unit weight)
+                // d.quantity holds the schedule-unit qty if stored separately; do NOT fall back to p.quantity
+                // If d.quantity is missing, send blank rather than wrongly sending the invoice qty
+                const dbkQty = d.quantity ? parseFloat(d.quantity).toFixed(3) : "";
                 dbkRows.push(row(PD,
                     String(ii + 1), String(pi + 1),
                     dbkId,
-                    parseFloat(d.quantity || p.quantity || 0).toFixed(3),
+                    dbkQty,  // FIX 48
                     "", "", "",
                 ));
             });
@@ -742,10 +765,18 @@ export function generateSBFlatFile(job) {
             out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++), "ORC", "EPT", pta, "", "", "");
             out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++), "DTY", "GCESS", "", "", cess, "INR");
 
-            const rodtepClaim = (p.rodtepInfo || {}).claim === "Yes" ? "RODTEPY" : "RODTEPN";
-            const isClaimed = rodtepClaim === "RODTEPY";
-            out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++), "DTY", "RDT",
-                rodtepClaim, rc, isClaimed ? socQty : "", isClaimed ? socUnit : "");
+            // FIX 47: DTY/RDT (RoDTEP declaration) is ONLY emitted for free SBs (eximCode starts "00")
+            // For DBK (60), RoSCTL (60), Advance Licence (03), EPCG (50) — Logisys does NOT send this row
+            // Emitting RODTEPN for non-free schemes causes confusion and is not expected by Customs
+            const sc_sw = (p.eximCode || "").split(" ")[0];
+            const isFreeShipping = sc_sw === "00" || sc_sw === "" || sc_sw === "19";
+            if (isFreeShipping || (p.rodtepInfo || {}).claim === "Yes") {
+                const rodtepClaim = (p.rodtepInfo || {}).claim === "Yes" ? "RODTEPY" : "RODTEPN";
+                const isClaimed = rodtepClaim === "RODTEPY";
+                out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++), "DTY", "RDT",
+                    rodtepClaim, isClaimed ? "Claimed" : "Not Claimed",
+                    isClaimed ? socQty : "", isClaimed ? socUnit : "");
+            }
 
             if (p.eximCode && p.eximCode.startsWith("00")) {
                 out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++),
@@ -760,7 +791,9 @@ export function generateSBFlatFile(job) {
     let statementAdded = false;
     invs.forEach((inv, ii) => {
         (inv.products || []).forEach((p, pi) => {
-            if ((p.rodtepInfo || {}).claim === "Yes") {
+            const sc_sw = (p.eximCode || "").split(" ")[0];
+            const isFreeShipping = sc_sw === "00" || sc_sw === "" || sc_sw === "19";
+            if (isFreeShipping || (p.rodtepInfo || {}).claim === "Yes") {
                 if (!statementAdded) { out += `<TABLE>STATEMENT${RS}`; statementAdded = true; }
                 out += row(PD, String(ii + 1), String(pi + 1), "1", "DEC", "RD001", "");
             }
@@ -783,30 +816,31 @@ export function generateSBFlatFile(job) {
             }
             const invSrNo = String(invIdx + 1);
 
+            // FIX 45: Issuing party address — ICES spec Addr1=C(70), Addr2=C(70)
+            // Old comma-split-within-36 caused Addr2 to exceed 70 chars on long addresses
+            // (e.g. "PLOT NO. 118/1,2,3,4 AND...CHHATRAL" → comma at pos 18 → Addr2=94 chars)
+            // → ICEGATE error: "documentIssuingPartyNameAddress2 max length 70"
+            // Fix: straight 70-char split; if explicit addressLine2 exists, use it directly.
             const ip = d.issuingParty || {};
             const ipRawAddr = clean(ip.addressLine1 || "");
             let ipAddrA, ipAddrB;
             if (ip.addressLine2 && ip.addressLine2.trim()) {
-                ipAddrA = trunc(ipRawAddr, 35);
-                ipAddrB = trunc(clean(ip.addressLine2), 35);
+                ipAddrA = trunc(ipRawAddr, 70);
+                ipAddrB = trunc(clean(ip.addressLine2), 70);
             } else {
-                const lastComma = ipRawAddr.slice(0, 36).lastIndexOf(",");
-                if (lastComma > 0) {
-                    ipAddrA = ipRawAddr.slice(0, lastComma + 1);
-                    ipAddrB = ipRawAddr.slice(lastComma + 1).trim();
-                } else {
-                    ipAddrA = trunc(ipRawAddr, 35);
-                    ipAddrB = trunc(ipRawAddr.slice(35), 35);
-                }
+                // Split at 70 chars — matches ICES spec field width exactly
+                ipAddrA = trunc(ipRawAddr, 70);
+                ipAddrB = trunc(ipRawAddr.slice(70).trim(), 70);
             }
 
             const ipCity = toTitleCase(clean(ip.city || ""));
             const ipPin = clean(ip.pinCode || "");
 
+            // Beneficiary address: ICES spec Addr1=C(70), Addr2=C(70)
             const bp = d.beneficiaryParty || {};
             const bpFull = clean(bp.addressLine1 || "");
-            const bpAddr21 = trunc(bpFull, 35);
-            const bpAddr22 = trunc(bpFull.slice(35).trim(), 35);
+            const bpAddr21 = trunc(bpFull, 70);
+            const bpAddr22 = trunc(bpFull.slice(70).trim(), 70);
 
             const invoiceDate = fmtDate(invs[invIdx]?.invoiceDate || d.dateOfIssue || "");
             const docRefNo = clean(d.documentReferenceNo || invs[invIdx]?.invoiceNumber || "");
