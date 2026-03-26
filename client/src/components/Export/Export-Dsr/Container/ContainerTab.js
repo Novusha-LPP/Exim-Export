@@ -7,7 +7,26 @@ import * as XLSX from "xlsx";
 import FileUpload from "../../../gallery/FileUpload";
 import ImagePreview from "../../../gallery/ImagePreview";
 
-const containerTypes = ["20", "40"];
+const containerTypes = [
+  "20 Standard Dry",
+  "20 Flat Rack",
+  "20 Collapsible Flat Rack",
+  "20 Reefer",
+  "20 Tank",
+  "20 Open Top",
+  "20 Hard Top",
+  "20 Platform",
+  "40 Standard Dry",
+  "40 Flat Rack",
+  "40 Collapsible Flat Rack",
+  "40 Reefer",
+  "40 Tank",
+  "40 Open Top",
+  "40 Hard Top",
+  "40 High Cube",
+  "40 Reefer High Cube",
+  "40 Platform"
+];
 
 const isValidContainer = (val) => {
   if (!val) return true;

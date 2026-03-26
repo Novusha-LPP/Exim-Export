@@ -260,7 +260,6 @@ function validateJobData(job) {
     if (!job.exporter) errors.push("Exporter Name is missing.");
     if (!job.ieCode) errors.push("IEC Code is missing.");
     if (!job.adCode && !job.ad_code) errors.push("AD Code is missing.");
-    if (!(job.state_of_origin || job.exporter_state || job.state)) errors.push("State of Origin is missing.");
     if (!job.port_of_discharge) errors.push("Port of Discharge is missing.");
     if (!job.gross_weight_kg) errors.push("Gross Weight is missing.");
     if (!job.net_weight_kg) errors.push("Net Weight is missing.");
@@ -340,7 +339,9 @@ export function generateSBFlatFile(job) {
     };
     const containers = job.containers || [];
 
-
+    const isNFEI = invs.some(inv =>
+        (inv.products || []).some(p => (p.eximCode || "").split(" ")[0] === "99")
+    );
     const isLCL = (job.consignmentType || "").toUpperCase() === "LCL";
     const isPortStuffing = ["DOCK", "PORT", "CFS"].includes((job.goods_stuffed_at || "").toUpperCase());
     const emitContainer = job.transportMode === "SEA" && containers.length > 0 && !isPortStuffing;
@@ -355,7 +356,7 @@ export function generateSBFlatFile(job) {
 
     const pod = prt(job.destination_port || job.port_of_discharge || "");
     const iec = clean(job.ieCode || "");
-    const gid = clean(job.gstin || job.exporter_gstin || iec);
+    const gid = clean(job.gstin || iec);
     const mawb = clean(job.mbl_no || job.masterblno || "");
     const hawb = clean(job.hbl_no || job.houseblno || "");
 
@@ -373,7 +374,7 @@ export function generateSBFlatFile(job) {
         nc === "C" ? "" :
             (job.loose_pkgs && Number(job.loose_pkgs) > 0 ? String(job.loose_pkgs) : "");
 
-    const stOr = stCd(job.state_of_origin || job.exporter_state || job.state || "GUJARAT");
+    const stOr = stCd(job.originState);
 
     const rawAddr = clean(job.exporter_address || "");
     const pinMatch = rawAddr.match(/,?\s*(\d{6})\s*$/);
@@ -408,7 +409,7 @@ export function generateSBFlatFile(job) {
         expTypCode(job.exporter_type),                                      // [15]
         "P",                                                                // [16] Exporter Class
         stOr,                                                               // [17]
-        clean(job.adCode || job.ad_code || ""),                            // [18]
+        clean(isNFEI ? "" : (job.adCode || job.ad_code || "")),             // [18] AD Code — blank for NFEI
         "",                                                                 // [19] EPZ
         cL[0],                                                              // [20] Consignee Name
         cL[1],                                                              // [21]
@@ -416,7 +417,7 @@ export function generateSBFlatFile(job) {
         cL[3],                                                              // [23] FIX 32
         cL[4],                                                              // [24]
         cntry(con0.consignee_country || ""),                               // [25]
-        "",                                                                 // [26] NFEI
+        isNFEI ? "01" : "",                                               // [26] NFEI
         "",                                                                 // [27] RBI Waiver No
         "",                                                                 // [28] RBI Waiver Date
         loc,                                                                // [29] Port of Loading — FIX 15
@@ -434,6 +435,7 @@ export function generateSBFlatFile(job) {
         loosePktsFinal,   // ONLY ONE FIELD
 
         String(emitContainer ? containers.length : ""),                   // [43] No. of Containers — FIX 34
+        "",
         mawb,                                                               // [44]
         hawb,                                                               // [45]
         "",                                                                 // [46] Amend Type
@@ -473,8 +475,8 @@ export function generateSBFlatFile(job) {
         // Commission — FIX 41: read fic.commission, emit rate+currency+amount in [21-23]
         // Logisys sends commission RATE (e.g. 2.00000%) in [21] when stored in DB
         // If only amount is stored (no rate), [21] stays blank (amount-only mode)
-        const commAmtRaw = parseFloat((fic.commission || {}).amount || 0);
-        const commRateRaw = parseFloat((fic.commission || {}).rate || (fic.commission || {}).exchangeRate || 0);
+        const commAmtRaw = parseFloat((fic.commission || {}).amount);
+        const commRateRaw = parseFloat((fic.commission || {}).rate);
         const commAmt = commAmtRaw > 0 ? commAmtRaw.toFixed(2) : "";
         const commCurr = commAmtRaw > 0 ? curr : "";
         // FIX 46: send commission rate (%) only when it is explicitly stored and non-zero
@@ -713,20 +715,84 @@ export function generateSBFlatFile(job) {
 
 
 
+
     if (emitContainer) {
         out += `<TABLE>CONTAINER${RS}`;
         containers.forEach(c => {
+            // ── FIX 49: ISO 6346 container type code — complete mapping ──────────────
+            // Covers all types visible in the Logisys dropdown:
+            // 20/40 Standard Dry, Flat Rack, Collapsible Flat Rack, Reefer, Tank,
+            // Open Top, Hard Top, High Cube, Reefer High Cube, Platform
+            //
+            // IMPORTANT: In ICEGATE/ISO 6346, size code "45" does NOT mean 45-foot!
+            // "45" = 40-foot HIGH CUBE (9ft 6in tall). Real 45ft uses "L2".
+            // Logisys confirmed: 40ft High Cube → "45G0" (not "42G1")
+            //
+            // Full size code table:
+            //   22 = 20ft standard height  |  42 = 40ft standard height
+            //   25 = 20ft high cube        |  45 = 40ft high cube
+            //   L2 = 45ft standard height  |  L5 = 45ft high cube
+            //
+            // tCode table (ICEGATE simplified):
+            //   G0 = Dry/General (standard and high cube dry)
+            //   R1 = Reefer (refrigerated)
+            //   U1 = Open Top
+            //   P1 = Flat Rack (non-collapsible)
+            //   P3 = Collapsible Flat Rack
+            //   P0 = Platform
+            //   T0 = Tank
+            //   H0 = Hard Top / Ventilated
+
             const rawSize = clean(c.containerSize || "20").toUpperCase();
             const rawType = clean(c.type || c.containerType || "").toUpperCase();
+            // Combined string for detection — check both fields
+            const combined = rawSize + " " + rawType;
 
             let isoType = rawType;
-            if (!/^\d{2}[A-Z]\d$/.test(isoType)) {
-                const sCode = rawSize.includes("40") || rawType.includes("40") ? "42" :
-                    rawSize.includes("45") || rawType.includes("45") ? "45" : "22";
-                const tCode = rawType.includes("HC") || rawType.includes("HQ") || rawSize.includes("HC") ? "G1" :
-                    rawType.includes("RF") || rawSize.includes("RF") ? "R1" :
-                        rawType.includes("OT") || rawSize.includes("OT") ? "U1" :
-                            rawType.includes("FR") || rawSize.includes("FR") ? "P1" : "G0";
+
+            // Only compute if not already a valid 4-char ISO code
+            if (!/^\d{2}[A-Z]\d$/.test(isoType) && !/^[A-Z]\d[A-Z]\d$/.test(isoType)) {
+
+                // ── Detect flags ──────────────────────────────────────────────────
+                const isHC = combined.includes("HC") || combined.includes("HQ")
+                    || combined.includes("HIGH CUBE") || combined.includes("HIGHCUBE");
+                const isRF = combined.includes("RF") || combined.includes("REEFER")
+                    || combined.includes("REFRIGERAT");
+                const isOT = combined.includes("OT") || combined.includes("OPEN TOP")
+                    || combined.includes("OPEN-TOP");
+                const isFR = (combined.includes("FR") || combined.includes("FLAT RACK")
+                    || combined.includes("FLAT-RACK")) && !combined.includes("COLL");
+                const isCFR = combined.includes("COLLAPSIBLE") || combined.includes("CFR");
+                const isTK = combined.includes("TK") || combined.includes("TANK");
+                const isHT = combined.includes("HT") || combined.includes("HARD TOP")
+                    || combined.includes("VENTILAT");
+                const isPL = combined.includes("PL") || combined.includes("PLATFORM");
+                const is45ft = combined.includes("45FT") || combined.includes("45 FT")
+                    || rawSize === "45FT" || rawSize === "L2" || rawSize === "L5";
+                const is40 = combined.includes("40") && !is45ft;
+                const is20 = !is40 && !is45ft;
+
+                // ── Size code ─────────────────────────────────────────────────────
+                let sCode;
+                if (is45ft) {
+                    sCode = isHC ? "L5" : "L2";          // actual 45-foot container
+                } else if (is40) {
+                    sCode = isHC ? "45" : "42";           // 40ft HC=45, 40ft standard=42
+                } else {
+                    sCode = isHC ? "25" : "22";           // 20ft HC=25, 20ft standard=22
+                }
+
+                // ── Type code ─────────────────────────────────────────────────────
+                let tCode;
+                if (isRF) tCode = "R1";             // Reefer (any size)
+                else if (isOT) tCode = "U1";             // Open Top
+                else if (isCFR) tCode = "P3";             // Collapsible Flat Rack
+                else if (isFR) tCode = "P1";             // Flat Rack
+                else if (isPL) tCode = "P0";             // Platform
+                else if (isTK) tCode = "T0";             // Tank
+                else if (isHT) tCode = "H0";             // Hard Top / Ventilated
+                else tCode = "G0";             // Standard Dry or High Cube Dry
+
                 isoType = `${sCode}${tCode}`;
             }
 
@@ -755,7 +821,7 @@ export function generateSBFlatFile(job) {
             const rc = (p.rodtepInfo || {}).claim === "Yes" ? "Claimed" : "Not Claimed";
             const pta = clean((p.ptaFtaInfo || "NCPTI").split(" ")[0]);
             const cess = parseFloat(p.compensationCessAmountINR || 0).toFixed(6);
-            const pState = stCd(clean(p.originState || job.state_of_origin || job.exporter_state || "GUJARAT"));
+            const pState = stCd(clean(p.originState));
             const pDist = clean(p.originDistrict || "").split(/\s*-\s*/)[0];
             let rowNo = 1;
 
@@ -769,7 +835,7 @@ export function generateSBFlatFile(job) {
             // For DBK (60), RoSCTL (60), Advance Licence (03), EPCG (50) — Logisys does NOT send this row
             // Emitting RODTEPN for non-free schemes causes confusion and is not expected by Customs
             const sc_sw = (p.eximCode || "").split(" ")[0];
-            const isFreeShipping = sc_sw === "00" || sc_sw === "" || sc_sw === "19";
+            const isFreeShipping = sc_sw === "00" || sc_sw === "" || sc_sw === "19" || sc_sw === "99";
             if (isFreeShipping || (p.rodtepInfo || {}).claim === "Yes") {
                 const rodtepClaim = (p.rodtepInfo || {}).claim === "Yes" ? "RODTEPY" : "RODTEPN";
                 const isClaimed = rodtepClaim === "RODTEPY";
@@ -791,14 +857,14 @@ export function generateSBFlatFile(job) {
     let statementAdded = false;
     invs.forEach((inv, ii) => {
         (inv.products || []).forEach((p, pi) => {
-            const sc_sw = (p.eximCode || "").split(" ")[0];
-            const isFreeShipping = sc_sw === "00" || sc_sw === "" || sc_sw === "19";
-            if (isFreeShipping || (p.rodtepInfo || {}).claim === "Yes") {
+            const sc = (p.eximCode || "").split(" ")[0];
+            if ((p.rodtepInfo || {}).claim === "Yes" || sc === "60" || sc === "03") {
                 if (!statementAdded) { out += `<TABLE>STATEMENT${RS}`; statementAdded = true; }
                 out += row(PD, String(ii + 1), String(pi + 1), "1", "DEC", "RD001", "");
             }
         });
     });
+
 
     // ══════════════════════════════════════════════════════════════════════════
     // <TABLE>Supportingdocs
@@ -851,7 +917,7 @@ export function generateSBFlatFile(job) {
                 docTypeCode, "",
                 ipAddrA, ipAddrB, ipCity, ipPin,
                 docRefNo,
-                clean(d.placeOfIssue || job.state_of_origin || job.exporter_state || job.state || ""),
+                clean(d.placeOfIssue || job.originState || ""),
                 invoiceDate,
                 "", "",
                 bpAddr21, bpAddr22,
