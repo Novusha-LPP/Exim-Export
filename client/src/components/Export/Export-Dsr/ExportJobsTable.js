@@ -893,6 +893,11 @@ const ExportJobsTable = () => {
         endpoint = `${import.meta.env.VITE_API_STRING}/operation-jobs`;
       }
 
+      // If there's a search query, use the global search API to find jobs regardless of status
+      if (searchQuery.trim()) {
+        endpoint = `${import.meta.env.VITE_API_STRING}/global-search-jobs`;
+      }
+
       const response = await axios.get(
         endpoint,
         {

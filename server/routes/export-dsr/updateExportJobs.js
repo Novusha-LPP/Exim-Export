@@ -264,6 +264,217 @@ router.get("/custom-house-list", async (req, res) => {
   }
 });
 
+// GET /api/global-search-jobs - Search for jobs across all statuses
+router.get("/global-search-jobs", async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      branch = "",
+      year = "",
+    } = req.query;
+
+    const filter = {};
+    if (!filter.$and) filter.$and = [];
+
+    // 1. Fetch user restrictions
+    const requesterUsername = req.headers["username"] || req.headers["x-username"];
+    if (requesterUsername) {
+      const requester = await UserModel.findOne({ username: requesterUsername });
+      if (requester && requester.role !== "Admin") {
+        const branchRestrictions = requester.selected_branches || [];
+        if (branchRestrictions.length > 0) {
+          filter.$and.push({ branch_code: { $in: branchRestrictions } });
+        }
+
+        const portRestrictions = requester.selected_ports || [];
+        const icdRestrictions = requester.selected_icd_codes || [];
+        const combinedRestrictions = [...new Set([...portRestrictions, ...icdRestrictions])];
+
+        if (combinedRestrictions.length > 0) {
+          const finalRestrictions = [];
+          combinedRestrictions.forEach(res => {
+            finalRestrictions.push(res);
+            if (res.includes(" - ")) {
+              finalRestrictions.push(res.split(" - ")[0].trim());
+            }
+          });
+
+          const combinedRegexStr = finalRestrictions.map(r =>
+            `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+          ).join('|');
+
+          filter.$and.push({
+            $or: [
+              { custom_house: { $regex: combinedRegexStr, $options: "i" } },
+              { port_of_loading: { $regex: combinedRegexStr, $options: "i" } }
+            ]
+          });
+        }
+      }
+    }
+
+    // 2. Search filter
+    if (search) {
+      filter.$and.push({
+        $or: [
+          { job_no: { $regex: search, $options: "i" } },
+          { exporter: { $regex: search, $options: "i" } },
+          { ieCode: { $regex: search, $options: "i" } },
+          { "consignees.consignee_name": { $regex: search, $options: "i" } },
+          { sb_no: { $regex: search, $options: "i" } },
+          { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
+          { "containers.containerNo": { $regex: search, $options: "i" } }
+        ],
+      });
+    }
+
+    if (branch) {
+      filter.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
+    }
+
+    if (year && year !== "all") {
+      const parts = year.split("-");
+      if (parts.length === 2) {
+        const startYY = parseInt(parts[0]);
+        const endYY = parseInt(parts[1]);
+        const startDate = new Date(Date.UTC(2000 + startYY, 3, 1));
+        const endDate = new Date(Date.UTC(2000 + endYY, 2, 31, 23, 59, 59, 999));
+
+        filter.$and.push({
+          $expr: {
+            $let: {
+              vars: {
+                effDate: {
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $ne: ["$job_date", null] },
+                        { $ne: ["$job_date", ""] },
+                        { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
+                      ]
+                    },
+                    then: {
+                      $dateFromString: {
+                        dateString: "$job_date",
+                        format: "%d-%m-%Y",
+                        onError: "$createdAt"
+                      }
+                    },
+                    else: "$createdAt"
+                  }
+                }
+              },
+              in: {
+                $and: [
+                  { $gte: ["$$effDate", startDate] },
+                  { $lte: ["$$effDate", endDate] }
+                ]
+              }
+            }
+          }
+        });
+      }
+    }
+
+    if (filter.$and.length === 0) delete filter.$and;
+
+    const skip = (page - 1) * limit;
+
+    const [jobs, totalCount] = await Promise.all([
+      ExportJobModel.find(filter)
+        .select({
+          job_no: 1,
+          custom_house: 1,
+          job_date: 1,
+          consignmentType: 1,
+          job_owner: 1,
+          exporter: 1,
+          "consignees.consignee_name": 1,
+          "buyerThirdPartyInfo.buyer.name": 1,
+          ieCode: 1,
+          panNo: 1,
+          exporter_gstin: 1,
+          adCode: 1,
+          "invoices.invoiceNumber": 1,
+          "invoices.invoiceDate": 1,
+          "invoices.termsOfInvoice": 1,
+          "invoices.currency": 1,
+          "invoices.invoiceValue": 1,
+          "invoices.consigneeName": 1,
+          "invoices.invoice_no": 1,
+          "invoices.invoice_date": 1,
+          "invoices.invValue": 1,
+          sb_no: 1,
+          sb_date: 1,
+          destination_port: 1,
+          destination_country: 1,
+          port_of_discharge: 1,
+          discharge_country: 1,
+          "containers.containerNo": 1,
+          "containers.type": 1,
+          total_no_of_pkgs: 1,
+          package_unit: 1,
+          gross_weight_kg: 1,
+          net_weight_kg: 1,
+          shipping_line_airline: 1,
+          detailedStatus: 1,
+          status: 1,
+          statusDetails: 1,
+          "eSanchitDocuments.fileUrl": 1,
+          "eSanchitDocuments.documentType": 1,
+          "eSanchitDocuments.icegateFilename": 1,
+          isLocked: 1,
+          branch_code: 1,
+          transportMode: 1,
+          movement_type: 1,
+          port_of_loading: 1,
+          "operations.bookingDetails.bookingNo": 1,
+          "operations.bookingDetails.shippingLineName": 1,
+          "operations.statusDetails.containerPlacementDate": 1,
+          "operations.statusDetails.handoverForwardingNoteDate": 1,
+          "operations.statusDetails.railOutReachedDate": 1,
+          "operations.statusDetails.leoDate": 1,
+          "operations.statusDetails.leoUpload": 1,
+          "operations.statusDetails.stuffingSheetUpload": 1,
+          "operations.statusDetails.stuffingPhotoUpload": 1,
+          "operations.statusDetails.eGatePassUpload": 1,
+          "operations.statusDetails.handoverImageUpload": 1,
+          "operations.statusDetails.billingDocsSentUpload": 1,
+          "operations.statusDetails.billingDocsSentDt": 1,
+          "operations.statusDetails.status": 1,
+          "operations.transporterDetails.images": 1,
+          "operations.bookingDetails.images": 1,
+          "containers.images": 1,
+          "containers.weighmentImages": 1,
+          lockedBy: 1,
+          lockedAt: 1
+        })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      ExportJobModel.countDocuments(filter),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        jobs,
+        total: totalCount,
+      },
+    });
+  } catch (error) {
+    console.error("Error in global search:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error searching jobs",
+      error: error.message,
+    });
+  }
+});
+
 // GET /exports - List all exports with pagination & filtering
 // Updated exports API with status filtering
 // If jobTracking is enabled and all milestones are completed, status is treated as "completed"

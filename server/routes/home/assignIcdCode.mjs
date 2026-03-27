@@ -57,6 +57,11 @@ router.post("/api/admin/assign-icd-code", async (req, res) => {
       // Determine which ICDs are allowed for this user's branches
       const userBranches = targetUser.selected_branches || [];
       const allowedCodes = [];
+      const allExportCodes = [];
+
+      Object.values(CUSTOM_HOUSE_MAPPING).forEach(codes => {
+        allExportCodes.push(...codes);
+      });
 
       if (userBranches.length > 0) {
         userBranches.forEach(b => {
@@ -66,10 +71,11 @@ router.post("/api/admin/assign-icd-code", async (req, res) => {
         });
       } else {
         // Fallback: if no branches assigned, allow any code from the mapping
-        Object.values(CUSTOM_HOUSE_MAPPING).forEach(codes => allowedCodes.push(...codes));
+        allowedCodes.push(...allExportCodes);
       }
 
-      const invalidIcd = icdCodesArray.filter(code => !allowedCodes.includes(code));
+      // Codes not in 'allExportCodes' are assumed to be from other projects (like Import) and are preserved.
+      const invalidIcd = icdCodesArray.filter(code => allExportCodes.includes(code) && !allowedCodes.includes(code));
       if (invalidIcd.length > 0) {
         return res.status(400).json({
           message: `Invalid ICD codes for assigned branches: ${invalidIcd.join(', ')}. Please ensure appropriate branches are selected.`

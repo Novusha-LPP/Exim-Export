@@ -354,7 +354,14 @@ export function generateSBFlatFile(job) {
 
     const cL = [conName35, conAddrChunks[0], conAddrChunks[1], conAddrChunks[2], conAddrChunks[3]];
 
-    const pod = prt(job.destination_port || job.port_of_discharge || "");
+    let podest = prt(job.destination_port || "");
+    let podisc = prt(job.port_of_discharge || "");
+
+    if (job.transportMode === "AIR") {
+        if (podest.length > 2) podest = podest.slice(2);
+        if (podisc.length > 2) podisc = podisc.slice(2);
+    }
+
     const iec = clean(job.ieCode || "");
     const gid = clean(job.gstin || iec);
     const mawb = clean(job.mbl_no || job.masterblno || "");
@@ -374,7 +381,10 @@ export function generateSBFlatFile(job) {
         nc === "C" ? "" :
             (job.loose_pkgs && Number(job.loose_pkgs) > 0 ? String(job.loose_pkgs) : "");
 
-    const stOr = stCd(job.originState);
+    // SB [17] — exporter's state where goods originate
+    // job.state = "RAJASTHAN" (correct — where factory is)
+    // job.state_of_origin = "GUJARAT" (this is the CHA/branch state, NOT product origin)
+    const stOr = stCd(job.exporter_state || job.state || "GUJARAT");
 
     const rawAddr = clean(job.exporter_address || "");
     const pinMatch = rawAddr.match(/,?\s*(\d{6})\s*$/);
@@ -382,10 +392,18 @@ export function generateSBFlatFile(job) {
     const addrNoPIN = pinMatch ? rawAddr.replace(/,?\s*\d{6}\s*$/, "").trim() : rawAddr;
     const expAddr1 = trunc(addrNoPIN, 35);
     const expAddr2 = trunc(addrNoPIN.slice(35).trim(), 35);
-    const chaLicNo = clean(
+    let chaLicNo = clean(
         job.cha_code ||
         ((job.cha || "").toUpperCase().includes("SURAJ") ? "OFS1766LCH005" : job.cha || "")
     );
+
+    // Port-specific CHA License Override
+    if (["INSBI6", "INJKA6", "INAMD4", "INSAU6", "INHZA1", "INVRM6"].includes(loc)) {
+        chaLicNo = "OFS1766LCH005";
+    } else if (loc === "INMUN1") {
+        chaLicNo = "OFS1766LCH006";
+    }
+
     const sbModCHA = "AB" + chaLicNo;
 
 
@@ -421,10 +439,10 @@ export function generateSBFlatFile(job) {
         "",                                                                 // [27] RBI Waiver No
         "",                                                                 // [28] RBI Waiver Date
         loc,                                                                // [29] Port of Loading — FIX 15
-        pod,                                                                // [30] Port of Dest
+        podest,                                                                // [30] Port of Dest
         cntry(job.destination_country || ""),                              // [31]
-        cntry(job.discharge_country || job.destination_country || ""),    // [32]
-        pod,                                                                // [33] Port of Discharge
+        cntry(job.discharge_country || ""),    // [32]
+        podisc,                                                                // [33] Port of Discharge
         "",                                                                 // [34] Seal Type
         nc,                                                                 // [35] Nature of Cargo
         parseFloat(job.gross_weight_kg || 0).toFixed(3),                  // [36]
@@ -821,8 +839,7 @@ export function generateSBFlatFile(job) {
             const rc = (p.rodtepInfo || {}).claim === "Yes" ? "Claimed" : "Not Claimed";
             const pta = clean((p.ptaFtaInfo || "NCPTI").split(" ")[0]);
             const cess = parseFloat(p.compensationCessAmountINR || 0).toFixed(6);
-            const pState = stCd(clean(p.originState));
-            const pDist = clean(p.originDistrict || "").split(/\s*-\s*/)[0];
+            const pState = stCd(clean(p.originState || job.exporter_state || job.state || "GUJARAT")); const pDist = clean(p.originDistrict || "").split(/\s*-\s*/)[0];
             let rowNo = 1;
 
             out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++), "ORC", "STO", pState, "", "", "");
@@ -858,9 +875,12 @@ export function generateSBFlatFile(job) {
     invs.forEach((inv, ii) => {
         (inv.products || []).forEach((p, pi) => {
             const sc = (p.eximCode || "").split(" ")[0];
-            if ((p.rodtepInfo || {}).claim === "Yes" || sc === "60" || sc === "03") {
+            if ((p.rodtepInfo || {}).claim === "Yes" || sc === "60" || sc === "61" || sc === "03") {
                 if (!statementAdded) { out += `<TABLE>STATEMENT${RS}`; statementAdded = true; }
-                out += row(PD, String(ii + 1), String(pi + 1), "1", "DEC", "RD001", "");
+                // 60 = DRAWBACK AND ROSCTL, 61 = EPCG, DRAWBACK AND ROSCTL → RS001
+                // RoDTEP claims and scheme 03 (Advance Licence) → RD001
+                const declCode = (sc === "60" || sc === "61") ? "RS001" : "RD001";
+                out += row(PD, String(ii + 1), String(pi + 1), "1", "DEC", declCode, "");
             }
         });
     });

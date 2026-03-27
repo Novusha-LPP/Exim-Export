@@ -1956,11 +1956,18 @@ const ExportChecklistGenerator = ({
           const declRows = [];
           exportJob.invoices?.forEach((invoice, invIndex) => {
             invoice.products?.forEach((product, prodIndex) => {
+              const sc = (product.eximCode || "").split(" ")[0];
               const amount = parseFloat(product.rodtepInfo?.amountINR) || 0;
-              if (product.rodtepInfo?.claim === "Yes" && amount > 0) {
+              const isRodtep = product.rodtepInfo?.claim === "Yes" && amount > 0;
+              const isRosctl = sc === "60" || sc === "61";
+              const isAdvLic = sc === "03";
+              if (isRodtep || isRosctl || isAdvLic) {
+                // 60 = DRAWBACK AND ROSCTL, 61 = EPCG, DRAWBACK AND ROSCTL → RS001
+                // RoDTEP claims and scheme 03 (Advance Licence) → RD001
+                const declCode = isRosctl ? "RS001" : "RD001";
                 declRows.push({
                   declType: "DEC",
-                  declCode: "RD001", // Standard RODTEP declaration
+                  declCode,
                   invItemSrNo: `${invIndex + 1}/${product.serialNumber || (prodIndex + 1)}`,
                 });
               }
