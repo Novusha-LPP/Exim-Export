@@ -214,7 +214,7 @@ const TrendChart = ({ trendData }) => {
 
 const MonthlyContainers = () => {
   const theme = useTheme();
-  const [year, setYear] = useState("25-26");
+  const [year, setYear] = useState("26-27");
   const currentMonth = String(new Date().getMonth() + 1);
   const [month, setMonth] = useState(currentMonth);
   const [data, setData] = useState([]);

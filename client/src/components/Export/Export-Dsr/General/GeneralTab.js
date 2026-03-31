@@ -365,13 +365,15 @@ const GeneralTab = ({ formik, directories }) => {
       exporter_address: toUpper(
         `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""}`
       ),
+      exporter_branch_name: toUpper(branch.branchName || ""),
     };
 
     const shouldUpdate =
       getVal("ieCode") !== updates.ieCode ||
       getVal("gstin") !== updates.gstin ||
       getVal("exporter_type") !== updates.exporter_type ||
-      getVal("exporter_address") !== updates.exporter_address;
+      getVal("exporter_address") !== updates.exporter_address ||
+      getVal("exporter_branch_name") !== updates.exporter_branch_name;
 
     if (shouldUpdate) {
       Object.entries(updates).forEach(([key, val]) =>
@@ -479,6 +481,13 @@ const GeneralTab = ({ formik, directories }) => {
             const val = e.target.value;
             handleFieldChange("exporter", val);
             handleFieldChange("branch_index", 0);
+            
+            // Auto fill branch_sno when exporter changes
+            const exp = exporters.find(ex => toUpper(ex.organization) === toUpper(val));
+            if (exp && exp.branchInfo && exp.branchInfo[0]) {
+               handleFieldChange("branch_sno", toUpper(exp.branchInfo[0].branchCode || ""));
+            }
+            
             handleFieldChange("bank_index", "");
             onExporterInput({ target: { value: val } });
           }}
@@ -506,9 +515,14 @@ const GeneralTab = ({ formik, directories }) => {
         <div style={{ fontSize: 11, color: "#666" }}>Select Branch</div>
         <select
           value={currentBranchIndex}
-          onChange={(e) =>
-            handleFieldChange("branch_index", parseInt(e.target.value))
-          }
+          onChange={(e) => {
+            const newIndex = parseInt(e.target.value);
+            handleFieldChange("branch_index", newIndex);
+            // Sync branch_sno
+            if (branches[newIndex]) {
+              handleFieldChange("branch_sno", toUpper(branches[newIndex].branchCode || ""));
+            }
+          }}
           style={{
             border: "1px solid #cad3db",
             borderRadius: 4,
@@ -666,7 +680,37 @@ const GeneralTab = ({ formik, directories }) => {
           </div>
           {field("Address", "exporter_address")}
           <div style={{ display: "flex", gap: 10 }}>
-            {field("Branch S/No", "branch_sno")}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: "#666", marginBottom: 0 }}>Branch S/No</div>
+              <input
+                name="branch_sno"
+                value={getVal("branch_sno")}
+                onChange={(e) => {
+                  const val = toUpperVal(e);
+                  handleFieldChange("branch_sno", val);
+                  
+                  // Auto sync dropdown index
+                  const expName = getVal("exporter");
+                  const expData = exporters.find(ex => toUpper(ex.organization) === expName);
+                  if (expData && expData.branchInfo) {
+                    const matchIdx = expData.branchInfo.findIndex(b => toUpper(b.branchCode) === val);
+                    if (matchIdx !== -1 && matchIdx !== formik.values.branch_index) {
+                      handleFieldChange("branch_index", matchIdx);
+                    }
+                  }
+                }}
+                style={{
+                  border: "1px solid #cad3db",
+                  borderRadius: 4,
+                  fontSize: 13,
+                  padding: "2px 7px",
+                  height: 28,
+                  width: "100%",
+                  marginBottom: 3,
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
             {field("State", "state")}
             {field("IE Code No", "ieCode")}
           </div>

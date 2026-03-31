@@ -71,7 +71,7 @@ const DetailedReport = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [year, setYear] = useState("25-26");
+  const [year, setYear] = useState("26-27");
   const [gradeFilter, setGradeFilter] = useState(""); // ✅ New Grade Filter
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [exportLoading, setExportLoading] = useState(false);

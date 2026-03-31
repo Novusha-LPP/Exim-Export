@@ -4,11 +4,11 @@ import logger from "../../logger.js";
 
 const router = express.Router();
 
-// GET /api/report/billing-pending?year=25-26
+// GET /api/report/billing-pending?year=26-27
 router.get("/api/report/billing-pending", async (req, res) => {
   try {
-    // Get year from query params, default to "25-26" if not provided
-    const year = req.query.year || "25-26";
+    // Get year from query params, default to "26-27" if not provided
+    const year = req.query.year || "26-27";
 
     // For export jobs, detailedStatus is an array of strings
     // We match jobs where detailedStatus array contains "Billing Pending"

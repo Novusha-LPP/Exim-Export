@@ -688,6 +688,7 @@ const exportJobSchema = new mongoose.Schema(
     sb_type: { type: String, trim: true },
     transportMode: { type: String, trim: true },
     exporter_type: { type: String, trim: true },
+    exporter_branch_name: { type: String, trim: true },
 
     // Exporter Additional Fields (Missing)
     branch_sno: { type: String, trim: true },

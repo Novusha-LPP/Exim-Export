@@ -320,6 +320,12 @@ const InvoiceMainTab = ({ formik }) => {
 
     const updatedInvoice = { ...invoice, [field]: value };
 
+    if (field === "invoiceValue" || field === "packing_charges") {
+      const invVal = field === "invoiceValue" && value !== "" ? parseFloat(value) : (parseFloat(invoice.invoiceValue) || 0);
+      const packVal = field === "packing_charges" && value !== "" ? parseFloat(value) : (parseFloat(invoice.packing_charges) || 0);
+      updatedInvoice.productValue = Math.max(0, invVal - packVal);
+    }
+
     if (field === "termsOfInvoice") {
       const priceIncludesValue = mapTOIToPriceIncludes(value);
       updatedInvoice.priceIncludes = priceIncludesValue;

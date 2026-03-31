@@ -430,6 +430,14 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 leo_date,
             } = data;
 
+            // Format specific exporter names
+            let formattedExporter = exporter;
+            if (formattedExporter && typeof formattedExporter === 'string') {
+                if (formattedExporter.toUpperCase().trim() === 'AIA ENGINEERING LIMITED (EXPORT)') {
+                    formattedExporter = 'AIA ENGINEERING LIMITED';
+                }
+            }
+
             // CRITICAL: Skip rows that don't have a job number
             if (!job_no || String(job_no).trim() === "" || String(job_no).toLowerCase() === "undefined") {
                 skippedCount++;
@@ -570,7 +578,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 custom_house: getUpdateValue(custom_house, existingCustomHouse),
 
                 // Exporter
-                exporter: getUpdateValue(exporter, existingJob?.exporter),
+                exporter: getUpdateValue(formattedExporter, existingJob?.exporter),
                 exporter_address: getUpdateValue(exporter_address, existingJob?.exporter_address),
                 exporter_type: getUpdateValue(exporter_type, existingJob?.exporter_type),
                 exporter_gstin: getUpdateValue(exporter_gstin || gstin, existingJob?.exporter_gstin),
@@ -681,8 +689,8 @@ router.post("/api/jobs/add-job", async (req, res) => {
                 cha: getUpdateValue(cha, existingJob?.cha),
                 remarks: getUpdateValue(remarks, existingJob?.remarks),
                 job_owner: getUpdateValue(job_owner, existingJob?.job_owner),
-                exporter: getUpdateValue(exporter, existingJob?.exporter),
-                shipper: getUpdateValue(shipper || exporter, existingJob?.shipper),
+                exporter: getUpdateValue(formattedExporter, existingJob?.exporter),
+                shipper: getUpdateValue(shipper || formattedExporter, existingJob?.shipper),
                 notify: getUpdateValue(notify, existingJob?.notify),
                 exporter_ref_no: getUpdateValue(exporter_ref_no, existingJob?.exporter_ref_no),
                 nature_of_cargo: getUpdateValue(nature_of_cargo, existingJob?.nature_of_cargo),

@@ -81,6 +81,11 @@ function SelectIcdCode({ selectedUser }) {
       branch: branch.group
     })));
 
+  // Identify codes from the other project (Import) that the user already has
+  const allExportValues = CUSTOM_HOUSE_OPTIONS.flatMap(g => g.items.map(i => i.value));
+  const importProjectCodes = (userData?.selected_icd_codes || [])
+    .filter(code => !allExportValues.includes(code));
+
   useEffect(() => {
     // Reset form when selected user changes
     setSelectedBranches([]);
@@ -462,6 +467,21 @@ function SelectIcdCode({ selectedUser }) {
                   </MenuItem>
                 ))
               )}
+              {/* Import Project codes section */}
+              {importProjectCodes.length > 0 && [
+                <MenuItem key="__import_header" disabled sx={{ opacity: '1 !important', borderTop: '2px solid #e0e0e0', mt: 1, pt: 1 }}>
+                  <ListItemText
+                    primary="── Import Project ──"
+                    primaryTypographyProps={{ fontWeight: 700, fontSize: 12, color: '#1565c0', textAlign: 'center' }}
+                  />
+                </MenuItem>,
+                ...importProjectCodes.map((code) => (
+                  <MenuItem key={code} value={code} sx={{ bgcolor: '#f5f9ff' }}>
+                    <Checkbox checked={selectedIcdCodes.indexOf(code) > -1} />
+                    <ListItemText primary={code} secondary="Import Project" />
+                  </MenuItem>
+                ))
+              ]}
             </Select>
           </FormControl>
 

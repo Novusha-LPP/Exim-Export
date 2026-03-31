@@ -1447,7 +1447,7 @@ const ExportChecklistGenerator = ({
             .toFixed(2) || "0.00",
 
         invoicesDetail: (exportJob.invoices || []).map((inv) => {
-          const baseValue = inv.productValue || inv.invoiceValue || 0;
+          const baseValue = inv.invoiceValue || inv.productValue || 0;
           const freightInsurance = inv.freightInsuranceCharges;
 
           return {

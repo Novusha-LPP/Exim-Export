@@ -1849,13 +1849,41 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
         <div style={styles.col}>
           <div style={styles.card}>
             <div style={styles.sectionTitle}>CARGO & WEIGHT DETAILS</div>
-            <NatureOfCargoDropdownField
-              label="NATURE OF CARGO"
-              fieldName="nature_of_cargo"
-              formik={formik}
-              natureOptions={natureOfCargo}
-              placeholder="enter nature of cargo"
-            />
+            <div style={styles.split}>
+              <div style={styles.half}>
+                <NatureOfCargoDropdownField
+                  label="NATURE OF CARGO"
+                  fieldName="nature_of_cargo"
+                  formik={formik}
+                  natureOptions={natureOfCargo}
+                  placeholder="enter nature of cargo"
+                />
+              </div>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>SEAL TYPE</div>
+                  <select
+                    style={{ ...styles.input, cursor: "pointer" }}
+                    value={(
+                      typeof formik.values.stuffing_seal_type === "string"
+                        ? formik.values.stuffing_seal_type
+                        : ""
+                    ).toUpperCase()}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "stuffing_seal_type",
+                        e.target.value.toUpperCase(),
+                      )
+                    }
+                  >
+                    <option value="">SELECT SEAL TYPE</option>
+                    <option value="SELF SEAL">SELF SEAL</option>
+                    <option value="AGENT SEAL">AGENT SEAL</option>
+                    <option value="WAREHOUSE">WAREHOUSE</option>
+                  </select>
+                </div>
+              </div>
+            </div>
             <div style={styles.split}>
               <div style={styles.half}>
                 <div style={styles.label}>TOTAL NO. OF PKGS</div>

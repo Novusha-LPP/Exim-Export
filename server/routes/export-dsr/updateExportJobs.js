@@ -61,49 +61,9 @@ router.get("/dashboard-stats", async (req, res) => {
     if (consignmentType) matchStage.$and.push({ consignmentType: consignmentType });
     if (branch) matchStage.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
 
-    // Year filter - prioritizes job_date, falls back to createdAt
+    // Year filter - matches exact string "YY-YY" format (e.g. "25-26")
     if (year && year !== "all") {
-      const parts = year.split("-");
-      if (parts.length === 2) {
-        const startYY = parseInt(parts[0]);
-        const endYY = parseInt(parts[1]);
-        const startDate = new Date(Date.UTC(2000 + startYY, 3, 1)); // April 1st
-        const endDate = new Date(Date.UTC(2000 + endYY, 2, 31, 23, 59, 59, 999)); // March 31st
-
-        matchStage.$and.push({
-          $expr: {
-            $let: {
-              vars: {
-                effDate: {
-                  $cond: {
-                    if: {
-                      $and: [
-                        { $ne: ["$job_date", null] },
-                        { $ne: ["$job_date", ""] },
-                        { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
-                      ]
-                    },
-                    then: {
-                      $dateFromString: {
-                        dateString: "$job_date",
-                        format: "%d-%m-%Y",
-                        onError: "$createdAt"
-                      }
-                    },
-                    else: "$createdAt"
-                  }
-                }
-              },
-              in: {
-                $and: [
-                  { $gte: ["$$effDate", startDate] },
-                  { $lte: ["$$effDate", endDate] }
-                ]
-              }
-            }
-          }
-        });
-      }
+      matchStage.$and.push({ year: year });
     }
 
     if (matchStage.$and.length === 0) delete matchStage.$and;
@@ -335,47 +295,7 @@ router.get("/global-search-jobs", async (req, res) => {
     }
 
     if (year && year !== "all") {
-      const parts = year.split("-");
-      if (parts.length === 2) {
-        const startYY = parseInt(parts[0]);
-        const endYY = parseInt(parts[1]);
-        const startDate = new Date(Date.UTC(2000 + startYY, 3, 1));
-        const endDate = new Date(Date.UTC(2000 + endYY, 2, 31, 23, 59, 59, 999));
-
-        filter.$and.push({
-          $expr: {
-            $let: {
-              vars: {
-                effDate: {
-                  $cond: {
-                    if: {
-                      $and: [
-                        { $ne: ["$job_date", null] },
-                        { $ne: ["$job_date", ""] },
-                        { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
-                      ]
-                    },
-                    then: {
-                      $dateFromString: {
-                        dateString: "$job_date",
-                        format: "%d-%m-%Y",
-                        onError: "$createdAt"
-                      }
-                    },
-                    else: "$createdAt"
-                  }
-                }
-              },
-              in: {
-                $and: [
-                  { $gte: ["$$effDate", startDate] },
-                  { $lte: ["$$effDate", endDate] }
-                ]
-              }
-            }
-          }
-        });
-      }
+      filter.$and.push({ year: year });
     }
 
     if (filter.$and.length === 0) delete filter.$and;
@@ -722,49 +642,9 @@ router.get("/exports/:status?", async (req, res) => {
       });
     }
 
-    // Year filter - prioritizes job_date, falls back to createdAt (Apr-Mar cycle)
+    // Year filter - matches exact string "YY-YY" format (e.g. "25-26")
     if (year && year !== "all") {
-      const parts = year.split("-");
-      if (parts.length === 2) {
-        const startYY = parseInt(parts[0]);
-        const endYY = parseInt(parts[1]);
-        const startDate = new Date(Date.UTC(2000 + startYY, 3, 1)); // April 1st
-        const endDate = new Date(Date.UTC(2000 + endYY, 2, 31, 23, 59, 59, 999)); // March 31st
-
-        filter.$and.push({
-          $expr: {
-            $let: {
-              vars: {
-                effDate: {
-                  $cond: {
-                    if: {
-                      $and: [
-                        { $ne: ["$job_date", null] },
-                        { $ne: ["$job_date", ""] },
-                        { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
-                      ]
-                    },
-                    then: {
-                      $dateFromString: {
-                        dateString: "$job_date",
-                        format: "%d-%m-%Y",
-                        onError: "$createdAt"
-                      }
-                    },
-                    else: "$createdAt"
-                  }
-                }
-              },
-              in: {
-                $and: [
-                  { $gte: ["$$effDate", startDate] },
-                  { $lte: ["$$effDate", endDate] }
-                ]
-              }
-            }
-          }
-        });
-      }
+      filter.$and.push({ year: year });
     }
 
     if (month && !isNaN(month)) {
@@ -842,6 +722,7 @@ router.get("/exports/:status?", async (req, res) => {
       consignmentType: 1,
       job_owner: 1,
       exporter: 1,
+      exporter_branch_name: 1,
       "consignees.consignee_name": 1,
       "buyerThirdPartyInfo.buyer.name": 1,
       ieCode: 1,

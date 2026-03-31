@@ -2280,7 +2280,15 @@ const ProductGeneralTab = ({
           (r.currency_code || r.code || "").toString().toUpperCase() === code,
       );
 
-      if (!rateObj) return 1;
+      // Smart Fallback: Assume the formik global exchange rate if it matches the main invoice
+      if (!rateObj) {
+        const invCur = (invoice?.currency || "").toUpperCase();
+        if (code === invCur && formik.values.exchange_rate) {
+          const num = parseFloat(formik.values.exchange_rate);
+          return !isNaN(num) && num > 0 ? num : 1;
+        }
+        return 1;
+      }
       const raw =
         rateObj.export_rate ?? rateObj.exportRate ?? rateObj.rate ?? 0;
       const unit = parseFloat(rateObj.unit) || 1;
@@ -2288,7 +2296,7 @@ const ProductGeneralTab = ({
       if (isNaN(num) || unit <= 0) return 1;
       return num / unit;
     },
-    [exchangeRates],
+    [exchangeRates, invoice?.currency, formik.values.exchange_rate],
   );
 
   const convertToINR = useCallback(
@@ -2352,43 +2360,49 @@ const ProductGeneralTab = ({
         value,
       );
 
-      // If PMV calculation method changes to percentage, recalculate PMV
-      if (field === "pmvInfo.calculationMethod" && value === "percentage") {
+      // If PMV calculation method changes to percentage or currency/percentage changes, recalculate PMV
+      if (
+        (field === "pmvInfo.calculationMethod" && value === "percentage") ||
+        field === "pmvInfo.currency" ||
+        field === "pmvInfo.percentage"
+      ) {
         const prod = products[index];
-        const quantity = parseFloat(prod.quantity) || 1;
-        const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
-        const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+        const method = field === "pmvInfo.calculationMethod" ? value : (prod.pmvInfo?.calculationMethod || "percentage");
 
-        // Use prorated FOB in INR
-        const amountInINR = calculateProductFobINR(
-          prod,
-          invoice,
-          invoiceExchangeRate,
-        );
+        if (method === "percentage") {
+          const quantity = parseFloat(prod.quantity) || 1;
+          const percentage = field === "pmvInfo.percentage" ? parseFloat(value) || 0 : (parseFloat(prod.pmvInfo?.percentage) || 110);
+          const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
 
-        const totalPMV_INR = (amountInINR * percentage) / 100;
-        const pmvPerUnit_INR = totalPMV_INR / quantity;
+          // Use prorated FOB in INR
+          const amountInINR = calculateProductFobINR(
+            prod,
+            invoice,
+            invoiceExchangeRate,
+          );
 
-        const pmvCurrency = prod.pmvInfo?.currency || "INR";
-        let totalPMV = totalPMV_INR;
-        let pmvPerUnit = pmvPerUnit_INR;
+          const pmvCurrency = field === "pmvInfo.currency" ? value : (prod.pmvInfo?.currency || "INR");
+          const rate = pmvCurrency !== "INR" ? getExportRate(pmvCurrency) : 1;
+          const effectiveRate = rate > 0 ? rate : 1;
 
-        if (pmvCurrency !== "INR") {
-          const rate = getExportRate(pmvCurrency);
-          if (rate > 0) {
-            totalPMV = totalPMV_INR / rate;
-            pmvPerUnit = pmvPerUnit_INR / rate;
-          }
+          // Convert Product FOB to PMV currency first, determine unit FOB, apply PMV %
+          const fobInPmvCurrency = amountInINR / effectiveRate;
+          const unitFobInPmvCurrency = fobInPmvCurrency / quantity;
+          let pmvPerUnit = (unitFobInPmvCurrency * percentage) / 100;
+
+          // Round per unit first, then multiply by quantity completely matching Logisys
+          pmvPerUnit = parseFloat(pmvPerUnit.toFixed(2));
+          let totalPMV = parseFloat((pmvPerUnit * quantity).toFixed(2));
+
+          formik.setFieldValue(
+            `invoices[${selectedInvoiceIndex}].products[${index}].pmvInfo.pmvPerUnit`,
+            parseFloat(pmvPerUnit.toFixed(2)),
+          );
+          formik.setFieldValue(
+            `invoices[${selectedInvoiceIndex}].products[${index}].pmvInfo.totalPMV`,
+            parseFloat(totalPMV.toFixed(2)),
+          );
         }
-
-        formik.setFieldValue(
-          `invoices[${selectedInvoiceIndex}].products[${index}].pmvInfo.pmvPerUnit`,
-          parseFloat(pmvPerUnit.toFixed(2)),
-        );
-        formik.setFieldValue(
-          `invoices[${selectedInvoiceIndex}].products[${index}].pmvInfo.totalPMV`,
-          parseFloat(totalPMV.toFixed(2)),
-        );
       }
     },
     [
@@ -2454,7 +2468,17 @@ const ProductGeneralTab = ({
       }
     }
   }, [products, selectedInvoiceIndex, invoices, formik]); // Remove formik.setFieldValue from dependencies if it's causing loops
-  // Recalculate PMV when invoice currency changes - FIXED to avoid infinite loop
+  // Recalculate PMV when important fields change. Using serialized deps to avoid infinite loops.
+  const serializedPmvInputs = JSON.stringify(
+    (products || []).map((p) => ({
+      amt: p.amount,
+      qty: p.quantity,
+      pmvC: p.pmvInfo?.currency,
+      pmvM: p.pmvInfo?.calculationMethod,
+      pmvP: p.pmvInfo?.percentage,
+    }))
+  );
+
   useEffect(() => {
     if (!invoice?.currency) return;
 
@@ -2476,19 +2500,18 @@ const ProductGeneralTab = ({
       );
 
       const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
-      let totalPMV_INR = (amountInINR * percentage) / 100;
-      let pmvPerUnit_INR = totalPMV_INR / quantity;
 
-      let totalPMV = totalPMV_INR;
-      let pmvPerUnit = pmvPerUnit_INR;
+      const rate = pmvCurrency !== "INR" ? getExportRate(pmvCurrency) : 1;
+      const effectiveRate = rate > 0 ? rate : 1;
 
-      if (pmvCurrency !== "INR") {
-        const rate = getExportRate(pmvCurrency);
-        if (rate > 0) {
-          totalPMV = totalPMV_INR / rate;
-          pmvPerUnit = pmvPerUnit_INR / rate;
-        }
-      }
+      // Convert Product FOB to PMV currency, compute unit PMV, then total
+      const fobInPmvCurrency = amountInINR / effectiveRate;
+      const unitFobInPmvCurrency = fobInPmvCurrency / quantity;
+      let pmvPerUnit = (unitFobInPmvCurrency * percentage) / 100;
+
+      // Round per unit first to strictly match Logisys
+      pmvPerUnit = parseFloat(pmvPerUnit.toFixed(2));
+      let totalPMV = parseFloat((pmvPerUnit * quantity).toFixed(2));
 
       const isPmvDiff =
         Math.abs(parseFloat(prod.pmvInfo?.totalPMV || 0) - totalPMV) > 0.01;
@@ -2524,6 +2547,7 @@ const ProductGeneralTab = ({
     invoice.freightInsuranceCharges,
     invoice.productValue,
     invoice.invoiceValue,
+    serializedPmvInputs, // Safe tracker for product inputs to cleanly auto-trigger computation initially and dynamically
   ]);
 
   return (

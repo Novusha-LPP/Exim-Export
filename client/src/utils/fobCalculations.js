@@ -1,14 +1,12 @@
 /**
- * Utility for calculating Product FOB in INR based on pro-rated freight and insurance.
+ * Utility for calculating Product FOB in INR based on pro-rated Total FOB.
  *
  * Formula:
  * A = Product Amount (Invoice Currency)
  * B = Total Product Value for Invoice (Invoice Currency)
  * C (Ratio) = A / B
- * K = Freight (Converted to Invoice Currency)
- * J = Insurance (Converted to Invoice Currency)
- * Z (Deduction) = C * (K + J)
- * FOB (INR) = (A - Z) * InvoiceToINRRate
+ * TotalFOB_INR = Total FOB gathered from activeInvoice.freightInsuranceCharges
+ * Product_FOB_INR = C * TotalFOB_INR
  */
 
 export const calculateProductFobINR = (
@@ -18,53 +16,50 @@ export const calculateProductFobINR = (
 ) => {
   if (!product || !activeInvoice) return 0;
 
+  const A = parseFloat(product.amount || 0);
+  const B = parseFloat(activeInvoice.productValue || 0);
+
+  if (B <= 0 || A <= 0) return 0;
+
+  const C = A / B;
   const charges = activeInvoice.freightInsuranceCharges || {};
-  const freight = charges.freight || {};
-  const insurance = charges.insurance || {};
   const invToInrRate = parseFloat(invoiceExchangeRate) || 1;
 
-  // Helper: Convert row amount (in row currency) to invoice currency using INR as pivot
-  const getAmountInInvoiceCurrency = (row) => {
-    const amt = parseFloat(row.amount || 0);
-    // If amount is zero, return zero
-    if (!amt) return 0;
+  // The base gross value for evaluating Total FOB is the INVOICE VALUE (matching InvoiceFreightTab.js)
+  const grossInvoiceValue = parseFloat(activeInvoice.invoiceValue || activeInvoice.productValue || 0);
 
-    const rowToInrRate = parseFloat(row.exchangeRate);
+  // Calculate Total FOB natively to avoid relying on InvoiceFreightTab being mounted
+  const totalValueInr = grossInvoiceValue * invToInrRate;
+  let totalDeductionInr = 0;
 
-    // If exchange rate is present, use standard conversion:
-    // Amount (RowCurr) * Rate (Row->INR) / Rate (Inv->INR) = Amount (InvCurr)
-    if (rowToInrRate && invToInrRate) {
-      return (amt * rowToInrRate) / invToInrRate;
+  ["freight", "insurance", "discount", "otherDeduction", "commission"].forEach(k => {
+    const row = charges[k] || {};
+
+    const fallbackRate = (row.currency || activeInvoice.currency || "INR").toUpperCase() === "INR" ? 1 : invToInrRate;
+    const rowRate = parseFloat(row.exchangeRate) || fallbackRate;
+
+    const ratePercent = parseFloat(row.rate) || 0;
+    let rowAmountInr = 0;
+
+    if (ratePercent > 0) {
+      rowAmountInr = totalValueInr * (ratePercent / 100);
+    } else {
+      const explicitAmount = parseFloat(row.amount) || 0;
+      rowAmountInr = explicitAmount * rowRate;
     }
 
-    // Fallback: If exchange rate is missing, assume the amount is ALREADY in Invoice Currency.
-    // This is common for imported data where explicit currency/rate for charges might be missing.
-    return amt;
-  };
+    if (k === "commission") {
+      const threshold = 0.125 * totalValueInr;
+      if (rowAmountInr > threshold) {
+        totalDeductionInr += (rowAmountInr - threshold);
+      }
+    } else {
+      totalDeductionInr += rowAmountInr;
+    }
+  });
 
-  const K = getAmountInInvoiceCurrency(freight);
-  const J = getAmountInInvoiceCurrency(insurance);
-  const totalChargesInInvoice = K + J;
+  const totalFobInr = totalValueInr - totalDeductionInr;
 
-  const A = parseFloat(product.amount || 0);
-  const B = parseFloat(
-    activeInvoice.productValue || activeInvoice.invoiceValue || 0
-  );
-
-  // Step 1: Ratio C = A / B
-  let C = 0;
-  if (B > 0) {
-    C = A / B;
-  }
-
-  // Step 2: Deduction Z = C * (K + J)
-  const Z = C * totalChargesInInvoice;
-
-  // Step 3: FOB in Invoice Currency = A - Z
-  const fobInInvoiceCurrency = A - Z;
-
-  // Step 4: Final FOB always in INR
-  const fobInINR = fobInInvoiceCurrency * invToInrRate;
-
-  return parseFloat(fobInINR.toFixed(2));
+  const productFobInr = C * totalFobInr;
+  return parseFloat(productFobInr.toFixed(2));
 };

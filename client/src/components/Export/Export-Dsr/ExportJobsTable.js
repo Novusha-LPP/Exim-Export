@@ -1602,7 +1602,7 @@ const ExportJobsTable = () => {
                 ></span>
               </button>
             )}
-            {isOperationModule ? (
+            {isOperationModule && (
               <button
                 style={
                   activeTab === "Op Completed" ? { ...s.tab, ...s.activeTab } : s.tab
@@ -1618,23 +1618,22 @@ const ExportJobsTable = () => {
                   }
                 ></span>
               </button>
-            ) : (
-              <button
-                style={
-                  activeTab === "Completed" ? { ...s.tab, ...s.activeTab } : s.tab
-                }
-                onClick={() => setActiveTab("Completed")}
-              >
-                Completed{" "}
-                <span
-                  style={
-                    activeTab === "Completed"
-                      ? { ...s.badge, ...s.activeBadge }
-                      : s.badge
-                  }
-                ></span>
-              </button>
             )}
+            <button
+              style={
+                activeTab === "Completed" ? { ...s.tab, ...s.activeTab } : s.tab
+              }
+              onClick={() => setActiveTab("Completed")}
+            >
+              Completed{" "}
+              <span
+                style={
+                  activeTab === "Completed"
+                    ? { ...s.badge, ...s.activeBadge }
+                    : s.badge
+                }
+              ></span>
+            </button>
             {!isOperationModule && (
               <button
                 style={
@@ -2120,6 +2119,9 @@ const ExportJobsTable = () => {
                             }}
                           >
                             {job.exporter}
+                            {job.exporter_branch_name && job.exporter_branch_name.toLowerCase() !== "main" && (
+                              ` (${job.exporter_branch_name})`
+                            )}
                           </div>
                           {job.consignees?.[0]?.consignee_name
                             ? job.consignees[0].consignee_name.length > 20

@@ -60,6 +60,26 @@
  * FIX 48 – DBK quantity: use d.quantity (drawback schedule unit e.g. KGS) NOT p.quantity (invoice unit e.g. PCS)
  *           Logisys: 10464 PCS item → DBK qty = 3997.248 KGS. Falling back to p.quantity gives wrong unit.
  *           If d.quantity not stored, send blank (not zero) to avoid wrong data in Customs record
+ * FIX 49 – CONTAINER ISO type code: complete rewrite covering all dropdown types
+ *           Bug: "40 High Cube" was producing "42G1" instead of correct "45G0"
+ *           Root cause: ISO 6346 size code "45" = 40ft HIGH CUBE (not 45-foot!)
+ *           "42" = 40ft standard, "45" = 40ft HC, "22" = 20ft standard, "25" = 20ft HC
+ *           "L2" = actual 45-foot standard, "L5" = actual 45-foot HC
+ *           tCode: G0=dry, R1=reefer, U1=open top, P1=flat rack, P3=collapsible, P0=platform, T0=tank, H0=hard top
+ *           Logisys confirmed: 40ft High Cube → "45G0" (checks combined size+type fields)
+ * FIX 50 – STATEMENT code: RS001 for RoSCTL (eximCode 60), RD001 for RoDTEP (eximCode 00/19)
+ *           Bug: always emitted RD001 regardless of scheme → ICEGATE rejected GIM 00640 with 1 error
+ *           Rule: if rosctlInfo.claim="Yes" OR eximCode="60" → RS001; if rodtepInfo.claim="Yes" → RD001
+ *           Only emit STATEMENT row when a benefit is actually claimed (not for every product)
+ * FIX 51 – INVOICE [31]: packing charges from inv.packing_charges (was always blank)
+ *           Logisys sends 2329.00 for this field when packing charges are present
+ * FIX 52 – FIX 46 corrected: commission rate reads ONLY fic.commission.rate (the agent %)
+ *           NOT fic.commission.exchangeRate (the INR/USD rate). The exchangeRate field
+ *           stores the currency conversion rate (~90), not the commission %. Wrongly reading
+ *           it caused "92.55000" to appear in invoice [21] for jobs with no commission.
+ * FIX 35 – REVERTED (again): Logisys DOES append country name to consignee address before
+ *           split35. Confirmed on AMD AIR 00142 (Australia): "...VICTORIA AUSTRALIA" spans
+ *           into [23]="A". FIX 35 was incorrectly stripping the country from all shipments.
  */
 
 import express from "express";
@@ -346,6 +366,10 @@ export function generateSBFlatFile(job) {
     const isPortStuffing = ["DOCK", "PORT", "CFS"].includes((job.goods_stuffed_at || "").toUpperCase());
     const emitContainer = job.transportMode === "SEA" && containers.length > 0 && !isPortStuffing;
     const conName35 = trunc(preserveSpaces(con0.consignee_name || ""), 35);
+
+    // FIX 35 REVERTED: Logisys appends country name to consignee address before split35.
+    // Confirmed on AIR 00142 (Australia): "...VICTORIA" + " AUSTRALIA" → [22]="...AUSTRALI" [23]="A"
+    // Strip the country code placeholder "(XX)" from address first, then append plain name.
     const conAddrStripped = stripCountry(
         con0.consignee_address,
         job.destination_country || job.discharge_country || con0.consignee_country || ""
@@ -410,6 +434,13 @@ export function generateSBFlatFile(job) {
     let out = "";
     const loosePktsFinal = loosePkts || loosePktsA || "";
 
+    const stuffingSealRaw = (job.stuffing_seal_type || "").toUpperCase();
+    let mappedSealType = "";
+    if (stuffingSealRaw === "SELF SEAL") mappedSealType = "S";
+    if (stuffingSealRaw === "AGENT SEAL") mappedSealType = "C";
+    if (stuffingSealRaw.includes("WAREHOUSE")) mappedSealType = "O";
+    if (stuffingSealRaw === "") mappedSealType = "";
+
     // ══════════════════════════════════════════════════════════════════════════
     // <TABLE>SB  — 50 fields [0-49]
     // ══════════════════════════════════════════════════════════════════════════
@@ -439,11 +470,11 @@ export function generateSBFlatFile(job) {
         "",                                                                 // [27] RBI Waiver No
         "",                                                                 // [28] RBI Waiver Date
         loc,                                                                // [29] Port of Loading — FIX 15
-        podest,                                                                // [30] Port of Dest
+        podisc,                                                                // [30] Port of Dest
         cntry(job.destination_country || ""),                              // [31]
         cntry(job.discharge_country || ""),    // [32]
-        podisc,                                                                // [33] Port of Discharge
-        "",                                                                 // [34] Seal Type
+        podest,                                                                // [33] Port of Discharge
+        mappedSealType,                                                     // [34] Seal Type
         nc,                                                                 // [35] Nature of Cargo
         parseFloat(job.gross_weight_kg || 0).toFixed(3),                  // [36]
         parseFloat(job.net_weight_kg || 0).toFixed(3),                    // [37]
@@ -491,15 +522,19 @@ export function generateSBFlatFile(job) {
         const iCurr = iAmtRaw > 0 ? curr : "";
 
         // Commission — FIX 41: read fic.commission, emit rate+currency+amount in [21-23]
-        // Logisys sends commission RATE (e.g. 2.00000%) in [21] when stored in DB
-        // If only amount is stored (no rate), [21] stays blank (amount-only mode)
-        const commAmtRaw = parseFloat((fic.commission || {}).amount);
-        const commRateRaw = parseFloat((fic.commission || {}).rate);
+        // FIX 46 (corrected): commission RATE = the agent's % (e.g. 2.00000%)
+        //   Read ONLY from fic.commission.rate — NOT from fic.commission.exchangeRate
+        //   exchangeRate is the INR/USD conversion rate (~90.2), NOT the commission %.
+        //   Wrongly reading exchangeRate caused "92.55000" in [21] for jobs with no commission %.
+        const commAmtRaw = parseFloat((fic.commission || {}).amount || 0);
+        const commRateRaw = parseFloat((fic.commission || {}).rate || 0); // % rate only, never exchangeRate
         const commAmt = commAmtRaw > 0 ? commAmtRaw.toFixed(2) : "";
         const commCurr = commAmtRaw > 0 ? curr : "";
-        // FIX 46: send commission rate (%) only when it is explicitly stored and non-zero
-        // Format matches Logisys: 5 decimal places (e.g. "2.00000")
         const commRate = commRateRaw > 0 ? commRateRaw.toFixed(5) : "";
+
+        // Packing charges — FIX 51: read from invoice, emit in [31]
+        const packingChargesRaw = parseFloat(inv.packing_charges || 0);
+        const packingCharges = packingChargesRaw > 0 ? packingChargesRaw.toFixed(2) : "";
 
         // Discount
         const discAmtRaw = parseFloat((fic.discount || {}).amount || 0);
@@ -557,7 +592,7 @@ export function generateSBFlatFile(job) {
             otherCurr,                     // [28] Other Deductions Currency
             otherAmt,                      // [29] Other Deductions Amount
             af,                            // [30] Add Freight — FIX 42
-            "",                            // [31] Packing Charges
+            packingCharges,                // [31] Packing Charges — FIX 51
             "",                            // [32] Exporter Contract No
             np,                            // [33] Nature of Payment
             pp,                            // [34] Payment Period
@@ -614,6 +649,54 @@ export function generateSBFlatFile(job) {
             );
         });
     });
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // <TABLE>EOU  — 22 fields [0-21]
+    // Emitted when job.annexure_c_details === true (EOU/STP/EHTP exporters)
+    // Position: after ITEM, before DBK/CONTAINER — matches Logisys confirmed order
+    //
+    // Field map (0-based, verified against AMD SEA 03441 Logisys reference):
+    // [6]  = IEC Code of EOU
+    // [7]  = Branch Sr No
+    // [8]  = Date of Examination (YYYYMMDD)
+    // [9]  = Examining Officer name
+    // [10] = Supervising Officer name
+    // [11] = Designation
+    // [12] = Division
+    // [13] = Range
+    // [14] = Commissionerate (blank fields → "." per Logisys convention)
+    // [15] = Virtual Seal Type / Seal Type (blank → ".")
+    // [16] = Seal Number (from container seal or annex_seal_number)
+    // [17] = Sample Forwarded (Y/N)
+    // [18] = Sample Accompanied (Y/N)
+    // [19-21] = 3 trailing blanks
+    // ══════════════════════════════════════════════════════════════════════════
+    if (job.annexure_c_details) {
+        const ac = job.annexC1Details || {};
+        // Blank-to-dot: Logisys sends "." for empty officer/admin fields, not blank
+        const dot = (v) => clean(v) || ".";
+        // Seal number: use first container's seal if annex seal is blank
+        const euSeal = clean(ac.virtualSealNumber || job.annex_seal_number || "")
+            || clean((containers[0] || {}).sealNo || "");
+        out += `<TABLE>EOU${RS}`;
+        out += row(PD,
+            clean(ac.ieCodeOfEOU || job.ie_code_of_eou || iec),  // [6]  IEC of EOU
+            String(ac.branchSerialNo ?? 0),                       // [7]  Branch Sr No
+            fmtDate(ac.examinationDate || job.examination_date),  // [8]  Exam Date
+            dot(ac.examiningOfficer || job.examining_officer),    // [9]  Examining Officer
+            dot(ac.supervisingOfficer || job.supervising_officer),// [10] Supervising Officer
+            dot(ac.designation || job.annex_designation),         // [11] Designation
+            dot(ac.division || job.annex_division),               // [12] Division
+            dot(ac.range || job.annex_range),                     // [13] Range
+            dot(job.commissionerate),                              // [14] Commissionerate
+            dot(ac.virtualSealType),   // [15] Seal Type
+            euSeal,                                                // [16] Seal Number
+            (ac.sampleForwarded || job.sample_forwarded) ? "Y" : "N",  // [17] Sample Forwarded
+            job.sample_accompanied ? "Y" : "N",                   // [18] Sample Accompanied
+            "", "", "",                                            // [19-21] trailing blanks
+        );
+    }
+
 
     // ══════════════════════════════════════════════════════════════════════════
     // <TABLE>LICENCE  — 19 fields [0-18]
@@ -869,22 +952,34 @@ export function generateSBFlatFile(job) {
     });
 
     // ══════════════════════════════════════════════════════════════════════════
-    // <TABLE>STATEMENT  — FIX 29: 12 fields, no trailing empties
+    // <TABLE>STATEMENT
+    // FIX 50: Statement code depends on scheme — NOT always RD001
+    //
+    // Statement codes per ICES spec:
+    //   RD001 = RoDTEP declaration  → eximCode 00/19 (free SB) when RoDTEP claimed
+    //   RS001 = RoSCTL declaration  → eximCode 60 (DBK+RoSCTL) when RoSCTL claimed
+    //   DB001/DB002/DB003 = DBK declarations (handled separately if needed)
+    //
+    // Logisys confirmed: GIM 00640 (eximCode 60, rosctlInfo.claim=Yes) → RS001
+    // Your file was sending RD001 for this job → ICEGATE rejected with 1 error
     // ══════════════════════════════════════════════════════════════════════════
     let statementAdded = false;
     invs.forEach((inv, ii) => {
         (inv.products || []).forEach((p, pi) => {
-            const sc = (p.eximCode || "").split(" ")[0];
-            if ((p.rodtepInfo || {}).claim === "Yes" || sc === "60" || sc === "61" || sc === "03") {
+            const sc_stmt = (p.eximCode || "").split(" ")[0];
+            const isRoSCTL = (p.rosctlInfo || {}).claim === "Yes"
+                || sc_stmt === "60";
+            const isRoDTEP = (p.rodtepInfo || {}).claim === "Yes"
+                && !isRoSCTL;
+
+            // Only emit a STATEMENT row when a benefit is actually claimed
+            if (isRoSCTL || isRoDTEP) {
                 if (!statementAdded) { out += `<TABLE>STATEMENT${RS}`; statementAdded = true; }
-                // 60 = DRAWBACK AND ROSCTL, 61 = EPCG, DRAWBACK AND ROSCTL → RS001
-                // RoDTEP claims and scheme 03 (Advance Licence) → RD001
-                const declCode = (sc === "60" || sc === "61") ? "RS001" : "RD001";
-                out += row(PD, String(ii + 1), String(pi + 1), "1", "DEC", declCode, "");
+                const stmtCode = isRoSCTL ? "RS001" : "RD001";
+                out += row(PD, String(ii + 1), String(pi + 1), "1", "DEC", stmtCode, "");
             }
         });
     });
-
 
     // ══════════════════════════════════════════════════════════════════════════
     // <TABLE>Supportingdocs

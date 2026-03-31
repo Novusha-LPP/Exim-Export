@@ -73,10 +73,22 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             filter.$and.push({
                 status: { $regex: "^cancelled$", $options: "i" }
             });
+        } else if (normalizedStatus === "completed") {
+            filter.$and.push({
+                $or: [
+                    { status: { $regex: "^completed$", $options: "i" } },
+                    { isJobtrackingEnabled: true }
+                ]
+            });
         } else {
             // Default to pending for 'pending' and 'billing ready'
             filter.$and.push({
-                status: { $regex: "^pending$", $options: "i" }
+                $or: [
+                    { status: { $regex: "^pending$", $options: "i" } },
+                    { status: { $exists: false } },
+                    { status: null },
+                    { status: "" }
+                ]
             });
         }
 
@@ -168,7 +180,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         if (country) filter.$and.push({ destination_country: { $regex: country, $options: "i" } });
         if (consignmentType) filter.$and.push({ consignmentType: consignmentType });
         if (branch) filter.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
-        if (year) filter.$and.push({ job_no: { $regex: `/${year}$`, $options: "i" } });
+        if (year && year !== "all") filter.$and.push({ year: year });
         if (customHouse) filter.$and.push({ custom_house: { $regex: customHouse, $options: "i" } });
 
         // Ensure array is removed if empty
@@ -185,7 +197,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
 
         const selectProjection = {
             job_no: 1, custom_house: 1, job_date: 1, consignmentType: 1, job_owner: 1,
-            exporter: 1, "consignees.consignee_name": 1, "buyerThirdPartyInfo.buyer.name": 1,
+            exporter: 1, exporter_branch_name: 1, "consignees.consignee_name": 1, "buyerThirdPartyInfo.buyer.name": 1,
             ieCode: 1, panNo: 1, exporter_gstin: 1, adCode: 1,
             "invoices.invoiceNumber": 1, "invoices.invoiceDate": 1, "invoices.termsOfInvoice": 1,
             "invoices.currency": 1, "invoices.invoiceValue": 1, "invoices.consigneeName": 1,

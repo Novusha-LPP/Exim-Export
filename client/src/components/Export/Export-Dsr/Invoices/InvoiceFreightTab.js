@@ -258,13 +258,9 @@ const InvoiceFreightTab = ({ formik }) => {
     if (rowKey === "fobValue") return 0;
 
     const inv = invoices[selectedInvoiceIndex] || {};
-    const productVal = Number(inv.productValue || inv.invoiceValue || 0);
-    const packingCharges = Number(inv.packing_charges || 0);
+    const baseVal = Number(inv.invoiceValue || inv.productValue || 0);
 
-    // Adjusted Product Value: Subtract packing charges
-    const adjustedProductVal = productVal - packingCharges;
-
-    if (!adjustedProductVal) return 0;
+    if (!baseVal) return 0;
 
     // IMPORTANT: Fallback to the real exchange rate if data.exchangeRate is missing
     const effectiveCurrency = (data.currency || invoiceCurrency).toUpperCase();
@@ -275,8 +271,8 @@ const InvoiceFreightTab = ({ formik }) => {
     const rowRate = Number(data.exchangeRate || fallbackRate || 0); // rowCur → INR
     if (!rowRate || !invoiceExchangeRate) return 0;
 
-    // Step 1: product value (adjusted) to INR
-    const valueInINR = adjustedProductVal * invoiceExchangeRate;
+    // Step 1: base value to INR
+    const valueInINR = baseVal * invoiceExchangeRate;
     // Step 2: INR to row currency
     const valueInRowCurrency = valueInINR / rowRate;
 
@@ -314,12 +310,10 @@ const InvoiceFreightTab = ({ formik }) => {
   // Compute FOB in INR from all other row amounts
   const computeFOBCharges = () => {
     const inv = invoices[selectedInvoiceIndex] || {};
-    // Use productValue, falling back to invoiceValue so FOB works even if only invoiceValue is filled
-    const rawInvoiceVal = Number(inv.productValue || inv.invoiceValue || 0);
-    const packingCharges = Number(inv.packing_charges || 0);
-    const invoiceVal = rawInvoiceVal - packingCharges;
+    // Use invoiceValue, falling back to productValue
+    const invoiceVal = Number(inv.invoiceValue || inv.productValue || 0);
 
-    if (!rawInvoiceVal || !invoiceExchangeRate) return charges;
+    if (!invoiceVal || !invoiceExchangeRate) return charges;
 
     let totalNonFOBInInvoice = 0;
     const nextCharges = { ...charges };
@@ -335,12 +329,12 @@ const InvoiceFreightTab = ({ formik }) => {
 
       const baseValue = getBaseValue(k, row);
       const rowAmount = getAmount(k, row, baseValue);
-      
+
       // Update the amount in the object so it gets saved to the DB
       // We only do this if a rate is present (meaning it's a calculated field)
       const nextRow = { ...row };
       if (rowAmount && (row.rate || row.amount)) {
-          nextRow.amount = Number(rowAmount.toFixed(2));
+        nextRow.amount = Number(rowAmount.toFixed(2));
       }
 
       const effectiveCurrency = (row.currency || invoiceCurrency).toUpperCase();
@@ -363,7 +357,7 @@ const InvoiceFreightTab = ({ formik }) => {
       } else {
         totalNonFOBInInvoice += amountInInvoice;
       }
-      
+
       nextCharges[k] = nextRow;
     });
 
@@ -371,7 +365,11 @@ const InvoiceFreightTab = ({ formik }) => {
     const fobInINR = fobInInvoice * invoiceExchangeRate;
 
     const existingFob = nextCharges.fobValue || {};
-    const fobCurrency = (existingFob.currency || "INR").toUpperCase();
+    const fobCurrency = (
+      existingFob.currency ||
+      invoiceCurrency ||
+      "INR"
+    ).toUpperCase();
 
     // Determine exchange rate for FOB currency → INR
     const fallbackRate =
@@ -619,7 +617,7 @@ const InvoiceFreightTab = ({ formik }) => {
           const disabled = isRowDisabled(row.key);
 
           const effectiveCurrency = (
-            data.currency || (isFOB ? "INR" : invoiceCurrency)
+            data.currency || invoiceCurrency || "INR"
           ).toUpperCase();
 
           const exchangeRate = (() => {

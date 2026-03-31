@@ -92,6 +92,8 @@ const branchInfoSchema = new Schema({
   state: { type: String },
   postalCode: { type: String },
   country: { type: String, default: "India" },
+  mobile: { type: String },
+  email: { type: String },
 });
 
 const aeoDetailsSchema = new Schema(
