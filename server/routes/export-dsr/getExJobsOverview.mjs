@@ -47,33 +47,27 @@ router.get("/api/get-exjobs-overview/:year", async (req, res) => {
 
     // Conditions based on status
     if (statusLower === "pending") {
-      matchQuery.$and.push(
-        { status: { $regex: "^pending$", $options: "i" } },
-        { be_no: { $not: { $regex: "^cancelled$", $options: "i" } } },
-        {
-          $or: [
-            { bill_date: { $in: [null, ""] } },
-            { status: { $regex: "^pending$", $options: "i" } },
-          ],
-        }
-      );
+      matchQuery.$and.push({
+        $and: [
+          { status: { $not: { $regex: "^completed", $options: "i" } } },
+          { isCompleted: { $ne: true } },
+          { status: { $not: { $regex: "^cancelled", $options: "i" } } },
+          { isJobCanceled: { $ne: true } }
+        ]
+      });
     } else if (statusLower === "completed") {
-      matchQuery.$and.push(
-        { status: { $regex: "^completed$", $options: "i" } },
-        { be_no: { $not: { $regex: "^cancelled$", $options: "i" } } },
-        {
-          $or: [
-            { bill_date: { $nin: [null, ""] } },
-            { status: { $regex: "^completed$", $options: "i" } },
-          ],
-        }
-      );
+      matchQuery.$and.push({
+        $or: [
+          { status: { $regex: "^completed", $options: "i" } },
+          { isCompleted: true }
+        ]
+      });
     } else if (statusLower === "cancelled") {
       matchQuery.$and.push({
         $or: [
-          { status: { $regex: "^cancelled$", $options: "i" } },
-          { be_no: { $regex: "^cancelled$", $options: "i" } },
-        ],
+          { status: { $regex: "^cancelled", $options: "i" } },
+          { isJobCanceled: true }
+        ]
       });
     }
 
@@ -87,62 +81,46 @@ router.get("/api/get-exjobs-overview/:year", async (req, res) => {
       {
         $group: {
           _id: null,
-          pendingJobs: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $eq: [{ $toLower: "$status" }, "pending"] },
-                    { $ne: [{ $toLower: "$be_no" }, "cancelled"] },
-                    {
-                      $or: [
-                        { $eq: ["$bill_date", null] },
-                        { $eq: ["$bill_date", ""] },
-                        { $eq: [{ $toLower: "$status" }, "pending"] },
-                      ],
-                    },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
           completedJobs: {
             $sum: {
               $cond: [
                 {
-                  $and: [
-                    { $eq: [{ $toLower: "$status" }, "completed"] },
-                    { $ne: [{ $toLower: "$be_no" }, "cancelled"] },
-                    {
-                      $or: [
-                        // completed means either bill_date is not null/empty OR status is completed
-                        { $ne: ["$bill_date", null] },
-                        { $ne: ["$bill_date", ""] },
-                        { $eq: [{ $toLower: "$status" }, "completed"] },
-                      ],
-                    },
-                  ],
+                  $or: [
+                    { $eq: [{ $trim: { input: { $toLower: { $ifNull: ["$status", ""] } } } }, "completed"] },
+                    { $eq: ["$isCompleted", true] }
+                  ]
                 },
-                1,
-                0,
-              ],
-            },
+                1, 0
+              ]
+            }
           },
           cancelledJobs: {
             $sum: {
               $cond: [
                 {
                   $or: [
-                    { $eq: [{ $toLower: "$status" }, "cancelled"] },
-                    { $eq: [{ $toLower: "$be_no" }, "cancelled"] },
-                  ],
+                    { $eq: [{ $trim: { input: { $toLower: { $ifNull: ["$status", ""] } } } }, "cancelled"] },
+                    { $eq: ["$isJobCanceled", true] }
+                  ]
                 },
-                1,
-                0,
-              ],
-            },
+                1, 0
+              ]
+            }
+          },
+          pendingJobs: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: [{ $trim: { input: { $toLower: { $ifNull: ["$status", ""] } } } }, "completed"] },
+                    { $ne: ["$isCompleted", true] },
+                    { $ne: [{ $trim: { input: { $toLower: { $ifNull: ["$status", ""] } } } }, "cancelled"] },
+                    { $ne: ["$isJobCanceled", true] }
+                  ]
+                },
+                1, 0
+              ]
+            }
           },
           totalJobs: { $sum: 1 },
         },

@@ -79,53 +79,7 @@ router.get("/dashboard-stats", async (req, res) => {
               $group: {
                 _id: null,
                 total: { $sum: 1 },
-                // Pending: status is pending/empty AND not tracking-enabled AND not cancelled
-                pending: {
-                  $sum: {
-                    $cond: [
-                      {
-                        $and: [
-                          // Not cancelled
-                          { $ne: ["$isJobCanceled", true] },
-                          { $ne: ["$status", "cancelled"] },
-                          // Not completed via tracking
-                          { $ne: ["$isJobtrackingEnabled", true] },
-                          // Status is pending or unset
-                          {
-                            $or: [
-                              { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "pending"] },
-                              { $eq: [{ $ifNull: ["$status", ""] }, ""] },
-                            ],
-                          },
-                        ],
-                      },
-                      1,
-                      0,
-                    ],
-                  },
-                },
-                // Completed: explicit "completed" status OR jobTracking enabled (but not cancelled)
-                completed: {
-                  $sum: {
-                    $cond: [
-                      {
-                        $and: [
-                          { $ne: ["$isJobCanceled", true] },
-                          { $ne: ["$status", "cancelled"] },
-                          {
-                            $or: [
-                              { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "completed"] },
-                              { $eq: ["$isJobtrackingEnabled", true] },
-                            ],
-                          },
-                        ],
-                      },
-                      1,
-                      0,
-                    ],
-                  },
-                },
-                // Cancelled: explicit "cancelled" status OR isJobCanceled flag
+                // Cancelled takes highest priority
                 cancelled: {
                   $sum: {
                     $cond: [
@@ -135,8 +89,52 @@ router.get("/dashboard-stats", async (req, res) => {
                           { $eq: ["$isJobCanceled", true] },
                         ],
                       },
-                      1,
-                      0,
+                      1, 0,
+                    ],
+                  },
+                },
+                // Completed: status=completed OR isJobtrackingEnabled=true (NOT cancelled)
+                completed: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: [{ $toLower: { $ifNull: ["$status", ""] } }, "cancelled"] },
+                          { $ne: ["$isJobCanceled", true] },
+                          {
+                            $or: [
+                              { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "completed"] },
+                              { $eq: ["$isJobtrackingEnabled", true] },
+                            ],
+                          },
+                        ],
+                      },
+                      1, 0,
+                    ],
+                  },
+                },
+                // Pending: (status=pending/blank) AND NOT jobTracking AND NOT cancelled
+                // Mirrors the Jobs tab "Pending" filter exactly
+                pending: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          // Not cancelled
+                          { $ne: [{ $toLower: { $ifNull: ["$status", ""] } }, "cancelled"] },
+                          { $ne: ["$isJobCanceled", true] },
+                          // Not completed via tracking
+                          { $ne: ["$isJobtrackingEnabled", true] },
+                          // Status is pending or not set
+                          {
+                            $or: [
+                              { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "pending"] },
+                              { $eq: [{ $ifNull: ["$status", ""] }, ""] },
+                            ],
+                          },
+                        ],
+                      },
+                      1, 0,
                     ],
                   },
                 },

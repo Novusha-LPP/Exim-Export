@@ -374,7 +374,7 @@ function ExportJobsModule() {
             { label: "ESanchit", component: <ESanchitTab formik={formik} /> },
             {
               label: "Charges",
-              component: <ChargesTab formik={formik} />,
+              component: <ChargesTab job={data} formik={formik} />,
             },
 
             {

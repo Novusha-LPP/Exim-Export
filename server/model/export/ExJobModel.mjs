@@ -563,13 +563,40 @@ const eSanchitDocumentSchema = new Schema({
 // Charge Schema
 const chargeSchema = new Schema(
   {
-    isEnabled: { type: Boolean, default: false },
-    particulars: { type: String, trim: true },
-    buying: { type: Number, default: 0 },
-    selling: { type: Number, default: 0 },
-    remarks: { type: String, trim: true },
+    chargeHead: { type: String },
+    category: { type: String },
+    revenue: {
+      particulars: { type: String },
+      url: { type: [String], default: [] },
+      amount: { type: Number, default: 0 },
+      currency: { type: String },
+      exRate: { type: Number, default: 1 },
+      gst: { type: Number, default: 0 },
+      total: { type: Number, default: 0 },
+      invoiceNo: { type: String },
+      invoiceDate: { type: String },
+      status: { type: String },
+      isSynced: { type: Boolean, default: false },
+    },
+    cost: {
+      particulars: { type: String },
+      url: { type: [String], default: [] },
+      amount: { type: Number, default: 0 },
+      currency: { type: String },
+      exRate: { type: Number, default: 1 },
+      gst: { type: Number, default: 0 },
+      total: { type: Number, default: 0 },
+      vendorName: { type: String },
+      invoiceNo: { type: String },
+      invoiceDate: { type: String },
+      status: { type: String },
+      isSynced: { type: Boolean, default: false },
+    },
+    copyToCost: { type: Boolean, default: true },
+    parentId: { type: Schema.Types.ObjectId },
+    parentModule: { type: String },
   },
-  { _id: true },
+  { _id: true, timestamps: true },
 );
 
 // Milestone Tracking Schema
@@ -764,7 +791,7 @@ const exportJobSchema = new mongoose.Schema(
     buyer_other_than_consignee: { type: Boolean, default: false },
 
     // products: { type: Array, default: [] },
-    charges: { type: Array, default: [] },
+    charges: [chargeSchema],
     documents: { type: Object, default: {} },
 
     status: { type: String, trim: true },

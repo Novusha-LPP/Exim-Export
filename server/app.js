@@ -83,6 +83,8 @@ import generateFlatFile from "./routes/export-dsr/generateFlatFile.mjs";
 import operationPendingJobs from "./routes/export-dsr/operationPendingJobs.mjs";
 import operationListJobs from "./routes/export-dsr/operationListJobs.mjs";
 import queryRoutes from "./routes/export-dsr/queryRoutes.mjs";
+import chargesRoute from "./routes/charges/chargesRoute.mjs";
+import tallyRoutes from "./routes/charges/tallyRoutes.mjs";
 
 // Report Routes
 import monthlyContainersReport from "./routes/report/monthlyContainers.mjs";
@@ -252,6 +254,10 @@ app.use(exportClearanceReport);
 // s3 route
 
 app.use(deleteFromS3Routes);
+
+// Charges & Charge Heads (must be before wildcard updateExportJobs)
+app.use("/api", chargesRoute);
+app.use("/api/tally", tallyRoutes);
 
 // Update Export Jobs (Wildcard route - must be last)
 app.use("/api", updateExportJobs);
