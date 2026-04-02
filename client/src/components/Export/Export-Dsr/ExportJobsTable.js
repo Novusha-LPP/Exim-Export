@@ -453,7 +453,7 @@ const ExportJobsTable = () => {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState(savedFilters.searchQuery || "");
-  const [selectedYear, setSelectedYear] = useState(savedFilters.selectedYear || "");
+  const [selectedYear, setSelectedYear] = useState(savedFilters.selectedYear || "26-27");
   const [selectedMovementType, setSelectedMovementType] = useState(savedFilters.selectedType || "");
 
   // Determine initial branch
@@ -561,7 +561,7 @@ const ExportJobsTable = () => {
   const handleClearFilters = () => {
     setActiveTab("Pending");
     setSearchQuery("");
-    setSelectedYear("");
+    setSelectedYear("26-27");
     setSelectedMovementType("");
     setSelectedBranch("AMD");
     setSelectedMonth("");
@@ -595,7 +595,7 @@ const ExportJobsTable = () => {
   // DSR Report Dialog State
   const [openDSRDialog, setOpenDSRDialog] = useState(false);
   const [exporters, setExporters] = useState([]);
-  const [selectedExporter, setSelectedExporter] = useState("");
+  const [selectedExporter, setSelectedExporter] = useState("All Exporters");
   const [dsrYear, setDsrYear] = useState(getCurrentFinancialYear());
   const [dsrOnlyPending, setDsrOnlyPending] = useState(false);
   const [dsrLoading, setDSRLoading] = useState(false);
@@ -665,11 +665,12 @@ const ExportJobsTable = () => {
     }
     setDSRLoading(true);
     try {
+      const isAll = selectedExporter === "All Exporters";
       const response = await axios.get(
         `${import.meta.env.VITE_API_STRING}/export-dsr/generate-dsr-report`,
         {
           params: {
-            exporter: selectedExporter,
+            exporter: isAll ? "All" : selectedExporter,
             year: dsrYear,
             onlyPending: dsrOnlyPending
           },
@@ -679,9 +680,12 @@ const ExportJobsTable = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
+      const fileName = isAll 
+        ? `DSR_Report_All_Exporters_${format(new Date(), "yyyyMMdd")}.xlsx`
+        : `DSR_Report_${selectedExporter}_${format(new Date(), "yyyyMMdd")}.xlsx`;
       link.setAttribute(
         "download",
-        `DSR_Report_${selectedExporter}_${format(new Date(), "yyyyMMdd")}.xlsx`,
+        fileName,
       );
       document.body.appendChild(link);
       link.click();
@@ -701,11 +705,12 @@ const ExportJobsTable = () => {
     }
     setDSRLoading(true);
     try {
+      const isAll = selectedExporter === "All Exporters";
       const response = await axios.get(
         `${import.meta.env.VITE_API_STRING}/exports`,
         {
           params: {
-            exporter: selectedExporter,
+            exporter: isAll ? "all" : selectedExporter,
             year: dsrYear,
             status: dsrOnlyPending ? "Pending" : "all",
             limit: 5000,
@@ -715,7 +720,7 @@ const ExportJobsTable = () => {
       if (response.data.success) {
         const jobsToExport = response.data.data.jobs || [];
         if (jobsToExport.length === 0) {
-          alert("No jobs found for this exporter.");
+          alert(`No jobs found for ${isAll ? "all exporters" : "this exporter"}.`);
           return;
         }
 
@@ -728,6 +733,7 @@ const ExportJobsTable = () => {
           if (job.custom_house) jobNoCol.push(job.custom_house);
           if (job.consignmentType) jobNoCol.push(job.consignmentType);
           rowData["Job No"] = jobNoCol.join("\n");
+          rowData["Exporter"] = job.exporter || "";
 
           // Column 2: Consignee Name
           let consigneeCol = [];
@@ -812,6 +818,7 @@ const ExportJobsTable = () => {
         // Define columns based on our structure map
         worksheet.columns = [
           { header: "Job No", key: "Job No", width: 25 },
+          { header: "Exporter", key: "Exporter", width: 30 },
           { header: "Consignee Name", key: "Consignee Name", width: 30 },
           { header: "Invoice", key: "Invoice", width: 30 },
           { header: "SB / Date", key: "SB / Date", width: 15 },
@@ -3122,10 +3129,10 @@ const ExportJobsTable = () => {
             </label>
             <Autocomplete
               size="small"
-              options={exporters}
-              value={selectedExporter || null}
+              options={["All Exporters", ...exporters]}
+              value={selectedExporter || "All Exporters"}
               onChange={(event, newValue) => {
-                setSelectedExporter(newValue || "");
+                setSelectedExporter(newValue || "All Exporters");
               }}
               filterOptions={(options, { inputValue }) =>
                 priorityFilter(options, inputValue)
@@ -3146,7 +3153,57 @@ const ExportJobsTable = () => {
             />
           </div>
 
-          {/* Year and Pending options removed - default is current year with both Pending & Completed jobs included */}
+          <div style={{ marginBottom: "15px" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "12px",
+                fontWeight: "600",
+                color: "#374151",
+                marginBottom: "5px",
+              }}
+            >
+              Select Year
+            </label>
+            <select
+              style={{
+                ...s.select,
+                width: "100%",
+                height: "35px",
+              }}
+              value={dsrYear}
+              onChange={(e) => setDsrYear(e.target.value)}
+            >
+              <option value="">All Years</option>
+              <option value="26-27">26-27</option>
+              <option value="25-26">25-26</option>
+              <option value="24-25">24-25</option>
+              <option value="23-24">23-24</option>
+              <option value="22-23">22-23</option>
+              <option value="21-22">21-22</option>
+            </select>
+          </div>
+
+          <div style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <input
+              type="checkbox"
+              id="dsr-only-pending"
+              checked={dsrOnlyPending}
+              onChange={(e) => setDsrOnlyPending(e.target.checked)}
+              style={{ cursor: "pointer" }}
+            />
+            <label
+              htmlFor="dsr-only-pending"
+              style={{
+                fontSize: "12px",
+                fontWeight: "600",
+                color: "#374151",
+                cursor: "pointer",
+              }}
+            >
+              Only Pending Jobs
+            </label>
+          </div>
           <div
             style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}
           >

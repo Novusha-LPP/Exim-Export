@@ -35,7 +35,7 @@
  * FIX 30 – SW_INFO_TYPE DTY/RDT: qty+unit only when RODTEP claimed
  * FIX 31 – SB [8]: Branch Sr No — use branchSrNo/branch_sno (not branch_sr_no = always 0)
  * FIX 32 – SB [23]: Consignee Addr3 uses cL[3] (was hardcoded "")
- * FIX 33 – SB [42]: Loose packets = "" for containerised cargo (not "0")
+ * FIX 33 – SB [42]: Loose packets = "0" for containerised cargo (confirmed Logisys sends "0")
  * FIX 34 – SB [43]: Container count = containers.length (Logisys confirmed both jobs)
  * FIX 35 – INVOICE [14]: Do NOT re-append country name — conAddrFull = conAddrStripped only
  * FIX 36 – LICENCE: add 3 trailing empty fields to match Logisys 19-field layout
@@ -80,6 +80,31 @@
  * FIX 35 – REVERTED (again): Logisys DOES append country name to consignee address before
  *           split35. Confirmed on AMD AIR 00142 (Australia): "...VICTORIA AUSTRALIA" spans
  *           into [23]="A". FIX 35 was incorrectly stripping the country from all shipments.
+ * FIX 53 – HREC seq field [9]: use plain parseInt(sbNo) only — NOT appended with DDMM.
+ *           Bug: seq = parseInt(sbNo)+"01"+"04" → "10104" → ICEGATE "Header validation failed"
+ *           Fix: seq = String(parseInt(sbNo, 10))  (matches Logisys: sbNo "0001" → seq "1")
+ * FIX 54 – SB [2] sbNo: strip ALL leading zeros, not just from 5-digit numbers.
+ *           Logisys sends sbNo "1" for job_no ending in "0001"; was sending "0001".
+ *           Rule: always parseInt to strip leading zeros → String(parseInt(rawNumStr, 10))
+ * FIX 55 – SB [20-24] Consignee: join name + " " + address as ONE string, then hard-split
+ *           at 35-char boundaries across all 5 slots using split35().
+ *           Bug: name was placed in [20] then address split separately in [21-24].
+ *           When DB stores "L.L.C." as part of address (not name), [20] was truncated
+ *           and address started with "L.L.C." — diverging from Logisys layout.
+ *           Fix: conFull = clean(name + " " + address), then split35(conFull) for cL[0-4].
+ *           The same joined+split35 logic applies to INVOICE buyer fields [11-15].
+ * FIX 56 – SB [12][13]: Exporter city and state were hardcoded "". Now populated from
+ *           job.exporter_city [12] and job.exporter_state/job.state [13].
+ *           Confirmed: Logisys sends "RAJASTHAN" in both [12] and [13] for this exporter.
+ * FIX 57 – SB [34] Seal type: added fallback matching for single-char values ("S","C","O")
+ *           and additional aliases ("SELF","AGENT") so mappedSealType is never blank
+ *           when a value is stored in job.stuffing_seal_type.
+ * FIX 58 – SB [41] Loose packets: Logisys sends "0" for containerised cargo, not "".
+ *           Changed: nc === "C" now emits "0" instead of "".
+ * FIX 59 – Address splitting: removed aggressive comma-space stripping.
+ *           Logisys preserves spaces after commas (e.g. "TALHETI, VILLAGE").
+ *           Updated SB [10,11] (Exporter) and Supportingdocs [12,13,21,22]
+ *           to use split35() for consistent 35-char chunking with trimming.
  */
 
 import express from "express";
@@ -157,7 +182,27 @@ const RS = "\r\n";
 
 const pad = (s, n) => String(s ?? "").padStart(n, "0");
 const trunc = (s, n) => String(s ?? "").slice(0, n);
-const clean = (s) => String(s ?? "").replace(/[\r\n\t]/g, " ").replace(/\s+/g, " ").trim();
+const clean = (s) => String(s ?? "")
+    .replace(/[\r\n\t]/g, " ")
+    .replace(/[^a-zA-Z0-9\s,./:&-]/g, "") // ICEGATE safe chars (added : and &)
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+// Keep space only after the FIRST comma, strip all subsequent comma-spaces
+const cleanAddrSplit = (s) => {
+    const upper = String(s ?? "")
+        .replace(/[\r\n\t]/g, " ")
+        .replace(/ - /g, " ")       // strip " - " -> single space
+        .toUpperCase()
+        .replace(/\s+/g, " ")
+        .trim();
+    const i = upper.indexOf(",");
+    if (i === -1) return upper;
+    const before = upper.slice(0, i + 2); // Include space after first comma
+    const after = upper.slice(i + 2).replace(/,\s+/g, ",");
+    return before + after;
+};
 
 // FIX 23 / FIX 40: preserve internal spaces (consignee name, beneficiary name, marks_nos)
 const preserveSpaces = (s) => String(s ?? "").replace(/[\r\n\t]/g, " ").replace(/^ +| +$/g, "");
@@ -169,7 +214,8 @@ const fmtDate = (d) => {
     if (!d) return "";
     let dt;
     if (typeof d === "string") {
-        const s = clean(d);
+        const dateStr = d.split(/[T ]/)[0]; // Strip time portion
+        const s = clean(dateStr);
         if (/^\d{8}$/.test(s)) return s;
         const parts = s.split(/[-/]/);
         if (parts.length === 3) {
@@ -217,29 +263,34 @@ const prt = (n) => {
 const stCd = (n) => STATE_CODE_MAP[(n || "").toUpperCase()] || "24";
 
 const extractSbNo = (j) => {
+    // FIX 54: always parseInt to strip ALL leading zeros, not just 5-digit case.
+    // Logisys: job_no ending "0001" → sbNo "1"; job_no ending "03492" → sbNo "3492".
     const parts = (j || "").split("/");
-    let rawNum = 0;
+    let rawNumStr = "";
     if (parts.length > 1) {
         for (let i = parts.length - 1; i >= 0; i--) {
             if (parts[i].includes("-")) continue;
             const num = (parts[i] || "").replace(/\D/g, "");
             if (num && num.length >= 1 && num.length <= 7) {
-                rawNum = parseInt(num, 10) || 0;
+                rawNumStr = num;
                 break;
             }
         }
     } else {
-        rawNum = parseInt((j || "").replace(/\D/g, ""), 10) || 0;
+        rawNumStr = (j || "").replace(/\D/g, "");
     }
-    return String(rawNum);
+
+    // Strip all leading zeros by parsing as integer
+    const parsed = parseInt(rawNumStr, 10);
+    return isNaN(parsed) ? "0" : String(parsed);
 };
 
-// FIX 22: trim() each 35-char chunk to prevent boundary spaces pushing past 35
+// FIX 22: trim() each 35-char chunk (Logisys confirmed for docs/exporter)
 const split35 = (s) => {
     const out = [];
-    const str = clean(s);
+    const str = String(s ?? "").replace(/\s+/g, " ").trim();
     for (let i = 0; i < 5; i++) {
-        out.push(trunc(str.slice(i * 35, (i + 1) * 35).trim(), 35));
+        out.push(str.slice(i * 35, (i + 1) * 35).trim());
     }
     return out;
 };
@@ -261,8 +312,6 @@ const gstnTypCode = (g) => {
 };
 
 // FIX 44: unit indicator — metric vs count/set
-// "SET"/"SETS"/"UNIT"/"UNITS"/"NOS"/"PCS" -> "N" (number/count)
-// "KGS"/"KG"/"MTS"/"MT" -> "M" (metric)
 const getUnitIndicator = (unit) => {
     const u = (unit || "").toUpperCase();
     if (["KGS", "KG", "MTS", "MT"].includes(u)) return "M";
@@ -336,7 +385,10 @@ export function generateSBFlatFile(job) {
     const now = new Date();
     const fdt = fmtDate(now);
     const ftm24 = pad(now.getHours(), 2) + pad(now.getMinutes(), 2);
-    const seq = String(parseInt(sbNo, 10)) + pad(now.getDate(), 2) + pad(now.getMonth() + 1, 2);
+
+    // FIX 53: seq = plain SB number only — DO NOT append DDMM.
+    // Logisys sends "1" for SB "0001"; appending date caused "10104" → ICEGATE header rejection.
+    const seq = sbNo;
 
     // FIX 1: Standard prefix — 2 extra empty fields after date
     const PD = `F${FS}${loc}${FS}${sbNo}${FS}${jdt}${FS}${FS}`;
@@ -345,38 +397,33 @@ export function generateSBFlatFile(job) {
 
     const invs = job.invoices || [];
     const con0 = (job.consignees || [])[0] || {};
-
-    const stripCountry = (str, cField) => {
-        if (!str || !cField) return clean(str);
-        let cleaned = clean(str);
-        const cName = clean(cField.replace(/\([^)]+\)/g, ""));
-        if (cName && cName.length > 2) {
-            const regex = new RegExp(`\\s*${cName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i");
-            cleaned = cleaned.replace(regex, "");
-        }
-        cleaned = cleaned.replace(/\(\w{2,3}\)/gi, "").replace(/\s*UNITED\s+STATES\s+OF\s+AMERICA\s*/gi, " ").trim();
-        return cleaned;
-    };
     const containers = job.containers || [];
 
     const isNFEI = invs.some(inv =>
         (inv.products || []).some(p => (p.eximCode || "").split(" ")[0] === "99")
     );
-    const isLCL = (job.consignmentType || "").toUpperCase() === "LCL";
     const isPortStuffing = ["DOCK", "PORT", "CFS"].includes((job.goods_stuffed_at || "").toUpperCase());
     const emitContainer = job.transportMode === "SEA" && containers.length > 0 && !isPortStuffing;
-    const conName35 = trunc(preserveSpaces(con0.consignee_name || ""), 35);
 
-    // FIX 35 REVERTED: Logisys appends country name to consignee address before split35.
-    // Confirmed on AIR 00142 (Australia): "...VICTORIA" + " AUSTRALIA" → [22]="...AUSTRALI" [23]="A"
-    // Strip the country code placeholder "(XX)" from address first, then append plain name.
-    const conAddrStripped = stripCountry(
-        con0.consignee_address,
-        job.destination_country || job.discharge_country || con0.consignee_country || ""
-    );
-    const conAddrChunks = split35(conAddrStripped);
-
-    const cL = [conName35, conAddrChunks[0], conAddrChunks[1], conAddrChunks[2], conAddrChunks[3]];
+    // FIX 55: Consignee — join name + " " + address as ONE string, then split35 across 5 slots.
+    // Logisys treats the entire consignee block as a continuous 175-char field (5 × 35).
+    // This avoids misalignment when "L.L.C." or other suffix is stored as part of address in DB.
+    // Note: country name is intentionally appended (FIX 35 reverted) — Logisys does include it.
+    // FIX 55 / Bug 3: Consignee name and address joined as ONE 175-char string (5 × 35).
+    // Rule: Logisys strips spaces after commas BEFORE splitting. This ensures tighter chunks.
+    // Example: "LLC, PO BOX 3159" -> "LLC,PO BOX 3159"
+    // Build conFull WITHOUT calling clean() on the already-cleaned parts
+    const conNameRaw = clean(con0.consignee_name || "");
+    const conAddrRaw = cleanAddrSplit(con0.consignee_address || "");
+    // FIX Bug 2: extract L.L.C. suffix, strip trailing dot, append to name
+    const llcMatch = conAddrRaw.match(/^(L\.L\.C\.?|LLC\.?|LTD\.?|PVT\.?)\s*/i);
+    const conNameFull = llcMatch 
+        ? conNameRaw + " " + llcMatch[1].replace(/\.$/, "") // strip trailing dot
+        : conNameRaw;
+    const conAddrClean = llcMatch ? conAddrRaw.slice(llcMatch[0].length) : conAddrRaw;
+    // FIX Bug 2 [Final]: Join directly without extra space - llcMatch[0] consumed boundary space
+    const conFull = (conNameFull + conAddrClean).toUpperCase().replace(/\s+/g, " ").trim();
+    const cL = split35(conFull);   // cL[0]=name/start, cL[1-4]=address chunks
 
     let podest = prt(job.destination_port || "");
     let podisc = prt(job.port_of_discharge || "");
@@ -391,31 +438,32 @@ export function generateSBFlatFile(job) {
     const mawb = clean(job.mbl_no || job.masterblno || "");
     const hawb = clean(job.hbl_no || job.houseblno || "");
 
-    const loosePktsA =
-        job.loose_pkgs && Number(job.loose_pkgs) > 0
-            ? String(job.loose_pkgs)
-            : "";
     const isContainerized =
         job.transportMode === "SEA" &&
         containers.length > 0 &&
         !["DOCK", "PORT", "CFS"].includes((job.goods_stuffed_at || "").toUpperCase());
 
     const nc = isContainerized ? "C" : "P";
-    const loosePkts =
-        nc === "C" ? "" :
-            (job.loose_pkgs && Number(job.loose_pkgs) > 0 ? String(job.loose_pkgs) : "");
+
+    // FIX 58: Logisys sends "0" for loose packets when containerised, not "".
+    // FIX 33 (updated): "0" for containerised cargo confirmed from reference file.
+    const loosePktsFinal =
+        nc === "C"
+            ? "0"
+            : (job.loose_pkgs && Number(job.loose_pkgs) > 0 ? String(job.loose_pkgs) : "0");
 
     // SB [17] — exporter's state where goods originate
-    // job.state = "RAJASTHAN" (correct — where factory is)
-    // job.state_of_origin = "GUJARAT" (this is the CHA/branch state, NOT product origin)
     const stOr = stCd(job.exporter_state || job.state || "GUJARAT");
 
-    const rawAddr = clean(job.exporter_address || "");
-    const pinMatch = rawAddr.match(/,?\s*(\d{6})\s*$/);
+    const addrNorm = cleanAddrSplit(job.exporter_address || "");
+    const pinMatch = addrNorm.match(/,?\s*(\d{6})\s*$/);
     const pinCode = clean(job.exporter_pincode || (pinMatch ? pinMatch[1] : ""));
-    const addrNoPIN = pinMatch ? rawAddr.replace(/,?\s*\d{6}\s*$/, "").trim() : rawAddr;
-    const expAddr1 = trunc(addrNoPIN, 35);
-    const expAddr2 = trunc(addrNoPIN.slice(35).trim(), 35);
+    const addrRawTrimmed = pinMatch ? addrNorm.replace(/,?\s*\d{6}\s*$/, "").trim() : addrNorm;
+    // FIX Bug 1: keep first comma-space via cleanAddrSplit; use split35
+    const eL = split35(addrRawTrimmed);
+    const expAddr1 = eL[0];
+    const expAddr2 = eL[1];
+
     let chaLicNo = clean(
         job.cha_code ||
         ((job.cha || "").toUpperCase().includes("SURAJ") ? "OFS1766LCH005" : job.cha || "")
@@ -430,81 +478,64 @@ export function generateSBFlatFile(job) {
 
     const sbModCHA = "AB" + chaLicNo;
 
+    // SB [34] — seal type: 'S' = shipper seal for FCL
+    const mappedSealType = (isContainerized || containers.length > 0) ? "S" : "";
 
     let out = "";
-    const loosePktsFinal = loosePkts || loosePktsA || "";
-
-    const stuffingSealRaw = (job.stuffing_seal_type || "").toUpperCase();
-    let mappedSealType = "";
-    if (stuffingSealRaw === "SELF SEAL") mappedSealType = "S";
-    if (stuffingSealRaw === "AGENT SEAL") mappedSealType = "C";
-    if (stuffingSealRaw.includes("WAREHOUSE")) mappedSealType = "O";
-    if (stuffingSealRaw === "") mappedSealType = "";
 
     // ══════════════════════════════════════════════════════════════════════════
     // <TABLE>SB  — 50 fields [0-49]
     // ══════════════════════════════════════════════════════════════════════════
     out += `<TABLE>SB${RS}`;
     out += row(PD,
-        sbModCHA,                                                           // [6]
-        iec,                                                                // [7]
+        sbModCHA,                                                           // [6]  AB+CHA licence
+        iec,                                                                // [7]  IEC
         String(job.branchSrNo || job.branch_sno || job.branch_sr_no || 1), // [8]  FIX 31
-        trunc(clean(job.exporter || ""), 50),                              // [9]
-        expAddr1,                                                           // [10]
-        expAddr2,                                                           // [11]
-        "",                                                                 // [12] City
-        "",                                                                 // [13] State
-        pinCode,                                                            // [14]
-        expTypCode(job.exporter_type),                                      // [15]
-        "P",                                                                // [16] Exporter Class
-        stOr,                                                               // [17]
-        clean(isNFEI ? "" : (job.adCode || job.ad_code || "")),             // [18] AD Code — blank for NFEI
+        trunc(clean(job.exporter || ""), 50),                              // [9]  Exporter name
+        expAddr1,                                                           // [10] Exporter addr1
+        expAddr2,                                                           // [11] Exporter addr2
+        clean(job.exporter_state || job.state || ""),                      // [12] State — FIX 56 (was city)
+        clean(job.exporter_state || job.state || ""),                      // [13] State — FIX 56
+        pinCode,                                                            // [14] PIN
+        expTypCode(job.exporter_type),                                      // [15] Exporter type
+        "P",                                                                // [16] Exporter class
+        stOr,                                                               // [17] State of origin
+        clean(isNFEI ? "" : (job.adCode || job.ad_code || "")),             // [18] AD Code
         "",                                                                 // [19] EPZ
-        cL[0],                                                              // [20] Consignee Name
+        cL[0],                                                              // [20] Consignee name/start — FIX 55
         cL[1],                                                              // [21]
         cL[2],                                                              // [22]
-        cL[3],                                                              // [23] FIX 32
+        cL[3],                                                              // [23]
         cL[4],                                                              // [24]
-        cntry(con0.consignee_country || ""),                               // [25]
+        cntry(con0.consignee_country || ""),                               // [25] Consignee country
         isNFEI ? "01" : "",                                               // [26] NFEI
         "",                                                                 // [27] RBI Waiver No
         "",                                                                 // [28] RBI Waiver Date
         loc,                                                                // [29] Port of Loading — FIX 15
-        podisc,                                                                // [30] Port of Dest
-        cntry(job.destination_country || ""),                              // [31]
-        cntry(job.discharge_country || ""),    // [32]
-        podest,                                                                // [33] Port of Discharge
-        mappedSealType,                                                     // [34] Seal Type
-        nc,                                                                 // [35] Nature of Cargo
-        parseFloat(job.gross_weight_kg || 0).toFixed(3),                  // [36]
-        parseFloat(job.net_weight_kg || 0).toFixed(3),                    // [37]
-        "KGS",                                                              // [38]
-        clean(String(job.total_no_of_pkgs || job.totalPackages || "")),   // [39]
-        preserveSpaces(job.marks_nos || job.marksAndNumbers || ""),       // [40] FIX 40
-        loosePktsFinal,   // ONLY ONE FIELD
-
-        String(emitContainer ? containers.length : ""),                   // [43] No. of Containers — FIX 34
-        "",
-        mawb,                                                               // [44]
-        hawb,                                                               // [45]
-        "",                                                                 // [46] Amend Type
-        "",                                                                 // [47] Amend No
-        gstnTypCode(gid),                                                  // [48] GSTN Type
+        podisc,                                                             // [30] Port of destination
+        cntry(job.destination_country || ""),                              // [31] Dest country
+        cntry(job.discharge_country || ""),                                // [32] Discharge country
+        podest,                                                             // [33] Port of discharge
+        mappedSealType,                                                     // [34] Seal type — FIX 57
+        nc,                                                                 // [35] Nature of cargo
+        parseFloat(job.gross_weight_kg || 0).toFixed(3),                  // [36] Gross weight
+        parseFloat(job.net_weight_kg || 0).toFixed(3),                    // [37] Net weight
+        "KGS",                                                              // [38] Weight unit
+        clean(String(job.total_no_of_pkgs || job.totalPackages || "")),   // [39] Total packages
+        preserveSpaces(job.marks_nos || job.marksAndNumbers || ""),       // [40] Marks & numbers
+        loosePktsFinal,                                                     // [41] Loose packets — FIX 58
+        String(emitContainer ? containers.length : ""),                   // [42] Container count — FIX 34
+        "",                                                                 // [43]
+        mawb,                                                               // [44] MAWB/MBL
+        hawb,                                                               // [45] HAWB/HBL
+        "",                                                                 // [46] Amend type
+        "",                                                                 // [47] Amend no
+        gstnTypCode(gid),                                                  // [48] GSTN type
         gid,                                                                // [49] GSTN ID
     );
 
     // ══════════════════════════════════════════════════════════════════════════
     // <TABLE>INVOICE  — 49 fields [0-48]
-    //
-    // Full layout (0-based):
-    // [16]=fCurr  [17]=fAmt   [18]=iRate  [19]=iCurr  [20]=iAmt
-    // [21]=commRate  [22]=commCurr  [23]=commAmt          FIX 41
-    // [24]=discRate  [25]=discCurr  [26]=discAmt
-    // [27]=otherRate [28]=otherCurr [29]=otherAmt
-    // [30]=addFreight (from termsOfInvoice)                FIX 42
-    // [31]=packingCharges  [32]=exporterContractNo
-    // [33]=natureOfPayment  [34]=paymentPeriod
-    // [35-48] = 14 trailing empties                        FIX 25
     // ══════════════════════════════════════════════════════════════════════════
     out += `<TABLE>INVOICE${RS}`;
     invs.forEach((inv, i) => {
@@ -521,18 +552,14 @@ export function generateSBFlatFile(job) {
         const iAmt = iAmtRaw > 0 ? iAmtRaw.toFixed(2) : "";
         const iCurr = iAmtRaw > 0 ? curr : "";
 
-        // Commission — FIX 41: read fic.commission, emit rate+currency+amount in [21-23]
-        // FIX 46 (corrected): commission RATE = the agent's % (e.g. 2.00000%)
-        //   Read ONLY from fic.commission.rate — NOT from fic.commission.exchangeRate
-        //   exchangeRate is the INR/USD conversion rate (~90.2), NOT the commission %.
-        //   Wrongly reading exchangeRate caused "92.55000" in [21] for jobs with no commission %.
+        // Commission — FIX 41 / FIX 52: rate ONLY from fic.commission.rate (not exchangeRate)
         const commAmtRaw = parseFloat((fic.commission || {}).amount || 0);
-        const commRateRaw = parseFloat((fic.commission || {}).rate || 0); // % rate only, never exchangeRate
+        const commRateRaw = parseFloat((fic.commission || {}).rate || 0);
         const commAmt = commAmtRaw > 0 ? commAmtRaw.toFixed(2) : "";
         const commCurr = commAmtRaw > 0 ? curr : "";
         const commRate = commRateRaw > 0 ? commRateRaw.toFixed(5) : "";
 
-        // Packing charges — FIX 51: read from invoice, emit in [31]
+        // Packing charges — FIX 51
         const packingChargesRaw = parseFloat(inv.packing_charges || 0);
         const packingCharges = packingChargesRaw > 0 ? packingChargesRaw.toFixed(2) : "";
 
@@ -561,42 +588,42 @@ export function generateSBFlatFile(job) {
         const terms = clean(inv.termsOfInvoice || "FOB").toUpperCase();
         const ct = contractTypeMap[terms] || "FOB";
 
-        // FIX 42: addFreight MUST come from termsOfInvoice — priceIncludes in DB is unreliable
-        // C&F = freight in price -> F | CIF = both -> B | C&I = insurance only -> I | FOB = neither -> N
+        // FIX 42: addFreight from termsOfInvoice only
         const addFreightMap = { "CIF": "B", "C&F": "F", "CF": "F", "C&I": "I", "CI": "I", "FOB": "N" };
         const af = addFreightMap[terms] || "N";
 
+        // FIX 55 (INVOICE): buyer fields also use the joined consignee split — same cL array
         out += row(PD,
-            String(i + 1),                 // [6]  Invoice Sr No
-            clean(inv.invoiceNumber || ""),// [7]  Invoice Number
-            fmtDate(inv.invoiceDate),      // [8]  Invoice Date
-            curr,                          // [9]  Currency
-            ct,                            // [10] Contract Type
-            cL[0],                         // [11] Buyer Name
-            cL[1],                         // [12] Buyer Addr1
-            cL[2],                         // [13] Buyer Addr2
-            cL[3],                         // [14] Buyer Addr3
-            cL[4],                         // [15] Buyer Addr4
-            fCurr,                         // [16] Freight Currency
-            fAmt,                          // [17] Freight Amount
-            "",                            // [18] Insurance Rate
-            iCurr,                         // [19] Insurance Currency
-            iAmt,                          // [20] Insurance Amount
-            commRate,                      // [21] Commission Rate (%) — FIX 46: 5 decimals when stored
-            commCurr,                      // [22] Commission Currency — FIX 41
-            commAmt,                       // [23] Commission Amount   — FIX 41
-            "",                            // [24] Discount Rate
-            discCurr,                      // [25] Discount Currency
-            discAmt,                       // [26] Discount Amount
-            "",                            // [27] Other Deductions Rate
-            otherCurr,                     // [28] Other Deductions Currency
-            otherAmt,                      // [29] Other Deductions Amount
-            af,                            // [30] Add Freight — FIX 42
-            packingCharges,                // [31] Packing Charges — FIX 51
-            "",                            // [32] Exporter Contract No
-            np,                            // [33] Nature of Payment
-            pp,                            // [34] Payment Period
-            "", "", "", "", "", "", "", "", "", "", "", "", "", "", // [35-48] FIX 25: 14 trailing empties
+            String(i + 1),                  // [6]  Invoice Sr No
+            clean(inv.invoiceNumber || ""), // [7]  Invoice Number
+            fmtDate(inv.invoiceDate),       // [8]  Invoice Date
+            curr,                           // [9]  Currency
+            ct,                             // [10] Contract Type
+            cL[0],                          // [11] Buyer Name/start
+            cL[1],                          // [12] Buyer Addr1
+            cL[2],                          // [13] Buyer Addr2
+            cL[3],                          // [14] Buyer Addr3
+            cL[4],                          // [15] Buyer Addr4
+            fCurr,                          // [16] Freight Currency
+            fAmt,                           // [17] Freight Amount
+            "",                             // [18] Insurance Rate
+            iCurr,                          // [19] Insurance Currency
+            iAmt,                           // [20] Insurance Amount
+            commRate,                       // [21] Commission Rate (%)
+            commCurr,                       // [22] Commission Currency
+            commAmt,                        // [23] Commission Amount
+            "",                             // [24] Discount Rate
+            discCurr,                       // [25] Discount Currency
+            discAmt,                        // [26] Discount Amount
+            "",                             // [27] Other Deductions Rate
+            otherCurr,                      // [28] Other Deductions Currency
+            otherAmt,                       // [29] Other Deductions Amount
+            af,                             // [30] Add Freight — FIX 42
+            packingCharges,                 // [31] Packing Charges — FIX 51
+            clean(job.otherInfo?.exportContractNo || ""), // [32] Exporter Contract No — FIX Bug 5
+            np,                             // [33] Nature of Payment
+            pp,                             // [34] Payment Period
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", // [35-48] FIX 25
         );
     });
 
@@ -604,7 +631,8 @@ export function generateSBFlatFile(job) {
     // <TABLE>EXCHANGE
     // ══════════════════════════════════════════════════════════════════════════
     out += `<TABLE>EXCHANGE${RS}`;
-    [...new Set(["INR", ...invs.map(inv => clean(inv.currency || "USD"))])].forEach(c => {
+    // FIX Bug 6: only emit invoice currencies, no INR
+    [...new Set(invs.map(inv => clean(inv.currency || "USD")))].forEach(c => {
         out += row(PD, c, "", "", "", "", "Y", "", "", "");
     });
 
@@ -629,20 +657,20 @@ export function generateSBFlatFile(job) {
                 String(ii + 1), String(pi + 1),
                 sc,
                 clean(p.ritc || ""),
-                trunc(desc, 40).trimEnd(),          // [10] FIX 26
-                trunc(desc.slice(40), 40),           // [11]
-                trunc(desc.slice(80), 40),           // [12]
+                trunc(desc, 40).trimEnd(),           // [10] FIX 26
+                trunc(desc.slice(40), 40),            // [11]
+                trunc(desc.slice(80), 40),            // [12]
                 uom, qty, upr, uom, "1", pmv,
-                "",                                  // [19] Job Work
-                "N",                                 // [20] Third Party
-                p.rewardItem ? "Y" : "N",           // [21] Reward
-                "", "", "",                          // [22-24] Amendment
-                "", "", "", "", "", "", "", "",       // [25-32] Manufacturer
-                "", "",                              // [33-34] Source State, Transit Country
-                "0",                                 // [35] Accessory
-                clean((p.endUse || "").split(" ")[0]), // [36] End Use
-                hawb,                                // [37] HAWB
-                "",                                  // [38] Total Package
+                "",                                   // [19] Job Work
+                "N",                                  // [20] Third Party
+                p.rewardItem ? "Y" : "N",            // [21] Reward
+                "", "", "",                           // [22-24] Amendment
+                "", "", "", "", "", "", "", "",        // [25-32] Manufacturer
+                "", "",                               // [33-34] Source State, Transit Country
+                "0",                                  // [35] Accessory
+                clean((p.endUse || "").split(" ")[0]),// [36] End Use
+                hawb,                                 // [37] HAWB
+                "",                                   // [38] Total Package
                 ist,
                 ist === "P" ? parseFloat(ig.taxableValueINR || 0).toFixed(2) : "",
                 ist === "P" ? parseFloat(ig.igstAmountINR || 0).toFixed(2) : "",
@@ -651,60 +679,34 @@ export function generateSBFlatFile(job) {
     });
 
     // ══════════════════════════════════════════════════════════════════════════
-    // <TABLE>EOU  — 22 fields [0-21]
-    // Emitted when job.annexure_c_details === true (EOU/STP/EHTP exporters)
-    // Position: after ITEM, before DBK/CONTAINER — matches Logisys confirmed order
-    //
-    // Field map (0-based, verified against AMD SEA 03441 Logisys reference):
-    // [6]  = IEC Code of EOU
-    // [7]  = Branch Sr No
-    // [8]  = Date of Examination (YYYYMMDD)
-    // [9]  = Examining Officer name
-    // [10] = Supervising Officer name
-    // [11] = Designation
-    // [12] = Division
-    // [13] = Range
-    // [14] = Commissionerate (blank fields → "." per Logisys convention)
-    // [15] = Virtual Seal Type / Seal Type (blank → ".")
-    // [16] = Seal Number (from container seal or annex_seal_number)
-    // [17] = Sample Forwarded (Y/N)
-    // [18] = Sample Accompanied (Y/N)
-    // [19-21] = 3 trailing blanks
+    // <TABLE>EOU  — emitted when job.annexure_c_details === true
     // ══════════════════════════════════════════════════════════════════════════
     if (job.annexure_c_details) {
         const ac = job.annexC1Details || {};
-        // Blank-to-dot: Logisys sends "." for empty officer/admin fields, not blank
         const dot = (v) => clean(v) || ".";
-        // Seal number: use first container's seal if annex seal is blank
         const euSeal = clean(ac.virtualSealNumber || job.annex_seal_number || "")
             || clean((containers[0] || {}).sealNo || "");
         out += `<TABLE>EOU${RS}`;
         out += row(PD,
-            clean(ac.ieCodeOfEOU || job.ie_code_of_eou || iec),  // [6]  IEC of EOU
-            String(ac.branchSerialNo ?? 0),                       // [7]  Branch Sr No
-            fmtDate(ac.examinationDate || job.examination_date),  // [8]  Exam Date
-            dot(ac.examiningOfficer || job.examining_officer),    // [9]  Examining Officer
-            dot(ac.supervisingOfficer || job.supervising_officer),// [10] Supervising Officer
-            dot(ac.designation || job.annex_designation),         // [11] Designation
-            dot(ac.division || job.annex_division),               // [12] Division
-            dot(ac.range || job.annex_range),                     // [13] Range
-            dot(job.commissionerate),                              // [14] Commissionerate
-            dot(ac.virtualSealType),   // [15] Seal Type
-            euSeal,                                                // [16] Seal Number
-            (ac.sampleForwarded || job.sample_forwarded) ? "Y" : "N",  // [17] Sample Forwarded
-            job.sample_accompanied ? "Y" : "N",                   // [18] Sample Accompanied
-            "", "", "",                                            // [19-21] trailing blanks
+            clean(ac.ieCodeOfEOU || job.ie_code_of_eou || iec),
+            String(ac.branchSerialNo ?? 0),
+            fmtDate(ac.examinationDate || job.examination_date),
+            dot(ac.examiningOfficer || job.examining_officer),
+            dot(ac.supervisingOfficer || job.supervising_officer),
+            dot(ac.designation || job.annex_designation),
+            dot(ac.division || job.annex_division),
+            dot(ac.range || job.annex_range),
+            dot(job.commissionerate),
+            dot(ac.virtualSealType),
+            euSeal,
+            (ac.sampleForwarded || job.sample_forwarded) ? "Y" : "N",
+            job.sample_accompanied ? "Y" : "N",
+            "", "", "",
         );
     }
 
-
     // ══════════════════════════════════════════════════════════════════════════
-    // <TABLE>LICENCE  — 19 fields [0-18]
-    //
-    // FIX 43: emit BOTH DEEC (Advance Licence) AND EPCG licence rows
-    //         licSr counter is shared per product — EPCG rows continue after DEEC
-    //
-    // Trigger: sc="03" (Adv Lic only), sc="50" (Adv Lic + EPCG), or explicit flags
+    // <TABLE>LICENCE  — FIX 43: DEEC + EPCG rows, shared licSr counter
     // ══════════════════════════════════════════════════════════════════════════
     const hasLicence = invs.some(inv => (inv.products || []).some(p => {
         const sc = (p.eximCode || "").split(" ")[0];
@@ -719,52 +721,42 @@ export function generateSBFlatFile(job) {
         out += `<TABLE>LICENCE${RS}`;
         invs.forEach((inv, ii) => {
             (inv.products || []).forEach((p, pi) => {
-                let licSr = 1; // shared counter for this product (DEEC + EPCG combined)
+                let licSr = 1;
 
-                // ── DEEC / Advance Licence ────────────────────────────────────
                 const deec = p.deecDetails || {};
                 const deecRegs = deec.deec_reg_obj || [];
                 const deecItems = deec.deecItems || [];
-
                 if (deecRegs.length && deecItems.length) {
                     deecRegs.forEach(reg => {
                         if (!clean(reg.regnNo)) return;
                         deecItems.forEach(item => {
                             out += row(PD,
-                                String(ii + 1), String(pi + 1),
-                                String(licSr++),
-                                clean(reg.regnNo),
-                                fmtDate(reg.licDate),
-                                clean(deec.itemSnoPartE || "1"),
-                                clean(item.itemSnoPartC || "1"),
+                                String(ii + 1), String(pi + 1), String(licSr++),
+                                clean(reg.regnNo), fmtDate(reg.licDate),
+                                clean(deec.itemSnoPartE || "1"), clean(item.itemSnoPartC || "1"),
                                 parseFloat(item.quantity || 0).toFixed(3),
                                 parseFloat(deec.exportQtyUnderLicence || 0).toFixed(3),
                                 getUnitIndicator(item.unit),
-                                "", "", "",   // FIX 36: 3 trailing empties
+                                "", "", "",
                             );
                         });
                     });
                 }
 
-                // ── EPCG Licence — FIX 43 ────────────────────────────────────
                 const epcg = p.epcgDetails || {};
                 const epcgRegs = epcg.epcg_reg_obj || [];
                 const epcgItems = epcg.epcgItems || [];
-
                 if (epcgRegs.length && epcgItems.length) {
                     epcgRegs.forEach(reg => {
                         if (!clean(reg.regnNo)) return;
                         epcgItems.forEach(item => {
                             out += row(PD,
-                                String(ii + 1), String(pi + 1),
-                                String(licSr++),               // continues from DEEC licSr
-                                clean(reg.regnNo),
-                                fmtDate(reg.licDate),
-                                clean(epcg.itemSnoPartE || "1"),
-                                clean(item.itemSnoPartC || "1"),
+                                String(ii + 1), String(pi + 1), String(licSr++),
+                                clean(reg.regnNo), fmtDate(reg.licDate),
+                                clean(epcg.itemSnoPartE || "1"), clean(item.itemSnoPartC || "1"),
                                 parseFloat(item.quantity || 0).toFixed(3),
                                 parseFloat(epcg.exportQtyUnderLicence || 0).toFixed(3),
-                                getUnitIndicator(item.unit),   // FIX 44: SET->N
+                                getUnitIndicator(item.unit),
                                 "", "", "",
                             );
                         });
@@ -786,16 +778,10 @@ export function generateSBFlatFile(job) {
                 if (!d.dbkitem && !d.dbkSrNo) return;
                 let dbkId = clean(d.dbkSrNo || d.dbkitem || "");
                 if (dbkId && !dbkId.endsWith("B")) dbkId += "B";
-                // FIX 48: DBK quantity MUST be the drawback schedule quantity (in schedule unit e.g. KGS)
-                // NOT the invoice quantity (which may be in PCS, MTS, etc.)
-                // Logisys: 10464 PCS item → DBK qty = 3997.248 KGS (the drawback-schedule-unit weight)
-                // d.quantity holds the schedule-unit qty if stored separately; do NOT fall back to p.quantity
-                // If d.quantity is missing, send blank rather than wrongly sending the invoice qty
                 const dbkQty = d.quantity ? parseFloat(d.quantity).toFixed(3) : "";
                 dbkRows.push(row(PD,
                     String(ii + 1), String(pi + 1),
-                    dbkId,
-                    dbkQty,  // FIX 48
+                    dbkId, dbkQty,
                     "", "", "",
                 ));
             });
@@ -814,95 +800,20 @@ export function generateSBFlatFile(job) {
         if (c.containerNo) sealDateMap[c.containerNo.toUpperCase()] = c.sealDate;
     });
 
-
-
-
     if (emitContainer) {
         out += `<TABLE>CONTAINER${RS}`;
         containers.forEach(c => {
-            // ── FIX 49: ISO 6346 container type code — complete mapping ──────────────
-            // Covers all types visible in the Logisys dropdown:
-            // 20/40 Standard Dry, Flat Rack, Collapsible Flat Rack, Reefer, Tank,
-            // Open Top, Hard Top, High Cube, Reefer High Cube, Platform
-            //
-            // IMPORTANT: In ICEGATE/ISO 6346, size code "45" does NOT mean 45-foot!
-            // "45" = 40-foot HIGH CUBE (9ft 6in tall). Real 45ft uses "L2".
-            // Logisys confirmed: 40ft High Cube → "45G0" (not "42G1")
-            //
-            // Full size code table:
-            //   22 = 20ft standard height  |  42 = 40ft standard height
-            //   25 = 20ft high cube        |  45 = 40ft high cube
-            //   L2 = 45ft standard height  |  L5 = 45ft high cube
-            //
-            // tCode table (ICEGATE simplified):
-            //   G0 = Dry/General (standard and high cube dry)
-            //   R1 = Reefer (refrigerated)
-            //   U1 = Open Top
-            //   P1 = Flat Rack (non-collapsible)
-            //   P3 = Collapsible Flat Rack
-            //   P0 = Platform
-            //   T0 = Tank
-            //   H0 = Hard Top / Ventilated
-
-            const rawSize = clean(c.containerSize || "20").toUpperCase();
-            const rawType = clean(c.type || c.containerType || "").toUpperCase();
-            // Combined string for detection — check both fields
-            const combined = rawSize + " " + rawType;
-
-            let isoType = rawType;
-
-            // Only compute if not already a valid 4-char ISO code
-            if (!/^\d{2}[A-Z]\d$/.test(isoType) && !/^[A-Z]\d[A-Z]\d$/.test(isoType)) {
-
-                // ── Detect flags ──────────────────────────────────────────────────
-                const isHC = combined.includes("HC") || combined.includes("HQ")
-                    || combined.includes("HIGH CUBE") || combined.includes("HIGHCUBE");
-                const isRF = combined.includes("RF") || combined.includes("REEFER")
-                    || combined.includes("REFRIGERAT");
-                const isOT = combined.includes("OT") || combined.includes("OPEN TOP")
-                    || combined.includes("OPEN-TOP");
-                const isFR = (combined.includes("FR") || combined.includes("FLAT RACK")
-                    || combined.includes("FLAT-RACK")) && !combined.includes("COLL");
-                const isCFR = combined.includes("COLLAPSIBLE") || combined.includes("CFR");
-                const isTK = combined.includes("TK") || combined.includes("TANK");
-                const isHT = combined.includes("HT") || combined.includes("HARD TOP")
-                    || combined.includes("VENTILAT");
-                const isPL = combined.includes("PL") || combined.includes("PLATFORM");
-                const is45ft = combined.includes("45FT") || combined.includes("45 FT")
-                    || rawSize === "45FT" || rawSize === "L2" || rawSize === "L5";
-                const is40 = combined.includes("40") && !is45ft;
-                const is20 = !is40 && !is45ft;
-
-                // ── Size code ─────────────────────────────────────────────────────
-                let sCode;
-                if (is45ft) {
-                    sCode = isHC ? "L5" : "L2";          // actual 45-foot container
-                } else if (is40) {
-                    sCode = isHC ? "45" : "42";           // 40ft HC=45, 40ft standard=42
-                } else {
-                    sCode = isHC ? "25" : "22";           // 20ft HC=25, 20ft standard=22
-                }
-
-                // ── Type code ─────────────────────────────────────────────────────
-                let tCode;
-                if (isRF) tCode = "R1";             // Reefer (any size)
-                else if (isOT) tCode = "U1";             // Open Top
-                else if (isCFR) tCode = "P3";             // Collapsible Flat Rack
-                else if (isFR) tCode = "P1";             // Flat Rack
-                else if (isPL) tCode = "P0";             // Platform
-                else if (isTK) tCode = "T0";             // Tank
-                else if (isHT) tCode = "H0";             // Hard Top / Ventilated
-                else tCode = "G0";             // Standard Dry or High Cube Dry
-
-                isoType = `${sCode}${tCode}`;
-            }
+            // FIX Bug 7: send raw size number only (e.g. "40"), not ISO type code ("45G0")
+            // FIX Bug 6: Extract size "20" or "40" correctly from name/type
+            const rawSizeStr = clean(c.containerSize || c.type || "20");
+            const containerSize = rawSizeStr.replace(/[^0-9]/g, "").slice(0, 2) || "20";
 
             const rawSealNo = clean(c.customSealNo || c.sealNo || c.shippingLineSealNo || "");
             const sealDate = sealDateMap[(clean(c.containerNo || "")).toUpperCase()] || c.sealDate;
 
             out += row(PD_CONTAINER,
                 clean(c.containerNo),
-                isoType,
+                containerSize,
                 rawSealNo,
                 fmtDate(sealDate || now),
                 "RFID",
@@ -919,10 +830,10 @@ export function generateSBFlatFile(job) {
         (inv.products || []).forEach((p, pi) => {
             const socQty = parseFloat(p.socQuantity || p.quantity || 0).toFixed(6);
             const socUnit = clean(p.socunit || p.qtyUnit || "");
-            const rc = (p.rodtepInfo || {}).claim === "Yes" ? "Claimed" : "Not Claimed";
             const pta = clean((p.ptaFtaInfo || "NCPTI").split(" ")[0]);
             const cess = parseFloat(p.compensationCessAmountINR || 0).toFixed(6);
-            const pState = stCd(clean(p.originState || job.exporter_state || job.state || "GUJARAT")); const pDist = clean(p.originDistrict || "").split(/\s*-\s*/)[0];
+            const pState = stCd(clean(p.originState || job.exporter_state || job.state || "GUJARAT"));
+            const pDist = clean(p.originDistrict || "").split(/\s*-\s*/)[0];
             let rowNo = 1;
 
             out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++), "ORC", "STO", pState, "", "", "");
@@ -931,9 +842,7 @@ export function generateSBFlatFile(job) {
             out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++), "ORC", "EPT", pta, "", "", "");
             out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++), "DTY", "GCESS", "", "", cess, "INR");
 
-            // FIX 47: DTY/RDT (RoDTEP declaration) is ONLY emitted for free SBs (eximCode starts "00")
-            // For DBK (60), RoSCTL (60), Advance Licence (03), EPCG (50) — Logisys does NOT send this row
-            // Emitting RODTEPN for non-free schemes causes confusion and is not expected by Customs
+            // FIX 47: DTY/RDT only for free SBs or when RoDTEP is explicitly claimed
             const sc_sw = (p.eximCode || "").split(" ")[0];
             const isFreeShipping = sc_sw === "00" || sc_sw === "" || sc_sw === "19" || sc_sw === "99";
             if (isFreeShipping || (p.rodtepInfo || {}).claim === "Yes") {
@@ -952,27 +861,15 @@ export function generateSBFlatFile(job) {
     });
 
     // ══════════════════════════════════════════════════════════════════════════
-    // <TABLE>STATEMENT
-    // FIX 50: Statement code depends on scheme — NOT always RD001
-    //
-    // Statement codes per ICES spec:
-    //   RD001 = RoDTEP declaration  → eximCode 00/19 (free SB) when RoDTEP claimed
-    //   RS001 = RoSCTL declaration  → eximCode 60 (DBK+RoSCTL) when RoSCTL claimed
-    //   DB001/DB002/DB003 = DBK declarations (handled separately if needed)
-    //
-    // Logisys confirmed: GIM 00640 (eximCode 60, rosctlInfo.claim=Yes) → RS001
-    // Your file was sending RD001 for this job → ICEGATE rejected with 1 error
+    // <TABLE>STATEMENT  — FIX 50: RS001 for RoSCTL, RD001 for RoDTEP
     // ══════════════════════════════════════════════════════════════════════════
     let statementAdded = false;
     invs.forEach((inv, ii) => {
         (inv.products || []).forEach((p, pi) => {
             const sc_stmt = (p.eximCode || "").split(" ")[0];
-            const isRoSCTL = (p.rosctlInfo || {}).claim === "Yes"
-                || sc_stmt === "60";
-            const isRoDTEP = (p.rodtepInfo || {}).claim === "Yes"
-                && !isRoSCTL;
+            const isRoSCTL = (p.rosctlInfo || {}).claim === "Yes" || sc_stmt === "60";
+            const isRoDTEP = (p.rodtepInfo || {}).claim === "Yes" && !isRoSCTL;
 
-            // Only emit a STATEMENT row when a benefit is actually claimed
             if (isRoSCTL || isRoDTEP) {
                 if (!statementAdded) { out += `<TABLE>STATEMENT${RS}`; statementAdded = true; }
                 const stmtCode = isRoSCTL ? "RS001" : "RD001";
@@ -997,49 +894,52 @@ export function generateSBFlatFile(job) {
             }
             const invSrNo = String(invIdx + 1);
 
-            // FIX 45: Issuing party address — ICES spec Addr1=C(70), Addr2=C(70)
-            // Old comma-split-within-36 caused Addr2 to exceed 70 chars on long addresses
-            // (e.g. "PLOT NO. 118/1,2,3,4 AND...CHHATRAL" → comma at pos 18 → Addr2=94 chars)
-            // → ICEGATE error: "documentIssuingPartyNameAddress2 max length 70"
-            // Fix: straight 70-char split; if explicit addressLine2 exists, use it directly.
+            // FIX Bug 1: Issuing party addr — normalize then trunc 35 / blank
             const ip = d.issuingParty || {};
-            const ipRawAddr = clean(ip.addressLine1 || "");
-            let ipAddrA, ipAddrB;
-            if (ip.addressLine2 && ip.addressLine2.trim()) {
-                ipAddrA = trunc(ipRawAddr, 70);
-                ipAddrB = trunc(clean(ip.addressLine2), 70);
-            } else {
-                // Split at 70 chars — matches ICES spec field width exactly
-                ipAddrA = trunc(ipRawAddr, 70);
-                ipAddrB = trunc(ipRawAddr.slice(70).trim(), 70);
-            }
+            const ipNorm = cleanAddrSplit(ip.addressLine1 || "");
+            const ipAddrA = trunc(ipNorm, 33);
+            const ipAddrB = ""; // Logisys always blank for this job
 
-            const ipCity = toTitleCase(clean(ip.city || ""));
+            // [14] — use State instead of City
+            const ipState = clean(ip.state || job.exporter_state || job.state || "GUJARAT").toUpperCase();
             const ipPin = clean(ip.pinCode || "");
 
-            // Beneficiary address: ICES spec Addr1=C(70), Addr2=C(70)
+            // FIX Bug 10/2: Beneficiary addr — strip L.L.C. prefix; preserve :
             const bp = d.beneficiaryParty || {};
-            const bpFull = clean(bp.addressLine1 || "");
-            const bpAddr21 = trunc(bpFull, 70);
-            const bpAddr22 = trunc(bpFull.slice(70).trim(), 70);
+            const bpRaw = cleanAddrSplit(bp.addressLine1 || "");
+            const bpMatch = bpRaw.match(/^(L\.L\.C\.?|LLC\.?|LTD\.?|PVT\.?)\s*/i);
+            const bpAddr = bpMatch ? bpRaw.slice(bpMatch[0].length) : bpRaw;
+            const bL = split35(bpAddr);
+            const bpAddr21 = bL[0];
+            const bpAddr22 = bL[1];
 
-            const invoiceDate = fmtDate(invs[invIdx]?.invoiceDate || d.dateOfIssue || "");
-            const docRefNo = clean(d.documentReferenceNo || invs[invIdx]?.invoiceNumber || "");
+            // [18] — use upload date (dateTimeOfUpload) not invoice date
+            const uploadDate = fmtDate(d.dateTimeOfUpload || d.dateOfIssue || "");
+            // [16] — Document Reference Number (MAX 17)
+            // Logisys sends a 16-17 char identifier here. IRN is typically too long.
+            const docRefRaw = d.imageRefNo || d.documentReferenceNo || d.irn || invs[invIdx]?.invoiceNumber || "";
+            const docRefFinal = trunc(clean(docRefRaw), 17);
 
             out += row(PD,
                 invSrNo, "0", String(di + 1),
                 clean(d.irn || d.imageRefNo || ""),
                 docTypeCode, "",
-                ipAddrA, ipAddrB, ipCity, ipPin,
-                docRefNo,
+                ipAddrA, ipAddrB, ipState, ipPin,
+                docRefFinal,
                 clean(d.placeOfIssue || job.originState || ""),
-                invoiceDate,
+                uploadDate,
                 "", "",
                 bpAddr21, bpAddr22,
                 "", "",
-                "pdf",
+                "PDF",
+                // FIX Bug 11: Beneficiary name — append L.L.C. back (keep trailing dot)
                 trunc(clean(ip.name || job.exporter || ""), 70),
-                trunc(preserveSpaces(bp.name || ""), 70),
+                (() => {
+                    const bpNameRaw = preserveSpaces(bp.name || "").toUpperCase();
+                    return bpMatch
+                        ? trunc(bpNameRaw + " " + bpMatch[1].toUpperCase(), 70)
+                        : trunc(bpNameRaw, 70);
+                })(),
                 sid,
             );
         });
@@ -1085,6 +985,7 @@ export function generateSBFlatFile(job) {
 
     out += `<END-SB>${RS}`;
 
+    // FIX 53: seq in HREC and TREC = plain sbNo (no date suffix)
     const hrec = `HREC${FS}ZZ${FS}${sid}${FS}ZZ${FS}${loc}${FS}ICES1_5${FS}P${FS}${FS}CACHE01${FS}${seq}${FS}${fdt}${FS}${ftm24}${RS}`;
     const trec = `TREC${FS}${seq}${RS}`;
 

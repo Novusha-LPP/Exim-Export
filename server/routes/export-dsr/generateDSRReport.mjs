@@ -20,7 +20,8 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
 
     // Build filter - support year to reduce dataset
     const { year, onlyPending } = req.query;
-    const filter = { exporter };
+    const isAll = String(exporter).toLowerCase() === "all";
+    const filter = isAll ? {} : { exporter };
     if (year) filter.year = year;
     if (onlyPending === "true") {
       filter.status = { $nin: ["Completed", "Cancelled"] };
@@ -88,6 +89,7 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
       { header: "No of packages", key: "no_of_packages", width: 15 },
       { header: "Net weight (kgs)", key: "net_weight", width: 18 },
       { header: "Gross weight (kgs)", key: "gross_weight", width: 18 },
+      { header: "Exporter", key: "exporter", width: 25 },
       { header: "Port", key: "port_details", width: 25 },
       { header: "Country", key: "country_details", width: 25 },
     ];
@@ -141,6 +143,7 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
         no_of_packages: job.total_no_of_pkgs || 0,
         net_weight: job.gross_weight_kg || 0, // Swapped as per requirement
         gross_weight: job.net_weight_kg || 0, // Swapped as per requirement
+        exporter: job.exporter || "",
         port_details: `Destination: ${job.destination_port || ""}\nDischarge: ${job.port_of_discharge || ""
           }`,
         country_details: `Destination: ${job.destination_country || ""
@@ -190,6 +193,7 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
     worksheet.getColumn("no_of_packages").width = 15;
     worksheet.getColumn("net_weight").width = 20;
     worksheet.getColumn("gross_weight").width = 20;
+    worksheet.getColumn("exporter").width = 30;
     worksheet.getColumn("port_details").width = 30;
     worksheet.getColumn("country_details").width = 30;
 
@@ -217,7 +221,7 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
     );
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="DSR_Report_${exporter}.xlsx"`,
+      `attachment; filename="DSR_Report_${isAll ? "All_Exporters" : exporter}_${new Date().toISOString().split('T')[0]}.xlsx"`,
     );
 
     await workbook.xlsx.write(res);

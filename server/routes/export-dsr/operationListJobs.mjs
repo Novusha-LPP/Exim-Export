@@ -75,9 +75,21 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             });
         } else if (normalizedStatus === "completed") {
             filter.$and.push({
-                $or: [
-                    { status: { $regex: "^completed$", $options: "i" } },
-                    { isJobtrackingEnabled: true }
+                $and: [
+                    { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
+                    { isJobCanceled: { $ne: true } },
+                    {
+                        $or: [
+                            { status: { $regex: "^completed$", $options: "i" } },
+                            { isJobtrackingEnabled: true },
+                            {
+                                $and: [
+                                    { status: { $nin: ["pending", "", null] } },
+                                    { status: { $exists: true } },
+                                ]
+                            }
+                        ]
+                    }
                 ]
             });
         } else {

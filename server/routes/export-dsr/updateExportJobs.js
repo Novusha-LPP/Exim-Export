@@ -105,6 +105,13 @@ router.get("/dashboard-stats", async (req, res) => {
                             $or: [
                               { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "completed"] },
                               { $eq: ["$isJobtrackingEnabled", true] },
+                              // Treat anything else NOT pending/blank as completed
+                              {
+                                $and: [
+                                  { $ne: [{ $toLower: { $ifNull: ["$status", ""] } }, "pending"] },
+                                  { $ne: [{ $ifNull: ["$status", ""] }, ""] }
+                                ]
+                              }
                             ],
                           },
                         ],
@@ -494,12 +501,29 @@ router.get("/exports/:status?", async (req, res) => {
           ],
         });
       } else if (statusLower === "completed") {
-        // Completed: Explicit status is completed OR jobTracking is enabled
+        // Completed: Explicit status is completed OR jobTracking is enabled OR NOT pending/blank (and NOT cancelled)
         filter.$and.push({
-          $or: [
-            { status: { $regex: "^completed$", $options: "i" } },
-            // If jobTracking is enabled, show in completed tab
-            { isJobtrackingEnabled: true },
+          $and: [
+            // Exclude Cancelled
+            {
+              $and: [
+                { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
+                { isJobCanceled: { $ne: true } },
+              ],
+            },
+            // Include if tracking, completed status, OR not pending/blank
+            {
+              $or: [
+                { status: { $regex: "^completed$", $options: "i" } },
+                { isJobtrackingEnabled: true },
+                {
+                  $and: [
+                    { status: { $nin: ["pending", "", null] } },
+                    { status: { $exists: true } },
+                  ],
+                },
+              ],
+            },
           ],
         });
       } else if (statusLower === "cancelled") {
@@ -617,7 +641,7 @@ router.get("/exports/:status?", async (req, res) => {
     }
 
     // Additional filters
-    if (exporter) {
+    if (exporter && exporter.toLowerCase() !== "all") {
       filter.$and.push({
         exporter: { $regex: exporter, $options: "i" },
       });

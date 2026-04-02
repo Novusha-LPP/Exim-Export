@@ -181,6 +181,7 @@ const s = {
     display: "flex",
     flexDirection: "column",
     fontWeight: "500",
+    fontSize: "11.5px",
   },
   consigneeRow: {
     display: "flex",
@@ -557,7 +558,7 @@ function CurrencyDropdown({
                 onMouseDown={() => d.selectIndex(i)}
                 onMouseEnter={() => d.setActive(i)}
               >
-                <div style={{ fontWeight: 600, color: "#111827" }}>
+                <div style={{ fontWeight: 600, color: "#111827", fontSize: "11.5px" }}>
                   {c.code} – {c.description}
                 </div>
               </div>
@@ -760,7 +761,7 @@ function GatewayPortDropdown({
                 onMouseDown={() => d.selectIndex(i)}
                 onMouseEnter={() => d.setActive(i)}
               >
-                <div style={{ fontWeight: 600, color: "#111827" }}>
+                <div style={{ fontWeight: 600, color: "#111827", fontSize: "11.5px" }}>
                   {(p.unece_code || p.uneceCode || "").toUpperCase()} -{" "}
                   {(p.name || "").toUpperCase()}
                 </div>
@@ -1004,8 +1005,8 @@ function CustomHouseDropdownLocal({ label, value, onChange, branchCode = "" }) {
                         }}
                         onMouseEnter={() => setActive(currentIndex)}
                       >
-                        <div style={{ fontWeight: 600, color: "#111827" }}>
-                          {item.label.toUpperCase()} {item.code && <span style={{ color: '#888', marginLeft: 4, fontWeight: 400 }}>({item.code})</span>}
+                        <div style={{ fontWeight: 600, color: "#111827", fontSize: "11.5px" }}>
+                          {item.label.toUpperCase()} {item.code && <span style={{ color: '#888', marginLeft: 4, fontWeight: 400, fontSize: "10px" }}>({item.code})</span>}
                         </div>
                       </div>
                     );
@@ -1027,6 +1028,7 @@ const AddExJobs = ({ onJobCreated }) => {
     consignee_country: "",
   };
   const [exporterError, setExporterError] = useState(false);
+  const [customHouseError, setCustomHouseError] = useState(false);
   const [formData, setFormData] = useState({
     branch_code: "AMD", // 👈 default
     exporter: "",
@@ -1289,6 +1291,10 @@ const AddExJobs = ({ onJobCreated }) => {
       setExporterError(true);
       return;
     }
+    if (!formData.custom_house) {
+      setCustomHouseError(true);
+      return;
+    }
 
     try {
       const response = await axios.post(
@@ -1306,6 +1312,8 @@ const AddExJobs = ({ onJobCreated }) => {
   };
 
   const handleClear = () => {
+    setExporterError(false);
+    setCustomHouseError(false);
     const defaultBranch = allowedBranchOptions.length > 0 ? allowedBranchOptions[0].code : "AMD";
     setFormData({
       branch_code: defaultBranch,
@@ -1736,13 +1744,18 @@ const AddExJobs = ({ onJobCreated }) => {
                   </select>
                 </div>
 
-                {/* Custom House with static grouped options */}
-                <CustomHouseDropdownLocal
-                  label="Custom House"
-                  value={formData.custom_house}
-                  onChange={(val) => handleInputChange("custom_house", val)}
-                  branchCode={formData.branch_code}
-                />
+                <div style={{ ...s.col, position: "relative" }}>
+                  <CustomHouseDropdownLocal
+                    label="Custom House *"
+                    value={formData.custom_house}
+                    onChange={(val) => {
+                      setCustomHouseError(false);
+                      handleInputChange("custom_house", val)
+                    }}
+                    branchCode={formData.branch_code}
+                  />
+                  {customHouseError && <span style={{ color: "red", fontSize: "10px", marginTop: "2px", fontWeight: "600", position: "absolute", bottom: "-14px", left: "0" }}>Custom House is required.</span>}
+                </div>
 
                 <div style={s.col}>
                   <label style={s.label}>Port of Loading</label>

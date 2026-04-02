@@ -710,6 +710,7 @@ const exportJobSchema = new mongoose.Schema(
     bank_name: { type: String, trim: true },
     ieCode: { type: String, trim: true },
     branch_index: { type: String, trim: true },
+    bank_index: { type: String, trim: true },
     exporter_ref_no: { type: String, trim: true },
     shipper: { type: String, trim: true },
     sb_type: { type: String, trim: true },
