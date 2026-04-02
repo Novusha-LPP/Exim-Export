@@ -377,8 +377,6 @@ router.get("/global-search-jobs", async (req, res) => {
           "operations.statusDetails.status": 1,
           "operations.transporterDetails.images": 1,
           "operations.bookingDetails.images": 1,
-          "containers.images": 1,
-          "containers.weighmentImages": 1,
           lockedBy: 1,
           lockedAt: 1
         })
@@ -812,9 +810,6 @@ router.get("/exports/:status?", async (req, res) => {
       "operations.statusDetails.status": 1,
       "operations.transporterDetails.images": 1,
       "operations.bookingDetails.images": 1,
-      "containers.images": 1,
-      "containers.weighmentImages": 1,
-      "containers.containerNo": 1,
       lockedBy: 1,
       lockedAt: 1
     };
