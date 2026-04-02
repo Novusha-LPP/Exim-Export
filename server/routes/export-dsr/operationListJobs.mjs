@@ -209,7 +209,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
 
         const selectProjection = {
             job_no: 1, custom_house: 1, job_date: 1, consignmentType: 1, job_owner: 1,
-            exporter: 1, exporter_branch_name: 1, "consignees.consignee_name": 1, "buyerThirdPartyInfo.buyer.name": 1,
+            exporter: 1, exporter_ref_no: 1, exporter_branch_name: 1, "consignees.consignee_name": 1, "buyerThirdPartyInfo.buyer.name": 1,
             ieCode: 1, panNo: 1, exporter_gstin: 1, adCode: 1,
             "invoices.invoiceNumber": 1, "invoices.invoiceDate": 1, "invoices.termsOfInvoice": 1,
             "invoices.currency": 1, "invoices.invoiceValue": 1, "invoices.consigneeName": 1,
@@ -228,8 +228,10 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             "operations.statusDetails.handoverImageUpload": 1, "operations.statusDetails.billingDocsSentUpload": 1,
             "operations.statusDetails.billingDocsSentDt": 1, "operations.statusDetails.status": 1,
             "operations.transporterDetails.images": 1, "operations.bookingDetails.images": 1,
-            "containers.images": 1, "containers.weighmentImages": 1,
-            "containers.containerNo": 1, lockedBy: 1, lockedAt: 1
+            containers: 1,
+            otherInfo: 1, annexC1Details: 1, booking_copy: 1,
+            total_ar_amount: 1, outstanding_balance: 1, cha: 1,
+            lockedBy: 1, lockedAt: 1
         };
 
         const [jobs, totalCount] = await Promise.all([

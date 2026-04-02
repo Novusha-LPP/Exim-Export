@@ -680,7 +680,7 @@ const ExportJobsTable = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      const fileName = isAll 
+      const fileName = isAll
         ? `DSR_Report_All_Exporters_${format(new Date(), "yyyyMMdd")}.xlsx`
         : `DSR_Report_${selectedExporter}_${format(new Date(), "yyyyMMdd")}.xlsx`;
       link.setAttribute(
@@ -730,6 +730,7 @@ const ExportJobsTable = () => {
           // Column 1: Job No
           let jobNoCol = [];
           if (job.job_no) jobNoCol.push(job.job_no);
+          if (job.exporter_ref_no) jobNoCol.push(`Ref: ${job.exporter_ref_no}`);
           if (job.custom_house) jobNoCol.push(job.custom_house);
           if (job.consignmentType) jobNoCol.push(job.consignmentType);
           rowData["Job No"] = jobNoCol.join("\n");
@@ -2056,6 +2057,22 @@ const ExportJobsTable = () => {
                           >
                             {formatDate(job.job_date)}
                           </div>
+                          {job.exporter_ref_no && (
+                            <div
+                              style={{
+                                color: "#111",
+                                fontSize: "10px",
+                                fontWeight: "700",
+                                marginBottom: "4px",
+                                backgroundColor: "#f3f4f6",
+                                padding: "2px 4px",
+                                borderRadius: "3px",
+                                width: "fit-content"
+                              }}
+                            >
+                              REF: {job.exporter_ref_no}
+                            </div>
+                          )}
 
                           <div
                             style={{

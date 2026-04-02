@@ -15,7 +15,7 @@ const s = {
     minHeight: "80vh",
     color: "#1f2937",
     fontSize: "12px",
-    fontWeight: "700",
+    fontWeight: "500",
   },
   container: {
     maxWidth: "1100px",
@@ -1005,8 +1005,8 @@ function CustomHouseDropdownLocal({ label, value, onChange, branchCode = "" }) {
                         }}
                         onMouseEnter={() => setActive(currentIndex)}
                       >
-                        <div style={{ fontWeight: 600, color: "#111827", fontSize: "11.5px" }}>
-                          {item.label.toUpperCase()} {item.code && <span style={{ color: '#888', marginLeft: 4, fontWeight: 400, fontSize: "10px" }}>({item.code})</span>}
+                        <div style={{ fontWeight: 500, color: "#111827", fontSize: "11px" }}>
+                          {item.label.toUpperCase()} {item.code && <span style={{ color: '#888', marginLeft: 4, fontWeight: 400, fontSize: "9px" }}>({item.code})</span>}
                         </div>
                       </div>
                     );
@@ -1041,6 +1041,7 @@ const AddExJobs = ({ onJobCreated }) => {
     consignmentType: "",
     discharge_country: "",
     custom_house: "",
+    exporter_ref_no: "",
     total_no_of_pkgs: "",
     gross_weight_kg: "",
     net_weight_kg: "",
@@ -1414,12 +1415,12 @@ const AddExJobs = ({ onJobCreated }) => {
                               onMouseDown={() => handleDirectorySelect(org)}
                             >
                               <div
-                                style={{ fontWeight: "600", color: "#1f2937" }}
+                                style={{ fontWeight: "500", color: "#1f2937", fontSize: "11px" }}
                               >
                                 {org.organization}
                               </div>
                               <div
-                                style={{ fontSize: "10px", color: "#6b7280" }}
+                                style={{ fontSize: "9px", color: "#6b7280" }}
                               >
                                 IE Code:{" "}
                                 {org.registrationDetails?.ieCode || "N/A"}
@@ -1530,6 +1531,19 @@ const AddExJobs = ({ onJobCreated }) => {
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              {/* Row 2: Reference and other fields */}
+              <div style={s.row}>
+                <div style={{ ...s.col, maxWidth: "250px" }}>
+                  <label style={s.label}>Export Reference No</label>
+                  <input
+                    style={s.input}
+                    placeholder="Enter Reference Number..."
+                    value={formData.exporter_ref_no}
+                    onChange={(e) => handleInputChange("exporter_ref_no", e.target.value)}
+                  />
                 </div>
               </div>
             </div>
@@ -1750,11 +1764,11 @@ const AddExJobs = ({ onJobCreated }) => {
                     value={formData.custom_house}
                     onChange={(val) => {
                       setCustomHouseError(false);
-                      handleInputChange("custom_house", val)
+                      handleInputChange("custom_house", val);
                     }}
                     branchCode={formData.branch_code}
                   />
-                  {customHouseError && <span style={{ color: "red", fontSize: "10px", marginTop: "2px", fontWeight: "600", position: "absolute", bottom: "-14px", left: "0" }}>Custom House is required.</span>}
+                  {customHouseError && <span style={{ color: "red", fontSize: "10px", marginTop: "2px", display: "block" }}>Custom House is required.</span>}
                 </div>
 
                 <div style={s.col}>
