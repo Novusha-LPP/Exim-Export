@@ -185,6 +185,13 @@ const styles = {
     color: "#263046",
     textTransform: "uppercase",
   },
+  grid4: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 16,
+    marginBottom: 8,
+    alignItems: "end",
+  },
 };
 
 // Default EPCG item
@@ -338,6 +345,20 @@ const ProductEPCGTab = ({ formik, selectedInvoiceIndex, productIndex }) => {
   };
 
   const autoSave = useCallback(() => formik.submitForm(), [formik]);
+
+  useEffect(() => {
+    if (product && epcgDetails) {
+      if (!epcgDetails.itemSnoPartE) {
+        handleEpcgFieldChange("itemSnoPartE", String(productIndex + 1));
+      }
+      if (!epcgDetails.exportQtyUnderLicence) {
+        handleEpcgFieldChange("exportQtyUnderLicence", product.quantity || 0);
+      }
+      if (!epcgDetails.exportQtyUnit) {
+        handleEpcgFieldChange("exportQtyUnit", product.unit || "");
+      }
+    }
+  }, [productIndex, product?.quantity, product?.unit]);
 
   // Top-level fields (isEpcgItem, etc.)
   const handleEpcgFieldChange = (field, value) => {
@@ -632,7 +653,7 @@ const ProductEPCGTab = ({ formik, selectedInvoiceIndex, productIndex }) => {
 
       {/* 1. Part E & Quantity Details */}
       <div style={styles.subSectionTitle}>PART E & QUANTITY DETAILS</div>
-      <div style={styles.grid3}>
+      <div style={styles.grid4}>
         <div style={styles.field}>
           <label style={styles.label}>Item SNo (Part E)</label>
           <input
@@ -657,6 +678,15 @@ const ProductEPCGTab = ({ formik, selectedInvoiceIndex, productIndex }) => {
                 parseFloat(e.target.value) || 0
               )
             }
+          />
+        </div>
+        <div style={styles.field}>
+          <UnitDropdownField
+            label="Unit"
+            fieldName={`invoices[${selectedInvoiceIndex}].products[${productIndex}].epcgDetails.exportQtyUnit`}
+            formik={formik}
+            unitOptions={unitCodes}
+            placeholder="UT"
           />
         </div>
       </div>

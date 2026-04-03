@@ -4,80 +4,65 @@ import ESanchitEditDialog from "./ESanchitEditDialog";
 import { formatDate } from "../../../../utils/dateUtils";
 
 // Enterprise styles
+// Enterprise styles matching ProductMainTab
 const styles = {
-  sectionContainer: {
-    marginTop: 12,
-    fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    color: "#111827",
+  page: {
+    fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
     fontSize: 12,
-  },
-  sectionHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: 700,
-    letterSpacing: "0.04em",
-    textTransform: "uppercase",
-    color: "#374151",
+    color: "#1f2933",
+    padding: 12,
+    background: "#f5f7fb",
+    minHeight: "100%",
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 4,
-    border: "1px solid #e5e7eb",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
-    padding: 10,
+    background: "#ffffff",
+    border: "1px solid #d2d8e4",
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 12,
+    boxShadow: "0 0 0 1px rgba(15, 23, 42, 0.02)",
+  },
+  cardTitle: {
+    fontWeight: 700,
+    color: "#16408f",
+    fontSize: 13,
+    marginBottom: 8,
   },
   tableWrapper: {
+    border: "1px solid #d2d8e4",
+    borderRadius: 6,
+    background: "#ffffff",
+    marginBottom: 10,
     overflowX: "auto",
-    borderRadius: 4,
-    border: "1px solid #e5e7eb",
   },
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    tableLayout: "fixed",
     fontSize: 12,
   },
   th: {
-    borderBottom: "1px solid #e5e7eb",
-    padding: "6px 8px",
-    textAlign: "left",
-    backgroundColor: "#f9fafb",
-    color: "#4b5563",
+    fontSize: 11,
     fontWeight: 700,
+    color: "#f9fafb",
+    background: "#16408f",
+    padding: "8px 8px",
+    textAlign: "left",
+    position: "sticky",
+    top: 0,
+    zIndex: 10,
     whiteSpace: "nowrap",
   },
   td: {
-    borderBottom: "1px solid #f3f4f6",
-    padding: "5px 8px",
+    padding: "8px 8px",
+    borderBottom: "1px solid #e0e5f0",
     color: "#111827",
-    fontWeight: 700,
-    backgroundColor: "#ffffff",
-  },
-  rowClickable: {
-    cursor: "pointer",
-  },
-  emptyRow: {
-    textAlign: "center",
-    color: "#9ca3af",
-    fontStyle: "italic",
-    fontWeight: 700,
-  },
-  footerBar: {
-    marginTop: 8,
-    display: "flex",
-    justifyContent: "flex-start",
-    gap: 8,
+    fontWeight: 600,
   },
   primaryButton: {
     padding: "6px 14px",
     borderRadius: 4,
-    border: "1px solid #1d4ed8",
-    backgroundColor: "#2563eb",
+    border: "1px solid #16408f",
+    backgroundColor: "#16408f",
     color: "#ffffff",
     fontSize: 12,
     fontWeight: 700,
@@ -88,14 +73,36 @@ const styles = {
     boxShadow: "0 1px 2px rgba(15,23,42,0.15)",
   },
   linkButton: {
-    border: "none",
-    background: "transparent",
-    color: "#2563eb",
-    fontSize: 12,
-    fontWeight: 700,
+    padding: "2px 7px",
+    fontSize: 11,
+    borderRadius: 4,
+    border: "1px solid #e53e3e",
+    background: "#fff5f5",
+    color: "#c53030",
     cursor: "pointer",
-    padding: 0,
-    textDecoration: "underline",
+    fontWeight: 600,
+  },
+  smallButton: {
+    padding: "3px 9px",
+    fontSize: 11,
+    borderRadius: 4,
+    border: "1px solid #16408f",
+    background: "#16408f",
+    color: "#ffffff",
+    cursor: "pointer",
+    fontWeight: 600,
+    marginRight: 6,
+  },
+  emptyRow: {
+    textAlign: "center",
+    color: "#9ca3af",
+    fontStyle: "italic",
+    padding: "20px 0",
+  },
+  footerBar: {
+    marginTop: 8,
+    display: "flex",
+    justifyContent: "flex-start",
   },
 };
 
@@ -130,10 +137,9 @@ const ESanchitTab = ({ formik }) => {
   const docs = formik.values.eSanchitDocuments || [];
 
   return (
-    <div style={styles.sectionContainer}>
-
-
+    <div style={styles.page}>
       <div style={styles.card}>
+        <div style={styles.cardTitle}>e-Sanchit Uploads</div>
         <div style={styles.tableWrapper}>
           <table style={styles.table}>
             <thead>
@@ -158,7 +164,7 @@ const ESanchitTab = ({ formik }) => {
                   style={{ ...styles.rowClickable }}
                   onClick={() => handleEdit(doc, idx)}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f3f4ff";
+                    e.currentTarget.style.backgroundColor = "#f5f7fb";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = "#ffffff";
@@ -181,7 +187,7 @@ const ESanchitTab = ({ formik }) => {
                   <td style={styles.td}>
                     <button
                       type="button"
-                      style={styles.linkButton}
+                      style={styles.smallButton}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleEdit(doc, idx);

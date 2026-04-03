@@ -150,7 +150,7 @@ const SearchableDropdown = ({
               if (open) {
                 if (active >= 0 && filteredOptions[active]) {
                   handleSelect(filteredOptions[active]);
-                } else if (filteredOptions.length === 1) {
+                } else if (filteredOptions.length > 0) {
                   handleSelect(filteredOptions[0]);
                 } else {
                   setOpen(false);

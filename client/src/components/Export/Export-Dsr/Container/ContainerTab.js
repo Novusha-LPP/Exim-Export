@@ -392,16 +392,16 @@ function ContainerTab({ formik }) {
                       onChange={(e) => handleFieldChange(idx, "pkgsStuffed", Number(e.target.value || 0))} />
                   </td>
                   <td style={styles.td}>
-                    <input type="number" style={styles.input} value={row.grossWeight || ""}
-                      onChange={(e) => handleFieldChange(idx, "grossWeight", Number(e.target.value || 0))} />
+                    <input type="number" step="0.001" style={styles.input} value={row.grossWeight || ""}
+                      onChange={(e) => handleFieldChange(idx, "grossWeight", parseFloat(e.target.value || 0))} />
                   </td>
                   <td style={styles.td}>
-                    <input type="number" style={styles.input} value={row.tareWeightKgs || ""}
-                      onChange={(e) => handleFieldChange(idx, "tareWeightKgs", Number(e.target.value || 0))} />
+                    <input type="number" step="0.001" style={styles.input} value={row.tareWeightKgs || ""}
+                      onChange={(e) => handleFieldChange(idx, "tareWeightKgs", parseFloat(e.target.value || 0))} />
                   </td>
                   <td style={styles.td}>
-                    <input type="number" style={styles.input} value={row.maxGrossWeightKgs || ""}
-                      onChange={(e) => handleFieldChange(idx, "maxGrossWeightKgs", Number(e.target.value || 0))} />
+                    <input type="number" step="0.001" style={styles.input} value={row.maxGrossWeightKgs || ""}
+                      onChange={(e) => handleFieldChange(idx, "maxGrossWeightKgs", parseFloat(e.target.value || 0))} />
                   </td>
                   <td style={styles.td}>
                     <input style={{ ...styles.input, ...styles.readOnlyInput }} value={row.maxPayloadKgs || ""} readOnly disabled />

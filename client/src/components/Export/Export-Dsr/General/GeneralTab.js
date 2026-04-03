@@ -198,6 +198,7 @@ const ConsigneeCountryAutocomplete = ({ value, onChange }) => {
 
 const GeneralTab = ({ formik, directories }) => {
   const saveTimeoutRef = useRef(null);
+  const [exporterDetails, setExporterDetails] = useState(null);
 
   // Consignee logic
   const emptyConsignee = {
@@ -300,16 +301,11 @@ const GeneralTab = ({ formik, directories }) => {
   };
 
   // Directory options
-  const exporters = directories?.exporters || [];
-  const banks = [];
-  exporters.forEach((exp) => {
-    (exp.bankDetails || []).forEach((bank) => {
-      banks.push({
-        ...bank,
-        label: `${toUpper(bank.entityName)} ${toUpper(bank.branchLocation)}`,
-      });
-    });
-  });
+  const exporters = directories?.exporterNames || [];
+  const banks = (exporterDetails?.bankDetails || []).map((bank) => ({
+    ...bank,
+    label: `${toUpper(bank.entityName)} ${toUpper(bank.branchLocation)}`,
+  }));
 
   function getVal(f) {
     return toUpper(formik.values[f] || "");
@@ -342,81 +338,104 @@ const GeneralTab = ({ formik, directories }) => {
 
   useEffect(() => {
     const exporterName = getVal("exporter");
-    const exp = exporters.find(
-      (ex) => toUpper(ex.organization) === exporterName,
-    );
-    if (!exp) return;
+    if (!exporterName) return;
 
-    // pick branch by selected index, default 0
-    const idx = Number.isInteger(Number(formik.values.branch_index))
-      ? Number(formik.values.branch_index)
-      : 0;
-    const branch = exp.branchInfo?.[idx] || exp.branchInfo?.[0] || {};
+    const fetchExporterDetails = async () => {
+      try {
+        const res = await axios.get(
+          `${apiBase}/directory/exporter?exporter=${encodeURIComponent(exporterName)}`,
+        );
+        if (res.data?.success && res.data.data) {
+          const exp = res.data.data;
+          setExporterDetails(exp);
+          // pick branch by selected index, default 0
+          const idx = Number.isInteger(Number(formik.values.branch_index))
+            ? Number(formik.values.branch_index)
+            : 0;
+          const branch = exp.branchInfo?.[idx] || exp.branchInfo?.[0] || {};
 
-    // IE Code or PAN fallback
-    const ieFromDir = exp.registrationDetails?.ieCode || "";
-    const panFromDir = exp.registrationDetails?.panNo || "";
-    const effectiveIe = ieFromDir || panFromDir;
+          // IE Code or PAN fallback
+          const ieFromDir = exp.registrationDetails?.ieCode || "";
+          const panFromDir = exp.registrationDetails?.panNo || "";
+          const effectiveIe = ieFromDir || panFromDir;
 
-    const updates = {
-      ieCode: toUpper(effectiveIe),
-      gstin: toUpper(branch.gstNo || ""),
-      exporter_type: toUpper(exp.generalInfo?.exporterType || ""),
-      exporter_address: toUpper(
-        `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""}`
-      ),
-      exporter_branch_name: toUpper(branch.branchName || ""),
+          const updates = {
+            ieCode: toUpper(effectiveIe),
+            gstin: toUpper(branch.gstNo || ""),
+            state: toUpper(branch.state || ""),
+            branch_sno: toUpper(branch.branchCode || ""),
+            exporter_type: toUpper(exp.generalInfo?.exporterType || ""),
+            exporter_address: toUpper(
+              `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""}`,
+            ),
+            exporter_branch_name: toUpper(branch.branchName || ""),
+          };
+
+          const shouldUpdate =
+            getVal("ieCode") !== updates.ieCode ||
+            getVal("gstin") !== updates.gstin ||
+            getVal("state") !== updates.state ||
+            getVal("branch_sno") !== updates.branch_sno ||
+            getVal("exporter_type") !== updates.exporter_type ||
+            getVal("exporter_address") !== updates.exporter_address ||
+            getVal("exporter_branch_name") !== updates.exporter_branch_name;
+
+          if (shouldUpdate) {
+            Object.entries(updates).forEach(([key, val]) =>
+              formik.setFieldValue(key, val),
+            );
+          }
+
+          const bankIdxVal = formik.values.bank_index;
+          let bank;
+
+          if (exp.bankDetails && exp.bankDetails.length > 0) {
+            if (
+              bankIdxVal !== undefined &&
+              bankIdxVal !== "" &&
+              exp.bankDetails[bankIdxVal]
+            ) {
+              bank = exp.bankDetails[bankIdxVal];
+            } else {
+              // Find default or first
+              const defaultIdx = exp.bankDetails.findIndex((b) => b.isDefault);
+              const finalIdx = defaultIdx >= 0 ? defaultIdx : 0;
+              bank = exp.bankDetails[finalIdx];
+              if (bankIdxVal !== finalIdx) {
+                formik.setFieldValue("bank_index", finalIdx);
+              }
+            }
+          }
+
+          if (bank) {
+            const bankDealerVal = `${toUpper(bank.entityName)} ${toUpper(bank.branchLocation)}`;
+            if (getVal("bank_dealer") !== bankDealerVal) {
+              formik.setFieldValue("bank_dealer", bankDealerVal);
+            }
+            if (getVal("bank_name") !== toUpper(bank.entityName)) {
+              formik.setFieldValue("bank_name", toUpper(bank.entityName));
+            }
+            if (getVal("ac_number") !== toUpper(bank.accountNumber)) {
+              formik.setFieldValue("ac_number", toUpper(bank.accountNumber));
+              formik.setFieldValue(
+                "bank_account_number",
+                toUpper(bank.accountNumber),
+              );
+            }
+            if (getVal("ad_code") !== toUpper(bank.adCode)) {
+              formik.setFieldValue("ad_code", toUpper(bank.adCode));
+              formik.setFieldValue("adCode", toUpper(bank.adCode));
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching exporter details on mount/change:", err);
+      }
     };
 
-    const shouldUpdate =
-      getVal("ieCode") !== updates.ieCode ||
-      getVal("gstin") !== updates.gstin ||
-      getVal("exporter_type") !== updates.exporter_type ||
-      getVal("exporter_address") !== updates.exporter_address ||
-      getVal("exporter_branch_name") !== updates.exporter_branch_name;
-
-    if (shouldUpdate) {
-      Object.entries(updates).forEach(([key, val]) =>
-        formik.setFieldValue(key, val),
-      );
-    }
-
-    const bankIdxVal = formik.values.bank_index;
-    let bank;
-
-    if (exp.bankDetails && exp.bankDetails.length > 0) {
-      if (bankIdxVal !== undefined && bankIdxVal !== "" && exp.bankDetails[bankIdxVal]) {
-        bank = exp.bankDetails[bankIdxVal];
-      } else {
-        // Find default or first
-        const defaultIdx = exp.bankDetails.findIndex((b) => b.isDefault);
-        const finalIdx = defaultIdx >= 0 ? defaultIdx : 0;
-        bank = exp.bankDetails[finalIdx];
-        if (bankIdxVal !== finalIdx) {
-          formik.setFieldValue("bank_index", finalIdx);
-        }
-      }
-    }
-
-    if (bank) {
-      const bankDealerVal = `${toUpper(bank.entityName)} ${toUpper(bank.branchLocation)}`;
-      if (getVal("bank_dealer") !== bankDealerVal) {
-        formik.setFieldValue("bank_dealer", bankDealerVal);
-      }
-      if (getVal("bank_name") !== toUpper(bank.entityName)) {
-        formik.setFieldValue("bank_name", toUpper(bank.entityName));
-      }
-      if (getVal("ac_number") !== toUpper(bank.accountNumber)) {
-        formik.setFieldValue("ac_number", toUpper(bank.accountNumber));
-        formik.setFieldValue("bank_account_number", toUpper(bank.accountNumber));
-      }
-      if (getVal("ad_code") !== toUpper(bank.adCode)) {
-        formik.setFieldValue("ad_code", toUpper(bank.adCode));
-        formik.setFieldValue("adCode", toUpper(bank.adCode));
-      }
-    }
+    fetchExporterDetails();
     // eslint-disable-next-line
-  }, [directories, formik.values.exporter, formik.values.branch_index, formik.values.bank_index]);
+  }, [formik.values.exporter, formik.values.branch_index, formik.values.bank_index]);
 
   function handleIsBuyerToggle() {
     const isBuyer = !formik.values.isBuyer;
@@ -440,8 +459,8 @@ const GeneralTab = ({ formik, directories }) => {
   // --- UI generators ---
   function field(label, name, opts = {}) {
     return (
-      <div style={{ flex: opts.flex || 1 }}>
-        <div style={{ fontSize: 11, color: "#666", marginBottom: 0 }}>
+      <div style={{ flex: opts.flex || 1, marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: "#666", marginBottom: 1 }}>
           {label}
         </div>
         <input
@@ -455,8 +474,9 @@ const GeneralTab = ({ formik, directories }) => {
             padding: "2px 7px",
             height: 28,
             width: "100%",
-            marginBottom: 3,
             boxSizing: "border-box",
+            background: "#fff",
+            outline: "none",
           }}
         />
       </div>
@@ -465,29 +485,37 @@ const GeneralTab = ({ formik, directories }) => {
 
   function exporterInputField() {
     return (
-      <div>
-        <div style={{ fontSize: 11, color: "#666" }}>Exporter</div>
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: "#666", marginBottom: 1 }}>Exporter</div>
         <AutocompleteSelect
           name="exporter"
           value={getVal("exporter")}
           options={[
             { value: "", label: "-- SELECT --" },
-            ...exporters.map((exp) => ({
-              value: toUpper(exp.organization || ""),
-              label: toUpper(exp.organization || ""),
+            ...exporters.map((name) => ({
+              value: toUpper(name),
+              label: toUpper(name),
             })),
           ]}
-          onChange={(e) => {
+          onChange={async (e) => {
             const val = e.target.value;
             handleFieldChange("exporter", val);
             handleFieldChange("branch_index", 0);
             
-            // Auto fill branch_sno when exporter changes
-            const exp = exporters.find(ex => toUpper(ex.organization) === toUpper(val));
-            if (exp && exp.branchInfo && exp.branchInfo[0]) {
-               handleFieldChange("branch_sno", toUpper(exp.branchInfo[0].branchCode || ""));
+            // Use the new API to fetch fresh exporter data
+            try {
+              const res = await axios.get(`${apiBase}/directory/exporter?exporter=${encodeURIComponent(val)}`);
+              if (res.data?.success && res.data.data) {
+                const exp = res.data.data;
+                setExporterDetails(exp);
+                const branch = exp.branchInfo?.[0] || {};
+                handleFieldChange("branch_sno", toUpper(branch.branchCode || ""));
+                handleFieldChange("state", toUpper(branch.state || ""));
+              }
+            } catch (err) {
+              console.error("Failed to fetch exporter from new API, falling back to local data", err);
             }
-            
+
             handleFieldChange("bank_index", "");
             onExporterInput({ target: { value: val } });
           }}
@@ -498,29 +526,25 @@ const GeneralTab = ({ formik, directories }) => {
   }
 
   function branchSelectField() {
-    const exporterName = getVal("exporter");
-    const exp = exporters.find(
-      (ex) => toUpper(ex.organization) === exporterName,
-    );
-
-    if (!exp || !exp.branchInfo || exp.branchInfo.length <= 1) {
+    if (!exporterDetails || !exporterDetails.branchInfo || exporterDetails.branchInfo.length <= 1) {
       return null;
     }
 
-    const branches = exp.branchInfo || [];
+    const branches = exporterDetails.branchInfo || [];
     const currentBranchIndex = formik.values.branch_index || 0;
 
     return (
-      <div style={{ marginBottom: 4 }}>
-        <div style={{ fontSize: 11, color: "#666" }}>Select Branch</div>
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: "#666", marginBottom: 1 }}>Select Branch</div>
         <select
           value={currentBranchIndex}
           onChange={(e) => {
             const newIndex = parseInt(e.target.value);
             handleFieldChange("branch_index", newIndex);
-            // Sync branch_sno
+            // Sync branch info
             if (branches[newIndex]) {
               handleFieldChange("branch_sno", toUpper(branches[newIndex].branchCode || ""));
+              handleFieldChange("state", toUpper(branches[newIndex].state || ""));
             }
           }}
           style={{
@@ -531,6 +555,7 @@ const GeneralTab = ({ formik, directories }) => {
             height: 28,
             width: "100%",
             background: "#fff",
+            outline: "none",
           }}
         >
           {branches.map((b, i) => (
@@ -545,16 +570,11 @@ const GeneralTab = ({ formik, directories }) => {
   }
 
   function bankSelectField() {
-    const exporterName = getVal("exporter");
-    const exp = exporters.find(
-      (ex) => toUpper(ex.organization) === exporterName,
-    );
-
-    if (!exp || !exp.bankDetails || exp.bankDetails.length <= 1) {
+    if (!exporterDetails || !exporterDetails.bankDetails || exporterDetails.bankDetails.length <= 1) {
       return null;
     }
 
-    const banksList = exp.bankDetails || [];
+    const banksList = exporterDetails.bankDetails || [];
     const currentBankIndex = formik.values.bank_index || 0;
 
     return (
@@ -588,8 +608,8 @@ const GeneralTab = ({ formik, directories }) => {
 
   function bankInputField() {
     return (
-      <div>
-        <div style={{ fontSize: 11, color: "#666" }}>Bank/Dealer</div>
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: "#666", marginBottom: 1 }}>Bank/Dealer</div>
         <input
           list="bank-list"
           value={getVal("bank_dealer")}
@@ -601,7 +621,9 @@ const GeneralTab = ({ formik, directories }) => {
             padding: "2px 7px",
             height: 28,
             width: "100%",
-            marginBottom: 3,
+            background: "#fff",
+            outline: "none",
+            boxSizing: "border-box",
           }}
         />
         <datalist id="bank-list">
@@ -655,8 +677,8 @@ const GeneralTab = ({ formik, directories }) => {
           </div>
           {exporterInputField()}
           {branchSelectField()}
-          <div>
-            <div style={{ fontSize: 11, color: "#666" }}>Exporter Type</div>
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: "#666", marginBottom: 1 }}>Exporter Type</div>
             <AutocompleteSelect
               name="exporter_type"
               value={getVal("exporter_type")}
@@ -679,9 +701,9 @@ const GeneralTab = ({ formik, directories }) => {
             />
           </div>
           {field("Address", "exporter_address")}
-          <div style={{ display: "flex", gap: 10 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, color: "#666", marginBottom: 0 }}>Branch S/No</div>
+          <div style={{ display: "flex", gap: 10, width: "100%" }}>
+            <div style={{ flex: 1, marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: "#666", marginBottom: 1 }}>Branch S/No</div>
               <input
                 name="branch_sno"
                 value={getVal("branch_sno")}
@@ -690,10 +712,8 @@ const GeneralTab = ({ formik, directories }) => {
                   handleFieldChange("branch_sno", val);
                   
                   // Auto sync dropdown index
-                  const expName = getVal("exporter");
-                  const expData = exporters.find(ex => toUpper(ex.organization) === expName);
-                  if (expData && expData.branchInfo) {
-                    const matchIdx = expData.branchInfo.findIndex(b => toUpper(b.branchCode) === val);
+                  if (exporterDetails && exporterDetails.branchInfo) {
+                    const matchIdx = exporterDetails.branchInfo.findIndex(b => toUpper(b.branchCode) === val);
                     if (matchIdx !== -1 && matchIdx !== formik.values.branch_index) {
                       handleFieldChange("branch_index", matchIdx);
                     }
@@ -706,8 +726,9 @@ const GeneralTab = ({ formik, directories }) => {
                   padding: "2px 7px",
                   height: 28,
                   width: "100%",
-                  marginBottom: 3,
                   boxSizing: "border-box",
+                  background: "#fff",
+                  outline: "none",
                 }}
               />
             </div>

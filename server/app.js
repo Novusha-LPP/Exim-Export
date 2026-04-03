@@ -85,6 +85,8 @@ import operationListJobs from "./routes/export-dsr/operationListJobs.mjs";
 import queryRoutes from "./routes/export-dsr/queryRoutes.mjs";
 import chargesRoute from "./routes/charges/chargesRoute.mjs";
 import tallyRoutes from "./routes/charges/tallyRoutes.mjs";
+import { initDsrCronJob } from "./jobs/dsrJob.mjs"; // Import DSR Job
+import testDsrEmailRoute from "./routes/export-dsr/testDsrEmail.mjs"; // Import Test DSR Route
 
 // Report Routes
 import monthlyContainersReport from "./routes/report/monthlyContainers.mjs";
@@ -243,6 +245,7 @@ app.use(generateFlatFile);
 app.use(operationPendingJobs);
 app.use(operationListJobs);
 app.use(queryRoutes);
+app.use(testDsrEmailRoute);
 
 // Report Routes
 app.use(monthlyContainersReport);
@@ -280,6 +283,10 @@ process.on("SIGTERM", async () => {
 
 // Start server
 const PORT = process.env.PORT || 9002;
+
+// Initialize Cron Jobs
+initDsrCronJob(); // Start Daily 8 PM DSR Job
+
 app.listen(PORT, () => {
   console.log(`🟢 Server listening on http://localhost:${PORT}`);
 });

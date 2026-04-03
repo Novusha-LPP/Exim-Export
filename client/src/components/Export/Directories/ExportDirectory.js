@@ -43,9 +43,11 @@ import {
   LocationOn as LocationIcon,
   Assignment as AssignmentIcon,
   FileDownload as FileDownloadIcon,
+  Email as EmailIcon,
 } from "@mui/icons-material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import DirectoryForm from "./DirectoryForm.js";
+import axios from "axios"; // For testing API call
 import DirectoryService from "../Directories/DirectoryService";
 import { formatDate } from "../../../utils/dateUtils";
 
@@ -466,6 +468,23 @@ const ExportDirectory = () => {
     }
   };
 
+  const handleTestEmail = async (directory) => {
+    try {
+      showSnackbar(`Sending test DSR email for ${directory.organization}...`, "info");
+      const response = await axios.post(`${import.meta.env.VITE_API_STRING}/export-dsr/test-dsr-email`, {
+        exporterName: directory.organization
+      });
+      if (response.data.success) {
+        showSnackbar(response.data.message, "success");
+      } else {
+        showSnackbar("Failed to send test email: " + (response.data.message || "Unknown error"), "error");
+      }
+    } catch (error) {
+      console.error("Test email error:", error);
+      showSnackbar("Error sending test email: " + (error.response?.data?.message || error.message), "error");
+    }
+  };
+
   const handleSave = async (formData) => {
     try {
       if (selectedDirectory) {
@@ -737,6 +756,15 @@ const ExportDirectory = () => {
                               gap: 0.5,
                             }}
                           >
+                            <IconButton
+                                onClick={() => handleTestEmail(directory)}
+                                size="small"
+                                title="Send Test DSR Email"
+                                color="secondary"
+                                sx={{ "&:hover": { color: "#ff6b35" } }}
+                              >
+                                <EmailIcon fontSize="small" />
+                              </IconButton>
                             <IconButton
                               onClick={() => handleView(directory)}
                               size="small"

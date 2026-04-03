@@ -73,7 +73,14 @@ const validationSchema = Yup.object({
           .required("Postal code is required"),
         country: Yup.string().max(100).required("Country is required"),
         mobile: Yup.string().matches(/^\d{10}$/, "Mobile must be 10 digits"),
-        email: Yup.string().email("Invalid email format").max(255),
+        email: Yup.string()
+          .test("emails", "One or more email addresses are invalid", (value) => {
+            if (!value) return true;
+            const emails = value.split(",").map((e) => e.trim());
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            return emails.every((email) => emailRegex.test(email));
+          })
+          .max(1000),
       }),
     )
     .min(1, "At least one branch is required"),
@@ -136,7 +143,14 @@ const validationSchema = Yup.object({
       name: Yup.string().max(255),
       designation: Yup.string().max(100),
       mobile: Yup.string().matches(/^\d{10}$/, "Mobile must be 10 digits"),
-      email: Yup.string().email("Invalid email format").max(255),
+      email: Yup.string()
+        .test("emails", "One or more email addresses are invalid", (value) => {
+          if (!value) return true;
+          const emails = value.split(",").map((e) => e.trim());
+          const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+          return emails.every((email) => emailRegex.test(email));
+        })
+        .max(1000),
     }),
   ),
 
@@ -311,8 +325,8 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
               {/* Organization & Basic Info */}
               <Box
                 sx={{
-                  mb: 2,
-                  p: 1.5,
+                  mb: 1,
+                  p: 1,
                   bgcolor: "rgba(0,0,0,0.02)",
                   borderRadius: 1,
                 }}
@@ -320,11 +334,12 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 <Typography
                   variant="subtitle1"
                   sx={{
-                    mb: 1.5,
+                    mb: 0.5,
                     display: "flex",
                     alignItems: "center",
-                    gap: 0.5,
-                    fontSize: "0.9rem",
+                    gap: 0.25,
+                    fontSize: "0.8rem",
+                    fontWeight: "bold"
                   }}
                 >
                   <BusinessIcon fontSize="small" color="primary" />
@@ -514,8 +529,8 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
               {/* Registration Details */}
               <Box
                 sx={{
-                  mb: 2,
-                  p: 1.5,
+                  mb: 1,
+                  p: 1,
                   bgcolor: "rgba(0,0,0,0.02)",
                   borderRadius: 1,
                 }}
@@ -523,11 +538,12 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 <Typography
                   variant="subtitle1"
                   sx={{
-                    mb: 1.5,
+                    mb: 0.5,
                     display: "flex",
                     alignItems: "center",
-                    gap: 0.5,
-                    fontSize: "0.9rem",
+                    gap: 0.25,
+                    fontSize: "0.8rem",
+                    fontWeight: "bold"
                   }}
                 >
                   <AssignmentIcon fontSize="small" color="primary" />
@@ -621,8 +637,8 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
               {/* Bank Details */}
               <Box
                 sx={{
-                  mb: 2,
-                  p: 1.5,
+                  mb: 1,
+                  p: 1,
                   bgcolor: "rgba(0,0,0,0.02)",
                   borderRadius: 1,
                 }}
@@ -635,7 +651,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
-                          mb: 1.5,
+                          mb: 1,
                         }}
                       >
                         <Typography
@@ -644,7 +660,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                             display: "flex",
                             alignItems: "center",
                             gap: 0.5,
-                            fontSize: "0.9rem",
+                            fontSize: "0.85rem",
                           }}
                         >
                           <BankIcon fontSize="small" color="primary" />
@@ -864,8 +880,8 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
               {/* Branch Information Header */}
               <Box
                 sx={{
-                  mb: 2,
-                  p: 1.5,
+                  mb: 1,
+                  p: 1,
                   bgcolor: "rgba(0,0,0,0.02)",
                   borderRadius: 1,
                 }}
@@ -928,8 +944,8 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                       <Box
                         key={index}
                         sx={{
-                          mb: 2,
-                          p: 1.5,
+                          mb: 1,
+                          p: 1,
                           bgcolor: "white",
                           borderRadius: 1,
                           border: "1px solid",
@@ -1202,9 +1218,9 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
               {/* KYC Documents Section - MOVED OUTSIDE BRANCH LOOP */}
               <Box
                 sx={{
-                  mt: 3,
-                  mb: 2,
-                  p: 1.5,
+                  mt: 1,
+                  mb: 1,
+                  p: 1,
                   bgcolor: "rgba(0,0,0,0.02)",
                   borderRadius: 1,
                 }}
@@ -1212,18 +1228,18 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 <Typography
                   variant="subtitle1"
                   sx={{
-                    mb: 1.5,
+                    mb: 1,
                     display: "flex",
                     alignItems: "center",
                     gap: 0.5,
-                    fontSize: "0.9rem",
+                    fontSize: "0.85rem",
                   }}
                 >
                   <DocumentIcon fontSize="small" color="primary" />
                   KYC Documents
                 </Typography>
 
-                <Alert severity="info" sx={{ mb: 2, fontSize: "0.85rem" }}>
+                <Alert severity="info" sx={{ mb: 1, py: 0, fontSize: "0.8rem" }}>
                   Note: An organization can only have one MSME (Udyam)
                   Registration per legal entity (PAN).
                 </Alert>

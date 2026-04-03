@@ -2061,7 +2061,7 @@ function ProductRow({
         </div>
 
         <div style={styles.field}>
-          <label style={styles.label}>Quantity</label>
+          <label style={styles.label}>SQC Quantity</label>
           <input
             style={styles.input}
             type="number"

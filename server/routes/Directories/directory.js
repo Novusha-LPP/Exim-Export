@@ -84,6 +84,41 @@ router.get("/api/directory/stats", async (req, res) => {
   }
 });
 
+// GET /api/directory/names - Get list of organization names for dropdowns
+router.get("/api/directory/names", async (req, res) => {
+  try {
+    const names = await Directory.find({}, "organization").sort({ organization: 1 }).lean();
+    res.json({
+      success: true,
+      data: names.map(d => d.organization),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET /api/directory/exporter - Get single directory by organization name
+router.get("/api/directory/exporter", async (req, res) => {
+  try {
+    const { exporter } = req.query;
+    if (!exporter) {
+      return res.status(400).json({ success: false, message: "Exporter name is required" });
+    }
+
+    const directory = await Directory.findOne({
+      organization: { $regex: new RegExp(`^${exporter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") }
+    }).lean();
+
+    if (!directory) {
+      return res.status(404).json({ success: false, message: "Exporter not found" });
+    }
+
+    res.json({ success: true, data: directory });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // GET /api/directory/:id - Get directory by ID
 router.get("/api/directory/:id", async (req, res) => {
   try {
@@ -249,5 +284,7 @@ router.patch("/api/directory/update-exporter-type", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+
 
 export default router;

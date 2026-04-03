@@ -216,7 +216,7 @@ function CountryField({ label, fieldName, placeholder, formik }) {
               if (d.open) {
                 if (d.active >= 0 && d.opts[d.active]) {
                   d.select(d.active);
-                } else if (d.opts.length === 1) {
+                } else if (d.opts.length > 0) {
                   d.select(0);
                 } else {
                   d.setOpen(false);
@@ -397,7 +397,7 @@ function GatewayPortDropdownField({
               if (d.open) {
                 if (d.active >= 0 && filtered[d.active]) {
                   d.select(d.active);
-                } else if (filtered.length === 1) {
+                } else if (filtered.length > 0) {
                   d.select(0);
                 } else {
                   d.setOpen(false);
@@ -514,7 +514,7 @@ function NatureOfCargoDropdownField({
               if (open) {
                 if (active >= 0 && filtered[active]) {
                   handleSelect(active);
-                } else if (filtered.length === 1) {
+                } else if (filtered.length > 0) {
                   handleSelect(0);
                 } else {
                   setOpen(false);
@@ -618,7 +618,7 @@ function UnitDropdownField({
               if (open) {
                 if (active >= 0 && filtered[active]) {
                   handleSelect(active);
-                } else if (filtered.length === 1) {
+                } else if (filtered.length > 0) {
                   handleSelect(0);
                 } else {
                   setOpen(false);
@@ -801,7 +801,7 @@ function PortField({
               if (d.open) {
                 if (d.active >= 0 && d.opts[d.active]) {
                   d.select(d.active);
-                } else if (d.opts.length === 1) {
+                } else if (d.opts.length > 0) {
                   d.select(0);
                 } else {
                   d.setOpen(false);
@@ -927,7 +927,7 @@ function StateDropdownField({
               if (open) {
                 if (active >= 0 && filteredStates[active]) {
                   handleSelect(active);
-                } else if (filteredStates.length === 1) {
+                } else if (filteredStates.length > 0) {
                   handleSelect(0);
                 } else {
                   setOpen(false);
@@ -1137,7 +1137,7 @@ function ShippingLineDropdownField({
                 if (d.active >= 0) {
                   const originalIndex = indexInOpts(d.active);
                   if (originalIndex >= 0) d.select(originalIndex);
-                } else if (filteredOpts.length === 1) {
+                } else if (filteredOpts.length > 0) {
                   const originalIndex = indexInOpts(0);
                   if (originalIndex >= 0) d.select(originalIndex);
                 } else {
@@ -1890,11 +1890,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                 <input
                   style={styles.input}
                   type="number"
-                  value={
-                    Number(formik.values.total_no_of_pkgs) === 0
-                      ? ""
-                      : formik.values.total_no_of_pkgs || ""
-                  }
+                  value={formik.values.total_no_of_pkgs ?? ""}
                   onChange={(e) =>
                     handleFieldChange("total_no_of_pkgs", e.target.value)
                   }
@@ -1916,11 +1912,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   <input
                     style={styles.input}
                     type="number"
-                    value={
-                      Number(formik.values.loose_pkgs) === 0
-                        ? ""
-                        : formik.values.loose_pkgs || ""
-                    }
+                    value={formik.values.loose_pkgs ?? ""}
                     onChange={(e) =>
                       handleFieldChange("loose_pkgs", e.target.value)
                     }
@@ -1932,11 +1924,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   <input
                     style={styles.input}
                     type="number"
-                    value={
-                      Number(formik.values.no_of_containers) === 0
-                        ? ""
-                        : formik.values.no_of_containers || ""
-                    }
+                    value={formik.values.no_of_containers ?? ""}
                     onChange={(e) =>
                       handleFieldChange("no_of_containers", e.target.value)
                     }
@@ -1953,17 +1941,13 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   <input
                     style={{
                       ...styles.input,
-                      backgroundColor: (!isAir && !Number(formik.values.no_of_containers)) ? '#edf2f7' : '#f7fafc',
-                      cursor: (!isAir && !Number(formik.values.no_of_containers)) ? 'not-allowed' : 'text'
+                      backgroundColor: (!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? '#edf2f7' : '#f7fafc',
+                      cursor: (!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? 'not-allowed' : 'text'
                     }}
                     type="number"
                     step="0.001"
-                    disabled={!isAir && !Number(formik.values.no_of_containers)}
-                    value={
-                      Number(formik.values.gross_weight_kg) === 0
-                        ? ""
-                        : formik.values.gross_weight_kg || ""
-                    }
+                    disabled={!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)}
+                    value={formik.values.gross_weight_kg ?? ""}
                     onChange={(e) =>
                       handleFieldChange("gross_weight_kg", e.target.value)
                     }
@@ -1973,7 +1957,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                         handleFieldChange("gross_weight_kg", val.toFixed(3));
                       }
                     }}
-                    placeholder={(!isAir && !Number(formik.values.no_of_containers)) ? "Fill Containers first" : "0.00"}
+                    placeholder={(!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? "Fill Containers first" : "0.00"}
                   />
                 </div>
                 <UnitDropdownField
@@ -1990,17 +1974,13 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   <input
                     style={{
                       ...styles.input,
-                      backgroundColor: (!isAir && !Number(formik.values.no_of_containers)) ? '#edf2f7' : '#f7fafc',
-                      cursor: (!isAir && !Number(formik.values.no_of_containers)) ? 'not-allowed' : 'text'
+                      backgroundColor: (!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? '#edf2f7' : '#f7fafc',
+                      cursor: (!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? 'not-allowed' : 'text'
                     }}
                     type="number"
                     step="0.001"
-                    disabled={!isAir && !Number(formik.values.no_of_containers)}
-                    value={
-                      Number(formik.values.net_weight_kg) === 0
-                        ? ""
-                        : formik.values.net_weight_kg || ""
-                    }
+                    disabled={!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)}
+                    value={formik.values.net_weight_kg ?? ""}
                     onChange={(e) =>
                       handleFieldChange("net_weight_kg", e.target.value)
                     }
@@ -2010,7 +1990,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                         handleFieldChange("net_weight_kg", val.toFixed(3));
                       }
                     }}
-                    placeholder={(!isAir && !Number(formik.values.no_of_containers)) ? "Fill Containers first" : "0.00"}
+                    placeholder={(!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? "Fill Containers first" : "0.00"}
                   />
                 </div>
                 <UnitDropdownField
@@ -2038,11 +2018,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   style={styles.input}
                   type="number"
                   step="0.001"
-                  value={
-                    Number(formik.values.volume_cbm) === 0
-                      ? ""
-                      : formik.values.volume_cbm || ""
-                  }
+                  value={formik.values.volume_cbm ?? ""}
                   onChange={(e) =>
                     handleFieldChange("volume_cbm", e.target.value)
                   }
@@ -2070,11 +2046,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   style={styles.input}
                   type="number"
                   step="0.001"
-                  value={
-                    Number(formik.values.chargeable_weight) === 0
-                      ? ""
-                      : formik.values.chargeable_weight || ""
-                  }
+                  value={formik.values.chargeable_weight ?? ""}
                   onChange={(e) =>
                     handleFieldChange("chargeable_weight", e.target.value)
                   }

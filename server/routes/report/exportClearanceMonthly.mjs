@@ -41,19 +41,67 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
       {
         $addFields: {
           leoDateObj: {
-            $convert: {
-              input: "$firstStatus.leoDate",
-              to: "date",
-              onError: null,
-              onNull: null,
+            $switch: {
+              branches: [
+                {
+                  case: {
+                    $and: [
+                      { $ne: ["$firstStatus.leoDate", null] },
+                      { $ne: ["$firstStatus.leoDate", ""] },
+                      { $regexMatch: { input: "$firstStatus.leoDate", regex: /^\d{4}-\d{2}-\d{2}/ } },
+                    ],
+                  },
+                  then: { $toDate: "$firstStatus.leoDate" },
+                },
+                {
+                  case: {
+                    $and: [
+                      { $ne: ["$firstStatus.leoDate", null] },
+                      { $ne: ["$firstStatus.leoDate", ""] },
+                      { $regexMatch: { input: "$firstStatus.leoDate", regex: /^\d{2}-\d{2}-\d{4}/ } },
+                    ],
+                  },
+                  then: {
+                    $dateFromString: {
+                      dateString: "$firstStatus.leoDate",
+                      format: "%d-%m-%Y",
+                    },
+                  },
+                },
+              ],
+              default: null,
             },
           },
           sbDateObj: {
-            $convert: {
-              input: "$sb_date",
-              to: "date",
-              onError: null,
-              onNull: null,
+            $switch: {
+              branches: [
+                {
+                  case: {
+                    $and: [
+                      { $ne: ["$sb_date", null] },
+                      { $ne: ["$sb_date", ""] },
+                      { $regexMatch: { input: "$sb_date", regex: /^\d{4}-\d{2}-\d{2}/ } },
+                    ],
+                  },
+                  then: { $toDate: "$sb_date" },
+                },
+                {
+                  case: {
+                    $and: [
+                      { $ne: ["$sb_date", null] },
+                      { $ne: ["$sb_date", ""] },
+                      { $regexMatch: { input: "$sb_date", regex: /^\d{2}-\d{2}-\d{4}/ } },
+                    ],
+                  },
+                  then: {
+                    $dateFromString: {
+                      dateString: "$sb_date",
+                      format: "%d-%m-%Y",
+                    },
+                  },
+                },
+              ],
+              default: null,
             },
           },
         },
@@ -85,13 +133,35 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
                 ft20: {
                   $add: [
                     "$$value.ft20",
-                    { $cond: [{ $eq: ["$$this.containerSize", "20"] }, 1, 0] },
+                    {
+                      $cond: [
+                        {
+                          $or: [
+                            { $eq: ["$$this.containerSize", "20"] },
+                            { $regexMatch: { input: { $ifNull: ["$$this.type", ""] }, regex: /^20/ } }
+                          ]
+                        },
+                        1,
+                        0
+                      ]
+                    },
                   ],
                 },
                 ft40: {
                   $add: [
                     "$$value.ft40",
-                    { $cond: [{ $eq: ["$$this.containerSize", "40"] }, 1, 0] },
+                    {
+                      $cond: [
+                        {
+                          $or: [
+                            { $eq: ["$$this.containerSize", "40"] },
+                            { $regexMatch: { input: { $ifNull: ["$$this.type", ""] }, regex: /^40/ } }
+                          ]
+                        },
+                        1,
+                        0
+                      ]
+                    },
                   ],
                 },
               },
@@ -104,9 +174,25 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
                 as: "c",
                 in: {
                   $cond: [
-                    { $eq: ["$$c.containerSize", "20"] },
+                    {
+                      $or: [
+                        { $eq: ["$$c.containerSize", "20"] },
+                        { $regexMatch: { input: { $ifNull: ["$$c.type", ""] }, regex: /^20/ } }
+                      ]
+                    },
                     1,
-                    { $cond: [{ $eq: ["$$c.containerSize", "40"] }, 2, 0] },
+                    {
+                      $cond: [
+                        {
+                          $or: [
+                            { $eq: ["$$c.containerSize", "40"] },
+                            { $regexMatch: { input: { $ifNull: ["$$c.type", ""] }, regex: /^40/ } }
+                          ]
+                        },
+                        2,
+                        0
+                      ]
+                    },
                   ],
                 },
               },
@@ -262,7 +348,12 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
           inv_currency: "$firstCurrency",
           invoice_value: "$totalInvoiceValue", // Changed from cif_amount
           sb_no: 1, // Changed from be_no
-          sb_date: 1, // Changed from be_date
+          sb_date: {
+            $dateToString: {
+              date: "$sbDateObj",
+              format: "%Y-%m-%d"
+            }
+          },
           containerNumbers: 1,
           totalContainers: {
             $cond: [
@@ -275,7 +366,12 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
           teus: {
             $cond: [{ $eq: ["$consignmentType", "LCL"] }, 1, "$teus"],
           },
-          leo_date: "$firstStatus.leoDate", // Changed from out_of_charge
+          leo_date: {
+            $dateToString: {
+              date: "$leoDateObj",
+              format: "%Y-%m-%d"
+            }
+          },
           remarks: 1,
           consignment_type: "$consignmentType",
           type_of_sb: "$sb_type", // Comparable to type_of_b_e

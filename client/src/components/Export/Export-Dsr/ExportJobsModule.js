@@ -185,15 +185,15 @@ function ExportJobsModule() {
     const fetchDirectories = async () => {
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/directory`
+          `${import.meta.env.VITE_API_STRING}/directory/names`
         );
         setDirectories({
-          exporters: response.data.data || response.data,
+          exporterNames: response.data.data || [],
           importers: [],
           banks: [],
         });
       } catch (error) {
-        console.error("Error fetching directories:", error);
+        console.error("Error fetching directory names:", error);
       }
     };
 

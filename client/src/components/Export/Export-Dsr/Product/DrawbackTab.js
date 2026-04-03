@@ -123,8 +123,8 @@ const DrawbackTab = ({
       let hasChanges = false;
       const currentDbk = product.drawbackDetails || [];
       const updatedDbk = currentDbk.map((item) => {
-        const pQty = product.quantity || 0;
-        const pUnit = product.qtyUnit || "";
+        const pQty = parseFloat(product.socQuantity) || 0;
+        const pUnit = product.socunit || "";
 
         const currentFob = parseFloat(item.fobValue) || 0;
         const rate = parseFloat(item.dbkRate) || 0;
@@ -132,8 +132,11 @@ const DrawbackTab = ({
         let newItem = { ...item };
         let changedLocal = false;
 
-        // Only sync quantity/unit if they are empty
-        if (!item.quantity && !item.unit && !item.dbkCapunit) {
+        // Sync quantity/unit with SQC values if they differ
+        const isQtyDiff = Math.abs((parseFloat(item.quantity) || 0) - pQty) > 0.001;
+        const isUnitDiff = item.unit !== pUnit;
+
+        if (isQtyDiff || isUnitDiff) {
           newItem.quantity = pQty;
           newItem.unit = pUnit;
           newItem.dbkCapunit = pUnit;
@@ -142,12 +145,10 @@ const DrawbackTab = ({
 
         if (Math.abs(currentFob - fobAmountInr) > 0.01) {
           newItem.fobValue = fobAmountInr.toFixed(2);
-          newItem.dbkAmount = ((rate * fobAmountInr) / 100).toFixed(2);
-          newItem.percentageOfFobValue = `${rate}% of FOB Value`;
-
-          // Recalculate ROSCTL if applicable
+          // Recalculate amounts
+          newItem.dbkAmount = calculateDbkAmount(newItem);
           if (newItem.showRosctl) {
-            calculateRosctlAmount(newItem);
+            newItem.rosctlAmount = calculateRosctlAmount(newItem);
           }
 
           changedLocal = true;
@@ -196,9 +197,9 @@ const DrawbackTab = ({
     currentDbk[rowIndex].dbkRate = isNaN(rateVal) ? 0 : rateVal;
     currentDbk[rowIndex].dbkCap = item.drawback_cap || 0;
 
-    currentDbk[rowIndex].quantity = product.quantity || 0;
-    currentDbk[rowIndex].unit = item.unit || product.qtyUnit || "";
-    currentDbk[rowIndex].dbkCapunit = item.unit || product.qtyUnit || "";
+    currentDbk[rowIndex].quantity = parseFloat(product.socQuantity) || 0;
+    currentDbk[rowIndex].unit = item.unit || product.socunit || "";
+    currentDbk[rowIndex].dbkCapunit = item.unit || product.socunit || "";
 
     const invoiceCurrency = activeInvoice?.currency;
     let productAmount = parseFloat(product.amount || 0);
@@ -240,10 +241,7 @@ const DrawbackTab = ({
     currentDbk[rowIndex].fobValue = fobInr;
 
     // Calculate Amount
-    currentDbk[rowIndex].dbkAmount = (
-      (currentDbk[rowIndex].dbkRate * fobInr) /
-      100
-    ).toFixed(2);
+    currentDbk[rowIndex].dbkAmount = calculateDbkAmount(currentDbk[rowIndex]);
     currentDbk[
       rowIndex
     ].percentageOfFobValue = `${currentDbk[rowIndex].dbkRate}% of FOB Value`;
@@ -299,22 +297,7 @@ const DrawbackTab = ({
           }
 
           // Calculate ROSCTL Amount inline
-          const qty = parseFloat(currentDbk[rowIndex].quantity || 0);
-
-          let finalSl = (currentDbk[rowIndex].slRate * fobInr) / 100;
-          const sCap = parseFloat(currentDbk[rowIndex].slCap || 0);
-          if (sCap > 0) {
-            const sCapTotal = sCap * qty;
-            if (finalSl > sCapTotal) finalSl = sCapTotal;
-          }
-
-          let finalCtl = (currentDbk[rowIndex].ctlRate * fobInr) / 100;
-          const cCap = parseFloat(currentDbk[rowIndex].ctlCap || 0);
-          if (cCap > 0) {
-            const cCapTotal = cCap * qty;
-            if (finalCtl > cCapTotal) finalCtl = cCapTotal;
-          }
-          currentDbk[rowIndex].rosctlAmount = (finalSl + finalCtl).toFixed(2);
+          currentDbk[rowIndex].rosctlAmount = calculateRosctlAmount(currentDbk[rowIndex]);
         } else {
           // Reset ROSCTL values but keep show=true so they can toggle if needed?
           // Or better to hide if not found?
@@ -364,17 +347,17 @@ const DrawbackTab = ({
       currentDbk[rowIndex] = getDefaultDrawback(rowIndex + 1);
     currentDbk[rowIndex][field] = value;
 
-    if (field === "dbkRate" || field === "fobValue") {
-      const rate =
-        parseFloat(
-          field === "dbkRate" ? value : currentDbk[rowIndex].dbkRate
-        ) || 0;
-      const fob =
-        parseFloat(
-          field === "fobValue" ? value : currentDbk[rowIndex].fobValue
-        ) || 0;
-      currentDbk[rowIndex].dbkAmount = ((rate * fob) / 100).toFixed(2);
-      currentDbk[rowIndex].percentageOfFobValue = `${rate}% of FOB Value`;
+    if (field === "dbkRate" || field === "fobValue" || field === "quantity" || field === "dbkCap") {
+      currentDbk[rowIndex].dbkAmount = calculateDbkAmount(currentDbk[rowIndex]);
+      if (field === "dbkRate") {
+        currentDbk[rowIndex].percentageOfFobValue = `${value}% of FOB Value`;
+      }
+    }
+
+    if (field === "slRate" || field === "ctlRate" || field === "slCap" || field === "ctlCap" || field === "fobValue" || field === "quantity") {
+      if (currentDbk[rowIndex].showRosctl) {
+        currentDbk[rowIndex].rosctlAmount = calculateRosctlAmount(currentDbk[rowIndex]);
+      }
     }
 
     const updatedInvoices = [...invoices];
@@ -424,11 +407,10 @@ const DrawbackTab = ({
 
         currentDbk[rowIndex].dbkCap = item.drawback_cap || 0;
 
-        // Pull Quantity & Unit from ProductMainTab (corresponding index)
         // Pull Quantity & Unit
-        currentDbk[rowIndex].quantity = product.quantity || 0;
-        currentDbk[rowIndex].unit = item.unit || product.qtyUnit || "";
-        currentDbk[rowIndex].dbkCapunit = item.unit || product.qtyUnit || "";
+        currentDbk[rowIndex].quantity = parseFloat(product.socQuantity) || 0;
+        currentDbk[rowIndex].unit = item.unit || product.socunit || "";
+        currentDbk[rowIndex].dbkCapunit = item.unit || product.socunit || "";
 
         // Pull FOB Value (INR) using standardized calculation
         const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
@@ -441,10 +423,7 @@ const DrawbackTab = ({
         currentDbk[rowIndex].fobValue = fobInr.toFixed(2);
 
         // Calculate Amount
-        currentDbk[rowIndex].dbkAmount = (
-          (currentDbk[rowIndex].dbkRate * fobInr) /
-          100
-        ).toFixed(2);
+        currentDbk[rowIndex].dbkAmount = calculateDbkAmount(currentDbk[rowIndex]);
         currentDbk[
           rowIndex
         ].percentageOfFobValue = `${currentDbk[rowIndex].dbkRate}% of FOB Value`;
@@ -522,7 +501,7 @@ const DrawbackTab = ({
         }
 
         // Calculate Amount
-        calculateRosctlAmount(currentDbk[rowIndex]);
+        currentDbk[rowIndex].rosctlAmount = calculateRosctlAmount(currentDbk[rowIndex]);
 
         saveUpdatedProducts(currentDbk);
       } else {
@@ -560,26 +539,36 @@ const DrawbackTab = ({
     }
   };
 
+  const calculateDbkAmount = (item) => {
+    const fob = parseFloat(item.fobValue || 0);
+    const qty = parseFloat(item.quantity || 0);
+    const rate = parseFloat(item.dbkRate || 0);
+    const cap = parseFloat(item.dbkCap || 0);
+
+    const a = (fob * rate) / 100;
+    const b = qty * cap;
+
+    if (cap > 0) {
+      return Math.min(a, b).toFixed(2);
+    }
+    return a.toFixed(2);
+  };
+
   const calculateRosctlAmount = (item) => {
     const fob = parseFloat(item.fobValue || 0);
     const qty = parseFloat(item.quantity || 0);
+    const slRate = parseFloat(item.slRate || 0);
+    const ctlRate = parseFloat(item.ctlRate || 0);
+    const slCap = parseFloat(item.slCap || 0);
+    const ctlCap = parseFloat(item.ctlCap || 0);
 
-    let finalSl = (parseFloat(item.slRate || 0) * fob) / 100;
-    const sCap = parseFloat(item.slCap || 0);
+    const a = (fob * (slRate + ctlRate)) / 100;
+    const b = qty * (slCap + ctlCap);
 
-    if (sCap > 0) {
-      const capTotal = sCap * qty;
-      if (finalSl > capTotal) finalSl = capTotal;
+    if (slCap + ctlCap > 0) {
+      return Math.min(a, b).toFixed(2);
     }
-
-    let finalCtl = (parseFloat(item.ctlRate || 0) * fob) / 100;
-    const cCap = parseFloat(item.ctlCap || 0);
-    if (cCap > 0) {
-      const capTotal = cCap * qty;
-      if (finalCtl > capTotal) finalCtl = capTotal;
-    }
-
-    item.rosctlAmount = (finalSl + finalCtl).toFixed(2);
+    return a.toFixed(2);
   };
 
   const saveUpdatedProducts = (newDbkDetails) => {

@@ -1393,6 +1393,8 @@ const StatusSection = ({
   const displayData =
     data && data.length > 0 ? data : [getDefaultItem(section)];
 
+  const hideStuffing = isAir || ["THAR DRY PORT", "ICD SACHANA", "AHMEDABAD AIR CARGO"].some(h => customHouse.includes(h));
+
   const row1Fields = [
     {
       field: "gateInDate",
@@ -1443,21 +1445,21 @@ const StatusSection = ({
       label: "Stuffing",
       type: "date",
       width: 1,
-      hidden: isAir,
+      hidden: hideStuffing,
     },
     {
       field: "stuffingSheetUpload",
       label: "Stuffing Sheet",
       type: "upload",
       width: 1,
-      hidden: isAir,
+      hidden: hideStuffing,
     },
     {
       field: "stuffingPhotoUpload",
       label: "Stuffing Photo",
       type: "upload",
       width: 1,
-      hidden: isAir,
+      hidden: hideStuffing,
     },
     {
       field: "eGatePassCopyDate",
@@ -1501,22 +1503,15 @@ const StatusSection = ({
       hidden: isAir,
     },
     {
-      field: "railOutReachedDate",
-      label: "Rail Reached",
-      type: "date",
-      width: 1,
-      hidden: isAir,
-    },
-    {
       field: "billingDocsSentDt",
-      label: isAir ? "GSEC DT" : "CONCOR INVOICE DT",
+      label: "Invoice Date",
       type: "date",
       width: 1,
       disabledFn: (item) => !(item.billingDocsSentUpload && item.billingDocsSentUpload.length > 0),
     },
     {
       field: "billingDocsSentUpload",
-      label: isAir ? "GSEC DOC" : "CONCOR INVOICE",
+      label: "Invoice Doc",
       type: "upload",
       width: 1,
     },
@@ -1647,38 +1642,35 @@ const StatusSection = ({
             display: "flex",
             gap: "8px",
             flexWrap: "wrap",
-            alignItems: "center",
+            alignItems: "flex-end",
           }}
         >
           {item.railRoad === "road" && (
-            <>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    cursor: "pointer",
-                    fontSize: "11px",
-                    fontWeight: "600",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={item.concorPrivate === "private"}
-                    onChange={(e) =>
-                      onUpdate(
-                        section,
-                        rowIdx,
-                        "concorPrivate",
-                        e.target.checked ? "private" : "concor",
-                      )
-                    }
-                  />
-                  Private
-                </label>
-              </div>
-
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  cursor: "pointer",
+                  fontSize: "11px",
+                  fontWeight: "600",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={item.concorPrivate === "private"}
+                  onChange={(e) =>
+                    onUpdate(
+                      section,
+                      rowIdx,
+                      "concorPrivate",
+                      e.target.checked ? "private" : "concor",
+                    )
+                  }
+                />
+                Private
+              </label>
               {item.concorPrivate === "private" && (
                 <input
                   type="text"
@@ -1697,46 +1689,89 @@ const StatusSection = ({
                     borderRadius: "4px",
                     height: "28px",
                     minHeight: "28px",
-                    width: "130px",
+                    width: "100px",
                   }}
                   placeholder="Transporter"
                 />
               )}
-            </>
+            </div>
           )}
 
-          <input
-            type="text"
-            value={item.handoverConcorTharSanganaRailRoadDate || ""}
-            onDoubleClick={(e) => {
-              const pickerVal = formatDateForPicker(
-                item.handoverConcorTharSanganaRailRoadDate,
-                "date",
-              );
-              if (pickerVal) e.target.value = pickerVal;
-              e.target.type = "date";
-              e.target.showPicker && e.target.showPicker();
-            }}
-            onBlur={(e) => (e.target.type = "text")}
-            onChange={(e) => {
-              e.target.type = "text"; // Fix: Switch back to text immediately
-              onUpdate(
-                section,
-                rowIdx,
-                "handoverConcorTharSanganaRailRoadDate",
-                e.target.value,
-              );
-            }}
-            style={{
-              ...styles.cellInput,
-              border: "1px solid #e2e8f0",
-              borderRadius: "4px",
-              height: "28px",
-              minHeight: "28px",
-              width: "100px",
-            }}
-            placeholder="dd-mm-yyyy"
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "9px", color: "#64748b", fontWeight: 700 }}>
+              {item.railRoad === "rail" ? "RAIL OUT:" : "ROAD OUT:"}
+            </span>
+            <input
+              type="text"
+              value={item.handoverConcorTharSanganaRailRoadDate || ""}
+              onDoubleClick={(e) => {
+                const pickerVal = formatDateForPicker(
+                  item.handoverConcorTharSanganaRailRoadDate,
+                  "date",
+                );
+                if (pickerVal) e.target.value = pickerVal;
+                e.target.type = "date";
+                e.target.showPicker && e.target.showPicker();
+              }}
+              onBlur={(e) => (e.target.type = "text")}
+              onChange={(e) => {
+                e.target.type = "text";
+                onUpdate(
+                  section,
+                  rowIdx,
+                  "handoverConcorTharSanganaRailRoadDate",
+                  e.target.value,
+                );
+              }}
+              style={{
+                ...styles.cellInput,
+                border: "1px solid #e2e8f0",
+                borderRadius: "4px",
+                height: "28px",
+                minHeight: "28px",
+                width: "90px",
+              }}
+              placeholder="dd-mm-yyyy"
+            />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "9px", color: "#64748b", fontWeight: 700 }}>
+              {item.railRoad === "rail" ? "REACHED:" : "ROAD REACHED:"}
+            </span>
+            <input
+              type="text"
+              value={item.railOutReachedDate || ""}
+              onDoubleClick={(e) => {
+                const pickerVal = formatDateForPicker(
+                  item.railOutReachedDate,
+                  "date",
+                );
+                if (pickerVal) e.target.value = pickerVal;
+                e.target.type = "date";
+                e.target.showPicker && e.target.showPicker();
+              }}
+              onBlur={(e) => (e.target.type = "text")}
+              onChange={(e) => {
+                e.target.type = "text";
+                onUpdate(
+                  section,
+                  rowIdx,
+                  "railOutReachedDate",
+                  e.target.value,
+                );
+              }}
+              style={{
+                ...styles.cellInput,
+                border: "1px solid #e2e8f0",
+                borderRadius: "4px",
+                height: "28px",
+                minHeight: "28px",
+                width: "90px",
+              }}
+              placeholder="dd-mm-yyyy"
+            />
+          </div>
         </div>
       </div>
     ) : (() => {

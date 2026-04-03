@@ -32,93 +32,157 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
       : { exporter: "$exporter" };
 
     const [containerStats, sbStats, leoStats, airStats] = await Promise.all([
-      // CONTAINER AGGREGATION (based on LEO dates)
-      // Uses operations.containerDetails[].containerSize ("20" or "40")
-      // For AIR consignmentType: count as one 20ft container
+      // 1. CONTAINER & VOLUME AGGREGATION (based on LEO or SB dates)
       ExJobModel.aggregate([
         { $match: baseMatch },
-        { $unwind: { path: "$operations", preserveNullAndEmptyArrays: false } },
-        { $unwind: { path: "$operations.statusDetails", preserveNullAndEmptyArrays: false } },
         {
           $addFields: {
-            leoDateParsed: {
-              $cond: {
-                if: {
-                  $and: [
-                    { $ne: ["$operations.statusDetails.leoDate", null] },
-                    { $ne: ["$operations.statusDetails.leoDate", ""] },
-                    { $regexMatch: { input: "$operations.statusDetails.leoDate", regex: /^\d{4}-\d{2}-\d{2}/ } },
-                  ],
-                },
-                then: { $toDate: "$operations.statusDetails.leoDate" },
-                else: null,
+            // 1. Identify if SB was filed in this month
+            sbDateObj: {
+              $switch: {
+                branches: [
+                  {
+                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$sb_date", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}" } },
+                    then: { $toDate: "$sb_date" },
+                  },
+                  {
+                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$sb_date", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}" } },
+                    then: { $dateFromString: { dateString: "$sb_date", format: "%d-%m-%Y" } }
+                  },
+                ],
+                default: null,
               },
             },
-          },
+            // 2. Identify all possible LEO dates
+            leoDates: {
+              $concatArrays: [
+                {
+                  $reduce: {
+                    input: { $ifNull: ["$operations", []] },
+                    initialValue: [],
+                    in: {
+                      $concatArrays: [
+                        "$$value",
+                        {
+                          $reduce: {
+                            input: { $ifNull: ["$$this.statusDetails", []] },
+                            initialValue: [],
+                            in: { $concatArrays: ["$$value", [{ $ifNull: ["$$this.leoDate", ""] }]] }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                [{ $ifNull: ["$leo_date", ""] }]
+              ]
+            }
+          }
         },
-        { $match: { leoDateParsed: { $ne: null } } },
-        { $addFields: { leoMonth: { $month: "$leoDateParsed" } } },
-        { $match: { leoMonth: monthInt } },
+        {
+          $addFields: {
+            isSbInMonth: { $eq: [{ $month: { $ifNull: ["$sbDateObj", new Date(0)] } }, monthInt] },
+            isLeoInMonth: {
+              $gt: [
+                {
+                  $size: {
+                    $filter: {
+                      input: "$leoDates",
+                      as: "d",
+                      cond: {
+                        $let: {
+                          vars: {
+                            parsed: {
+                              $switch: {
+                                branches: [
+                                  {
+                                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}" } },
+                                    then: { $toDate: "$$d" }
+                                  },
+                                  {
+                                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}" } },
+                                    then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y" } }
+                                  }
+                                ],
+                                default: null
+                              }
+                            }
+                          },
+                          in: {
+                            $and: [
+                              { $ne: ["$$parsed", null] },
+                              { $eq: [{ $month: { $ifNull: ["$$parsed", new Date(0)] } }, monthInt] }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                0
+              ]
+            }
+          }
+        },
+        {
+          $match: {
+            $or: [{ isSbInMonth: true }, { isLeoInMonth: true }]
+          }
+        },
         {
           $group: {
             _id: groupId,
             container20Ft: {
               $sum: {
                 $cond: [
-                  // For AIR: count as 1 twenty-ft container
                   { $eq: ["$consignmentType", "AIR"] },
                   1,
-                  // For non-AIR: count from containerDetails where containerSize = "20"
                   {
                     $size: {
                       $filter: {
                         input: { $ifNull: ["$containers", []] },
-                        as: "container",
-                        cond: { $eq: ["$$container.containerSize", "20"] },
-                      },
-                    },
-                  },
-                ],
-              },
+                        as: "c",
+                        cond: {
+                          $or: [
+                            { $eq: ["$$c.containerSize", "20"] },
+                            { $regexMatch: { input: { $toString: { $ifNull: ["$$c.type", ""] } }, regex: "\\b20\\b" } }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
             },
             container40Ft: {
               $sum: {
                 $cond: [
-                  // AIR jobs have no 40ft containers
                   { $eq: ["$consignmentType", "AIR"] },
                   0,
-                  // For non-AIR: count from containerDetails where containerSize = "40"
                   {
                     $size: {
                       $filter: {
                         input: { $ifNull: ["$containers", []] },
-                        as: "container",
-                        cond: { $eq: ["$$container.containerSize", "40"] },
-                      },
-                    },
-                  },
-                ],
-              },
+                        as: "c",
+                        cond: {
+                          $or: [
+                            { $eq: ["$$c.containerSize", "40"] },
+                            { $regexMatch: { input: { $toString: { $ifNull: ["$$c.type", ""] } }, regex: "\\b40\\b" } }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
             },
             lcl20Ft: {
-              $sum: {
-                $cond: [
-                  { $eq: ["$consignmentType", "LCL"] },
-                  1,
-                  0,
-                ],
-              },
+              $sum: { $cond: [{ $eq: ["$consignmentType", "LCL"] }, 1, 0] }
             },
             lcl40Ft: {
-              $sum: {
-                $cond: [
-                  { $eq: ["$consignmentType", "LCL"] },
-                  0,
-                  0,
-                ],
-              },
-            },
-          },
+              $sum: { $cond: [{ $eq: ["$consignmentType", "LCL"] }, 0, 0] }
+            }
+          }
         },
         {
           $project: {
@@ -128,14 +192,12 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
             container20Ft: 1,
             container40Ft: 1,
             lcl20Ft: 1,
-            lcl40Ft: 1,
-          },
-        },
+            lcl40Ft: 1
+          }
+        }
       ]),
 
-      // SB FILED AGGREGATION
-      // SB is filed if sb_no has a value (non-null, non-empty)
-      // Still filtered by sb_date month for monthly grouping
+      // 2. SB FILED AGGREGATION
       ExJobModel.aggregate([
         {
           $match: {
@@ -148,32 +210,13 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
             sbDateObj: {
               $switch: {
                 branches: [
-                  // YYYY-MM-DD format
                   {
-                    case: {
-                      $and: [
-                        { $ne: ["$sb_date", null] },
-                        { $ne: ["$sb_date", ""] },
-                        { $regexMatch: { input: "$sb_date", regex: /^\d{4}-\d{2}-\d{2}/ } },
-                      ],
-                    },
+                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$sb_date", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}" } },
                     then: { $toDate: "$sb_date" },
                   },
-                  // DD-MM-YYYY format
                   {
-                    case: {
-                      $and: [
-                        { $ne: ["$sb_date", null] },
-                        { $ne: ["$sb_date", ""] },
-                        { $regexMatch: { input: "$sb_date", regex: /^\d{2}-\d{2}-\d{4}/ } },
-                      ],
-                    },
-                    then: {
-                      $dateFromString: {
-                        dateString: "$sb_date",
-                        format: "%d-%m-%Y",
-                      },
-                    },
+                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$sb_date", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}" } },
+                    then: { $dateFromString: { dateString: "$sb_date", format: "%d-%m-%Y" } }
                   },
                 ],
                 default: null,
@@ -187,7 +230,7 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
         {
           $group: {
             _id: groupId,
-            sbDateCount: { $sum: 1 },
+            sbDateCount: { $sum: 1 }
           },
         },
         {
@@ -195,55 +238,99 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
             _id: 0,
             exporter: "$_id.exporter",
             custom_house: custom_house ? "$_id.custom_house" : null,
-            sbDateCount: 1,
+            sbDateCount: 1
           },
         },
       ]),
 
-      // LEO COUNT (monthly, exporter-wise)
+      // 3. LEO COUNT (monthly, exporter-wise)
       ExJobModel.aggregate([
-        {
-          $match: baseMatch,
-        },
-        { $unwind: { path: "$operations", preserveNullAndEmptyArrays: false } },
-        { $unwind: { path: "$operations.statusDetails", preserveNullAndEmptyArrays: false } },
+        { $match: baseMatch },
         {
           $addFields: {
-            leoDateObj: {
-              $cond: {
-                if: {
-                  $and: [
-                    { $ne: ["$operations.statusDetails.leoDate", null] },
-                    { $ne: ["$operations.statusDetails.leoDate", ""] },
-                    { $regexMatch: { input: "$operations.statusDetails.leoDate", regex: /^\d{4}-\d{2}-\d{2}/ } },
-                  ],
+            // Flatten LEO dates from nested and top-level
+            leoDates: {
+              $concatArrays: [
+                {
+                  $reduce: {
+                    input: { $ifNull: ["$operations", []] },
+                    initialValue: [],
+                    in: {
+                      $concatArrays: [
+                        "$$value",
+                        {
+                          $reduce: {
+                            input: { $ifNull: ["$$this.statusDetails", []] },
+                            initialValue: [],
+                            in: { $concatArrays: ["$$value", [{ $ifNull: ["$$this.leoDate", ""] }]] }
+                          }
+                        }
+                      ]
+                    }
+                  }
                 },
-                then: { $toDate: "$operations.statusDetails.leoDate" },
-                else: null,
-              },
-            },
-          },
+                [{ $ifNull: ["$leo_date", ""] }]
+              ]
+            }
+          }
         },
-        { $match: { leoDateObj: { $ne: null } } },
-        { $addFields: { leoMonth: { $month: "$leoDateObj" } } },
-        { $match: { leoMonth: monthInt } },
+        {
+          $addFields: {
+            matchedInMonth: {
+              $size: {
+                $filter: {
+                  input: "$leoDates",
+                  as: "d",
+                  cond: {
+                    $let: {
+                      vars: {
+                        parsed: {
+                          $switch: {
+                            branches: [
+                              {
+                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}" } },
+                                then: { $toDate: "$$d" }
+                              },
+                              {
+                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}" } },
+                                then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y" } }
+                              }
+                            ],
+                            default: null
+                          }
+                        }
+                      },
+                      in: {
+                        $and: [
+                          { $ne: ["$$parsed", null] },
+                          { $eq: [{ $month: { $ifNull: ["$$parsed", new Date(0)] } }, monthInt] }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        { $match: { matchedInMonth: { $gt: 0 } } },
         {
           $group: {
             _id: groupId,
-            leoCount: { $sum: 1 },
-          },
+            leoCount: { $sum: 1 }
+          }
         },
         {
           $project: {
             _id: 0,
             exporter: "$_id.exporter",
             custom_house: custom_house ? "$_id.custom_house" : null,
-            leoCount: 1,
-          },
-        },
+            leoCount: 1
+          }
+        }
       ]),
 
-      // AIR CONSIGNMENT COUNT (monthly, exporter-wise based on LEO dates)
+      // 4. AIR CONSIGNMENT COUNT (monthly, exporter-wise based on LEO dates)
       ExJobModel.aggregate([
         {
           $match: {
@@ -251,28 +338,73 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
             consignmentType: "AIR",
           },
         },
-        { $unwind: { path: "$operations", preserveNullAndEmptyArrays: false } },
-        { $unwind: { path: "$operations.statusDetails", preserveNullAndEmptyArrays: false } },
         {
           $addFields: {
-            leoDateObj: {
-              $cond: {
-                if: {
-                  $and: [
-                    { $ne: ["$operations.statusDetails.leoDate", null] },
-                    { $ne: ["$operations.statusDetails.leoDate", ""] },
-                    { $regexMatch: { input: "$operations.statusDetails.leoDate", regex: /^\d{4}-\d{2}-\d{2}/ } },
-                  ],
+            leoDates: {
+              $concatArrays: [
+                {
+                  $reduce: {
+                    input: { $ifNull: ["$operations", []] },
+                    initialValue: [],
+                    in: {
+                      $concatArrays: [
+                        "$$value",
+                        {
+                          $reduce: {
+                            input: { $ifNull: ["$$this.statusDetails", []] },
+                            initialValue: [],
+                            in: { $concatArrays: ["$$value", [{ $ifNull: ["$$this.leoDate", ""] }]] }
+                          }
+                        }
+                      ]
+                    }
+                  }
                 },
-                then: { $toDate: "$operations.statusDetails.leoDate" },
-                else: null,
-              },
-            },
-          },
+                [{ $ifNull: ["$leo_date", ""] }]
+              ]
+            }
+          }
         },
-        { $match: { leoDateObj: { $ne: null } } },
-        { $addFields: { leoMonth: { $month: "$leoDateObj" } } },
-        { $match: { leoMonth: monthInt } },
+        {
+          $addFields: {
+            matchedInMonth: {
+              $size: {
+                $filter: {
+                  input: "$leoDates",
+                  as: "d",
+                  cond: {
+                    $let: {
+                      vars: {
+                        parsed: {
+                          $switch: {
+                            branches: [
+                              {
+                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}" } },
+                                then: { $toDate: "$$d" }
+                              },
+                              {
+                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}" } },
+                                then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y" } }
+                              }
+                            ],
+                            default: null
+                          }
+                        }
+                      },
+                      in: {
+                        $and: [
+                          { $ne: ["$$parsed", null] },
+                          { $eq: [{ $month: { $ifNull: ["$$parsed", new Date(0)] } }, monthInt] }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        { $match: { matchedInMonth: { $gt: 0 } } },
         {
           $group: {
             _id: groupId,

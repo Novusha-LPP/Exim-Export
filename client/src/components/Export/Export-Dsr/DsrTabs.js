@@ -5,6 +5,7 @@ import Box from "@mui/material/Box";
 import Badge from "@mui/material/Badge";
 import axios from "axios";
 import { SelectedYearContext } from "../../../contexts/SelectedYearContext";
+import { useLocation } from "react-router-dom";
 import useTabs from "../../../customHooks/useTabs";
 import { TabValueContext } from "../../../contexts/TabValueContext";
 import ExportDashboard from "./ExportDashboard";
@@ -13,25 +14,26 @@ import QueriesPanel from "./Queries/QueriesPanel";
 
 function DsrTabs() {
   const { a11yProps, CustomTabPanel } = useTabs();
+  const location = useLocation();
   const { tabValue, setTabValue } = React.useContext(TabValueContext);
   const [selectedYear, setSelectedYear] = React.useState("");
   const [queryBadgeCount, setQueryBadgeCount] = React.useState(0);
 
   // Determine current module for query badge
-  const pathname = window.location.pathname;
-  const currentModule = pathname.startsWith("/export-operation")
-    ? "export-operation"
-    : pathname.startsWith("/export-documentation")
-    ? "export-documentation"
-    : pathname.startsWith("/export-esanchit")
-    ? "export-esanchit"
-    : pathname.startsWith("/export-charges")
-    ? "export-charges"
-    : "export-dsr";
+  const currentModule = React.useMemo(() => {
+    const pathname = location.pathname;
+    if (pathname.startsWith("/export-operation")) return "export-operation";
+    if (pathname.startsWith("/export-documentation")) return "export-documentation";
+    if (pathname.startsWith("/export-esanchit")) return "export-esanchit";
+    if (pathname.startsWith("/export-charges")) return "export-charges";
+    return "export-dsr";
+  }, [location.pathname]);
 
   // Show tabs for DSR and Operation; other modules show table directly
-  const showTabs = pathname.startsWith("/export-dsr") ||
-    pathname.startsWith("/export-operation");
+  const showTabs = React.useMemo(() => {
+    const pathname = location.pathname;
+    return pathname.startsWith("/export-dsr") || pathname.startsWith("/export-operation");
+  }, [location.pathname]);
 
   // Fetch unseen query count for badge
   const fetchQueryCount = React.useCallback(async () => {
@@ -50,7 +52,7 @@ function DsrTabs() {
 
   React.useEffect(() => {
     fetchQueryCount();
-    const interval = setInterval(fetchQueryCount, 30000); // poll every 30s
+    const interval = setInterval(fetchQueryCount, 60000); // poll every 60s
     return () => clearInterval(interval);
   }, [fetchQueryCount]);
 

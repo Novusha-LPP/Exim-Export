@@ -343,6 +343,20 @@ const ProductDEECTab = ({ formik, selectedInvoiceIndex, productIndex }) => {
 
   const autoSave = useCallback(() => formik.submitForm(), [formik]);
 
+  useEffect(() => {
+    if (product && deecDetails) {
+      if (!deecDetails.itemSnoPartE) {
+        handleDeecFieldChange("itemSnoPartE", String(productIndex + 1));
+      }
+      if (!deecDetails.exportQtyUnderLicence) {
+        handleDeecFieldChange("exportQtyUnderLicence", product.quantity || 0);
+      }
+      if (!deecDetails.exportQtyUnit) {
+        handleDeecFieldChange("exportQtyUnit", product.unit || "");
+      }
+    }
+  }, [productIndex, product?.quantity, product?.unit]);
+
   // Top-level fields
   const handleDeecFieldChange = (field, value) => {
     const updatedInvoices = [...invoices];
@@ -637,7 +651,7 @@ const ProductDEECTab = ({ formik, selectedInvoiceIndex, productIndex }) => {
 
       {/* 1. Part E & Quantity Details */}
       <div style={styles.subSectionTitle}>PART E & QUANTITY DETAILS</div>
-      <div style={styles.grid3}>
+      <div style={styles.grid4}>
         <div style={styles.field}>
           <label style={styles.label}>Item SNo (Part E)</label>
           <input
@@ -662,6 +676,15 @@ const ProductDEECTab = ({ formik, selectedInvoiceIndex, productIndex }) => {
                 parseFloat(e.target.value) || 0
               )
             }
+          />
+        </div>
+        <div style={styles.field}>
+          <UnitDropdownField
+            label="Unit"
+            fieldName={`invoices[${selectedInvoiceIndex}].products[${productIndex}].deecDetails.exportQtyUnit`}
+            formik={formik}
+            unitOptions={unitCodes}
+            placeholder="UT"
           />
         </div>
       </div>

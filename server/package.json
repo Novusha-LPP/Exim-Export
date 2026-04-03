@@ -18,6 +18,7 @@
   "type": "module",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.799.0",
+    "@aws-sdk/client-ses": "^3.1023.0",
     "@sentry/node": "^8.26.0",
     "@sentry/profiling-node": "^8.26.0",
     "aws-sdk": "^2.1659.0",
@@ -51,5 +52,4 @@
     "ws": "^8.18.1",
     "xlsx": "^0.18.5"
   }
- 
 }
