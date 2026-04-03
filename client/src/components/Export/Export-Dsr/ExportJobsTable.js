@@ -2057,7 +2057,7 @@ const ExportJobsTable = () => {
                           >
                             {formatDate(job.job_date)}
                           </div>
-                          {job.exporter_ref_no && (
+                          {job.exporter_ref_no && job.exporter_ref_no !== (job.invoices?.[0]?.invoiceNumber || job.invoices?.[0]?.invoiceNo) && (
                             <div
                               style={{
                                 color: "#111",

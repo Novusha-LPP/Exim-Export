@@ -20,6 +20,29 @@ import ESanchitTab from "./E-sanchit/EsanchitTab.js";
 import ChargesTab from "./Charges/ChargesTab.js";
 import OperationsTab from "./Operations/OperationsTab.jsx";
 
+const getMilestones = (isAir) => [
+  "SB Filed",
+  "L.E.O",
+  isAir ? "File Handover to IATA" : "Container HO",
+  isAir ? "Departure" : "Rail Out",
+  "Billing Pending",
+  "Billing Done",
+];
+
+const getMandatoryNames = (isAir) =>
+  new Set(["SB Filed", "L.E.O", "Billing Pending"]);
+
+const ALL_SYSTEM_MILESTONES = new Set([
+  "SB Filed",
+  "L.E.O",
+  "File Handover to IATA",
+  "Container HO",
+  "Departure",
+  "Rail Out",
+  "Billing Pending",
+  "Billing Done",
+]);
+
 // Tab Panel Component
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -191,6 +214,145 @@ function ExportJobsModule() {
     fetchDirectories();
     fetchExportJobsUsers();
   }, []);
+
+  // 🔑 GLOBAL SYNC: Initialize and Update Milestones & Detailed Status
+  // This ensures that even if user never clicks "Tracking Completed" tab,
+  // the milestones and detailedStatus are correctly derived from source data.
+  const milestonesInitializedRef = useRef(false);
+
+  useEffect(() => {
+    if (loading || !formik.values) return;
+
+    const ms = formik.values.milestones || [];
+    const isAir = toUpper(formik.values.transportMode) === "AIR";
+    const currentBaseMilestones = getMilestones(isAir);
+    const currentMandatory = getMandatoryNames(isAir);
+    const currentModeNames = new Set(currentBaseMilestones);
+
+    // 1. Initialization / Mode Switch Logic
+    const isMissingRequired = !currentBaseMilestones.every((name) =>
+      ms.some((m) => m.milestoneName === name)
+    );
+    const hasInvalidSystem = ms.some(
+      (m) =>
+        ALL_SYSTEM_MILESTONES.has(m.milestoneName) &&
+        !currentModeNames.has(m.milestoneName)
+    );
+
+    if (!milestonesInitializedRef.current || isMissingRequired || hasInvalidSystem) {
+      // Determine if we are loading real data from server
+      const hasRealData = ms.length > 0 && ms.some((m) => m._id);
+
+      if (!milestonesInitializedRef.current && ms.length === 0 && !hasRealData) {
+        const defaults = currentBaseMilestones.map((name) => ({
+          milestoneName: name,
+          actualDate: "",
+          isCompleted: false,
+          isMandatory: currentMandatory.has(name),
+          completedBy: "",
+          remarks: "",
+        }));
+        formik.setFieldValue("milestones", defaults);
+        milestonesInitializedRef.current = true;
+      } else {
+        // Logic for Merging / switching modes
+        const byName = new Map(ms.map((m) => [m.milestoneName, m]));
+        const basePart = currentBaseMilestones.map((name) => {
+          const existing = byName.get(name);
+          return (
+            existing || {
+              milestoneName: name,
+              actualDate: "",
+              isCompleted: false,
+              isMandatory: currentMandatory.has(name),
+              completedBy: "",
+              remarks: "",
+            }
+          );
+        });
+        const extras = ms.filter((m) => {
+          const name = m.milestoneName;
+          if (!name || currentModeNames.has(name)) return false;
+          if (ALL_SYSTEM_MILESTONES.has(name)) return false;
+          return true;
+        });
+
+        const unified = [...basePart, ...extras];
+        // Only update if actually different to avoid loops
+        if (JSON.stringify(ms) !== JSON.stringify(unified)) {
+          formik.setFieldValue("milestones", unified);
+        }
+        milestonesInitializedRef.current = true;
+      }
+      return;
+    }
+
+    // 2. Data Sync Logic (Source fields -> Milestones)
+    const op = formik.values.operations?.[0]?.statusDetails?.[0] || {};
+    const sbDate = formik.values.sb_date;
+
+    const getSource = (name) => {
+      if (name === "SB Filed") return { val: sbDate, isDoc: false };
+      if (name === "L.E.O") return { val: op.leoDate, isDoc: false };
+      if (name === "Container HO" || name === "File Handover to IATA") {
+        const docs = op.handoverImageUpload;
+        const dateVal = op.handoverForwardingNoteDate || op.handoverConcorTharSanganaRailRoadDate || "";
+        const hasDocs = (Array.isArray(docs) && docs.length > 0) || !!dateVal;
+        return { val: dateVal, isDoc: true, hasDoc: hasDocs };
+      }
+      if (name === "Rail Out" || name === "Departure") return { val: op.railOutReachedDate, isDoc: false };
+      return null;
+    };
+
+    let changed = false;
+    const syncedMilestones = ms.map((m) => {
+      const source = getSource(m.milestoneName);
+      if (!source) return m;
+
+      let updates = {};
+      if (source.isDoc) {
+        if (source.hasDoc) {
+          if (!m.isCompleted) updates.isCompleted = true;
+          if (source.val && m.actualDate !== source.val) updates.actualDate = source.val;
+        } else if (m.isCompleted) {
+          updates.isCompleted = false;
+          updates.actualDate = "";
+        }
+      } else {
+        if (source.val) {
+          if (!m.isCompleted) updates.isCompleted = true;
+          if (m.actualDate !== source.val) updates.actualDate = source.val;
+        } else if (m.isCompleted) {
+          updates.isCompleted = false;
+          updates.actualDate = "";
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        changed = true;
+        return { ...m, ...updates };
+      }
+      return m;
+    });
+
+    if (changed) {
+      formik.setFieldValue("milestones", syncedMilestones);
+    }
+
+    // 3. Detailed Status Logic (Derived from highest completed milestone)
+    const completed = syncedMilestones.filter(m => m.isCompleted);
+    const lastCompleted = completed.length > 0 ? completed[completed.length - 1].milestoneName : "";
+    if (formik.values.detailedStatus !== lastCompleted) {
+      formik.setFieldValue("detailedStatus", lastCompleted);
+    }
+  }, [
+    loading,
+    formik.values.sb_date,
+    formik.values.operations,
+    formik.values.transportMode,
+    formik.values.milestones,
+    formik.values.detailedStatus
+  ]);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);

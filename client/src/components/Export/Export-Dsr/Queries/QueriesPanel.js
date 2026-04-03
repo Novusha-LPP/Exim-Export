@@ -78,8 +78,13 @@ const getJobUrl = (jobNo) => {
 };
 
 // ─── Query Card ────────────────────────────────────────────────────────────────
-const QueryCard = ({ query, onClick, isHovered, onHover, onLeave, onViewJob }) => {
+const QueryCard = ({ query, currentModule, onClick, isHovered, onHover, onLeave, onViewJob }) => {
   const st = STATUS_STYLES[query.status] || STATUS_STYLES.open;
+  
+  // Decide if this query is considered "New" for the CURRENT module
+  const isTarget = query.targetModule === currentModule;
+  const isSender = query.raisedFromModule === currentModule;
+  const isNew = (isTarget && !query.seenByTarget) || (isSender && !query.seenBySender);
 
   return (
     <div
@@ -106,8 +111,10 @@ const QueryCard = ({ query, onClick, isHovered, onHover, onLeave, onViewJob }) =
           </div>
           <div style={{ fontSize: "11px", color: THEME.textMuted, marginTop: "1px" }}>
             Job: <span style={{ fontWeight: 600, color: THEME.blue }}>{query.job_no}</span>
-            {" · From: "}
-            <span style={{ fontWeight: 600 }}>{MODULE_LABELS[query.raisedFromModule] || query.raisedFromModule}</span>
+            {" · "}
+            <span style={{ fontWeight: 600 }}>
+              {isSender ? `To: ${MODULE_LABELS[query.targetModule] || query.targetModule}` : `From: ${MODULE_LABELS[query.raisedFromModule] || query.raisedFromModule}`}
+            </span>
           </div>
         </div>
 
@@ -156,7 +163,7 @@ const QueryCard = ({ query, onClick, isHovered, onHover, onLeave, onViewJob }) =
               💬 {query.replies.length}
             </span>
           )}
-          {!query.seenByTarget && query.status === "open" && (
+          {isNew && query.status === "open" && (
             <span style={{
               background: "#dbeafe", color: THEME.blue, padding: "1px 6px",
               borderRadius: "3px", fontWeight: 700, fontSize: "9px", textTransform: "uppercase",
@@ -171,7 +178,7 @@ const QueryCard = ({ query, onClick, isHovered, onHover, onLeave, onViewJob }) =
 };
 
 // ─── Query Detail Dialog ────────────────────────────────────────────────────
-const QueryDetailDialog = ({ open, onClose, query, onUpdate }) => {
+const QueryDetailDialog = ({ open, onClose, query, currentModule, onUpdate }) => {
   const { user } = useContext(UserContext);
   const [replyText, setReplyText] = useState("");
   const [resolutionNote, setResolutionNote] = useState("");
@@ -198,6 +205,7 @@ const QueryDetailDialog = ({ open, onClose, query, onUpdate }) => {
           message: replyText.trim(),
           repliedBy: user?.username || "unknown",
           repliedByName: user?.fullName || user?.username || "Unknown",
+          fromModule: currentModule,
         }
       );
       setActiveQuery(res.data.data);
@@ -519,6 +527,7 @@ const QueriesPanel = () => {
       const res = await axios.get(`${import.meta.env.VITE_API_STRING}/queries`, {
         params: {
           targetModule: currentModule,
+          raisedFromModule: currentModule,
           status: statusFilter || undefined,
           page,
           limit: 20,
@@ -545,6 +554,7 @@ const QueriesPanel = () => {
       try {
         await axios.put(`${import.meta.env.VITE_API_STRING}/queries/mark-seen`, {
           targetModule: currentModule,
+          raisedFromModule: currentModule,
         });
       } catch (err) {
         // non-critical
@@ -624,6 +634,7 @@ const QueriesPanel = () => {
             <QueryCard
               key={q._id}
               query={q}
+              currentModule={currentModule}
               onClick={handleOpenDetail}
               isHovered={hoveredCard === q._id}
               onHover={() => setHoveredCard(q._id)}
@@ -649,6 +660,7 @@ const QueriesPanel = () => {
         open={detailOpen}
         onClose={() => { setDetailOpen(false); setSelectedQuery(null); }}
         query={selectedQuery}
+        currentModule={currentModule}
         onUpdate={fetchQueries}
       />
     </div>

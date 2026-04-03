@@ -71,23 +71,22 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         // 1. Handle main document status
         if (normalizedStatus === "cancelled") {
             filter.$and.push({
-                status: { $regex: "^cancelled$", $options: "i" }
+                $or: [
+                    { status: { $regex: "^cancelled$", $options: "i" } },
+                    { isJobCanceled: true }
+                ]
             });
         } else if (normalizedStatus === "completed") {
             filter.$and.push({
                 $and: [
+                    // Exclude Cancelled
                     { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
                     { isJobCanceled: { $ne: true } },
+                    // Require actual completion
                     {
                         $or: [
                             { status: { $regex: "^completed$", $options: "i" } },
-                            { isJobtrackingEnabled: true },
-                            {
-                                $and: [
-                                    { status: { $nin: ["pending", "", null] } },
-                                    { status: { $exists: true } },
-                                ]
-                            }
+                            { detailedStatus: "Billing Done" }
                         ]
                     }
                 ]
@@ -126,12 +125,20 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             // We'll exclude them from standard pending if they have both handover details
             filter.$and.push({
                 $and: [
-                    { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
+                    // Billing docs not sent OR no status details yet
+                    {
+                        $or: [
+                            { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
+                            { "operations.statusDetails": { $size: 0 } }
+                        ]
+                    },
+                    // AND Not fully handed over yet
                     {
                         $or: [
                             { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                             { "operations.statusDetails.handoverImageUpload": { $exists: false } },
                             { "operations.statusDetails.handoverImageUpload": { $size: 0 } },
+                            { "operations.statusDetails": { $size: 0 } }
                         ]
                     }
                 ]
@@ -143,7 +150,8 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 $or: [
                     { "operations.statusDetails.leoDate": { $exists: false } },
                     { "operations.statusDetails.leoDate": null },
-                    { "operations.statusDetails.leoDate": "" }
+                    { "operations.statusDetails.leoDate": "" },
+                    { "operations.statusDetails": { $size: 0 } }
                 ]
             });
         } else if (normalizedStatus === "handover pending") {
@@ -152,7 +160,8 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 $or: [
                     { "operations.statusDetails.handoverForwardingNoteDate": { $exists: false } },
                     { "operations.statusDetails.handoverForwardingNoteDate": null },
-                    { "operations.statusDetails.handoverForwardingNoteDate": "" }
+                    { "operations.statusDetails.handoverForwardingNoteDate": "" },
+                    { "operations.statusDetails": { $size: 0 } }
                 ]
             });
         } else if (normalizedStatus === "billing pending" || normalizedStatus === "op completed") {
@@ -161,10 +170,12 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 $or: [
                     { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
                     { "operations.statusDetails.billingDocsSentDt": null },
-                    { "operations.statusDetails.billingDocsSentDt": "" }
+                    { "operations.statusDetails.billingDocsSentDt": "" },
+                    { "operations.statusDetails": { $size: 0 } }
                 ]
             });
-        } else if (normalizedStatus === "cancelled") {
+        }
+ else if (normalizedStatus === "cancelled") {
             // Cancelled jobs shouldn't filter out anything specific by default, 
             // but we might want to exclude billed ones if desired. Usually cancelled just means status = cancelled.
         }

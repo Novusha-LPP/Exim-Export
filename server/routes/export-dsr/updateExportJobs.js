@@ -238,6 +238,7 @@ router.get("/global-search-jobs", async (req, res) => {
       search = "",
       branch = "",
       year = "",
+      status = "all",
     } = req.query;
 
     const filter = {};
@@ -280,7 +281,113 @@ router.get("/global-search-jobs", async (req, res) => {
       }
     }
 
-    // 2. Search filter
+    // 2. Status filter
+    if (status && status.toLowerCase() !== "all") {
+      const statusLower = status.toLowerCase();
+      if (statusLower === "pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+            { isJobCanceled: { $ne: true } },
+          ],
+        });
+      } else if (statusLower === "completed") {
+        filter.$and.push({
+          $and: [
+            { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
+            { isJobCanceled: { $ne: true } },
+            {
+              $or: [
+                { status: { $regex: "^completed$", $options: "i" } },
+                { detailedStatus: "Billing Done" },
+              ],
+            },
+          ],
+        });
+      } else if (statusLower === "cancelled") {
+        filter.$and.push({
+          $or: [
+            { status: { $regex: "^cancelled$", $options: "i" } },
+            { isJobCanceled: true },
+          ],
+        });
+      } else if (statusLower === "booking pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          goods_stuffed_at: "DOCK",
+          consignmentType: "FCL",
+          sb_no: { $type: "string", $ne: "" },
+          $or: [
+            { "operations.statusDetails.leoDate": { $exists: false } },
+            { "operations.statusDetails.leoDate": null },
+            { "operations.statusDetails.leoDate": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      } else if (statusLower === "handover pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
+          $or: [
+            { "operations.statusDetails.handoverForwardingNoteDate": { $exists: false } },
+            { "operations.statusDetails.handoverForwardingNoteDate": null },
+            { "operations.statusDetails.handoverForwardingNoteDate": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      } else if (statusLower === "billing pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
+          $or: [
+            { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
+            { "operations.statusDetails.billingDocsSentDt": null },
+            { "operations.statusDetails.billingDocsSentDt": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      }
+    }
+
+    // 3. Search filter
     if (search) {
       filter.$and.push({
         $or: [
@@ -484,7 +591,7 @@ router.get("/exports/:status?", async (req, res) => {
       const statusLower = status.toLowerCase();
 
       if (statusLower === "pending") {
-        // Pending: Status is pending or not set, AND jobTracking is disabled
+        // Pending: Status is pending or not set
         filter.$and.push({
           $and: [
             {
@@ -495,17 +602,12 @@ router.get("/exports/:status?", async (req, res) => {
                 { status: "" },
               ],
             },
-            // Exclude jobs where jobTracking is enabled
-            {
-              $or: [
-                { isJobtrackingEnabled: false },
-                { isJobtrackingEnabled: { $exists: false } },
-              ],
-            },
+            { detailedStatus: { $ne: "Billing Done" } },
+            { isJobCanceled: { $ne: true } },
           ],
         });
       } else if (statusLower === "completed") {
-        // Completed: Explicit status is completed OR jobTracking is enabled OR NOT pending/blank (and NOT cancelled)
+        // Completed: Explicit status is completed OR final milestone reached
         filter.$and.push({
           $and: [
             // Exclude Cancelled
@@ -515,17 +617,11 @@ router.get("/exports/:status?", async (req, res) => {
                 { isJobCanceled: { $ne: true } },
               ],
             },
-            // Include if tracking, completed status, OR not pending/blank
+            // Include if tracking done OR completed status
             {
               $or: [
                 { status: { $regex: "^completed$", $options: "i" } },
-                { isJobtrackingEnabled: true },
-                {
-                  $and: [
-                    { status: { $nin: ["pending", "", null] } },
-                    { status: { $exists: true } },
-                  ],
-                },
+                { detailedStatus: "Billing Done" },
               ],
             },
           ],
@@ -534,7 +630,6 @@ router.get("/exports/:status?", async (req, res) => {
         filter.$and.push({
           $or: [
             { status: { $regex: "^cancelled$", $options: "i" } },
-            // If jobTracking is enabled, show in completed tab
             { isJobCanceled: true },
           ],
         });
@@ -549,12 +644,7 @@ router.get("/exports/:status?", async (req, res) => {
                 { status: "" },
               ],
             },
-            {
-              $or: [
-                { isJobtrackingEnabled: false },
-                { isJobtrackingEnabled: { $exists: false } },
-              ],
-            },
+            { detailedStatus: { $ne: "Billing Done" } },
           ],
           goods_stuffed_at: "DOCK",
           consignmentType: "FCL",
@@ -562,7 +652,8 @@ router.get("/exports/:status?", async (req, res) => {
           $or: [
             { "operations.statusDetails.leoDate": { $exists: false } },
             { "operations.statusDetails.leoDate": null },
-            { "operations.statusDetails.leoDate": "" }
+            { "operations.statusDetails.leoDate": "" },
+            { "operations.statusDetails": { $size: 0 } }
           ]
         });
       } else if (statusLower === "handover pending") {
@@ -576,18 +667,14 @@ router.get("/exports/:status?", async (req, res) => {
                 { status: "" },
               ],
             },
-            {
-              $or: [
-                { isJobtrackingEnabled: false },
-                { isJobtrackingEnabled: { $exists: false } },
-              ],
-            },
+            { detailedStatus: { $ne: "Billing Done" } },
           ],
           "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
           $or: [
             { "operations.statusDetails.handoverForwardingNoteDate": { $exists: false } },
             { "operations.statusDetails.handoverForwardingNoteDate": null },
-            { "operations.statusDetails.handoverForwardingNoteDate": "" }
+            { "operations.statusDetails.handoverForwardingNoteDate": "" },
+            { "operations.statusDetails": { $size: 0 } }
           ]
         });
       } else if (statusLower === "billing pending") {
@@ -601,18 +688,14 @@ router.get("/exports/:status?", async (req, res) => {
                 { status: "" },
               ],
             },
-            {
-              $or: [
-                { isJobtrackingEnabled: false },
-                { isJobtrackingEnabled: { $exists: false } },
-              ],
-            },
+            { detailedStatus: { $ne: "Billing Done" } },
           ],
           "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
           $or: [
             { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
             { "operations.statusDetails.billingDocsSentDt": null },
-            { "operations.statusDetails.billingDocsSentDt": "" }
+            { "operations.statusDetails.billingDocsSentDt": "" },
+            { "operations.statusDetails": { $size: 0 } }
           ]
         });
       } else {

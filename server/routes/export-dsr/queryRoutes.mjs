@@ -60,8 +60,14 @@ router.get("/api/queries", async (req, res) => {
 
     const filter = {};
 
-    if (targetModule) filter.targetModule = targetModule;
-    if (raisedFromModule) filter.raisedFromModule = raisedFromModule;
+    if (targetModule && raisedFromModule) {
+      // Two-way view: things for me OR things by me
+      filter.$or = [{ targetModule }, { raisedFromModule }];
+    } else {
+      if (targetModule) filter.targetModule = targetModule;
+      if (raisedFromModule) filter.raisedFromModule = raisedFromModule;
+    }
+    
     if (raisedBy) filter.raisedBy = raisedBy;
     if (status) filter.status = status;
     if (job_no) filter.job_no = job_no;
@@ -119,19 +125,23 @@ router.get("/api/queries/count", async (req, res) => {
 // ─── MARK QUERIES AS SEEN (must come BEFORE /:id routes) ──────────────────
 router.put("/api/queries/mark-seen", async (req, res) => {
   try {
-    const { targetModule, queryIds } = req.body;
+    const { targetModule, raisedFromModule, queryIds } = req.body;
 
-    const filter = { seenByTarget: false };
-
-    if (queryIds && Array.isArray(queryIds) && queryIds.length > 0) {
-      filter._id = { $in: queryIds };
-    } else if (targetModule) {
-      filter.targetModule = targetModule;
-    } else {
-      return res.status(400).json({ success: false, message: "Provide targetModule or queryIds" });
+    const skipIfEmpty = !queryIds && !targetModule && !raisedFromModule;
+    if (skipIfEmpty) {
+      return res.status(400).json({ success: false, message: "Provide module or queryIds" });
     }
 
-    await QueryModel.updateMany(filter, { $set: { seenByTarget: true } });
+    if (queryIds && Array.isArray(queryIds) && queryIds.length > 0) {
+      await QueryModel.updateMany({ _id: { $in: queryIds } }, { $set: { seenByTarget: true, seenBySender: true } });
+    } else {
+      if (targetModule) {
+        await QueryModel.updateMany({ targetModule, seenByTarget: false }, { $set: { seenByTarget: true } });
+      }
+      if (raisedFromModule) {
+        await QueryModel.updateMany({ raisedFromModule, seenBySender: false }, { $set: { seenBySender: true } });
+      }
+    }
 
     return res.json({ success: true, message: "Queries marked as seen" });
   } catch (err) {
@@ -157,7 +167,7 @@ router.get("/api/queries/:id", async (req, res) => {
 // ─── ADD REPLY TO A QUERY ─────────────────────────────────────────────────────
 router.post("/api/queries/:id/reply", async (req, res) => {
   try {
-    const { message, repliedBy, repliedByName } = req.body;
+    const { message, repliedBy, repliedByName, fromModule } = req.body;
 
     if (!message || !repliedBy) {
       return res.status(400).json({ success: false, message: "message and repliedBy are required" });
@@ -169,8 +179,18 @@ router.post("/api/queries/:id/reply", async (req, res) => {
     }
 
     query.replies.push({ message, repliedBy, repliedByName });
-    // Reset seen flag so the other party sees it
-    query.seenByTarget = false;
+    
+    // Toggle 'seen' flags based on who replied
+    if (fromModule === query.targetModule) {
+      // Recipient replied -> Sender needs to see it
+      query.seenBySender = false;
+      query.seenByTarget = true;
+    } else {
+      // Sender replied -> Target needs to see it
+      query.seenByTarget = false;
+      query.seenBySender = true;
+    }
+    
     await query.save();
 
     return res.json({ success: true, data: query });
@@ -195,7 +215,11 @@ router.put("/api/queries/:id/resolve", async (req, res) => {
     query.resolvedByName = resolvedByName;
     query.resolvedAt = new Date();
     query.resolutionNote = resolutionNote || "";
-    query.seenByTarget = false;
+    
+    // Both need to know it's solved, but Sender usually needs the notification
+    query.seenBySender = false;
+    query.seenByTarget = true;
+    
     await query.save();
 
     return res.json({ success: true, data: query });
@@ -220,7 +244,11 @@ router.put("/api/queries/:id/reject", async (req, res) => {
     query.resolvedByName = resolvedByName;
     query.resolvedAt = new Date();
     query.resolutionNote = resolutionNote || "";
-    query.seenByTarget = false;
+    
+    // Both need to know it's rejected, but Sender usually needs the notification
+    query.seenBySender = false;
+    query.seenByTarget = true;
+    
     await query.save();
 
     return res.json({ success: true, data: query });

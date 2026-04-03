@@ -41,210 +41,12 @@ const TrackingCompletedTab = ({ formik, directories, params, isAdmin }) => {
     fetchExportJobsUsers();
   }, []);
 
-  // 🔑 FIXED: Initialize milestones only after data is loaded
-  // We need to detect when real data comes in vs initial empty state
-  const hasInitializedRef = useRef(false);
+  // Milestone sync and initialization is now handled globally in ExportJobsModule.js
+  // handleInitializedRef and useEffects removed to avoid duplicate/conflicting updates.
 
   const consignmentType = (formik.values.consignmentType || "").toUpperCase();
   const isAir = consignmentType === "AIR";
-
   const currentBaseMilestones = getMilestones(isAir);
-  const currentMandatory = getMandatoryNames(isAir);
-
-  // Define all possible system milestones to distinguish from custom ones
-  const ALL_SYSTEM_MILESTONES = new Set([
-    "SB Filed",
-    "L.E.O",
-    "File Handover to IATA",
-    "Container HO",
-    "Departure",
-    "Rail Out",
-    "Billing Pending",
-    "Billing Done",
-  ]);
-
-  useEffect(() => {
-    const ms = formik.values.milestones || [];
-    const currentModeNames = new Set(currentBaseMilestones);
-
-    // Check if we need to update:
-    // 1. If not initialized yet (handled by ref check logic below combined with RealData check)
-    // 2. If the current milestones don't match the current mode's requirements (e.g. missing "Departure" when AIR)
-    // 3. If the current milestones contain "invalid" system milestones for this mode (e.g. "Rail Out" when AIR)
-
-    const isMissingRequired = !currentBaseMilestones.every((name) =>
-      ms.some((m) => m.milestoneName === name)
-    );
-
-    const hasInvalidSystem = ms.some(
-      (m) =>
-        ALL_SYSTEM_MILESTONES.has(m.milestoneName) &&
-        !currentModeNames.has(m.milestoneName)
-    );
-
-    // If perfectly aligned, do nothing
-    if (hasInitializedRef.current && !isMissingRequired && !hasInvalidSystem) {
-      return;
-    }
-
-    // Determine if we are loading real data from server
-    const hasRealData = ms.length > 0 && ms.some((m) => m._id);
-
-    // If we haven't initialized and there's no real data, set defaults
-    if (!hasInitializedRef.current && ms.length === 0) {
-      const defaults = currentBaseMilestones.map((name) => ({
-        milestoneName: name,
-        actualDate: "",
-        isCompleted: false,
-        isMandatory: currentMandatory.has(name),
-        completedBy: "",
-        remarks: "",
-      }));
-      formik.setFieldValue("milestones", defaults);
-      // We don't set initialized=true here ideally until we are sure data loaded,
-      // but for new jobs this is the init state.
-      // However, to be safe against late-loading data, we usually wait for an ID or explicit 'loaded' flag.
-      // Assuming if no milestones, we just set defaults.
-      return;
-    }
-
-    // Logic for Merging / switching modes
-    // 1. Create Map of existing milestones
-    const byName = new Map(ms.map((m) => [m.milestoneName, m]));
-
-    // 2. Generate the new base list (preserving existing data if name matches)
-    const basePart = currentBaseMilestones.map((name) => {
-      const existing = byName.get(name);
-      return (
-        existing || {
-          milestoneName: name,
-          actualDate: "",
-          isCompleted: false,
-          isMandatory: currentMandatory.has(name),
-          completedBy: "",
-          remarks: "",
-        }
-      );
-    });
-
-    // 3. Keep custom milestones (those not in system list)
-    // We filter out any milestone that is a SYSTEM milestone but NOT in the current mode
-    const extras = ms.filter((m) => {
-      const name = m.milestoneName;
-      if (!name) return false; // Ignore empty names
-      // Keep if it is in the current base set (already handled in basePart? No, basePart creates NEW array)
-      // Wait, basePart contains the *system* milestones for current mode.
-      // We want 'extras' to be ONLY non-system milestones.
-
-      // If it's a system milestone, we only keep it if it's in the current mode (which is handled by basePart).
-      // Actually, if we put it in basePart, we don't want it in extras.
-
-      if (currentModeNames.has(name)) return false; // Already in basePart
-
-      // If it is a known system milestone but NOT in current mode (e.g. "Rail Out" when AIR), DROP IT.
-      if (ALL_SYSTEM_MILESTONES.has(name)) return false;
-
-      // Otherwise it's a user-custom milestone, KEEP IT.
-      return true;
-    });
-
-    formik.setFieldValue("milestones", [...basePart, ...extras]);
-    hasInitializedRef.current = true;
-  }, [
-    // Depend on the mode-derived lists
-    currentBaseMilestones,
-    currentMandatory,
-    // And formik values - but be careful of loops.
-    // The checks inside (isMissingRequired, hasInvalidSystem) prevent infinite loops
-    // because once we align, those become false.
-    formik.values.milestones,
-  ]);
-
-  // Sync milestones with source fields from operations/job details
-  useEffect(() => {
-    // Only proceed if initialized
-    if (!hasInitializedRef.current) return;
-
-    const op = formik.values.operations?.[0]?.statusDetails?.[0] || {};
-    const sbDate = formik.values.sb_date;
-
-    // Helper to map milestone name to source data
-    const getSource = (name) => {
-      // 1. SB Filed -> sb_date
-      if (name === "SB Filed") return { val: sbDate, isDoc: false };
-
-      // 2. L.E.O -> LEO (leoDate)
-      if (name === "L.E.O") return { val: op.leoDate, isDoc: false };
-
-      // 3. Container HO / File Handover -> Handover doc (handoverImageUpload)
-      if (name === "Container HO" || name === "File Handover to IATA") {
-        const docs = op.handoverImageUpload;
-        const dateVal = op.handoverForwardingNoteDate || op.handoverConcorTharSanganaRailRoadDate || "";
-        // Fix: Consider it "has docs" (completed) if either doc upload exists OR the date is set
-        const hasDocs = (Array.isArray(docs) && docs.length > 0) || !!dateVal;
-        return { val: dateVal, isDoc: true, hasDoc: hasDocs };
-      }
-
-      // 4. Rail Out / Departure -> Rail Reached (railOutReachedDate)
-      if (name === "Rail Out" || name === "Departure") return { val: op.railOutReachedDate, isDoc: false };
-
-      return null;
-    };
-
-    const currentMilestones = formik.values.milestones || [];
-    if (currentMilestones.length === 0) return;
-
-    let changed = false;
-    const newMilestones = currentMilestones.map((m) => {
-      const source = getSource(m.milestoneName);
-      if (!source) return m;
-
-      let updates = {};
-
-      if (source.isDoc) {
-        // Document-driven logic
-        if (source.hasDoc) {
-          if (!m.isCompleted) updates.isCompleted = true;
-          // Only update date if we have a valid one from source, otherwise keep existing manual or empty?
-          // User said "if Handover doc has value...". 
-          // If source date is valid, sync it.
-          if (source.val && m.actualDate !== source.val) updates.actualDate = source.val;
-        } else {
-          // If doc is removed, we likely uncheck it to stay in sync
-          if (m.isCompleted) {
-            updates.isCompleted = false;
-            updates.actualDate = "";
-          }
-        }
-      } else {
-        // Date-driven logic
-        if (source.val) {
-          if (!m.isCompleted) updates.isCompleted = true;
-          if (m.actualDate !== source.val) updates.actualDate = source.val;
-        } else {
-          if (m.isCompleted) {
-            updates.isCompleted = false;
-            updates.actualDate = "";
-          }
-        }
-      }
-
-      if (Object.keys(updates).length > 0) {
-        changed = true;
-        return { ...m, ...updates };
-      }
-      return m;
-    });
-
-    if (changed) {
-      formik.setFieldValue("milestones", newMilestones);
-    }
-  }, [
-    // Dependencies to trigger the check
-    formik.values.sb_date,
-    formik.values.operations,
-    formik.values.milestones
-  ]);
 
   const handleMilestoneChange = (index, updates) => {
     const current = formik.values.milestones || [];
@@ -318,8 +120,10 @@ const TrackingCompletedTab = ({ formik, directories, params, isAdmin }) => {
                   const today = new Date();
                   const dateString = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
                   handleFieldChange("jobCanceledDate", dateString);
+                  handleFieldChange("status", "Cancelled");
                 } else {
                   handleFieldChange("jobCanceledDate", "");
+                  handleFieldChange("status", "Pending");
                 }
               }}
               disabled={(formik.values.isJobCanceled && !isAdmin)}

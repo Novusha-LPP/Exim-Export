@@ -51,8 +51,9 @@ const querySchema = new mongoose.Schema(
     // Replies/conversation thread
     replies: [replySchema],
 
-    // Track if the target has seen the query
+    // Track if the communication was seen by either side
     seenByTarget: { type: Boolean, default: false },
+    seenBySender: { type: Boolean, default: true },
   },
   {
     timestamps: true, // adds createdAt and updatedAt
