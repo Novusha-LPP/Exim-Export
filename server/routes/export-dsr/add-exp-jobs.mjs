@@ -275,13 +275,14 @@ router.post(
       const newExportJob = new ExportJobModel({
         ...sourceData,
         job_no: newJobNo,
-        jobNumber: newJobNo, // Added for unique index consistency
+        jobNumber: newJobNo, 
         branch_code,
         year,
         transportMode,
         status: "Pending",
+        detailedStatus: "", 
         job_date: new Date().toISOString().split("T")[0],
-        milestones: [], // Reset milestones
+        milestones: [], 
       });
 
       await newExportJob.save();

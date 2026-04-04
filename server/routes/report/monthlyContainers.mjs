@@ -42,12 +42,12 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
               $switch: {
                 branches: [
                   {
-                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$sb_date", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}" } },
+                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$sb_date", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
                     then: { $toDate: "$sb_date" },
                   },
                   {
-                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$sb_date", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}" } },
-                    then: { $dateFromString: { dateString: "$sb_date", format: "%d-%m-%Y" } }
+                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$sb_date", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } },
+                    then: { $dateFromString: { dateString: "$sb_date", format: "%d-%m-%Y", onError: null } }
                   },
                 ],
                 default: null,
@@ -96,12 +96,12 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
                               $switch: {
                                 branches: [
                                   {
-                                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}" } },
+                                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
                                     then: { $toDate: "$$d" }
                                   },
                                   {
-                                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}" } },
-                                    then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y" } }
+                                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } },
+                                    then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y", onError: null } }
                                   }
                                 ],
                                 default: null
@@ -211,12 +211,12 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
               $switch: {
                 branches: [
                   {
-                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$sb_date", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}" } },
+                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$sb_date", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
                     then: { $toDate: "$sb_date" },
                   },
                   {
-                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$sb_date", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}" } },
-                    then: { $dateFromString: { dateString: "$sb_date", format: "%d-%m-%Y" } }
+                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$sb_date", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } },
+                    then: { $dateFromString: { dateString: "$sb_date", format: "%d-%m-%Y", onError: null } }
                   },
                 ],
                 default: null,
@@ -288,12 +288,12 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
                           $switch: {
                             branches: [
                               {
-                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}" } },
+                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
                                 then: { $toDate: "$$d" }
                               },
                               {
-                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}" } },
-                                then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y" } }
+                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } },
+                                then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y", onError: null } }
                               }
                             ],
                             default: null
@@ -379,12 +379,12 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
                           $switch: {
                             branches: [
                               {
-                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}" } },
+                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
                                 then: { $toDate: "$$d" }
                               },
                               {
-                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}" } },
-                                then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y" } }
+                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } },
+                                then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y", onError: null } }
                               }
                             ],
                             default: null

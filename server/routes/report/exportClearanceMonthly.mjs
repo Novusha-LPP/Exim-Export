@@ -48,7 +48,7 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
                     $and: [
                       { $ne: ["$firstStatus.leoDate", null] },
                       { $ne: ["$firstStatus.leoDate", ""] },
-                      { $regexMatch: { input: "$firstStatus.leoDate", regex: /^\d{4}-\d{2}-\d{2}/ } },
+                      { $regexMatch: { input: "$firstStatus.leoDate", regex: /^\d{4}-\d{2}-\d{2}$/ } },
                     ],
                   },
                   then: { $toDate: "$firstStatus.leoDate" },
@@ -58,13 +58,14 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
                     $and: [
                       { $ne: ["$firstStatus.leoDate", null] },
                       { $ne: ["$firstStatus.leoDate", ""] },
-                      { $regexMatch: { input: "$firstStatus.leoDate", regex: /^\d{2}-\d{2}-\d{4}/ } },
+                      { $regexMatch: { input: "$firstStatus.leoDate", regex: /^\d{2}-\d{2}-\d{4}$/ } },
                     ],
                   },
                   then: {
                     $dateFromString: {
                       dateString: "$firstStatus.leoDate",
                       format: "%d-%m-%Y",
+                      onError: null
                     },
                   },
                 },
@@ -80,7 +81,7 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
                     $and: [
                       { $ne: ["$sb_date", null] },
                       { $ne: ["$sb_date", ""] },
-                      { $regexMatch: { input: "$sb_date", regex: /^\d{4}-\d{2}-\d{2}/ } },
+                      { $regexMatch: { input: "$sb_date", regex: /^\d{4}-\d{2}-\d{2}$/ } },
                     ],
                   },
                   then: { $toDate: "$sb_date" },
@@ -90,13 +91,14 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
                     $and: [
                       { $ne: ["$sb_date", null] },
                       { $ne: ["$sb_date", ""] },
-                      { $regexMatch: { input: "$sb_date", regex: /^\d{2}-\d{2}-\d{4}/ } },
+                      { $regexMatch: { input: "$sb_date", regex: /^\d{2}-\d{2}-\d{4}$/ } },
                     ],
                   },
                   then: {
                     $dateFromString: {
                       dateString: "$sb_date",
                       format: "%d-%m-%Y",
+                      onError: null
                     },
                   },
                 },

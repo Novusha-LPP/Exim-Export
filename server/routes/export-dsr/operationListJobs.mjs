@@ -20,6 +20,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             customHouse = "",
             jobOwner = "",
             detailedStatus = "",
+            month = "",
         } = { ...req.params, ...req.query };
 
         // Normalize status to lowercase, fallback to "pending"
@@ -205,6 +206,62 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         if (branch) filter.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
         if (year && year !== "all") filter.$and.push({ year: year });
         if (customHouse) filter.$and.push({ custom_house: { $regex: customHouse, $options: "i" } });
+
+        if (month) {
+            if (month === "today") {
+                const start = new Date();
+                start.setHours(0, 0, 0, 0);
+                const end = new Date();
+                end.setHours(23, 59, 59, 999);
+                filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+            } else if (month === "yesterday") {
+                const start = new Date();
+                start.setDate(start.getDate() - 1);
+                start.setHours(0, 0, 0, 0);
+                const end = new Date();
+                end.setDate(end.getDate() - 1);
+                end.setHours(23, 59, 59, 999);
+                filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+            } else if (month === "weekly") {
+                const start = new Date();
+                start.setDate(start.getDate() - 7);
+                start.setHours(0, 0, 0, 0);
+                const end = new Date();
+                end.setHours(23, 59, 59, 999);
+                filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+            } else if (!isNaN(month)) {
+                filter.$and.push({
+                    $expr: {
+                        $let: {
+                            vars: {
+                                effDate: {
+                                    $cond: {
+                                        if: {
+                                            $and: [
+                                                { $ne: ["$job_date", null] },
+                                                { $ne: ["$job_date", ""] },
+                                                { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } }
+                                            ]
+                                        },
+                                        then: {
+                                            $dateFromString: {
+                                                dateString: "$job_date",
+                                                format: "%d-%m-%Y",
+                                                onError: "$createdAt"
+                                            }
+                                        },
+                                        else: "$createdAt"
+                                    }
+                                }
+                            },
+                            in: {
+                                $eq: [{ $month: "$$effDate" }, parseInt(month)]
+                            }
+                        }
+                    }
+                });
+            }
+        }
 
         // Ensure array is removed if empty
         if (filter.$and && filter.$and.length === 0) {
