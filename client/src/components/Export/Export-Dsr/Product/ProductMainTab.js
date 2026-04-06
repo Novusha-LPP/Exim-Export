@@ -165,6 +165,37 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
 
       current[field] = rawValue;
 
+      // -- Unit Conversion: MTS <-> KGS --
+      const qUnit = (current.qtyUnit || "").toUpperCase();
+      const sUnit = (current.socunit || "").toUpperCase();
+
+      if (field === "quantity" || field === "qtyUnit" || field === "socunit") {
+        const val = parseFloat(current.quantity);
+        if (!isNaN(val)) {
+          if (qUnit === sUnit && qUnit !== "") {
+            current.socQuantity = formatSocQty(val);
+          } else if (qUnit === "MTS" && sUnit === "KGS") {
+            current.socQuantity = formatSocQty(val * 1000);
+          } else if (qUnit === "KGS" && sUnit === "MTS") {
+            current.socQuantity = formatSocQty(val / 1000);
+          }
+        }
+      } else if (field === "socQuantity") {
+        const val = parseFloat(current.socQuantity);
+        if (!isNaN(val)) {
+          if (qUnit === sUnit && qUnit !== "") {
+            current.quantity = formatQty(val);
+            autoRecalc = true;
+          } else if (sUnit === "KGS" && qUnit === "MTS") {
+            current.quantity = formatQty(val / 1000);
+            autoRecalc = true;
+          } else if (sUnit === "MTS" && qUnit === "KGS") {
+            current.quantity = formatQty(val * 1000);
+            autoRecalc = true;
+          }
+        }
+      }
+
       if (autoRecalc && field !== "amount") {
         const calculated = recalcAmount(current);
         if (!isNaN(calculated) && isFinite(calculated)) {

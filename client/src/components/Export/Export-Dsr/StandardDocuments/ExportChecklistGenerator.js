@@ -502,7 +502,7 @@ const ExportChecklistGenerator = ({
     pdf.text("Marks & Nos", leftColX, yPos);
     pdf.setFont("helvetica", "normal");
     pdf.text(data.marksAndNos || "", leftColX + 70, yPos);
-    yPos += 10;
+    yPos += 20; // Added one extra line of spacing
 
     // Buyer's Name & Address section - exactly like first image
     pdf.setFont("helvetica", "bold");
@@ -1279,7 +1279,7 @@ const ExportChecklistGenerator = ({
         consigneeCountry2: exportJob.dischargecountry,
 
         // Shipping Details
-        portOfLoading: exportJob.port_of_loading || "",
+        portOfLoading: exportJob.custom_house || "",
         portOfDischarge:
           exportJob.port_of_discharge || exportJob.discharge_port || "",
         portOfDestination:

@@ -267,6 +267,12 @@ const transportModeOptions = [
   { value: "AIR", label: "AIR" },
 ];
 
+const movementTypeOptions = [
+  { value: "FCL", label: "FCL" },
+  { value: "LCL", label: "LCL" },
+  { value: "AIR", label: "AIR" },
+];
+
 const getStatusColor = (statusValue) => {
   switch (statusValue) {
     // Export Status Mappings
@@ -461,7 +467,8 @@ const ExportJobsTable = () => {
     if (savedFilters.selectedBranch) {
       if (isAdmin || allowedBranches.includes(savedFilters.selectedBranch)) return savedFilters.selectedBranch;
     }
-    return allowedBranches.length > 0 ? allowedBranches[0] : "AMD";
+    // If no saved filter, return "All branches"
+    return "";
   })();
 
   const [selectedBranch, setSelectedBranch] = useState(initialBranch);
@@ -563,7 +570,7 @@ const ExportJobsTable = () => {
     setSearchQuery("");
     setSelectedYear("26-27");
     setSelectedMovementType("");
-    setSelectedBranch("AMD");
+    // Branch filter is NOT cleared per user request
     setSelectedMonth("");
     setSelectedExporterFilter("");
     setSelectedDetailedStatus("");
@@ -572,6 +579,8 @@ const ExportJobsTable = () => {
     setSelectedGoodsStuffedAt("");
     setPage(1);
     setSortConfig({ key: null, direction: 'asc' });
+    
+    // Clear storage but immediate re-save will happen via useEffect for selectedBranch
     localStorage.removeItem(FILTER_STORAGE_KEY);
   };
 
@@ -920,6 +929,7 @@ const ExportJobsTable = () => {
             customHouse: selectedCustomHouse,
             month: selectedMonth,
             goods_stuffed_at: selectedGoodsStuffedAt,
+            jobOwner: selectedJobOwner,
             page: page,
             limit: LIMIT,
             sortKey: sortConfig.key,
@@ -1684,6 +1694,9 @@ const ExportJobsTable = () => {
               onChange={(e) => setSelectedMonth(e.target.value)}
             >
               <option value="">All Months</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="weekly">Weekly</option>
               <option value="1">January</option>
               <option value="2">February</option>
               <option value="3">March</option>
@@ -1698,18 +1711,6 @@ const ExportJobsTable = () => {
               <option value="12">December</option>
             </select>
 
-            {/* Movement Type Filter */}
-            <select
-              style={s.select}
-              value={selectedMovementType}
-              onChange={(e) => setSelectedMovementType(e.target.value)}
-            >
-              <option value="">All Movement</option>
-              <option value="FCL">FCL</option>
-              <option value="LCL">LCL</option>
-              <option value="AIR">AIR</option>
-            </select>
-
             {/* Branch Filter */}
             <select
               style={s.select}
@@ -1720,6 +1721,53 @@ const ExportJobsTable = () => {
                 <option key={branch.code} value={branch.code}>
                   {branch.label}
                 </option>
+              ))}
+            </select>
+
+            {/* Custom House Filter */}
+            <select
+              style={s.select}
+              value={selectedCustomHouse}
+              onChange={(e) => setSelectedCustomHouse(e.target.value)}
+            >
+              <option value="">All Custom Houses</option>
+              {getOptionsForBranch(selectedBranch).map((group) => {
+                const combinedRestrictions = [
+                  ...(user?.selected_ports || []),
+                  ...(user?.selected_icd_codes || [])
+                ].map(r => String(r).toUpperCase());
+
+                const filteredItems = group.items.filter(item => {
+                  const itemValue = String(item.value).toUpperCase();
+                  const itemCode = String(item.code).toUpperCase();
+
+                  return isAdmin ||
+                    combinedRestrictions.length === 0 ||
+                    combinedRestrictions.includes(itemValue) ||
+                    combinedRestrictions.some(r => r === itemCode || r.startsWith(`${itemCode} -`));
+                });
+                if (filteredItems.length === 0) return null;
+                return (
+                  <optgroup key={group.group} label={group.group}>
+                    {filteredItems.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
+            </select>
+
+            {/* Movement Type Filter */}
+            <select
+              style={s.select}
+              value={selectedMovementType}
+              onChange={(e) => setSelectedMovementType(e.target.value)}
+            >
+              <option value="">All Movement</option>
+              {movementTypeOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
 
@@ -1827,40 +1875,6 @@ const ExportJobsTable = () => {
                 ))}
               </Select>
             </FormControl>
-            {/* Custom House Filter */}
-            <select
-              style={s.select}
-              value={selectedCustomHouse}
-              onChange={(e) => setSelectedCustomHouse(e.target.value)}
-            >
-              <option value="">All Custom Houses</option>
-              {getOptionsForBranch(selectedBranch).map((group) => {
-                const combinedRestrictions = [
-                  ...(user?.selected_ports || []),
-                  ...(user?.selected_icd_codes || [])
-                ].map(r => String(r).toUpperCase());
-
-                const filteredItems = group.items.filter(item => {
-                  const itemValue = String(item.value).toUpperCase();
-                  const itemCode = String(item.code).toUpperCase();
-
-                  return isAdmin ||
-                    combinedRestrictions.length === 0 ||
-                    combinedRestrictions.includes(itemValue) ||
-                    combinedRestrictions.some(r => r === itemCode || r.startsWith(`${itemCode} -`));
-                });
-                if (filteredItems.length === 0) return null;
-                return (
-                  <optgroup key={group.group} label={group.group}>
-                    {filteredItems.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                );
-              })}
-            </select>
 
             {/* Goods Stuffed At Filter */}
             <select
@@ -3294,96 +3308,122 @@ const ExportJobsTable = () => {
           </MenuItem>
         </FileCoverGenerator>
 
-        <ConsignmentNoteGenerator jobNo={selectedDocJob?.job_no}>
-          <MenuItem
-            disableRipple
-            onClick={() => {
-              setDocsAnchorEl(null);
-              setSelectedDocJob(null);
-            }}
-            sx={{ fontSize: 13, minWidth: 150 }}
-          >
-            Consignment Note
-          </MenuItem>
-        </ConsignmentNoteGenerator>
+        {(selectedDocJob?.custom_house?.toUpperCase().includes("SACHANA")) && (
+          <ConsignmentNoteGenerator jobNo={selectedDocJob?.job_no}>
+            <MenuItem
+              disableRipple
+              onClick={() => {
+                setDocsAnchorEl(null);
+                setSelectedDocJob(null);
+              }}
+              sx={{ fontSize: 13, minWidth: 150 }}
+            >
+              Forwarding Note (Sachana)
+            </MenuItem>
+          </ConsignmentNoteGenerator>
+        )}
 
-        <ForwardingNoteTharGenerator jobNo={selectedDocJob?.job_no}>
-          <MenuItem
-            disableRipple
-            onClick={() => {
-              setDocsAnchorEl(null);
-              setSelectedDocJob(null);
-            }}
-            sx={{ fontSize: 13, minWidth: 150 }}
-          >
-            Forwarding Note (THAR)
-          </MenuItem>
-        </ForwardingNoteTharGenerator>
+        {(selectedDocJob?.custom_house?.toUpperCase().includes("THAR")) && (
+          <ForwardingNoteTharGenerator jobNo={selectedDocJob?.job_no}>
+            <MenuItem
+              disableRipple
+              onClick={() => {
+                setDocsAnchorEl(null);
+                setSelectedDocJob(null);
+              }}
+              sx={{ fontSize: 13, minWidth: 150 }}
+            >
+              Forwarding Note (THAR)
+            </MenuItem>
+          </ForwardingNoteTharGenerator>
+        )}
 
-        <AnnexureCGenerator jobNo={selectedDocJob?.job_no}>
-          <MenuItem
-            disableRipple
-            onClick={() => {
-              setDocsAnchorEl(null);
-              setSelectedDocJob(null);
-            }}
-            sx={{ fontSize: 13, minWidth: 150 }}
-          >
-            Annexure C
-          </MenuItem>
-        </AnnexureCGenerator>
+        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") && 
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") && 
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") && 
+          selectedDocJob?.transportMode !== "AIR") && (
+          <AnnexureCGenerator jobNo={selectedDocJob?.job_no}>
+            <MenuItem
+              disableRipple
+              onClick={() => {
+                setDocsAnchorEl(null);
+                setSelectedDocJob(null);
+              }}
+              sx={{ fontSize: 13, minWidth: 150 }}
+            >
+              Annexure C
+            </MenuItem>
+          </AnnexureCGenerator>
+        )}
 
-        <ConcorForwardingNoteGenerator jobNo={selectedDocJob?.job_no}>
-          <MenuItem
-            disableRipple
-            onClick={() => {
-              setDocsAnchorEl(null);
-              setSelectedDocJob(null);
-            }}
-            sx={{ fontSize: 13, minWidth: 150 }}
-          >
-            Forwarding Note (CONCOR)
-          </MenuItem>
-        </ConcorForwardingNoteGenerator>
+        {(selectedDocJob?.custom_house?.toUpperCase().includes("SABARMATI") || selectedDocJob?.custom_house?.toUpperCase().includes("CONCOR")) && (
+          <ConcorForwardingNoteGenerator jobNo={selectedDocJob?.job_no}>
+            <MenuItem
+              disableRipple
+              onClick={() => {
+                setDocsAnchorEl(null);
+                setSelectedDocJob(null);
+              }}
+              sx={{ fontSize: 13, minWidth: 150 }}
+            >
+              Forwarding Note (CONCOR)
+            </MenuItem>
+          </ConcorForwardingNoteGenerator>
+        )}
 
-        <VGMAuthorizationGenerator jobNo={selectedDocJob?.job_no}>
-          <MenuItem
-            disableRipple
-            onClick={() => {
-              setDocsAnchorEl(null);
-              setSelectedDocJob(null);
-            }}
-            sx={{ fontSize: 13, minWidth: 150 }}
-          >
-            VGM Authorization
-          </MenuItem>
-        </VGMAuthorizationGenerator>
+        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") && 
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") && 
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") && 
+          selectedDocJob?.transportMode !== "AIR") && (
+          <VGMAuthorizationGenerator jobNo={selectedDocJob?.job_no}>
+            <MenuItem
+              disableRipple
+              onClick={() => {
+                setDocsAnchorEl(null);
+                setSelectedDocJob(null);
+              }}
+              sx={{ fontSize: 13, minWidth: 150 }}
+            >
+              VGM Authorization
+            </MenuItem>
+          </VGMAuthorizationGenerator>
+        )}
 
-        <FreightCertificateGenerator jobNo={selectedDocJob?.job_no}>
-          <MenuItem
-            disableRipple
-            onClick={() => {
-              setDocsAnchorEl(null);
-              setSelectedDocJob(null);
-            }}
-            sx={{ fontSize: 13, minWidth: 150 }}
-          >
-            Freight Certificate
-          </MenuItem>
-        </FreightCertificateGenerator>
+        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") && 
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") && 
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") && 
+          selectedDocJob?.transportMode !== "AIR") && (
+          <FreightCertificateGenerator jobNo={selectedDocJob?.job_no}>
+            <MenuItem
+              disableRipple
+              onClick={() => {
+                setDocsAnchorEl(null);
+                setSelectedDocJob(null);
+              }}
+              sx={{ fontSize: 13, minWidth: 150 }}
+            >
+              Freight Certificate
+            </MenuItem>
+          </FreightCertificateGenerator>
+        )}
 
-        <BillOfLadingGenerator jobNo={selectedDocJob?.job_no}>
-          <MenuItem
-            disableRipple
-            onClick={() => {
-              setDocsAnchorEl(null);
-              setSelectedDocJob(null);
-            }}
-            sx={{ fontSize: 13, minWidth: 150 }}
-          >
-            Bill of Lading
-          </MenuItem>
-        </BillOfLadingGenerator>
+        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") && 
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") && 
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") && 
+          selectedDocJob?.transportMode !== "AIR") && (
+          <BillOfLadingGenerator jobNo={selectedDocJob?.job_no}>
+            <MenuItem
+              disableRipple
+              onClick={() => {
+                setDocsAnchorEl(null);
+                setSelectedDocJob(null);
+              }}
+              sx={{ fontSize: 13, minWidth: 150 }}
+            >
+              Bill of Lading
+            </MenuItem>
+          </BillOfLadingGenerator>
+        )}
 
         <MenuItem
           onClick={() => {

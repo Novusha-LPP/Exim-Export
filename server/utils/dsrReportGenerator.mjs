@@ -7,11 +7,15 @@ import ExportJob from "../model/export/ExJobModel.mjs";
  * @param {boolean} onlyPending - If true, only include pending jobs
  * @returns {Promise<Buffer>} - Excel workbook buffer
  */
-export const generateDSRBuffer = async (exporter, onlyPending = false) => {
+export const generateDSRBuffer = async (exporter, onlyPending = false, year = "") => {
   try {
     const isAll = String(exporter).toLowerCase() === "all";
     const filter = isAll ? {} : { exporter };
     
+    if (year && year !== "" && year.toLowerCase() !== "all") {
+      filter.year = year;
+    }
+
     if (onlyPending) {
       filter.status = { $nin: ["Completed", "Cancelled"] };
     }

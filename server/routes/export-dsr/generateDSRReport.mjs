@@ -8,7 +8,7 @@ const router = express.Router();
  */
 router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
   try {
-    const { exporter, onlyPending } = req.query;
+    const { exporter, onlyPending, year } = req.query;
 
     if (!exporter) {
       return res.status(400).json({
@@ -18,7 +18,7 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
     }
 
     const isAll = String(exporter).toLowerCase() === "all";
-    const buffer = await generateDSRBuffer(exporter, onlyPending === "true");
+    const buffer = await generateDSRBuffer(exporter, onlyPending === "true", year);
 
     // Set response headers
     res.setHeader(

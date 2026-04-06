@@ -239,6 +239,13 @@ router.get("/global-search-jobs", async (req, res) => {
       branch = "",
       year = "",
       status = "all",
+      month = "",
+      exporter = "",
+      consignmentType = "",
+      detailedStatus = "",
+      customHouse = "",
+      goods_stuffed_at = "",
+      jobOwner = "",
     } = req.query;
 
     const filter = {};
@@ -248,7 +255,7 @@ router.get("/global-search-jobs", async (req, res) => {
     const requesterUsername = req.headers["username"] || req.headers["x-username"];
     if (requesterUsername) {
       const requester = await UserModel.findOne({ username: requesterUsername });
-      if (requester && requester.role !== "Admin") {
+      if (requester && requester.role !== "Admin" && (!search || String(search).trim() === "")) {
         const branchRestrictions = requester.selected_branches || [];
         if (branchRestrictions.length > 0) {
           filter.$and.push({ branch_code: { $in: branchRestrictions } });
@@ -280,10 +287,14 @@ router.get("/global-search-jobs", async (req, res) => {
         }
       }
     }
+    
+    if (jobOwner) filter.$and.push({ job_owner: { $regex: jobOwner, $options: "i" } });
 
     // 2. Status filter
-    if (status && status.toLowerCase() !== "all") {
+    // CRITICAL FIX: If there is a search query, we IGNORE the status filter to make it truly global across tabs
+    if ((!search || search.trim() === "") && status && status.toLowerCase() !== "all") {
       const statusLower = status.toLowerCase();
+      
       if (statusLower === "pending") {
         filter.$and.push({
           $and: [
@@ -318,6 +329,24 @@ router.get("/global-search-jobs", async (req, res) => {
             { status: { $regex: "^cancelled$", $options: "i" } },
             { isJobCanceled: true },
           ],
+        });
+      } else if (statusLower === "billing ready") {
+        filter.$and.push({
+            $and: [
+                { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
+                { "operations.statusDetails.handoverImageUpload": { $exists: true, $not: { $size: 0 } } },
+                { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } }
+            ]
+        });
+      } else if (statusLower === "op completed" || statusLower === "billing pending") {
+        filter.$and.push({
+            "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] },
+            $or: [
+                { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
+                { "operations.statusDetails.billingDocsSentDt": null },
+                { "operations.statusDetails.billingDocsSentDt": "" },
+                { "operations.statusDetails": { $size: 0 } }
+            ]
         });
       } else if (statusLower === "booking pending") {
         filter.$and.push({
@@ -363,27 +392,6 @@ router.get("/global-search-jobs", async (req, res) => {
             { "operations.statusDetails": { $size: 0 } }
           ]
         });
-      } else if (statusLower === "billing pending") {
-        filter.$and.push({
-          $and: [
-            {
-              $or: [
-                { status: { $regex: "^pending$", $options: "i" } },
-                { status: { $exists: false } },
-                { status: null },
-                { status: "" },
-              ],
-            },
-            { detailedStatus: { $ne: "Billing Done" } },
-          ],
-          "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
-          $or: [
-            { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
-            { "operations.statusDetails.billingDocsSentDt": null },
-            { "operations.statusDetails.billingDocsSentDt": "" },
-            { "operations.statusDetails": { $size: 0 } }
-          ]
-        });
       }
     }
 
@@ -402,12 +410,91 @@ router.get("/global-search-jobs", async (req, res) => {
       });
     }
 
-    if (branch) {
-      filter.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
-    }
+    // 3. Apply OTHER filters ONLY if NOT searching globally
+    if (!search || search.trim() === "") {
+      if (branch) {
+        filter.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
+      }
 
-    if (year && year !== "all") {
-      filter.$and.push({ year: year });
+      if (year && year !== "all") {
+        filter.$and.push({ year: year });
+      }
+
+      if (exporter) {
+        filter.$and.push({ exporter: { $regex: exporter, $options: "i" } });
+      }
+
+      if (consignmentType) {
+        filter.$and.push({ consignmentType: consignmentType });
+      }
+
+      if (detailedStatus) {
+        filter.$and.push({ detailedStatus: detailedStatus });
+      }
+
+      if (customHouse) {
+        filter.$and.push({ custom_house: { $regex: customHouse, $options: "i" } });
+      }
+
+      if (goods_stuffed_at) {
+        filter.$and.push({ goods_stuffed_at: goods_stuffed_at });
+      }
+
+      if (month) {
+        if (month === "today") {
+          const start = new Date();
+          start.setHours(0, 0, 0, 0);
+          const end = new Date();
+          end.setHours(23, 59, 59, 999);
+          filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+        } else if (month === "yesterday") {
+          const start = new Date();
+          start.setDate(start.getDate() - 1);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date();
+          end.setDate(end.getDate() - 1);
+          end.setHours(23, 59, 59, 999);
+          filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+        } else if (month === "weekly") {
+          const start = new Date();
+          start.setDate(start.getDate() - 7);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date();
+          end.setHours(23, 59, 59, 999);
+          filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+        } else if (!isNaN(month)) {
+          filter.$and.push({
+            $expr: {
+              $let: {
+                vars: {
+                  effDate: {
+                    $cond: {
+                      if: {
+                        $and: [
+                          { $ne: ["$job_date", null] },
+                          { $ne: ["$job_date", ""] },
+                          { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } }
+                        ]
+                      },
+                      then: {
+                        $dateFromString: {
+                          dateString: "$job_date",
+                          format: "%d-%m-%Y",
+                          onError: "$createdAt"
+                        }
+                      },
+                      else: "$createdAt"
+                    }
+                  }
+                },
+                in: {
+                  $eq: [{ $month: "$$effDate" }, parseInt(month)]
+                }
+              }
+            }
+          });
+        }
+      }
     }
 
     if (filter.$and.length === 0) delete filter.$and;
@@ -756,37 +843,60 @@ router.get("/exports/:status?", async (req, res) => {
       filter.$and.push({ year: year });
     }
 
-    if (month && !isNaN(month)) {
-      filter.$and.push({
-        $expr: {
-          $let: {
-            vars: {
-              effDate: {
-                $cond: {
-                  if: {
-                    $and: [
-                      { $ne: ["$job_date", null] },
-                      { $ne: ["$job_date", ""] },
-                      { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
-                    ]
-                  },
-                  then: {
-                    $dateFromString: {
-                      dateString: "$job_date",
-                      format: "%d-%m-%Y",
-                      onError: "$createdAt"
-                    }
-                  },
-                  else: "$createdAt"
+    if (month) {
+      if (month === "today") {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+      } else if (month === "yesterday") {
+        const start = new Date();
+        start.setDate(start.getDate() - 1);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setDate(end.getDate() - 1);
+        end.setHours(23, 59, 59, 999);
+        filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+      } else if (month === "weekly") {
+        const start = new Date();
+        start.setDate(start.getDate() - 7);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+      } else if (!isNaN(month)) {
+        filter.$and.push({
+          $expr: {
+            $let: {
+              vars: {
+                effDate: {
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $ne: ["$job_date", null] },
+                        { $ne: ["$job_date", ""] },
+                        { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
+                      ]
+                    },
+                    then: {
+                      $dateFromString: {
+                        dateString: "$job_date",
+                        format: "%d-%m-%Y",
+                        onError: "$createdAt"
+                      }
+                    },
+                    else: "$createdAt"
+                  }
                 }
+              },
+              in: {
+                $eq: [{ $month: "$$effDate" }, parseInt(month)]
               }
-            },
-            in: {
-              $eq: [{ $month: "$$effDate" }, parseInt(month)]
             }
           }
-        }
-      });
+        });
+      }
     }
 
     if (req.query.customHouse) {
