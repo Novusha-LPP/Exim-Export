@@ -929,6 +929,7 @@ const ExportJobsTable = () => {
             customHouse: selectedCustomHouse,
             month: selectedMonth,
             goods_stuffed_at: selectedGoodsStuffedAt,
+            jobOwner: selectedJobOwner,
             page: page,
             limit: LIMIT,
             sortKey: sortConfig.key,

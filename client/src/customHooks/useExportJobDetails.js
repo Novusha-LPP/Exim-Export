@@ -1162,6 +1162,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         cha: safeValue(data.cha),
         masterblno: safeValue(data.masterblno),
         houseblno: safeValue(data.houseblno),
+        icegateId: safeValue(data.icegateId, "RAJANSFPL"),
         createdBy: safeValue(data.createdBy),
         updatedBy: safeValue(data.updatedBy),
         createdAt: safeValue(data.createdAt),

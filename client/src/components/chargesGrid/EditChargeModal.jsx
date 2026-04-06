@@ -325,7 +325,7 @@ const EditChargeModal = ({
                     {/* --- REVENUE ROW --- */}
                     <tr style={{ cursor: 'pointer' }} onClick={() => togglePanel(i, 'rev')}>
                       <td className="row-label">Revenue</td>
-                      <td>{row.revenue?.basis || 'Per B/E - Per Shp'}</td>
+                      <td>{row.revenue?.basis || 'Per S/B'}</td>
                       <td>{row.revenue?.qty || '1.00'}</td>
                       <td>{row.revenue?.currency || 'INR'}</td>
                       <td>{formatNumber(row.revenue?.rate)}</td>
@@ -364,7 +364,8 @@ const EditChargeModal = ({
                                                     handleFieldChange(i, 'url', newUrls, 'revenue');
                                                 }}
                                                 component="a"
-                                                href={url}
+                                                href={url && url.toString().startsWith('http') ? url : '#'}
+                                                onClick={(e) => { if (!url || !url.toString().startsWith('http')) e.preventDefault(); }}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 clickable
@@ -483,7 +484,7 @@ const EditChargeModal = ({
                     {/* --- COST ROW --- */}
                     <tr style={{ cursor: 'pointer' }} onClick={() => togglePanel(i, 'cost')}>
                       <td className="row-label">Cost</td>
-                      <td>{row.cost?.basis || 'Per B/E - Per Shp'}</td>
+                      <td>{row.cost?.basis || 'Per S/B'}</td>
                       <td>{row.cost?.qty || '1.00'}</td>
                       <td>{row.cost?.currency || 'INR'}</td>
                       <td>{formatNumber(row.cost?.rate)}</td>
@@ -509,25 +510,32 @@ const EditChargeModal = ({
                             </div>
                             <div className="ep-desc-row">
                                 <span className="ep-label">Attachment</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-                                    {row.cost?.url ? (
-                                        <Chip
-                                            icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
-                                            label={extractFileName(row.cost.url)}
-                                            size="small"
-                                            onDelete={() => handleFieldChange(i, 'url', null, 'cost')}
-                                            component="a"
-                                            href={row.cost.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            clickable
-                                            sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
-                                        />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
+                                    {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? (
+                                        row.cost.url.map((url, urlIdx) => (
+                                            <Chip
+                                                key={urlIdx}
+                                                icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
+                                                label={extractFileName(url)}
+                                                size="small"
+                                                onDelete={() => {
+                                                    const newUrls = row.cost.url.filter((_, i) => i !== urlIdx);
+                                                    handleFieldChange(i, 'url', newUrls, 'cost');
+                                                }}
+                                                component="a"
+                                                href={url && url.toString().startsWith('http') ? url : '#'}
+                                                onClick={(e) => { if (!url || !url.toString().startsWith('http')) e.preventDefault(); }}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                clickable
+                                                sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
+                                            />
+                                        ))
                                     ) : (
-                                        <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>No file attached</span>
+                                        <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>No files attached</span>
                                     )}
                                     <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('cost'); }}>
-                                        {row.cost?.url ? 'Change' : 'Upload File'}
+                                        {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? 'Edit Files' : 'Upload Files'}
                                     </button>
                                 </div>
                             </div>

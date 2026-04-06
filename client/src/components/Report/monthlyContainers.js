@@ -409,9 +409,11 @@ const MonthlyContainers = () => {
       <Card
         elevation={3}
         sx={{
-          height: '100%',
+          flex: '1 1 0',
+          minWidth: 0,
           background: `linear-gradient(135deg, ${color}15 0%, ${color}05 100%)`,
           border: `1px solid ${color}30`,
+          borderRadius: 2,
           transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
           '&:hover': {
             transform: 'translateY(-2px)',
@@ -419,13 +421,46 @@ const MonthlyContainers = () => {
           }
         }}
       >
-        <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box sx={{ color: color }}>{icon}</Box>
-          <Box>
-            <Typography variant="h4" fontWeight="bold" color={color}>
+        <CardContent sx={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          alignItems: 'center', 
+          justifyContent: 'center',
+          gap: 1,
+          p: '12px !important', // Compact padding
+          height: '100%'
+        }}>
+          <Box sx={{ color: color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {React.cloneElement(icon, { sx: { fontSize: 24 } })}
+          </Box>
+          <Box sx={{ textAlign: 'center', minWidth: 0, width: '100%' }}>
+            <Typography 
+              variant="h6" 
+              fontWeight="bold" 
+              color={color}
+              sx={{ 
+                lineHeight: 1.2,
+                fontSize: { xs: '1rem', md: '1.25rem' },
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}
+            >
               {value.toLocaleString()}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography 
+              variant="caption" 
+              color="text.secondary"
+              sx={{ 
+                display: 'block',
+                lineHeight: 1,
+                fontSize: { xs: '0.65rem', md: '0.75rem' },
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                fontWeight: 500
+              }}
+            >
               {title}
             </Typography>
           </Box>
@@ -435,57 +470,59 @@ const MonthlyContainers = () => {
   );
 
   return (
-    <Container maxWidth="xl" sx={{ padding: 3 }}>
+    <Container maxWidth="xl" sx={{ padding: 2 }}>
       <Fade in timeout={600}>
         <Box
           sx={{
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: "white",
-            padding: 3,
+            padding: 2,
             borderRadius: 3,
-            marginBottom: 4,
+            marginBottom: 2,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)'
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <InventoryIcon sx={{ fontSize: 40 }} />
+            <InventoryIcon sx={{ fontSize: 32 }} />
             <Box>
-              <Typography variant="h4" fontWeight="bold">
+              <Typography variant="h5" fontWeight="bold">
                 Monthly Container Report
               </Typography>
-              <Typography variant="body1" sx={{ opacity: 0.9 }}>
+              <Typography variant="caption" sx={{ opacity: 0.9 }}>
                 {months.find(m => m.value === month)?.label} {year}
               </Typography>
             </Box>
           </Box>
-          <AssessmentIcon sx={{ fontSize: 60, opacity: 0.3 }} />
+          <AssessmentIcon sx={{ fontSize: 48, opacity: 0.3 }} />
         </Box>
       </Fade>
 
       <Fade in timeout={800}>
-        <Card elevation={2} sx={{ marginBottom: 3, borderRadius: 2 }}>
-          <CardContent>
+        <Card elevation={2} sx={{ marginBottom: 2, borderRadius: 2 }}>
+          <CardContent sx={{ p: '12px !important' }}>
             <Box
               component="form"
               onSubmit={handleSubmit}
               sx={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 2,
-                flexWrap: 'wrap'
+                gap: 1.5,
+                flexWrap: 'nowrap', // Keep header row tight
+                overflowX: 'auto',
+                pb: { xs: 1, md: 0 }
               }}
             >
-              <FormControl size="small" sx={{ minWidth: 100 }}>
+              <FormControl size="small" sx={{ minWidth: 80 }}>
                 <InputLabel id="year-label">Year</InputLabel>
                 <Select
                   labelId="year-label"
                   value={year}
                   onChange={(e) => setYear(e.target.value)}
                   label="Year"
-                  sx={{ borderRadius: 2 }}
+                  sx={{ borderRadius: 1.5 }}
                 >
                   {years.map((y) => (
                     <MenuItem key={y.value} value={y.value}>{y.label}</MenuItem>
@@ -493,7 +530,7 @@ const MonthlyContainers = () => {
                 </Select>
               </FormControl>
 
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <Tooltip title="Previous Month">
                   <IconButton
                     size="small"
@@ -504,18 +541,18 @@ const MonthlyContainers = () => {
                       '&:hover': { bgcolor: 'primary.dark' }
                     }}
                   >
-                    <ArrowBackIosNewIcon fontSize="small" />
+                    <ArrowBackIosNewIcon sx={{ fontSize: 14 }} />
                   </IconButton>
                 </Tooltip>
 
-                <FormControl size="small" sx={{ minWidth: 120 }}>
+                <FormControl size="small" sx={{ minWidth: 100 }}>
                   <InputLabel id="month-label">Month</InputLabel>
                   <Select
                     labelId="month-label"
                     value={month}
                     onChange={(e) => setMonth(e.target.value)}
                     label="Month"
-                    sx={{ borderRadius: 2 }}
+                    sx={{ borderRadius: 1.5 }}
                   >
                     {months.map((m) => (
                       <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
@@ -533,12 +570,12 @@ const MonthlyContainers = () => {
                       '&:hover': { bgcolor: 'primary.dark' }
                     }}
                   >
-                    <ArrowForwardIosIcon fontSize="small" />
+                    <ArrowForwardIosIcon sx={{ fontSize: 14 }} />
                   </IconButton>
                 </Tooltip>
               </Box>
 
-              <FormControl size="small" sx={{ minWidth: 150 }}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
                 <InputLabel id="branch-label">Branch</InputLabel>
                 <Select
                   labelId="branch-label"
@@ -548,7 +585,7 @@ const MonthlyContainers = () => {
                     setSelectedCustomHouse(""); // Reset custom house when branch changes
                   }}
                   label="Branch"
-                  sx={{ borderRadius: 2 }}
+                  sx={{ borderRadius: 1.5 }}
                 >
                   <MenuItem value="">All Branches</MenuItem>
                   {BRANCH_OPTIONS.map(opt => (
@@ -557,14 +594,14 @@ const MonthlyContainers = () => {
                 </Select>
               </FormControl>
 
-              <FormControl size="small" sx={{ minWidth: 200 }}>
+              <FormControl size="small" sx={{ minWidth: 150 }}>
                 <InputLabel id="custom-house-label">Custom House</InputLabel>
                 <Select
                   labelId="custom-house-label"
                   value={selectedCustomHouse}
                   onChange={(e) => setSelectedCustomHouse(e.target.value)}
                   label="Custom House"
-                  sx={{ borderRadius: 2 }}
+                  sx={{ borderRadius: 1.5 }}
                 >
                   <MenuItem value="">All Custom Houses</MenuItem>
                   {selectedBranch ? (
@@ -587,8 +624,9 @@ const MonthlyContainers = () => {
                 size="small"
                 startIcon={<span role="img" aria-label="View Detailed Report">🗂</span>}
                 sx={{
-                  borderRadius: 2,
-                  px: 3,
+                  borderRadius: 1.5,
+                  px: 2,
+                  whiteSpace: 'nowrap',
                   background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
                   '&:hover': {
                     background: 'linear-gradient(45deg, #1976D2 30%, #1CB5E0 90%)',
@@ -605,7 +643,7 @@ const MonthlyContainers = () => {
 
       {error && (
         <Fade in timeout={400}>
-          <Alert severity="error" sx={{ marginBottom: 3, borderRadius: 2 }}>
+          <Alert severity="error" sx={{ marginBottom: 2, borderRadius: 2 }}>
             {error}
           </Alert>
         </Fade>
@@ -613,66 +651,67 @@ const MonthlyContainers = () => {
 
       {data.length > 0 && (
         <>
-          <Grid container spacing={2} sx={{ marginBottom: 3 }}>
-            <Grid item xs={12} sm={6} md={2}>
-              <StatCard
-                title="Total Exporters"
-                value={data.length}
-                icon={<BusinessIcon sx={{ fontSize: 40 }} />}
-                color={theme.palette.primary.main}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <StatCard
-                title="Total LEO"
-                value={totalLEO}
-                icon={<AssessmentIcon sx={{ fontSize: 40 }} />}
-                color={theme.palette.success.main}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <StatCard
-                title="Total SBs Filed"
-                value={totalSBs}
-                icon={<AssessmentIcon sx={{ fontSize: 40 }} />}
-                color={'#6a1b9a'}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <StatCard
-                title="Total Air"
-                value={totalAir}
-                icon={<InventoryIcon sx={{ fontSize: 40 }} />}
-                color={'#00897b'}
-              />
-            </Grid>
-
-
-            <Grid item xs={12} sm={6} md={2}>
-              <StatCard
-                title="Net Containers"
-                value={totalNet20Ft + totalNet40Ft}
-                icon={<InventoryIcon sx={{ fontSize: 40 }} />}
-                color={theme.palette.warning.main}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <StatCard
-                title="Total LCL"
-                value={totalLCL}
-                icon={<InventoryIcon sx={{ fontSize: 40 }} />}
-                color={theme.palette.info.main}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <StatCard
-                title="Total TEU"
-                value={totalTEU}
-                icon={<TrendingUpIcon sx={{ fontSize: 40 }} />}
-                color={theme.palette.error.main}
-              />
-            </Grid>
-          </Grid>
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              gap: 1.5, 
+              marginBottom: 2,
+              width: '100%',
+              flexWrap: 'nowrap', // Force one row
+              overflowX: 'auto', // Allow scroll if screen is extremely small
+              pb: 1, // Padding for scrollbar visibility if needed
+              '&::-webkit-scrollbar': {
+                height: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'rgba(0,0,0,0.1)',
+                borderRadius: '4px',
+              }
+            }}
+          >
+            <StatCard
+              title="Total Exporters"
+              value={data.length}
+              icon={<BusinessIcon />}
+              color={theme.palette.primary.main}
+            />
+            <StatCard
+              title="Total LEO"
+              value={totalLEO}
+              icon={<AssessmentIcon />}
+              color={theme.palette.success.main}
+            />
+            <StatCard
+              title="Total SBs"
+              value={totalSBs}
+              icon={<AssessmentIcon />}
+              color={'#6a1b9a'}
+            />
+            <StatCard
+              title="Total Air"
+              value={totalAir}
+              icon={<InventoryIcon />}
+              color={'#00897b'}
+            />
+            <StatCard
+              title="Net Containers"
+              value={totalNet20Ft + totalNet40Ft}
+              icon={<InventoryIcon />}
+              color={theme.palette.warning.main}
+            />
+            <StatCard
+              title="Total LCL"
+              value={totalLCL}
+              icon={<InventoryIcon />}
+              color={theme.palette.info.main}
+            />
+            <StatCard
+              title="Total TEU"
+              value={totalTEU}
+              icon={<TrendingUpIcon />}
+              color={theme.palette.error.main}
+            />
+          </Box>
 
           <Fade in timeout={1000}>
             <Card elevation={3} sx={{ borderRadius: 2, overflow: 'hidden' }}>
@@ -680,7 +719,7 @@ const MonthlyContainers = () => {
                 <Table>
                   <TableHead>
                     <TableRow sx={{ bgcolor: 'grey.50' }}>
-                      <TableCell sx={{ fontWeight: "bold", fontSize: '1rem' }}>
+                      <TableCell sx={{ fontWeight: "bold", fontSize: '0.875rem', py: 1 }}>
                         <TableSortLabel
                           active={sortColumn === 'exporter'}
                           direction={sortColumn === 'exporter' ? sortDirection : 'asc'}
@@ -689,7 +728,7 @@ const MonthlyContainers = () => {
                           Exporter Name
                         </TableSortLabel>
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", fontSize: '1rem' }}>
+                      <TableCell sx={{ fontWeight: "bold", fontSize: '0.875rem', py: 1 }}>
                         <TableSortLabel
                           active={sortColumn === 'leoCount'}
                           direction={sortColumn === 'leoCount' ? sortDirection : 'asc'}
@@ -698,7 +737,7 @@ const MonthlyContainers = () => {
                           LEO
                         </TableSortLabel>
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", fontSize: '1rem' }}>
+                      <TableCell sx={{ fontWeight: "bold", fontSize: '0.875rem', py: 1 }}>
                         <TableSortLabel
                           active={sortColumn === 'sbDateCount'}
                           direction={sortColumn === 'sbDateCount' ? sortDirection : 'asc'}
@@ -708,25 +747,25 @@ const MonthlyContainers = () => {
                         </TableSortLabel>
                       </TableCell>
 
-                      <TableCell sx={{ fontWeight: "bold", fontSize: '1rem' }}>
+                      <TableCell sx={{ fontWeight: "bold", fontSize: '0.875rem', py: 1 }}>
                         <TableSortLabel
                           active={sortColumn === 'container20Ft'}
                           direction={sortColumn === 'container20Ft' ? sortDirection : 'asc'}
                           onClick={() => handleSort('container20Ft')}
                         >
-                          Net 20ft Containers
+                          Net 20ft
                         </TableSortLabel>
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", fontSize: '1rem' }}>
+                      <TableCell sx={{ fontWeight: "bold", fontSize: '0.875rem', py: 1 }}>
                         <TableSortLabel
                           active={sortColumn === 'container40Ft'}
                           direction={sortColumn === 'container40Ft' ? sortDirection : 'asc'}
                           onClick={() => handleSort('container40Ft')}
                         >
-                          Net 40ft Containers
+                          Net 40ft
                         </TableSortLabel>
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", fontSize: '1rem' }}>
+                      <TableCell sx={{ fontWeight: "bold", fontSize: '0.875rem', py: 1 }}>
                         <TableSortLabel
                           active={sortColumn === 'airCount'}
                           direction={sortColumn === 'airCount' ? sortDirection : 'asc'}
@@ -735,7 +774,7 @@ const MonthlyContainers = () => {
                           Air
                         </TableSortLabel>
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", fontSize: '1rem' }}>
+                      <TableCell sx={{ fontWeight: "bold", fontSize: '0.875rem', py: 1 }}>
                         <TableSortLabel
                           active={sortColumn === 'lcl20Ft'}
                           direction={sortColumn === 'lcl20Ft' ? sortDirection : 'asc'}
@@ -744,7 +783,7 @@ const MonthlyContainers = () => {
                           LCL 20ft
                         </TableSortLabel>
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", fontSize: '1rem' }}>
+                      <TableCell sx={{ fontWeight: "bold", fontSize: '0.875rem', py: 1 }}>
                         <TableSortLabel
                           active={sortColumn === 'lcl40Ft'}
                           direction={sortColumn === 'lcl40Ft' ? sortDirection : 'asc'}
@@ -753,7 +792,7 @@ const MonthlyContainers = () => {
                           LCL 40ft
                         </TableSortLabel>
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", fontSize: '1rem' }}>
+                      <TableCell sx={{ fontWeight: "bold", fontSize: '0.875rem', py: 1 }}>
                         <TableSortLabel
                           active={sortColumn === 'teu'}
                           direction={sortColumn === 'teu' ? sortDirection : 'asc'}
@@ -762,7 +801,7 @@ const MonthlyContainers = () => {
                           TEU
                         </TableSortLabel>
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", fontSize: '1rem', textAlign: 'center' }}>
+                      <TableCell sx={{ fontWeight: "bold", fontSize: '0.875rem', py: 1, textAlign: 'center' }}>
                         Trend
                       </TableCell>
                     </TableRow>
@@ -795,18 +834,18 @@ const MonthlyContainers = () => {
                               transition: 'all 0.2s ease'
                             }}
                           >
-                            <TableCell sx={{ fontWeight: 500 }}>{row.exporter}</TableCell>
+                            <TableCell sx={{ fontWeight: 500, fontSize: '0.85rem', py: 1 }}>{row.exporter}</TableCell>
                             <TableCell>
                               <Box
                                 sx={{
                                   backgroundColor: '#1976d2',
                                   color: 'white',
-                                  padding: '8px 12px',
-                                  borderRadius: '8px',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
                                   fontWeight: 'bold',
-                                  fontSize: '0.875rem',
+                                  fontSize: '0.8rem',
                                   textAlign: 'center',
-                                  minWidth: '50px',
+                                  minWidth: '40px',
                                   display: 'inline-block'
                                 }}
                               >
@@ -818,12 +857,12 @@ const MonthlyContainers = () => {
                                 sx={{
                                   backgroundColor: '#6a1b9a',
                                   color: 'white',
-                                  padding: '8px 12px',
-                                  borderRadius: '8px',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
                                   fontWeight: 'bold',
-                                  fontSize: '0.875rem',
+                                  fontSize: '0.8rem',
                                   textAlign: 'center',
-                                  minWidth: '50px',
+                                  minWidth: '40px',
                                   display: 'inline-block'
                                 }}
                               >
@@ -836,12 +875,12 @@ const MonthlyContainers = () => {
                                 sx={{
                                   backgroundColor: '#2e7d32',
                                   color: 'white',
-                                  padding: '8px 12px',
-                                  borderRadius: '8px',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
                                   fontWeight: 'bold',
-                                  fontSize: '0.875rem',
+                                  fontSize: '0.8rem',
                                   textAlign: 'center',
-                                  minWidth: '50px',
+                                  minWidth: '40px',
                                   display: 'inline-block'
                                 }}
                               >
@@ -853,12 +892,12 @@ const MonthlyContainers = () => {
                                 sx={{
                                   backgroundColor: '#ed6c02',
                                   color: 'white',
-                                  padding: '8px 12px',
-                                  borderRadius: '8px',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
                                   fontWeight: 'bold',
-                                  fontSize: '0.875rem',
+                                  fontSize: '0.8rem',
                                   textAlign: 'center',
-                                  minWidth: '50px',
+                                  minWidth: '40px',
                                   display: 'inline-block'
                                 }}
                               >
@@ -870,12 +909,12 @@ const MonthlyContainers = () => {
                                 sx={{
                                   backgroundColor: '#00897b',
                                   color: 'white',
-                                  padding: '8px 12px',
-                                  borderRadius: '8px',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
                                   fontWeight: 'bold',
-                                  fontSize: '0.875rem',
+                                  fontSize: '0.8rem',
                                   textAlign: 'center',
-                                  minWidth: '50px',
+                                  minWidth: '40px',
                                   display: 'inline-block'
                                 }}
                               >
@@ -887,12 +926,12 @@ const MonthlyContainers = () => {
                                 sx={{
                                   backgroundColor: '#00bcd4',
                                   color: 'white',
-                                  padding: '8px 12px',
-                                  borderRadius: '8px',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
                                   fontWeight: 'bold',
-                                  fontSize: '0.875rem',
+                                  fontSize: '0.8rem',
                                   textAlign: 'center',
-                                  minWidth: '50px',
+                                  minWidth: '40px',
                                   display: 'inline-block'
                                 }}
                               >
@@ -904,12 +943,12 @@ const MonthlyContainers = () => {
                                 sx={{
                                   backgroundColor: '#00bcd4',
                                   color: 'white',
-                                  padding: '8px 12px',
-                                  borderRadius: '8px',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
                                   fontWeight: 'bold',
-                                  fontSize: '0.875rem',
+                                  fontSize: '0.8rem',
                                   textAlign: 'center',
-                                  minWidth: '50px',
+                                  minWidth: '40px',
                                   display: 'inline-block'
                                 }}
                               >

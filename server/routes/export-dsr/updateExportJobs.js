@@ -245,6 +245,7 @@ router.get("/global-search-jobs", async (req, res) => {
       detailedStatus = "",
       customHouse = "",
       goods_stuffed_at = "",
+      jobOwner = "",
     } = req.query;
 
     const filter = {};
@@ -286,6 +287,8 @@ router.get("/global-search-jobs", async (req, res) => {
         }
       }
     }
+    
+    if (jobOwner) filter.$and.push({ job_owner: { $regex: jobOwner, $options: "i" } });
 
     // 2. Status filter
     // CRITICAL FIX: If there is a search query, we IGNORE the status filter to make it truly global across tabs
