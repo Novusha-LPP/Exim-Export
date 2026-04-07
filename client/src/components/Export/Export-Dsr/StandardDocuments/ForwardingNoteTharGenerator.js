@@ -13,7 +13,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
-    
+
     // Handle string inputs like "09-03-2026" carefully to avoid MM-DD-YYYY misinterpretation
     if (typeof dateString === "string") {
       const match = dateString.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
@@ -27,7 +27,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
 
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
-    
+
     return date
       .toLocaleDateString("en-GB", {
         day: "2-digit",
@@ -65,7 +65,6 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       }
       // Calculations and Data Mapping
       const operations = data.operations?.[0] || {};
-      const booking = operations.bookingDetails?.[0] || {};
       const invoice = data.invoices?.[0] || {};
       const statusDetails = operations.statusDetails?.[0] || {};
       const containers = data.containers?.length > 0 ? data.containers : (data.operations?.[0]?.containerDetails || []);
@@ -80,19 +79,18 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       // Mapping values
       const consignorName = data.exporter || "";
       const vesselName = data.vessel_name || "";
-      console.log(data);
-      const Bookingno = data.booking_no || booking.bookingNo || "";
+      const Bookingno = data.booking_no || "";
       const agentCha = "SURAJ FORWARDERS & SHIPPING AGENCIES";
-      const cutOffDate = formatDate(data.cut_off_date || booking.bookingDate || data.booking_date);
+      const cutOffDate = formatDate(data.cut_off_date || data.booking_date);
       const portofLoading = data.port_of_loading || "";
       const dischargeCountry = data.discharge_country || "";
       const exporterAddress = data.exporter || "";
-      const gatewayPort = data.gateway_port || booking.portOfLoading || "";
+      const gatewayPort = data.gateway_port || data.port_of_loading || "";
       const shippingBillNo = data.sb_no || "";
       const portOfDischarge = data.port_of_discharge || "";
       const stuffingType = data.goods_stuffed_at?.toString().toLowerCase() === "factory" ? "FACTORY" : "ICD (CFS) / FACTORY";
-      const shippingLineName = data.shipping_line_airline || booking.shippingLineName || "";
-      const fobvalue = data.invoices?.[0]?.freightInsuranceCharges.fobValue.amount || "";
+      const shippingLineName = data.shipping_line_airline || "";
+      const fobvalue = data.invoices?.[0]?.freightInsuranceCharges?.fobValue?.amount || "";
 
       const hsnList = [...new Set(products.map(p => {
         if (p.hsn_code || p.hsnCode || p.hsn) return p.hsn_code || p.hsnCode || p.hsn;

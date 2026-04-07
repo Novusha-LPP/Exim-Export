@@ -333,11 +333,17 @@ const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSucce
       const result = await uploadFileToS3(file, "export_docs");
       const url = result.Location;
 
+      const payload = { ...job };
       const newOperations = JSON.parse(JSON.stringify(job.operations || []));
 
       if (!newOperations[0]) newOperations[0] = {};
 
-      if (uploadType === "section") {
+      if (uploadType === "toplevel") {
+        // For top-level array fields like booking_copy
+        const currentFiles = Array.isArray(job[field]) ? [...job[field]] : [];
+        currentFiles.push(url);
+        payload[field] = currentFiles;
+      } else if (uploadType === "section") {
         if (!Array.isArray(newOperations[0][field])) newOperations[0][field] = [];
 
         while (newOperations[0][field].length <= idx) {
@@ -358,7 +364,7 @@ const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSucce
         newOperations[0].statusDetails[0][field] = [...currentFiles, url];
       }
 
-      const payload = { ...job, operations: newOperations };
+      payload.operations = newOperations;
 
       await axios.put(
         `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(job.job_no)}`,
@@ -1279,10 +1285,9 @@ const ExportJobsTable = () => {
     });
 
     if (ops) {
-      // Other Sections
+      // Other Sections (Transporter only - Booking moved to top-level)
       const sections = [
         { field: "transporterDetails", title: "Transporter" },
-        { field: "bookingDetails", title: "Booking" },
       ];
 
       sections.forEach((s) => {
@@ -1303,6 +1308,16 @@ const ExportJobsTable = () => {
           links.push({ title: s.title, url: null, field: s.field, uploadType: "section", idx: 0 });
         }
       });
+    }
+
+    // Booking Copy (top-level field)
+    const bookingCopyUrls = Array.isArray(job.booking_copy) ? job.booking_copy : [];
+    if (bookingCopyUrls.length > 0) {
+      bookingCopyUrls.forEach((url) => {
+        if (url) links.push({ title: "Booking", url, field: "booking_copy", uploadType: "toplevel" });
+      });
+    } else {
+      links.push({ title: "Booking", url: null, field: "booking_copy", uploadType: "toplevel" });
     }
 
     // 3. Container & Weighment Images (from Job Containers)
@@ -2182,17 +2197,6 @@ const ExportJobsTable = () => {
                             if (job.booking_no) {
                               bookings.push(job.booking_no);
                             }
-                            if (Array.isArray(job.operations)) {
-                              job.operations.forEach((op) => {
-                                if (Array.isArray(op.bookingDetails)) {
-                                  op.bookingDetails.forEach((b) => {
-                                    if (b.bookingNo && !bookings.includes(b.bookingNo)) {
-                                      bookings.push(b.bookingNo);
-                                    }
-                                  });
-                                }
-                              });
-                            }
 
                             if (bookings.length > 0) {
                               const firstBooking = bookings[0];
@@ -2541,12 +2545,11 @@ const ExportJobsTable = () => {
 
                                           {/* Shipping Line Tracking Link */}
                                           {(() => {
-                                            const bookingDetail = job.operations?.[0]?.bookingDetails?.[0] || {};
-                                            const bookingNo = job.booking_no || bookingDetail.bookingNo || "";
+                                            const bookingNo = job.booking_no || "";
                                             const containerFirst = job.containers?.[0]?.containerNo || "";
                                             const urls = buildShippingLineUrls(bookingNo, containerFirst);
 
-                                            let linerRaw = job.shipping_line_airline || bookingDetail.shippingLineName || "";
+                                            let linerRaw = job.shipping_line_airline || "";
                                             // Handle cases like "MSC - MSC" by taking the part after " - "
                                             let liner = linerRaw.includes(" - ") ? linerRaw.split(" - ").pop().trim() : linerRaw.trim();
 
@@ -2757,6 +2760,11 @@ const ExportJobsTable = () => {
                                               setJobs((prevJobs) =>
                                                 prevJobs.map((j) => {
                                                   if (j._id === job._id) {
+                                                    if (link.uploadType === "toplevel") {
+                                                      const currFiles = Array.isArray(j[link.field]) ? j[link.field] : [];
+                                                      return { ...j, [link.field]: [...currFiles, url] };
+                                                    }
+
                                                     const newOps = JSON.parse(JSON.stringify(j.operations || []));
                                                     if (!newOps[0]) newOps[0] = {};
 

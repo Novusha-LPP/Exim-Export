@@ -660,21 +660,6 @@ const exportOperationSchema = new Schema(
       },
     ],
 
-    bookingDetails: [
-      {
-        shippingLineName: { type: String, trim: true },
-        forwarderName: { type: String, trim: true },
-        bookingNo: { type: String, trim: true },
-        bookingDate: { type: String, trim: true },
-        vesselName: { type: String, trim: true },
-        voyageNo: { type: String, trim: true },
-        portOfLoading: { type: String, trim: true },
-        emptyPickUpLoc: { type: String, trim: true },
-        emptyDropLoc: { type: String, trim: true },
-        images: [String],
-      },
-    ],
-
     statusDetails: [statusDetailsSchema],
   },
   { _id: true },
@@ -1084,7 +1069,6 @@ exportJobSchema.pre("save", function (next) {
   if (!this.operations || this.operations.length === 0) {
     this.operations = [{
       transporterDetails: [],
-      bookingDetails: [],
       statusDetails: []
     }];
   }

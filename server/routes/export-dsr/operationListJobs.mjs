@@ -176,7 +176,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 ]
             });
         }
- else if (normalizedStatus === "cancelled") {
+        else if (normalizedStatus === "cancelled") {
             // Cancelled jobs shouldn't filter out anything specific by default, 
             // but we might want to exclude billed ones if desired. Usually cancelled just means status = cancelled.
         }
@@ -288,16 +288,15 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             detailedStatus: 1, status: 1, statusDetails: 1,
             "eSanchitDocuments.fileUrl": 1, "eSanchitDocuments.documentType": 1, "eSanchitDocuments.icegateFilename": 1,
             isLocked: 1, branch_code: 1, transportMode: 1, movement_type: 1, port_of_loading: 1,
-            "operations.bookingDetails.bookingNo": 1, "operations.bookingDetails.shippingLineName": 1,
             "operations.statusDetails.containerPlacementDate": 1, "operations.statusDetails.handoverForwardingNoteDate": 1,
             "operations.statusDetails.railOutReachedDate": 1, "operations.statusDetails.leoDate": 1,
             "operations.statusDetails.leoUpload": 1, "operations.statusDetails.stuffingSheetUpload": 1,
             "operations.statusDetails.stuffingPhotoUpload": 1, "operations.statusDetails.eGatePassUpload": 1,
             "operations.statusDetails.handoverImageUpload": 1, "operations.statusDetails.billingDocsSentUpload": 1,
             "operations.statusDetails.billingDocsSentDt": 1, "operations.statusDetails.status": 1,
-            "operations.transporterDetails.images": 1, "operations.bookingDetails.images": 1,
+            "operations.transporterDetails.images": 1,
             containers: 1,
-            otherInfo: 1, annexC1Details: 1, booking_copy: 1,
+            otherInfo: 1, annexC1Details: 1,
             total_ar_amount: 1, outstanding_balance: 1, cha: 1,
             lockedBy: 1, lockedAt: 1
         };

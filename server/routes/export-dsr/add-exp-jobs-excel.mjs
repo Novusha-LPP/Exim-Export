@@ -1138,7 +1138,6 @@ router.post("/api/jobs/add-job", async (req, res) => {
             if (operationsToUpdate.length === 0) {
                 operationsToUpdate = [{
                     transporterDetails: [],
-                    bookingDetails: [],
                     statusDetails: [{}]
                 }];
             }

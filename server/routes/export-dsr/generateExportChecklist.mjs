@@ -313,6 +313,11 @@ export const generateExportChecklist = async (jobNumber) => {
       yPos += 10;
     });
 
+    let totalRodtep = 0;
+    productList.forEach((item) => {
+      totalRodtep += parseFloat(item.rodtepInfo?.amountINR || 0);
+    });
+    drawFieldBox(455, yPos, 45, 15, "Total RoDTEP", totalRodtep.toFixed(2), 6, 5);
     drawFieldBox(500, yPos, 45, 15, "Total PMV", exportJob.totalPmv, 6, 5);
     drawFieldBox(545, yPos, 40, 15, "Total IGST", exportJob.totalIgst, 6, 5);
     yPos += 20;
@@ -371,6 +376,14 @@ export const generateExportChecklist = async (jobNumber) => {
       });
       yPos += 10;
     });
+    
+    let totalDbk = 0;
+    dbkData.forEach((item) => {
+      totalDbk += parseFloat(item.dbkAmount || 0);
+    });
+    doc.fontSize(6).font("Helvetica-Bold");
+    doc.text(`Total DBK Amount: ${totalDbk.toFixed(2)}`, 10, yPos + 5, { align: "right", width: 575 });
+    doc.font("Helvetica");
     yPos += 15;
 
     yPos = drawSectionHeader(yPos, "VESSEL DETAILS");
@@ -380,7 +393,7 @@ export const generateExportChecklist = async (jobNumber) => {
       90,
       16,
       "Factory Stuffed",
-      exportJob.goodsstuffedat === "Factory" ? "Yes" : "No",
+      ["FACTORY", "YES", "TRUE", "Y"].includes((exportJob.goods_stuffed_at || "").toUpperCase().trim()) ? "Yes" : "No",
       6,
       5
     );
@@ -390,7 +403,7 @@ export const generateExportChecklist = async (jobNumber) => {
       90,
       16,
       "Seal Type",
-      exportJob.stuffingsealtype,
+      exportJob.stuffing_seal_type,
       6,
       5
     );
@@ -544,18 +557,50 @@ export const generateExportChecklist = async (jobNumber) => {
 
     yPos = drawSectionHeader(yPos, "DECLARATION");
     doc.fontSize(7).font("Helvetica");
-    const declarationText = [
-      "Signature of Exporter/CHA with date",
-      "",
+
+    const codes = [];
+    exportJob.invoices?.forEach(inv =>
+      inv.products?.forEach(p => {
+        const sc = (p.eximCode || "").split(" ")[0];
+        const amount = parseFloat(p.rodtepInfo?.amountINR) || 0;
+        if ((sc === "60" || sc === "61") && !codes.includes("RS001")) codes.push("RS001");
+        if ((amount > 0 || p.rodtepInfo?.claim === "Yes" || sc === "03") && !codes.includes("RD001")) codes.push("RD001");
+      })
+    );
+
+    let declarationText = [];
+    if (codes.includes("RD001")) {
+      declarationText.push(
+        "I/We, in regard to my/our claim under RoDTEP scheme made in this Shipping Bill or Bill of Export, hereby declare that:",
+        "1. I/ We undertake to abide by the provisions, including conditions, restrictions, exclusions and time-limits as provided under RoDTEP scheme.",
+        "2. Any claim made in this shipping bill is not with respect to any duties or taxes which are exempted or remitted under any other mechanism.",
+        "3. I/We undertake to preserve and make available relevant documents relating to the exported goods for the purposes of audit."
+      );
+    }
+    if (codes.includes("RS001")) {
+      declarationText.push(
+        "I/We, in regard to my/our claim under RoSCTL scheme made in this Shipping Bill or Bill of Export, hereby declare that:",
+        "1. I/ We undertake to abide by the provisions, including conditions, restrictions, exclusions and time-limits as provided under RoSCTL scheme.",
+        "2. Any claim made in this shipping bill is not with respect to any duties or taxes which are exempted or remitted under any other mechanism.",
+        "3. I/We undertake to preserve and make available relevant documents relating to the exported goods for the purposes of audit."
+      );
+    }
+
+    declarationText.push(
       "1. I/We declare that the particulars given herein are true and are correct.",
       "2. I/We undertake to abide by the provisions of Foreign Exchange Management Act, 1999, as amended from time to time, including",
-      "realisation or repatriation of foreign exchange to or from India.",
-    ];
+      "realisation or repatriation of foreign exchange to or from India."
+    );
 
     declarationText.forEach((line) => {
       doc.text(line, 10, yPos);
       yPos += 10;
     });
+
+    yPos += 10;
+    doc.text("Signature of Exporter/CHA with date", 10, yPos);
+    yPos += 5;
+    doc.moveTo(10, yPos).lineTo(150, yPos).stroke();
 
     doc.end();
 

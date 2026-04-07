@@ -63,3 +63,106 @@ export const calculateProductFobINR = (
   const productFobInr = C * totalFobInr;
   return parseFloat(productFobInr.toFixed(2));
 };
+
+export const calculateDbkAmount = (fob, qty, rate, cap) => {
+  const a = (fob * rate) / 100;
+  const b = qty * cap;
+  if (cap > 0) return Math.min(a, b).toFixed(2);
+  return a.toFixed(2);
+};
+
+export const calculateRosctlAmount = (fob, qty, slRate, ctlRate, slCap, ctlCap) => {
+  const a = (fob * (slRate + ctlRate)) / 100;
+  const b = qty * (slCap + ctlCap);
+  if (slCap + ctlCap > 0) return Math.min(a, b).toFixed(2);
+  return a.toFixed(2);
+};
+
+export const calculateRodtepAmount = (fob, qty, rate, cap) => {
+  const a = (fob * rate) / 100;
+  const b = qty * cap;
+  if (cap > 0) return Math.min(a, b).toFixed(2);
+  return a.toFixed(2);
+};
+
+export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
+  if (!invoices || !Array.isArray(invoices)) return invoices;
+  
+  return invoices.map((inv) => {
+    if (!inv.products || !Array.isArray(inv.products)) return inv;
+    
+    const updatedProducts = inv.products.map((product) => {
+      const pQty = parseFloat(product.socQuantity || product.quantity) || 0;
+      const pUnit = product.socunit || product.qtyUnit || "";
+      const fobAmountInr = calculateProductFobINR(product, inv, exchange_rate);
+
+      // Re-map Drawback & RoSCTL Details completely
+      let newDbkDetails = product.drawbackDetails;
+      if (Array.isArray(newDbkDetails)) {
+        newDbkDetails = newDbkDetails.map(item => {
+          let newItem = { ...item };
+          newItem.quantity = pQty;
+          newItem.unit = pUnit;
+          newItem.dbkCapunit = pUnit;
+          newItem.fobValue = fobAmountInr.toFixed(2);
+          
+          newItem.dbkAmount = calculateDbkAmount(fobAmountInr, pQty, parseFloat(newItem.dbkRate || 0), parseFloat(newItem.dbkCap || 0));
+          
+          if (newItem.showRosctl) {
+            newItem.rosctlAmount = calculateRosctlAmount(
+              fobAmountInr, pQty, 
+              parseFloat(newItem.slRate || 0), parseFloat(newItem.ctlRate || 0), 
+              parseFloat(newItem.slCap || 0), parseFloat(newItem.ctlCap || 0)
+            );
+          }
+          return newItem;
+        });
+      }
+
+      // Re-calculate RoSCTL product total
+      let newRosctlInfo = product.rosctlInfo;
+      if (Array.isArray(newDbkDetails)) {
+        const totalRosctlAmount = newDbkDetails.reduce((sum, item) => sum + (parseFloat(item.rosctlAmount) || 0), 0);
+        const hasRosctl = newDbkDetails.some((item) => item.showRosctl);
+        const firstRosctl = newDbkDetails.find((item) => item.showRosctl) || {};
+        
+        newRosctlInfo = {
+          ...newRosctlInfo,
+          claim: hasRosctl ? "Yes" : "No",
+          amountINR: totalRosctlAmount.toFixed(2),
+          slRate: String(firstRosctl.slRate || "0"),
+          slCap: String(firstRosctl.slCap || "0"),
+          ctlRate: String(firstRosctl.ctlRate || "0"),
+          ctlCap: String(firstRosctl.ctlCap || "0"),
+          category: firstRosctl.rosctlCategory || "",
+        };
+      }
+
+      // Re-calculate RoDTEP product total
+      let newRodtepInfo = product.rodtepInfo;
+      if (newRodtepInfo && newRodtepInfo.rate) {
+        newRodtepInfo = { ...newRodtepInfo };
+        newRodtepInfo.quantity = pQty;
+        newRodtepInfo.unit = pUnit;
+        newRodtepInfo.rodtepCapunit = pUnit;
+        newRodtepInfo.fobValue = fobAmountInr.toFixed(2);
+        
+        newRodtepInfo.amountINR = calculateRodtepAmount(
+          fobAmountInr,
+          pQty,
+          parseFloat(newRodtepInfo.rate || 0),
+          parseFloat(newRodtepInfo.cap || 0)
+        );
+      }
+
+      return {
+        ...product,
+        drawbackDetails: newDbkDetails,
+        rosctlInfo: newRosctlInfo,
+        rodtepInfo: newRodtepInfo
+      };
+    });
+
+    return { ...inv, products: updatedProducts };
+  });
+};

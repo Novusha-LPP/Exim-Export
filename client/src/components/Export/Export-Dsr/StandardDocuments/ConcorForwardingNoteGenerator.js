@@ -57,7 +57,6 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
   const generateHTML = (exportJob, logoSrc = concorLogo) => {
     const containers = exportJob.containers || [];
     const operations = exportJob.operations?.[0] || {};
-    const booking = operations.bookingDetails?.[0] || {};
     const invoice = exportJob.invoices?.[0] || {};
     const product = invoice.products?.[0] || {};
     const statusDetails = operations.statusDetails?.[0] || {};
@@ -132,11 +131,11 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
           </tr>
           <tr>
             <td style="border: 1px solid black; text-align: center; vertical-align: middle; font-weight: bold; padding: 2px 2px 4px 2px; font-size: 12px;">${exportJob.branchCode || "KHDB"}</td>
-            <td style="border: 1px solid black; text-align: center; vertical-align: middle; font-weight: bold; padding: 2px 2px 4px 2px; font-size: 12px;">${exportJob.gateway_port || booking.portOfLoading || exportJob.port_of_loading || ""}</td>
+            <td style="border: 1px solid black; text-align: center; vertical-align: middle; font-weight: bold; padding: 2px 2px 4px 2px; font-size: 12px;">${exportJob.gateway_port || exportJob.port_of_loading || ""}</td>
             <td style="border: 1px solid black; padding: 0;">
                <table style="width: 100%; border-collapse: collapse; height: 100%;">
                 <tr>
-                  <td style="border: none; border-right: 1px solid black; width: 35%; text-align: center; vertical-align: middle; font-weight: bold; padding: 2px 2px 4px 2px; font-size: 12px;">${exportJob.shipping_line_airline || booking.shippingLineName || ""}</td>
+                  <td style="border: none; border-right: 1px solid black; width: 35%; text-align: center; vertical-align: middle; font-weight: bold; padding: 2px 2px 4px 2px; font-size: 12px;">${exportJob.shipping_line_airline || ""}</td>
                   <td style="border: none; border-right: 1px solid black; width: 35%; text-align: center; vertical-align: middle; font-weight: bold; padding: 2px 2px 4px 2px; font-size: 12px;">${exportJob.port_of_discharge || ""}</td>
                   <td style="border: none; width: 30%; text-align: center; vertical-align: middle; font-weight: bold; padding: 2px 2px 4px 2px; font-size: 12px;">${exportJob.discharge_country || ""}</td>
                 </tr>
@@ -279,7 +278,6 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
     try {
       const containers = exportJob.containers || [];
       const operations = exportJob.operations?.[0] || {};
-      const booking = operations.bookingDetails?.[0] || {};
       const invoice = exportJob.invoices?.[0] || {};
       const product = invoice.products?.[0] || {};
       const statusDetails = operations.statusDetails?.[0] || {};
@@ -405,8 +403,8 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       boxY += rowH;
       const valuesHeight = drawContentBox(boxY, [
         { width: col1, text: exportJob.branchCode || "KHDB", align: "center", style: "bold" },
-        { width: col2, text: exportJob.gateway_port || booking.portOfLoading || exportJob.port_of_loading || "", align: "center", style: "bold" },
-        { width: col3, text: exportJob.shipping_line_airline || booking.shippingLineName || "", align: "center", style: "bold" },
+        { width: col2, text: exportJob.gateway_port || exportJob.port_of_loading || "", align: "center", style: "bold" },
+        { width: col3, text: exportJob.shipping_line_airline || "", align: "center", style: "bold" },
         { width: col4, text: exportJob.port_of_discharge || "", align: "center", style: "bold" },
         { width: col5, text: exportJob.discharge_country || "", align: "center", style: "bold" },
       ], rowH);

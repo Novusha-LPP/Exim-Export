@@ -27,14 +27,14 @@ const ExportChecklistGenerator = ({
     return pdf.splitTextToSize(text, width);
   };
   const FONT_SIZES = {
-    title: 14,
-    sectionHeader: 11,
-    fieldLabel: 8,
-    fieldValue: 9,
-    footer: 8,
-    declaration: 10,
-    tableHeader: 9,
-    tableContent: 8,
+    title: 12,
+    sectionHeader: 10,
+    fieldLabel: 7,
+    fieldValue: 8,
+    footer: 7,
+    declaration: 8,
+    tableHeader: 8,
+    tableContent: 7,
   };
 
   // ==================== HELPER FUNCTIONS ====================
@@ -162,7 +162,7 @@ const ExportChecklistGenerator = ({
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldValue);
         pdf.text(
-          `AEO Registration No. ${"INABOFS1766L0F191"}`,
+          `AEO Registration No. ${"INABOFS1766L0F251"}`,
           centerX,
           y + 30,
           { align: "center" },
@@ -614,13 +614,13 @@ const ExportChecklistGenerator = ({
       styles: { fontSize: FONT_SIZES.tableContent, cellPadding: 2, overflow: "linebreak", lineWidth: 0.3 },
       headStyles: { fillColor: [220, 220, 220], textColor: 0, fontStyle: "bold", fontSize: 7 },
       columnStyles: {
-        0: { cellWidth: 40 },
-        1: { cellWidth: 90 },
-        2: { cellWidth: 100 },
-        3: { cellWidth: 55 },
-        4: { cellWidth: 70 },
-        5: { cellWidth: 70 },
-        6: { cellWidth: 70 },
+        0: { cellWidth: 45 },
+        1: { cellWidth: 100 },
+        2: { cellWidth: 130 },
+        3: { cellWidth: 65 },
+        4: { cellWidth: 75 },
+        5: { cellWidth: 75 },
+        6: { cellWidth: 65 },
       },
       margin: { left: leftX },
       tableWidth: rightX - leftX,
@@ -704,6 +704,9 @@ const ExportChecklistGenerator = ({
     });
 
     yPos = pdf.lastAutoTable.finalY + 10;
+    pdf.setFont("helvetica", "bold");
+    pdf.text(`Total DBK Amount: ${data.dbkTotalAmount || "0.00"}`, rightX, yPos, { align: "right" });
+    yPos += 15;
 
     // ROSCTL DETAILS SECTION (Only if data exists)
     if (data.rosctlData && data.rosctlData.length > 0) {
@@ -972,7 +975,7 @@ const ExportChecklistGenerator = ({
         fontStyle: "bold",
       },
       margin: { left: leftX },
-      tableWidth: 250,
+      tableWidth: rightX - leftX,
     });
 
     yPos = pdf.lastAutoTable.finalY + 10;
@@ -1022,6 +1025,9 @@ const ExportChecklistGenerator = ({
       });
 
       yPos = pdf.lastAutoTable.finalY + 10;
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`Total RODTEP Amount (INR): ${data.rodtepTotalAmount || "0.00"}`, rightX, yPos, { align: "right" });
+      yPos += 15;
     }
 
     // DECLARATIONS
@@ -1053,26 +1059,33 @@ const ExportChecklistGenerator = ({
           fontStyle: "bold",
         },
         margin: { left: leftX },
-        tableWidth: 200,
+        tableWidth: rightX - leftX,
       });
 
       yPos = pdf.lastAutoTable.finalY + 15;
 
-      // Declaration Text
+      // Declaration Text - Render multiple if they exist
       pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.declaration);
       pdf.text("Decl. Cod", leftX, yPos);
-      pdf.text("Declaration", leftX + 50, yPos);
+      pdf.text("Declaration", leftX + 80, yPos); // Increased gap
       yPos += 10;
 
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(FONT_SIZES.declaration);
-      const declarationLines = pdf.splitTextToSize(
-        data.declarationText,
-        rightX - leftX - 50,
-      );
-      declarationLines.forEach((line) => {
-        pdf.text(line, leftX + 50, yPos);
-        yPos += FONT_SIZES.declaration * 1.2;
+      data.declarationDetails?.forEach((decl) => {
+        pdf.setFont("helvetica", "bold");
+        pdf.text(decl.code || "", leftX, yPos);
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(FONT_SIZES.declaration);
+        const declarationLines = pdf.splitTextToSize(
+          decl.text || "",
+          rightX - leftX - 100, // Adjusted width
+        );
+        declarationLines.forEach((line) => {
+          pdf.text(line, leftX + 80, yPos); // Match increased gap
+          yPos += FONT_SIZES.declaration * 1.2;
+        });
+        yPos += 10; // spacing between declarations
       });
     }
 
@@ -1156,9 +1169,9 @@ const ExportChecklistGenerator = ({
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(FONT_SIZES.sectionHeader);
     pdf.text("DECLARATION", leftX, yPos);
-    yPos += 10;
+    yPos += 8;
     drawLine(leftX, yPos, rightX);
-    yPos += 10;
+    yPos += 8;
 
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(FONT_SIZES.declaration);
@@ -1171,11 +1184,11 @@ const ExportChecklistGenerator = ({
       yPos += FONT_SIZES.declaration * 1.2;
     });
 
-    yPos += 15;
+    yPos += 10;
     pdf.setFont("helvetica", "bold");
     pdf.text("Signature of Exporter/CHA with date", leftX, yPos);
-    yPos += 8;
-    drawLine(leftX, yPos, rightX - 200);
+    yPos += 5;
+    drawLine(leftX, yPos, leftX + 200);
 
     return yPos + 15;
   };
@@ -1698,6 +1711,22 @@ const ExportChecklistGenerator = ({
             0,
           )
           .toFixed(2),
+        dbkTotalAmount: (() => {
+          let total = 0;
+          allProducts?.forEach((product) => {
+            product.drawbackDetails?.forEach((dbk) => {
+              total += parseFloat(dbk.dbkAmount) || 0;
+            });
+          });
+          return total.toFixed(2);
+        })(),
+        rodtepTotalAmount: (() => {
+          let total = 0;
+          allProducts?.forEach((product) => {
+            total += parseFloat(product.rodtepInfo?.amountINR) || 0;
+          });
+          return total.toFixed(2);
+        })(),
 
         // DBK Details - Extract from all products drawbackDetails
         dbkData: (() => {
@@ -1865,7 +1894,7 @@ const ExportChecklistGenerator = ({
         })(),
 
         // Vessel & Container Details
-        factoryStuffed: exportJob.goods_stuffed_at === "Factory" ? "Yes" : "No",
+        factoryStuffed: ["FACTORY", "YES", "TRUE", "Y"].includes((exportJob.goods_stuffed_at || "").toUpperCase().trim()) ? "Yes" : "No",
         sealType: exportJob.stuffing_seal_type || "",
         sampleAcc: exportJob.sample_accompanied ? "Yes" : "No",
         vesselName: exportJob.vessel_name || "",
@@ -1951,38 +1980,54 @@ const ExportChecklistGenerator = ({
           return rodtepRows;
         })(),
 
-        // Declaration Data - One row per invoice × product
+        // Declaration Data - Modified for RoDTEP and RoSCTL logic
         declarationData: (() => {
           const declRows = [];
           exportJob.invoices?.forEach((invoice, invIndex) => {
             invoice.products?.forEach((product, prodIndex) => {
               const sc = (product.eximCode || "").split(" ")[0];
               const amount = parseFloat(product.rodtepInfo?.amountINR) || 0;
-              const isRodtep = product.rodtepInfo?.claim === "Yes" && amount > 0;
+              const isRodtep = amount > 0 || product.rodtepInfo?.claim === "Yes";
               const isRosctl = sc === "60" || sc === "61";
               const isAdvLic = sc === "03";
-              if (isRodtep || isRosctl || isAdvLic) {
-                // 60 = DRAWBACK AND ROSCTL, 61 = EPCG, DRAWBACK AND ROSCTL → RS001
-                // RoDTEP claims and scheme 03 (Advance Licence) → RD001
-                const declCode = isRosctl ? "RS001" : "RD001";
-                declRows.push({
-                  declType: "DEC",
-                  declCode,
-                  invItemSrNo: `${invIndex + 1}/${product.serialNumber || (prodIndex + 1)}`,
-                });
+
+              const invItemSrNo = `${invIndex + 1}/${product.serialNumber || (prodIndex + 1)}`;
+
+              if (isRosctl) {
+                declRows.push({ declType: "DEC", declCode: "RS001", invItemSrNo });
+              }
+              if (isRodtep || isAdvLic) {
+                declRows.push({ declType: "DEC", declCode: "RD001", invItemSrNo });
               }
             });
           });
           return declRows;
         })(),
 
-        declarationText: `I/We, in regard to my/our claim under RoDTEP scheme made in this Shipping Bill or Bill of Export, hereby declare that:
-
+        declarationDetails: (() => {
+          const texts = {
+            RD001: `I/We, in regard to my/our claim under RoDTEP scheme made in this Shipping Bill or Bill of Export, hereby declare that:
 1. I/ We undertake to abide by the provisions, including conditions, restrictions, exclusions and time-limits as provided under RoDTEP scheme, and relevant notifications, regulations, etc., as amended from time to time.
-
 2. Any claim made in this shipping bill or bill of export is not with respect to any duties or taxes or levies which are exempted or remitted or credited under any other mechanism outside RoDTEP.
-
 3. I/We undertake to preserve and make available relevant documents relating to the exported goods for the purposes of audit in the manner and for the time period prescribed in the Customs Audit Regulations, 2018.`,
+            RS001: `I/We, in regard to my/our claim under RoSCTL scheme made in this Shipping Bill or Bill of Export, hereby declare that:
+1. I/ We undertake to abide by the provisions, including conditions, restrictions, exclusions and time-limits as provided under RoSCTL scheme, and relevant notifications, regulations, etc., as amended from time to time.
+2. Any claim made in this shipping bill or bill of export is not with respect to any duties or taxes or levies which are exempted or remitted or credited under any other mechanism outside RoSCTL.
+3. I/We undertake to preserve and make available relevant documents relating to the exported goods for the purposes of audit in the manner and for the time period prescribed in the Customs Audit Regulations, 2018.`
+          };
+
+          const codes = [];
+          exportJob.invoices?.forEach(inv =>
+            inv.products?.forEach(p => {
+              const sc = (p.eximCode || "").split(" ")[0];
+              const amount = parseFloat(p.rodtepInfo?.amountINR) || 0;
+              if ((sc === "60" || sc === "61") && !codes.includes("RS001")) codes.push("RS001");
+              if ((amount > 0 || p.rodtepInfo?.claim === "Yes" || sc === "03") && !codes.includes("RD001")) codes.push("RD001");
+            })
+          );
+
+          return codes.sort().map(code => ({ code, text: texts[code] }));
+        })(),
 
         // Supporting Documents
         supportingDocs: exportJob.eSanchitDocuments?.[0]
@@ -2045,10 +2090,7 @@ const ExportChecklistGenerator = ({
 
         // Final Declaration
         finalDeclaration: `1. I/We declare that the particulars given herein are true and are correct.
-
-2. I/We undertake to abide by the provisions of Foreign Exchange Management Act, 1999, as amended from time to time, including realisation or repatriation of foreign exchange to or from India.
-
-Signature of Exporter/CHA with date`,
+2. I/We undertake to abide by the provisions of Foreign Exchange Management Act, 1999, as amended from time to time, including realisation or repatriation of foreign exchange to or from India.`,
       };
 
       // Create PDF

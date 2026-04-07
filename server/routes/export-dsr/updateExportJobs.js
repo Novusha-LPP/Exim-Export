@@ -287,14 +287,14 @@ router.get("/global-search-jobs", async (req, res) => {
         }
       }
     }
-    
+
     if (jobOwner) filter.$and.push({ job_owner: { $regex: jobOwner, $options: "i" } });
 
     // 2. Status filter
     // CRITICAL FIX: If there is a search query, we IGNORE the status filter to make it truly global across tabs
     if ((!search || search.trim() === "") && status && status.toLowerCase() !== "all") {
       const statusLower = status.toLowerCase();
-      
+
       if (statusLower === "pending") {
         filter.$and.push({
           $and: [
@@ -332,21 +332,21 @@ router.get("/global-search-jobs", async (req, res) => {
         });
       } else if (statusLower === "billing ready") {
         filter.$and.push({
-            $and: [
-                { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
-                { "operations.statusDetails.handoverImageUpload": { $exists: true, $not: { $size: 0 } } },
-                { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } }
-            ]
+          $and: [
+            { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
+            { "operations.statusDetails.handoverImageUpload": { $exists: true, $not: { $size: 0 } } },
+            { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } }
+          ]
         });
       } else if (statusLower === "op completed" || statusLower === "billing pending") {
         filter.$and.push({
-            "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] },
-            $or: [
-                { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
-                { "operations.statusDetails.billingDocsSentDt": null },
-                { "operations.statusDetails.billingDocsSentDt": "" },
-                { "operations.statusDetails": { $size: 0 } }
-            ]
+          "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] },
+          $or: [
+            { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
+            { "operations.statusDetails.billingDocsSentDt": null },
+            { "operations.statusDetails.billingDocsSentDt": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
         });
       } else if (statusLower === "booking pending") {
         filter.$and.push({
@@ -555,7 +555,6 @@ router.get("/global-search-jobs", async (req, res) => {
           transportMode: 1,
           movement_type: 1,
           port_of_loading: 1,
-          bookingDetails: 1,
           billingDetails: 1,
           "operations.statusDetails.containerPlacementDate": 1,
           "operations.statusDetails.handoverForwardingNoteDate": 1,
@@ -570,7 +569,6 @@ router.get("/global-search-jobs", async (req, res) => {
           "operations.statusDetails.billingDocsSentDt": 1,
           "operations.statusDetails.status": 1,
           "operations.transporterDetails.images": 1,
-          "operations.bookingDetails.images": 1,
           lockedBy: 1,
           lockedAt: 1
         })
@@ -987,8 +985,6 @@ router.get("/exports/:status?", async (req, res) => {
       transportMode: 1,
       movement_type: 1,
       port_of_loading: 1,
-      "operations.bookingDetails.bookingNo": 1,
-      "operations.bookingDetails.shippingLineName": 1,
       "operations.statusDetails.containerPlacementDate": 1,
       "operations.statusDetails.handoverForwardingNoteDate": 1,
       "operations.statusDetails.railOutReachedDate": 1,
@@ -1002,7 +998,6 @@ router.get("/exports/:status?", async (req, res) => {
       "operations.statusDetails.billingDocsSentDt": 1,
       "operations.statusDetails.status": 1,
       "operations.transporterDetails.images": 1,
-      "operations.bookingDetails.images": 1,
       lockedBy: 1,
       lockedAt: 1
     };

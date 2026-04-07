@@ -42,7 +42,6 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       const data = response.data;
 
       const invoice = data.invoices?.[0] || {};
-      const booking = data.operations?.[0]?.bookingDetails?.[0] || {};
       const statusDetails = data.operations?.[0]?.statusDetails?.[0] || {};
       const containers = data.containers || [];
       const products = invoice.products || [];
@@ -169,11 +168,11 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px;">
             <tr>
                 <div style="margin-bottom: 2px;"><strong>Shipping Line</strong></div>
-                <div>${data.shipping_line_airline || booking.shippingLineName || ""}</div>
+                <div>${data.shipping_line_airline || ""}</div>
               </td>
               <td style="border: 1px solid black; padding: 4px; width: 60%; vertical-align: top;">
                 <div style="margin-bottom: 2px;"><strong>Booking No</strong></div>
-                <div>${data.booking_no || booking.bookingNo || ""}</div>
+                <div>${data.booking_no || ""}</div>
               </td>
             </tr>
             <tr>
@@ -202,7 +201,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
               </td>
               <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
                  <div style="margin-bottom: 2px;"><strong>Gateway Port</strong></div>
-                 <div>${data.gateway_port || booking.portOfLoading || data.port_of_loading || ""}</div>
+                 <div>${data.gateway_port || data.port_of_loading || ""}</div>
               </td>
             </tr>
             <tr>
@@ -229,7 +228,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
             <tr>
               <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
                  <div style="margin-bottom: 2px;"><strong>VESSEL NAME AND VOYAGE</strong></div>
-                 <div>${data.vessel_name || booking.vesselName || ""} ${data.voyage_no || booking.voyageNo || ""}</div>
+                 <div>${data.vessel_name || ""} ${data.voyage_no || ""}</div>
               </td>
               <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
                  <div style="margin-bottom: 2px;"><strong>LEO Date</strong></div>

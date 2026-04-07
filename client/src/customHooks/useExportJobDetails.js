@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useFormik } from "formik";
 import { formatDate } from "../utils/dateUtils";
+import { syncAllProductsDrawbackAndRodtep } from "../utils/fobCalculations";
 
 function useExportJobDetails(params, setFileSnackbar) {
   const [data, setData] = useState(null);
@@ -774,6 +775,7 @@ function useExportJobDetails(params, setFileSnackbar) {
             sealNumber:
               values.stuffing_seal_no || values.annexC1Details?.sealNumber,
           },
+          invoices: syncAllProductsDrawbackAndRodtep(values.invoices, Number(values.exchange_rate) || 1),
           updatedAt: new Date(),
         };
 
@@ -872,11 +874,11 @@ function useExportJobDetails(params, setFileSnackbar) {
         flight_no: safeValue(data.flight_no),
         flight_date: formatDate(safeValue(data.flight_date)),
         voyage_no: safeValue(data.voyage_no),
-        forwarder: safeValue(data.forwarder || data.operations?.[0]?.bookingDetails?.[0]?.forwarderName),
-        pickup_loc: safeValue(data.pickup_loc || data.operations?.[0]?.bookingDetails?.[0]?.emptyPickUpLoc),
-        drop_loc: safeValue(data.drop_loc || data.operations?.[0]?.bookingDetails?.[0]?.emptyDropLoc),
-        cut_off_date: formatDate(safeValue(data.cut_off_date || data.operations?.[0]?.bookingDetails?.[0]?.bookingDate)),
-        booking_copy: safeValue(data.booking_copy || data.operations?.[0]?.bookingDetails?.[0]?.images, []),
+        forwarder: safeValue(data.forwarder),
+        pickup_loc: safeValue(data.pickup_loc),
+        drop_loc: safeValue(data.drop_loc),
+        cut_off_date: formatDate(safeValue(data.cut_off_date)),
+        booking_copy: safeValue(data.booking_copy),
         nature_of_cargo: safeValue(data.nature_of_cargo),
         total_no_of_pkgs: safeValue(data.total_no_of_pkgs),
         // Add these lines in the setValues call (around the shipping details section)
@@ -1125,7 +1127,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         operations: safeArray(data.operations).map((operation) => {
           // Normalization: Fix for corrupted data where MongoDB dot-notation created objects with key "0" instead of arrays
           const op = operation["0"] ? { ...operation, ...operation["0"] } : operation;
-          
+
           return {
             ...op,
             statusDetails: safeArray(op.statusDetails || op["0"]?.statusDetails).map((status) => {
@@ -1148,10 +1150,7 @@ function useExportJobDetails(params, setFileSnackbar) {
                 railOutReachedDate: formatDate(safeValue(s.railOutReachedDate)),
               };
             }),
-            bookingDetails: safeArray(op.bookingDetails || op["0"]?.bookingDetails).map((b) => ({
-              ...b,
-              bookingDate: formatDate(safeValue(b.bookingDate)),
-            })),
+
             weighmentDetails: safeArray(op.weighmentDetails || op["0"]?.weighmentDetails).map((w) => ({
               ...w,
               dateTime: formatDate(safeValue(w.dateTime), "dd-MM-yyyy HH:mm"),

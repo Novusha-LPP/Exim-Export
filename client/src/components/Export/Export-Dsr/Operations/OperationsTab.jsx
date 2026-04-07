@@ -121,7 +121,6 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
 
   const transportMode = toUpper(formik.values.transportMode || "");
 
-  // Helper to get nested value "operations.0.bookingDetails.0.shippingLineName"
   function getNestedValue(obj, path) {
     return path.split(".").reduce((acc, part) => acc && acc[part], obj);
   }
@@ -675,7 +674,6 @@ const OperationsTab = ({ formik }) => {
 
       const newOp = {
         transporterDetails: [getDefaultItem("transporterDetails")],
-        bookingDetails: [getDefaultItem("bookingDetails")],
         statusDetails: [statusDefaults],
       };
 
@@ -718,76 +716,7 @@ const OperationsTab = ({ formik }) => {
     }
   }, [isAir]);
 
-  // Auto-sync Header fields (Shipping Line, Vessel/Flight, Voyage, Booking No/Date) to booking details
-  useEffect(() => {
-    const jobShippingLine = toUpper(formik.values.shipping_line_airline || "");
-    const jobVessel = toUpper(
-      (isAir ? formik.values.flight_no : formik.values.vessel_name) || "",
-    );
-    const jobVoyage = toUpper(formik.values.voyage_no || "");
-    const jobBookingNo = toUpper(formik.values.booking_no || "");
-    const jobBookingDate = formik.values.booking_date || "";
-
-    const currentOps = formik.values.operations || [];
-    let changed = false;
-    const nextOps = currentOps.map((op) => {
-      const bookingDetails = op.bookingDetails || [];
-      const updatedBooking = bookingDetails.map((b) => {
-        let bChanged = false;
-        const newB = { ...b };
-
-        if (toUpper(b.shippingLineName || "") !== jobShippingLine) {
-          newB.shippingLineName = jobShippingLine;
-          bChanged = true;
-        }
-        if (toUpper(b.vesselName || "") !== jobVessel) {
-          newB.vesselName = jobVessel;
-          bChanged = true;
-        }
-        // Voyage only exists for Sea (not Air)
-        if (!isAir && toUpper(b.voyageNo || "") !== jobVoyage) {
-          newB.voyageNo = jobVoyage;
-          bChanged = true;
-        }
-        if (toUpper(b.bookingNo || "") !== jobBookingNo) {
-          newB.bookingNo = jobBookingNo;
-          bChanged = true;
-        }
-        if ((b.bookingDate || "") !== jobBookingDate) {
-          newB.bookingDate = jobBookingDate;
-          bChanged = true;
-        }
-
-        if (bChanged) {
-          changed = true;
-          return newB;
-        }
-        return b;
-      });
-
-      const statusDetails = op.statusDetails || [];
-      const updatedStatus = statusDetails; // Leaving unchanged for sync, you can remove the entire block later
-
-      if (changed) return { ...op, bookingDetails: updatedBooking, statusDetails: updatedStatus };
-      return op;
-    });
-
-    if (changed) {
-      formik.setFieldValue("operations", nextOps);
-    }
-  }, [
-    formik.values.shipping_line_airline,
-    formik.values.vessel_name,
-    formik.values.flight_no,
-    formik.values.voyage_no,
-    formik.values.booking_no,
-    formik.values.booking_date,
-    formik.values.leo_date,
-    formik.values.gate_in,
-    formik.values.job_no,
-    operations.length,
-    isAir,
-  ]);
+  // Auto-sync Header fields (Shipping Line, Vessel/Flight, Voyage, Booking No/Date) to booking details REMOVED
 
   // --- Actions ---
 
@@ -856,24 +785,6 @@ const OperationsTab = ({ formik }) => {
         formik.setFieldValue("port_of_loading", finalValue);
       }
 
-      // SYNC: Booking Details with Header (VISE VERSA)
-      if (section === "bookingDetails") {
-        if (field === "vesselName") {
-          formik.setFieldValue(isAir ? "flight_no" : "vessel_name", finalValue);
-        }
-        if (field === "voyageNo") {
-          formik.setFieldValue("voyage_no", finalValue);
-        }
-        if (field === "shippingLineName") {
-          formik.setFieldValue("shipping_line_airline", finalValue);
-        }
-        if (field === "bookingNo") {
-          formik.setFieldValue("booking_no", finalValue);
-        }
-        if (field === "bookingDate") {
-          formik.setFieldValue("booking_date", finalValue);
-        }
-      }
 
       return updatedOp;
     });
