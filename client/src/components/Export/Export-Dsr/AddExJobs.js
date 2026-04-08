@@ -10,7 +10,7 @@ import { UserContext } from "../../../contexts/UserContext";
 const s = {
   wrapper: {
     fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    backgroundColor: "#f0f2f5",
+    backgroundColor: "#fafaffff",
     padding: "20px",
     minHeight: "80vh",
     color: "#1f2937",
@@ -188,7 +188,7 @@ const s = {
     gap: "10px",
     marginBottom: "6px",
     alignItems: "center",
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#fafaffff",
     padding: "6px",
     borderRadius: "3px",
     border: "1px solid #e5e7eb",
@@ -431,7 +431,7 @@ function ConsigneeCountryField({ value, onChange }) {
                 key={opt._id || opt.countryCode || opt.countryName || i}
                 style={{
                   ...s.dropdownItem,
-                  backgroundColor: i === d.active ? "#f9fafb" : "#fff",
+                  backgroundColor: i === d.active ? "#fafaffff" : "#fff",
                 }}
                 onMouseDown={() => d.selectIndex(i)}
                 onMouseEnter={() => d.setActive(i)}
@@ -756,7 +756,7 @@ function GatewayPortDropdown({
                 key={p._id || p.unece_code || p.name || i}
                 style={{
                   ...s.dropdownItem,
-                  backgroundColor: i === d.active ? "#f9fafb" : "#fff",
+                  backgroundColor: i === d.active ? "#fafaffff" : "#fff",
                 }}
                 onMouseDown={() => d.selectIndex(i)}
                 onMouseEnter={() => d.setActive(i)}

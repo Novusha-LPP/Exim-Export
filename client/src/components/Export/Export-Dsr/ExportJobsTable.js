@@ -55,7 +55,7 @@ const s = {
   wrapper: {
     fontFamily:
       "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#fafaffff",
     padding: "10px 15px", // Responsive padding
     minHeight: "100vh",
     color: "#333",
