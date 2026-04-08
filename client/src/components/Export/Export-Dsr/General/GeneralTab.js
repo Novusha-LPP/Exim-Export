@@ -501,7 +501,7 @@ const GeneralTab = ({ formik, directories }) => {
             const val = e.target.value;
             handleFieldChange("exporter", val);
             handleFieldChange("branch_index", 0);
-            
+
             // Use the new API to fetch fresh exporter data
             try {
               const res = await axios.get(`${apiBase}/directory/exporter?exporter=${encodeURIComponent(val)}`);
@@ -710,7 +710,7 @@ const GeneralTab = ({ formik, directories }) => {
                 onChange={(e) => {
                   const val = toUpperVal(e);
                   handleFieldChange("branch_sno", val);
-                  
+
                   // Auto sync dropdown index
                   if (exporterDetails && exporterDetails.branchInfo) {
                     const matchIdx = exporterDetails.branchInfo.findIndex(b => toUpper(b.branchCode) === val);
@@ -781,7 +781,7 @@ const GeneralTab = ({ formik, directories }) => {
                 userSelect: "none",
               }}
             >
-              This party is Buyer
+              Buyer Other Than Consignee
             </label>
           </div>
         </div>

@@ -184,25 +184,21 @@ const pad = (s, n) => String(s ?? "").padStart(n, "0");
 const trunc = (s, n) => String(s ?? "").slice(0, n);
 const clean = (s) => String(s ?? "")
     .replace(/[\r\n\t]/g, " ")
-    .replace(/[^a-zA-Z0-9\s,./:&-]/g, "") // ICEGATE safe chars (added : and &)
+    .replace(/[^a-zA-Z0-9\s,./:()\-]/g, "")
     .toUpperCase()
     .replace(/\s+/g, " ")
     .trim();
 
-// Keep space only after the FIRST comma, strip all subsequent comma-spaces
-const cleanAddrSplit = (s) => {
-    const upper = String(s ?? "")
-        .replace(/[\r\n\t]/g, " ")
-        .replace(/ - /g, " ")       // strip " - " -> single space
-        .toUpperCase()
-        .replace(/\s+/g, " ")
-        .trim();
-    const i = upper.indexOf(",");
-    if (i === -1) return upper;
-    const before = upper.slice(0, i + 2); // Include space after first comma
-    const after = upper.slice(i + 2).replace(/,\s+/g, ",");
-    return before + after;
-};
+// Strict cleaning for ICEGATE address fields (C35/C70)
+// Rule: Max 35 chars per line, Allowed: A-Z, 0-9, space. NO special chars ( , . / - etc)
+const cleanAddr = (s) => String(s ?? "")
+    .replace(/[^a-zA-Z0-9\s]/g, " ") // replace all special chars with space
+    .toUpperCase()
+    .replace(/\s+/g, " ")           // normalize spaces
+    .trim();
+
+// Keep cleanAddr as the active strategy for all address fields (Exporter, Consignee, Buyer, SuppDoc)
+const cleanAddrSplit = (s) => cleanAddr(s);
 
 // FIX 23 / FIX 40: preserve internal spaces (consignee name, beneficiary name, marks_nos)
 const preserveSpaces = (s) => String(s ?? "").replace(/[\r\n\t]/g, " ").replace(/^ +| +$/g, "");
@@ -285,12 +281,12 @@ const extractSbNo = (j) => {
     return isNaN(parsed) ? "0" : String(parsed);
 };
 
-// FIX 22: trim() each 35-char chunk (Logisys confirmed for docs/exporter)
+// FIX 22 / FIX 60: strict 35-char chunking for ICEGATE
 const split35 = (s) => {
     const out = [];
-    const str = String(s ?? "").replace(/\s+/g, " ").trim();
+    const str = cleanAddr(s);
     for (let i = 0; i < 5; i++) {
-        out.push(str.slice(i * 35, (i + 1) * 35).trim());
+        out.push(str.slice(i * 34, (i + 1) * 34).trim());
     }
     return out;
 };
@@ -415,14 +411,14 @@ export function generateSBFlatFile(job) {
     // Build conFull WITHOUT calling clean() on the already-cleaned parts
     const conNameRaw = clean(con0.consignee_name || "");
     const conAddrRaw = cleanAddrSplit(con0.consignee_address || "");
-    // FIX Bug 2: extract L.L.C. suffix, strip trailing dot, append to name
-    const llcMatch = conAddrRaw.match(/^(L\.L\.C\.?|LLC\.?|LTD\.?|PVT\.?)\s*/i);
-    const conNameFull = llcMatch 
+    // FIX Bug 2: extract L.L.C. suffix (now L L C after clean), strip trailing dot, append to name
+    const llcMatch = conAddrRaw.match(/^(L\s*L\s*C|LLC|LTD|PVT)\s*/i);
+    const conNameFull = llcMatch
         ? conNameRaw + " " + llcMatch[1].replace(/\.$/, "") // strip trailing dot
         : conNameRaw;
     const conAddrClean = llcMatch ? conAddrRaw.slice(llcMatch[0].length) : conAddrRaw;
-    // FIX Bug 2 [Final]: Join directly without extra space - llcMatch[0] consumed boundary space
-    const conFull = (conNameFull + conAddrClean).toUpperCase().replace(/\s+/g, " ").trim();
+    // FIX Bug 2 [Final]: Always join with a space — single space collapses naturally
+    const conFull = (conNameFull + " " + conAddrClean).toUpperCase().replace(/\s+/g, " ").trim();
     const cL = split35(conFull);   // cL[0]=name/start, cL[1-4]=address chunks
 
     let podest = prt(job.destination_port || "");
@@ -491,7 +487,7 @@ export function generateSBFlatFile(job) {
         sbModCHA,                                                           // [6]  AB+CHA licence
         iec,                                                                // [7]  IEC
         String(job.branchSrNo || job.branch_sno || job.branch_sr_no || 1), // [8]  FIX 31
-        trunc(clean(job.exporter || ""), 50),                              // [9]  Exporter name
+        trunc(clean(job.exporter || ""), 49),                              // [9]  Exporter name
         expAddr1,                                                           // [10] Exporter addr1
         expAddr2,                                                           // [11] Exporter addr2
         clean(job.exporter_state || job.state || ""),                      // [12] State — FIX 56 (was city)
@@ -592,18 +588,39 @@ export function generateSBFlatFile(job) {
         const addFreightMap = { "CIF": "B", "C&F": "F", "CF": "F", "C&I": "I", "CI": "I", "FOB": "N" };
         const af = addFreightMap[terms] || "N";
 
-        // FIX 55 (INVOICE): buyer fields also use the joined consignee split — same cL array
+        // FIX Bug: prioritizing actual overseas buyer from buyerThirdPartyInfo if present.
+        let bL;
+        const oBuyer = job.buyerThirdPartyInfo?.buyer || {};
+        if (oBuyer.name) {
+            const bName = oBuyer.name;
+            const bAddr = oBuyer.addressLine1 || oBuyer.address || "";
+            const buyerAddrRaw = cleanAddr(bAddr);
+            const bPinMatch = buyerAddrRaw.match(/,?\s*(\d{6})\s*$/);
+            const buyerAddrNoPIN = bPinMatch ? buyerAddrRaw.replace(/,?\s*\d{6}\s*$/, "").trim() : buyerAddrRaw;
+            const buyerFull = (clean(bName) + " " + buyerAddrNoPIN).toUpperCase().replace(/\s+/g, " ").trim();
+            bL = split35(buyerFull);
+        } else if (job.isBuyer && job.buyer_name) {
+            const buyerAddrRaw = cleanAddr(job.buyer_address || "");
+            const bPinMatch = buyerAddrRaw.match(/,?\s*(\d{6})\s*$/);
+            const buyerAddrNoPIN = bPinMatch ? buyerAddrRaw.replace(/,?\s*\d{6}\s*$/, "").trim() : buyerAddrRaw;
+            const buyerFull = (clean(job.buyer_name) + " " + buyerAddrNoPIN).toUpperCase().replace(/\s+/g, " ").trim();
+            bL = split35(buyerFull);
+        } else {
+            bL = cL; // Buyer same as Consignee
+        }
+
+        // FIX 55 (INVOICE): buyer fields use bL array (conditionally calculated above)
         out += row(PD,
             String(i + 1),                  // [6]  Invoice Sr No
             clean(inv.invoiceNumber || ""), // [7]  Invoice Number
             fmtDate(inv.invoiceDate),       // [8]  Invoice Date
             curr,                           // [9]  Currency
             ct,                             // [10] Contract Type
-            cL[0],                          // [11] Buyer Name/start
-            cL[1],                          // [12] Buyer Addr1
-            cL[2],                          // [13] Buyer Addr2
-            cL[3],                          // [14] Buyer Addr3
-            cL[4],                          // [15] Buyer Addr4
+            bL[0],                          // [11] Buyer Name/start
+            bL[1],                          // [12] Buyer Addr1
+            bL[2],                          // [13] Buyer Addr2
+            bL[3],                          // [14] Buyer Addr3
+            bL[4],                          // [15] Buyer Addr4
             fCurr,                          // [16] Freight Currency
             fAmt,                           // [17] Freight Amount
             "",                             // [18] Insurance Rate
@@ -657,9 +674,9 @@ export function generateSBFlatFile(job) {
                 String(ii + 1), String(pi + 1),
                 sc,
                 clean(p.ritc || ""),
-                trunc(desc, 40).trimEnd(),           // [10] FIX 26
-                trunc(desc.slice(40), 40),            // [11]
-                trunc(desc.slice(80), 40),            // [12]
+                trunc(desc, 39).trimEnd(),           // [10] FIX 26
+                trunc(desc.slice(39).trimStart(), 39),  // [11]
+                trunc(desc.slice(78).trimStart(), 39),  // [12]
                 uom, qty, upr, uom, "1", pmv,
                 "",                                   // [19] Job Work
                 "N",                                  // [20] Third Party
@@ -897,7 +914,7 @@ export function generateSBFlatFile(job) {
             // FIX Bug 1: Issuing party addr — normalize then trunc 35 / blank
             const ip = d.issuingParty || {};
             const ipNorm = cleanAddrSplit(ip.addressLine1 || "");
-            const ipAddrA = trunc(ipNorm, 33);
+            const ipAddrA = trunc(ipNorm, 32);
             const ipAddrB = ""; // Logisys always blank for this job
 
             // [14] — use State instead of City
@@ -907,7 +924,7 @@ export function generateSBFlatFile(job) {
             // FIX Bug 10/2: Beneficiary addr — strip L.L.C. prefix; preserve :
             const bp = d.beneficiaryParty || {};
             const bpRaw = cleanAddrSplit(bp.addressLine1 || "");
-            const bpMatch = bpRaw.match(/^(L\.L\.C\.?|LLC\.?|LTD\.?|PVT\.?)\s*/i);
+            const bpMatch = bpRaw.match(/^(L\s*L\s*C|LLC|LTD|PVT)\s*/i);
             const bpAddr = bpMatch ? bpRaw.slice(bpMatch[0].length) : bpRaw;
             const bL = split35(bpAddr);
             const bpAddr21 = bL[0];
@@ -918,7 +935,7 @@ export function generateSBFlatFile(job) {
             // [16] — Document Reference Number (MAX 17)
             // Logisys sends a 16-17 char identifier here. IRN is typically too long.
             const docRefRaw = d.imageRefNo || d.documentReferenceNo || d.irn || invs[invIdx]?.invoiceNumber || "";
-            const docRefFinal = trunc(clean(docRefRaw), 17);
+            const docRefFinal = trunc(clean(docRefRaw), 16);
 
             out += row(PD,
                 invSrNo, "0", String(di + 1),
@@ -933,12 +950,12 @@ export function generateSBFlatFile(job) {
                 "", "",
                 "PDF",
                 // FIX Bug 11: Beneficiary name — append L.L.C. back (keep trailing dot)
-                trunc(clean(ip.name || job.exporter || ""), 70),
+                trunc(clean(ip.name || job.exporter || ""), 69),
                 (() => {
                     const bpNameRaw = preserveSpaces(bp.name || "").toUpperCase();
                     return bpMatch
-                        ? trunc(bpNameRaw + " " + bpMatch[1].toUpperCase(), 70)
-                        : trunc(bpNameRaw, 70);
+                        ? trunc(bpNameRaw + " " + bpMatch[1].toUpperCase(), 69)
+                        : trunc(bpNameRaw, 69);
                 })(),
                 sid,
             );
@@ -964,7 +981,7 @@ export function generateSBFlatFile(job) {
                     String(re.itemSerialNo || 1),
                     re.manualBE ? "Y" : "N",
                     parseFloat(re.quantityExported || p.quantity || 0).toFixed(6),
-                    trunc(clean(re.beItemDescription || p.description || ""), 40),
+                    trunc(clean(re.beItemDescription || p.description || ""), 39),
                     parseFloat(re.quantityImported || 0).toFixed(6),
                     clean(re.qtyImportedUnit || p.qtyUnit || "KGS"),
                     parseFloat(re.assessableValue || 0).toFixed(6),
