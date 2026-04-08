@@ -934,6 +934,7 @@ const OperationsTab = ({ formik }) => {
       activeOpIndex={activeOpIndex}
       isAir={isAir}
       consignmentType={toUpper(formik.values.consignmentType || "")}
+      stuffedAt={toUpper(formik.values.goods_stuffed_at || "")}
       customHouse={toUpper(formik.values.custom_house || "")}
       defaultOpen={true}
     />
@@ -1297,6 +1298,7 @@ const StatusSection = ({
   activeOpIndex,
   isAir,
   consignmentType,
+  stuffedAt,
   customHouse,
   defaultOpen = false,
 }) => {
@@ -1305,6 +1307,9 @@ const StatusSection = ({
     data && data.length > 0 ? data : [getDefaultItem(section)];
 
   const hideStuffing = isAir || ["THAR DRY PORT", "ICD SACHANA", "AHMEDABAD AIR CARGO"].some(h => customHouse.includes(h));
+
+  const isLclDock = consignmentType === "LCL" && (stuffedAt === "DOCK" || stuffedAt === "DOCKS");
+  const isFclFactory = consignmentType === "FCL" && stuffedAt === "FACTORY";
 
   const row1Fields = [
     {
@@ -1349,21 +1354,21 @@ const StatusSection = ({
       label: "container placement",
       type: "date",
       width: 1,
-      hidden: isAir,
+      hidden: isAir || isLclDock || isFclFactory,
     },
     {
       field: "stuffingDate",
       label: "Stuffing",
       type: "date",
       width: 1,
-      hidden: hideStuffing,
+      hidden: hideStuffing || isLclDock || isFclFactory,
     },
     {
       field: "stuffingSheetUpload",
       label: "Stuffing Sheet",
       type: "upload",
       width: 1,
-      hidden: hideStuffing,
+      hidden: hideStuffing || isLclDock || isFclFactory,
     },
     {
       field: "stuffingPhotoUpload",
@@ -1398,7 +1403,7 @@ const StatusSection = ({
       label: "Handover Copy",
       type: "upload",
       width: 1,
-      hidden: isAir,
+      hidden: isAir || isLclDock,
     },
     {
       field: "forwarderName",
@@ -1411,7 +1416,7 @@ const StatusSection = ({
       label: "Dispatch Tracking",
       type: "dispatch",
       width: 2,
-      hidden: isAir,
+      hidden: isAir || isLclDock,
     },
     {
       field: "billingDocsSentDt",

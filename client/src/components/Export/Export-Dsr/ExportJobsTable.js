@@ -135,14 +135,14 @@ const s = {
   },
   select: {
     height: "30px",
-    padding: "0 24px 0 8px",
+    padding: "0 18px 0 4px",
     fontSize: "12px",
     border: "1px solid #d1d5db",
     borderRadius: "3px",
     backgroundColor: "#fff",
     color: "#333",
     cursor: "pointer",
-    minWidth: "150px",
+    minWidth: "10px",
   },
 
   // Table
@@ -585,7 +585,7 @@ const ExportJobsTable = () => {
     setSelectedGoodsStuffedAt("");
     setPage(1);
     setSortConfig({ key: null, direction: 'asc' });
-    
+
     // Clear storage but immediate re-save will happen via useEffect for selectedBranch
     localStorage.removeItem(FILTER_STORAGE_KEY);
   };
@@ -638,23 +638,47 @@ const ExportJobsTable = () => {
   const [queryDialogOpen, setQueryDialogOpen] = useState(false);
   const [queryDialogJob, setQueryDialogJob] = useState(null);
 
-  // Fetch Exporters for DSR
+  // Fetch Filtered Exporters based on other criteria
   useEffect(() => {
-    const fetchExporters = async () => {
+    const fetchFilteredExporters = async () => {
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/exporter-list`,
+          `${import.meta.env.VITE_API_STRING}/filtered-exporters`,
+          {
+            params: {
+              status: activeTab,
+              year: selectedYear === "all" ? "" : selectedYear,
+              consignmentType: selectedMovementType,
+              branch: selectedBranch,
+              detailedStatus: selectedDetailedStatus,
+              customHouse: selectedCustomHouse,
+              month: selectedMonth,
+              goods_stuffed_at: selectedGoodsStuffedAt,
+              jobOwner: selectedJobOwner,
+            },
+          }
         );
         if (response.data.success) {
           setExporters(response.data.data || []);
         }
       } catch (err) {
-        console.error("Error fetching exporters:", err);
+        console.error("Error fetching filtered exporters:", err);
       }
     };
 
-    fetchExporters();
-  }, []);
+    const timer = setTimeout(fetchFilteredExporters, 300);
+    return () => clearTimeout(timer);
+  }, [
+    activeTab,
+    selectedYear,
+    selectedMovementType,
+    selectedBranch,
+    selectedDetailedStatus,
+    selectedCustomHouse,
+    selectedJobOwner,
+    selectedMonth,
+    selectedGoodsStuffedAt,
+  ]);
 
   // Fetch Custom Houses list
   useEffect(() => {
@@ -916,10 +940,8 @@ const ExportJobsTable = () => {
         endpoint = `${import.meta.env.VITE_API_STRING}/operation-jobs`;
       }
 
-      // If there's a search query, use the global search API to find jobs regardless of status
-      if (searchQuery.trim()) {
-        endpoint = `${import.meta.env.VITE_API_STRING}/global-search-jobs`;
-      }
+      // Removed global-search-jobs override to enable normal tab-specific search
+
 
       const response = await axios.get(
         endpoint,
@@ -1728,7 +1750,7 @@ const ExportJobsTable = () => {
 
             {/* Branch Filter */}
             <select
-              style={s.select}
+              style={{ ...s.select, minWidth: "110px" }}
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
             >
@@ -1788,7 +1810,7 @@ const ExportJobsTable = () => {
 
             {/* Job Owner Filter */}
             <select
-              style={{ ...s.select, minWidth: "120px" }}
+              style={{ ...s.select, minWidth: "100px" }}
               value={selectedJobOwner}
               onChange={(e) => setSelectedJobOwner(e.target.value)}
             >
@@ -1812,16 +1834,21 @@ const ExportJobsTable = () => {
               filterOptions={(options, { inputValue }) =>
                 priorityFilter(options, inputValue)
               }
+              renderOption={(props, option) => (
+                <li {...props} style={{ fontSize: "13px", padding: "4px 10px", minHeight: "auto" }}>
+                  {option}
+                </li>
+              )}
               renderInput={(params) => (
                 <TextField
                   {...params}
                   placeholder="All Exporters"
                   variant="outlined"
                   sx={{
-                    width: 200,
+                    width: 190,
                     "& .MuiInputBase-root": {
+                      padding: "0 4px 0 4px !important",
                       height: "30px",
-                      padding: "0 8px 0 8px !important",
                       fontSize: "12px",
                       backgroundColor: "#fff",
                     },
@@ -1834,7 +1861,7 @@ const ExportJobsTable = () => {
             />
 
             {/* Detailed Status Filter - MUI Select */}
-            <FormControl size="small" style={{ minWidth: 180 }}>
+            <FormControl size="small" style={{ minWidth: 160 }}>
               <Select
                 value={selectedDetailedStatus}
                 onChange={(e) => setSelectedDetailedStatus(e.target.value)}
@@ -1844,7 +1871,7 @@ const ExportJobsTable = () => {
                   height: 30,
                   fontSize: "12px",
                   "& .MuiSelect-select": {
-                    padding: "4px 8px",
+                    padding: "4px 4px",
                     display: "flex",
                     alignItems: "center",
                   },
@@ -1907,7 +1934,7 @@ const ExportJobsTable = () => {
               style={{
                 display: "flex",
                 flex: 1,
-                minWidth: "250px", // Ensure it doesn't get too small
+                minWidth: "100px", // Ensure it doesn't get too small
                 justifyContent: "flex-end",
                 gap: "10px",
               }}
@@ -3346,23 +3373,23 @@ const ExportJobsTable = () => {
           </ForwardingNoteTharGenerator>
         )}
 
-        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") && 
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") && 
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") && 
+        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") &&
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") &&
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") &&
           selectedDocJob?.transportMode !== "AIR") && (
-          <AnnexureCGenerator jobNo={selectedDocJob?.job_no}>
-            <MenuItem
-              disableRipple
-              onClick={() => {
-                setDocsAnchorEl(null);
-                setSelectedDocJob(null);
-              }}
-              sx={{ fontSize: 13, minWidth: 150 }}
-            >
-              Annexure C
-            </MenuItem>
-          </AnnexureCGenerator>
-        )}
+            <AnnexureCGenerator jobNo={selectedDocJob?.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => {
+                  setDocsAnchorEl(null);
+                  setSelectedDocJob(null);
+                }}
+                sx={{ fontSize: 13, minWidth: 150 }}
+              >
+                Annexure C
+              </MenuItem>
+            </AnnexureCGenerator>
+          )}
 
         {(selectedDocJob?.custom_house?.toUpperCase().includes("SABARMATI") || selectedDocJob?.custom_house?.toUpperCase().includes("CONCOR")) && (
           <ConcorForwardingNoteGenerator jobNo={selectedDocJob?.job_no}>
@@ -3379,59 +3406,59 @@ const ExportJobsTable = () => {
           </ConcorForwardingNoteGenerator>
         )}
 
-        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") && 
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") && 
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") && 
+        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") &&
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") &&
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") &&
           selectedDocJob?.transportMode !== "AIR") && (
-          <VGMAuthorizationGenerator jobNo={selectedDocJob?.job_no}>
-            <MenuItem
-              disableRipple
-              onClick={() => {
-                setDocsAnchorEl(null);
-                setSelectedDocJob(null);
-              }}
-              sx={{ fontSize: 13, minWidth: 150 }}
-            >
-              VGM Authorization
-            </MenuItem>
-          </VGMAuthorizationGenerator>
-        )}
+            <VGMAuthorizationGenerator jobNo={selectedDocJob?.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => {
+                  setDocsAnchorEl(null);
+                  setSelectedDocJob(null);
+                }}
+                sx={{ fontSize: 13, minWidth: 150 }}
+              >
+                VGM Authorization
+              </MenuItem>
+            </VGMAuthorizationGenerator>
+          )}
 
-        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") && 
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") && 
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") && 
+        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") &&
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") &&
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") &&
           selectedDocJob?.transportMode !== "AIR") && (
-          <FreightCertificateGenerator jobNo={selectedDocJob?.job_no}>
-            <MenuItem
-              disableRipple
-              onClick={() => {
-                setDocsAnchorEl(null);
-                setSelectedDocJob(null);
-              }}
-              sx={{ fontSize: 13, minWidth: 150 }}
-            >
-              Freight Certificate
-            </MenuItem>
-          </FreightCertificateGenerator>
-        )}
+            <FreightCertificateGenerator jobNo={selectedDocJob?.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => {
+                  setDocsAnchorEl(null);
+                  setSelectedDocJob(null);
+                }}
+                sx={{ fontSize: 13, minWidth: 150 }}
+              >
+                Freight Certificate
+              </MenuItem>
+            </FreightCertificateGenerator>
+          )}
 
-        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") && 
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") && 
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") && 
+        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") &&
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") &&
+          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") &&
           selectedDocJob?.transportMode !== "AIR") && (
-          <BillOfLadingGenerator jobNo={selectedDocJob?.job_no}>
-            <MenuItem
-              disableRipple
-              onClick={() => {
-                setDocsAnchorEl(null);
-                setSelectedDocJob(null);
-              }}
-              sx={{ fontSize: 13, minWidth: 150 }}
-            >
-              Bill of Lading
-            </MenuItem>
-          </BillOfLadingGenerator>
-        )}
+            <BillOfLadingGenerator jobNo={selectedDocJob?.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => {
+                  setDocsAnchorEl(null);
+                  setSelectedDocJob(null);
+                }}
+                sx={{ fontSize: 13, minWidth: 150 }}
+              >
+                Bill of Lading
+              </MenuItem>
+            </BillOfLadingGenerator>
+          )}
 
         <MenuItem
           onClick={() => {

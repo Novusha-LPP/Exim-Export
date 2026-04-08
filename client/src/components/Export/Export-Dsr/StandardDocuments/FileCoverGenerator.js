@@ -45,7 +45,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
       // Composite Header Logo (Branding + Subtext + AEO)
       try {
         // Adjusted dimensions (wider) to fit the new full-header logo
-        doc.addImage(logo, "PNG", 8, 10, 110, 26);
+        doc.addImage(logo, "PNG", 8, 20, 110, 26);
       } catch (err) {
         console.warn("Logo add failed", err);
       }
@@ -55,30 +55,30 @@ const FileCoverGenerator = ({ jobNo, children }) => {
       doc.setFont("helvetica", "bold");
       const jobNoText = `JOB NO. ${data.job_no || ""}`;
       const jobNoWidth = doc.getTextWidth(jobNoText);
-      doc.text(jobNoText, (pageWidth - jobNoWidth) / 2, 8);
+      doc.text(jobNoText, (pageWidth - jobNoWidth) / 2, 18);
 
 
       // Address Block (Right Aligned)
       const rightMargin = 15;
       const addressX = 130;
       doc.setFontSize(10);
-      doc.text("A-204 to 207, Wall Street - II,", addressX, 15);
-      doc.text("Opp. Orient Club, Ellis Bridge,", addressX, 19);
-      doc.text("Ahmedabad - 380 006.", addressX, 23);
-      doc.text("Phone : (079) 2640 1929 / 2640 2005 / 6", addressX, 27);
+      doc.text("A-204 to 207, Wall Street - II,", addressX, 25);
+      doc.text("Opp. Orient Club, Ellis Bridge,", addressX, 29);
+      doc.text("Ahmedabad - 380 006.", addressX, 33);
+      doc.text("Phone : (079) 2640 1929 / 2640 2005 / 6", addressX, 37);
       doc.setTextColor(0, 0, 0);
-      doc.text("Email : info@surajforwarders.com", addressX, 31);
+      doc.text("Email : info@surajforwarders.com", addressX, 41);
 
       // CHA License Box (Bottom Right of Header)
       doc.setFillColor(0, 0, 139); // Dark Blue
-      doc.rect(addressX, 33, 72, 6, "F");
+      doc.rect(addressX, 43, 72, 6, "F");
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
-      doc.text("CHA LICENCE NO : ABOFS1766LCH005", addressX + 2, 37.2);
+      doc.text("CHA LICENCE NO : ABOFS1766LCH005", addressX + 2, 47.2);
       doc.setTextColor(0, 0, 0);
 
-      let yPos = 45;
+      let yPos = 55;
 
       // ==================== MAIN TABLE ====================
       // Mapping Data

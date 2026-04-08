@@ -1036,6 +1036,246 @@ router.get("/exports/:status?", async (req, res) => {
   }
 });
 
+// GET /api/filtered-exporters - Get unique list of exporters matching current filters
+router.get("/filtered-exporters", async (req, res) => {
+  try {
+    const {
+      search = "",
+      consignmentType = "",
+      branch = "",
+      status = "all",
+      year = "",
+      detailedStatus = "",
+      jobOwner = "",
+      month = "",
+      customHouse = "",
+      goods_stuffed_at = "",
+    } = req.query;
+
+    const filter = {};
+    if (!filter.$and) filter.$and = [];
+
+    // 1. Fetch user restrictions
+    const requesterUsername = req.headers["username"] || req.headers["x-username"];
+    if (requesterUsername) {
+      const requester = await UserModel.findOne({ username: requesterUsername });
+      if (requester && requester.role !== "Admin") {
+        const branchRestrictions = requester.selected_branches || [];
+        if (branchRestrictions.length > 0) {
+          filter.$and.push({ branch_code: { $in: branchRestrictions } });
+        }
+
+        const portRestrictions = requester.selected_ports || [];
+        const icdRestrictions = requester.selected_icd_codes || [];
+        const combinedRestrictions = [...new Set([...portRestrictions, ...icdRestrictions])];
+
+        if (combinedRestrictions.length > 0) {
+          const finalRestrictions = [];
+          combinedRestrictions.forEach(res => {
+            finalRestrictions.push(res);
+            if (res.includes(" - ")) {
+              finalRestrictions.push(res.split(" - ")[0].trim());
+            }
+          });
+
+          const combinedRegexStr = finalRestrictions.map(r =>
+            `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+          ).join('|');
+
+          filter.$and.push({
+            $or: [
+              { custom_house: { $regex: combinedRegexStr, $options: "i" } },
+              { port_of_loading: { $regex: combinedRegexStr, $options: "i" } }
+            ]
+          });
+        }
+      }
+    }
+
+    if (jobOwner) filter.$and.push({ job_owner: { $regex: jobOwner, $options: "i" } });
+
+    // 2. Status filtering logic (mirrors /exports)
+    if (status && status.toLowerCase() !== "all") {
+      const statusLower = status.toLowerCase();
+      if (statusLower === "pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+            { isJobCanceled: { $ne: true } },
+          ],
+        });
+      } else if (statusLower === "completed") {
+        filter.$and.push({
+          $and: [
+            { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
+            { isJobCanceled: { $ne: true } },
+            {
+              $or: [
+                { status: { $regex: "^completed$", $options: "i" } },
+                { detailedStatus: "Billing Done" },
+              ],
+            },
+          ],
+        });
+      } else if (statusLower === "cancelled") {
+        filter.$and.push({
+          $or: [
+            { status: { $regex: "^cancelled$", $options: "i" } },
+            { isJobCanceled: true },
+          ],
+        });
+      } else if (statusLower === "booking pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          goods_stuffed_at: "DOCK",
+          consignmentType: "FCL",
+          sb_no: { $type: "string", $ne: "" },
+          $or: [
+            { "operations.statusDetails.leoDate": { $exists: false } },
+            { "operations.statusDetails.leoDate": null },
+            { "operations.statusDetails.leoDate": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      } else if (statusLower === "handover pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
+          $or: [
+            { "operations.statusDetails.handoverForwardingNoteDate": { $exists: false } },
+            { "operations.statusDetails.handoverForwardingNoteDate": null },
+            { "operations.statusDetails.handoverForwardingNoteDate": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      } else if (statusLower === "billing pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
+          $or: [
+            { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
+            { "operations.statusDetails.billingDocsSentDt": null },
+            { "operations.statusDetails.billingDocsSentDt": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      } else {
+        filter.$and.push({
+          status: { $regex: `^${status}$`, $options: "i" },
+        });
+      }
+    }
+
+    // 3. Search filter
+    if (search) {
+      filter.$and.push({
+        $or: [
+          { job_no: { $regex: search, $options: "i" } },
+          { exporter: { $regex: search, $options: "i" } },
+          { "consignees.consignee_name": { $regex: search, $options: "i" } },
+          { sb_no: { $regex: search, $options: "i" } },
+          { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
+          { "containers.containerNo": { $regex: search, $options: "i" } }
+        ],
+      });
+    }
+
+    // 4. Other fields
+    if (consignmentType) filter.$and.push({ consignmentType: consignmentType });
+    if (branch) filter.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
+    if (year && year !== "all") filter.$and.push({ year: year });
+    if (detailedStatus) filter.$and.push({ detailedStatus: detailedStatus });
+    if (customHouse) filter.$and.push({ custom_house: { $regex: customHouse, $options: "i" } });
+    if (goods_stuffed_at) filter.$and.push({ goods_stuffed_at: goods_stuffed_at });
+
+    if (month) {
+      // Month logic same as /exports
+      if (month === "today") {
+          const start = new Date(); start.setHours(0,0,0,0);
+          const end = new Date(); end.setHours(23,59,59,999);
+          filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+      } else if (month === "yesterday") {
+          const start = new Date(); start.setDate(start.getDate()-1); start.setHours(0,0,0,0);
+          const end = new Date(); end.setDate(end.getDate()-1); end.setHours(23,59,59,999);
+          filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+      } else if (month === "weekly") {
+          const start = new Date(); start.setDate(start.getDate()-7); start.setHours(0,0,0,0);
+          const end = new Date(); end.setHours(23,59,59,999);
+          filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+      } else if (!isNaN(month)) {
+          filter.$and.push({
+            $expr: {
+              $let: {
+                vars: {
+                  effDate: {
+                    $cond: {
+                      if: {
+                        $and: [
+                          { $ne: ["$job_date", null] },
+                          { $ne: ["$job_date", ""] },
+                          { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
+                        ]
+                      },
+                      then: { $dateFromString: { dateString: "$job_date", format: "%d-%m-%Y", onError: "$createdAt" } },
+                      else: "$createdAt"
+                    }
+                  }
+                },
+                in: { $eq: [{ $month: "$$effDate" }, parseInt(month)] }
+              }
+            }
+          });
+      }
+    }
+
+    if (filter.$and && filter.$and.length === 0) delete filter.$and;
+
+    const uniqueExporters = await ExportJobModel.distinct("exporter", filter);
+    res.json({ success: true, data: uniqueExporters.filter(Boolean).sort() });
+  } catch (error) {
+    console.error("Error fetching filtered exporters:", error);
+    res.status(500).json({ success: false, message: "Error fetching filtered exporters" });
+  }
+});
+
 // POST /api/exports - Create new export job
 router.post("/exports", auditMiddleware("Job"), async (req, res) => {
   try {

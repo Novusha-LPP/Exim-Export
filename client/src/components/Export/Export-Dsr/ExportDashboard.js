@@ -19,8 +19,12 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import { Dialog, DialogTitle, DialogContent, IconButton, Snackbar, Alert } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, IconButton, Snackbar, Alert, Tooltip as MuiTooltip } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import BarChartIcon from "@mui/icons-material/BarChart";
+import ShowChartIcon from "@mui/icons-material/ShowChart";
 import AddExJobs from "./AddExJobs";
 import { useNavigate } from "react-router-dom";
 
@@ -38,7 +42,7 @@ const THEME = {
   text: "#111827",
   textMuted: "#6b7280",
   border: "#e5e7eb",
-  bg: "#f3f4f6",
+  bg: "#fafaffff",
   white: "#ffffff",
 };
 
@@ -79,30 +83,30 @@ const PieTooltip = ({ active, payload }) => {
 const StatCard = ({ title, value, color, softColor, icon }) => (
   <div style={{
     background: THEME.white,
-    borderRadius: 8,
-    padding: "18px 20px",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+    borderRadius: 12,
+    padding: "14px 16px",
+    boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
     border: `1px solid ${THEME.border}`,
-    borderTop: `3px solid ${color}`,
     display: "flex",
-    flexDirection: "column",
-    gap: 6,
+    alignItems: "center",
+    gap: 12,
     minWidth: 0,
+    flex: 1,
   }}>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: THEME.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+    <div style={{
+      width: 40, height: 40, borderRadius: 10,
+      background: softColor, display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: 20, flexShrink: 0,
+    }}>
+      {icon}
+    </div>
+    <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <span style={{ fontSize: 10, fontWeight: 700, color: THEME.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>
         {title}
       </span>
-      <span style={{
-        width: 32, height: 32, borderRadius: 8,
-        background: softColor, display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 16,
-      }}>
-        {icon}
-      </span>
-    </div>
-    <div style={{ fontSize: 34, fontWeight: 800, color, lineHeight: 1 }}>
-      {value?.toLocaleString?.() ?? value}
+      <div style={{ fontSize: 24, fontWeight: 800, color: THEME.text, lineHeight: 1.1 }}>
+        {value?.toLocaleString?.() ?? value}
+      </div>
     </div>
   </div>
 );
@@ -120,6 +124,7 @@ const ExportDashboard = () => {
   const [isAddJobOpen, setIsAddJobOpen] = useState(false);
   const [recentJobs, setRecentJobs] = useState([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
+  const [chartType, setChartType] = useState("area"); // "area" or "bar"
 
   const {
     handleFileUpload,
@@ -135,7 +140,7 @@ const ExportDashboard = () => {
   });
 
   const [filters, setFilters] = useState({
-    year: "", movementType: "", branch: "", exporter: "", status: "",
+    year: "26-27", movementType: "", branch: "", exporter: "", status: "",
   });
 
   // Fetch exporters list
@@ -261,10 +266,10 @@ const ExportDashboard = () => {
       {/* ── Header ── */}
       <div style={{
         background: THEME.white,
-        borderRadius: 8,
-        padding: "14px 20px",
+        borderRadius: 12,
+        padding: "12px 20px",
         marginBottom: 16,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
         border: `1px solid ${THEME.border}`,
         display: "flex",
         justifyContent: "space-between",
@@ -274,85 +279,55 @@ const ExportDashboard = () => {
       }}>
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 800, color: THEME.text, margin: 0 }}>
-            Export Overview
+            Dashboard
           </h1>
-          <p style={{ fontSize: 11, color: THEME.textMuted, margin: "2px 0 0" }}>
-            Real-time summary of all export jobs
+          <p style={{ fontSize: 11, color: THEME.textMuted, margin: "1px 0 0" }}>
+            Welcome back, Export Team
           </p>
         </div>
 
-        {/* Right side: Upload button + timestamp — fixed alignment (TC_EXP_011, TC_EXP_013) */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          {/* Upload Feedback */}
-          {uploadLoading && progress.total > 0 && (
-            <span style={{ fontSize: 11, color: THEME.textMuted }}>
-              {progress.current}/{progress.total} chunks
-            </span>
-          )}
-          {snackbar && uploadStats && (
-            <span style={{ fontSize: 11, color: THEME.green, fontWeight: 600, background: THEME.greenSoft, padding: "3px 8px", borderRadius: 4 }}>
-              ✅ {uploadStats.count} records in {uploadStats.timeTaken}s
-            </span>
-          )}
-
-          {/* Unified Action Box (TC_EXP_011, TC_EXP_013) */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 0,
-            background: THEME.white, borderRadius: 8,
-            border: `1px solid ${THEME.border}`,
-            overflow: "hidden",
-            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-          }}>
-            <div style={{
-              display: "flex", flexDirection: "column", alignItems: "flex-end",
-              padding: "6px 14px",
-              fontSize: 10, color: THEME.textMuted, lineHeight: 1.2,
-              backgroundColor: "#f9fafb",
-              borderRight: `1px solid ${THEME.border}`,
-            }}>
-              <span style={{ fontWeight: 700, color: THEME.text, textTransform: "uppercase", fontSize: 8, letterSpacing: "0.02em" }}>Last Updated</span>
-              <span style={{ fontWeight: 600, color: THEME.blue }}>{formatDate(lastUpdated)} {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
-            </div>
-
-            <button
-              id="dashboard-upload-btn"
-              className="dash-btn"
-              onClick={() => !uploadLoading && inputRef.current?.click()}
-              disabled={uploadLoading}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "10px 16px",
-                backgroundColor: uploadLoading ? "#f3f4f6" : THEME.white,
-                color: uploadLoading ? THEME.textMuted : THEME.blue,
-                border: "none",
-                cursor: uploadLoading ? "not-allowed" : "pointer",
-                fontSize: 12, fontWeight: 700,
-                transition: "all 0.15s",
-              }}
-            >
-              {uploadLoading ? (
-                <>
-                  <span style={{
-                    width: 12, height: 12, border: "2px solid #3b82f6",
-                    borderTopColor: "transparent", borderRadius: "50%",
-                    display: "inline-block",
-                    animation: "spin 0.8s linear infinite",
-                  }} />
-                  <span style={{ color: THEME.textMuted }}>Uploading...</span>
-                </>
-              ) : (
-                <>
-                  <span style={{ fontSize: 16 }}>📊</span>
-                  <span>Import Excel</span>
-                </>
-              )}
-            </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ textAlign: "right", fontSize: 10, color: THEME.textMuted }}>
+            <span style={{ fontWeight: 700, color: THEME.text, textTransform: "uppercase", fontSize: 8 }}>Last Updated</span>
+            <div style={{ fontWeight: 600, color: THEME.blue }}>{formatDate(lastUpdated)} {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}</div>
           </div>
+
+          <button
+            className="dash-btn"
+            onClick={() => setRefreshTrigger(p => p + 1)}
+            style={{
+              padding: "8px", borderRadius: 8, border: `1px solid ${THEME.border}`,
+              background: THEME.white, cursor: "pointer", display: "flex"
+            }}
+          >
+            <RefreshIcon sx={{ fontSize: 18, color: THEME.textMuted }} />
+          </button>
+
+          <button
+            id="dashboard-upload-btn"
+            className="dash-btn"
+            onClick={() => !uploadLoading && inputRef.current?.click()}
+            disabled={uploadLoading}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "7px 14px",
+              backgroundColor: uploadLoading ? "#f3f4f6" : THEME.blue,
+              color: THEME.white,
+              border: "none",
+              borderRadius: 8,
+              cursor: uploadLoading ? "not-allowed" : "pointer",
+              fontSize: 12, fontWeight: 700,
+              transition: "all 0.15s",
+            }}
+          >
+            {uploadLoading ? "..." : "Import Jobs"}
+          </button>
+
           <input
             type="file"
             ref={inputRef}
             onChange={handleFileUpload}
-            accept=".xlsx,.xls,.csv,.xml,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/xml,application/xml"
+            accept=".xlsx,.xls,.csv,.xml"
             style={{ display: "none" }}
           />
         </div>
@@ -361,39 +336,37 @@ const ExportDashboard = () => {
       {/* ── Filters Row ── */}
       <div style={{
         background: THEME.white,
-        borderRadius: 8,
-        padding: "14px 20px",
+        borderRadius: 12,
+        padding: "10px 20px",
         marginBottom: 16,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
         border: `1px solid ${THEME.border}`,
         display: "flex",
-        gap: 12,
+        gap: 10,
         flexWrap: "wrap",
-        alignItems: "flex-end",
+        alignItems: "center",
       }}>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: "2 1 200px", minWidth: 180 }}>
-          <label style={{ fontSize: 10, fontWeight: 700, color: THEME.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: "2 1 200px", minWidth: 150 }}>
+          <label style={{ fontSize: 9, fontWeight: 700, color: THEME.textMuted, textTransform: "uppercase" }}>
             Search
           </label>
           <input
             id="dashboard-search"
             className="dash-input"
             type="text"
-            placeholder="Job No, Exporter…"
+            placeholder="Filter chart/Jobs…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
-              height: 34, padding: "0 10px", fontSize: 12,
-              border: `1px solid ${THEME.border}`, borderRadius: 5,
-              background: "#fff", color: THEME.text,
-              transition: "border-color 0.15s",
+              height: 30, padding: "0 10px", fontSize: 11,
+              border: `1px solid ${THEME.border}`, borderRadius: 6,
+              background: "#f9fafb", color: THEME.text,
             }}
           />
         </div>
 
         {[
-
           {
             key: "year", label: "Year",
             options: [
@@ -409,7 +382,7 @@ const ExportDashboard = () => {
           {
             key: "movementType", label: "Type",
             options: [
-              { value: "", label: "All Types" },
+              { value: "", label: "All" },
               { value: "FCL", label: "FCL" },
               { value: "LCL", label: "LCL" },
               { value: "AIR", label: "AIR" },
@@ -418,7 +391,7 @@ const ExportDashboard = () => {
           {
             key: "branch", label: "Branch",
             options: [
-              { value: "", label: "All Branches" },
+              { value: "", label: "All" },
               { value: "BRD", label: "Baroda" },
               { value: "GIM", label: "Gandhidham" },
               { value: "HAZ", label: "Hazira" },
@@ -427,8 +400,8 @@ const ExportDashboard = () => {
             ],
           },
         ].map(({ key, label, options }) => (
-          <div key={key} style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 140px", minWidth: 130 }}>
-            <label style={{ fontSize: 10, fontWeight: 700, color: THEME.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <div key={key} style={{ display: "flex", flexDirection: "column", gap: 2, flex: "1 1 100px", minWidth: 80 }}>
+            <label style={{ fontSize: 9, fontWeight: 700, color: THEME.textMuted, textTransform: "uppercase" }}>
               {label}
             </label>
             <select
@@ -437,9 +410,9 @@ const ExportDashboard = () => {
               value={filters[key]}
               onChange={(e) => handleFilter(key, e.target.value)}
               style={{
-                height: 34, padding: "0 8px", fontSize: 12,
-                border: `1px solid ${THEME.border}`, borderRadius: 5,
-                background: "#fff", color: THEME.text,
+                height: 30, padding: "0 8px", fontSize: 11,
+                border: `1px solid ${THEME.border}`, borderRadius: 6,
+                background: "#f9fafb", color: THEME.text,
                 cursor: "pointer",
               }}
             >
@@ -449,8 +422,8 @@ const ExportDashboard = () => {
         ))}
 
         {/* Exporter dropdown */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: "2 1 180px", minWidth: 160 }}>
-          <label style={{ fontSize: 10, fontWeight: 700, color: THEME.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: "3 1 200px", minWidth: 160 }}>
+          <label style={{ fontSize: 9, fontWeight: 700, color: THEME.textMuted, textTransform: "uppercase" }}>
             Exporter
           </label>
           <select
@@ -459,9 +432,9 @@ const ExportDashboard = () => {
             value={filters.exporter}
             onChange={(e) => handleFilter("exporter", e.target.value)}
             style={{
-              height: 34, padding: "0 8px", fontSize: 12,
-              border: `1px solid ${THEME.border}`, borderRadius: 5,
-              background: "#fff", color: THEME.text,
+              height: 30, padding: "0 8px", fontSize: 11,
+              border: `1px solid ${THEME.border}`, borderRadius: 6,
+              background: "#f9fafb", color: THEME.text,
               cursor: "pointer",
             }}
           >
@@ -470,19 +443,19 @@ const ExportDashboard = () => {
           </select>
         </div>
 
-        {/* Clear Filters */}
-        <button
-          id="dashboard-clear-filters"
-          onClick={() => { setFilters({ year: "", movementType: "", branch: "", exporter: "" }); setSearchQuery(""); }}
-          style={{
-            height: 34, padding: "0 12px", fontSize: 11, fontWeight: 600,
-            border: `1px solid ${THEME.border}`, borderRadius: 5,
-            background: "#fff", color: THEME.textMuted, cursor: "pointer",
-            whiteSpace: "nowrap", alignSelf: "flex-end",
-          }}
-        >
-          ✕ Clear
-        </button>
+        {/* Clear Filters Icon */}
+        <MuiTooltip title="Clear Filters">
+          <IconButton
+            onClick={() => { setFilters({ year: "26-27", movementType: "", branch: "", exporter: "" }); setSearchQuery(""); }}
+            sx={{
+              mt: 2, border: `1px solid ${THEME.border}`, borderRadius: 2,
+              backgroundColor: "#fff", transition: "all 0.2s",
+              "&:hover": { backgroundColor: "#fee2e2", color: THEME.red }
+            }}
+          >
+            <FilterAltOffIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </MuiTooltip>
       </div>
 
       {/* ── Quick Statistics Cards — 4 on one row (TC_DASH_002 fix) ── */}
@@ -540,60 +513,119 @@ const ExportDashboard = () => {
         {/* Monthly Bar Chart (TC_EXP_006 fix: shows all 12 months) */}
         <div style={{
           background: THEME.white,
-          borderRadius: 8,
-          padding: "20px 20px 16px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+          borderRadius: 12,
+          padding: "20px",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
           border: `1px solid ${THEME.border}`,
           display: "flex",
           flexDirection: "column",
         }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
             <div>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: THEME.text, margin: 0 }}>Monthly Job Volume</h3>
-              <p style={{ fontSize: 11, color: THEME.textMuted, margin: "3px 0 0" }}>All 12 months of the year</p>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: THEME.text, margin: 0 }}>Monthly Volume</h3>
+              <p style={{ fontSize: 11, color: THEME.textMuted, margin: "2px 0 0" }}>Financial Year {filters.year || 'Trend'}</p>
             </div>
-            <span style={{
-              fontSize: 11, backgroundColor: THEME.blueSoft, color: THEME.blue,
-              padding: "3px 10px", borderRadius: 20, fontWeight: 600,
-            }}>
-              Total: {monthlyData.reduce((a, m) => a + m.jobs, 0)}
-            </span>
+
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {/* Chart Switch */}
+              <div style={{
+                display: "flex", background: "#f1f5f9", padding: "3px", borderRadius: 8, border: "1px solid #e2e8f0"
+              }}>
+                <button
+                  onClick={() => setChartType("area")}
+                  style={{
+                    padding: "4px 8px", border: "none", borderRadius: 6, cursor: "pointer",
+                    background: chartType === "area" ? "#fff" : "transparent",
+                    color: chartType === "area" ? THEME.blue : THEME.textMuted,
+                    boxShadow: chartType === "area" ? "0 2px 4px rgba(0,0,0,0.05)" : "none",
+                    display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700
+                  }}
+                >
+                  <ShowChartIcon sx={{ fontSize: 14 }} /> Area
+                </button>
+                <button
+                  onClick={() => setChartType("bar")}
+                  style={{
+                    padding: "4px 8px", border: "none", borderRadius: 6, cursor: "pointer",
+                    background: chartType === "bar" ? "#fff" : "transparent",
+                    color: chartType === "bar" ? THEME.blue : THEME.textMuted,
+                    boxShadow: chartType === "bar" ? "0 2px 4px rgba(0,0,0,0.05)" : "none",
+                    display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700
+                  }}
+                >
+                  <BarChartIcon sx={{ fontSize: 14 }} /> Pillar
+                </button>
+              </div>
+
+              <span style={{
+                fontSize: 10, backgroundColor: THEME.blueSoft, color: THEME.blue,
+                padding: "3px 10px", borderRadius: 20, fontWeight: 700,
+              }}>
+                Total: {monthlyData.reduce((a, m) => a + m.jobs, 0)}
+              </span>
+            </div>
           </div>
+
           <div style={{ height: 280, marginTop: 10 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={filteredMonthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorJobs" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={THEME.blue} stopOpacity={0.1} />
-                    <stop offset="95%" stopColor={THEME.blue} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={THEME.border} />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false} tickLine={false}
-                  tick={{ fill: THEME.textMuted, fontSize: 11, fontWeight: 500 }}
-                  dy={10}
-                />
-                <YAxis
-                  axisLine={false} tickLine={false}
-                  tick={{ fill: THEME.textMuted, fontSize: 11, fontWeight: 500 }}
-                  allowDecimals={false}
-                />
-                <Tooltip
-                  content={<BarTooltip />}
-                  cursor={{ stroke: THEME.blue, strokeWidth: 1, strokeDasharray: "4 4" }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="jobs"
-                  stroke={THEME.blue}
-                  strokeWidth={3}
-                  fillOpacity={1}
-                  fill="url(#colorJobs)"
-                  activeDot={{ r: 6, strokeWidth: 0, fill: THEME.blue }}
-                />
-              </AreaChart>
+              {chartType === "area" ? (
+                <AreaChart data={filteredMonthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorJobs" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={THEME.blue} stopOpacity={0.15} />
+                      <stop offset="95%" stopColor={THEME.blue} stopOpacity={0.01} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false} tickLine={false}
+                    tick={{ fill: THEME.textMuted, fontSize: 10, fontWeight: 500 }}
+                    dy={10}
+                  />
+                  <YAxis
+                    axisLine={false} tickLine={false}
+                    tick={{ fill: THEME.textMuted, fontSize: 10, fontWeight: 500 }}
+                    allowDecimals={false}
+                  />
+                  <Tooltip content={<BarTooltip />} cursor={{ stroke: THEME.blue, strokeWidth: 1, strokeDasharray: "4 4" }} />
+                  <Area
+                    type="natural"
+                    dataKey="jobs"
+                    stroke={THEME.blue}
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#colorJobs)"
+                    activeDot={{ r: 6, strokeWidth: 0, fill: THEME.blue }}
+                  />
+                </AreaChart>
+              ) : (
+                <BarChart data={filteredMonthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false} tickLine={false}
+                    tick={{ fill: THEME.textMuted, fontSize: 10, fontWeight: 500 }}
+                    dy={10}
+                  />
+                  <YAxis
+                    axisLine={false} tickLine={false}
+                    tick={{ fill: THEME.textMuted, fontSize: 10, fontWeight: 500 }}
+                    allowDecimals={false}
+                  />
+                  <Tooltip content={<BarTooltip />} cursor={{ fill: '#f8fafc', opacity: 0.4 }} />
+                  <Bar
+                    dataKey="jobs"
+                    fill={THEME.blue}
+                    radius={[6, 6, 0, 0]}
+                    barSize={24}
+                  >
+                    {filteredMonthlyData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={THEME.blue} fillOpacity={0.8 + (index % 2 === 0 ? 0.2 : 0)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              )}
             </ResponsiveContainer>
           </div>
         </div>
