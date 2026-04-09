@@ -109,8 +109,7 @@ const AuditCharts = ({
     try {
       const [activityRes, statsRes] = await Promise.all([
         axios.get(
-          `${
-            import.meta.env.VITE_API_STRING
+          `${import.meta.env.VITE_API_STRING
           }/audit-trail/activity-timeline?${params}`
         ),
         axios.get(

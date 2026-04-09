@@ -668,8 +668,8 @@ const LogisysEditableHeader = ({
           </select>
         </div>
 
-        {/* Documents Button */}
-        <div style={{ flex: "0 0 auto" }}>
+        {/* Documents, VGM Button and Checkboxes */}
+        <div style={{ flex: "0 0 auto", display: "flex", gap: 10, alignItems: "center" }}>
           <button
             style={{
               background: "#fff",
@@ -691,6 +691,59 @@ const LogisysEditableHeader = ({
             Docs
             <ArrowDropDownIcon sx={{ fontSize: 14, ml: 0.3 }} />
           </button>
+
+          {!isNewJob && (
+            <button
+              style={{
+                background: "#1976d2",
+                border: "none",
+                color: "#fff",
+                padding: "3px 12px",
+                borderRadius: 3,
+                fontWeight: 600,
+                fontSize: 11,
+                cursor: "pointer",
+                height: 24,
+                whiteSpace: "nowrap",
+              }}
+              type="button"
+              onClick={() => {
+                const jn = formik.values.job_no;
+                if (!jn) return;
+                const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/vgm/${encodeURIComponent(jn)}`;
+                window.open(url, "_blank");
+              }}
+            >
+              VGM
+            </button>
+          )}
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: isEditable ? "pointer" : "default", fontSize: 11, fontWeight: 500, color: "#1976d2", opacity: isEditable ? 1 : 0.6 }}>
+              <input
+                type="checkbox"
+                name="vgm_done"
+                checked={!!formik.values.vgm_done}
+                onChange={(e) => formik.setFieldValue("vgm_done", e.target.checked)}
+                disabled={!isEditable}
+                style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
+              />
+              VGM
+            </label>
+
+            <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: isEditable ? "pointer" : "default", fontSize: 11, fontWeight: 500, color: "#1976d2", opacity: isEditable ? 1 : 0.6 }}>
+              <input
+                type="checkbox"
+                name="form13_done"
+                checked={!!formik.values.form13_done}
+                onChange={(e) => formik.setFieldValue("form13_done", e.target.checked)}
+                disabled={!isEditable}
+                style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
+              />
+              Form 13
+            </label>
+          </div>
+
           <Menu
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}

@@ -122,8 +122,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 ]
             });
         } else if (normalizedStatus === "pending") {
-            // For standard "Pending", exclude rows that have billingDocsSentDt.
-            // We'll exclude them from standard pending if they have both handover details
+            // For standard "Pending", exclude rows that have billingDocsSentDt or handoverForwardingNoteDate.
             filter.$and.push({
                 $and: [
                     // Billing docs not sent OR no status details yet
@@ -133,12 +132,10 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                             { "operations.statusDetails": { $size: 0 } }
                         ]
                     },
-                    // AND Not fully handed over yet
+                    // AND Not handed over yet (only checking date)
                     {
                         $or: [
                             { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
-                            { "operations.statusDetails.handoverImageUpload": { $exists: false } },
-                            { "operations.statusDetails.handoverImageUpload": { $size: 0 } },
                             { "operations.statusDetails": { $size: 0 } }
                         ]
                     }
@@ -287,7 +284,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             package_unit: 1, gross_weight_kg: 1, net_weight_kg: 1, shipping_line_airline: 1,
             detailedStatus: 1, status: 1, statusDetails: 1,
             "eSanchitDocuments.fileUrl": 1, "eSanchitDocuments.documentType": 1, "eSanchitDocuments.icegateFilename": 1,
-            isLocked: 1, branch_code: 1, transportMode: 1, movement_type: 1, port_of_loading: 1,
+            isLocked: 1, operational_lock: 1, branch_code: 1, transportMode: 1, movement_type: 1, port_of_loading: 1,
             "operations.statusDetails.containerPlacementDate": 1, "operations.statusDetails.handoverForwardingNoteDate": 1,
             "operations.statusDetails.railOutReachedDate": 1, "operations.statusDetails.leoDate": 1,
             "operations.statusDetails.leoUpload": 1, "operations.statusDetails.stuffingSheetUpload": 1,

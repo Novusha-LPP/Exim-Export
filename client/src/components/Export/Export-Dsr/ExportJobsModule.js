@@ -435,6 +435,28 @@ function ExportJobsModule() {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
+          {(lockedByUser || "").toLowerCase() === (user?.username || "").toLowerCase() && (
+            <Button
+              onClick={async () => {
+                try {
+                  await axios.put(
+                    `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(decodedJobNo)}/unlock`,
+                    { username: user.username }
+                  );
+                  setLockDialogOpen(false);
+                  hasLockedRef.current = false;
+                  // A slight delay to ensure server processed unlock
+                  setTimeout(() => lockJob(), 500);
+                } catch (error) {
+                  console.error("Error force-unlocking:", error);
+                }
+              }}
+              color="warning"
+              variant="outlined"
+            >
+              Release My Session
+            </Button>
+          )}
           <Button onClick={handleLockDialogClose} variant="contained" color="primary">
             Go Back to Job List
           </Button>

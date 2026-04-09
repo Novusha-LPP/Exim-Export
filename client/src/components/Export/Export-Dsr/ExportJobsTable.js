@@ -277,22 +277,22 @@ const getStatusColor = (statusValue) => {
   switch (statusValue) {
     // Export Status Mappings
     case "SB Filed":
-      return "#e6f3ff"; // Light Blue (Match Custom Clearance?)
+      return "#e6f3ff"; // Light Blue - Keep existing
 
     case "L.E.O":
-      return "#e8f5e9"; // Light Green (Completed/Approved)
+      return "#ffebee"; // Very Light Rose
     case "Container HO":
     case "File Handover to IATA":
-      return "#ffffe0"; // Light Yellow
+      return "#e1f5fe"; // Light Sky Blue
     case "Rail Out":
     case "Departure":
-      return "#fbdbffff"; // Honeydew
+      return "#ede7f6"; // Light Lavender
     case "Billing Pending":
-      return "#ffe4e1";
+      return "#fff3e0"; // Light Peach
     case "Billing Done":
-      return "#ffe4e1"; // Misty rose background
+      return "#cfd8dc"; // Light Blue Gray
     case "Completed":
-      return "#c3ffc8ff"; // Light green
+      return "#e0f7fa"; // Light Cyan / Tealish
 
     default:
       return "transparent";
@@ -434,12 +434,15 @@ const ExportJobsTable = () => {
 
   // Determine if it's the export operation module early
   const isOperationModule = window.location.pathname.startsWith("/export-operation");
+  const isChargesModule = window.location.pathname.startsWith("/export-charges");
 
   // State
   const [activeTab, setActiveTab] = useState(() => {
     const saved = savedFilters.activeTab || "Pending";
     if (isOperationModule && (saved === "Completed" || saved === "Billing Ready")) return "Op Completed";
-    if (!isOperationModule && (saved === "Op Completed" || saved === "Billing Ready")) return "Completed";
+    if (isChargesModule && !["Pending", "Completed"].includes(saved)) return "Pending";
+    if (!isOperationModule && !isChargesModule && (saved === "Op Completed" || saved === "Billing Ready")) return "Completed";
+    if (!isOperationModule && isChargesModule && (saved === "Op Completed" || saved === "Billing Ready")) return "Completed";
     return saved;
   });
   const [jobs, setJobs] = useState([]);
@@ -928,6 +931,8 @@ const ExportJobsTable = () => {
       let endpoint = `${import.meta.env.VITE_API_STRING}/exports`;
       if (isOperationModule) {
         endpoint = `${import.meta.env.VITE_API_STRING}/operation-jobs`;
+      } else if (isChargesModule) {
+        endpoint = `${import.meta.env.VITE_API_STRING}/charges-jobs`;
       }
 
       // Removed global-search-jobs override to enable normal tab-specific search
@@ -1283,6 +1288,7 @@ const ExportJobsTable = () => {
       { field: "eGatePassUpload", title: "Gate Pass" },
       { field: "handoverImageUpload", title: "HO/DOC Copy" },
       { field: "billingDocsSentUpload", title: "Bill Doc Copy" },
+      { field: "otherDocUpload", title: "Other Doc" },
     ];
 
     statusFiles.forEach((f) => {
@@ -1596,7 +1602,7 @@ const ExportJobsTable = () => {
                 }
               ></span>
             </button>
-            {!isOperationModule && (
+            {!isOperationModule && !isChargesModule && (
               <button
                 style={
                   activeTab === "Booking Pending" ? { ...s.tab, ...s.activeTab } : s.tab
@@ -1613,7 +1619,7 @@ const ExportJobsTable = () => {
                 ></span>
               </button>
             )}
-            {!isOperationModule && (
+            {!isOperationModule && !isChargesModule && (
               <button
                 style={
                   activeTab === "Handover Pending" ? { ...s.tab, ...s.activeTab } : s.tab
@@ -1630,7 +1636,7 @@ const ExportJobsTable = () => {
                 ></span>
               </button>
             )}
-            {!isOperationModule && (
+            {!isOperationModule && !isChargesModule && (
               <button
                 style={
                   activeTab === "Billing Pending" ? { ...s.tab, ...s.activeTab } : s.tab
@@ -1679,7 +1685,7 @@ const ExportJobsTable = () => {
                 }
               ></span>
             </button>
-            {!isOperationModule && (
+            {!isOperationModule && !isChargesModule && (
               <button
                 style={
                   activeTab === "Cancelled" ? { ...s.tab, ...s.activeTab } : s.tab
@@ -2049,13 +2055,11 @@ const ExportJobsTable = () => {
                       </td> */}
 
                         {/* Column 2: Job No */}
-                        {/* Column 2: Job No */}
                         <td
                           style={{
                             ...s.td,
                             left: 0,
-                            backgroundColor: "inherit",
-
+                            backgroundColor: job.operational_lock ? "#fffebccc" : "inherit",
                             position: "sticky",
                             cursor: "pointer", // Make the whole cell look clickable
                           }}
@@ -2379,7 +2383,7 @@ const ExportJobsTable = () => {
                         </td>
 
                         {/* Column 4: Invoice */}
-                        <td style={s.td}>
+                        <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#c6f6d5" : "inherit" }}>
                           <div
                             style={{
                               display: "flex",
@@ -2839,7 +2843,7 @@ const ExportJobsTable = () => {
                         </td>
 
                         {/* Column 10: Status */}
-                        <td style={s.td}>
+                        <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#c6f6d5" : "inherit" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                             <button
                               className="copy-btn"
@@ -2923,9 +2927,13 @@ const ExportJobsTable = () => {
                               borderRadius: "4px",
                             }}
                           >
-                            {Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
-                              ? job.detailedStatus[job.detailedStatus.length - 1]
-                              : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status || "-"}
+                            {(isChargesModule && activeTab === "Completed")
+                              ? (
+                                formatDate(job.operations?.[0]?.statusDetails?.[0]?.billingDocsSentDt) || job.status
+                              )
+                              : (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
+                                ? job.detailedStatus[job.detailedStatus.length - 1]
+                                : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status || "-")}
                           </div>
                         </td>
                       </tr>

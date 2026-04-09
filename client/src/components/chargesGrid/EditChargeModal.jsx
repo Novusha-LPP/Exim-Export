@@ -7,14 +7,14 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import axios from 'axios';
 import './charges.css';
 
-const EditChargeModal = ({ 
-  isOpen, 
-  onClose, 
-  selectedCharges, 
-  onSave, 
+const EditChargeModal = ({
+  isOpen,
+  onClose,
+  selectedCharges,
+  onSave,
   updateCharge,
   parentId,
-  shippingLineAirline, 
+  shippingLineAirline,
   importerName,
   jobNumber = '',
   jobDisplayNumber = '',
@@ -100,11 +100,11 @@ const EditChargeModal = ({
 
   const extractFileName = (url) => {
     try {
-        if (!url) return "File";
-        const parts = url.split("/");
-        return decodeURIComponent(parts[parts.length - 1]);
+      if (!url) return "File";
+      const parts = url.split("/");
+      return decodeURIComponent(parts[parts.length - 1]);
     } catch (error) {
-        return "File";
+      return "File";
     }
   };
 
@@ -113,7 +113,7 @@ const EditChargeModal = ({
     if (section) {
       updated[index][section] = updated[index][section] || {};
       updated[index][section][field] = value;
-      
+
       // Auto-populate TDS if selecting a shipping line
       if (section === 'cost' && field === 'partyName') {
         const matchedSL = shippingLines.find(sl => sl.name?.toUpperCase() === value?.toUpperCase());
@@ -132,7 +132,7 @@ const EditChargeModal = ({
       if (section === 'cost' && field === 'partyType' && value === 'Importer' && importerName) {
         updated[index][section].partyName = importerName;
       }
-      
+
       // Auto-populate Qty based on selected Basis
       if (field === 'basis') {
         if (value === 'Per S/B') {
@@ -147,34 +147,49 @@ const EditChargeModal = ({
         value = updated[index][section].qty;
       }
 
-      const fieldsToTriggerRecalc = ['qty', 'rate', 'isGst', 'gstRate', 'isTds', 'tdsPercent', 'exchangeRate', 'partyName'];
+      const fieldsToTriggerRecalc = ['qty', 'rate', 'isGst', 'gstRate', 'isTds', 'tdsPercent', 'exchangeRate', 'partyName', 'amount'];
       if (fieldsToTriggerRecalc.includes(field)) {
         const sectionRef = updated[index][section];
-        const qty = parseFloat(sectionRef.qty) || 0;
-        const rate = parseFloat(sectionRef.rate) || 0;
-        const exRate = parseFloat(sectionRef.exchangeRate) || 1;
-        
-        // Total Amount: Qty * Rate (Rate is always GST-inclusive)
-        const amount = qty * rate;
+        const qty = parseFloat(sectionRef.qty ?? 1) || 0;
+        const rate = parseFloat(sectionRef.rate ?? 0) || 0;
+        const exRate = parseFloat(sectionRef.exchangeRate ?? 1) || 1;
+
+        // Total Amount: Qty * Rate (Rate is typically GST-inclusive in this workflow)
+        let amount = qty * rate;
+
+        // If the user manually edited 'amount' field (if we enable it later), use that
+        if (field === 'amount') {
+          amount = parseFloat(value) || 0;
+        }
+
         sectionRef.amount = amount;
         sectionRef.amountINR = amount * exRate;
 
-        // GST & Basic Amount Calculation:
-        // Basic is always GST-exclusive (Amount / 1.18)
-        // GST is the difference (Amount - Basic)
+        const includeGst = sectionRef.isGst || false;
         const gstRate = parseFloat(sectionRef.gstRate) || 18;
-        const derivedBasic = amount / (1 + (gstRate / 100));
-        const derivedGst = amount - derivedBasic;
-        
+
+        let derivedBasic, derivedGst;
+
+        if (includeGst) {
+          // Calculation as per screenshot:
+          // Basic = Total / (1 + Rate/100) -> Rounded to 1 decimal for display consistency
+          derivedBasic = Math.round((amount / (1 + (gstRate / 100))) * 10) / 10;
+          // GST is Basic * Rate %
+          derivedGst = (derivedBasic * (gstRate / 100));
+        } else {
+          derivedBasic = amount;
+          derivedGst = 0;
+        }
+
+        sectionRef.basicAmount = derivedBasic;
         sectionRef.gstAmount = derivedGst;
-        sectionRef.basicAmount = derivedBasic; // TDS always calculated on this
 
         // GST Split Logic based on GSTIN (24 = Gujarat)
         const partyName = sectionRef.partyName;
         const party = [...shippingLines, ...suppliers].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
         const branchIndex = sectionRef.branchIndex || 0;
         const gstin = party?.branches?.[branchIndex]?.gst || "";
-        
+
         if (gstin.startsWith("24")) {
           sectionRef.cgst = derivedGst / 2;
           sectionRef.sgst = derivedGst / 2;
@@ -195,16 +210,10 @@ const EditChargeModal = ({
         }
 
         // Net Payable Calculation:
-        // "Include GST" (Checked): Net = Total Amount - TDS
-        // "Exclude GST" (Unchecked): Net = Basic Amount - TDS
-        const includeGst = sectionRef.isGst || false;
-        if (includeGst) {
-          sectionRef.netPayable = amount - sectionRef.tdsAmount;
-        } else {
-          sectionRef.netPayable = sectionRef.basicAmount - sectionRef.tdsAmount;
-        }
+        // Always subtract TDS from the Total Amount
+        sectionRef.netPayable = amount - sectionRef.tdsAmount;
       }
-      
+
       // Open dropdown when typing party name
       if (field === 'partyName') {
         setActiveDropdown({ index, section });
@@ -282,19 +291,19 @@ const EditChargeModal = ({
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
                     <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold' }}>PB No</span>
                     <div className="ep-inline">
-                        <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', width: '60%' }} value={row.purchase_book_no || ''} />
-                        <span className="ep-status-pill" style={{ marginLeft: '10px', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: row.purchase_book_status ? '#e8f5e9' : '#f5f5f5', color: row.purchase_book_status === 'Active' ? '#2e7d32' : '#757575', border: '1px solid #ddd' }}>
-                            {row.purchase_book_status || 'Pending'}
-                        </span>
+                      <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', width: '60%' }} value={row.purchase_book_no || ''} />
+                      <span className="ep-status-pill" style={{ marginLeft: '10px', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: row.purchase_book_status ? '#e8f5e9' : '#f5f5f5', color: row.purchase_book_status === 'Active' ? '#2e7d32' : '#757575', border: '1px solid #ddd' }}>
+                        {row.purchase_book_status || 'Pending'}
+                      </span>
                     </div>
                   </div>
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
                     <span className="form-label" style={{ color: '#d32f2f', fontWeight: 'bold' }}>PR No</span>
                     <div className="ep-inline">
-                        <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', width: '60%' }} value={row.payment_request_no || ''} />
-                        <span className="ep-status-pill" style={{ marginLeft: '10px', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: row.payment_request_status ? '#e8f5e9' : '#f5f5f5', color: row.payment_request_status === 'Active' ? '#2e7d32' : '#757575', border: '1px solid #ddd' }}>
-                            {row.payment_request_status || 'Pending'}
-                        </span>
+                      <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', width: '60%' }} value={row.payment_request_no || ''} />
+                      <span className="ep-status-pill" style={{ marginLeft: '10px', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: row.payment_request_status ? '#e8f5e9' : '#f5f5f5', color: row.payment_request_status === 'Active' ? '#2e7d32' : '#757575', border: '1px solid #ddd' }}>
+                        {row.payment_request_status || 'Pending'}
+                      </span>
                     </div>
                   </div>
 
@@ -339,7 +348,7 @@ const EditChargeModal = ({
                         </button>
                       </td>
                     </tr>
-                    
+
                     {/* --- REVENUE EXPANDED --- */}
                     {panelOpen[i] === 'rev' && (
                       <tr className="expand-row">
@@ -350,35 +359,35 @@ const EditChargeModal = ({
                               <input type="text" className="ep-desc-input" value={row.revenue?.chargeDescription || ''} onChange={e => handleFieldChange(i, 'chargeDescription', e.target.value, 'revenue')} />
                             </div>
                             <div className="ep-desc-row">
-                                <span className="ep-label">Attachment</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
-                                    {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? (
-                                        row.revenue.url.map((url, urlIdx) => (
-                                            <Chip
-                                                key={urlIdx}
-                                                icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
-                                                label={extractFileName(url)}
-                                                size="small"
-                                                onDelete={() => {
-                                                    const newUrls = row.revenue.url.filter((_, i) => i !== urlIdx);
-                                                    handleFieldChange(i, 'url', newUrls, 'revenue');
-                                                }}
-                                                component="a"
-                                                href={url && url.toString().startsWith('http') ? url : '#'}
-                                                onClick={(e) => { if (!url || !url.toString().startsWith('http')) e.preventDefault(); }}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                clickable
-                                                sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
-                                            />
-                                        ))
-                                    ) : (
-                                        <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>No files attached</span>
-                                    )}
-                                    <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('revenue'); }}>
-                                        {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? 'Edit Files' : 'Upload Files'}
-                                    </button>
-                                </div>
+                              <span className="ep-label">Attachment</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
+                                {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? (
+                                  row.revenue.url.map((url, urlIdx) => (
+                                    <Chip
+                                      key={urlIdx}
+                                      icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
+                                      label={extractFileName(url)}
+                                      size="small"
+                                      onDelete={() => {
+                                        const newUrls = row.revenue.url.filter((_, i) => i !== urlIdx);
+                                        handleFieldChange(i, 'url', newUrls, 'revenue');
+                                      }}
+                                      component="a"
+                                      href={url && url.toString().startsWith('http') ? url : '#'}
+                                      onClick={(e) => { if (!url || !url.toString().startsWith('http')) e.preventDefault(); }}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      clickable
+                                      sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
+                                    />
+                                  ))
+                                ) : (
+                                  <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>No files attached</span>
+                                )}
+                                <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('revenue'); }}>
+                                  {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? 'Edit Files' : 'Upload Files'}
+                                </button>
+                              </div>
                             </div>
                             <div className="ep-grid" style={{ marginRight: '30px' }}>
                               <div className="ep-row">
@@ -419,17 +428,17 @@ const EditChargeModal = ({
                                 <span className="ep-label">Receivable From</span>
                                 <div className="ep-search-container">
                                   <div className="ep-search-wrap">
-                                    <input 
-                                      type="text" 
-                                      value={row.revenue?.partyName || ''} 
-                                      onChange={e => handleFieldChange(i, 'partyName', e.target.value, 'revenue')} 
+                                    <input
+                                      type="text"
+                                      value={row.revenue?.partyName || ''}
+                                      onChange={e => handleFieldChange(i, 'partyName', e.target.value, 'revenue')}
                                       onFocus={() => setActiveDropdown({ index: i, section: 'revenue' })}
                                     />
                                     <button type="button" className="ep-search-btn">🔍</button>
                                   </div>
                                   {activeDropdown.index === i && activeDropdown.section === 'revenue' && (row.revenue?.partyName?.length >= 2) && (
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
-                                      {(row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines : 
+                                      {(row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
                                         row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations : [])
                                         .filter(item => !row.revenue?.partyName || (item.name && item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase())))
                                         .slice(0, 20)
@@ -440,7 +449,7 @@ const EditChargeModal = ({
                                           </li>
                                         ))}
                                       {/* Click outside to close is handled by modal background or focus loss usually, but let's add no-results */}
-                                      {((row.revenue?.partyType === 'Agent' || row.revenue?.partyType === 'Carrier' ? shippingLines : 
+                                      {((row.revenue?.partyType === 'Agent' || row.revenue?.partyType === 'Carrier' ? shippingLines :
                                         row.revenue?.partyType === 'Customer' ? organizations : [])
                                         .filter(item => !row.revenue?.partyName || (item.name && item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase())))
                                         .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">No results found</span></li>}
@@ -509,35 +518,35 @@ const EditChargeModal = ({
                               <input type="text" className="ep-desc-input" value={row.cost?.chargeDescription || ''} onChange={e => handleFieldChange(i, 'chargeDescription', e.target.value, 'cost')} />
                             </div>
                             <div className="ep-desc-row">
-                                <span className="ep-label">Attachment</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
-                                    {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? (
-                                        row.cost.url.map((url, urlIdx) => (
-                                            <Chip
-                                                key={urlIdx}
-                                                icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
-                                                label={extractFileName(url)}
-                                                size="small"
-                                                onDelete={() => {
-                                                    const newUrls = row.cost.url.filter((_, i) => i !== urlIdx);
-                                                    handleFieldChange(i, 'url', newUrls, 'cost');
-                                                }}
-                                                component="a"
-                                                href={url && url.toString().startsWith('http') ? url : '#'}
-                                                onClick={(e) => { if (!url || !url.toString().startsWith('http')) e.preventDefault(); }}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                clickable
-                                                sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
-                                            />
-                                        ))
-                                    ) : (
-                                        <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>No files attached</span>
-                                    )}
-                                    <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('cost'); }}>
-                                        {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? 'Edit Files' : 'Upload Files'}
-                                    </button>
-                                </div>
+                              <span className="ep-label">Attachment</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
+                                {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? (
+                                  row.cost.url.map((url, urlIdx) => (
+                                    <Chip
+                                      key={urlIdx}
+                                      icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
+                                      label={extractFileName(url)}
+                                      size="small"
+                                      onDelete={() => {
+                                        const newUrls = row.cost.url.filter((_, i) => i !== urlIdx);
+                                        handleFieldChange(i, 'url', newUrls, 'cost');
+                                      }}
+                                      component="a"
+                                      href={url && url.toString().startsWith('http') ? url : '#'}
+                                      onClick={(e) => { if (!url || !url.toString().startsWith('http')) e.preventDefault(); }}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      clickable
+                                      sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
+                                    />
+                                  ))
+                                ) : (
+                                  <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>No files attached</span>
+                                )}
+                                <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('cost'); }}>
+                                  {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? 'Edit Files' : 'Upload Files'}
+                                </button>
+                              </div>
                             </div>
                             <div className="ep-grid" style={{ marginRight: '30px' }}>
                               <div className="ep-row">
@@ -578,19 +587,19 @@ const EditChargeModal = ({
                                 <span className="ep-label">Payable To</span>
                                 <div className="ep-search-container">
                                   <div className="ep-search-wrap">
-                                    <input 
-                                      type="text" 
-                                      value={row.cost?.partyName || ''} 
-                                      onChange={e => handleFieldChange(i, 'partyName', e.target.value, 'cost')} 
+                                    <input
+                                      type="text"
+                                      value={row.cost?.partyName || ''}
+                                      onChange={e => handleFieldChange(i, 'partyName', e.target.value, 'cost')}
                                       onFocus={() => setActiveDropdown({ index: i, section: 'cost' })}
                                     />
                                     <button type="button" className="ep-search-btn">🔍</button>
                                   </div>
                                   {activeDropdown.index === i && activeDropdown.section === 'cost' && (row.cost?.partyName?.length >= 2) && (
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
-                                      {(row.cost?.partyType?.toUpperCase() === 'AGENT' || row.cost?.partyType?.toUpperCase() === 'OTHERS' ? shippingLines : 
+                                      {(row.cost?.partyType?.toUpperCase() === 'AGENT' || row.cost?.partyType?.toUpperCase() === 'OTHERS' ? shippingLines :
                                         row.cost?.partyType?.toUpperCase() === 'VENDOR' || row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? [...suppliers, ...shippingLines] :
-                                        row.cost?.partyType?.toUpperCase() === 'IMPORTER' ? organizations : [])
+                                          row.cost?.partyType?.toUpperCase() === 'IMPORTER' ? organizations : [])
                                         .filter(item => !row.cost?.partyName || (item.name && item.name.toLowerCase().includes(row.cost.partyName.toLowerCase())))
                                         .slice(0, 20)
                                         .map((item, idx) => (
@@ -599,9 +608,9 @@ const EditChargeModal = ({
                                             <span className="ep-item-sub">{item.city || 'Master Directory'}</span>
                                           </li>
                                         ))}
-                                      {((row.cost?.partyType === 'Agent' || row.cost?.partyType === 'Others' ? shippingLines : 
+                                      {((row.cost?.partyType === 'Agent' || row.cost?.partyType === 'Others' ? shippingLines :
                                         row.cost?.partyType === 'Vendor' || row.cost?.partyType === 'Transporter' ? [...suppliers, ...shippingLines] :
-                                        row.cost?.partyType === 'Importer' ? organizations : [])
+                                          row.cost?.partyType === 'Importer' ? organizations : [])
                                         .filter(item => !row.cost?.partyName || (item.name && item.name.toLowerCase().includes(row.cost.partyName.toLowerCase())))
                                         .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">No results found</span></li>}
                                     </ul>
@@ -680,14 +689,14 @@ const EditChargeModal = ({
                                 <div className="ep-inline">
                                   <input type="number" readOnly className="ep-read" style={{ background: '#fff9f9', fontWeight: 'bold', color: '#d32f2f', border: '1px solid #ffcdd2' }} value={formatNumber(row.cost?.netPayable)} />
                                   {!row.purchase_book_no && (
-                                    <button 
-                                      type="button" 
-                                      className="upload-btn" 
-                                      style={{ 
-                                        marginRight: '10px', 
-                                        backgroundColor: '#1976d2', 
-                                        color: '#fff', 
-                                        borderColor: '#1565c0' 
+                                    <button
+                                      type="button"
+                                      className="upload-btn"
+                                      style={{
+                                        marginRight: '10px',
+                                        backgroundColor: '#1976d2',
+                                        color: '#fff',
+                                        borderColor: '#1565c0'
                                       }}
                                       onClick={() => {
                                         const partyName = row.cost?.partyName;
@@ -697,10 +706,10 @@ const EditChargeModal = ({
                                           const rate = parseFloat(cost.gstRate) || 18;
                                           const amt = parseFloat(cost.amount) || 0;
                                           const includeGst = cost.isGst || false;
-                                          
+
                                           let basic = amt;
                                           let totalGst = 0;
-                                          
+
                                           if (includeGst) {
                                             basic = amt / (1 + (rate / 100));
                                             totalGst = amt - basic;
@@ -740,9 +749,9 @@ const EditChargeModal = ({
                                     </button>
                                   )}
                                   {!row.payment_request_no && (
-                                    <button 
-                                      type="button" 
-                                      className="upload-btn" 
+                                    <button
+                                      type="button"
+                                      className="upload-btn"
                                       style={{ backgroundColor: '#d32f2f', color: '#fff', borderColor: '#b71c1c' }}
                                       onClick={() => {
                                         const partyName = row.cost?.partyName;
@@ -783,20 +792,20 @@ const EditChargeModal = ({
       </div>
 
       {uploadIndex !== null && (
-        <FileUploadModal 
-            isOpen={true}
-            onClose={() => { setUploadIndex(null); setUploadSection(null); }}
-            chargeLabel={`${formData[uploadIndex]?.chargeHead} (${uploadSection})`}
-            initialUrls={formData[uploadIndex]?.[uploadSection]?.url || []}
-            onAttach={(urls) => {
-                handleFieldChange(uploadIndex, 'url', urls, uploadSection);
-                setUploadIndex(null);
-                setUploadSection(null);
-            }}
+        <FileUploadModal
+          isOpen={true}
+          onClose={() => { setUploadIndex(null); setUploadSection(null); }}
+          chargeLabel={`${formData[uploadIndex]?.chargeHead} (${uploadSection})`}
+          initialUrls={formData[uploadIndex]?.[uploadSection]?.url || []}
+          onAttach={(urls) => {
+            handleFieldChange(uploadIndex, 'url', urls, uploadSection);
+            setUploadIndex(null);
+            setUploadSection(null);
+          }}
         />
       )}
 
-      <RequestPaymentModal 
+      <RequestPaymentModal
         isOpen={paymentRequestData !== null}
         onClose={() => setPaymentRequestData(null)}
         initialData={paymentRequestData}
@@ -813,16 +822,16 @@ const EditChargeModal = ({
             setFormData(updated);
             // PERSIST IMMEDIATELY
             if (updateCharge && updated[activeIndex]._id) {
-              updateCharge(updated[activeIndex]._id, { 
-                payment_request_no: requestNo, 
-                payment_request_status: initialStatus 
+              updateCharge(updated[activeIndex]._id, {
+                payment_request_no: requestNo,
+                payment_request_status: initialStatus
               });
             }
           }
         }}
       />
 
-      <PurchaseBookModal 
+      <PurchaseBookModal
         isOpen={purchaseBookData !== null}
         onClose={() => setPurchaseBookData(null)}
         initialData={purchaseBookData}
@@ -839,9 +848,9 @@ const EditChargeModal = ({
             setFormData(updated);
             // PERSIST IMMEDIATELY
             if (updateCharge && updated[activeIndex]._id) {
-              updateCharge(updated[activeIndex]._id, { 
-                purchase_book_no: entryNo, 
-                purchase_book_status: initialStatus 
+              updateCharge(updated[activeIndex]._id, {
+                purchase_book_no: entryNo,
+                purchase_book_status: initialStatus
               });
             }
           }

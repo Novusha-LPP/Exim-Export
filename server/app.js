@@ -82,6 +82,7 @@ import sbTrack from "./routes/export-dsr/sbTrack.mjs";
 import generateFlatFile from "./routes/export-dsr/generateFlatFile.mjs";
 import operationPendingJobs from "./routes/export-dsr/operationPendingJobs.mjs";
 import operationListJobs from "./routes/export-dsr/operationListJobs.mjs";
+import chargesListJobs from "./routes/export-dsr/chargesListJobs.mjs";
 import queryRoutes from "./routes/export-dsr/queryRoutes.mjs";
 import chargesRoute from "./routes/charges/chargesRoute.mjs";
 import tallyRoutes from "./routes/charges/tallyRoutes.mjs";
@@ -133,6 +134,7 @@ app.use(
       "user-role",
       "x-username",
       "x-user-role",
+      "x-api-key",
     ],
   })
 );
@@ -244,6 +246,7 @@ app.use(sbTrack);
 app.use(generateFlatFile);
 app.use(operationPendingJobs);
 app.use(operationListJobs);
+app.use(chargesListJobs);
 app.use(queryRoutes);
 app.use(testDsrEmailRoute);
 
