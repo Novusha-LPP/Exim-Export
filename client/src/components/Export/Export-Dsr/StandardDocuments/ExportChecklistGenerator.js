@@ -497,12 +497,15 @@ const ExportChecklistGenerator = ({
 
     yPos += 12;
 
-    // Marks & Nos - exactly like first image
+    // Marks & Nos - wrap text to prevent cutting off
     pdf.setFont("helvetica", "bold");
     pdf.text("Marks & Nos", leftColX, yPos);
     pdf.setFont("helvetica", "normal");
-    pdf.text(data.marksAndNos || "", leftColX + 70, yPos);
-    yPos += 20; // Added one extra line of spacing
+    pdf.setFontSize(FONT_SIZES.fieldValue);
+    const marksVal = data.marksAndNos || "";
+    const marksLines = pdf.splitTextToSize(marksVal, rightX - (leftColX + 70));
+    pdf.text(marksLines, leftColX + 70, yPos);
+    yPos += Math.max(marksLines.length * 10 + 5, 20);
 
     // Buyer's Name & Address section - exactly like first image
     pdf.setFont("helvetica", "bold");
@@ -1280,7 +1283,7 @@ const ExportChecklistGenerator = ({
           : "",
         exporterName: exportJob.exporter || "",
         exporterBranch: exportJob.branch_code
-          ? `Branch Ser #${exportJob.branch_code}`
+          ? `Branch Ser #${exportJob.branch_sr_no}`
           : "",
         exporterAddress1: exportJob.exporter_address || "",
         exporterAddress2: "", // Parse from exporter_address if multi-line

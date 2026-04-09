@@ -184,21 +184,11 @@ const pad = (s, n) => String(s ?? "").padStart(n, "0");
 const trunc = (s, n) => String(s ?? "").slice(0, n);
 const clean = (s) => String(s ?? "")
     .replace(/[\r\n\t]/g, " ")
-    .replace(/[^a-zA-Z0-9\s,./:()\-]/g, "")
+    // ALLOW , . / - ( ) : & per ICEGATE spec
+    .replace(/[^a-zA-Z0-9\s,.\/:()\-&]/g, " ")
     .toUpperCase()
-    .replace(/\s+/g, " ")
+    // .replace(/\s+/g, " ") // REMOVED: ICEGATE flat files preserve internal spacing for field position accuracy
     .trim();
-
-// Strict cleaning for ICEGATE address fields (C35/C70)
-// Rule: Max 35 chars per line, Allowed: A-Z, 0-9, space. NO special chars ( , . / - etc)
-const cleanAddr = (s) => String(s ?? "")
-    .replace(/[^a-zA-Z0-9\s]/g, " ") // replace all special chars with space
-    .toUpperCase()
-    .replace(/\s+/g, " ")           // normalize spaces
-    .trim();
-
-// Keep cleanAddr as the active strategy for all address fields (Exporter, Consignee, Buyer, SuppDoc)
-const cleanAddrSplit = (s) => cleanAddr(s);
 
 // FIX 23 / FIX 40: preserve internal spaces (consignee name, beneficiary name, marks_nos)
 const preserveSpaces = (s) => String(s ?? "").replace(/[\r\n\t]/g, " ").replace(/^ +| +$/g, "");
@@ -284,9 +274,9 @@ const extractSbNo = (j) => {
 // FIX 22 / FIX 60: strict 35-char chunking for ICEGATE
 const split35 = (s) => {
     const out = [];
-    const str = cleanAddr(s);
+    const str = clean(s);
     for (let i = 0; i < 5; i++) {
-        out.push(str.slice(i * 34, (i + 1) * 34).trim());
+        out.push(str.slice(i * 35, (i + 1) * 35).trim());
     }
     return out;
 };
@@ -409,17 +399,11 @@ export function generateSBFlatFile(job) {
     // Rule: Logisys strips spaces after commas BEFORE splitting. This ensures tighter chunks.
     // Example: "LLC, PO BOX 3159" -> "LLC,PO BOX 3159"
     // Build conFull WITHOUT calling clean() on the already-cleaned parts
-    const conNameRaw = clean(con0.consignee_name || "");
-    const conAddrRaw = cleanAddrSplit(con0.consignee_address || "");
-    // FIX Bug 2: extract L.L.C. suffix (now L L C after clean), strip trailing dot, append to name
-    const llcMatch = conAddrRaw.match(/^(L\s*L\s*C|LLC|LTD|PVT)\s*/i);
-    const conNameFull = llcMatch
-        ? conNameRaw + " " + llcMatch[1].replace(/\.$/, "") // strip trailing dot
-        : conNameRaw;
-    const conAddrClean = llcMatch ? conAddrRaw.slice(llcMatch[0].length) : conAddrRaw;
-    // FIX Bug 2 [Final]: Always join with a space — single space collapses naturally
-    const conFull = (conNameFull + " " + conAddrClean).toUpperCase().replace(/\s+/g, " ").trim();
-    const cL = split35(conFull);   // cL[0]=name/start, cL[1-4]=address chunks
+    // CORRECT — separate name and address, never join them (REVERT FIX 55)
+    const conName = trunc(clean(con0.consignee_name || ""), 35);
+    const conAddrRaw = clean(con0.consignee_address || "");
+    const cLA = split35(conAddrRaw);
+    const cL = [conName, cLA[0], cLA[1], cLA[2], cLA[3]];
 
     let podest = prt(job.destination_port || "");
     let podisc = prt(job.port_of_discharge || "");
@@ -441,21 +425,19 @@ export function generateSBFlatFile(job) {
 
     const nc = isContainerized ? "C" : "P";
 
-    // FIX 58: Logisys sends "0" for loose packets when containerised, not "".
-    // FIX 33 (updated): "0" for containerised cargo confirmed from reference file.
-    const loosePktsFinal =
-        nc === "C"
-            ? "0"
-            : (job.loose_pkgs && Number(job.loose_pkgs) > 0 ? String(job.loose_pkgs) : "0");
+    // FIX 58: Logisys sends "0" for loose packets when containerised/AIR, not "".
+    const loosePktsFinal = (job.loose_pkgs && Number(job.loose_pkgs) > 0)
+        ? String(job.loose_pkgs)
+        : "0";
 
     // SB [17] — exporter's state where goods originate
     const stOr = stCd(job.exporter_state || job.state || "GUJARAT");
 
-    const addrNorm = cleanAddrSplit(job.exporter_address || "");
+    const addrNorm = clean(job.exporter_address || "");
     const pinMatch = addrNorm.match(/,?\s*(\d{6})\s*$/);
     const pinCode = clean(job.exporter_pincode || (pinMatch ? pinMatch[1] : ""));
     const addrRawTrimmed = pinMatch ? addrNorm.replace(/,?\s*\d{6}\s*$/, "").trim() : addrNorm;
-    // FIX Bug 1: keep first comma-space via cleanAddrSplit; use split35
+    // Use split35 (now 35 chars with clean())
     const eL = split35(addrRawTrimmed);
     const expAddr1 = eL[0];
     const expAddr2 = eL[1];
@@ -490,7 +472,7 @@ export function generateSBFlatFile(job) {
         trunc(clean(job.exporter || ""), 49),                              // [9]  Exporter name
         expAddr1,                                                           // [10] Exporter addr1
         expAddr2,                                                           // [11] Exporter addr2
-        clean(job.exporter_state || job.state || ""),                      // [12] State — FIX 56 (was city)
+        clean(job.exporter_city || ""),        // [12] City — FIX 56
         clean(job.exporter_state || job.state || ""),                      // [13] State — FIX 56
         pinCode,                                                            // [14] PIN
         expTypCode(job.exporter_type),                                      // [15] Exporter type
@@ -520,7 +502,7 @@ export function generateSBFlatFile(job) {
         clean(String(job.total_no_of_pkgs || job.totalPackages || "")),   // [39] Total packages
         preserveSpaces(job.marks_nos || job.marksAndNumbers || ""),       // [40] Marks & numbers
         loosePktsFinal,                                                     // [41] Loose packets — FIX 58
-        String(emitContainer ? containers.length : ""),                   // [42] Container count — FIX 34
+        String(emitContainer ? containers.length : "0"),                    // [42] Container count — FIX 34
         "",                                                                 // [43]
         mawb,                                                               // [44] MAWB/MBL
         hawb,                                                               // [45] HAWB/HBL
@@ -592,19 +574,15 @@ export function generateSBFlatFile(job) {
         let bL;
         const oBuyer = job.buyerThirdPartyInfo?.buyer || {};
         if (oBuyer.name) {
-            const bName = oBuyer.name;
-            const bAddr = oBuyer.addressLine1 || oBuyer.address || "";
-            const buyerAddrRaw = cleanAddr(bAddr);
-            const bPinMatch = buyerAddrRaw.match(/,?\s*(\d{6})\s*$/);
-            const buyerAddrNoPIN = bPinMatch ? buyerAddrRaw.replace(/,?\s*\d{6}\s*$/, "").trim() : buyerAddrRaw;
-            const buyerFull = (clean(bName) + " " + buyerAddrNoPIN).toUpperCase().replace(/\s+/g, " ").trim();
-            bL = split35(buyerFull);
+            const bName = trunc(clean(oBuyer.name), 35);
+            const bAddr = clean(oBuyer.addressLine1 || oBuyer.address || "");
+            const bLA = split35(bAddr);
+            bL = [bName, bLA[0], bLA[1], bLA[2], bLA[3]];
         } else if (job.isBuyer && job.buyer_name) {
-            const buyerAddrRaw = cleanAddr(job.buyer_address || "");
-            const bPinMatch = buyerAddrRaw.match(/,?\s*(\d{6})\s*$/);
-            const buyerAddrNoPIN = bPinMatch ? buyerAddrRaw.replace(/,?\s*\d{6}\s*$/, "").trim() : buyerAddrRaw;
-            const buyerFull = (clean(job.buyer_name) + " " + buyerAddrNoPIN).toUpperCase().replace(/\s+/g, " ").trim();
-            bL = split35(buyerFull);
+            const bName = trunc(clean(job.buyer_name), 35);
+            const bAddr = clean(job.buyer_address || "");
+            const bLA = split35(bAddr);
+            bL = [bName, bLA[0], bLA[1], bLA[2], bLA[3]];
         } else {
             bL = cL; // Buyer same as Consignee
         }
@@ -640,7 +618,11 @@ export function generateSBFlatFile(job) {
             clean(job.otherInfo?.exportContractNo || ""), // [32] Exporter Contract No — FIX Bug 5
             np,                             // [33] Nature of Payment
             pp,                             // [34] Payment Period
-            "", "", "", "", "", "", "", "", "", "", "", "", "", "", // [35-48] FIX 25
+            "", "",                         // [35-36]
+            clean(job.buyerThirdPartyInfo?.thirdParty?.ieCode || ""), // [37] Third Party IE Code
+            clean(job.buyerThirdPartyInfo?.thirdParty?.name || ""),   // [38] Third Party Name
+            clean(job.buyerThirdPartyInfo?.thirdParty?.address || ""), // [39] Third Party Address
+            "", "", "", "", "", "", "", "", "", // [40-48]
         );
     });
 
@@ -674,9 +656,9 @@ export function generateSBFlatFile(job) {
                 String(ii + 1), String(pi + 1),
                 sc,
                 clean(p.ritc || ""),
-                trunc(desc, 39).trimEnd(),           // [10] FIX 26
-                trunc(desc.slice(39).trimStart(), 39),  // [11]
-                trunc(desc.slice(78).trimStart(), 39),  // [12]
+                trunc(desc, 40).trimEnd(),           // [10] FIX 26
+                trunc(desc.slice(40), 40),            // [11]
+                trunc(desc.slice(80), 40),            // [12]
                 uom, qty, upr, uom, "1", pmv,
                 "",                                   // [19] Job Work
                 "N",                                  // [20] Third Party
@@ -862,7 +844,7 @@ export function generateSBFlatFile(job) {
             // FIX 47: DTY/RDT only for free SBs or when RoDTEP is explicitly claimed
             const sc_sw = (p.eximCode || "").split(" ")[0];
             const isFreeShipping = sc_sw === "00" || sc_sw === "" || sc_sw === "19" || sc_sw === "99";
-            if (isFreeShipping || (p.rodtepInfo || {}).claim === "Yes") {
+            if ((isFreeShipping || (p.rodtepInfo || {}).claim === "Yes") && (p.rodtepInfo || {}).claim !== "Not Applicable") {
                 const rodtepClaim = (p.rodtepInfo || {}).claim === "Yes" ? "RODTEPY" : "RODTEPN";
                 const isClaimed = rodtepClaim === "RODTEPY";
                 out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++), "DTY", "RDT",
@@ -870,7 +852,7 @@ export function generateSBFlatFile(job) {
                     isClaimed ? socQty : "", isClaimed ? socUnit : "");
             }
 
-            if (p.eximCode && p.eximCode.startsWith("00")) {
+            if (p.eximCode && p.eximCode.startsWith("00") && p.reExport?.isReExport) {
                 out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++),
                     "DIR", "XSB", loc.replace(/^IN/, "") + "U001", "", "", "");
             }
@@ -911,19 +893,19 @@ export function generateSBFlatFile(job) {
             }
             const invSrNo = String(invIdx + 1);
 
-            // FIX Bug 1: Issuing party addr — normalize then trunc 35 / blank
+            // FIX 12/17: Issuing party addr — split into addr1/addr2 (35 chars each)
             const ip = d.issuingParty || {};
-            const ipNorm = cleanAddrSplit(ip.addressLine1 || "");
-            const ipAddrA = trunc(ipNorm, 32);
-            const ipAddrB = ""; // Logisys always blank for this job
+            const ipFullAddr = clean(ip.addressLine1 || "");
+            const ipL = split35(ipFullAddr);
+            const ipAddr1 = ipL[0];
+            const ipAddr2 = ipL[1];
 
-            // [14] — use State instead of City
-            const ipState = clean(ip.state || job.exporter_state || job.state || "GUJARAT").toUpperCase();
-            const ipPin = clean(ip.pinCode || "");
+            const ipCity = clean(ip.city || job.exporter_city || "GANDHINAGAR").toUpperCase();
+            const ipPin = clean(ip.pinCode || job.exporter_pincode || "");
 
             // FIX Bug 10/2: Beneficiary addr — strip L.L.C. prefix; preserve :
             const bp = d.beneficiaryParty || {};
-            const bpRaw = cleanAddrSplit(bp.addressLine1 || "");
+            const bpRaw = clean(bp.addressLine1 || "");
             const bpMatch = bpRaw.match(/^(L\s*L\s*C|LLC|LTD|PVT)\s*/i);
             const bpAddr = bpMatch ? bpRaw.slice(bpMatch[0].length) : bpRaw;
             const bL = split35(bpAddr);
@@ -941,7 +923,7 @@ export function generateSBFlatFile(job) {
                 invSrNo, "0", String(di + 1),
                 clean(d.irn || d.imageRefNo || ""),
                 docTypeCode, "",
-                ipAddrA, ipAddrB, ipState, ipPin,
+                ipAddr1, ipAddr2, ipCity, ipPin,
                 docRefFinal,
                 clean(d.placeOfIssue || job.originState || ""),
                 uploadDate,

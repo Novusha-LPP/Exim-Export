@@ -106,12 +106,16 @@ const ConsigneeCountryAutocomplete = ({ value, onChange }) => {
     <div style={{ flex: 1, position: "relative" }} ref={d.wrapRef}>
       <input
         style={{
-          border: "1px solid #cad3db",
+          border: "1px solid #cbd5e1",
           borderRadius: 4,
-          fontSize: 13,
+          fontSize: 11,
           padding: "2px 7px",
+          height: 24,
           width: "100%",
           boxSizing: "border-box",
+          background: "#fafaffff",
+          fontWeight: 500,
+          outline: "none",
         }}
         value={toUpper(d.query)}
         placeholder="Consignee Country"
@@ -468,15 +472,16 @@ const GeneralTab = ({ formik, directories }) => {
           value={getVal(name)}
           onChange={(e) => handleFieldChange(name, toUpperVal(e))}
           style={{
-            border: "1px solid #cad3db",
+            border: "1px solid #cbd5e1",
             borderRadius: 4,
-            fontSize: 13,
+            fontSize: 11,
             padding: "2px 7px",
-            height: 28,
+            height: 24,
             width: "100%",
             boxSizing: "border-box",
-            background: "#fff",
+            background: "#fafaffff",
             outline: "none",
+            fontWeight: 500,
           }}
         />
       </div>
@@ -548,14 +553,15 @@ const GeneralTab = ({ formik, directories }) => {
             }
           }}
           style={{
-            border: "1px solid #cad3db",
+            border: "1px solid #cbd5e1",
             borderRadius: 4,
-            fontSize: 13,
+            fontSize: 11,
             padding: "2px 7px",
-            height: 28,
+            height: 24,
             width: "100%",
-            background: "#fff",
+            background: "#fafaffff",
             outline: "none",
+            fontWeight: 500,
           }}
         >
           {branches.map((b, i) => (
@@ -586,13 +592,15 @@ const GeneralTab = ({ formik, directories }) => {
             handleFieldChange("bank_index", parseInt(e.target.value))
           }
           style={{
-            border: "1px solid #cad3db",
+            border: "1px solid #cbd5e1",
             borderRadius: 4,
-            fontSize: 13,
+            fontSize: 11,
             padding: "2px 7px",
-            height: 28,
+            height: 24,
             width: "100%",
-            background: "#fff",
+            background: "#fafaffff",
+            outline: "none",
+            fontWeight: 500,
           }}
         >
           {banksList.map((b, i) => (
@@ -615,15 +623,16 @@ const GeneralTab = ({ formik, directories }) => {
           value={getVal("bank_dealer")}
           onInput={onBankInput}
           style={{
-            border: "1px solid #cad3db",
+            border: "1px solid #cbd5e1",
             borderRadius: 4,
-            fontSize: 13,
+            fontSize: 11,
             padding: "2px 7px",
-            height: 28,
+            height: 24,
             width: "100%",
-            background: "#fff",
+            background: "#fafaffff",
             outline: "none",
             boxSizing: "border-box",
+            fontWeight: 500,
           }}
         />
         <datalist id="bank-list">
@@ -652,10 +661,10 @@ const GeneralTab = ({ formik, directories }) => {
   return (
     <div
       style={{
-        background: "#f7fafc",
+        background: "#fafaffff",
         borderRadius: 8,
         padding: 15,
-        border: "1.5px solid #e3e7ee",
+        border: "1.5px solid #e2e8f0",
         margin: "10px 0",
       }}
     >
@@ -720,15 +729,16 @@ const GeneralTab = ({ formik, directories }) => {
                   }
                 }}
                 style={{
-                  border: "1px solid #cad3db",
+                  border: "1px solid #cbd5e1",
                   borderRadius: 4,
-                  fontSize: 13,
+                  fontSize: 11,
                   padding: "2px 7px",
-                  height: 28,
+                  height: 24,
                   width: "100%",
                   boxSizing: "border-box",
-                  background: "#fff",
+                  background: "#fafaffff",
                   outline: "none",
+                  fontWeight: 500,
                 }}
               />
             </div>
@@ -810,13 +820,17 @@ const GeneralTab = ({ formik, directories }) => {
                 value={formik.values["sb_date"] || ""}
                 onChange={(e) => handleFieldChange("sb_date", e.target.value)}
                 style={{
-                  border: "1px solid #cad3db",
+                  border: "1px solid #cbd5e1",
                   borderRadius: 4,
-                  fontSize: 13,
+                  fontSize: 11,
                   padding: "2px 7px",
-                  height: 28,
+                  height: 24,
                   width: "100%",
                   marginBottom: 3,
+                  boxSizing: "border-box",
+                  background: "#fafaffff",
+                  outline: "none",
+                  fontWeight: 500,
                 }}
               />
             </div>
@@ -867,10 +881,13 @@ const GeneralTab = ({ formik, directories }) => {
               color: "#0a7921",
               border: "1px solid #8ddd8d",
               borderRadius: 4,
-              padding: "2px 13px",
-              fontWeight: 500,
-              fontSize: 13,
+              padding: "2px 10px",
+              fontWeight: 600,
+              fontSize: 11,
               cursor: "pointer",
+              height: 22,
+              display: "flex",
+              alignItems: "center",
             }}
             type="button"
           >
@@ -882,12 +899,16 @@ const GeneralTab = ({ formik, directories }) => {
             <div style={{ flex: 1, position: "relative" }} ref={menuRef}>
               <input
                 style={{
-                  border: "1px solid #cad3db",
+                  border: "1px solid #cbd5e1",
                   borderRadius: 4,
-                  fontSize: 13,
+                  fontSize: 11,
                   padding: "2px 7px",
                   width: "100%",
                   boxSizing: "border-box",
+                  height: 24,
+                  background: "#fafaffff",
+                  outline: "none",
+                  fontWeight: 500,
                 }}
                 value={toUpper(consignee.consignee_name)}
                 placeholder="Consignee Name"
@@ -978,11 +999,17 @@ const GeneralTab = ({ formik, directories }) => {
             </div>
             <input
               style={{
-                border: "1px solid #cad3db",
+                border: "1px solid #cbd5e1",
                 borderRadius: 4,
-                fontSize: 13,
+                fontSize: 11,
                 padding: "2px 7px",
                 flex: 2,
+                height: 24,
+                width: "100%",
+                background: "#fafaffff",
+                outline: "none",
+                fontWeight: 500,
+                boxSizing: "border-box",
               }}
               value={toUpper(consignee.consignee_address)}
               placeholder="Consignee Address"
@@ -1007,8 +1034,8 @@ const GeneralTab = ({ formik, directories }) => {
                 cursor: "pointer",
                 fontWeight: 700,
                 fontSize: 18,
-                width: 28,
-                height: 28,
+                width: 24,
+                height: 24,
                 padding: 0,
                 marginLeft: 5,
               }}

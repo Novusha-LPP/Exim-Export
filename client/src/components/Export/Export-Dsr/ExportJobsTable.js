@@ -333,42 +333,32 @@ const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSucce
       const result = await uploadFileToS3(file, "export_docs");
       const url = result.Location;
 
-      const payload = { ...job };
-      const newOperations = JSON.parse(JSON.stringify(job.operations || []));
-
-      if (!newOperations[0]) newOperations[0] = {};
+      let dotPath = "";
+      let currentFiles = [];
 
       if (uploadType === "toplevel") {
-        // For top-level array fields like booking_copy
-        const currentFiles = Array.isArray(job[field]) ? [...job[field]] : [];
-        currentFiles.push(url);
-        payload[field] = currentFiles;
+        dotPath = field;
+        currentFiles = Array.isArray(job[field]) ? [...job[field]] : [];
       } else if (uploadType === "section") {
-        if (!Array.isArray(newOperations[0][field])) newOperations[0][field] = [];
-
-        while (newOperations[0][field].length <= idx) {
-          newOperations[0][field].push({});
-        }
-
-        const currentFiles = Array.isArray(newOperations[0][field][idx].images)
-          ? newOperations[0][field][idx].images
-          : [];
-        newOperations[0][field][idx].images = [...currentFiles, url];
+        dotPath = `operations.0.${field}.${idx}.images`;
+        const ops = job.operations?.[0] || {};
+        const section = Array.isArray(ops[field]) ? ops[field] : [];
+        const item = section[idx] || {};
+        currentFiles = Array.isArray(item.images) ? [...item.images] : [];
       } else {
-        if (!newOperations[0].statusDetails) newOperations[0].statusDetails = [{}];
-        if (!newOperations[0].statusDetails[0]) newOperations[0].statusDetails[0] = {};
-
-        const currentFiles = Array.isArray(newOperations[0].statusDetails[0][field])
-          ? newOperations[0].statusDetails[0][field]
-          : [];
-        newOperations[0].statusDetails[0][field] = [...currentFiles, url];
+        dotPath = `operations.0.statusDetails.0.${field}`;
+        const ops = job.operations?.[0] || {};
+        const status = (ops.statusDetails && ops.statusDetails[0]) || {};
+        currentFiles = Array.isArray(status[field]) ? [...status[field]] : [];
       }
 
-      payload.operations = newOperations;
+      const newValue = [...currentFiles, url];
 
-      await axios.put(
-        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(job.job_no)}`,
-        payload
+      await axios.patch(
+        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(job.job_no)}/fields`,
+        {
+          fieldUpdates: [{ field: dotPath, value: newValue }]
+        }
       );
 
       if (onSuccess) onSuccess(url);
@@ -3501,7 +3491,7 @@ const ExportJobsTable = () => {
             const headers = { username: user.username || "unknown" };
 
             const response = await axios.get(
-              `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(sbTrackJob.job_no)}`,
+              `${import.meta.env.VITE_API_STRING}/get-export-job/${encodeURIComponent(sbTrackJob.job_no)}`,
               { headers }
             );
 

@@ -102,8 +102,6 @@ function toUpper(v) {
   return (typeof v === "string" ? v : "")?.toUpperCase() || "";
 }
 
-const goodsStuffedAtOptions = ["Factory", "Dock"];
-
 const sealTypeOptions = ["Agent Seal", "Self Seal", "Wearhouse"];
 
 function CFSDropdownField({

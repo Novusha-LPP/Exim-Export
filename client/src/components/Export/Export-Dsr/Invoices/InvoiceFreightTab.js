@@ -333,8 +333,8 @@ const InvoiceFreightTab = ({ formik }) => {
       // Update the amount in the object so it gets saved to the DB
       // We only do this if a rate is present (meaning it's a calculated field)
       const nextRow = { ...row };
-      if (rowAmount && (row.rate || row.amount)) {
-        nextRow.amount = Number(rowAmount.toFixed(2));
+      if (row.rate && rowAmount) {
+        nextRow.amount = Number(rowAmount.toFixed(4));
       }
 
       const effectiveCurrency = (row.currency || invoiceCurrency).toUpperCase();
@@ -401,10 +401,10 @@ const InvoiceFreightTab = ({ formik }) => {
       currency: fobCurrency,
       exchangeRate: effectiveFobRate,
       amount: Number.isFinite(fobAmountInSelected)
-        ? Number(fobAmountInSelected.toFixed(2))
+        ? Number(fobAmountInSelected.toFixed(4))
         : 0,
       // keep INR reference for downstream calculations
-      amountINR: Number.isFinite(fobInINR) ? Number(fobInINR.toFixed(2)) : 0,
+      amountINR: Number.isFinite(fobInINR) ? Number(fobInINR.toFixed(4)) : 0,
     };
 
     return nextCharges;
@@ -431,7 +431,7 @@ const InvoiceFreightTab = ({ formik }) => {
     if (!usdRateInINR) return 0;
 
     const fobInUSD = fobAmountINR / usdRateInINR; // INR → USD
-    return Number.isFinite(fobInUSD) ? Number(fobInUSD.toFixed(2)) : 0;
+    return Number.isFinite(fobInUSD) ? Number(fobInUSD.toFixed(4)) : 0;
   };
 
   const effectiveCharges = computeFOBCharges();
@@ -622,7 +622,7 @@ const InvoiceFreightTab = ({ formik }) => {
 
           const exchangeRate = (() => {
             if (data.exchangeRate != null && data.exchangeRate !== "") {
-              return Number(data.exchangeRate || 0);
+              return data.exchangeRate;
             }
             const rate = getRateForCurrency(effectiveCurrency);
             if (typeof rate === "number") return rate;
@@ -677,15 +677,15 @@ const InvoiceFreightTab = ({ formik }) => {
                       ...(disabled || isFOB ? styles.readonly : {}),
                       ...(disabled ? styles.disabled : {}),
                     }}
-                    value={exchangeRate === 0 ? "" : exchangeRate}
+                    value={exchangeRate ?? ""}
                     readOnly={disabled}
                     onChange={(e) => {
                       if (disabled) return;
                       const raw = e.target.value;
-                      const nextVal = raw === "" ? 0 : parseFloat(raw || "0");
-                      handleChange(row.key, "exchangeRate", nextVal);
+                      handleChange(row.key, "exchangeRate", raw);
                     }}
                     placeholder="0.00"
+                    step="any"
                   />
                 </div>
 
@@ -705,21 +705,14 @@ const InvoiceFreightTab = ({ formik }) => {
                         ...styles.input,
                         ...(disabled ? styles.disabled : {}),
                       }}
-                      value={
-                        data.rate !== undefined &&
-                          data.rate !== null &&
-                          data.rate !== "" &&
-                          data.rate !== 0
-                          ? data.rate
-                          : ""
-                      }
+                      value={data.rate ?? ""}
                       placeholder="0.00"
                       disabled={disabled}
+                      step="any"
                       onChange={(e) => {
                         if (disabled) return;
                         const raw = e.target.value;
-                        const nextVal = raw === "" ? 0 : parseFloat(raw || "0");
-                        handleChange(row.key, "rate", nextVal);
+                        handleChange(row.key, "rate", raw);
                       }}
                     />
                   )}
@@ -736,11 +729,12 @@ const InvoiceFreightTab = ({ formik }) => {
                       isFOB
                         ? ""
                         : Number.isFinite(baseValue) && baseValue !== 0
-                          ? baseValue.toFixed(2)
+                          ? baseValue.toFixed(4)
                           : ""
                     }
                     placeholder="0.00"
                     readOnly
+                    step="any"
                   />
                 </div>
 
@@ -756,7 +750,7 @@ const InvoiceFreightTab = ({ formik }) => {
                       // which is ALREADY computed by computeFOBCharges!
                       if (isFOB) {
                         if (data.amount !== undefined && data.amount !== null && data.amount !== 0) {
-                          return typeof data.amount === "number" ? data.amount.toFixed(2) : data.amount;
+                          return typeof data.amount === "number" ? data.amount.toFixed(4) : data.amount;
                         }
                         // if computed FOB is exactly 0, show nothing or 0.00
                         return "";
@@ -766,9 +760,7 @@ const InvoiceFreightTab = ({ formik }) => {
                       if (
                         data.amount !== undefined &&
                         data.amount !== null &&
-                        data.amount !== "" &&
-                        !isNaN(data.amount) &&
-                        data.amount !== 0
+                        data.amount !== ""
                       ) {
                         return data.amount;
                       }
@@ -776,19 +768,20 @@ const InvoiceFreightTab = ({ formik }) => {
                         Number.isFinite(computedAmount) &&
                         computedAmount !== 0
                       ) {
-                        return computedAmount.toFixed(2);
+                        return computedAmount.toFixed(4);
                       }
                       return "";
                     })()}
                     placeholder="0.00"
                     disabled={disabled}
+                    step="any"
                     onChange={(e) => {
                       if (disabled) return;
                       const raw = e.target.value;
                       handleChange(
                         row.key,
                         "amount",
-                        raw === "" ? "" : parseFloat(raw || "0"),
+                        raw
                       );
                     }}
                   />
