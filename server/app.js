@@ -88,6 +88,7 @@ import chargesRoute from "./routes/charges/chargesRoute.mjs";
 import tallyRoutes from "./routes/charges/tallyRoutes.mjs";
 import { initDsrCronJob } from "./jobs/dsrJob.mjs"; // Import DSR Job
 import testDsrEmailRoute from "./routes/export-dsr/testDsrEmail.mjs"; // Import Test DSR Route
+import apiKeyRoutes from "./routes/admin/apiKeyRoutes.mjs";
 
 // Report Routes
 import monthlyContainersReport from "./routes/report/monthlyContainers.mjs";
@@ -249,6 +250,7 @@ app.use(operationListJobs);
 app.use(chargesListJobs);
 app.use(queryRoutes);
 app.use(testDsrEmailRoute);
+app.use(apiKeyRoutes);
 
 // Report Routes
 app.use(monthlyContainersReport);

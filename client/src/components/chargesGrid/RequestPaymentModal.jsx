@@ -4,6 +4,8 @@ import './charges.css';
 
 const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, onSuccess }) => {
     const [loading, setLoading] = useState(false);
+    const [apiKeys, setApiKeys] = useState([]);
+    const [selectedKey, setSelectedKey] = useState(null);
     const [formData, setFormData] = useState({
         "Request No": '',
         "Request Date": new Date().toISOString().split('T')[0],
@@ -22,8 +24,28 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
         "Status": '',
         "jobNo": '',
         "chargeRef": '',
-        "jobRef": ''
+        "jobRef": '',
+        "apiKeyName": ''
     });
+
+    useEffect(() => {
+        const fetchApiKeys = async () => {
+            try {
+                const response = await axios.get(`${import.meta.env.VITE_API_STRING}/admin/api-keys`, { withCredentials: true });
+                setApiKeys(response.data || []);
+                if (response.data?.length > 0) {
+                    const activeKey = response.data.find(k => k.isActive);
+                    if (activeKey) {
+                        setSelectedKey(activeKey);
+                        setFormData(prev => ({ ...prev, apiKeyName: activeKey.name }));
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching API keys:", error);
+            }
+        };
+        if (isOpen) fetchApiKeys();
+    }, [isOpen]);
 
 
     useEffect(() => {
@@ -31,11 +53,11 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
             if (isOpen && initialData) {
                 // Generate request number using canonical job reference (e.g. IMP/24-25/0001)
                 const jobRefStr = initialData.jobDisplayNumber || initialData.jobNumber || jobNumber || '';
-                
+
                 // Fetch next sequence from backend using canonical job identifier
                 let finalRequestNo = `R1/01/${jobRefStr}`;
                 try {
-                    const API_KEY = "TALLY_INTEGRATION_KEY";
+                    const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
                     const yearParam = jobYear ? `&year=${jobYear}` : '';
                     const response = await axios.get(
                         `${import.meta.env.VITE_API_STRING}/tally/next-sequence?type=payment&jobNo=${jobRefStr}${yearParam}`,
@@ -71,7 +93,7 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
         };
 
         fetchNextSequence();
-    }, [isOpen, initialData, jobNumber, jobYear]);
+    }, [isOpen, initialData, jobNumber, jobYear, selectedKey]);
 
     if (!isOpen) return null;
 
@@ -84,17 +106,20 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
         if (e && e.preventDefault) e.preventDefault();
         setLoading(true);
         try {
-            const API_KEY = "TALLY_INTEGRATION_KEY"; 
-            
+            const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
+
+            // Prepare clean data for Tally (removing internal fields)
+            const { apiKeyName, ...tallyData } = formData;
+
             // Fixed URL: import.meta.env.VITE_API_STRING already contains '/api'
             const response = await axios.post(
-                `${import.meta.env.VITE_API_STRING}/tally/payment-request`, 
-                formData,
+                `${import.meta.env.VITE_API_STRING}/tally/payment-request`,
+                tallyData,
                 {
                     headers: { 'x-api-key': API_KEY }
                 }
             );
-            
+
             if (response.data.success) {
                 alert("Payment Request Submitted Successfully to Tally!");
                 if (onSuccess) onSuccess(formData["Request No"]);
@@ -117,6 +142,28 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
                 <div className="modal-title">Request Payment</div>
                 <form>
                     <div className="modal-body">
+                        {/* API Key Selection (Admin Only in UI) */}
+                        <div className="ep-row" style={{ marginBottom: '20px', borderBottom: '1px solid #eee', pb: '10px' }}>
+                            <span className="ep-label" style={{ fontWeight: 800, color: '#d32f2f' }}>Integration Key</span>
+                            <select 
+                                name="apiKeyName" 
+                                className="ep-select" 
+                                style={{ width: '300px', fontWeight: 600 }} 
+                                value={formData.apiKeyName} 
+                                onChange={(e) => {
+                                    const keyName = e.target.value;
+                                    const keyObj = apiKeys.find(k => k.name === keyName);
+                                    if (keyObj) {
+                                        setSelectedKey(keyObj);
+                                        setFormData(prev => ({ ...prev, apiKeyName: keyName }));
+                                    }
+                                }}
+                            >
+                                {apiKeys.map(k => (
+                                    <option key={k._id} value={k.name}>{k.name} {k.isActive ? '' : '(Inactive)'}</option>
+                                ))}
+                            </select>
+                        </div>
                         <div className="ep-grid" style={{ gridTemplateColumns: '1fr 1fr 30px', gap: '10px 20px', marginRight: '10px' }}>
                             <div className="ep-row">
                                 <span className="ep-label">Request No</span>

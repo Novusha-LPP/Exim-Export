@@ -785,6 +785,7 @@ const exportJobSchema = new mongoose.Schema(
     detailedStatus: { type: String, default: "" },
     vgm_done: { type: Boolean, default: false },
     form13_done: { type: Boolean, default: false },
+    shipping_bill_done: { type: Boolean, default: false },
 
     ////////////////////////////////////////////////// Exporter Information
     exporter_address: { type: String, trim: true },

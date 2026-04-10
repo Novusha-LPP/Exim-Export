@@ -742,6 +742,17 @@ const LogisysEditableHeader = ({
               />
               Form 13
             </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: isEditable ? "pointer" : "default", fontSize: 11, fontWeight: 500, color: "#1976d2", opacity: isEditable ? 1 : 0.6 }}>
+              <input
+                type="checkbox"
+                name="shipping_bill_done"
+                checked={!!formik.values.shipping_bill_done}
+                onChange={(e) => formik.setFieldValue("shipping_bill_done", e.target.checked)}
+                disabled={!isEditable}
+                style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
+              />
+              Shipping Bill
+            </label>
           </div>
 
           <Menu

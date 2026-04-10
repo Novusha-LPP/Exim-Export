@@ -6,6 +6,7 @@ import { Chip } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import axios from 'axios';
 import './charges.css';
+import { SHIPPING_LINES } from '../../utils/masterList';
 
 const EditChargeModal = ({
   isOpen,
@@ -35,9 +36,12 @@ const EditChargeModal = ({
   const [shippingLines, setShippingLines] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [organizations, setOrganizations] = useState([]);
+  const [exporters, setExporters] = useState([]);
   const [activeDropdown, setActiveDropdown] = useState({ index: null, section: null }); // Track which row/section has open dropdown
+  const [searchLoading, setSearchLoading] = useState(false);
   const dropdownRef = useRef(null);
   const modalRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -60,23 +64,59 @@ const EditChargeModal = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const fetchMasterData = async () => {
+    try {
+      const [slRes, supRes, orgRes] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_API_STRING}/get-shipping-lines`),
+        axios.get(`${import.meta.env.VITE_API_STRING}/get-suppliers`),
+        axios.get(`${import.meta.env.VITE_API_STRING}/organization`)
+      ]);
+
+      // Combine shipping lines and ensure they all have a 'name' property for filtering
+      const masterSLs = SHIPPING_LINES.map(sl => ({ name: sl.label, value: sl.value, city: 'Master List' }));
+      const apiSLs = (slRes.data || []).map(sl => ({
+        name: sl.shippingName || sl.name || '',
+        value: sl.shippingLineCode || sl.value || '',
+        city: sl.location || sl.city || ''
+      }));
+
+      const combinedSL = [...apiSLs];
+      masterSLs.forEach(msl => {
+        if (!combinedSL.find(sl => (sl.name || '').toUpperCase() === msl.name.toUpperCase())) {
+          combinedSL.push(msl);
+        }
+      });
+
+      setShippingLines(combinedSL);
+      setSuppliers(supRes.data || []);
+      setOrganizations(orgRes.data?.organizations || []);
+    } catch (error) {
+      console.error("Error fetching master data:", error);
+    }
+  };
+
+  const searchDirectory = async (searchTerm) => {
+    if (!searchTerm || searchTerm.length < 2) return;
+    setSearchLoading(true);
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/directory?search=${searchTerm}&limit=50`);
+      const mapped = (res.data?.data || []).map(e => ({
+        name: e.organization,
+        city: e.branchInfo?.[0]?.city || 'Directory'
+      }));
+      setExporters(mapped);
+    } catch (error) {
+      console.error("Error searching directory:", error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchMasterData = async () => {
-      try {
-        const [slRes, supRes, orgRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_STRING}/get-shipping-lines`),
-          axios.get(`${import.meta.env.VITE_API_STRING}/get-suppliers`),
-          axios.get(`${import.meta.env.VITE_API_STRING}/organization`)
-        ]);
-        setShippingLines(slRes.data);
-        setSuppliers(supRes.data);
-        setOrganizations(orgRes.data.organizations || []);
-      } catch (error) {
-        console.error("Error fetching master data:", error);
-      }
-    };
-    fetchMasterData();
-  }, []);
+    if (isOpen) {
+      fetchMasterData();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -217,6 +257,11 @@ const EditChargeModal = ({
       // Open dropdown when typing party name
       if (field === 'partyName') {
         setActiveDropdown({ index, section });
+        // Trigger dynamic directory search
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = setTimeout(() => {
+          searchDirectory(value);
+        }, 300);
       } else if (field === 'partyType') {
         // Clear party selected when type changes
         updated[index][section].partyName = '';
@@ -438,8 +483,9 @@ const EditChargeModal = ({
                                   </div>
                                   {activeDropdown.index === i && activeDropdown.section === 'revenue' && (row.revenue?.partyName?.length >= 2) && (
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
-                                      {(row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
-                                        row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations : [])
+                                      {searchLoading && <li className="ep-dropdown-item"><span className="ep-item-sub">Searching...</span></li>}
+                                      {!searchLoading && (row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
+                                        row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? [...organizations, ...exporters] : [])
                                         .filter(item => !row.revenue?.partyName || (item.name && item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase())))
                                         .slice(0, 20)
                                         .map((item, idx) => (
@@ -448,9 +494,8 @@ const EditChargeModal = ({
                                             <span className="ep-item-sub">{item.city || 'Master Directory'}</span>
                                           </li>
                                         ))}
-                                      {/* Click outside to close is handled by modal background or focus loss usually, but let's add no-results */}
-                                      {((row.revenue?.partyType === 'Agent' || row.revenue?.partyType === 'Carrier' ? shippingLines :
-                                        row.revenue?.partyType === 'Customer' ? organizations : [])
+                                      {!searchLoading && ((row.revenue?.partyType === 'Agent' || row.revenue?.partyType === 'Carrier' ? shippingLines :
+                                        row.revenue?.partyType === 'Customer' ? [...organizations, ...exporters] : [])
                                         .filter(item => !row.revenue?.partyName || (item.name && item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase())))
                                         .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">No results found</span></li>}
                                     </ul>
@@ -597,9 +642,10 @@ const EditChargeModal = ({
                                   </div>
                                   {activeDropdown.index === i && activeDropdown.section === 'cost' && (row.cost?.partyName?.length >= 2) && (
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
-                                      {(row.cost?.partyType?.toUpperCase() === 'AGENT' || row.cost?.partyType?.toUpperCase() === 'OTHERS' ? shippingLines :
-                                        row.cost?.partyType?.toUpperCase() === 'VENDOR' || row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? [...suppliers, ...shippingLines] :
-                                          row.cost?.partyType?.toUpperCase() === 'IMPORTER' ? organizations : [])
+                                      {searchLoading && <li className="ep-dropdown-item"><span className="ep-item-sub">Searching...</span></li>}
+                                      {!searchLoading && (row.cost?.partyType?.toUpperCase() === 'AGENT' || row.cost?.partyType?.toUpperCase() === 'OTHERS' ? shippingLines :
+                                        row.cost?.partyType?.toUpperCase() === 'VENDOR' || row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? [...suppliers, ...shippingLines, ...exporters] :
+                                          row.cost?.partyType?.toUpperCase() === 'IMPORTER' ? [...organizations, ...exporters] : [])
                                         .filter(item => !row.cost?.partyName || (item.name && item.name.toLowerCase().includes(row.cost.partyName.toLowerCase())))
                                         .slice(0, 20)
                                         .map((item, idx) => (
@@ -608,9 +654,9 @@ const EditChargeModal = ({
                                             <span className="ep-item-sub">{item.city || 'Master Directory'}</span>
                                           </li>
                                         ))}
-                                      {((row.cost?.partyType === 'Agent' || row.cost?.partyType === 'Others' ? shippingLines :
-                                        row.cost?.partyType === 'Vendor' || row.cost?.partyType === 'Transporter' ? [...suppliers, ...shippingLines] :
-                                          row.cost?.partyType === 'Importer' ? organizations : [])
+                                      {!searchLoading && ((row.cost?.partyType === 'Agent' || row.cost?.partyType === 'Others' ? shippingLines :
+                                        row.cost?.partyType === 'Vendor' || row.cost?.partyType === 'Transporter' ? [...suppliers, ...shippingLines, ...exporters] :
+                                          row.cost?.partyType === 'Importer' ? [...organizations, ...exporters] : [])
                                         .filter(item => !row.cost?.partyName || (item.name && item.name.toLowerCase().includes(row.cost.partyName.toLowerCase())))
                                         .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">No results found</span></li>}
                                     </ul>

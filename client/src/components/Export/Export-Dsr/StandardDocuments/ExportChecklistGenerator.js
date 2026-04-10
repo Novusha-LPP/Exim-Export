@@ -18,7 +18,7 @@ const ExportChecklistGenerator = ({
     margins: {
       left: 20,
       right: 20,
-      top: 25,
+      top: 15,
       bottom: 30,
     },
   };
@@ -555,25 +555,28 @@ const ExportChecklistGenerator = ({
 
     yPos = Math.max(yPos, rightDetailsY) + 8;
 
-    // EOU Details - exactly like first image
-    pdf.setFont("helvetica", "bold");
-    pdf.text("EOU IEC", leftColX, yPos);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(data.eou || "", leftColX + 50, yPos);
+    // EOU Details
+    if (data.eou || data.factoryAddress) {
+      pdf.setFont("helvetica", "bold");
+      pdf.text("EOU IEC", leftColX, yPos);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(data.eou || "", leftColX + 50, yPos);
 
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Branch Sno", leftColX + 200, yPos);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(data.branchSno || "", leftColX + 260, yPos);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Branch Sno", leftColX + 200, yPos);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(data.branchSno || "", leftColX + 260, yPos);
 
-    yPos += 12;
+      yPos += 12;
 
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Factory Address", leftColX, yPos);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(data.factoryAddress || "", leftColX + 80, yPos);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Factory Address", leftColX, yPos);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(data.factoryAddress || "", leftColX + 80, yPos);
+      yPos += 10;
+    }
 
-    return yPos + 10;
+    return yPos;
   };
 
   // ==================== NEW PAGE FOR ITEM DETAILS ====================
@@ -617,13 +620,13 @@ const ExportChecklistGenerator = ({
       styles: { fontSize: FONT_SIZES.tableContent, cellPadding: 2, overflow: "linebreak", lineWidth: 0.3 },
       headStyles: { fillColor: [220, 220, 220], textColor: 0, fontStyle: "bold", fontSize: 7 },
       columnStyles: {
-        0: { cellWidth: 45 },
-        1: { cellWidth: 100 },
-        2: { cellWidth: 130 },
-        3: { cellWidth: 65 },
-        4: { cellWidth: 75 },
-        5: { cellWidth: 75 },
-        6: { cellWidth: 65 },
+        0: { cellWidth: 40 },
+        1: { cellWidth: 90 },
+        2: { cellWidth: "auto" },
+        3: { cellWidth: 60 },
+        4: { cellWidth: 70 },
+        5: { cellWidth: 70 },
+        6: { cellWidth: 60 },
       },
       margin: { left: leftX },
       tableWidth: rightX - leftX,
@@ -659,57 +662,59 @@ const ExportChecklistGenerator = ({
     let yPos = startY;
 
     // DBK DETAILS SECTION
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("DBK DETAILS", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 5;
+    if (data.dbkData && data.dbkData.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("DBK DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
 
-    // AutoTable for DBK Details
-    const dbkHeaders = [
-      "Inv No",
-      "Item No",
-      "DBK SI No",
-      "DBK Rate",
-      "DBK Qty / Unit",
-      "DBK Amount",
-      "DBK SPE",
-    ];
+      // AutoTable for DBK Details
+      const dbkHeaders = [
+        "Inv No",
+        "Item No",
+        "DBK SI No",
+        "DBK Rate",
+        "DBK Qty / Unit",
+        "DBK Amount",
+        "DBK SPE",
+      ];
 
-    const dbkRows = Array.isArray(data.dbkData) ? data.dbkData : [data.dbkData];
+      const dbkRows = Array.isArray(data.dbkData) ? data.dbkData : [data.dbkData];
 
-    pdf.autoTable({
-      head: [dbkHeaders],
-      body: dbkRows.map((row) => [
-        row.invNo,
-        row.itemNo,
-        row.dbkSlNo,
-        row.dbkRate,
-        row.dbkQtyUnit,
-        row.dbkAmount,
-        row.dbkSPE,
-      ]),
-      startY: yPos,
-      styles: {
-        fontSize: FONT_SIZES.tableContent,
-        cellPadding: 2,
-        overflow: "linebreak",
-      },
-      headStyles: {
-        fillColor: [220, 220, 220],
-        textColor: 0,
-        fontStyle: "bold",
-        fontSize: FONT_SIZES.tableHeader,
-      },
-      margin: { left: leftX },
-      tableWidth: rightX - leftX,
-    });
+      pdf.autoTable({
+        head: [dbkHeaders],
+        body: dbkRows.map((row) => [
+          row.invNo,
+          row.itemNo,
+          row.dbkSlNo,
+          row.dbkRate,
+          row.dbkQtyUnit,
+          row.dbkAmount,
+          row.dbkSPE,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+          overflow: "linebreak",
+        },
+        headStyles: {
+          fillColor: [220, 220, 220],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: FONT_SIZES.tableHeader,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
 
-    yPos = pdf.lastAutoTable.finalY + 10;
-    pdf.setFont("helvetica", "bold");
-    pdf.text(`Total DBK Amount: ${data.dbkTotalAmount || "0.00"}`, rightX, yPos, { align: "right" });
-    yPos += 15;
+      yPos = pdf.lastAutoTable.finalY + 10;
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`Total DBK Amount: ${data.dbkTotalAmount || "0.00"}`, rightX, yPos, { align: "right" });
+      yPos += 15;
+    }
 
     // ROSCTL DETAILS SECTION (Only if data exists)
     if (data.rosctlData && data.rosctlData.length > 0) {
@@ -819,129 +824,135 @@ const ExportChecklistGenerator = ({
     }
 
     // VESSEL DETAILS - compact table
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("VESSEL DETAILS", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 5;
+    if (data.vesselName || data.voyageNumber || data.factoryStuffed === "Yes") {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("VESSEL DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
 
-    pdf.autoTable({
-      body: [
-        ["Factory Stuffed", data.factoryStuffed || "", "Seal Type", data.sealType || ""],
-        ["Sample Acc.", data.sampleAcc || "", "Vessel Name", data.vesselName || ""],
-        ["Voyage Number", data.voyageNumber || "", "", ""],
-      ],
-      startY: yPos,
-      styles: { fontSize: FONT_SIZES.tableContent, cellPadding: 2 },
-      columnStyles: {
-        0: { fontStyle: "bold", cellWidth: 80 },
-        1: { cellWidth: (rightX - leftX) / 2 - 80 },
-        2: { fontStyle: "bold", cellWidth: 80 },
-        3: { cellWidth: (rightX - leftX) / 2 - 80 },
-      },
-      margin: { left: leftX },
-      tableWidth: rightX - leftX,
-      theme: "plain",
-    });
+      pdf.autoTable({
+        body: [
+          ["Factory Stuffed", data.factoryStuffed || "", "Seal Type", data.sealType || ""],
+          ["Sample Acc.", data.sampleAcc || "", "Vessel Name", data.vesselName || ""],
+          ["Voyage Number", data.voyageNumber || "", "", ""],
+        ],
+        startY: yPos,
+        styles: { fontSize: FONT_SIZES.tableContent, cellPadding: 2 },
+        columnStyles: {
+          0: { fontStyle: "bold", cellWidth: 80 },
+          1: { cellWidth: (rightX - leftX) / 2 - 80 },
+          2: { fontStyle: "bold", cellWidth: 80 },
+          3: { cellWidth: (rightX - leftX) / 2 - 80 },
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+        theme: "plain",
+      });
 
-    yPos = pdf.lastAutoTable.finalY + 8;
+      yPos = pdf.lastAutoTable.finalY + 8;
+    }
 
     // CONTAINER DETAILS
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("CONTAINER DETAILS", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 5;
+    if (data.containers && data.containers.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("CONTAINER DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
 
-    const containerHeaders = [
-      "Container No",
-      "Size",
-      "Type",
-      "Seal No",
-      "Seal Type",
-      "Seal Date",
-      "Seal Device ID",
-    ];
+      const containerHeaders = [
+        "Container No",
+        "Size",
+        "Type",
+        "Seal No",
+        "Seal Type",
+        "Seal Date",
+        "Seal Device ID",
+      ];
 
-    const containerRows = Array.isArray(data.containers)
-      ? data.containers
-      : [data.containers];
+      const containerRows = Array.isArray(data.containers)
+        ? data.containers
+        : [data.containers];
 
-    pdf.autoTable({
-      head: [containerHeaders],
-      body: containerRows.map((containers) => [
-        containers.containerNo,
-        containers.size,
-        containers.type,
-        containers.sealNo,
-        containers.sealType,
-        containers.sealDate,
-        containers.sealDeviceID,
-      ]),
-      startY: yPos,
-      styles: {
-        fontSize: FONT_SIZES.tableContent,
-        cellPadding: 2,
-      },
-      headStyles: {
-        fillColor: [220, 220, 220],
-        textColor: 0,
-        fontStyle: "bold",
-      },
-      margin: { left: leftX },
-      tableWidth: rightX - leftX,
-    });
+      pdf.autoTable({
+        head: [containerHeaders],
+        body: containerRows.map((containers) => [
+          containers.containerNo,
+          containers.size,
+          containers.type,
+          containers.sealNo,
+          containers.sealType,
+          containers.sealDate,
+          containers.sealDeviceID,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [220, 220, 220],
+          textColor: 0,
+          fontStyle: "bold",
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
 
-    yPos = pdf.lastAutoTable.finalY + 10;
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
 
     // Additional Details Table
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("Additional Details", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 5;
+    if (data.additionalDetailsRows && data.additionalDetailsRows.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("Additional Details", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
 
-    const additionalHeaders = [
-      "Inv/Item SLN",
-      "SQC Qty/Unit",
-      "Origin District",
-      "Origin State",
-      "Comp. Cess Amount",
-      "PTA/FTA",
-    ];
+      const additionalHeaders = [
+        "Inv/Item SLN",
+        "SQC Qty/Unit",
+        "Origin District",
+        "Origin State",
+        "Comp. Cess Amount",
+        "PTA/FTA",
+      ];
 
-    const additionalRows = Array.isArray(data.additionalDetailsRows)
-      ? data.additionalDetailsRows
-      : [];
+      const additionalRows = Array.isArray(data.additionalDetailsRows)
+        ? data.additionalDetailsRows
+        : [];
 
-    pdf.autoTable({
-      head: [additionalHeaders],
-      body: additionalRows.map((row) => [
-        row.invItemSln,
-        row.sqcQtyUnit,
-        row.originDistrict,
-        row.originState,
-        row.compCessAmount,
-        row.ptaFta,
-      ]),
-      startY: yPos,
-      styles: {
-        fontSize: FONT_SIZES.tableContent,
-        cellPadding: 2,
-      },
-      headStyles: {
-        fillColor: [220, 220, 220],
-        textColor: 0,
-        fontStyle: "bold",
-      },
-      margin: { left: leftX },
-      tableWidth: rightX - leftX,
-    });
+      pdf.autoTable({
+        head: [additionalHeaders],
+        body: additionalRows.map((row) => [
+          row.invItemSln,
+          row.sqcQtyUnit,
+          row.originDistrict,
+          row.originState,
+          row.compCessAmount,
+          row.ptaFta,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [220, 220, 220],
+          textColor: 0,
+          fontStyle: "bold",
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
 
-    yPos = pdf.lastAutoTable.finalY + 10;
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
 
     return yPos + 5;
   };
@@ -952,36 +963,38 @@ const ExportChecklistGenerator = ({
     let yPos = startY;
 
     // END USE INFORMATION
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("END USE INFORMATION", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 5;
+    if (data.endUseData && data.endUseData.length > 0 && data.endUseData[0].code) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("END USE INFORMATION", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
 
-    const endUseHeaders = ["Inv / Item Sr.No.", "Code"];
-    const endUseRows = Array.isArray(data.endUseData)
-      ? data.endUseData
-      : [data.endUseData];
+      const endUseHeaders = ["Inv / Item Sr.No.", "Code"];
+      const endUseRows = Array.isArray(data.endUseData)
+        ? data.endUseData
+        : [data.endUseData];
 
-    pdf.autoTable({
-      head: [endUseHeaders],
-      body: endUseRows.map((row) => [row.invItemSrNo, row.code]),
-      startY: yPos,
-      styles: {
-        fontSize: FONT_SIZES.tableContent,
-        cellPadding: 2,
-      },
-      headStyles: {
-        fillColor: [220, 220, 220],
-        textColor: 0,
-        fontStyle: "bold",
-      },
-      margin: { left: leftX },
-      tableWidth: rightX - leftX,
-    });
+      pdf.autoTable({
+        head: [endUseHeaders],
+        body: endUseRows.map((row) => [row.invItemSrNo, row.code]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [220, 220, 220],
+          textColor: 0,
+          fontStyle: "bold",
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
 
-    yPos = pdf.lastAutoTable.finalY + 10;
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
 
     // RODTEP Info
     if (data.rodtepData && data.rodtepData.length > 0) {
@@ -1109,64 +1122,66 @@ const ExportChecklistGenerator = ({
       }
     };
     // SUPPORTING DOCUMENTS - Using autoTable for compact layout
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("SUPPORTING DOCUMENTS", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 5;
+    if (data.supportingDocs && Object.keys(data.supportingDocs).length > 0 && data.supportingDocs.imageRefNo) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("SUPPORTING DOCUMENTS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
 
-    const sd = data.supportingDocs || {};
+      const sd = data.supportingDocs || {};
 
-    pdf.autoTable({
-      body: [
-        ["Inv/Item/SrNo.", sd.invItemSrNo || "", "Image Ref.No.(IRN)", sd.imageRefNo || "", "ICEGATE ID", sd.icegateId || ""],
-        ["Doc Issue Date", sd.docIssueDate || "", "Doc Ref.No.", sd.docRefNo || "", "File Type", sd.fileType || ""],
-        ["Doc Expiry Date", sd.docExpiryDate || "", "Doc Uploaded On", sd.docUploadedOn || "", "Place of Issue", sd.placeOfIssue || ""],
-        ["Doc Type Code", sd.docTypeCode || "", "Doc Name", sd.docName || "", "Issuing Party Code", sd.issuingPartyCode || ""],
-        ["", "", "", "", "Beneficiary Party Code", sd.beneficiaryPartyCode || ""],
-      ],
-      startY: yPos,
-      styles: { fontSize: 7, cellPadding: 1.5, overflow: "linebreak" },
-      columnStyles: {
-        0: { fontStyle: "bold", cellWidth: 55 },
-        1: { cellWidth: 75 },
-        2: { fontStyle: "bold", cellWidth: 60 },
-        3: { cellWidth: 90 },
-        4: { fontStyle: "bold", cellWidth: 70 },
-        5: { cellWidth: (rightX - leftX) - 350 },
-      },
-      margin: { left: leftX },
-      tableWidth: rightX - leftX,
-      theme: "plain",
-    });
+      pdf.autoTable({
+        body: [
+          ["Inv/Item/SrNo.", sd.invItemSrNo || "", "Image Ref.No.(IRN)", sd.imageRefNo || "", "ICEGATE ID", sd.icegateId || ""],
+          ["Doc Issue Date", sd.docIssueDate || "", "Doc Ref.No.", sd.docRefNo || "", "File Type", sd.fileType || ""],
+          ["Doc Expiry Date", sd.docExpiryDate || "", "Doc Uploaded On", sd.docUploadedOn || "", "Place of Issue", sd.placeOfIssue || ""],
+          ["Doc Type Code", sd.docTypeCode || "", "Doc Name", sd.docName || "", "Issuing Party Code", sd.issuingPartyCode || ""],
+          ["", "", "", "", "Beneficiary Party Code", sd.beneficiaryPartyCode || ""],
+        ],
+        startY: yPos,
+        styles: { fontSize: 7, cellPadding: 1.5, overflow: "linebreak" },
+        columnStyles: {
+          0: { fontStyle: "bold", cellWidth: 55 },
+          1: { cellWidth: 75 },
+          2: { fontStyle: "bold", cellWidth: 60 },
+          3: { cellWidth: 90 },
+          4: { fontStyle: "bold", cellWidth: 70 },
+          5: { cellWidth: "auto" },
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+        theme: "plain",
+      });
 
-    yPos = pdf.lastAutoTable.finalY + 5;
+      yPos = pdf.lastAutoTable.finalY + 5;
 
-    // Issuing Party & Beneficiary Party - side by side table
-    pdf.autoTable({
-      head: [["Issuing Party", "", "Beneficiary Party", ""]],
-      body: [
-        ["Name", sd.issuingPartyName || "", "Name", sd.beneficiaryPartyName || ""],
-        ["Address 1", sd.issuingPartyAdd1 || "", "Address 1", sd.beneficiaryPartyAdd1 || ""],
-        ["Address 2", sd.issuingPartyAdd2 || "", "Address 2", sd.beneficiaryPartyAdd2 || ""],
-        ["City", sd.issuingPartyCity || "", "City", sd.beneficiaryPartyCity || ""],
-        ["Pin Code", sd.issuingPartyPinCode || "", "Pin Code", sd.beneficiaryPartyPinCode || ""],
-      ],
-      startY: yPos,
-      styles: { fontSize: 7, cellPadding: 1.5, overflow: "linebreak" },
-      headStyles: { fillColor: [220, 220, 220], textColor: 0, fontStyle: "bold" },
-      columnStyles: {
-        0: { fontStyle: "bold", cellWidth: 45 },
-        1: { cellWidth: (rightX - leftX) / 2 - 45 },
-        2: { fontStyle: "bold", cellWidth: 45 },
-        3: { cellWidth: (rightX - leftX) / 2 - 45 },
-      },
-      margin: { left: leftX },
-      tableWidth: rightX - leftX,
-    });
+      // Issuing Party & Beneficiary Party - side by side table
+      pdf.autoTable({
+        head: [["Issuing Party", "", "Beneficiary Party", ""]],
+        body: [
+          ["Name", sd.issuingPartyName || "", "Name", sd.beneficiaryPartyName || ""],
+          ["Address 1", sd.issuingPartyAdd1 || "", "Address 1", sd.beneficiaryPartyAdd1 || ""],
+          ["Address 2", sd.issuingPartyAdd2 || "", "Address 2", sd.beneficiaryPartyAdd2 || ""],
+          ["City", sd.issuingPartyCity || "", "City", sd.beneficiaryPartyCity || ""],
+          ["Pin Code", sd.issuingPartyPinCode || "", "Pin Code", sd.beneficiaryPartyPinCode || ""],
+        ],
+        startY: yPos,
+        styles: { fontSize: 7, cellPadding: 1.5, overflow: "linebreak" },
+        headStyles: { fillColor: [220, 220, 220], textColor: 0, fontStyle: "bold" },
+        columnStyles: {
+          0: { fontStyle: "bold", cellWidth: 45 },
+          1: { cellWidth: (rightX - leftX) / 2 - 45 },
+          2: { fontStyle: "bold", cellWidth: 45 },
+          3: { cellWidth: (rightX - leftX) / 2 - 45 },
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
 
-    yPos = pdf.lastAutoTable.finalY + 10;
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
 
     // FINAL DECLARATION
     pdf.setFont("helvetica", "bold");
@@ -1283,7 +1298,7 @@ const ExportChecklistGenerator = ({
           : "",
         exporterName: exportJob.exporter || "",
         exporterBranch: exportJob.branch_code
-          ? `Branch Ser #${exportJob.branch_sr_no}`
+          ? `Branch Ser #${exportJob.branch_sno}`
           : "",
         exporterAddress1: exportJob.exporter_address || "",
         exporterAddress2: "", // Parse from exporter_address if multi-line
@@ -1393,7 +1408,7 @@ const ExportChecklistGenerator = ({
               0,
             )
             .toFixed(2) || "0.00",
-        forexBankAcNo: exportJob.bank_account_number || "",
+        forexBankAcNo: exportJob.ac_number || "",
         // DBK + RODTEP/ROSCTL - Dynamic label based on what's available
         dbkStrLabel: (() => {
           // Check if RODTEP is available
@@ -1639,9 +1654,7 @@ const ExportChecklistGenerator = ({
           "",
         iec: exportJob.ieCode || "",
         branchSno:
-          exportJob.branch_sr_no ||
           exportJob.branchSrNo ||
-          exportJob.annexC1Details?.branchSerialNo ||
           "0",
         factoryAddress: exportJob.factory_address || "",
 
@@ -2016,9 +2029,7 @@ const ExportChecklistGenerator = ({
             RS001: `I/We, in regard to my/our claim under RoSCTL scheme made in this Shipping Bill or Bill of Export, hereby declare that:
 1. I/ We undertake to abide by the provisions, including conditions, restrictions, exclusions and time-limits as provided under RoSCTL scheme, and relevant notifications, regulations, etc., as amended from time to time.
 2. Any claim made in this shipping bill or bill of export is not with respect to any duties or taxes or levies which are exempted or remitted or credited under any other mechanism outside RoSCTL.
-3. I/We undertake to preserve and make available relevant documents relating to the exported goods for the purposes of audit in the manner and for the time period prescribed in the Customs Audit Regulations, 2018.`
-          };
-
+3. I/We undertake to preserve and make available relevant documents relating to the exported goods for the purposes of audit in the manner and for the time period prescribed in the Customs Audit Regulations, 2018.`};
           const codes = [];
           exportJob.invoices?.forEach(inv =>
             inv.products?.forEach(p => {

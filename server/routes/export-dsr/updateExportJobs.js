@@ -1388,8 +1388,8 @@ router.put("/:job_no(.*)/lock", async (req, res) => {
   }
 });
 
-// Unlock a job
-router.put("/:job_no(.*)/unlock", async (req, res) => {
+// Unlock a job (Supports both PUT and POST for sendBeacon support)
+router.route("/:job_no(.*)/unlock").all(async (req, res) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
