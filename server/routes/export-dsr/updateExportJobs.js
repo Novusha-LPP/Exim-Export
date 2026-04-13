@@ -938,6 +938,7 @@ router.get("/exports/:status?", async (req, res) => {
       job_date: 1,
       consignmentType: 1,
       job_owner: 1,
+      operational_lock: 1,
       exporter: 1,
       exporter_ref_no: 1,
       exporter_branch_name: 1,
@@ -1333,7 +1334,7 @@ router.get("/:job_no(.*)", async (req, res, next) => {
     }
 
     // If locked by someone else, return localized info
-    if (exportJob.lockedBy && exportJob.lockedBy !== username) {
+    if (exportJob.lockedBy && (exportJob.lockedBy || "").toLowerCase() !== (username || "").toLowerCase()) {
       return res.status(423).json({
         message: `Job is currently locked by ${exportJob.lockedBy}`,
         lockedBy: exportJob.lockedBy,
@@ -1370,7 +1371,7 @@ router.put("/:job_no(.*)/lock", async (req, res) => {
     const isStale =
       job.lockedAt && new Date() - new Date(job.lockedAt) > LOCK_TIMEOUT;
 
-    if (job.lockedBy && job.lockedBy !== username && !isStale) {
+    if (job.lockedBy && (job.lockedBy || "").toLowerCase() !== (username || "").toLowerCase() && !isStale) {
       return res.status(423).json({
         message: `Already locked by ${job.lockedBy}`,
         lockedBy: job.lockedBy,
@@ -1387,8 +1388,8 @@ router.put("/:job_no(.*)/lock", async (req, res) => {
   }
 });
 
-// Unlock a job
-router.put("/:job_no(.*)/unlock", async (req, res) => {
+// Unlock a job (Supports both PUT and POST for sendBeacon support)
+router.route("/:job_no(.*)/unlock").all(async (req, res) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
@@ -1401,7 +1402,7 @@ router.put("/:job_no(.*)/unlock", async (req, res) => {
     if (!job) return res.status(404).json({ message: "Job not found" });
 
     // Only let the owner or an admin unlock? For now, if username matches
-    if (job.lockedBy === username) {
+    if ((job.lockedBy || "").toLowerCase() === (username || "").toLowerCase()) {
       job.lockedBy = null;
       job.lockedAt = null;
       await job.save();

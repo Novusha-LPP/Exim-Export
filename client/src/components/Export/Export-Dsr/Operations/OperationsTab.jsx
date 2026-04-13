@@ -4,6 +4,7 @@ import FileUpload from "../../../gallery/FileUpload";
 import ImagePreview from "../../../gallery/ImagePreview";
 import zIndex from "@mui/material/styles/zIndex";
 import { priorityFilter } from "../../../../utils/filterUtils";
+import { SHIPPING_LINES } from "../../../../utils/masterList";
 
 const toUpper = (str) => (str ? str.toUpperCase() : "");
 
@@ -114,6 +115,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
   );
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
+  const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef();
   const menuRef = useRef(); // New ref for the portal menu
   const keepOpen = useRef(false);
@@ -136,34 +138,42 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
       setOpts([]);
       return;
     }
-    const searchVal = (query || "").trim();
+    const searchVal = isTyping ? (query || "").trim() : "";
     const isAir = transportMode === "AIR";
 
-    const url = isAir
-      ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-        searchVal,
-      )}`
-      : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-        searchVal,
-      )}`;
-
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        setOpts(
-          Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-              ? data
-              : [],
-        );
-      } catch {
-        setOpts([]);
-      }
-    }, 220);
-
-    return () => clearTimeout(t);
+    if (isAir) {
+      // Airlines still use the API
+      const url = `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(searchVal)}`;
+      const t = setTimeout(async () => {
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          setOpts(
+            Array.isArray(data?.data)
+              ? data.data
+              : Array.isArray(data)
+                ? data
+                : [],
+          );
+        } catch {
+          setOpts([]);
+        }
+      }, 220);
+      return () => clearTimeout(t);
+    } else {
+      // Sea shipping lines - use local SHIPPING_LINES master data
+      const needle = (searchVal || "").toUpperCase();
+      const mapped = SHIPPING_LINES
+        .map((sl) => ({ shippingLineCode: sl.value, shippingName: sl.label }))
+        .filter((sl) => {
+          if (!needle) return true;
+          return (
+            sl.shippingLineCode.toUpperCase().includes(needle) ||
+            sl.shippingName.toUpperCase().includes(needle)
+          );
+        });
+      setOpts(mapped);
+    }
   }, [open, query, transportMode, apiBase]);
 
   useEffect(() => {
@@ -175,6 +185,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
         (!menuRef.current || !menuRef.current.contains(e.target))
       ) {
         setOpen(false);
+        setIsTyping(false);
       }
     }
     document.addEventListener("mousedown", close);
@@ -199,6 +210,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
     formik.setFieldValue(fieldName, value);
     setOpen(false);
     setActive(-1);
+    setIsTyping(false);
   }
 
   return {
@@ -216,11 +228,13 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
       setQuery(v);
       formik.setFieldValue(fieldName, v);
       setOpen(true);
+      setIsTyping(true);
     },
     select,
     onInputFocus: () => {
       setOpen(true);
       setActive(-1);
+      setIsTyping(false);
       keepOpen.current = true;
     },
     onInputBlur: () => {
@@ -791,52 +805,51 @@ const OperationsTab = ({ formik }) => {
 
     formik.setFieldValue("operations", newOperations);
 
-    // AUTO-SYNC: When billing date is set, update detailedStatus and milestones
-    if (section === "statusDetails" && field === "billingDocsSentDt" && value) {
-      // 1. Set "Billing Pending" to detailedStatus if not already present
-      const currentStatus = formik.values.detailedStatus;
-      if (currentStatus !== "Billing Pending") {
-        formik.setFieldValue("detailedStatus", "Billing Pending");
-      }
+    // AUTO-SYNC: Update detailedStatus and milestones based on date fields
+    const statusSyncMap = {
+      leoDate: "L.E.O",
+      handoverForwardingNoteDate: isAir ? "File Handover to IATA" : "Container HO",
+      railOutReachedDate: isAir ? "Departure" : "Rail Out",
+    };
 
-      // 2. Update the "Billing Pending" milestone
+    if (section === "statusDetails" && statusSyncMap[field]) {
+      const targetStatus = statusSyncMap[field];
       const milestones = formik.values.milestones || [];
-      const billingIdx = milestones.findIndex((m) => m.milestoneName === "Billing Pending");
-      if (billingIdx !== -1) {
-        // Convert the date to dd-mm-yyyy format for milestone
-        let milestoneDate = value;
-        if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
-          const [y, m, d] = value.split("-");
-          milestoneDate = `${d}-${m}-${y}`;
+      const mIdx = milestones.findIndex((m) => m.milestoneName === targetStatus);
+
+      if (value) {
+        // Update detailedStatus to the milestone being filled
+        formik.setFieldValue("detailedStatus", targetStatus);
+
+        if (mIdx !== -1) {
+          let milestoneDate = value;
+          if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+            const [y, m, d] = value.split("-");
+            milestoneDate = `${d}-${m}-${y}`;
+          }
+          const updatedMilestones = [...milestones];
+          updatedMilestones[mIdx] = {
+            ...updatedMilestones[mIdx],
+            actualDate: milestoneDate,
+            isCompleted: true,
+          };
+          formik.setFieldValue("milestones", updatedMilestones);
         }
-        const updatedMilestones = [...milestones];
-        updatedMilestones[billingIdx] = {
-          ...updatedMilestones[billingIdx],
-          actualDate: milestoneDate,
-          isCompleted: true,
-          isMandatory: true,
-        };
-        formik.setFieldValue("milestones", updatedMilestones);
-      }
-    }
+      } else {
+        // If the date is cleared, reset detailedStatus (if it matches) and milestone
+        if (formik.values.detailedStatus === targetStatus) {
+          formik.setFieldValue("detailedStatus", "");
+        }
 
-    // If billing date is cleared, remove "Billing Pending" from detailedStatus and reset milestone
-    if (section === "statusDetails" && field === "billingDocsSentDt" && !value) {
-      const currentStatus = formik.values.detailedStatus;
-      if (currentStatus === "Billing Pending") {
-        formik.setFieldValue("detailedStatus", "");
-      }
-
-      const milestones = formik.values.milestones || [];
-      const billingIdx = milestones.findIndex((m) => m.milestoneName === "Billing Pending");
-      if (billingIdx !== -1) {
-        const updatedMilestones = [...milestones];
-        updatedMilestones[billingIdx] = {
-          ...updatedMilestones[billingIdx],
-          actualDate: "",
-          isCompleted: false,
-        };
-        formik.setFieldValue("milestones", updatedMilestones);
+        if (mIdx !== -1) {
+          const updatedMilestones = [...milestones];
+          updatedMilestones[mIdx] = {
+            ...updatedMilestones[mIdx],
+            actualDate: "",
+            isCompleted: false,
+          };
+          formik.setFieldValue("milestones", updatedMilestones);
+        }
       }
     }
   };
@@ -1348,10 +1361,11 @@ const StatusSection = ({
     },
   ].filter((f) => !f.hidden);
 
-  const row2Fields = [
+  // All remaining fields (after row 1) in a single pool, filtered by visibility
+  const allRow2Pool = [
     {
       field: "containerPlacementDate",
-      label: "container placement",
+      label: "Container Placement",
       type: "date",
       width: 1,
       hidden: isAir || isLclDock || isFclFactory,
@@ -1391,13 +1405,10 @@ const StatusSection = ({
     },
     {
       field: "handoverForwardingNoteDate",
-      label: "Handover doc",
+      label: "Handover Doc",
       type: "date",
       width: 1,
     },
-  ].filter((f) => !f.hidden);
-
-  const row3Fields = [
     {
       field: "handoverImageUpload",
       label: "Handover Copy",
@@ -1419,19 +1430,27 @@ const StatusSection = ({
       hidden: isAir || isLclDock,
     },
     {
-      field: "billingDocsSentDt",
-      label: "Invoice Date",
-      type: "date",
-      width: 1,
-      disabledFn: (item) => !(item.billingDocsSentUpload && item.billingDocsSentUpload.length > 0),
-    },
-    {
-      field: "billingDocsSentUpload",
-      label: "Invoice Doc",
-      type: "upload",
+      field: "operational_lock",
+      label: "Operational Lock",
+      type: "checkbox",
       width: 1,
     },
   ].filter((f) => !f.hidden);
+
+  // Split: first 7 width-units go to row2, rest overflow to row3
+  const MAX_ROW2_COLS = 7;
+  const row2Fields = [];
+  const row3Fields = [];
+  let row2WidthCount = 0;
+  for (const f of allRow2Pool) {
+    const w = f.width || 1;
+    if (row2WidthCount + w <= MAX_ROW2_COLS) {
+      row2Fields.push(f);
+      row2WidthCount += w;
+    } else {
+      row3Fields.push(f);
+    }
+  }
 
   // Calculate grid columns for each row based on visible fields
   const r1Cols = row1Fields.reduce((sum, f) => sum + (f.width || 1), 0);
@@ -1489,6 +1508,25 @@ const StatusSection = ({
           </option>
         ))}
       </select>
+    ) : f.type === "checkbox" ? (
+      <div
+        style={{
+          padding: "0 8px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={formik.values.operational_lock || false}
+          onChange={(e) =>
+            formik.setFieldValue("operational_lock", e.target.checked)
+          }
+          style={{ transform: "scale(1.2)", cursor: "pointer" }}
+        />
+      </div>
     ) : f.type === "icd" ? (
       <div style={{ padding: "0 4px" }}>
         <IcdPortAutocomplete
@@ -1830,7 +1868,8 @@ const StatusSection = ({
                     ))}
                   </div>
 
-                  {/* Row 3 Grid */}
+                  {/* Row 3 Grid - only rendered if there are overflow fields */}
+                  {row3Fields.length > 0 && (
                   <div
                     style={{
                       display: "grid",
@@ -1865,6 +1904,7 @@ const StatusSection = ({
                       </div>
                     ))}
                   </div>
+                  )}
                 </div>
               </div>
 

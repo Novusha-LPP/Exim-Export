@@ -632,6 +632,7 @@ const statusDetailsSchema = new Schema(
     handoverConcorTharSanganaRailRoadDate: { type: String, trim: true },
     billingDocsSentDt: { type: String, trim: true },
     billingDocsSentUpload: [String],
+    otherDocUpload: [String],
     billingDocsStatus: { type: String, trim: true },
     railRoad: { type: String, trim: true },
     concorPrivate: { type: String, trim: true },
@@ -782,6 +783,9 @@ const exportJobSchema = new mongoose.Schema(
 
     status: { type: String, trim: true },
     detailedStatus: { type: String, default: "" },
+    vgm_done: { type: Boolean, default: false },
+    form13_done: { type: Boolean, default: false },
+    shipping_bill_done: { type: Boolean, default: false },
 
     ////////////////////////////////////////////////// Exporter Information
     exporter_address: { type: String, trim: true },
@@ -995,6 +999,8 @@ const exportJobSchema = new mongoose.Schema(
     // Milestone Tracking
     isJobtrackingEnabled: { type: Boolean, default: false },
     jobtrackingCompletedDate: { type: String, trim: true },
+    operational_lock: { type: Boolean, default: false },
+    financial_lock: { type: Boolean, default: false },
     isJobCanceled: { type: Boolean, default: false },
     jobCanceledDate: { type: String, trim: true },
     cancellationReason: { type: String, trim: true },
@@ -1162,6 +1168,27 @@ exportJobSchema.pre("save", function (next) {
   // Always sync the seal number from main to annex C1
   if (this.stuffing_seal_no) {
     this.annexC1Details.sealNumber = this.stuffing_seal_no;
+  }
+
+  // 0. Sync dates from operations to milestones to ensure automated status updates
+  const op0Status = (this.operations && this.operations[0] && this.operations[0].statusDetails && this.operations[0].statusDetails[0]);
+  if (op0Status) {
+    const isAirJob = (this.job_no && String(this.job_no).toUpperCase().includes('/AIR/'));
+    const syncMap = [
+      { date: op0Status.leoDate, name: "L.E.O" },
+      { date: op0Status.handoverForwardingNoteDate, name: isAirJob ? "File Handover to IATA" : "Container HO" },
+      { date: op0Status.handoverForwardingNoteDate, name: "Billing Pending" },
+      { date: op0Status.railOutReachedDate, name: isAirJob ? "Departure" : "Rail Out" },
+      { date: op0Status.billingDocsSentDt, name: "Billing Done" },
+    ];
+
+    (this.milestones || []).forEach((m) => {
+      const match = syncMap.find((s) => s.name === m.milestoneName);
+      if (match && match.date) {
+        m.isCompleted = true;
+        m.actualDate = match.date;
+      }
+    });
   }
 
   // 1. Bi-directional sync between detailedStatus and milestones

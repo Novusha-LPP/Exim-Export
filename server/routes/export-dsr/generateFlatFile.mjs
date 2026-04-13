@@ -620,8 +620,8 @@ export function generateSBFlatFile(job) {
             pp,                             // [34] Payment Period
             "", "",                         // [35-36]
             clean(job.buyerThirdPartyInfo?.thirdParty?.ieCode || ""), // [37] Third Party IE Code
-            clean(job.buyerThirdPartyInfo?.thirdParty?.name || ""),   // [38] Third Party Name
-            clean(job.buyerThirdPartyInfo?.thirdParty?.address || ""), // [39] Third Party Address
+            trunc(clean(job.buyerThirdPartyInfo?.thirdParty?.name || ""), 70),   // [38] Third Party Name
+            trunc(clean(job.buyerThirdPartyInfo?.thirdParty?.address || ""), 70), // [39] Third Party Address
             "", "", "", "", "", "", "", "", "", // [40-48]
         );
     });

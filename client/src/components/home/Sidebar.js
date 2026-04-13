@@ -10,6 +10,7 @@ import LockResetIcon from "@mui/icons-material/LockReset";
 import DescriptionIcon from '@mui/icons-material/Description';
 import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
 import HistoryIcon from '@mui/icons-material/History';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import { UserContext } from "../../contexts/UserContext";
 import CurrencyRateDialog from "./CurrencyRateDialog.js"; // Import the dialog
 import axios from "axios";
@@ -85,6 +86,20 @@ function Sidebar() {
           >
             <IconButton sx={{ color: "#ffffff9f" }} aria-label="icon">
               <AssignmentIndIcon />
+            </IconButton>
+          </ListItemButton>
+        </Tooltip>
+      )}
+
+      {isVerifiedAdmin && (
+        <Tooltip title="API Key Management" enterDelay={0} placement="right">
+          <ListItemButton
+            className="appbar-links"
+            aria-label="list-item"
+            onClick={() => navigate("/api-key-management")}
+          >
+            <IconButton sx={{ color: "#ffffff9f" }} aria-label="icon">
+              <VpnKeyIcon />
             </IconButton>
           </ListItemButton>
         </Tooltip>

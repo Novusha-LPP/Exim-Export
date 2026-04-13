@@ -21,6 +21,7 @@ import ExportChargesModule from "../components/Export/Export-Dsr/ExportChargesMo
 // import auditrail
 import AllUsersPage from "./AllUsersPage.js";
 import AuditTrailPage from "./AuditTrailPage.js";
+import ApiKeyManagement from "./ApiKeyManagement.jsx";
 
 import AppbarComponent from "../components/home/AppbarComponent.js";
 import DrawerComponent from "../components/home/DrawerComponent.js";
@@ -193,6 +194,15 @@ function HomePage() {
               element={
                 <ProtectedRoute requiredModule="Export - Audit Trail">
                   <AuditTrailPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/api-key-management"
+              element={
+                <ProtectedRoute requiredModule="Export - Audit Trail">
+                  <ApiKeyManagement />
                 </ProtectedRoute>
               }
             />

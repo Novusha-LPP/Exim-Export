@@ -4,6 +4,8 @@ import './charges.css';
 
 const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, onSuccess }) => {
     const [loading, setLoading] = useState(false);
+    const [apiKeys, setApiKeys] = useState([]);
+    const [selectedKey, setSelectedKey] = useState(null);
     const [formData, setFormData] = useState({
         "Entry No": '',
         "Entry Date": new Date().toISOString().split('T')[0],
@@ -34,8 +36,29 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, o
         "Total": '',
         "Status": '',
         "chargeRef": '',
-        "jobRef": ''
+        "jobRef": '',
+        "apiKeyName": '' // To track which key name is selected
     });
+
+    useEffect(() => {
+        const fetchApiKeys = async () => {
+            try {
+                const response = await axios.get(`${import.meta.env.VITE_API_STRING}/admin/api-keys`, { withCredentials: true });
+                setApiKeys(response.data || []);
+                // Default to the first active key if available
+                if (response.data?.length > 0) {
+                    const activeKey = response.data.find(k => k.isActive);
+                    if (activeKey) {
+                        setSelectedKey(activeKey);
+                        setFormData(prev => ({ ...prev, apiKeyName: activeKey.name }));
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching API keys:", error);
+            }
+        };
+        if (isOpen) fetchApiKeys();
+    }, [isOpen]);
 
     useEffect(() => {
         const fetchNextSequence = async () => {
@@ -43,13 +66,13 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, o
                 const party = initialData.partyDetails;
                 const branchIndex = initialData.branchIndex || 0;
                 const branch = party?.branches?.[branchIndex] || {};
-                
+
                 const jobNum = initialData.jobDisplayNumber || initialData.jobNumber || jobNumber || '';
-                
+
                 // Fetch next sequence from backend using canonical job reference
                 let finalEntryNo = `PB/01/${jobNum}`;
                 try {
-                    const API_KEY = "TALLY_INTEGRATION_KEY";
+                    const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
                     const yearParam = jobYear ? `&year=${jobYear}` : '';
                     const response = await axios.get(
                         `${import.meta.env.VITE_API_STRING}/tally/next-sequence?type=purchase&jobNo=${jobNum}${yearParam}`,
@@ -96,7 +119,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, o
         };
 
         fetchNextSequence();
-    }, [isOpen, initialData, jobNumber]);
+    }, [isOpen, initialData, jobNumber, selectedKey]);
 
     if (!isOpen) return null;
 
@@ -109,17 +132,20 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, o
         if (e && e.preventDefault) e.preventDefault();
         setLoading(true);
         try {
-            const API_KEY = "TALLY_INTEGRATION_KEY"; 
-            
+            const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
+
+            // Prepare clean data for Tally (removing internal fields)
+            const { apiKeyName, ...tallyData } = formData;
+
             // Fixed URL: import.meta.env.VITE_API_STRING already contains '/api'
             const response = await axios.post(
-                `${import.meta.env.VITE_API_STRING}/tally/purchase-entry`, 
-                formData,
+                `${import.meta.env.VITE_API_STRING}/tally/purchase-entry`,
+                tallyData,
                 {
                     headers: { 'x-api-key': API_KEY }
                 }
             );
-            
+
             if (response.data.success) {
                 alert("Purchase Book Entry Submitted Successfully to Tally!");
                 if (onSuccess) onSuccess(formData["Entry No"]);
@@ -142,6 +168,28 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, o
                 <div className="modal-title">Purchase Book Entry</div>
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
+                        {/* API Key Selection (Admin Only in UI) */}
+                        <div className="ep-row" style={{ marginBottom: '20px', borderBottom: '1px solid #eee', pb: '10px' }}>
+                            <span className="ep-label" style={{ fontWeight: 800, color: '#1a237e' }}>Integration Key</span>
+                            <select
+                                name="apiKeyName"
+                                className="ep-select"
+                                style={{ width: '300px', fontWeight: 600 }}
+                                value={formData.apiKeyName}
+                                onChange={(e) => {
+                                    const keyName = e.target.value;
+                                    const keyObj = apiKeys.find(k => k.name === keyName);
+                                    if (keyObj) {
+                                        setSelectedKey(keyObj);
+                                        setFormData(prev => ({ ...prev, apiKeyName: keyName }));
+                                    }
+                                }}
+                            >
+                                {apiKeys.map(k => (
+                                    <option key={k._id} value={k.name}>{k.name} {k.isActive ? '' : '(Inactive)'}</option>
+                                ))}
+                            </select>
+                        </div>
                         <div className="ep-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px 20px', marginRight: '30px' }}>
                             <div className="ep-row">
                                 <span className="ep-label">Entry No</span>

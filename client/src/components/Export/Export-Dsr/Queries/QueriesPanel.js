@@ -15,7 +15,11 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import ReplyIcon from "@mui/icons-material/Reply";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { UserContext } from "../../../../contexts/UserContext";
+import { uploadFileToS3 } from "../../../../utils/awsFileUpload";
+import { Box } from '@mui/material';
+
 
 // ─── Theme (matches ExportJobsTable / ExportDashboard) ────────────────────────
 const THEME = {
@@ -68,19 +72,19 @@ const getJobUrl = (jobNo) => {
   const base = pathname.startsWith("/export-operation")
     ? "/export-operation"
     : pathname.startsWith("/export-documentation")
-    ? "/export-documentation"
-    : pathname.startsWith("/export-esanchit")
-    ? "/export-esanchit"
-    : pathname.startsWith("/export-charges")
-    ? "/export-charges"
-    : "/export-dsr";
+      ? "/export-documentation"
+      : pathname.startsWith("/export-esanchit")
+        ? "/export-esanchit"
+        : pathname.startsWith("/export-charges")
+          ? "/export-charges"
+          : "/export-dsr";
   return `${base}/job/${encodeURIComponent(jobNo)}`;
 };
 
 // ─── Query Card ────────────────────────────────────────────────────────────────
-const QueryCard = ({ query, currentModule, onClick, isHovered, onHover, onLeave, onViewJob }) => {
+const QueryCard = ({ query, currentModule, onClick, isHovered, onHover, onLeave, onViewJob, onUpload }) => {
   const st = STATUS_STYLES[query.status] || STATUS_STYLES.open;
-  
+
   // Decide if this query is considered "New" for the CURRENT module
   const isTarget = query.targetModule === currentModule;
   const isSender = query.raisedFromModule === currentModule;
@@ -89,7 +93,9 @@ const QueryCard = ({ query, currentModule, onClick, isHovered, onHover, onLeave,
   return (
     <div
       style={{
-        border: `1px solid ${THEME.border}`,
+        borderWidth: "1px",
+        borderStyle: "solid",
+        borderColor: THEME.border,
         borderRadius: "4px",
         padding: "12px 14px",
         marginBottom: "8px",
@@ -131,6 +137,19 @@ const QueryCard = ({ query, currentModule, onClick, isHovered, onHover, onLeave,
           >
             <OpenInNewIcon sx={{ fontSize: 11 }} />
             View Job
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onUpload(query.job_no); }}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: "3px",
+              padding: "3px 8px", borderRadius: "3px", fontSize: "10px", fontWeight: 600,
+              border: `1px solid ${THEME.green}`, background: THEME.greenSoft, color: THEME.green,
+              cursor: "pointer", whiteSpace: "nowrap",
+            }}
+            title="Upload documents for this job"
+          >
+            <CloudUploadIcon sx={{ fontSize: 11 }} />
+            Upload
           </button>
           <span style={{
             padding: "2px 8px", borderRadius: "3px", fontSize: "10px", fontWeight: 700,
@@ -505,6 +524,8 @@ const QueriesPanel = () => {
   const [statusFilter, setStatusFilter] = useState("open");
   const [selectedQuery, setSelectedQuery] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadJobNo, setUploadJobNo] = useState("");
   const [hoveredCard, setHoveredCard] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -514,12 +535,12 @@ const QueriesPanel = () => {
   const currentModule = pathname.startsWith("/export-operation")
     ? "export-operation"
     : pathname.startsWith("/export-documentation")
-    ? "export-documentation"
-    : pathname.startsWith("/export-esanchit")
-    ? "export-esanchit"
-    : pathname.startsWith("/export-charges")
-    ? "export-charges"
-    : "export-dsr";
+      ? "export-documentation"
+      : pathname.startsWith("/export-esanchit")
+        ? "export-esanchit"
+        : pathname.startsWith("/export-charges")
+          ? "export-charges"
+          : "export-dsr";
 
   const fetchQueries = useCallback(async () => {
     setLoading(true);
@@ -566,6 +587,11 @@ const QueriesPanel = () => {
   const handleOpenDetail = (query) => {
     setSelectedQuery(query);
     setDetailOpen(true);
+  };
+
+  const handleOpenUpload = (jobNo) => {
+    setUploadJobNo(jobNo);
+    setUploadDialogOpen(true);
   };
 
   const filterTabs = [
@@ -640,6 +666,7 @@ const QueriesPanel = () => {
               onHover={() => setHoveredCard(q._id)}
               onLeave={() => setHoveredCard(null)}
               onViewJob={(jobNo) => window.open(getJobUrl(jobNo), "_blank")}
+              onUpload={handleOpenUpload}
             />
           ))}
 
@@ -663,6 +690,150 @@ const QueriesPanel = () => {
         currentModule={currentModule}
         onUpdate={fetchQueries}
       />
+
+      {/* Upload Dialog */}
+      <UploadDocsDialog
+        open={uploadDialogOpen}
+        onClose={() => setUploadDialogOpen(false)}
+        jobNo={uploadJobNo}
+      />
+    </div>
+  );
+};
+
+// ─── Helper Components for Upload ──────────────────────────────────────────
+
+const UploadDocsDialog = ({ open, onClose, jobNo }) => {
+  const [job, setJob] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open && jobNo) {
+      const fetchJob = async () => {
+        setLoading(true);
+        try {
+          const res = await axios.get(`${import.meta.env.VITE_API_STRING}/${encodeURIComponent(jobNo)}`);
+          setJob(res.data);
+        } catch (err) {
+          console.error("Error fetching job for upload:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchJob();
+    }
+  }, [open, jobNo]);
+
+  const uploadOptions = [
+    { field: "leoUpload", title: "LEO" },
+    { field: "stuffingSheetUpload", title: "Stuffing Sheet" },
+    { field: "stuffingPhotoUpload", title: "Stuffing Photo" },
+    { field: "eGatePassUpload", title: "Gate Pass" },
+    { field: "handoverImageUpload", title: "HO/DOC Copy" },
+    { field: "billingDocsSentUpload", title: "Bill Doc Copy" },
+    { field: "transporterDetails", title: "Transporter", uploadType: "section" },
+    { field: "booking_copy", title: "Booking", uploadType: "toplevel" },
+    { field: "otherDocUpload", title: "Other Doc" },
+  ];
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", py: 1.5, px: 2 }}>
+        <div style={{ fontSize: "16px", fontWeight: 700 }}>Upload Documents</div>
+        <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ p: 2 }}>
+        {loading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}><CircularProgress size={24} /></Box>
+        ) : job ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ fontSize: "12px", color: THEME.textMuted, marginBottom: "4px" }}>
+              Job: <span style={{ fontWeight: 600, color: THEME.blue }}>{jobNo}</span>
+            </div>
+            {uploadOptions.map((opt) => (
+              <UploadItem
+                key={opt.field}
+                job={job}
+                field={opt.field}
+                title={opt.title}
+                uploadType={opt.uploadType || "status"}
+                onSuccess={(newJobData) => setJob(newJobData)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div style={{ textAlign: "center", color: THEME.red, fontSize: "12px" }}>Job not found</div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const UploadItem = ({ job, field, title, uploadType, onSuccess }) => {
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = React.useRef(null);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const result = await uploadFileToS3(file, "export_docs");
+      const url = result.Location;
+
+      let dotPath = "";
+      let currentFiles = [];
+
+      if (uploadType === "toplevel") {
+        dotPath = field;
+        currentFiles = Array.isArray(job[field]) ? job[field] : [];
+      } else if (uploadType === "section") {
+        dotPath = `operations.0.${field}.0.images`;
+        const ops = job.operations?.[0] || {};
+        const section = Array.isArray(ops[field]) ? ops[field] : [];
+        const item = section[0] || {};
+        currentFiles = Array.isArray(item.images) ? item.images : [];
+      } else {
+        dotPath = `operations.0.statusDetails.0.${field}`;
+        const ops = job.operations?.[0] || {};
+        const status = (ops.statusDetails && ops.statusDetails[0]) || {};
+        currentFiles = Array.isArray(status[field]) ? status[field] : [];
+      }
+
+      const newValue = [...currentFiles, url];
+      const res = await axios.patch(
+        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(job.job_no)}/fields`,
+        { fieldUpdates: [{ field: dotPath, value: newValue }] }
+      );
+      if (onSuccess) onSuccess(res.data.data);
+    } catch (err) {
+      console.error("Upload error:", err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const hasDocs = (() => {
+    if (uploadType === "toplevel") return job[field]?.length > 0;
+    if (uploadType === "section") return job.operations?.[0]?.[field]?.[0]?.images?.length > 0;
+    return job.operations?.[0]?.statusDetails?.[0]?.[field]?.length > 0;
+  })();
+
+  return (
+    <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      padding: "8px 12px", border: `1px solid ${THEME.border}`, borderRadius: "4px",
+      backgroundColor: THEME.white
+    }}>
+      <span style={{ fontSize: "13px", color: hasDocs ? THEME.blue : THEME.text, fontWeight: hasDocs ? 600 : 500 }}>
+        {title}
+      </span>
+      <div>
+        <IconButton size="small" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+          {uploading ? <CircularProgress size={16} /> : <CloudUploadIcon sx={{ fontSize: 18, color: THEME.blue }} />}
+        </IconButton>
+        <input type="file" ref={fileInputRef} onChange={handleUpload} style={{ display: "none" }} />
+      </div>
     </div>
   );
 };

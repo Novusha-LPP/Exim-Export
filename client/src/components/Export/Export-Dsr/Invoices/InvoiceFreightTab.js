@@ -321,8 +321,6 @@ const InvoiceFreightTab = ({ formik }) => {
     [
       "freight",
       "insurance",
-      "discount",
-      "otherDeduction",
       "commission",
     ].forEach((k) => {
       const row = charges[k] || {};

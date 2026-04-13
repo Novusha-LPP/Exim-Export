@@ -135,19 +135,16 @@ function ExportJobsModule() {
 
     // Cleanup: unlock when component unmounts
     return () => {
-      if (hasLockedRef.current) {
-        // Use sync version for unmount to ensure it runs
-        const unlockSync = async () => {
-          try {
-            await axios.put(
-              `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(decodedJobNo)}/unlock`,
-              { username: user?.username }
-            );
-          } catch (e) {
-            // Ignore errors on cleanup
-          }
-        };
-        unlockSync();
+      if (hasLockedRef.current && decodedJobNo && user?.username) {
+        const url = `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(decodedJobNo)}/unlock`;
+        const data = JSON.stringify({ username: user.username });
+        
+        // Use sendBeacon for unmount - it's more reliable for "fire and forget" on exit
+        const blob = new Blob([data], { type: 'application/json' });
+        navigator.sendBeacon(url, blob);
+        
+        hasLockedRef.current = false;
+        setIsLocked(false);
       }
     };
   }, [data, loading, decodedJobNo, lockJob]);
@@ -435,6 +432,28 @@ function ExportJobsModule() {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
+          {(lockedByUser || "").toLowerCase() === (user?.username || "").toLowerCase() && (
+            <Button
+              onClick={async () => {
+                try {
+                  await axios.put(
+                    `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(decodedJobNo)}/unlock`,
+                    { username: user.username }
+                  );
+                  setLockDialogOpen(false);
+                  hasLockedRef.current = false;
+                  // A slight delay to ensure server processed unlock
+                  setTimeout(() => lockJob(), 500);
+                } catch (error) {
+                  console.error("Error force-unlocking:", error);
+                }
+              }}
+              color="warning"
+              variant="outlined"
+            >
+              Release My Session
+            </Button>
+          )}
           <Button onClick={handleLockDialogClose} variant="contained" color="primary">
             Go Back to Job List
           </Button>

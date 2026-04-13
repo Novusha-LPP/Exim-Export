@@ -3,9 +3,7 @@ import { Alert } from "@mui/material";
 import FileUpload from "../../../gallery/FileUpload";
 import ImagePreview from "../../../gallery/ImagePreview";
 import DateInput from "../../../common/DateInput.js";
-import { states } from "../../../../utils/masterList";
-import { natureOfCargo } from "../../../../utils/masterList";
-import { unitCodes } from "../../../../utils/masterList";
+import { states, natureOfCargo, unitCodes, SHIPPING_LINES } from "../../../../utils/masterList";
 import { priorityFilter } from "../../../../utils/filterUtils";
 
 const apiBase = import.meta.env.VITE_API_STRING;
@@ -998,31 +996,39 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
     const searchVal = isTyping ? (query || "").trim() : "";
     const isAir = transportMode === "AIR";
 
-    const url = isAir
-      ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-        searchVal,
-      )}`
-      : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-        searchVal,
-      )}`;
-
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        setOpts(
-          Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-              ? data
-              : [],
-        );
-      } catch {
-        setOpts([]);
-      }
-    }, 220);
-
-    return () => clearTimeout(t);
+    if (isAir) {
+      // Airlines still use the API
+      const url = `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(searchVal)}`;
+      const t = setTimeout(async () => {
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          setOpts(
+            Array.isArray(data?.data)
+              ? data.data
+              : Array.isArray(data)
+                ? data
+                : [],
+          );
+        } catch {
+          setOpts([]);
+        }
+      }, 220);
+      return () => clearTimeout(t);
+    } else {
+      // Sea shipping lines - use local SHIPPING_LINES master data
+      const needle = (searchVal || "").toUpperCase();
+      const mapped = SHIPPING_LINES
+        .map((sl) => ({ shippingLineCode: sl.value, shippingName: sl.label }))
+        .filter((sl) => {
+          if (!needle) return true;
+          return (
+            sl.shippingLineCode.toUpperCase().includes(needle) ||
+            sl.shippingName.toUpperCase().includes(needle)
+          );
+        });
+      setOpts(mapped);
+    }
   }, [open, query, transportMode, isTyping]);
 
   useEffect(() => {
@@ -1081,6 +1087,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
     onInputFocus: () => {
       setOpen(true);
       setActive(-1);
+      setIsTyping(false);
       keepOpen.current = true;
     },
     onInputBlur: () => {
