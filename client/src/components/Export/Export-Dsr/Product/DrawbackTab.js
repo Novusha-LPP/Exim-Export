@@ -201,44 +201,14 @@ const DrawbackTab = ({
     currentDbk[rowIndex].unit = item.unit || product.socunit || "";
     currentDbk[rowIndex].dbkCapunit = item.unit || product.socunit || "";
 
-    const invoiceCurrency = activeInvoice?.currency;
-    let productAmount = parseFloat(product.amount || 0);
-    let fobInr = 0;
+    const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+    const fobInr = calculateProductFobINR(
+      product,
+      activeInvoice,
+      invoiceExchangeRate
+    );
 
-    if (
-      productAmount > 0 &&
-      invoiceCurrency &&
-      invoiceCurrency.toUpperCase() !== "INR"
-    ) {
-      try {
-        const dateStr = getJobDateFormatted(formik.values.job_date);
-        const res = await fetch(
-          `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`
-        );
-        const json = await res.json();
-
-        if (json?.success && json?.data?.exchange_rates) {
-          const currencyRate = json.data.exchange_rates.find(
-            (r) =>
-              r.currency_code?.toUpperCase() === invoiceCurrency.toUpperCase()
-          );
-          if (currencyRate && typeof currencyRate.export_rate === "number") {
-            fobInr = productAmount * currencyRate.export_rate;
-          } else {
-            fobInr = productAmount;
-          }
-        } else {
-          fobInr = productAmount;
-        }
-      } catch (error) {
-        console.error("Error fetching currency rates:", error);
-        fobInr = productAmount;
-      }
-    } else {
-      fobInr = productAmount;
-    }
-
-    currentDbk[rowIndex].fobValue = fobInr;
+    currentDbk[rowIndex].fobValue = fobInr.toFixed(2);
 
     // Calculate Amount
     currentDbk[rowIndex].dbkAmount = calculateDbkAmount(currentDbk[rowIndex]);

@@ -74,9 +74,9 @@ router.get("/api/users-by-role", async (req, res) => {
 // PATCH: Add an importer to a user
 router.patch("/api/users/:username/add-importer", async (req, res) => {
   const { username } = req.params;
-  const { importerName } = req.body;
+  const { exporterName } = req.body;
 
-  if (!importerName) {
+  if (!exporterName) {
     return res.status(400).send({ message: "Importer name is required" });
   }
 
@@ -87,13 +87,13 @@ router.patch("/api/users/:username/add-importer", async (req, res) => {
       return res.status(404).send({ message: "User not found" });
     }
 
-    if (user.assigned_importer.includes(importerName)) {
+    if (user.assigned_importer.includes(exporterName)) {
       return res
         .status(400)
         .send({ message: "Importer already assigned to this user" });
     }
 
-    user.assigned_importer.push(importerName);
+    user.assigned_importer.push(exporterName);
     await user.save();
 
     res.status(200).send({

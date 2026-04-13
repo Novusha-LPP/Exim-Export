@@ -32,7 +32,7 @@ export const calculateProductFobINR = (
   const totalValueInr = grossInvoiceValue * invToInrRate;
   let totalDeductionInr = 0;
 
-  ["freight", "insurance", "discount", "otherDeduction", "commission"].forEach(k => {
+  ["freight", "insurance", "commission"].forEach(k => {
     const row = charges[k] || {};
 
     const fallbackRate = (row.currency || activeInvoice.currency || "INR").toUpperCase() === "INR" ? 1 : invToInrRate;
@@ -87,10 +87,10 @@ export const calculateRodtepAmount = (fob, qty, rate, cap) => {
 
 export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
   if (!invoices || !Array.isArray(invoices)) return invoices;
-  
+
   return invoices.map((inv) => {
     if (!inv.products || !Array.isArray(inv.products)) return inv;
-    
+
     const updatedProducts = inv.products.map((product) => {
       const pQty = parseFloat(product.socQuantity || product.quantity) || 0;
       const pUnit = product.socunit || product.qtyUnit || "";
@@ -105,13 +105,13 @@ export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
           newItem.unit = pUnit;
           newItem.dbkCapunit = pUnit;
           newItem.fobValue = fobAmountInr.toFixed(2);
-          
+
           newItem.dbkAmount = calculateDbkAmount(fobAmountInr, pQty, parseFloat(newItem.dbkRate || 0), parseFloat(newItem.dbkCap || 0));
-          
+
           if (newItem.showRosctl) {
             newItem.rosctlAmount = calculateRosctlAmount(
-              fobAmountInr, pQty, 
-              parseFloat(newItem.slRate || 0), parseFloat(newItem.ctlRate || 0), 
+              fobAmountInr, pQty,
+              parseFloat(newItem.slRate || 0), parseFloat(newItem.ctlRate || 0),
               parseFloat(newItem.slCap || 0), parseFloat(newItem.ctlCap || 0)
             );
           }
@@ -125,7 +125,7 @@ export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
         const totalRosctlAmount = newDbkDetails.reduce((sum, item) => sum + (parseFloat(item.rosctlAmount) || 0), 0);
         const hasRosctl = newDbkDetails.some((item) => item.showRosctl);
         const firstRosctl = newDbkDetails.find((item) => item.showRosctl) || {};
-        
+
         newRosctlInfo = {
           ...newRosctlInfo,
           claim: hasRosctl ? "Yes" : "No",
@@ -146,7 +146,7 @@ export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
         newRodtepInfo.unit = pUnit;
         newRodtepInfo.rodtepCapunit = pUnit;
         newRodtepInfo.fobValue = fobAmountInr.toFixed(2);
-        
+
         newRodtepInfo.amountINR = calculateRodtepAmount(
           fobAmountInr,
           pQty,

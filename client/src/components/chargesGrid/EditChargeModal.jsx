@@ -16,7 +16,7 @@ const EditChargeModal = ({
   updateCharge,
   parentId,
   shippingLineAirline,
-  importerName,
+  exporterName,
   jobNumber = '',
   jobDisplayNumber = '',
   jobYear = '',
@@ -169,8 +169,8 @@ const EditChargeModal = ({
       }
 
       // Auto-populate Payable To if type is 'Importer' in Cost section
-      if (section === 'cost' && field === 'partyType' && value === 'Importer' && importerName) {
-        updated[index][section].partyName = importerName;
+      if (section === 'cost' && field === 'partyType' && value === 'Importer' && exporterName) {
+        updated[index][section].partyName = exporterName;
       }
 
       // Auto-populate Qty based on selected Basis
@@ -226,7 +226,7 @@ const EditChargeModal = ({
 
         // GST Split Logic based on GSTIN (24 = Gujarat)
         const partyName = sectionRef.partyName;
-        const party = [...shippingLines, ...suppliers].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
+        const party = [...shippingLines, ...suppliers, ...organizations, ...exporters].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
         const branchIndex = sectionRef.branchIndex || 0;
         const gstin = party?.branches?.[branchIndex]?.gst || "";
 
@@ -484,20 +484,25 @@ const EditChargeModal = ({
                                   {activeDropdown.index === i && activeDropdown.section === 'revenue' && (row.revenue?.partyName?.length >= 2) && (
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
                                       {searchLoading && <li className="ep-dropdown-item"><span className="ep-item-sub">Searching...</span></li>}
-                                      {!searchLoading && (row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
-                                        row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? [...organizations, ...exporters] : [])
-                                        .filter(item => !row.revenue?.partyName || (item.name && item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase())))
-                                        .slice(0, 20)
-                                        .map((item, idx) => (
+                                      {!searchLoading && (() => {
+                                        const type = row.revenue?.partyType?.toUpperCase();
+                                        const list = (type === 'AGENT' || type === 'CARRIER') ? [...shippingLines, ...exporters] :
+                                          (type === 'CUSTOMER') ? [...organizations, ...exporters] : [];
+
+                                        const filtered = list.filter(item => !row.revenue?.partyName || (item.name && item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase())))
+                                          .slice(0, 30);
+
+                                        if (filtered.length === 0) {
+                                          return <li className="ep-dropdown-item"><span className="ep-item-sub">No results found</span></li>;
+                                        }
+
+                                        return filtered.map((item, idx) => (
                                           <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'revenue', item)}>
                                             <span className="ep-item-name">{item.name}</span>
                                             <span className="ep-item-sub">{item.city || 'Master Directory'}</span>
                                           </li>
-                                        ))}
-                                      {!searchLoading && ((row.revenue?.partyType === 'Agent' || row.revenue?.partyType === 'Carrier' ? shippingLines :
-                                        row.revenue?.partyType === 'Customer' ? [...organizations, ...exporters] : [])
-                                        .filter(item => !row.revenue?.partyName || (item.name && item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase())))
-                                        .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">No results found</span></li>}
+                                        ));
+                                      })()}
                                     </ul>
                                   )}
                                 </div>
@@ -511,7 +516,7 @@ const EditChargeModal = ({
                                 </div>
                               </div>
                               {(() => {
-                                const party = [...shippingLines, ...suppliers].find(p => p.name && p.name.toUpperCase() === row.revenue?.partyName?.toUpperCase());
+                                const party = [...shippingLines, ...suppliers, ...organizations, ...exporters].find(p => p.name && p.name.toUpperCase() === row.revenue?.partyName?.toUpperCase());
                                 if (party && party.branches?.length > 1) {
                                   return (
                                     <div className="ep-row">
@@ -643,22 +648,26 @@ const EditChargeModal = ({
                                   {activeDropdown.index === i && activeDropdown.section === 'cost' && (row.cost?.partyName?.length >= 2) && (
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
                                       {searchLoading && <li className="ep-dropdown-item"><span className="ep-item-sub">Searching...</span></li>}
-                                      {!searchLoading && (row.cost?.partyType?.toUpperCase() === 'AGENT' || row.cost?.partyType?.toUpperCase() === 'OTHERS' ? shippingLines :
-                                        row.cost?.partyType?.toUpperCase() === 'VENDOR' || row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? [...suppliers, ...shippingLines, ...exporters] :
-                                          row.cost?.partyType?.toUpperCase() === 'IMPORTER' ? [...organizations, ...exporters] : [])
-                                        .filter(item => !row.cost?.partyName || (item.name && item.name.toLowerCase().includes(row.cost.partyName.toLowerCase())))
-                                        .slice(0, 20)
-                                        .map((item, idx) => (
+                                      {!searchLoading && (() => {
+                                        const type = row.cost?.partyType?.toUpperCase();
+                                        const list = (type === 'AGENT' || type === 'OTHERS') ? [...shippingLines, ...exporters] :
+                                          (type === 'VENDOR' || type === 'TRANSPORTER') ? [...suppliers, ...shippingLines, ...exporters] :
+                                            (type === 'IMPORTER') ? [...organizations, ...exporters] : [];
+
+                                        const filtered = list.filter(item => !row.cost?.partyName || (item.name && item.name.toLowerCase().includes(row.cost.partyName.toLowerCase())))
+                                          .slice(0, 30);
+
+                                        if (filtered.length === 0) {
+                                          return <li className="ep-dropdown-item"><span className="ep-item-sub">No results found</span></li>;
+                                        }
+
+                                        return filtered.map((item, idx) => (
                                           <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'cost', item)}>
                                             <span className="ep-item-name">{item.name}</span>
                                             <span className="ep-item-sub">{item.city || 'Master Directory'}</span>
                                           </li>
-                                        ))}
-                                      {!searchLoading && ((row.cost?.partyType === 'Agent' || row.cost?.partyType === 'Others' ? shippingLines :
-                                        row.cost?.partyType === 'Vendor' || row.cost?.partyType === 'Transporter' ? [...suppliers, ...shippingLines, ...exporters] :
-                                          row.cost?.partyType === 'Importer' ? [...organizations, ...exporters] : [])
-                                        .filter(item => !row.cost?.partyName || (item.name && item.name.toLowerCase().includes(row.cost.partyName.toLowerCase())))
-                                        .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">No results found</span></li>}
+                                        ));
+                                      })()}
                                     </ul>
                                   )}
                                 </div>
@@ -671,7 +680,7 @@ const EditChargeModal = ({
                                 </div>
                               </div>
                               {(() => {
-                                const party = [...shippingLines, ...suppliers].find(p => p.name && p.name.toUpperCase() === row.cost?.partyName?.toUpperCase());
+                                const party = [...shippingLines, ...suppliers, ...organizations, ...exporters].find(p => p.name && p.name.toUpperCase() === row.cost?.partyName?.toUpperCase());
                                 if (party && party.branches?.length > 1) {
                                   return (
                                     <div className="ep-row">
@@ -746,7 +755,7 @@ const EditChargeModal = ({
                                       }}
                                       onClick={() => {
                                         const partyName = row.cost?.partyName;
-                                        const partyDetails = [...shippingLines, ...suppliers].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
+                                        const partyDetails = [...shippingLines, ...suppliers, ...organizations, ...exporters].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
                                         setPurchaseBookData(() => {
                                           const cost = row.cost || {};
                                           const rate = parseFloat(cost.gstRate) || 18;

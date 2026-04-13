@@ -9,14 +9,14 @@ import ConfirmDialog from './ConfirmDialog';
 import { useCharges } from './useCharges';
 import './charges.css';
 
-const ChargesGrid = ({ 
-  parentId, 
-  parentModule, 
-  readOnly = false, 
-  initialTab = 'particulars', 
-  hideTabs = false, 
-  shippingLineAirline = '', 
-  importerName = '',
+const ChargesGrid = ({
+  parentId,
+  parentModule,
+  readOnly = false,
+  initialTab = 'particulars',
+  hideTabs = false,
+  shippingLineAirline = '',
+  exporterName = '',
   jobNumber = '',
   jobDisplayNumber = '',
   jobYear = '',
@@ -28,13 +28,13 @@ const ChargesGrid = ({
   cthNo = ''
 }) => {
   const { charges, loading, error, addChargesBulk, updateCharge, deleteCharge } = useCharges(parentId, parentModule);
-  
+
   const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedIds, setSelectedIds] = useState(new Set());
-  
+
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingCharges, setEditingCharges] = useState([]);
-  
+
   const [fileModalCharge, setFileModalCharge] = useState(null); // { charge: object, tab: 'revenue' | 'cost' | 'particulars' }
   const [confirmState, setConfirmState] = useState({ open: false, title: '', message: '', onConfirm: null });
 
@@ -110,13 +110,13 @@ const ChargesGrid = ({
     if (fileModalCharge) {
       const { charge, tab } = fileModalCharge;
       const updateData = {};
-      
+
       if (tab === 'revenue' || tab === 'particulars') {
         updateData.revenue = { ...(charge.revenue || {}), url: urls };
       } else if (tab === 'cost') {
         updateData.cost = { ...(charge.cost || {}), url: urls };
       }
-      
+
       await updateCharge(charge._id, updateData);
       setFileModalCharge(null);
     }
@@ -137,19 +137,19 @@ const ChargesGrid = ({
   return (
     <div className="charges-comp-wrapper">
       {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
-      
+
       {!hideTabs && <TabBar activeTab={activeTab} onTabChange={setActiveTab} />}
-      
-      <Toolbar 
-         onAddCharge={() => setIsAddOpen(true)}
-         onDeleteSelected={handleDeleteSelected}
-         readOnly={readOnly}
-         isDeleteDisabled={isDeleteDisabled}
+
+      <Toolbar
+        onAddCharge={() => setIsAddOpen(true)}
+        onDeleteSelected={handleDeleteSelected}
+        readOnly={readOnly}
+        isDeleteDisabled={isDeleteDisabled}
       />
-      
+
       <div style={{ position: 'relative' }}>
-        {loading && <div style={{ position:'absolute', top: 0, left: 0, right: 0, height: '2px', background: '#5580a8', zIndex: 10 }} />}
-        <ChargesTable 
+        {loading && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: '#5580a8', zIndex: 10 }} />}
+        <ChargesTable
           charges={charges}
           activeTab={activeTab}
           selectedIds={selectedIds}
@@ -162,21 +162,21 @@ const ChargesGrid = ({
         />
       </div>
 
-      <AddChargeModal 
-        isOpen={isAddOpen} 
-        onClose={() => setIsAddOpen(false)} 
+      <AddChargeModal
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
         onAddSelected={handleAddSelected}
       />
 
-      <EditChargeModal 
-        isOpen={editingCharges.length > 0} 
+      <EditChargeModal
+        isOpen={editingCharges.length > 0}
         onClose={() => setEditingCharges([])}
         selectedCharges={editingCharges}
         onSave={handleSaveEdit}
         updateCharge={updateCharge}
         parentId={parentId}
         shippingLineAirline={shippingLineAirline}
-        importerName={importerName}
+        exporterName={exporterName}
         jobNumber={jobNumber}
         jobDisplayNumber={jobDisplayNumber}
         jobYear={jobYear}
@@ -189,12 +189,12 @@ const ChargesGrid = ({
       />
 
       {fileModalCharge && (
-        <FileUploadModal 
+        <FileUploadModal
           isOpen={!!fileModalCharge}
           onClose={() => setFileModalCharge(null)}
           chargeLabel={`${fileModalCharge.charge.chargeHead} (${fileModalCharge.tab})`}
           initialUrls={
-            fileModalCharge.tab === 'cost' 
+            fileModalCharge.tab === 'cost'
               ? fileModalCharge.charge.cost?.url || []
               : fileModalCharge.charge.revenue?.url || []
           }
@@ -202,7 +202,7 @@ const ChargesGrid = ({
         />
       )}
 
-      <ConfirmDialog 
+      <ConfirmDialog
         open={confirmState.open}
         title={confirmState.title}
         message={confirmState.message}
