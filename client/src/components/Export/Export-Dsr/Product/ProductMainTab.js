@@ -405,7 +405,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                 <th style={{ ...styles.th, width: 200 }}>Description</th>
                 <th style={{ ...styles.th, width: 140 }}>RITC</th>
                 <th style={{ ...styles.th, width: 170 }}>Quantity</th>
-                <th style={{ ...styles.th, width: 170 }}>SOC Qty</th>
+                <th style={{ ...styles.th, width: 170 }}>SQC Qty</th>
                 <th style={{ ...styles.th, width: 110 }}>Unit Price</th>
                 <th style={{ ...styles.th, width: 90 }}>Currency</th>
                 <th style={{ ...styles.th, width: 130 }}>Per</th>

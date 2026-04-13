@@ -973,6 +973,8 @@ router.get("/exports/:status?", async (req, res) => {
       otherInfo: 1,
       annexC1Details: 1,
       booking_copy: 1,
+      booking_no: 1,
+      booking_date: 1,
       "containers": 1,
       statusDetails: 1,
       "eSanchitDocuments.fileUrl": 1,
@@ -1230,40 +1232,40 @@ router.get("/filtered-exporters", async (req, res) => {
     if (month) {
       // Month logic same as /exports
       if (month === "today") {
-          const start = new Date(); start.setHours(0,0,0,0);
-          const end = new Date(); end.setHours(23,59,59,999);
-          filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+        const start = new Date(); start.setHours(0, 0, 0, 0);
+        const end = new Date(); end.setHours(23, 59, 59, 999);
+        filter.$and.push({ createdAt: { $gte: start, $lte: end } });
       } else if (month === "yesterday") {
-          const start = new Date(); start.setDate(start.getDate()-1); start.setHours(0,0,0,0);
-          const end = new Date(); end.setDate(end.getDate()-1); end.setHours(23,59,59,999);
-          filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+        const start = new Date(); start.setDate(start.getDate() - 1); start.setHours(0, 0, 0, 0);
+        const end = new Date(); end.setDate(end.getDate() - 1); end.setHours(23, 59, 59, 999);
+        filter.$and.push({ createdAt: { $gte: start, $lte: end } });
       } else if (month === "weekly") {
-          const start = new Date(); start.setDate(start.getDate()-7); start.setHours(0,0,0,0);
-          const end = new Date(); end.setHours(23,59,59,999);
-          filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+        const start = new Date(); start.setDate(start.getDate() - 7); start.setHours(0, 0, 0, 0);
+        const end = new Date(); end.setHours(23, 59, 59, 999);
+        filter.$and.push({ createdAt: { $gte: start, $lte: end } });
       } else if (!isNaN(month)) {
-          filter.$and.push({
-            $expr: {
-              $let: {
-                vars: {
-                  effDate: {
-                    $cond: {
-                      if: {
-                        $and: [
-                          { $ne: ["$job_date", null] },
-                          { $ne: ["$job_date", ""] },
-                          { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
-                        ]
-                      },
-                      then: { $dateFromString: { dateString: "$job_date", format: "%d-%m-%Y", onError: "$createdAt" } },
-                      else: "$createdAt"
-                    }
+        filter.$and.push({
+          $expr: {
+            $let: {
+              vars: {
+                effDate: {
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $ne: ["$job_date", null] },
+                        { $ne: ["$job_date", ""] },
+                        { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
+                      ]
+                    },
+                    then: { $dateFromString: { dateString: "$job_date", format: "%d-%m-%Y", onError: "$createdAt" } },
+                    else: "$createdAt"
                   }
-                },
-                in: { $eq: [{ $month: "$$effDate" }, parseInt(month)] }
-              }
+                }
+              },
+              in: { $eq: [{ $month: "$$effDate" }, parseInt(month)] }
             }
-          });
+          }
+        });
       }
     }
 

@@ -238,7 +238,7 @@ const ExportChecklistGenerator = ({
 
     let exporterY = yPos + 10;
     const exporterLines = [
-      data.exporterGstin,
+      data.exporterIec,
       data.exporterGstinFull,
       data.exporterPan,
       data.exporterType,
@@ -251,12 +251,29 @@ const ExportChecklistGenerator = ({
 
     exporterLines.forEach((line) => {
       if (line) {
-        pdf.setFont("helvetica", "normal");
         pdf.setFontSize(FONT_SIZES.fieldValue);
-        // Wrap text to fit within left column (max width ~250px)
-        const splitLines = pdf.splitTextToSize(line, 250);
-        pdf.text(splitLines, leftColX, exporterY);
-        exporterY += splitLines.length * 9;
+
+        if (line.includes(": ")) {
+          const colonIndex = line.indexOf(": ");
+          const label = line.substring(0, colonIndex + 2);
+          const value = line.substring(colonIndex + 2);
+
+          // Render Label in Bold
+          pdf.setFont("helvetica", "bold");
+          pdf.text(label, leftColX, exporterY);
+
+          // Render Value in Normal
+          const labelWidth = pdf.getTextWidth(label);
+          pdf.setFont("helvetica", "normal");
+          const splitValue = pdf.splitTextToSize(value, 250 - labelWidth);
+          pdf.text(splitValue, leftColX + labelWidth, exporterY);
+          exporterY += Math.max(splitValue.length * 9, 9);
+        } else {
+          pdf.setFont("helvetica", "normal");
+          const splitLines = pdf.splitTextToSize(line, 250);
+          pdf.text(splitLines, leftColX, exporterY);
+          exporterY += splitLines.length * 9;
+        }
       }
     });
 
@@ -1286,7 +1303,7 @@ const ExportChecklistGenerator = ({
         chaCode: exportJob.cha,
 
         // Exporter Details - BUILD FROM MULTIPLE FIELDS
-        exporterGstin: exportJob.exporter_gstin || exportJob.gstin || "",
+        exporterIec: exportJob.ieCode ? `IEC: ${exportJob.ieCode}` : "",
         exporterGstinFull: exportJob.exporter_gstin
           ? `GSTIN: ${exportJob.exporter_gstin}`
           : "",
@@ -1327,7 +1344,7 @@ const ExportChecklistGenerator = ({
           exportJob.state_of_origin || exportJob.exporter_state || "",
         adCode: exportJob.ad_code || exportJob.adCode || "",
         natureOfCargo: exportJob.nature_of_cargo || "",
-        totalPackages: exportJob.total_no_of_pkgs || "",
+        totalPackages: `${exportJob.total_no_of_pkgs || ""} ${exportJob.package_unit || ""}`,
         numberOfContainers: exportJob.no_of_containers || "",
         loosePackets: exportJob.loose_pkgs || "",
 

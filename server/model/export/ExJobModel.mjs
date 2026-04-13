@@ -1171,25 +1171,32 @@ exportJobSchema.pre("save", function (next) {
   }
 
   // 0. Sync dates from operations to milestones to ensure automated status updates
+  // Priorities: Date fields are now EXCEPTIONAL and are the absolute source of truth
   const op0Status = (this.operations && this.operations[0] && this.operations[0].statusDetails && this.operations[0].statusDetails[0]);
-  if (op0Status) {
-    const isAirJob = (this.job_no && String(this.job_no).toUpperCase().includes('/AIR/'));
-    const syncMap = [
-      { date: op0Status.leoDate, name: "L.E.O" },
-      { date: op0Status.handoverForwardingNoteDate, name: isAirJob ? "File Handover to IATA" : "Container HO" },
-      { date: op0Status.handoverForwardingNoteDate, name: "Billing Pending" },
-      { date: op0Status.railOutReachedDate, name: isAirJob ? "Departure" : "Rail Out" },
-      { date: op0Status.billingDocsSentDt, name: "Billing Done" },
-    ];
+  const isAirJob = (this.job_no && String(this.job_no).toUpperCase().includes('/AIR/'));
+  
+  const syncMap = [
+    { date: this.sb_date, name: "SB Filed" },
+    { date: op0Status ? op0Status.leoDate : null, name: "L.E.O" },
+    { date: op0Status ? op0Status.handoverForwardingNoteDate : null, name: isAirJob ? "File Handover to IATA" : "Container HO" },
+    { date: op0Status ? op0Status.handoverForwardingNoteDate : null, name: "Billing Pending" },
+    { date: op0Status ? op0Status.railOutReachedDate : null, name: isAirJob ? "Departure" : "Rail Out" },
+    { date: op0Status ? op0Status.billingDocsSentDt : null, name: "Billing Done" },
+  ];
 
-    (this.milestones || []).forEach((m) => {
-      const match = syncMap.find((s) => s.name === m.milestoneName);
-      if (match && match.date) {
+  (this.milestones || []).forEach((m) => {
+    const match = syncMap.find((s) => s.name === m.milestoneName);
+    if (match) {
+      if (match.date) {
         m.isCompleted = true;
         m.actualDate = match.date;
+      } else {
+        // PRIORITIZE DATE: If date field is empty, the milestone MUST be incomplete
+        m.isCompleted = false;
+        m.actualDate = "";
       }
-    });
-  }
+    }
+  });
 
   // 1. Bi-directional sync between detailedStatus and milestones
   // Prevent string casting bug by handling detailedStatus as a single string item
@@ -1218,7 +1225,7 @@ exportJobSchema.pre("save", function (next) {
   let latestCompletedMilestone = "";
 
   // Define priority order to find the "highest" milestone regardless of array position
-  const isAir = (this.job_no && String(this.job_no).toUpperCase().includes('/AIR/'));
+  const isAir = isAirJob;
   const milestonePriority = [
     "SB Filed",
     "L.E.O",
@@ -1243,8 +1250,9 @@ exportJobSchema.pre("save", function (next) {
           latestCompletedMilestone = m.milestoneName;
         }
 
-        // Auto-fill date if missing or still using old placeholder
-        if (!m.actualDate || m.actualDate.startsWith("dd-")) {
+        // Auto-fill date if missing - BUT ONLY if it's NOT a milestone driven by a specific date field
+        const isDateDriven = syncMap.some(s => s.name === m.milestoneName);
+        if (!isDateDriven && (!m.actualDate || m.actualDate.startsWith("dd-"))) {
           const d = new Date();
           const day = String(d.getDate()).padStart(2, "0");
           const month = String(d.getMonth() + 1).padStart(2, "0");
