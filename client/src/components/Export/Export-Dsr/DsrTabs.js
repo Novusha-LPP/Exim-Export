@@ -29,10 +29,10 @@ function DsrTabs() {
     return "export-dsr";
   }, [location.pathname]);
 
-  // Show tabs for DSR and Operation; other modules show table directly
+  // Show tabs for all modules, allowing Queries tab access
   const showTabs = React.useMemo(() => {
     const pathname = location.pathname;
-    return pathname.startsWith("/export-dsr") || pathname.startsWith("/export-operation");
+    return pathname.startsWith("/export-");
   }, [location.pathname]);
 
   // Fetch unseen query count for badge

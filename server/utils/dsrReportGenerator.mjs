@@ -11,7 +11,7 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
   try {
     const isAll = String(exporter).toLowerCase() === "all";
     const filter = isAll ? {} : { exporter };
-    
+
     if (year && year !== "" && year.toLowerCase() !== "all") {
       filter.year = year;
     }
@@ -109,8 +109,8 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
         sb_no: job.sb_no || "",
         sb_date: job.sb_date || "",
         no_of_packages: job.total_no_of_pkgs || 0,
-        net_weight: job.gross_weight_kg || 0,
-        gross_weight: job.net_weight_kg || 0,
+        net_weight: job.net_weight_kg || 0,
+        gross_weight: job.gross_weight_kg || 0,
         exporter: job.exporter || "",
         port_details: `Destination: ${job.destination_port || ""}\nDischarge: ${job.port_of_discharge || ""}`,
         country_details: `Destination: ${job.destination_country || ""}\nDischarge: ${job.discharge_country || ""}`,
@@ -132,7 +132,7 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
 
     // Set Column Widths
     worksheet.columns.forEach(column => {
-        column.width = column.width || 15;
+      column.width = column.width || 15;
     });
 
     // Apply borders

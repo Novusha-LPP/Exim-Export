@@ -32,25 +32,16 @@ import assignIcdCode from "./routes/home/assignIcdCode.mjs";
 // Audit Trail
 import auditTrail from "./routes/audit/auditTrail.mjs";
 
-// directrories
+// directories
 import directory from "./routes/Directories/directory.js";
-import state from "./routes/Directories/state.mjs";
 import airline from "./routes/Directories/airlines.js";
 import Country from "./routes/Directories/Country.js";
-import TarrifHead from "./routes/Directories/tarrifhead.js";
 import ShippingLine from "./routes/Directories/shippinglines.js";
-import edilocations from "./routes/Directories/edilocations.js";
-import nonedilocations from "./routes/Directories/nonedilocation.js";
 import ports from "./routes/Directories/ports.js";
 import airports from "./routes/Directories/airports.js";
 import seaPorts from "./routes/Directories/seaports.js";
-import uqcs from "./routes/Directories/uqcs.js";
-import Currency from "./routes/Directories/currencies.js";
-import Packages from "./routes/Directories/packages.js";
-import SupportingDocuments from "./routes/Directories/supportingdocumentcodes.js";
 import genrateExportChecklist from "./routes/export-dsr/generateExportChecklist.mjs";
-import gatwayPort from "./routes/Directories/gatwayPort.js"; //gatwatPort
-import district from "./routes/Directories/districts.js"; //gatwatPort
+import gatwayPort from "./routes/Directories/gatwayPort.js";
 import license from "./routes/Directories/license.js";
 import getExportJobsModuleUsers from "./routes/export-dsr/getExportJobsModuleUsers.mjs";
 
@@ -193,28 +184,15 @@ app.use(auditTrail);
 
 //directories
 app.use(auditMiddleware("Directory"), directory);
-app.use("/api/states", auditMiddleware("Directory"), state);
 app.use("/api/airlines", auditMiddleware("Directory"), airline);
 app.use("/api/countries", auditMiddleware("Directory"), Country);
-app.use("/api/tariffHeads", auditMiddleware("Directory"), TarrifHead);
 app.use("/api/shippingLines", auditMiddleware("Directory"), ShippingLine);
-app.use("/api/ediLocations", auditMiddleware("Directory"), edilocations);
-app.use("/api/nonEdiLocations", auditMiddleware("Directory"), nonedilocations);
 app.use("/api/ports", auditMiddleware("Directory"), ports);
 app.use("/api/airPorts", auditMiddleware("Directory"), airports);
 app.use("/api/seaPorts", auditMiddleware("Directory"), seaPorts);
-app.use("/api/uqcs", auditMiddleware("Directory"), uqcs);
-app.use("/api/currencies", auditMiddleware("Directory"), Currency);
-app.use("/api/packages", auditMiddleware("Directory"), Packages);
-app.use(
-  "/api/supportingDocumentCodes",
-  auditMiddleware("Directory"),
-  SupportingDocuments
-);
 app.use(genrateExportChecklist);
 app.use(getExpJob);
 app.use("/api/gateway-ports", auditMiddleware("Directory"), gatwayPort);
-app.use("/api/districts", auditMiddleware("Directory"), district);
 app.use("/api/licenses", auditMiddleware("Directory"), license);
 // app.set("trust proxy", 1); // Trust first proxy (NGINX, AWS ELB, etc.)
 

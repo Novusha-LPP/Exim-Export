@@ -283,7 +283,7 @@ const getStatusColor = (statusValue) => {
       return "#ffebee"; // Very Light Rose
     case "Container HO":
     case "File Handover to IATA":
-      return "#e1f5fe"; // Light Sky Blue
+      return "#daffdeff"; // Light Sky Blue
     case "Rail Out":
     case "Departure":
       return "#ede7f6"; // Light Lavender
@@ -447,6 +447,41 @@ const ExportJobsTable = () => {
   });
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Queries status for individual jobs
+  const currentModuleForQueries = window.location.pathname.startsWith("/export-operation")
+    ? "export-operation"
+    : window.location.pathname.startsWith("/export-documentation")
+      ? "export-documentation"
+      : window.location.pathname.startsWith("/export-esanchit")
+        ? "export-esanchit"
+        : window.location.pathname.startsWith("/export-charges")
+          ? "export-charges"
+          : "export-dsr";
+
+  const [jobQueriesStatus, setJobQueriesStatus] = useState({});
+
+  useEffect(() => {
+    const jobNos = jobs.map(j => j.job_no).filter(Boolean);
+    if (jobNos.length === 0) {
+      setJobQueriesStatus({});
+      return;
+    }
+    const fetchStats = async () => {
+      try {
+        const res = await axios.post(`${import.meta.env.VITE_API_STRING}/queries/jobs-status`, {
+          jobNos,
+          currentModule: currentModuleForQueries
+        });
+        if (res.data.success) {
+          setJobQueriesStatus(res.data.data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch query stats:", e);
+      }
+    };
+    fetchStats();
+  }, [jobs, currentModuleForQueries]);
 
   // Pagination State
   const [page, setPage] = useState(savedFilters.page || 1);
@@ -630,6 +665,14 @@ const ExportJobsTable = () => {
   // Query Dialog State
   const [queryDialogOpen, setQueryDialogOpen] = useState(false);
   const [queryDialogJob, setQueryDialogJob] = useState(null);
+
+  // Query Chat Dialog State (Yellow button - view replies)
+  const [queryChatOpen, setQueryChatOpen] = useState(false);
+  const [queryChatJob, setQueryChatJob] = useState(null);
+  const [queryChatData, setQueryChatData] = useState([]);
+  const [queryChatLoading, setQueryChatLoading] = useState(false);
+  const [queryChatReply, setQueryChatReply] = useState("");
+  const [queryChatSending, setQueryChatSending] = useState(false);
 
   // Fetch Filtered Exporters based on other criteria
   useEffect(() => {
@@ -819,9 +862,15 @@ const ExportJobsTable = () => {
           // Column 7: Handover
           let handCol = [];
           const opDetails = job.operations?.[0]?.statusDetails?.[0] || {};
-          if (opDetails.handoverForwardingNoteDate) handCol.push(`DHo: ${formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}`);
-          if (opDetails.railOutReachedDate) handCol.push(`Rail: ${formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}`);
+          const outLbl = opDetails.railRoad === "road" ? "Road Out" : "Rail Out";
+          const reachedLbl = opDetails.railRoad === "road" ? "Road Rch" : "Rail Rch";
+
           if (opDetails.leoDate) handCol.push(`Leo: ${formatDate(opDetails.leoDate, "dd-MM-yy")}`);
+          if (opDetails.handoverForwardingNoteDate) handCol.push(`DHo: ${formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}`);
+          if (opDetails.handoverConcorTharSanganaRailRoadDate) handCol.push(`${outLbl}: ${formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}`);
+          if (opDetails.railOutReachedDate) handCol.push(`${reachedLbl}: ${formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}`);
+          if (opDetails.billingDocsSentDt) handCol.push(`Bill: ${formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}`);
+
           rowData["Handover"] = handCol.join("\n");
 
           // Column 8: Status
@@ -1986,7 +2035,7 @@ const ExportJobsTable = () => {
                   }}
                 >
                   <th
-                    style={{ ...s.th, cursor: "pointer", userSelect: "none" }}
+                    style={{ ...s.th, width: "10%", minWidth: "100px", cursor: "pointer", userSelect: "none" }}
                     onClick={() => handleSort('job_no')}
                     title="Click to sort by Job Number"
                   >
@@ -1997,15 +2046,15 @@ const ExportJobsTable = () => {
                       </span>
                     )}
                   </th>
-                  <th style={s.th}>Exporter</th>
-                  <th style={s.th}>KYC / Codes</th>
-                  <th style={s.th}>Invoice</th>
-                  <th style={s.th}>SB / Date</th>
-                  <th style={s.th}>Port</th>
-                  <th style={s.th}>Container</th>
-                  <th style={s.th}>Handover</th>
-                  <th style={s.th}>Docs</th>
-                  <th style={s.th}>Status</th>
+                  <th style={{ ...s.th, width: "22%", minWidth: "180px" }}>Exporter</th>
+                  <th style={{ ...s.th, width: "10%", minWidth: "95px" }}>KYC / Codes</th>
+                  <th style={{ ...s.th, width: "8%", minWidth: "85px" }}>Invoice</th>
+                  <th style={{ ...s.th, width: "6%", minWidth: "65px" }}>SB / Date</th>
+                  <th style={{ ...s.th, width: "12%", minWidth: "140px" }}>Port</th>
+                  <th style={{ ...s.th, width: "10%", minWidth: "110px" }}>Container</th>
+                  <th style={{ ...s.th, width: "7%", minWidth: "75px" }}>Handover</th>
+                  <th style={{ ...s.th, width: "7%", minWidth: "75px" }}>Docs</th>
+                  <th style={{ ...s.th, width: "8%", minWidth: "85px", textAlign: "center" }}>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -2197,19 +2246,28 @@ const ExportJobsTable = () => {
                               ` (${job.exporter_branch_name})`
                             )}
                           </div>
-                          {job.consignees?.[0]?.consignee_name
-                            ? job.consignees[0].consignee_name.length > 20
-                              ? `${job.consignees[0].consignee_name.substring(0, 20)}...`
-                              : job.consignees[0].consignee_name
-                            : "-"}
-                          <div
-                            style={{
-                              color: "#6b7280",
-                              fontSize: "11px",
-                              fontStyle: "italic",
-                            }}
-                          >
-                            {job.buyerThirdPartyInfo?.buyer?.name || "-"}
+                          <div style={{ fontSize: "11px", color: "#4b5563", marginTop: "4px" }}>
+                            {job.consignees?.[0]?.consignee_name && (
+                              <div style={{ display: "flex", gap: "4px", alignItems: "baseline" }}>
+                                <span style={{ fontWeight: "700", color: "#666" }}>CONS:</span>
+                                <span style={{ color: "#111" }}>
+                                  {job.consignees[0].consignee_name.length > 30
+                                    ? `${job.consignees[0].consignee_name.substring(0, 30)}...`
+                                    : job.consignees[0].consignee_name}
+                                </span>
+                              </div>
+                            )}
+
+                            {job.buyerThirdPartyInfo?.buyer?.name && (
+                              <div style={{ display: "flex", gap: "4px", alignItems: "baseline", marginTop: "2px" }}>
+                                <span style={{ fontWeight: "700", color: "#666" }}>THIRD PARTY:</span>
+                                <span style={{ color: "#6b7280", fontStyle: "italic" }}>
+                                  {job.buyerThirdPartyInfo.buyer.name.length > 30
+                                    ? `${job.buyerThirdPartyInfo.buyer.name.substring(0, 20)}...`
+                                    : job.buyerThirdPartyInfo.buyer.name}
+                                </span>
+                              </div>
+                            )}
                           </div>
 
                           {/* Booking No section */}
@@ -2666,46 +2724,46 @@ const ExportJobsTable = () => {
 
                         {/* Column 8: Handover DATE */}
                         <td style={s.td}>
-                          <div style={{ marginBottom: "2px", fontSize: "10px" }}>
-                            <span style={{ color: "#6b7280" }}>DHo:</span>{" "}
-                            <span style={{ fontWeight: "500" }}>
-                              {formatDate(
-                                job.operations?.[0]?.statusDetails?.[0]
-                                  ?.handoverForwardingNoteDate,
-                                "dd-MM-yy"
-                              )}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: "10px" }}>
-                            <span style={{ color: "#6b7280" }}>Rail:</span>{" "}
-                            <span style={{ fontWeight: "500" }}>
-                              {formatDate(
-                                job.operations?.[0]?.statusDetails?.[0]
-                                  ?.railOutReachedDate,
-                                "dd-MM-yy"
-                              )}
-                            </span>
-                          </div>
-                          <div style={{ marginTop: "2px", fontSize: "10px" }}>
-                            <span style={{ color: "#6b7280" }}>Leo:</span>{" "}
-                            <span style={{ fontWeight: "500" }}>
-                              {formatDate(
-                                job.operations?.[0]?.statusDetails?.[0]
-                                  ?.leoDate,
-                                "dd-MM-yy"
-                              )}
-                            </span>
-                          </div>
-                          <div style={{ marginTop: "2px", fontSize: "10px" }}>
-                            <span style={{ color: "#6b7280" }}>Bill:</span>{" "}
-                            <span style={{ fontWeight: "500" }}>
-                              {formatDate(
-                                job.operations?.[0]?.statusDetails?.[0]
-                                  ?.billingDocsSentDt,
-                                "dd-MM-yy"
-                              )}
-                            </span>
-                          </div>
+                          {(() => {
+                            const opDetails = job.operations?.[0]?.statusDetails?.[0] || {};
+                            const outLbl = opDetails.railRoad === "road" ? "Road Out" : "Rail Out";
+                            const reachedLbl = opDetails.railRoad === "road" ? "Road Rch" : "Rail Rch";
+
+                            return (
+                              <>
+                                <div style={{ fontSize: "10px" }}>
+                                  <span style={{ color: "#6b7280" }}>Leo:</span>{" "}
+                                  <span style={{ fontWeight: "500" }}>
+                                    {formatDate(opDetails.leoDate, "dd-MM-yy")}
+                                  </span>
+                                </div>
+                                <div style={{ marginTop: "2px", fontSize: "10px" }}>
+                                  <span style={{ color: "#6b7280" }}>DHo:</span>{" "}
+                                  <span style={{ fontWeight: "500" }}>
+                                    {formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}
+                                  </span>
+                                </div>
+                                <div style={{ marginTop: "2px", fontSize: "10px" }}>
+                                  <span style={{ color: "#6b7280" }}>{outLbl}:</span>{" "}
+                                  <span style={{ fontWeight: "500" }}>
+                                    {formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}
+                                  </span>
+                                </div>
+                                <div style={{ marginTop: "2px", fontSize: "10px" }}>
+                                  <span style={{ color: "#6b7280" }}>{reachedLbl}:</span>{" "}
+                                  <span style={{ fontWeight: "500" }}>
+                                    {formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}
+                                  </span>
+                                </div>
+                                <div style={{ marginTop: "2px", fontSize: "10px" }}>
+                                  <span style={{ color: "#6b7280" }}>Bill:</span>{" "}
+                                  <span style={{ fontWeight: "500" }}>
+                                    {formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}
+                                  </span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </td>
 
                         {/* Column 9: Docs */}
@@ -2887,33 +2945,133 @@ const ExportJobsTable = () => {
                               Docs
                               <ArrowDropDownIcon sx={{ fontSize: 14, ml: 0.3 }} />
                             </button>
-                            <button
-                              style={{
-                                background: "#2563eb",
-                                border: "none",
-                                color: "#fff",
-                                padding: "3px 8px",
-                                borderRadius: 4,
-                                fontWeight: 600,
-                                fontSize: 11,
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: "4px",
-                                width: "100%",
-                              }}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setQueryDialogJob(job);
-                                setQueryDialogOpen(true);
-                              }}
-                              title="Raise a query for this job"
-                            >
-                              <QuestionAnswerIcon sx={{ fontSize: 12 }} />
-                              Query
-                            </button>
+                            {/* Query Traffic Light: Red=Raise, Yellow=View, Green=Resolved */}
+                            <div style={{ display: "flex", gap: "6px", justifyContent: "center", width: "100%", flexWrap: "wrap", margin: "4px 0" }}>
+                              {/* RED - Raise Query */}
+                              <Tooltip title="Raise a query" arrow>
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setQueryDialogJob(job);
+                                    setQueryDialogOpen(true);
+                                  }}
+                                  style={{
+                                    width: 18, height: 18, borderRadius: "50%",
+                                    backgroundColor: "#ef4444", cursor: "pointer",
+                                    border: "2px solid #dc2626",
+                                    flexShrink: 0,
+                                    transition: "transform 0.15s",
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.transform = "scale(1.25)"}
+                                  onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                                />
+                              </Tooltip>
+                              {/* YELLOW - View Queries/Replies */}
+                              {jobQueriesStatus[job.job_no]?.hasQueries && (
+                                <>
+                                  <Tooltip title="View queries & replies" arrow>
+                                    <div
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        setQueryChatJob(job);
+                                        setQueryChatOpen(true);
+                                        setQueryChatLoading(true);
+                                        try {
+                                          const resp = await axios.get(
+                                            `${import.meta.env.VITE_API_STRING}/queries`,
+                                            { params: { job_no: job.job_no } }
+                                          );
+                                          const queriesFetched = resp.data?.data?.queries || resp.data?.data || [];
+                                          setQueryChatData(queriesFetched);
+                                          
+                                          if (queriesFetched.length > 0) {
+                                            axios.put(`${import.meta.env.VITE_API_STRING}/queries/mark-seen`, {
+                                              queryIds: queriesFetched.map(q => q._id)
+                                            }).catch(console.error);
+                                            
+                                            setJobQueriesStatus(prev => ({
+                                              ...prev,
+                                              [job.job_no]: { ...prev[job.job_no], hasUnseen: false }
+                                            }));
+                                          }
+                                        } catch (err) {
+                                          console.error(err);
+                                          setQueryChatData([]);
+                                        } finally {
+                                          setQueryChatLoading(false);
+                                        }
+                                      }}
+                                      style={{
+                                        width: 18, height: 18, borderRadius: "50%",
+                                        backgroundColor: "#f59e0b", cursor: "pointer",
+                                        border: "2px solid #d97706",
+                                        flexShrink: 0,
+                                        position: "relative",
+                                        transition: "transform 0.15s",
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.transform = "scale(1.25)"}
+                                      onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                                    >
+                                      {jobQueriesStatus[job.job_no]?.hasUnseen && (
+                                        <div style={{
+                                          position: "absolute", top: -4, right: -4,
+                                          width: 8, height: 8, borderRadius: "50%",
+                                          backgroundColor: "#dc2626", border: "1px solid #fff"
+                                        }} />
+                                      )}
+                                    </div>
+                                  </Tooltip>
+                                  {/* GREEN - Resolve */}
+                                  <Tooltip title="Mark queries resolved" arrow>
+                                    <div
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (!window.confirm(`Mark all open queries for ${job.job_no} as resolved?`)) return;
+                                        try {
+                                          const resp = await axios.get(
+                                            `${import.meta.env.VITE_API_STRING}/queries`,
+                                            { params: { job_no: job.job_no, status: "open" } }
+                                          );
+                                          const openQueries = resp.data?.data?.queries || resp.data?.data || [];
+                                          if (openQueries.length === 0) {
+                                            alert("No open queries for this job.");
+                                            return;
+                                          }
+                                          await Promise.all(
+                                            openQueries.map(q =>
+                                              axios.put(`${import.meta.env.VITE_API_STRING}/queries/${q._id}/resolve`, {
+                                                resolvedBy: user?.username || "unknown",
+                                                resolvedByName: user?.fullName || user?.username || "Unknown",
+                                                resolutionNote: "Resolved from job table",
+                                              })
+                                            )
+                                          );
+                                          alert(`${openQueries.length} query(ies) resolved.`);
+
+                                          // Optionally update local stats manually or just trigger a refresh
+                                          setJobQueriesStatus(prev => ({
+                                            ...prev,
+                                            [job.job_no]: { ...prev[job.job_no], hasUnseen: false }
+                                          }));
+                                        } catch (err) {
+                                          console.error(err);
+                                          alert("Failed to resolve queries.");
+                                        }
+                                      }}
+                                      style={{
+                                        width: 18, height: 18, borderRadius: "50%",
+                                        backgroundColor: "#22c55e", cursor: "pointer",
+                                        border: "2px solid #16a34a",
+                                        flexShrink: 0,
+                                        transition: "transform 0.15s",
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.transform = "scale(1.25)"}
+                                      onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                                    />
+                                  </Tooltip>
+                                </>
+                              )}
+                            </div>
                           </div>
                           <div
                             style={{
@@ -3665,10 +3823,116 @@ const ExportJobsTable = () => {
         }}
         job={queryDialogJob}
         onQueryRaised={() => {
-          // Optionally show a success notification
           console.log("Query raised successfully");
         }}
       />
+
+      {/* Query Chat Dialog (Yellow - view replies) */}
+      <Dialog
+        open={queryChatOpen}
+        onClose={() => { setQueryChatOpen(false); setQueryChatJob(null); setQueryChatData([]); setQueryChatReply(""); }}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: "10px", overflow: "hidden" } }}
+      >
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", py: 1.2, px: 2, background: "#f59e0b", color: "#fff" }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>Queries &amp; Replies</div>
+            {queryChatJob?.job_no && <div style={{ fontSize: 11, opacity: 0.85 }}>Job: {queryChatJob.job_no}</div>}
+          </div>
+          <IconButton onClick={() => { setQueryChatOpen(false); setQueryChatJob(null); setQueryChatData([]); setQueryChatReply(""); }} size="small" sx={{ color: "#fff" }}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, display: "flex", flexDirection: "column", height: 420 }}>
+          {queryChatLoading ? (
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", flex: 1, color: "#9ca3af" }}>Loading...</div>
+          ) : queryChatData.length === 0 ? (
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", flex: 1, color: "#9ca3af", fontStyle: "italic", fontSize: 13 }}>No queries raised for this job yet.</div>
+          ) : (
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+              {queryChatData.map((q, qi) => (
+                <div key={q._id || qi} style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
+                  {/* Query header */}
+                  <div style={{ background: q.status === "resolved" ? "#dcfce7" : q.status === "rejected" ? "#fee2e2" : "#fef3c7", padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <span style={{ fontWeight: 700, fontSize: 12, color: "#111" }}>{q.raisedByName || q.raisedBy}</span>
+                      <span style={{ fontSize: 10, color: "#6b7280", marginLeft: 6 }}>{q.raisedFromModule} → {q.targetModule}</span>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: q.status === "resolved" ? "#22c55e" : q.status === "rejected" ? "#ef4444" : "#f59e0b", color: "#fff", textTransform: "uppercase" }}>{q.status}</span>
+                  </div>
+                  {/* Query message */}
+                  <div style={{ padding: "8px 12px", fontSize: 12, color: "#374151", background: "#fff", borderBottom: q.replies?.length ? "1px solid #f3f4f6" : "none" }}>
+                    <div style={{ fontWeight: 600, fontSize: 11, color: "#6b7280", marginBottom: 2 }}>{q.subject}</div>
+                    {q.message}
+                    <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>{new Date(q.createdAt).toLocaleString()}</div>
+                  </div>
+                  {/* Replies */}
+                  {q.replies && q.replies.map((r, ri) => (
+                    <div key={r._id || ri} style={{ padding: "6px 12px 6px 24px", fontSize: 12, borderBottom: "1px solid #f9fafb", background: ri % 2 === 0 ? "#f9fafb" : "#fff" }}>
+                      <span style={{ fontWeight: 600, color: "#2563eb" }}>{r.repliedByName || r.repliedBy}: </span>
+                      <span style={{ color: "#374151" }}>{r.message}</span>
+                      <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>{new Date(r.repliedAt).toLocaleString()}</div>
+                    </div>
+                  ))}
+                  {/* Quick reply box for open queries */}
+                  {q.status === "open" && (
+                    <div style={{ display: "flex", gap: 6, padding: "6px 12px", background: "#fafafa", borderTop: "1px solid #e5e7eb" }}>
+                      <input
+                        type="text"
+                        placeholder="Type a reply..."
+                        value={queryChatReply}
+                        onChange={(e) => setQueryChatReply(e.target.value)}
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter" && queryChatReply.trim()) {
+                            setQueryChatSending(true);
+                            try {
+                              await axios.post(`${import.meta.env.VITE_API_STRING}/queries/${q._id}/reply`, {
+                                message: queryChatReply.trim(),
+                                repliedBy: user?.username || "unknown",
+                                repliedByName: user?.fullName || user?.username || "Unknown",
+                                fromModule: currentModuleForQueries,
+                              });
+                              // Refresh
+                              const resp = await axios.get(`${import.meta.env.VITE_API_STRING}/queries`, { params: { job_no: queryChatJob.job_no } });
+                              setQueryChatData(resp.data?.data?.queries || resp.data?.data || []);
+                              setQueryChatReply("");
+                            } catch (err) { console.error(err); }
+                            finally { setQueryChatSending(false); }
+                          }
+                        }}
+                        style={{ flex: 1, padding: "6px 10px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 12, outline: "none" }}
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!queryChatReply.trim()) return;
+                          setQueryChatSending(true);
+                          try {
+                            await axios.post(`${import.meta.env.VITE_API_STRING}/queries/${q._id}/reply`, {
+                              message: queryChatReply.trim(),
+                              repliedBy: user?.username || "unknown",
+                              repliedByName: user?.fullName || user?.username || "Unknown",
+                              fromModule: currentModuleForQueries,
+                            });
+                            const resp = await axios.get(`${import.meta.env.VITE_API_STRING}/queries`, { params: { job_no: queryChatJob.job_no } });
+                            setQueryChatData(resp.data?.data?.queries || resp.data?.data || []);
+                            setQueryChatReply("");
+                          } catch (err) { console.error(err); }
+                          finally { setQueryChatSending(false); }
+                        }}
+                        disabled={queryChatSending}
+                        style={{ padding: "6px 14px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        {queryChatSending ? "..." : "Send"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

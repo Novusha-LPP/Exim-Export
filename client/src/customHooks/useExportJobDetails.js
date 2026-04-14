@@ -161,6 +161,11 @@ function useExportJobDetails(params, setFileSnackbar) {
       stuffing_agency_name: "",
       // Boolean Control Fields
       buyer_other_than_consignee: false,
+      vgm_done: false,
+      form13_done: false,
+      shipping_bill_done: false,
+      financial_lock: false,
+      operational_lock: false,
 
       status: "",
       // Add these fields in the appropriate section (around the shipping/cargo details)
@@ -905,6 +910,11 @@ function useExportJobDetails(params, setFileSnackbar) {
           data.buyer_other_than_consignee,
           false,
         ),
+        vgm_done: safeValue(data.vgm_done, false),
+        form13_done: safeValue(data.form13_done, false),
+        shipping_bill_done: safeValue(data.shipping_bill_done, false),
+        financial_lock: safeValue(data.financial_lock, false),
+        operational_lock: safeValue(data.operational_lock, false),
         status: safeValue(data.status),
         exporter_address: safeValue(data.exporter_address),
         exporter_state: safeValue(data.exporter_state),

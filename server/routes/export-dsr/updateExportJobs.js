@@ -990,6 +990,7 @@ router.get("/exports/:status?", async (req, res) => {
       port_of_loading: 1,
       "operations.statusDetails.containerPlacementDate": 1,
       "operations.statusDetails.handoverForwardingNoteDate": 1,
+      "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": 1,
       "operations.statusDetails.railOutReachedDate": 1,
       "operations.statusDetails.leoDate": 1,
       "operations.statusDetails.leoUpload": 1,

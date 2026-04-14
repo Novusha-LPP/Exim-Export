@@ -1,239 +1,46 @@
-import React, { useState, useCallback, useEffect } from "react";
-import {
-  Container,
-  Row,
-  Col,
-  Button,
-  Alert,
-  Table,
-  Form,
-  Card,
-  Badge,
-  Spinner,
-} from "react-bootstrap";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { Container, Row, Col, Button, Alert, Table, Form, Card, Spinner } from "react-bootstrap";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-// API Service
-const ShippingLineService = {
-  baseURL: `${import.meta.env.VITE_API_STRING}/shippingLines`,
-
-  getAll: async (params = {}) => {
-    try {
-      const response = await axios.get(`${ShippingLineService.baseURL}/`, {
-        params,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  getById: async (id) => {
-    try {
-      const response = await axios.get(`${ShippingLineService.baseURL}/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  create: async (data) => {
-    try {
-      const response = await axios.post(
-        `${ShippingLineService.baseURL}/`,
-        data
-      );
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  update: async (id, data) => {
-    try {
-      const response = await axios.put(
-        `${ShippingLineService.baseURL}/${id}`,
-        data
-      );
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  delete: async (id) => {
-    try {
-      const response = await axios.delete(
-        `${ShippingLineService.baseURL}/${id}`
-      );
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
+const colors = { primary: "#4f46e5", secondary: "#64748b", background: "#f8fafc", border: "#e2e8f0" };
+const customStyles = {
+  header: { padding: "24px 32px", background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", color: "white", borderRadius: "12px 12px 0 0" },
+  card: { borderRadius: "12px", border: "none", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)", overflow: "hidden" },
+  input: { borderRadius: "8px", border: `1.5px solid ${colors.border}`, padding: "10px 14px" },
+  label: { fontSize: "13px", fontWeight: "600", marginBottom: "8px", display: "block" },
+  btnPrimary: { background: colors.primary, border: "none", padding: "10px 24px", borderRadius: "8px", fontWeight: "600" },
+  badge: { padding: "6px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: "700" }
 };
 
-// Form Component
+const ShippingLineService = {
+  baseURL: `${import.meta.env.VITE_API_STRING}/shippingLines`,
+  getAll: (p) => axios.get(`${ShippingLineService.baseURL}/`, { params: p }).then(r => r.data),
+  create: (d) => axios.post(`${ShippingLineService.baseURL}/`, d),
+  update: (id, d) => axios.put(`${ShippingLineService.baseURL}/${id}`, d),
+  delete: (id) => axios.delete(`${ShippingLineService.baseURL}/${id}`),
+};
+
 const ShippingLineForm = ({ shippingLineData, onSave, onCancel }) => {
-  const [formData, setFormData] = useState({
-    shippingLineCode: "",
-    shippingName: "",
-    location: "",
-    status: "Active",
-  });
+  const [formData, setFormData] = useState({ shippingLineCode: "", shippingName: "", location: "", status: "Active" });
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    if (shippingLineData) {
-      setFormData(shippingLineData);
-    } else {
-      setFormData({
-        shippingLineCode: "",
-        shippingName: "",
-        location: "",
-        status: "Active",
-      });
-    }
-  }, [shippingLineData]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === "shippingLineCode" ? value.toUpperCase() : value,
-    }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.shippingLineCode?.trim()) {
-      newErrors.shippingLineCode = "Shipping Line Code is required";
-    } else if (!/^[A-Z0-9]{2,10}$/.test(formData.shippingLineCode)) {
-      newErrors.shippingLineCode =
-        "Code must be 2-10 uppercase alphanumeric characters";
-    }
-
-    if (!formData.shippingName?.trim()) {
-      newErrors.shippingName = "Shipping Name is required";
-    }
-
-    if (!formData.location?.trim()) {
-      newErrors.location = "Location is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    setLoading(true);
-    try {
-      if (shippingLineData?._id) {
-        await ShippingLineService.update(shippingLineData._id, formData);
-      } else {
-        await ShippingLineService.create(formData);
-      }
-      onSave();
-    } catch (error) {
-      alert(error.message || "Error saving shipping line");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  useEffect(() => { if (shippingLineData) setFormData(shippingLineData); else setFormData({ shippingLineCode: "", shippingName: "", location: "", status: "Active" }); }, [shippingLineData]);
+  const handleChange = (e) => setFormData(p => ({ ...p, [e.target.name]: e.target.name === "shippingLineCode" ? e.target.value.toUpperCase() : e.target.value }));
+  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); try { if (shippingLineData?._id) await ShippingLineService.update(shippingLineData._id, formData); else await ShippingLineService.create(formData); onSave(); } catch (err) { alert(err.message); } finally { setLoading(false); } };
   return (
-    <Card>
-      <Card.Header>
-        <h5>
-          {shippingLineData ? "Edit Shipping Line" : "Add New Shipping Line"}
-        </h5>
-      </Card.Header>
-      <Card.Body>
+    <Card style={customStyles.card}>
+      <Card.Header style={customStyles.header}><h5 className="mb-0 text-white fw-bold">{shippingLineData ? "Edit Carrier" : "New Shipping Line"}</h5></Card.Header>
+      <Card.Body className="p-4">
         <Form onSubmit={handleSubmit}>
-          <Row>
-            <Col md={3}>
-              <Form.Group className="mb-3">
-                <Form.Label>Shipping Line Code *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="shippingLineCode"
-                  value={formData.shippingLineCode}
-                  onChange={handleChange}
-                  isInvalid={!!errors.shippingLineCode}
-                  placeholder="e.g., MSK, COSCO"
-                  maxLength={10}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.shippingLineCode}
-                </Form.Control.Feedback>
-                <Form.Text className="text-muted">
-                  2-10 character code (e.g., MSK, COSCO)
-                </Form.Text>
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label>Shipping Name *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="shippingName"
-                  value={formData.shippingName}
-                  onChange={handleChange}
-                  isInvalid={!!errors.shippingName}
-                  placeholder="Enter shipping line name"
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.shippingName}
-                </Form.Control.Feedback>
-              </Form.Group>
-            </Col>
-            <Col md={3}>
-              <Form.Group className="mb-3">
-                <Form.Label>Status</Form.Label>
-                <Form.Select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                  <option value="Suspended">Suspended</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={12}>
-              <Form.Group className="mb-3">
-                <Form.Label>Location *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  isInvalid={!!errors.location}
-                  placeholder="Enter headquarters/main location"
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.location}
-                </Form.Control.Feedback>
-              </Form.Group>
-            </Col>
+          <Row className="mb-4 g-3">
+            <Col md={3}><Form.Group><Form.Label style={customStyles.label}>Line Code (SCAC) *</Form.Label><Form.Control type="text" name="shippingLineCode" value={formData.shippingLineCode} onChange={handleChange} placeholder="e.g. MSK" maxLength={10} style={customStyles.input} /></Form.Group></Col>
+            <Col md={6}><Form.Group><Form.Label style={customStyles.label}>Full Carrier Name *</Form.Label><Form.Control type="text" name="shippingName" value={formData.shippingName} onChange={handleChange} placeholder="Enter full name" style={customStyles.input} /></Form.Group></Col>
+            <Col md={3}><Form.Group><Form.Label style={customStyles.label}>Status</Form.Label><Form.Select name="status" value={formData.status} onChange={handleChange} style={customStyles.input}><option value="Active">Active</option><option value="Inactive">Inactive</option><option value="Suspended">Suspended</option></Form.Select></Form.Group></Col>
           </Row>
-          <div className="d-flex justify-content-end gap-2">
-            <Button variant="secondary" onClick={onCancel} disabled={loading}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save"}
-            </Button>
+          <Form.Group className="mb-4"><Form.Label style={customStyles.label}>Primary Operating Headquarters *</Form.Label><Form.Control type="text" name="location" value={formData.location} onChange={handleChange} placeholder="Global Head Office Location" style={customStyles.input} /></Form.Group>
+          <div className="d-flex justify-content-end gap-3 pt-2">
+            <Button variant="link" onClick={onCancel} style={{ color: colors.secondary, textDecoration: "none", fontWeight: 600 }}>Discard</Button>
+            <Button variant="primary" type="submit" disabled={loading} style={customStyles.btnPrimary}>{loading ? <Spinner size="sm" /> : "Save Carrier"}</Button>
           </div>
         </Form>
       </Card.Body>
@@ -241,394 +48,61 @@ const ShippingLineForm = ({ shippingLineData, onSave, onCancel }) => {
   );
 };
 
-// List Component
-// List Component
 const ShippingLineList = ({ onEdit, onDelete, refresh }) => {
-  const [shippingLines, setShippingLines] = useState([]);
-  const [filteredShippingLines, setFilteredShippingLines] = useState([]);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
-  const [filters, setFilters] = useState({
-    page: 1,
-    location: "",
-    status: "",
-  });
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // Fetch all shipping lines
-  useEffect(() => {
-    fetchShippingLines();
-  }, [filters, refresh]);
-
-  // Filter shipping lines whenever searchTerm or shippingLines change
-  useEffect(() => {
-    filterShippingLines();
-  }, [searchTerm, shippingLines]);
-
-  const fetchShippingLines = async () => {
-    try {
-      setLoading(true);
-      const response = await ShippingLineService.getAll(filters);
-      const shippingLinesData = response.data || response;
-      setShippingLines(shippingLinesData);
-      setPagination(response.pagination || {});
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setShippingLines([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterShippingLines = () => {
-    if (!searchTerm.trim()) {
-      setFilteredShippingLines(shippingLines);
-      return;
-    }
-
-    const searchLower = searchTerm.toLowerCase();
-    const filtered = shippingLines.filter(
-      (shippingLine) =>
-        (shippingLine.shippingLineCode &&
-          shippingLine.shippingLineCode.toLowerCase().includes(searchLower)) ||
-        (shippingLine.shippingName &&
-          shippingLine.shippingName.toLowerCase().includes(searchLower)) ||
-        (shippingLine.location &&
-          shippingLine.location.toLowerCase().includes(searchLower)) ||
-        (shippingLine.status &&
-          shippingLine.status.toLowerCase().includes(searchLower)) ||
-        (shippingLine._id &&
-          shippingLine._id.toLowerCase().includes(searchLower))
-    );
-    setFilteredShippingLines(filtered);
-  };
-
-  const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
-  };
-
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const clearSearch = () => {
-    setSearchTerm("");
-  };
-
-  if (loading) {
+  const [filters, setFilters] = useState({ page: 1, status: "", search: "" });
+  const searchTimeout = useRef(null);
+  useEffect(() => { fetchLines(); }, [filters, refresh]);
+  const fetchLines = async () => { try { setLoading(true); const res = await ShippingLineService.getAll(filters); setData(res.data || res); setPagination(res.pagination || {}); } catch (e) { console.error(e); } finally { setLoading(false); } };
+  const handleFilter = (k, v) => setFilters(p => ({ ...p, [k]: v, page: k === "page" ? v : 1 }));
+  const handleSearch = (v) => { if (searchTimeout.current) clearTimeout(searchTimeout.current); searchTimeout.current = setTimeout(() => handleFilter("search", v), 500); };
+  const renderPagination = () => {
+    const { currentPage, totalPages } = pagination; if (totalPages <= 1) return null;
+    const pages = []; for (let i = 1; i <= totalPages; i++) { if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) pages.push(i); else if (pages[pages.length-1] !== "...") pages.push("..."); }
     return (
-      <div className="text-center py-5">
-        <Spinner animation="border" />
-      </div>
+      <nav className="d-flex justify-content-center mt-4 pb-3">
+        <ul className="pagination pagination-sm gap-2">
+          {pages.map((p, idx) => (
+            <li key={idx} className={`page-item ${p === currentPage ? "active" : ""} ${p === "..." ? "disabled" : ""}`}>
+              {p === "..." ? <span className="page-link border-0">...</span> : <button className="page-link rounded-circle shadow-sm" style={{ width: 35, height: 35, display: "flex", alignItems: "center", justifyContent: "center", border: "none", fontWeight: 600 }} onClick={() => handleFilter("page", p)}>{p}</button>}
+            </li>
+          ))}
+        </ul>
+      </nav>
     );
-  }
-
+  };
   return (
     <div>
-      {/* Filters - Enhanced with global search */}
-      <Row className="mb-3">
-        <Col md={4}>
-          <Form.Control
-            type="text"
-            placeholder="Search by code, name, location, or status..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
-          {searchTerm && (
-            <Form.Text className="text-muted">
-              Showing {filteredShippingLines.length} of {shippingLines.length}{" "}
-              shipping lines
-              {searchTerm && ` matching "${searchTerm}"`}
-            </Form.Text>
-          )}
-        </Col>
-        <Col md={4}>
-          <Form.Control
-            type="text"
-            placeholder="Filter by location"
-            value={filters.location}
-            onChange={(e) => handleFilterChange("location", e.target.value)}
-          />
-        </Col>
-        <Col md={4}>
-          <Form.Select
-            value={filters.status}
-            onChange={(e) => handleFilterChange("status", e.target.value)}
-          >
-            <option value="">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Suspended">Suspended</option>
-          </Form.Select>
-        </Col>
-      </Row>
-
-      {/* Results Counter */}
-      <Row className="mb-3">
-        <Col md={4}>
-          <div className="border rounded p-2 bg-light">
-            <div className="h6 mb-0 text-primary">
-              {filteredShippingLines.length}
-            </div>
-            <div className="text-muted small">Total Shipping Lines</div>
-          </div>
-        </Col>
-      </Row>
-
-      {/* Table */}
-      <div className="table-responsive">
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th style={{ width: "150px" }}>Shipping Line Code</th>
-              <th>Shipping Name</th>
-              <th style={{ width: "200px" }}>Location</th>
-              <th style={{ width: "100px" }}>Status</th>
-              <th style={{ width: "150px" }}>Actions</th>
-            </tr>
-          </thead>
+      <Card className="mb-4 border-0 shadow-sm rounded-4"><Card.Body className="p-3"><Row className="g-3"><Col md={8}><Form.Control type="text" placeholder="Global Search Carrier..." defaultValue={filters.search} onChange={e => handleSearch(e.target.value)} style={customStyles.input} /></Col><Col md={4}><Form.Select value={filters.status} onChange={e => handleFilter("status", e.target.value)} style={customStyles.input}><option value="">All Status</option><option value="Active">Active</option><option value="Inactive">Inactive</option></Form.Select></Col></Row></Card.Body></Card>
+      <div className="bg-white rounded-4 shadow-sm overflow-hidden border">
+        <Table hover className="mb-0 align-middle border-0">
+          <thead className="bg-light"><tr style={{ borderBottom: "2px solid #e2e8f0" }}><th className="ps-4 py-3 text-muted small">CODE</th><th className="py-3 text-muted small">CARRIER NAME</th><th className="py-3 text-muted small">LOCATION</th><th className="py-3 text-muted small">STATUS</th><th className="pe-4 py-3 text-end text-muted small">ACTIONS</th></tr></thead>
           <tbody>
-            {filteredShippingLines.length > 0 ? (
-              filteredShippingLines.map((item) => (
-                <tr key={item._id}>
-                  <td>
-                    <span className="font-monospace text-primary">
-                      <strong>{item.shippingLineCode}</strong>
-                    </span>
-                  </td>
-                  <td>
-                    <strong>{item.shippingName}</strong>
-                  </td>
-                  <td>{item.location}</td>
-                  <td>
-                    <Badge
-                      bg={
-                        item.status === "Active"
-                          ? "success"
-                          : item.status === "Suspended"
-                          ? "warning"
-                          : "secondary"
-                      }
-                    >
-                      {item.status}
-                    </Badge>
-                  </td>
-                  <td>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      className="me-2"
-                      onClick={() => onEdit(item)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => onDelete([item._id])}
-                    >
-                      Delete
-                    </Button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5" className="text-center py-4">
-                  <Alert variant="info" className="text-center">
-                    {searchTerm ? (
-                      <>
-                        No shipping lines found matching "{searchTerm}".
-                        <br />
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          className="mt-2"
-                          onClick={clearSearch}
-                        >
-                          Clear Search
-                        </Button>
-                      </>
-                    ) : (
-                      "No shipping lines found."
-                    )}
-                  </Alert>
-                </td>
-              </tr>
-            )}
+            {data.length > 0 ? data.map(item => (
+              <tr key={item._id} className="border-bottom"><td className="ps-4 fw-bold text-primary">{item.shippingLineCode}</td><td className="fw-semibold">{item.shippingName}</td><td className="text-muted small">{item.location}</td><td><span style={{ ...customStyles.badge, background: item.status === "Active" ? "#ecfdf5" : "#fef2f2", color: item.status === "Active" ? "#059669" : "#dc2626" }}>{item.status}</span></td><td className="pe-4 text-end"><Button variant="light" size="sm" className="me-2 fw-bold text-primary" onClick={() => onEdit(item)}>Edit</Button><Button variant="link" size="sm" className="text-danger p-0 fw-bold" style={{ textDecoration: "none" }} onClick={() => onDelete([item._id])}>Delete</Button></td></tr>
+            )) : <tr><td colSpan="5" className="text-center py-5 text-muted">No carriers found.</td></tr>}
           </tbody>
         </Table>
       </div>
-
-      {/* Pagination - Only show if not searching */}
-      {!searchTerm && pagination.totalPages > 1 && (
-        <nav>
-          <ul className="pagination justify-content-center">
-            <li
-              className={`page-item ${
-                pagination.currentPage === 1 ? "disabled" : ""
-              }`}
-            >
-              <button
-                className="page-link"
-                onClick={() =>
-                  handleFilterChange("page", pagination.currentPage - 1)
-                }
-                disabled={pagination.currentPage === 1}
-              >
-                Previous
-              </button>
-            </li>
-            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
-              (page) => (
-                <li
-                  key={page}
-                  className={`page-item ${
-                    pagination.currentPage === page ? "active" : ""
-                  }`}
-                >
-                  <button
-                    className="page-link"
-                    onClick={() => handleFilterChange("page", page)}
-                  >
-                    {page}
-                  </button>
-                </li>
-              )
-            )}
-            <li
-              className={`page-item ${
-                pagination.currentPage === pagination.totalPages
-                  ? "disabled"
-                  : ""
-              }`}
-            >
-              <button
-                className="page-link"
-                onClick={() =>
-                  handleFilterChange("page", pagination.currentPage + 1)
-                }
-                disabled={pagination.currentPage === pagination.totalPages}
-              >
-                Next
-              </button>
-            </li>
-          </ul>
-        </nav>
-      )}
+      {renderPagination()}
     </div>
   );
 };
 
-// Main Component
 const ShippingLine = () => {
   const [showForm, setShowForm] = useState(false);
-  const [editingShippingLine, setEditingShippingLine] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [refresh, setRefresh] = useState(0);
-  const [alert, setAlert] = useState(null);
-
-  const showAlert = useCallback((message, type = "success") => {
-    setAlert({ message, type });
-    setTimeout(() => setAlert(null), 5000);
-  }, []);
-
-  const handleAddNew = useCallback(() => {
-    setEditingShippingLine(null);
-    setShowForm(true);
-  }, []);
-
-  const handleEdit = useCallback((shippingLine) => {
-    setEditingShippingLine(shippingLine);
-    setShowForm(true);
-  }, []);
-
-  const handleDelete = useCallback(
-    async (ids) => {
-      try {
-        if (ids.length === 1) {
-          if (
-            window.confirm(
-              "Are you sure you want to delete this shipping line?"
-            )
-          ) {
-            await ShippingLineService.delete(ids[0]);
-            showAlert("Shipping Line deleted successfully");
-            setRefresh((prev) => prev + 1);
-          }
-        }
-      } catch (error) {
-        showAlert(error.message || "Error deleting shipping line", "danger");
-      }
-    },
-    [showAlert]
-  );
-
-  const handleSave = useCallback(() => {
-    setShowForm(false);
-    setEditingShippingLine(null);
-    setRefresh((prev) => prev + 1);
-    showAlert(
-      editingShippingLine
-        ? "Shipping Line updated successfully"
-        : "Shipping Line created successfully"
-    );
-  }, [editingShippingLine, showAlert]);
-
-  const handleCancel = useCallback(() => {
-    setShowForm(false);
-    setEditingShippingLine(null);
-  }, []);
-
   return (
-    <Container fluid className="py-4">
-      <Row>
-        <Col>
-          {alert && (
-            <Alert
-              variant={alert.type}
-              dismissible
-              onClose={() => setAlert(null)}
-              className="mb-4"
-            >
-              {alert.message}
-            </Alert>
-          )}
-
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h1 className="mb-0">Shipping Line Directory</h1>
-            <div>
-              {showForm && (
-                <Button
-                  variant="outline-secondary"
-                  className="me-2"
-                  onClick={handleCancel}
-                >
-                  Back to List
-                </Button>
-              )}
-              <Button variant="success" onClick={handleAddNew}>
-                Add New Shipping Line
-              </Button>
-            </div>
-          </div>
-
-          {showForm ? (
-            <ShippingLineForm
-              shippingLineData={editingShippingLine}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
-          ) : (
-            <ShippingLineList
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              refresh={refresh}
-            />
-          )}
-        </Col>
-      </Row>
-    </Container>
+    <div style={{ background: colors.background, minHeight: "100vh" }}>
+      <Container className="py-4">
+        <div className="d-flex justify-content-between align-items-center mb-4"><div><h2 className="fw-bold mb-0 text-dark">Maritime Carriers</h2><p className="text-muted small mb-0">Manage global shipping line codes</p></div><Button onClick={() => setShowForm(!showForm)} style={customStyles.btnPrimary}>{showForm ? "View List" : "+ Add Carrier"}</Button></div>
+        <div className="animate-fade-in">{showForm ? <ShippingLineForm shippingLineData={editing} onSave={() => { setShowForm(false); setRefresh(r => r+1); }} onCancel={() => setShowForm(false)} /> : <ShippingLineList onEdit={(d) => { setEditing(d); setShowForm(true); }} onDelete={async (ids) => { if (window.confirm("Delete?")) { await ShippingLineService.delete(ids[0]); setRefresh(r => r+1); } }} refresh={refresh} />}</div>
+      </Container>
+      <style>{`.animate-fade-in { animation: fadeIn 0.3s ease-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } } .page-link { color: ${colors.primary}; border: none; background: #fff; } .page-item.active .page-link { background: ${colors.primary} !important; color: #fff !important; }`}</style>
+    </div>
   );
 };
-
 export default ShippingLine;

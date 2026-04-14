@@ -70,15 +70,9 @@ const ImagePreview = ({
     }
   };
 
-  const canDelete = isDsr || user.role === "Admin";
-
   const handleDeleteClick = (index) => {
-    if (canDelete) {
-      setDeleteIndex(index);
-      setOpenDeleteDialog(true);
-    } else {
-      alert("You do not have permission to delete documents.");
-    }
+    setDeleteIndex(index);
+    setOpenDeleteDialog(true);
   };
 
   const confirmDelete = async () => {

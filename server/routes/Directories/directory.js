@@ -25,6 +25,8 @@ router.get("/api/directory", async (req, res) => {
         { organization: { $regex: search, $options: "i" } },
         { alias: { $regex: search, $options: "i" } },
         { "registrationDetails.ieCode": { $regex: search, $options: "i" } },
+        { "registrationDetails.panNo": { $regex: search, $options: "i" } },
+        { "branchInfo.gstNo": { $regex: search, $options: "i" } },
       ];
     }
 

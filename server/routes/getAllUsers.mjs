@@ -17,7 +17,8 @@ const USER_LIST_PROJECTION = {
   company: 1,
   modules: 1,
   selected_icd_code: 1,
-  assigned_importer_name: 1
+  assigned_importer_name: 1,
+  canDeleteDocs: 1
 };
 
 /**

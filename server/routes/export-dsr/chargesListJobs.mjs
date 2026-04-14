@@ -33,12 +33,16 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
         if (requesterUsername) {
             const requester = await UserModel.findOne({ username: requesterUsername });
             if (requester && requester.role !== "Admin") {
-                const branchRestrictions = requester.selected_branches || [];
-                if (branchRestrictions.length > 0) {
-                    filter.$and.push({
-                        branch_code: { $in: branchRestrictions }
-                    });
-                }
+                let branchRestrictions = requester.selected_branches || [];
+                
+                // Resilience: Map full branch names to codes if necessary
+                const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+                branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
+                // Always apply branch restriction for non-admins
+                filter.$and.push({
+                    branch_code: { $in: branchRestrictions }
+                });
 
                 const portRestrictions = requester.selected_ports || [];
                 const icdRestrictions = requester.selected_icd_codes || [];
@@ -64,7 +68,11 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
                         ]
                     });
                 }
+            } else if (!requester && requesterUsername !== "Admin") {
+                 filter.$and.push({ _id: null });
             }
+        } else {
+             filter.$and.push({ _id: null });
         }
 
         // --- MANDATORY BASE CONDITION FOR CHARGES MODULE ---
@@ -145,12 +153,20 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
 
         const selectProjection = {
             job_no: 1, custom_house: 1, job_date: 1, consignmentType: 1, job_owner: 1,
-            exporter: 1, ieCode: 1, panNo: 1, exporter_gstin: 1, adCode: 1,
+            exporter: 1, exporter_ref_no: 1, exporter_branch_name: 1,
+            "consignees.consignee_name": 1, "buyerThirdPartyInfo.buyer.name": 1,
+            ieCode: 1, panNo: 1, exporter_gstin: 1, adCode: 1,
+            "invoices.invoiceNumber": 1, "invoices.invoiceDate": 1, "invoices.termsOfInvoice": 1,
+            "invoices.currency": 1, "invoices.invoiceValue": 1,
             sb_no: 1, sb_date: 1, destination_port: 1, destination_country: 1,
-            detailedStatus: 1, status: 1,
+            port_of_discharge: 1, discharge_country: 1, port_of_loading: 1,
+            detailedStatus: 1, status: 1, booking_no: 1,
+            total_no_of_pkgs: 1, package_unit: 1, gross_weight_kg: 1, net_weight_kg: 1,
             "operations.statusDetails.handoverForwardingNoteDate": 1,
             "operations.statusDetails.billingDocsSentDt": 1,
             "operations.statusDetails.billingDocsSentUpload": 1,
+            containers: 1,
+            isLocked: 1, lockedBy: 1, lockedAt: 1,
             operational_lock: 1
         };
 

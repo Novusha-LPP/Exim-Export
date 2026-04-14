@@ -19,6 +19,7 @@ router.get("/", async (req, res) => {
         { portCode: { $regex: search, $options: "i" } },
         { portName: { $regex: search, $options: "i" } },
         { uneceCode: { $regex: search, $options: "i" } },
+        { country: { $regex: search, $options: "i" } },
       ];
     }
 

@@ -1,561 +1,104 @@
-import React, { useState, useCallback, useEffect } from "react";
-import {
-  Container,
-  Row,
-  Col,
-  Button,
-  Alert,
-  Table,
-  Form,
-  Card,
-  Badge,
-  Spinner,
-} from "react-bootstrap";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { Container, Row, Col, Button, Alert, Table, Form, Card, Spinner } from "react-bootstrap";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-const GatewayPortService = {
-  baseURL: `${import.meta.env.VITE_API_STRING}/gateway-ports`,
-
-  getAll: async (params = {}) => {
-    const res = await axios.get(`${GatewayPortService.baseURL}/`, { params });
-    return res.data;
-  },
-  getById: async (id) => {
-    const res = await axios.get(`${GatewayPortService.baseURL}/${id}`);
-    return res.data;
-  },
-  create: async (data) => {
-    const res = await axios.post(`${GatewayPortService.baseURL}/`, data);
-    return res.data;
-  },
-  update: async (id, data) => {
-    const res = await axios.put(`${GatewayPortService.baseURL}/${id}`, data);
-    return res.data;
-  },
-  delete: async (id) => {
-    const res = await axios.delete(`${GatewayPortService.baseURL}/${id}`);
-    return res.data;
-  },
-  bulkDelete: async (ids) => {
-    const res = await axios.delete(`${GatewayPortService.baseURL}/`, {
-      data: { ids },
-    });
-    return res.data;
-  },
+const colors = { primary: "#4f46e5", secondary: "#64748b", background: "#f8fafc", border: "#e2e8f0" };
+const customStyles = {
+  header: { padding: "24px 32px", background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", color: "white", borderRadius: "12px 12px 0 0" },
+  card: { borderRadius: "12px", border: "none", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)", overflow: "hidden" },
+  input: { borderRadius: "8px", border: `1.5px solid ${colors.border}`, padding: "10px 14px", fontSize: "14px" },
+  label: { fontSize: "13px", fontWeight: "600", marginBottom: "8px", display: "block" },
+  btnPrimary: { background: colors.primary, border: "none", padding: "10px 24px", borderRadius: "8px", fontWeight: "600" }
 };
 
-// Form
+const GatewayPortService = {
+  baseURL: `${import.meta.env.VITE_API_STRING}/gateway-ports`,
+  getAll: (p) => axios.get(`${GatewayPortService.baseURL}/`, { params: p }).then(r => r.data),
+  create: (d) => axios.post(`${GatewayPortService.baseURL}/`, d),
+  update: (id, d) => axios.put(`${GatewayPortService.baseURL}/${id}`, d),
+  delete: (id) => axios.delete(`${GatewayPortService.baseURL}/${id}`),
+};
+
 const GatewayPortForm = ({ portData, onSave, onCancel }) => {
-  const [formData, setFormData] = useState({
-    name: "",
-    unece_code: "",
-    port_type: "Sea",
-    location: "",
-    status: "Active",
-  });
+  const [formData, setFormData] = useState({ name: "", unece_code: "", port_type: "Sea", location: "", status: "Active" });
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    if (portData) {
-      setFormData(portData);
-    } else {
-      setFormData({
-        name: "",
-        unece_code: "",
-        port_type: "Sea",
-        location: "",
-        status: "Active",
-      });
-    }
-  }, [portData]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors(prev => ({ ...prev, [name]: "" }));
-  };
-
-  const validateForm = () => {
-    const newErr = {};
-   
-    setErrors(newErr);
-    return Object.keys(newErr).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    setLoading(true);
-    try {
-      if (portData?._id) {
-        await GatewayPortService.update(portData._id, formData);
-      } else {
-        await GatewayPortService.create(formData);
-      }
-      onSave();
-    } catch (err) {
-      alert(err.message || "Error saving gateway port");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  useEffect(() => { if (portData) setFormData(portData); else setFormData({ name: "", unece_code: "", port_type: "Sea", location: "", status: "Active" }); }, [portData]);
+  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); try { if (portData?._id) await GatewayPortService.update(portData._id, formData); else await GatewayPortService.create(formData); onSave(); } catch (err) { alert(err.message); } finally { setLoading(false); } };
   return (
-    <Card>
-      <Card.Header>
-        <h5>{portData ? "Edit Gateway Port" : "Add New Gateway Port"}</h5>
-      </Card.Header>
-      <Card.Body>
+    <Card style={customStyles.card}>
+      <Card.Header style={customStyles.header}><h5 className="mb-0 text-white fw-bold">{portData ? "Edit Gateway" : "New Gateway Port"}</h5></Card.Header>
+      <Card.Body className="p-4">
         <Form onSubmit={handleSubmit}>
-          <Row>
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>UNECE Code *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="unece_code"
-                  value={formData.unece_code}
-                  onChange={handleChange}
-                  isInvalid={!!errors.unece_code}
-                  placeholder="e.g., INCJA6"
-                  style={{ textTransform: "uppercase" }}
-                  maxLength={10}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.unece_code}
-                </Form.Control.Feedback>
-                <Form.Text className="text-muted">
-                  2-10 character code (upper-case letters/numbers)
-                </Form.Text>
-              </Form.Group>
-            </Col>
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Port Type</Form.Label>
-                <Form.Select
-                  name="port_type"
-                  value={formData.port_type}
-                  onChange={handleChange}
-                >
-                  <option value="Sea">Sea</option>
-                  <option value="Air">Air</option>
-                  <option value="Rail">Rail</option>
-                  <option value="Road">Road</option>
-                  <option value="ICD">ICD</option>
-                  <option value="CFS">CFS</option>
-                  <option value="Terminal">Terminal</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Status</Form.Label>
-                <Form.Select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                  <option value="Suspended">Suspended</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={12}>
-              <Form.Group className="mb-3">
-                <Form.Label>Gateway Port Name *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  isInvalid={!!errors.name}
-                  placeholder="Enter gateway port name"
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.name}
-                </Form.Control.Feedback>
-              </Form.Group>
-            </Col>
-            <Col md={12}>
-              <Form.Group className="mb-3">
-                <Form.Label>Location</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  placeholder="City / State / Country"
-                />
-              </Form.Group>
-            </Col>
+          <Row className="mb-4 g-3">
+            <Col md={4}><Form.Group><Form.Label style={customStyles.label}>UNECE Code *</Form.Label><Form.Control type="text" name="unece_code" value={formData.unece_code} onChange={e => setFormData(p => ({ ...p, unece_code: e.target.value.toUpperCase() }))} style={customStyles.input} /></Form.Group></Col>
+            <Col md={4}><Form.Group><Form.Label style={customStyles.label}>Port Type</Form.Label><Form.Select name="port_type" value={formData.port_type} onChange={e => setFormData(p => ({ ...p, port_type: e.target.value }))} style={customStyles.input}><option value="Sea">Sea</option><option value="Air">Air</option><option value="Rail">Rail</option><option value="Road">Road</option><option value="ICD">ICD</option></Form.Select></Form.Group></Col>
+            <Col md={4}><Form.Group><Form.Label style={customStyles.label}>Status</Form.Label><Form.Select name="status" value={formData.status} onChange={e => setFormData(p => ({ ...p, status: e.target.value }))} style={customStyles.input}><option value="Active">Active</option><option value="Inactive">Inactive</option></Form.Select></Form.Group></Col>
           </Row>
-          <div className="d-flex justify-content-end gap-2">
-            <Button variant="secondary" onClick={onCancel} disabled={loading}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save"}
-            </Button>
-          </div>
+          <Form.Group className="mb-4"><Form.Label style={customStyles.label}>Gateway Name *</Form.Label><Form.Control type="text" name="name" value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} placeholder="Major transshipment hub name" style={customStyles.input} /></Form.Group>
+          <Form.Group className="mb-4"><Form.Label style={customStyles.label}>Location</Form.Label><Form.Control type="text" name="location" value={formData.location} onChange={e => setFormData(p => ({ ...p, location: e.target.value }))} placeholder="City / Country" style={customStyles.input} /></Form.Group>
+          <div className="d-flex justify-content-end gap-3"><Button variant="link" onClick={onCancel} style={{ color: colors.secondary, textDecoration: "none" }}>Discard</Button><Button style={customStyles.btnPrimary} type="submit" disabled={loading}>{loading ? <Spinner size="sm" /> : "Save Gateway"}</Button></div>
         </Form>
       </Card.Body>
     </Card>
   );
 };
 
-// List
 const GatewayPortList = ({ onEdit, onDelete, refresh }) => {
-  const [ports, setPorts] = useState([]);
-  const [filteredPorts, setFilteredPorts] = useState([]);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({ totalPages: 1, currentPage: 1 });
-  const [filters, setFilters] = useState({ page: 1, status: "", type: "" });
-  const [searchTerm, setSearchTerm] = useState("");
-
+  const [pagination, setPagination] = useState({});
+  const [filters, setFilters] = useState({ page: 1, type: "", search: "" });
+  const searchTimeout = useRef(null);
   useEffect(() => { fetchPorts(); }, [filters, refresh]);
-  useEffect(() => { applySearch(); }, [searchTerm, ports]);
-
-  const fetchPorts = async () => {
-    try {
-      setLoading(true);
-      const res = await GatewayPortService.getAll({
-        page: filters.page,
-        status: filters.status,
-        type: filters.type,
-        search: "", // global search done client-side
-      });
-      const data = res.data || res;
-      setPorts(data);
-      setPagination(res.pagination || { totalPages: 1, currentPage: 1 });
-    } catch (err) {
-      console.error("Error fetching gateway ports:", err);
-      setPorts([]);
-      setPagination({ totalPages: 1, currentPage: 1 });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const applySearch = () => {
-    if (!searchTerm.trim()) {
-      setFilteredPorts(ports);
-      return;
-    }
-    const s = searchTerm.toLowerCase();
-    const filtered = ports.filter(p =>
-      (p.unece_code && p.unece_code.toLowerCase().includes(s)) ||
-      (p.name && p.name.toLowerCase().includes(s)) ||
-      (p.location && p.location.toLowerCase().includes(s)) ||
-      (p.port_type && p.port_type.toLowerCase().includes(s)) ||
-      (p.status && p.status.toLowerCase().includes(s)) ||
-      (p._id && p._id.toLowerCase().includes(s))
-    );
-    setFilteredPorts(filtered);
-  };
-
-  const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value, page: key === "page" ? value : 1 }));
-  };
-
-  const clearSearch = () => setSearchTerm("");
-
-  if (loading) {
+  const fetchPorts = async () => { try { setLoading(true); const res = await GatewayPortService.getAll(filters); setData(res.data || res); setPagination(res.pagination || {}); } catch (e) { } finally { setLoading(false); } };
+  const handleFilter = (k, v) => setFilters(p => ({ ...p, [k]: v, page: k === "page" ? v : 1 }));
+  const handleSearch = (v) => { if (searchTimeout.current) clearTimeout(searchTimeout.current); searchTimeout.current = setTimeout(() => handleFilter("search", v), 500); };
+  const renderPagination = () => {
+    const { currentPage, totalPages } = pagination; if (totalPages <= 1) return null;
+    const pages = []; for (let i = 1; i <= totalPages; i++) { if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) pages.push(i); else if (pages[pages.length-1] !== "...") pages.push("..."); }
     return (
-      <div className="text-center py-5">
-        <Spinner animation="border" />
-      </div>
+      <nav className="d-flex justify-content-center mt-4">
+        <ul className="pagination pagination-sm gap-2">
+          {pages.map((p, idx) => (
+            <li key={idx} className={`page-item ${p === currentPage ? "active" : ""} ${p === "..." ? "disabled" : ""}`}>
+              {p === "..." ? <span className="page-link border-0">...</span> : <button className="page-link rounded-circle shadow-sm" style={{ width: 35, height: 35, display: "flex", alignItems: "center", justifyContent: "center", border: "none", fontWeight: 600 }} onClick={() => handleFilter("page", p)}>{p}</button>}
+            </li>
+          ))}
+        </ul>
+      </nav>
     );
-  }
-
+  };
   return (
     <div>
-      <Row className="mb-3">
-        <Col md={5}>
-          <Form.Control
-            type="text"
-            placeholder="Search by UNECE, name, location, type, status..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
-          {searchTerm && (
-            <Form.Text className="text-muted">
-              Showing {filteredPorts.length} of {ports.length} gateway ports
-            </Form.Text>
-          )}
-        </Col>
-        <Col md={3}>
-          <Form.Select
-            value={filters.type}
-            onChange={e => handleFilterChange("type", e.target.value)}
-          >
-            <option value="">All Types</option>
-            <option value="Sea">Sea</option>
-            <option value="Air">Air</option>
-            <option value="Rail">Rail</option>
-            <option value="Road">Road</option>
-            <option value="ICD">ICD</option>
-            <option value="CFS">CFS</option>
-            <option value="Terminal">Terminal</option>
-          </Form.Select>
-        </Col>
-        <Col md={2}>
-          <Form.Select
-            value={filters.status}
-            onChange={e => handleFilterChange("status", e.target.value)}
-          >
-            <option value="">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Suspended">Suspended</option>
-          </Form.Select>
-        </Col>
-        <Col md={2} className="text-center">
-          <div className="border rounded p-2 bg-light">
-            <div className="h6 mb-0 text-primary">{filteredPorts.length}</div>
-            <div className="text-muted small">Total Gateway Ports</div>
-          </div>
-        </Col>
-      </Row>
-
-      <div className="table-responsive">
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th>UNECE Code</th>
-              <th>Name</th>
-              <th>Port Type</th>
-              <th>Location</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
+      <Card className="mb-4 border-0 shadow-sm rounded-4"><Card.Body className="p-3"><Row className="g-3"><Col md={8}><Form.Control type="text" placeholder="Global Search Gateway..." defaultValue={filters.search} onChange={e => handleSearch(e.target.value)} style={customStyles.input} /></Col><Col md={4}><Form.Select value={filters.type} onChange={e => handleFilter("type", e.target.value)} style={customStyles.input}><option value="">All Types</option><option value="Sea">Sea</option><option value="Air">Air</option><option value="ICD">ICD</option></Form.Select></Col></Row></Card.Body></Card>
+      <div className="bg-white rounded-4 shadow-sm overflow-hidden border">
+        <Table hover className="mb-0 align-middle border-0">
+          <thead className="bg-light"><tr style={{ borderBottom: "2px solid #e2e8f0" }}><th className="ps-4 py-3 text-muted small">UNECE</th><th className="py-3 text-muted small">GATEWAY</th><th className="py-3 text-muted small">TYPE</th><th className="pe-4 py-3 text-end text-muted small">ACTIONS</th></tr></thead>
           <tbody>
-            {filteredPorts.length ? (
-              filteredPorts.map(item => (
-                <tr key={item._id}>
-                  <td className="font-monospace text-primary">
-                    <strong>{item.unece_code}</strong>
-                  </td>
-                  <td><strong>{item.name}</strong></td>
-                  <td>{item.port_type}</td>
-                  <td>{item.location}</td>
-                  <td>
-                    <Badge
-                      bg={
-                        item.status === "Active"
-                          ? "success"
-                          : item.status === "Suspended"
-                          ? "warning"
-                          : "secondary"
-                      }
-                    >
-                      {item.status}
-                    </Badge>
-                  </td>
-                  <td>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      className="me-2"
-                      onClick={() => onEdit(item)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => onDelete([item._id])}
-                    >
-                      Delete
-                    </Button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="6" className="text-center py-4">
-                  <Alert variant="info">
-                    {searchTerm ? (
-                      <>
-                        No gateway ports found matching "{searchTerm}".
-                        <br />
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          className="mt-2"
-                          onClick={clearSearch}
-                        >
-                          Clear Search
-                        </Button>
-                      </>
-                    ) : (
-                      "No gateway ports found."
-                    )}
-                  </Alert>
-                </td>
-              </tr>
-            )}
+            {data.length > 0 ? data.map(item => (
+              <tr key={item._id} className="border-bottom"><td className="ps-4 fw-bold text-primary">{item.unece_code}</td><td className="fw-semibold">{item.name}</td><td><span className="badge bg-light text-dark border px-2 py-1">{item.port_type}</span></td><td className="pe-4 text-end"><Button variant="light" size="sm" className="me-2 fw-bold text-primary" onClick={() => onEdit(item)}>Edit</Button><Button variant="link" size="sm" className="text-danger p-0 fw-bold" style={{ textDecoration: "none" }} onClick={() => onDelete([item._id])}>Delete</Button></td></tr>
+            )) : <tr><td colSpan="4" className="text-center py-5">No records found.</td></tr>}
           </tbody>
         </Table>
       </div>
-
-      {!searchTerm && pagination.totalPages > 1 && (
-        <nav>
-          <ul className="pagination justify-content-center">
-            <li className={`page-item ${pagination.currentPage === 1 ? "disabled" : ""}`}>
-              <button
-                className="page-link"
-                onClick={() => handleFilterChange("page", pagination.currentPage - 1)}
-                disabled={pagination.currentPage === 1}
-              >
-                Previous
-              </button>
-            </li>
-            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(page => (
-              <li
-                key={page}
-                className={`page-item ${pagination.currentPage === page ? "active" : ""}`}
-              >
-                <button
-                  className="page-link"
-                  onClick={() => handleFilterChange("page", page)}
-                >
-                  {page}
-                </button>
-              </li>
-            ))}
-            <li
-              className={`page-item ${
-                pagination.currentPage === pagination.totalPages ? "disabled" : ""
-              }`}
-            >
-              <button
-                className="page-link"
-                onClick={() => handleFilterChange("page", pagination.currentPage + 1)}
-                disabled={pagination.currentPage === pagination.totalPages}
-              >
-                Next
-              </button>
-            </li>
-          </ul>
-        </nav>
-      )}
+      {renderPagination()}
     </div>
   );
 };
 
-// Main wrapper
 const GatewayPortDirectory = () => {
   const [showForm, setShowForm] = useState(false);
-  const [editingPort, setEditingPort] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [refresh, setRefresh] = useState(0);
-  const [alert, setAlert] = useState(null);
-
-  const showAlert = useCallback((message, type = "success") => {
-    setAlert({ message, type });
-    setTimeout(() => setAlert(null), 5000);
-  }, []);
-
-  const handleAddNew = useCallback(() => {
-    setEditingPort(null);
-    setShowForm(true);
-  }, []);
-
-  const handleEdit = useCallback(port => {
-    setEditingPort(port);
-    setShowForm(true);
-  }, []);
-
-  const handleDelete = useCallback(
-    async (ids) => {
-      try {
-        if (ids.length === 1) {
-          if (window.confirm("Delete this gateway port?")) {
-            await GatewayPortService.delete(ids[0]);
-            showAlert("Gateway port deleted successfully");
-            setRefresh(p => p + 1);
-          }
-        } else {
-          await GatewayPortService.bulkDelete(ids);
-          showAlert(`${ids.length} gateway ports deleted successfully`);
-          setRefresh(p => p + 1);
-        }
-      } catch (err) {
-        showAlert(err.message || "Error deleting gateway port", "danger");
-      }
-    },
-    [showAlert]
-  );
-
-  const handleSave = useCallback(() => {
-    setShowForm(false);
-    setEditingPort(null);
-    setRefresh(p => p + 1);
-    showAlert(
-      editingPort
-        ? "Gateway port updated successfully"
-        : "Gateway port created successfully"
-    );
-  }, [editingPort, showAlert]);
-
-  const handleCancel = useCallback(() => {
-    setShowForm(false);
-    setEditingPort(null);
-  }, []);
-
   return (
-    <Container fluid className="py-4">
-      <Row>
-        <Col>
-          {alert && (
-            <Alert
-              variant={alert.type}
-              dismissible
-              onClose={() => setAlert(null)}
-              className="mb-4"
-            >
-              {alert.message}
-            </Alert>
-          )}
-
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h1 className="mb-0">Gateway Port Directory</h1>
-            <div>
-              {showForm && (
-                <Button
-                  variant="outline-secondary"
-                  className="me-2"
-                  onClick={handleCancel}
-                >
-                  Back to List
-                </Button>
-              )}
-              <Button variant="success" onClick={handleAddNew}>
-                Add New Gateway Port
-              </Button>
-            </div>
-          </div>
-
-          {showForm ? (
-            <GatewayPortForm
-              portData={editingPort}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
-          ) : (
-            <GatewayPortList
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              refresh={refresh}
-            />
-          )}
-        </Col>
-      </Row>
-    </Container>
+    <div style={{ background: colors.background, minHeight: "100vh" }}>
+      <Container className="py-4">
+        <div className="d-flex justify-content-between align-items-center mb-4"><div><h2 className="fw-bold mb-0 text-dark">Gateway Port Master</h2><p className="text-muted small mb-0">Manage key transshipment gateways</p></div><Button onClick={() => setShowForm(!showForm)} style={customStyles.btnPrimary}>{showForm ? "View List" : "+ Add Gateway"}</Button></div>
+        <div className="animate-fade-in">{showForm ? <GatewayPortForm portData={editing} onSave={() => { setShowForm(false); setRefresh(r => r+1); }} onCancel={() => setShowForm(false)} /> : <GatewayPortList onEdit={(d) => { setEditing(d); setShowForm(true); }} onDelete={async (ids) => { if (window.confirm("Delete?")) { await GatewayPortService.delete(ids[0]); setRefresh(r => r+1); } }} refresh={refresh} />}</div>
+      </Container>
+      <style>{`.animate-fade-in { animation: fadeIn 0.3s ease-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } } .page-link { color: ${colors.primary}; border: none; background: #fff; } .page-item.active .page-link { background: ${colors.primary} !important; color: #fff !important; }`}</style>
+    </div>
   );
 };
-
 export default GatewayPortDirectory;

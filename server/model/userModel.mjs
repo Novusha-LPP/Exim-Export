@@ -244,6 +244,10 @@ export const userSchema = new Schema({
       trim: true,
     },
   ],
+  canDeleteDocs: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // Use the dedicated user database connection for the User model

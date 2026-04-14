@@ -284,9 +284,8 @@ const split35 = (s) => {
 function expTypCode(type) {
     const t = (type || "").toUpperCase();
     if (t.includes("MANUFACTURER")) return "F";
-    if (t.includes("MERCHANT")) return "M";
+    if (t.includes("MERCHANT")) return "R";  // ✅ Merchant → "R"
     if (t.includes("REGISTERED")) return "R";
-    if (t.includes("INDIVIDUAL")) return "I";
     return "F";
 }
 
@@ -418,12 +417,25 @@ export function generateSBFlatFile(job) {
     const mawb = clean(job.mbl_no || job.masterblno || "");
     const hawb = clean(job.hbl_no || job.houseblno || "");
 
-    const isContainerized =
-        job.transportMode === "SEA" &&
-        containers.length > 0 &&
-        !["DOCK", "PORT", "CFS"].includes((job.goods_stuffed_at || "").toUpperCase());
+    // Clean and uppercase the nature of cargo
+    const noc = clean(job.nature_of_cargo || "").toUpperCase();
 
-    const nc = isContainerized ? "C" : "P";
+    // Check if it's containerized (either the auto-pop string or the C prefix)
+    const isContainerized =
+        noc === "CONTAINERIZED" ||
+        noc.startsWith("C -") ||
+        noc.startsWith("CP -");
+
+    // Map to ICEGATE standard codes (C, P, L, D)
+    let nc = "P"; // Default to Packaged
+    if (isContainerized) {
+        nc = "C";
+    } else if (noc.startsWith("LB")) {
+        nc = "L"; // Liquid Bulk
+    } else if (noc.startsWith("DB")) {
+        nc = "D"; // Dry Bulk
+    }
+
 
     // FIX 58: Logisys sends "0" for loose packets when containerised/AIR, not "".
     const loosePktsFinal = (job.loose_pkgs && Number(job.loose_pkgs) > 0)
@@ -456,8 +468,17 @@ export function generateSBFlatFile(job) {
 
     const sbModCHA = "AB" + chaLicNo;
 
-    // SB [34] — seal type: 'S' = shipper seal for FCL
-    const mappedSealType = (isContainerized || containers.length > 0) ? "S" : "";
+    // SB [34] — seal type: 'S' = shipper seal, 'W' = warehouse seal
+    let mappedSealType = "";
+    const sst = clean(job.stuffing_seal_type || "").toUpperCase();
+    if (sst.includes("SELF") || sst.includes("AGENT")) {
+        mappedSealType = "S";
+    } else if (sst.includes("WAREHOUSE") || sst.includes("WEARHOUSE")) {
+        mappedSealType = "W";
+    } else if (isContainerized || containers.length > 0) {
+        // Fallback: default to 'S' for containerized sea shipments if not explicitly warehouse
+        mappedSealType = "S";
+    }
 
     let out = "";
 
@@ -502,7 +523,7 @@ export function generateSBFlatFile(job) {
         clean(String(job.total_no_of_pkgs || job.totalPackages || "")),   // [39] Total packages
         preserveSpaces(job.marks_nos || job.marksAndNumbers || ""),       // [40] Marks & numbers
         loosePktsFinal,                                                     // [41] Loose packets — FIX 58
-        String(emitContainer ? containers.length : "0"),                    // [42] Container count — FIX 34
+        job.no_of_containers || "0",                    // [42] Container count — FIX 34
         "",                                                                 // [43]
         mawb,                                                               // [44] MAWB/MBL
         hawb,                                                               // [45] HAWB/HBL

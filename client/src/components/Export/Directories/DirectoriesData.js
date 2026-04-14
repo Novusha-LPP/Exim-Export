@@ -15,27 +15,13 @@ export const formMasterList = [
 ];
 
 export const viewMasterList = [
-  // "General Information",
-  // "Contact Information",
-  // "Account Information",
-  // "Bank Details",
   "Organization",
-  "State Code",
   "Airline Code",
   "Country Code",
-  "ITCHS and Standard UQC",
   "Shipping Line Code",
-  "Scheme Code",
-  "Custom EDI Location",
-  "Custom Non-EDI Location",
   "Port Code-Sea",
   "Port Code-Air",
-  "Unit Quantity Code (UQC)",
-  "Currency",
-  "Package",
-  "Supporting Document Codes",
   "Gateway Port",
-  "District Code"
 ];
 
 export const directoryFields = {

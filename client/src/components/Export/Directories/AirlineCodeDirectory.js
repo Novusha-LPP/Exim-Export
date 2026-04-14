@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Container,
   Row,
@@ -8,73 +8,85 @@ import {
   Table,
   Form,
   Card,
-  Badge,
   Spinner,
 } from "react-bootstrap";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 
+// Modern Design Tokens
+const colors = {
+  primary: "#4f46e5",
+  primaryHover: "#4338ca",
+  secondary: "#64748b",
+  success: "#10b981",
+  danger: "#ef4444",
+  background: "#f8fafc",
+  cardBg: "#ffffff",
+  border: "#e2e8f0",
+  textMain: "#1e293b",
+  textMuted: "#64748b",
+};
+
+const customStyles = {
+  header: {
+    padding: "24px 32px",
+    background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+    color: "white",
+    borderRadius: "12px 12px 0 0",
+    border: "none",
+  },
+  card: {
+    borderRadius: "12px",
+    border: "none",
+    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)",
+    overflow: "hidden",
+  },
+  input: {
+    borderRadius: "8px",
+    border: `1.5px solid ${colors.border}`,
+    padding: "10px 14px",
+    fontSize: "14px",
+    background: "#fff",
+  },
+  label: {
+    fontSize: "13px",
+    fontWeight: "600",
+    color: colors.textMain,
+    marginBottom: "8px",
+    display: "block",
+    whiteSpace: "nowrap",
+  },
+  btnPrimary: {
+    background: colors.primary,
+    border: "none",
+    padding: "10px 24px",
+    borderRadius: "8px",
+    fontWeight: "600",
+  },
+  table: {
+    background: "white",
+    borderRadius: "8px",
+    overflow: "hidden",
+  },
+  badge: {
+    padding: "6px 12px",
+    borderRadius: "20px",
+    fontSize: "11px",
+    fontWeight: "700",
+    textTransform: "uppercase",
+  }
+};
+
 // API Service
 const AirlineService = {
   baseURL: `${import.meta.env.VITE_API_STRING}/airlines`,
-
   getAll: async (params = {}) => {
-    try {
-      const response = await axios.get(`${AirlineService.baseURL}/`, {
-        params,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
+    const res = await axios.get(`${AirlineService.baseURL}/`, { params });
+    return res.data;
   },
-
-  getById: async (id) => {
-    try {
-      const response = await axios.get(`${AirlineService.baseURL}/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  create: async (data) => {
-    try {
-      const response = await axios.post(`${AirlineService.baseURL}/`, data);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  update: async (id, data) => {
-    try {
-      const response = await axios.put(`${AirlineService.baseURL}/${id}`, data);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  delete: async (id) => {
-    try {
-      const response = await axios.delete(`${AirlineService.baseURL}/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  bulkDelete: async (ids) => {
-    try {
-      const response = await axios.delete(`${AirlineService.baseURL}/`, {
-        data: { ids },
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
+  create: async (data) => axios.post(`${AirlineService.baseURL}/`, data),
+  update: async (id, data) => axios.put(`${AirlineService.baseURL}/${id}`, data),
+  delete: async (id) => axios.delete(`${AirlineService.baseURL}/${id}`),
 };
 
 // Form Component
@@ -89,156 +101,39 @@ const AirlineForm = ({ airlineData, onSave, onCancel }) => {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (airlineData) {
-      setFormData(airlineData);
-    } else {
-      setFormData({
-        alphanumericCode: "",
-        numericCode: "",
-        airlineName: "",
-        status: "Active",
-      });
-    }
+    if (airlineData) setFormData(airlineData);
+    else setFormData({ alphanumericCode: "", numericCode: "", airlineName: "", status: "Active" });
   }, [airlineData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.alphanumericCode?.trim()) {
-      newErrors.alphanumericCode = "Alphanumeric Code is required";
-    } else if (!/^[A-Z0-9]{2,10}$/.test(formData.alphanumericCode)) {
-      newErrors.alphanumericCode =
-        "Invalid format (2-10 uppercase letters/numbers)";
-    }
-
-    if (!formData.numericCode?.trim()) {
-      newErrors.numericCode = "Numeric Code is required";
-    } else if (!/^\d{1,10}$/.test(formData.numericCode)) {
-      newErrors.numericCode = "Must be numeric (1-10 digits)";
-    }
-
-    if (!formData.airlineName?.trim()) {
-      newErrors.airlineName = "Airline Name is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setFormData((prev) => ({ ...prev, [name]: (name === "alphanumericCode") ? value.toUpperCase() : value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
-
     setLoading(true);
     try {
-      if (airlineData?._id) {
-        await AirlineService.update(airlineData._id, formData);
-      } else {
-        await AirlineService.create(formData);
-      }
+      if (airlineData?._id) await AirlineService.update(airlineData._id, formData);
+      else await AirlineService.create(formData);
       onSave();
-    } catch (error) {
-      alert(error.message || "Error saving airline code");
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { alert(err.message); } finally { setLoading(false); }
   };
 
   return (
-    <Card>
-      <Card.Header>
-        <h5>{airlineData ? "Edit Airline Code" : "Add New Airline Code"}</h5>
-      </Card.Header>
-      <Card.Body>
+    <Card style={customStyles.card}>
+      <Card.Header style={customStyles.header}><h5 className="mb-0 text-white fw-bold">{airlineData ? "Edit Air Carrier" : "Register New Airline"}</h5></Card.Header>
+      <Card.Body className="p-4">
         <Form onSubmit={handleSubmit}>
-          <Row>
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Alphanumeric Code *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="alphanumericCode"
-                  value={formData.alphanumericCode}
-                  onChange={handleChange}
-                  isInvalid={!!errors.alphanumericCode}
-                  placeholder="e.g., AI, 6E"
-                  style={{ textTransform: "uppercase" }}
-                  maxLength={10}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.alphanumericCode}
-                </Form.Control.Feedback>
-                <Form.Text className="text-muted">
-                  2-10 character airline code (e.g., AI, 6E)
-                </Form.Text>
-              </Form.Group>
-            </Col>
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Numeric Code *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="numericCode"
-                  value={formData.numericCode}
-                  onChange={handleChange}
-                  isInvalid={!!errors.numericCode}
-                  placeholder="e.g., 098, 323"
-                  maxLength={10}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.numericCode}
-                </Form.Control.Feedback>
-                <Form.Text className="text-muted">
-                  Numeric airline code (1-10 digits)
-                </Form.Text>
-              </Form.Group>
-            </Col>
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Status</Form.Label>
-                <Form.Select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                  <option value="Suspended">Suspended</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={12}>
-              <Form.Group className="mb-3">
-                <Form.Label>Airline Name *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="airlineName"
-                  value={formData.airlineName}
-                  onChange={handleChange}
-                  isInvalid={!!errors.airlineName}
-                  placeholder="Enter airline name"
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.airlineName}
-                </Form.Control.Feedback>
-              </Form.Group>
-            </Col>
+          <Row className="mb-4 g-3">
+            <Col md={4}><Form.Group><Form.Label style={customStyles.label}>Carrier Code (IATA) *</Form.Label><Form.Control type="text" name="alphanumericCode" value={formData.alphanumericCode} onChange={handleChange} placeholder="e.g. AI, 6E" style={customStyles.input} /></Form.Group></Col>
+            <Col md={4}><Form.Group><Form.Label style={customStyles.label}>Numeric Code *</Form.Label><Form.Control type="text" name="numericCode" value={formData.numericCode} onChange={handleChange} placeholder="098" style={customStyles.input} /></Form.Group></Col>
+            <Col md={4}><Form.Group><Form.Label style={customStyles.label}>Status</Form.Label><Form.Select name="status" value={formData.status} onChange={handleChange} style={customStyles.input}><option value="Active">Active</option><option value="Inactive">Inactive</option></Form.Select></Form.Group></Col>
           </Row>
-          <div className="d-flex justify-content-end gap-2">
-            <Button variant="secondary" onClick={onCancel} disabled={loading}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save"}
-            </Button>
+          <Form.Group className="mb-4"><Form.Label style={customStyles.label}>Legal Airline Name *</Form.Label><Form.Control type="text" name="airlineName" value={formData.airlineName} onChange={handleChange} placeholder="Enter full name" style={customStyles.input} /></Form.Group>
+          <div className="d-flex justify-content-end gap-3 pt-2">
+            <Button variant="link" onClick={onCancel} style={{ color: colors.secondary, textDecoration: "none", fontWeight: 600 }}>Discard</Button>
+            <Button variant="primary" type="submit" disabled={loading} style={customStyles.btnPrimary}>{loading ? <Spinner size="sm" /> : "Save Carrier"}</Button>
           </div>
         </Form>
       </Card.Body>
@@ -247,380 +142,121 @@ const AirlineForm = ({ airlineData, onSave, onCancel }) => {
 };
 
 // List Component
-const AirlineCodeList = ({ onEdit, onDelete, refresh }) => {
-  const [airlines, setAirlines] = useState([]);
-  const [filteredAirlines, setFilteredAirlines] = useState([]);
+const AirlineList = ({ onEdit, onDelete, refresh }) => {
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
-  const [filters, setFilters] = useState({
-    page: 1,
-    status: "",
-  });
-  const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState({ page: 1, status: "", search: "" });
+  const searchTimeout = useRef(null);
 
-  // Fetch all airlines
-  useEffect(() => {
-    fetchAirlines();
-  }, [filters, refresh]);
-
-  // Filter airlines whenever searchTerm or airlines change
-  useEffect(() => {
-    filterAirlines();
-  }, [searchTerm, airlines]);
+  useEffect(() => { fetchAirlines(); }, [filters, refresh]);
 
   const fetchAirlines = async () => {
     try {
       setLoading(true);
-      const response = await AirlineService.getAll(filters);
-      const airlinesData = response.data || response;
-      setAirlines(airlinesData);
-      setPagination(response.pagination || {});
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setAirlines([]);
-    } finally {
-      setLoading(false);
+      const res = await AirlineService.getAll(filters);
+      setData(res.data || res);
+      setPagination(res.pagination || {});
+    } catch (e) { console.error(e); } finally { setLoading(false); }
+  };
+
+  const handleFilterChange = (k, v) => setFilters(p => ({ ...p, [k]: v, page: k === "page" ? v : 1 }));
+  const handleSearch = (v) => { if (searchTimeout.current) clearTimeout(searchTimeout.current); searchTimeout.current = setTimeout(() => handleFilterChange("search", v), 500); };
+
+  const renderPagination = () => {
+    const { currentPage, totalPages } = pagination;
+    if (totalPages <= 1) return null;
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) pages.push(i);
+        else if (pages[pages.length-1] !== "...") pages.push("...");
     }
-  };
-
-  const filterAirlines = () => {
-    if (!searchTerm.trim()) {
-      setFilteredAirlines(airlines);
-      return;
-    }
-
-    const searchLower = searchTerm.toLowerCase();
-    const filtered = airlines.filter(
-      (airline) =>
-        (airline.alphanumericCode &&
-          airline.alphanumericCode.toLowerCase().includes(searchLower)) ||
-        (airline.numericCode &&
-          airline.numericCode.toLowerCase().includes(searchLower)) ||
-        (airline.airlineName &&
-          airline.airlineName.toLowerCase().includes(searchLower)) ||
-        (airline.status &&
-          airline.status.toLowerCase().includes(searchLower)) ||
-        (airline._id && airline._id.toLowerCase().includes(searchLower))
-    );
-    setFilteredAirlines(filtered);
-  };
-
-  const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
-  };
-
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const clearSearch = () => {
-    setSearchTerm("");
-  };
-
-  if (loading) {
     return (
-      <div className="text-center py-5">
-        <Spinner animation="border" />
+      <div className="d-flex justify-content-center mt-4">
+        <ul className="pagination pagination-sm gap-2">
+          {pages.map((p, idx) => (
+            <li key={idx} className={`page-item ${p === currentPage ? "active" : ""} ${p === "..." ? "disabled" : ""}`}>
+              {p === "..." ? <span className="page-link border-0 bg-transparent">...</span> : <button className="page-link rounded-circle shadow-sm" style={{ width: 35, height: 35, display: "flex", alignItems: "center", justifyContent: "center", border: "none", fontWeight: 600 }} onClick={() => handleFilterChange("page", p)}>{p}</button>}
+            </li>
+          ))}
+        </ul>
       </div>
     );
-  }
+  };
 
   return (
     <div>
-      {/* Filters - Enhanced with global search */}
-      <Row className="mb-3">
-        <Col md={6}>
-          <Form.Control
-            type="text"
-            placeholder="Search by code, airline name, or status..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
-          {searchTerm && (
-            <Form.Text className="text-muted">
-              Showing {filteredAirlines.length} of {airlines.length} airlines
-              {searchTerm && ` matching "${searchTerm}"`}
-            </Form.Text>
-          )}
-        </Col>
-        <Col md={3}>
-          <Form.Select
-            value={filters.status}
-            onChange={(e) => handleFilterChange("status", e.target.value)}
-          >
-            <option value="">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Suspended">Suspended</option>
-          </Form.Select>
-        </Col>
-        <Col md={3} className="text-center">
-          <div className="border rounded p-2 bg-light">
-            <div className="h6 mb-0 text-primary">
-              {filteredAirlines.length}
-            </div>
-            <div className="text-muted small">Total Airlines</div>
-          </div>
-        </Col>
-      </Row>
-
-      {/* Table */}
-      <div className="table-responsive">
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th>Alphanumeric Code</th>
-              <th>Numeric Code</th>
-              <th>Airline Name</th>
-              <th>Status</th>
-              <th>Actions</th>
+      <Card className="mb-4 border-0 shadow-sm rounded-4">
+        <Card.Body className="p-3">
+          <Row className="g-3">
+            <Col md={8}><Form.Control type="text" placeholder="Global Search Carrier..." defaultValue={filters.search} onChange={e => handleSearch(e.target.value)} style={customStyles.input} /></Col>
+            <Col md={4}><Form.Select value={filters.status} onChange={e => handleFilterChange("status", e.target.value)} style={customStyles.input}><option value="">All Status</option><option value="Active">Active</option><option value="Inactive">Inactive</option></Form.Select></Col>
+          </Row>
+        </Card.Body>
+      </Card>
+      <div className="bg-white rounded-4 shadow-sm overflow-hidden border">
+        <Table hover className="mb-0 align-middle border-0">
+          <thead className="bg-light">
+            <tr style={{ borderBottom: `2px solid ${colors.border}` }}>
+              <th className="ps-4 py-3 text-muted small px-1">IATA CODE</th>
+              <th className="py-3 text-muted small px-1">NUMERIC</th>
+              <th className="py-3 text-muted small px-1">CARRIER NAME</th>
+              <th className="py-3 text-muted small px-1">STATUS</th>
+              <th className="pe-4 py-3 text-end text-muted small px-1">ACTIONS</th>
             </tr>
           </thead>
           <tbody>
-            {filteredAirlines.length > 0 ? (
-              filteredAirlines.map((item) => (
-                <tr key={item._id}>
-                  <td>
-                    <span className="font-monospace text-primary">
-                      <strong>{item.alphanumericCode}</strong>
-                    </span>
-                  </td>
-                  <td>
-                    <span className="font-monospace">{item.numericCode}</span>
-                  </td>
-                  <td>
-                    <strong>{item.airlineName}</strong>
-                  </td>
-                  <td>
-                    <Badge
-                      bg={
-                        item.status === "Active"
-                          ? "success"
-                          : item.status === "Suspended"
-                          ? "warning"
-                          : "secondary"
-                      }
-                    >
-                      {item.status}
-                    </Badge>
-                  </td>
-                  <td>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      className="me-2"
-                      onClick={() => onEdit(item)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => onDelete([item._id])}
-                    >
-                      Delete
-                    </Button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5" className="text-center py-4">
-                  <Alert variant="info" className="text-center">
-                    {searchTerm ? (
-                      <>
-                        No airline codes found matching "{searchTerm}".
-                        <br />
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          className="mt-2"
-                          onClick={clearSearch}
-                        >
-                          Clear Search
-                        </Button>
-                      </>
-                    ) : (
-                      "No airline codes found."
-                    )}
-                  </Alert>
+            {data.length > 0 ? data.map(item => (
+              <tr key={item._id} className="border-bottom">
+                <td className="ps-4 fw-bold text-primary">{item.alphanumericCode}</td>
+                <td className="font-monospace text-muted">{item.numericCode}</td>
+                <td className="fw-semibold">{item.airlineName}</td>
+                <td><span style={{ ...customStyles.badge, background: item.status === "Active" ? "#ecfdf5" : "#f1f5f9", color: item.status === "Active" ? "#059669" : "#64748b" }}>{item.status}</span></td>
+                <td className="pe-4 text-end">
+                   <Button variant="light" size="sm" className="me-2 fw-bold text-primary" onClick={() => onEdit(item)}>Edit</Button>
+                   <Button variant="link" size="sm" className="text-danger p-0 fw-bold" style={{ textDecoration: "none", fontSize: "12px" }} onClick={() => onDelete([item._id])}>Delete</Button>
                 </td>
               </tr>
-            )}
+            )) : <tr><td colSpan="5" className="text-center py-5 text-muted">No carriers found.</td></tr>}
           </tbody>
         </Table>
       </div>
-
-      {/* Pagination - Only show if not searching */}
-      {!searchTerm && pagination.totalPages > 1 && (
-        <nav>
-          <ul className="pagination justify-content-center">
-            <li
-              className={`page-item ${
-                pagination.currentPage === 1 ? "disabled" : ""
-              }`}
-            >
-              <button
-                className="page-link"
-                onClick={() =>
-                  handleFilterChange("page", pagination.currentPage - 1)
-                }
-                disabled={pagination.currentPage === 1}
-              >
-                Previous
-              </button>
-            </li>
-            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
-              (page) => (
-                <li
-                  key={page}
-                  className={`page-item ${
-                    pagination.currentPage === page ? "active" : ""
-                  }`}
-                >
-                  <button
-                    className="page-link"
-                    onClick={() => handleFilterChange("page", page)}
-                  >
-                    {page}
-                  </button>
-                </li>
-              )
-            )}
-            <li
-              className={`page-item ${
-                pagination.currentPage === pagination.totalPages
-                  ? "disabled"
-                  : ""
-              }`}
-            >
-              <button
-                className="page-link"
-                onClick={() =>
-                  handleFilterChange("page", pagination.currentPage + 1)
-                }
-                disabled={pagination.currentPage === pagination.totalPages}
-              >
-                Next
-              </button>
-            </li>
-          </ul>
-        </nav>
-      )}
+      {renderPagination()}
     </div>
   );
 };
 
-// Main Component
 const AirlineCodeDirectory = () => {
   const [showForm, setShowForm] = useState(false);
-  const [editingAirline, setEditingAirline] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [refresh, setRefresh] = useState(0);
   const [alert, setAlert] = useState(null);
 
-  const showAlert = useCallback((message, type = "success") => {
-    setAlert({ message, type });
-    setTimeout(() => setAlert(null), 5000);
-  }, []);
+  const showAlert = (m, t = "success") => { setAlert({ m, t }); setTimeout(() => setAlert(null), 5000); };
+  const handleAddNew = () => { setEditing(null); setShowForm(true); };
+  const handleEdit = (d) => { setEditing(d); setShowForm(true); };
+  const handleSave = () => { setShowForm(false); setEditing(null); setRefresh(r => r + 1); showAlert(editing ? "Carrier updated" : "Carrier created"); };
+  const handleCancel = () => { setShowForm(false); setEditing(null); };
 
-  const handleAddNew = useCallback(() => {
-    setEditingAirline(null);
-    setShowForm(true);
-  }, []);
-
-  const handleEdit = useCallback((airline) => {
-    setEditingAirline(airline);
-    setShowForm(true);
-  }, []);
-
-  const handleDelete = useCallback(
-    async (ids) => {
-      try {
-        if (ids.length === 1) {
-          if (
-            window.confirm("Are you sure you want to delete this airline code?")
-          ) {
-            await AirlineService.delete(ids[0]);
-            showAlert("Airline code deleted successfully");
-            setRefresh((prev) => prev + 1);
-          }
-        } else {
-          await AirlineService.bulkDelete(ids);
-          showAlert(`${ids.length} airline codes deleted successfully`);
-          setRefresh((prev) => prev + 1);
-        }
-      } catch (error) {
-        showAlert(error.message || "Error deleting airline code", "danger");
-      }
-    },
-    [showAlert]
-  );
-
-  const handleSave = useCallback(() => {
-    setShowForm(false);
-    setEditingAirline(null);
-    setRefresh((prev) => prev + 1);
-    showAlert(
-      editingAirline
-        ? "Airline code updated successfully"
-        : "Airline code created successfully"
-    );
-  }, [editingAirline, showAlert]);
-
-  const handleCancel = useCallback(() => {
-    setShowForm(false);
-    setEditingAirline(null);
-  }, []);
+  const handleDelete = async (ids) => {
+    if (window.confirm("Delete record?")) {
+      try { await AirlineService.delete(ids[0]); showAlert("Record deleted"); setRefresh(r => r + 1); }
+      catch (e) { showAlert(e.message, "danger"); }
+    }
+  };
 
   return (
-    <Container fluid className="py-4">
-      <Row>
-        <Col>
-          {alert && (
-            <Alert
-              variant={alert.type}
-              dismissible
-              onClose={() => setAlert(null)}
-              className="mb-4"
-            >
-              {alert.message}
-            </Alert>
-          )}
-
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h1 className="mb-0">Airline Code Directory</h1>
-            <div>
-              {showForm && (
-                <Button
-                  variant="outline-secondary"
-                  className="me-2"
-                  onClick={handleCancel}
-                >
-                  Back to List
-                </Button>
-              )}
-              <Button variant="success" onClick={handleAddNew}>
-                Add New Airline Code
-              </Button>
-            </div>
-          </div>
-
-          {showForm ? (
-            <AirlineForm
-              airlineData={editingAirline}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
-          ) : (
-            <AirlineCodeList
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              refresh={refresh}
-            />
-          )}
-        </Col>
-      </Row>
-    </Container>
+    <div style={{ background: colors.background, minHeight: "100vh" }}>
+      <Container className="py-4">
+        {alert && <Alert variant={alert.t} dismissible onClose={() => setAlert(null)} className="shadow-sm border-0">{alert.m}</Alert>}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div><h2 className="fw-bold mb-0 text-dark">Airline Directory</h2><p className="text-muted small mb-0">Manage global air carrier codes and status</p></div>
+          <Button onClick={showForm ? handleCancel : handleAddNew} style={customStyles.btnPrimary}>{showForm ? "View List" : "+ Register Carrier"}</Button>
+        </div>
+        <div className="animate-fade-in">{showForm ? <AirlineForm airlineData={editing} onSave={handleSave} onCancel={handleCancel} /> : <AirlineList onEdit={handleEdit} onDelete={handleDelete} refresh={refresh} />}</div>
+      </Container>
+      <style>{`.animate-fade-in { animation: fadeIn 0.3s ease-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } } .page-link { color: ${colors.primary}; border: none; background: #fff; } .page-item.active .page-link { background: ${colors.primary} !important; color: #fff !important; }`}</style>
+    </div>
   );
 };
 

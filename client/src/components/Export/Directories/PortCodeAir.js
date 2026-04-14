@@ -1,572 +1,102 @@
-import React, { useState, useCallback, useEffect } from "react";
-import {
-  Container,
-  Row,
-  Col,
-  Button,
-  Alert,
-  Table,
-  Form,
-  Card,
-  Spinner,
-} from "react-bootstrap";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { Container, Row, Col, Button, Alert, Table, Form, Card, Spinner } from "react-bootstrap";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-// API Service
-const AirPortService = {
-  baseURL: `${import.meta.env.VITE_API_STRING}/airPorts`,
-
-  getAll: async (params = {}) => {
-    try {
-      const response = await axios.get(`${AirPortService.baseURL}/`, {
-        params,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  getById: async (id) => {
-    try {
-      const response = await axios.get(`${AirPortService.baseURL}/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  create: async (data) => {
-    try {
-      const response = await axios.post(`${AirPortService.baseURL}/`, data);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  update: async (id, data) => {
-    try {
-      const response = await axios.put(`${AirPortService.baseURL}/${id}`, data);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  delete: async (id) => {
-    try {
-      const response = await axios.delete(`${AirPortService.baseURL}/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
+const colors = { primary: "#4f46e5", secondary: "#64748b", background: "#f8fafc", border: "#e2e8f0" };
+const customStyles = {
+  header: { padding: "24px 32px", background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", color: "white", borderRadius: "12px 12px 0 0" },
+  card: { borderRadius: "12px", border: "none", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)", overflow: "hidden" },
+  input: { borderRadius: "8px", border: `1.5px solid ${colors.border}`, padding: "10px 14px", fontSize: "14px" },
+  label: { fontSize: "13px", fontWeight: "600", marginBottom: "8px", display: "block" },
+  btnPrimary: { background: colors.primary, border: "none", padding: "10px 24px", borderRadius: "8px", fontWeight: "600" }
 };
 
-// Form Component
+const AirPortService = {
+  baseURL: `${import.meta.env.VITE_API_STRING}/airPorts`,
+  getAll: (p) => axios.get(`${AirPortService.baseURL}/`, { params: p }).then(r => r.data),
+  create: (d) => axios.post(`${AirPortService.baseURL}/`, d),
+  update: (id, d) => axios.put(`${AirPortService.baseURL}/${id}`, d),
+  delete: (id) => axios.delete(`${AirPortService.baseURL}/${id}`),
+};
+
 const AirPortForm = ({ airPortData, onSave, onCancel }) => {
-  const [formData, setFormData] = useState({
-    portCode: "",
-    portName: "",
-    portDetails: "",
-  });
+  const [formData, setFormData] = useState({ portCode: "", portName: "", portDetails: "" });
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    if (airPortData) {
-      setFormData(airPortData);
-    } else {
-      setFormData({
-        portCode: "",
-        portName: "",
-        portDetails: "",
-      });
-    }
-  }, [airPortData]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === "portCode" ? value.toUpperCase() : value,
-    }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.portCode?.trim()) {
-      newErrors.portCode = "Port Code is required";
-    } else if (!/^[A-Z0-9]{2,10}$/.test(formData.portCode)) {
-      newErrors.portCode =
-        "Code must be 2-10 uppercase alphanumeric characters";
-    }
-
-    if (!formData.portName?.trim()) {
-      newErrors.portName = "Port Name is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    setLoading(true);
-    try {
-      if (airPortData?._id) {
-        await AirPortService.update(airPortData._id, formData);
-      } else {
-        await AirPortService.create(formData);
-      }
-      onSave();
-    } catch (error) {
-      alert(error.message || "Error saving air port");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  useEffect(() => { if (airPortData) setFormData(airPortData); else setFormData({ portCode: "", portName: "", portDetails: "" }); }, [airPortData]);
+  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); try { if (airPortData?._id) await AirPortService.update(airPortData._id, formData); else await AirPortService.create(formData); onSave(); } catch (err) { alert(err.message); } finally { setLoading(false); } };
   return (
-    <Card>
-      <Card.Header>
-        <h5>{airPortData ? "Edit Air Port" : "Add New Air Port"}</h5>
-      </Card.Header>
-      <Card.Body>
+    <Card style={customStyles.card}>
+      <Card.Header style={customStyles.header}><h5 className="mb-0 text-white fw-bold">{airPortData ? "Edit Air Hub" : "Register New Airport"}</h5></Card.Header>
+      <Card.Body className="p-4">
         <Form onSubmit={handleSubmit}>
-          <Row>
-            <Col md={3}>
-              <Form.Group className="mb-3">
-                <Form.Label>Port Code *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="portCode"
-                  value={formData.portCode}
-                  onChange={handleChange}
-                  isInvalid={!!errors.portCode}
-                  placeholder="e.g., DEL, BOM, MAA"
-                  maxLength={10}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.portCode}
-                </Form.Control.Feedback>
-                <Form.Text className="text-muted">
-                  2-10 character airport code
-                </Form.Text>
-              </Form.Group>
-            </Col>
-            <Col md={9}>
-              <Form.Group className="mb-3">
-                <Form.Label>Port Name *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="portName"
-                  value={formData.portName}
-                  onChange={handleChange}
-                  isInvalid={!!errors.portName}
-                  placeholder="Enter airport name"
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.portName}
-                </Form.Control.Feedback>
-              </Form.Group>
-            </Col>
+          <Row className="mb-4 g-3">
+            <Col md={3}><Form.Group><Form.Label style={customStyles.label}>IATA Port Code *</Form.Label><Form.Control type="text" name="portCode" value={formData.portCode} onChange={e => setFormData(p => ({ ...p, portCode: e.target.value.toUpperCase() }))} placeholder="e.g. BOM, DEL" maxLength={10} style={customStyles.input} /></Form.Group></Col>
+            <Col md={9}><Form.Group><Form.Label style={customStyles.label}>Official Hub Name *</Form.Label><Form.Control type="text" name="portName" value={formData.portName} onChange={e => setFormData(p => ({ ...p, portName: e.target.value }))} placeholder="Enter full airport name" style={customStyles.input} /></Form.Group></Col>
           </Row>
-          <Row>
-            <Col md={12}>
-              <Form.Group className="mb-3">
-                <Form.Label>Country</Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={4}
-                  name="portDetails"
-                  value={formData.portDetails}
-                  onChange={handleChange}
-                  placeholder="Enter airport details, facilities, services, etc."
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-          <div className="d-flex justify-content-end gap-2">
-            <Button variant="secondary" onClick={onCancel} disabled={loading}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save"}
-            </Button>
-          </div>
+          <Form.Group className="mb-4"><Form.Label style={customStyles.label}>Additional Details</Form.Label><Form.Control as="textarea" rows={4} name="portDetails" value={formData.portDetails} onChange={e => setFormData(p => ({ ...p, portDetails: e.target.value }))} placeholder="Facilities or local info..." style={customStyles.input} /></Form.Group>
+          <div className="d-flex justify-content-end gap-3"><Button variant="link" onClick={onCancel} style={{ color: colors.secondary, textDecoration: "none" }}>Discard</Button><Button style={customStyles.btnPrimary} type="submit" disabled={loading}>{loading ? <Spinner size="sm" /> : "Save Hub"}</Button></div>
         </Form>
       </Card.Body>
     </Card>
   );
 };
 
-// List Component
 const AirPortList = ({ onEdit, onDelete, refresh }) => {
-  const [airPorts, setAirPorts] = useState([]);
-  const [filteredAirPorts, setFilteredAirPorts] = useState([]);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
-  const [filters, setFilters] = useState({
-    page: 1,
-  });
-  const [searchTerm, setSearchTerm] = useState("");
-
-  useEffect(() => {
-    fetchAirPorts();
-  }, [filters, refresh]);
-
-  useEffect(() => {
-    filterAirPorts();
-  }, [searchTerm, airPorts]);
-
-  const fetchAirPorts = async () => {
-    try {
-      setLoading(true);
-      const response = await AirPortService.getAll(filters);
-      const airPortsData = response.data || response;
-      setAirPorts(airPortsData);
-      setFilteredAirPorts(airPortsData);
-      setPagination(response.pagination || {});
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setAirPorts([]);
-      setFilteredAirPorts([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterAirPorts = () => {
-    if (!searchTerm.trim()) {
-      setFilteredAirPorts(airPorts);
-      return;
-    }
-
-    const searchLower = searchTerm.toLowerCase();
-    const filtered = airPorts.filter(
-      (airPort) =>
-        (airPort.portCode &&
-          airPort.portCode.toLowerCase().includes(searchLower)) ||
-        (airPort.portName &&
-          airPort.portName.toLowerCase().includes(searchLower)) ||
-        (airPort.portDetails &&
-          airPort.portDetails.toLowerCase().includes(searchLower)) ||
-        (airPort._id && airPort._id.toLowerCase().includes(searchLower))
-    );
-    setFilteredAirPorts(filtered);
-  };
-
-  const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value,
-      page: key === "page" ? value : 1,
-    }));
-  };
-
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const clearSearch = () => {
-    setSearchTerm("");
-  };
-
-  const truncateDetails = (text, maxLength = 150) => {
-    return text && text.length > maxLength
-      ? `${text.substring(0, maxLength)}...`
-      : text;
-  };
-
-  if (loading) {
+  const [filters, setFilters] = useState({ page: 1, search: "" });
+  const searchTimeout = useRef(null);
+  useEffect(() => { fetchPorts(); }, [filters, refresh]);
+  const fetchPorts = async () => { try { setLoading(true); const res = await AirPortService.getAll(filters); setData(res.data || res); setPagination(res.pagination || {}); } catch (e) { } finally { setLoading(false); } };
+  const handleFilter = (k, v) => setFilters(p => ({ ...p, [k]: v, page: k === "page" ? v : 1 }));
+  const handleSearch = (v) => { if (searchTimeout.current) clearTimeout(searchTimeout.current); searchTimeout.current = setTimeout(() => handleFilter("search", v), 500); };
+  const renderPagination = () => {
+    const { currentPage, totalPages } = pagination; if (totalPages <= 1) return null;
+    const pages = []; for (let i = 1; i <= totalPages; i++) { if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) pages.push(i); else if (pages[pages.length-1] !== "...") pages.push("..."); }
     return (
-      <div className="text-center py-5">
-        <Spinner animation="border" />
-      </div>
+      <nav className="d-flex justify-content-center mt-4">
+        <ul className="pagination pagination-sm gap-2">
+          {pages.map((p, idx) => (
+            <li key={idx} className={`page-item ${p === currentPage ? "active" : ""} ${p === "..." ? "disabled" : ""}`}>
+              {p === "..." ? <span className="page-link border-0">...</span> : <button className="page-link rounded-circle shadow-sm" style={{ width: 35, height: 35, display: "flex", alignItems: "center", justifyContent: "center", border: "none", fontWeight: 600 }} onClick={() => handleFilter("page", p)}>{p}</button>}
+            </li>
+          ))}
+        </ul>
+      </nav>
     );
-  }
-
+  };
   return (
     <div>
-      {/* Search */}
-      <Row className="mb-3">
-        <Col md={6}>
-          <Form.Control
-            type="text"
-            placeholder="Search by port code, name, or details..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
-          {searchTerm && (
-            <Form.Text className="text-muted">
-              Showing {filteredAirPorts.length} of {airPorts.length} air ports
-              {searchTerm && ` matching "${searchTerm}"`}
-            </Form.Text>
-          )}
-        </Col>
-      </Row>
-
-      {/* Results Counter */}
-      <Row className="mb-3">
-        <Col md={6}>
-          <div className="border rounded p-2 bg-light">
-            <div className="h6 mb-0 text-primary">
-              {filteredAirPorts.length}
-            </div>
-            <div className="text-muted small">Total Air Ports</div>
-          </div>
-        </Col>
-      </Row>
-
-      {/* Table */}
-      <div className="table-responsive">
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th style={{ width: "120px" }}>Port Code</th>
-              <th style={{ width: "250px" }}>Port Name</th>
-              <th>Country</th>
-              <th style={{ width: "150px" }}>Actions</th>
-            </tr>
-          </thead>
+      <Card className="mb-4 border-0 shadow-sm rounded-4"><Card.Body className="p-3"><Form.Control type="text" placeholder="Global Search Airport..." defaultValue={filters.search} onChange={e => handleSearch(e.target.value)} style={customStyles.input} /></Card.Body></Card>
+      <div className="bg-white rounded-4 shadow-sm overflow-hidden border">
+        <Table hover className="mb-0 align-middle border-0">
+          <thead className="bg-light"><tr style={{ borderBottom: "2px solid #e2e8f0" }}><th className="ps-4 py-3 text-muted small">CODE</th><th className="py-3 text-muted small">HUB NAME</th><th className="pe-4 py-3 text-end text-muted small">ACTIONS</th></tr></thead>
           <tbody>
-            {filteredAirPorts.length > 0 ? (
-              filteredAirPorts.map((item) => (
-                <tr key={item._id}>
-                  <td>
-                    <span className="font-monospace text-primary">
-                      <strong>{item.portCode}</strong>
-                    </span>
-                  </td>
-                  <td>
-                    <strong>{item.portName}</strong>
-                  </td>
-                  <td>
-                    <div>{item.country || "-"}</div>
-                  </td>
-                  <td>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      className="me-2"
-                      onClick={() => onEdit(item)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => onDelete([item._id])}
-                    >
-                      Delete
-                    </Button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="4" className="text-center py-4">
-                  <Alert variant="info" className="text-center">
-                    {searchTerm ? (
-                      <>
-                        No air ports found matching "{searchTerm}".
-                        <br />
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          className="mt-2"
-                          onClick={clearSearch}
-                        >
-                          Clear Search
-                        </Button>
-                      </>
-                    ) : (
-                      "No air ports found."
-                    )}
-                  </Alert>
-                </td>
-              </tr>
-            )}
+            {data.length > 0 ? data.map(item => (
+              <tr key={item._id} className="border-bottom"><td className="ps-4 fw-bold text-primary">{item.portCode}</td><td className="fw-semibold">{item.portName}</td><td className="pe-4 text-end"><Button variant="light" size="sm" className="me-2 fw-bold text-primary" onClick={() => onEdit(item)}>Edit</Button><Button variant="link" size="sm" className="text-danger p-0 fw-bold" style={{ textDecoration: "none" }} onClick={() => onDelete([item._id])}>Delete</Button></td></tr>
+            )) : <tr><td colSpan="3" className="text-center py-5">No hub records found.</td></tr>}
           </tbody>
         </Table>
       </div>
-
-      {/* Pagination - Only show if not searching */}
-      {!searchTerm && pagination.totalPages > 1 && (
-        <nav>
-          <ul className="pagination justify-content-center">
-            <li
-              className={`page-item ${
-                pagination.currentPage === 1 ? "disabled" : ""
-              }`}
-            >
-              <button
-                className="page-link"
-                onClick={() =>
-                  handleFilterChange("page", pagination.currentPage - 1)
-                }
-                disabled={pagination.currentPage === 1}
-              >
-                Previous
-              </button>
-            </li>
-            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
-              (page) => (
-                <li
-                  key={page}
-                  className={`page-item ${
-                    pagination.currentPage === page ? "active" : ""
-                  }`}
-                >
-                  <button
-                    className="page-link"
-                    onClick={() => handleFilterChange("page", page)}
-                  >
-                    {page}
-                  </button>
-                </li>
-              )
-            )}
-            <li
-              className={`page-item ${
-                pagination.currentPage === pagination.totalPages
-                  ? "disabled"
-                  : ""
-              }`}
-            >
-              <button
-                className="page-link"
-                onClick={() =>
-                  handleFilterChange("page", pagination.currentPage + 1)
-                }
-                disabled={pagination.currentPage === pagination.totalPages}
-              >
-                Next
-              </button>
-            </li>
-          </ul>
-        </nav>
-      )}
+      {renderPagination()}
     </div>
   );
 };
 
-// Main Component
 const PortCodeAir = () => {
   const [showForm, setShowForm] = useState(false);
-  const [editingAirPort, setEditingAirPort] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [refresh, setRefresh] = useState(0);
-  const [alert, setAlert] = useState(null);
-
-  const showAlert = useCallback((message, type = "success") => {
-    setAlert({ message, type });
-    setTimeout(() => setAlert(null), 5000);
-  }, []);
-
-  const handleAddNew = useCallback(() => {
-    setEditingAirPort(null);
-    setShowForm(true);
-  }, []);
-
-  const handleEdit = useCallback((airPort) => {
-    setEditingAirPort(airPort);
-    setShowForm(true);
-  }, []);
-
-  const handleDelete = useCallback(
-    async (ids) => {
-      try {
-        if (ids.length === 1) {
-          if (
-            window.confirm("Are you sure you want to delete this air port?")
-          ) {
-            await AirPortService.delete(ids[0]);
-            showAlert("Air Port deleted successfully");
-            setRefresh((prev) => prev + 1);
-          }
-        }
-      } catch (error) {
-        showAlert(error.message || "Error deleting air port", "danger");
-      }
-    },
-    [showAlert]
-  );
-
-  const handleSave = useCallback(() => {
-    setShowForm(false);
-    setEditingAirPort(null);
-    setRefresh((prev) => prev + 1);
-    showAlert(
-      editingAirPort
-        ? "Air Port updated successfully"
-        : "Air Port created successfully"
-    );
-  }, [editingAirPort, showAlert]);
-
-  const handleCancel = useCallback(() => {
-    setShowForm(false);
-    setEditingAirPort(null);
-  }, []);
-
   return (
-    <Container fluid className="py-4">
-      <Row>
-        <Col>
-          {alert && (
-            <Alert
-              variant={alert.type}
-              dismissible
-              onClose={() => setAlert(null)}
-              className="mb-4"
-            >
-              {alert.message}
-            </Alert>
-          )}
-
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h1 className="mb-0">Port Code-Air Directory</h1>
-            <div>
-              {showForm && (
-                <Button
-                  variant="outline-secondary"
-                  className="me-2"
-                  onClick={handleCancel}
-                >
-                  Back to List
-                </Button>
-              )}
-              <Button variant="success" onClick={handleAddNew}>
-                Add New Air Port
-              </Button>
-            </div>
-          </div>
-
-          {showForm ? (
-            <AirPortForm
-              airPortData={editingAirPort}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
-          ) : (
-            <AirPortList
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              refresh={refresh}
-            />
-          )}
-        </Col>
-      </Row>
-    </Container>
+    <div style={{ background: colors.background, minHeight: "100vh" }}>
+      <Container className="py-4">
+        <div className="d-flex justify-content-between align-items-center mb-4"><div><h2 className="fw-bold mb-0 text-dark">Air Port Master</h2><p className="text-muted small mb-0">Global aviation hub terminals</p></div><Button onClick={() => setShowForm(!showForm)} style={customStyles.btnPrimary}>{showForm ? "View List" : "+ Add Airport"}</Button></div>
+        <div className="animate-fade-in">{showForm ? <AirPortForm airPortData={editing} onSave={() => { setShowForm(false); setRefresh(r => r+1); }} onCancel={() => setShowForm(false)} /> : <AirPortList onEdit={(d) => { setEditing(d); setShowForm(true); }} onDelete={async (ids) => { if (window.confirm("Delete?")) { await AirPortService.delete(ids[0]); setRefresh(r => r+1); } }} refresh={refresh} />}</div>
+      </Container>
+      <style>{`.animate-fade-in { animation: fadeIn 0.3s ease-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } } .page-link { color: ${colors.primary}; border: none; background: #fff; } .page-item.active .page-link { background: ${colors.primary} !important; color: #fff !important; }`}</style>
+    </div>
   );
 };
-
 export default PortCodeAir;

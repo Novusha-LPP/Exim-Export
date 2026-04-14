@@ -40,6 +40,7 @@ router.post("/api/login", async (req, res) => {
           selected_icd_codes: user.selected_icd_codes,
           selected_branches: user.selected_branches,
           selected_ports: user.selected_ports,
+          canDeleteDocs: user.canDeleteDocs || false,
         };
 
         return res.status(200).json(userResponse);

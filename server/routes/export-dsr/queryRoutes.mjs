@@ -1,5 +1,7 @@
 import express from "express";
 import QueryModel from "../../model/export/QueryModel.mjs";
+import ExportJobModel from "../../model/export/ExJobModel.mjs";
+import UserModel from "../../model/userModel.mjs";
 
 const router = express.Router();
 
@@ -72,6 +74,72 @@ router.get("/api/queries", async (req, res) => {
     if (status) filter.status = status;
     if (job_no) filter.job_no = job_no;
 
+    // --- APPLY USER RESTRICTIONS ---
+    const requesterUsername = req.headers["username"] || req.headers["x-username"];
+    if (requesterUsername) {
+      const requester = await UserModel.findOne({ username: requesterUsername });
+      if (requester && requester.role !== "Admin") {
+        let branchRestrictions = requester.selected_branches || [];
+        
+        // Resilience: Map full names to codes
+        const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+        branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
+        const portRestrictions = requester.selected_ports || [];
+        const icdRestrictions = requester.selected_icd_codes || [];
+
+        if (branchRestrictions.length > 0 || portRestrictions.length > 0 || icdRestrictions.length > 0) {
+          const jobFilter = {};
+          if (!jobFilter.$and) jobFilter.$and = [];
+
+          if (branchRestrictions.length > 0) {
+            jobFilter.$and.push({ branch_code: { $in: branchRestrictions } });
+          }
+
+          const combinedRestrictions = [...new Set([...portRestrictions, ...icdRestrictions])];
+          if (combinedRestrictions.length > 0) {
+            const finalRestrictions = [];
+            combinedRestrictions.forEach(res => {
+              finalRestrictions.push(res);
+              if (res.includes(" - ")) finalRestrictions.push(res.split(" - ")[0].trim());
+            });
+
+            const combinedRegexStr = finalRestrictions.map(r =>
+              `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+            ).join('|');
+
+            jobFilter.$and.push({
+              $or: [
+                { custom_house: { $regex: combinedRegexStr, $options: "i" } },
+                { port_of_loading: { $regex: combinedRegexStr, $options: "i" } }
+              ]
+            });
+          }
+
+          // Fetch allowed job numbers
+          const allowedJobs = await ExportJobModel.find(jobFilter).select("job_no").lean();
+          const allowedJobNos = allowedJobs.map(j => j.job_no);
+
+          // If a job_no was already in filter, intersect them
+          if (filter.job_no) {
+            if (typeof filter.job_no === 'string') {
+              if (!allowedJobNos.includes(filter.job_no)) {
+                filter.job_no = "__NONE__"; // force no results
+              }
+            } else if (filter.job_no.$in) {
+              filter.job_no.$in = filter.job_no.$in.filter(j => allowedJobNos.includes(j));
+            }
+          } else {
+            filter.job_no = { $in: allowedJobNos };
+          }
+        }
+      } else if (!requester && requesterUsername !== "Admin") {
+        filter.job_no = "__NONE__";
+      }
+    } else {
+      filter.job_no = "__NONE__";
+    }
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const [queries, total] = await Promise.all([
@@ -110,6 +178,47 @@ router.get("/api/queries/count", async (req, res) => {
     if (raisedFromModule) filter.raisedFromModule = raisedFromModule;
     if (raisedBy) filter.raisedBy = raisedBy;
 
+    // --- APPLY USER RESTRICTIONS FOR COUNT ---
+    const requesterUsername = req.headers["username"] || req.headers["x-username"];
+    if (requesterUsername) {
+      const requester = await UserModel.findOne({ username: requesterUsername });
+      if (requester && requester.role !== "Admin") {
+        let branchRest = requester.selected_branches || [];
+        const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+        branchRest = branchRest.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
+        const portRest = requester.selected_ports || [];
+        const icdRest = requester.selected_icd_codes || [];
+
+        if (branchRest.length > 0 || portRest.length > 0 || icdRest.length > 0) {
+          const jobFilter = {};
+          if (!jobFilter.$and) jobFilter.$and = [];
+          if (branchRest.length > 0) jobFilter.$and.push({ branch_code: { $in: branchRest } });
+          const combinedP = [...new Set([...portRest, ...icdRest])];
+          if (combinedP.length > 0) {
+            const finalP = [];
+            combinedP.forEach(p => {
+              finalP.push(p);
+              if (p.includes(" - ")) finalP.push(p.split(" - ")[0].trim());
+            });
+            const pRegex = finalP.map(r => `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`).join('|');
+            jobFilter.$and.push({
+              $or: [
+                { custom_house: { $regex: pRegex, $options: "i" } },
+                { port_of_loading: { $regex: pRegex, $options: "i" } }
+              ]
+            });
+          }
+          const allowedJobs = await ExportJobModel.find(jobFilter).select("job_no").lean();
+          filter.job_no = { $in: allowedJobs.map(j => j.job_no) };
+        }
+      } else if (!requester && requesterUsername !== "Admin") {
+        filter.job_no = "__NONE__";
+      }
+    } else {
+      filter.job_no = "__NONE__";
+    }
+
     // Only count unseen queries
     filter.seenByTarget = false;
 
@@ -119,6 +228,43 @@ router.get("/api/queries/count", async (req, res) => {
   } catch (err) {
     console.error("Error counting queries:", err);
     return res.status(500).json({ success: false, message: "Server error counting queries" });
+  }
+});
+
+// ─── GET JOBS QUERY STATUS ─────────────────────────────────────────────
+router.post("/api/queries/jobs-status", async (req, res) => {
+  try {
+    const { jobNos, currentModule } = req.body;
+    if (!jobNos || !Array.isArray(jobNos)) {
+      return res.status(400).json({ success: false, message: "Valid jobNos array required" });
+    }
+
+    const queries = await QueryModel.find({ job_no: { $in: jobNos } }).lean();
+
+    const statusMap = {};
+    jobNos.forEach(j => {
+      statusMap[j] = { hasQueries: false, hasUnseen: false };
+    });
+
+    queries.forEach(q => {
+      if (!statusMap[q.job_no]) statusMap[q.job_no] = { hasQueries: true, hasUnseen: false };
+      statusMap[q.job_no].hasQueries = true;
+
+      // Check unseen replies/queries from the perspective of currentModule
+      if (currentModule) {
+        if (q.targetModule === currentModule && !q.seenByTarget && q.status === "open") {
+          statusMap[q.job_no].hasUnseen = true;
+        }
+        if (q.raisedFromModule === currentModule && !q.seenBySender && q.status === "open") {
+          statusMap[q.job_no].hasUnseen = true;
+        }
+      }
+    });
+
+    return res.json({ success: true, data: statusMap });
+  } catch (err) {
+    console.error("Error fetching jobs queries status:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 });
 

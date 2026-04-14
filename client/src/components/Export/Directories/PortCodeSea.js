@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Container,
   Row,
@@ -12,6 +12,83 @@ import {
 } from "react-bootstrap";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
+
+// Modern Design Tokens
+const colors = {
+  primary: "#4f46e5", // Indigo 600
+  primaryHover: "#4338ca", // Indigo 700
+  secondary: "#64748b", // Slate 500
+  success: "#10b981", // Emerald 500
+  danger: "#ef4444", // Red 500
+  background: "#f8fafc", // Slate 50
+  cardBg: "#ffffff",
+  border: "#e2e8f0", // Slate 200
+  textMain: "#1e293b", // Slate 800
+  textMuted: "#64748b", // Slate 500
+};
+
+const customStyles = {
+  header: {
+    padding: "24px 32px",
+    background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+    color: "white",
+    borderRadius: "12px 12px 0 0",
+    border: "none",
+  },
+  card: {
+    borderRadius: "12px",
+    border: "none",
+    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)",
+    overflow: "hidden",
+    transition: "transform 0.2s ease",
+  },
+  input: {
+    borderRadius: "8px",
+    border: `1.5px solid ${colors.border}`,
+    padding: "10px 14px",
+    fontSize: "14px",
+    transition: "all 0.2s ease",
+    background: "#fff",
+  },
+  label: {
+    fontSize: "13px",
+    fontWeight: "600",
+    color: colors.textMain,
+    marginBottom: "8px",
+    display: "block",
+    whiteSpace: "nowrap",
+    height: "20px",
+  },
+  btnPrimary: {
+    background: colors.primary,
+    border: "none",
+    padding: "10px 24px",
+    borderRadius: "8px",
+    fontWeight: "600",
+    transition: "all 0.2s ease",
+  },
+  btnSecondary: {
+    background: "#fff",
+    color: colors.secondary,
+    border: `1.5px solid ${colors.border}`,
+    padding: "10px 24px",
+    borderRadius: "8px",
+    fontWeight: "600",
+  },
+  table: {
+    background: "white",
+    borderRadius: "8px",
+    overflow: "hidden",
+  },
+  badge: {
+    padding: "6px 12px",
+    borderRadius: "20px",
+    fontSize: "11px",
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  }
+};
 
 // API Service
 const PortService = {
@@ -68,6 +145,7 @@ const PortForm = ({ portData, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
     portCode: "",
     portName: "",
+    uneceCode: "",
     portDetails: "",
     country: "",
   });
@@ -81,6 +159,7 @@ const PortForm = ({ portData, onSave, onCancel }) => {
       setFormData({
         portCode: "",
         portName: "",
+        uneceCode: "",
         portDetails: "",
         country: "",
       });
@@ -91,7 +170,7 @@ const PortForm = ({ portData, onSave, onCancel }) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "portCode" ? value.toUpperCase() : value,
+      [name]: (name === "portCode" || name === "uneceCode") ? value.toUpperCase() : value,
     }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -100,22 +179,9 @@ const PortForm = ({ portData, onSave, onCancel }) => {
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!formData.portCode?.trim()) {
-      newErrors.portCode = "Port Code is required";
-    } else if (!/^[A-Z0-9]{2,10}$/.test(formData.portCode)) {
-      newErrors.portCode =
-        "Code must be 2-10 uppercase alphanumeric characters";
-    }
-
-    if (!formData.portName?.trim()) {
-      newErrors.portName = "Port Name is required";
-    }
-
-    if (!formData.country?.trim()) {
-      newErrors.country = "Country is required";
-    }
-
+    if (!formData.portCode?.trim()) newErrors.portCode = "Required";
+    if (!formData.portName?.trim()) newErrors.portName = "Required";
+    if (!formData.country?.trim()) newErrors.country = "Required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -123,14 +189,10 @@ const PortForm = ({ portData, onSave, onCancel }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-
     setLoading(true);
     try {
-      if (portData?._id) {
-        await PortService.update(portData._id, formData);
-      } else {
-        await PortService.create(formData);
-      }
+      if (portData?._id) await PortService.update(portData._id, formData);
+      else await PortService.create(formData);
       onSave();
     } catch (error) {
       alert(error.message || "Error saving port");
@@ -140,87 +202,94 @@ const PortForm = ({ portData, onSave, onCancel }) => {
   };
 
   return (
-    <Card>
-      <Card.Header>
-        <h5>{portData ? "Edit Port" : "Add New Port"}</h5>
+    <Card style={customStyles.card}>
+      <Card.Header style={customStyles.header}>
+        <h5 className="mb-0 text-white font-weight-bold">
+          {portData ? "Modify Port Details" : "Register New Sea Port"}
+        </h5>
       </Card.Header>
-      <Card.Body>
+      <Card.Body className="p-4">
         <Form onSubmit={handleSubmit}>
-          <Row>
+          <Row className="mb-4 g-3">
             <Col md={3}>
-              <Form.Group className="mb-3">
-                <Form.Label>Port Code *</Form.Label>
+              <Form.Group>
+                <Form.Label style={customStyles.label}>Port Code *</Form.Label>
                 <Form.Control
                   type="text"
                   name="portCode"
                   value={formData.portCode}
                   onChange={handleChange}
                   isInvalid={!!errors.portCode}
-                  placeholder="e.g., INMAA, USNYC"
+                  placeholder="e.g. INMAA"
                   maxLength={10}
+                  style={customStyles.input}
                 />
-                <Form.Control.Feedback type="invalid">
-                  {errors.portCode}
-                </Form.Control.Feedback>
-                <Form.Text className="text-muted">
-                  2-10 character port code
-                </Form.Text>
               </Form.Group>
             </Col>
-            <Col md={5}>
-              <Form.Group className="mb-3">
-                <Form.Label>Port Name *</Form.Label>
+            <Col md={3}>
+              <Form.Group>
+                <Form.Label style={customStyles.label}>Port Name *</Form.Label>
                 <Form.Control
                   type="text"
                   name="portName"
                   value={formData.portName}
                   onChange={handleChange}
                   isInvalid={!!errors.portName}
-                  placeholder="Enter port name"
+                  placeholder="Enter name"
+                  style={customStyles.input}
                 />
-                <Form.Control.Feedback type="invalid">
-                  {errors.portName}
-                </Form.Control.Feedback>
               </Form.Group>
             </Col>
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Country *</Form.Label>
+            <Col md={3}>
+              <Form.Group>
+                <Form.Label style={customStyles.label}>UNECE Code</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="uneceCode"
+                  value={formData.uneceCode}
+                  onChange={handleChange}
+                  placeholder="e.g. TRKUM"
+                  style={customStyles.input}
+                />
+              </Form.Group>
+            </Col>
+            <Col md={3}>
+              <Form.Group>
+                <Form.Label style={customStyles.label}>Country *</Form.Label>
                 <Form.Control
                   type="text"
                   name="country"
                   value={formData.country}
                   onChange={handleChange}
                   isInvalid={!!errors.country}
-                  placeholder="Enter country name"
+                  placeholder="Enter country"
+                  style={customStyles.input}
                 />
-                <Form.Control.Feedback type="invalid">
-                  {errors.country}
-                </Form.Control.Feedback>
               </Form.Group>
             </Col>
           </Row>
-          <Row>
+          <Row className="mb-4">
             <Col md={12}>
-              <Form.Group className="mb-3">
-                <Form.Label>Port Details</Form.Label>
+              <Form.Group>
+                <Form.Label style={customStyles.label}>Port Infrastructure & Details</Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={4}
                   name="portDetails"
                   value={formData.portDetails}
                   onChange={handleChange}
-                  placeholder="Enter port details, facilities, services, etc."
+                  placeholder="Describe port facilities..."
+                  style={{ ...customStyles.input, minHeight: "100px" }}
                 />
               </Form.Group>
             </Col>
           </Row>
-          <div className="d-flex justify-content-end gap-2">
-            <Button variant="secondary" onClick={onCancel} disabled={loading}>
-              Cancel
+          <div className="d-flex justify-content-end gap-3 pt-2">
+            <Button variant="link" onClick={onCancel} disabled={loading} style={{ color: colors.secondary, textDecoration: "none", fontWeight: "600" }}>
+              Discard Changes
             </Button>
-            <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save"}
+            <Button variant="primary" type="submit" disabled={loading} style={customStyles.btnPrimary}>
+              {loading ? <Spinner size="sm" /> : (portData ? "Update Record" : "Save Record")}
             </Button>
           </div>
         </Form>
@@ -232,304 +301,157 @@ const PortForm = ({ portData, onSave, onCancel }) => {
 // List Component
 const PortList = ({ onEdit, onDelete, refresh }) => {
   const [ports, setPorts] = useState([]);
-  const [filteredPorts, setFilteredPorts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
   const [availableCountries, setAvailableCountries] = useState([]);
-  const [filters, setFilters] = useState({
-    page: 1,
-    country: "",
-  });
-  const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState({ page: 1, country: "", search: "" });
+  const searchTimeout = useRef(null);
 
   useEffect(() => {
     fetchPorts();
   }, [filters, refresh]);
 
-  useEffect(() => {
-    filterPorts();
-  }, [searchTerm, ports]);
-
   const fetchPorts = async () => {
     try {
       setLoading(true);
       const response = await PortService.getAll(filters);
-      const portsData = response.data || response;
-      setPorts(portsData);
-      setFilteredPorts(portsData);
+      const data = response.data || response;
+      setPorts(Array.isArray(data) ? data : []);
       setPagination(response.pagination || {});
-
-      // Extract unique countries for filtering
-      const countries = [
-        ...new Set((response.data || []).map((item) => item.country)),
-      ].sort();
-      setAvailableCountries(countries);
+      if (!filters.country) {
+         const countries = [...new Set((Array.isArray(data) ? data : []).map((item) => item.country))].sort();
+         setAvailableCountries(countries);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
       setPorts([]);
-      setFilteredPorts([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filterPorts = () => {
-    if (!searchTerm.trim()) {
-      setFilteredPorts(ports);
-      return;
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value, page: key === "page" ? value : 1 }));
+  };
+
+  const handleSearchChange = (val) => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      handleFilterChange("search", val);
+    }, 500);
+  };
+
+  const renderPagination = () => {
+    const { currentPage, totalPages } = pagination;
+    if (totalPages <= 1) return null;
+
+    const pages = [];
+    const delta = 2;
+
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+            pages.push(i);
+        } else if (pages[pages.length - 1] !== "...") {
+            pages.push("...");
+        }
     }
 
-    const searchLower = searchTerm.toLowerCase();
-    const filtered = ports.filter(
-      (port) =>
-        (port.portCode && port.portCode.toLowerCase().includes(searchLower)) ||
-        (port.portName && port.portName.toLowerCase().includes(searchLower)) ||
-        (port.portDetails &&
-          port.portDetails.toLowerCase().includes(searchLower)) ||
-        (port.country && port.country.toLowerCase().includes(searchLower)) ||
-        (port._id && port._id.toLowerCase().includes(searchLower))
+    return (
+      <div className="d-flex justify-content-center mt-4 pb-3">
+        <nav>
+          <ul className="pagination pagination-sm gap-2">
+            {pages.map((p, idx) => (
+              <li key={idx} className={`page-item ${p === currentPage ? "active" : ""} ${p === "..." ? "disabled" : ""}`}>
+                {p === "..." ? (
+                  <span className="page-link border-0 bg-transparent text-muted">...</span>
+                ) : (
+                  <button 
+                    className="page-link rounded-circle shadow-sm" 
+                    style={{ width: "35px", height: "35px", display: "flex", alignItems: "center", justifyContent: "center", border: "none", fontSize: "13px", fontWeight: "600" }}
+                    onClick={() => handleFilterChange("page", p)}
+                  >
+                    {p}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
     );
-    setFilteredPorts(filtered);
   };
 
-  const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value,
-      page: key === "page" ? value : 1,
-    }));
-  };
-
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const clearSearch = () => {
-    setSearchTerm("");
-  };
-
-  const truncateDetails = (text, maxLength = 100) => {
-    return text && text.length > maxLength
-      ? `${text.substring(0, maxLength)}...`
-      : text;
-  };
-
-  if (loading) {
+  if (loading && !ports.length) {
     return (
       <div className="text-center py-5">
-        <Spinner animation="border" />
+        <Spinner animation="border" style={{ color: colors.primary }} />
+        <p className="mt-3 text-muted fw-bold">Connecting to Master Database...</p>
       </div>
     );
   }
 
   return (
     <div>
-      {/* Filters */}
-      <Row className="mb-3">
-        <Col md={6}>
-          <Form.Control
-            type="text"
-            placeholder="Search by port code, name, details, or country..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
-          {searchTerm && (
-            <Form.Text className="text-muted">
-              Showing {filteredPorts.length} of {ports.length} ports
-              {searchTerm && ` matching "${searchTerm}"`}
-            </Form.Text>
-          )}
-        </Col>
-        <Col md={6}>
-          <Form.Select
-            value={filters.country}
-            onChange={(e) => handleFilterChange("country", e.target.value)}
-          >
-            <option value="">All Countries</option>
-            {availableCountries.map((country) => (
-              <option key={country} value={country}>
-                {country}
-              </option>
-            ))}
-          </Form.Select>
-        </Col>
-      </Row>
+      <Card className="mb-4 border-0 shadow-sm" style={{ borderRadius: "12px" }}>
+        <Card.Body className="p-3">
+          <Row className="g-3 align-items-center">
+            <Col md={7}>
+                <Form.Control
+                  type="text"
+                  placeholder="Global Search (Name, Code, UNECE...)"
+                  defaultValue={filters.search}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  style={customStyles.input}
+                />
+            </Col>
+            <Col md={5}>
+              <Form.Select
+                value={filters.country}
+                onChange={(e) => handleFilterChange("country", e.target.value)}
+                style={customStyles.input}
+              >
+                <option value="">All Countries</option>
+                {availableCountries.map((c) => (<option key={c} value={c}>{c}</option>))}
+              </Form.Select>
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
 
-      {/* Results Counter */}
-      <Row className="mb-3">
-        <Col md={6}>
-          <div className="border rounded p-2 bg-light">
-            <div className="h6 mb-0 text-primary">{filteredPorts.length}</div>
-            <div className="text-muted small">Total Ports</div>
-          </div>
-        </Col>
-      </Row>
-
-      {/* Table */}
-      <div className="table-responsive">
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th style={{ width: "120px" }}>Port Code</th>
-              <th style={{ width: "200px" }}>Port Name</th>
-              <th style={{ width: "150px" }}>Country</th>
-              <th style={{ width: "150px" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPorts.length > 0 ? (
-              filteredPorts.map((item) => (
-                <tr key={item._id}>
-                  <td>
-                    <span className="font-monospace text-primary">
-                      <strong>{item.portCode}</strong>
-                    </span>
-                  </td>
-                  <td>
-                    <strong>{item.portName}</strong>
-                  </td>
-                  <td>
-                    <span className="badge bg-info">{item.country}</span>
-                  </td>
-                  <td>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      className="me-2"
-                      onClick={() => onEdit(item)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => onDelete([item._id])}
-                    >
-                      Delete
-                    </Button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5" className="text-center py-4">
-                  <Alert variant="info" className="text-center">
-                    {searchTerm ? (
-                      <>
-                        No ports found matching "{searchTerm}".
-                        <br />
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          className="mt-2"
-                          onClick={clearSearch}
-                        >
-                          Clear Search
-                        </Button>
-                      </>
-                    ) : (
-                      "No ports found."
-                    )}
-                  </Alert>
-                </td>
+      <div className="shadow-sm rounded-4 overflow-hidden border bg-white">
+        <div className="table-responsive">
+          <Table hover className="mb-0 align-middle border-0">
+            <thead className="bg-light">
+              <tr style={{ borderBottom: `2px solid ${colors.border}` }}>
+                <th className="ps-4 py-3" style={{ fontSize: "11px", color: colors.textMuted, letterSpacing: "1px" }}>PORT CODE</th>
+                <th className="py-3" style={{ fontSize: "11px", color: colors.textMuted, letterSpacing: "1px" }}>UNECE CODE</th>
+                <th className="py-3" style={{ fontSize: "11px", color: colors.textMuted, letterSpacing: "1px" }}>PORT NAME</th>
+                <th className="py-3" style={{ fontSize: "11px", color: colors.textMuted, letterSpacing: "1px" }}>COUNTRY</th>
+                <th className="pe-4 py-3 text-end" style={{ fontSize: "11px", color: colors.textMuted, letterSpacing: "1px" }}>ACTIONS</th>
               </tr>
-            )}
-          </tbody>
-        </Table>
+            </thead>
+            <tbody>
+              {ports.length > 0 ? (
+                ports.map((item) => (
+                  <tr key={item._id} className="border-bottom">
+                    <td className="ps-4"><div className="fw-bold" style={{ color: colors.primary }}>{item.portCode}</div></td>
+                    <td><div className="font-monospace text-muted small">{item.uneceCode || "—"}</div></td>
+                    <td><div className="fw-semibold">{item.portName}</div></td>
+                    <td><span style={{ ...customStyles.badge, background: "#e0e7ff", color: "#4338ca" }}>{item.country}</span></td>
+                    <td className="pe-4 text-end">
+                      <Button variant="light" size="sm" className="me-2" style={{ borderRadius: "6px", color: colors.primary, fontWeight: 600 }} onClick={() => onEdit(item)}>Edit</Button>
+                      <Button variant="link" size="sm" className="text-danger p-0 fw-bold" style={{ textDecoration: "none", fontSize: "12px" }} onClick={() => onDelete([item._id])}>Delete</Button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr><td colSpan="5" className="text-center py-5 text-muted">No maritime ports found.</td></tr>
+              )}
+            </tbody>
+          </Table>
+        </div>
       </div>
-
-      {/* Pagination - Only show if not searching */}
-      {!searchTerm && pagination.totalPages > 1 && (
-        <nav>
-          <ul className="pagination justify-content-center">
-            <li
-              className={`page-item ${
-                pagination.currentPage === 1 ? "disabled" : ""
-              }`}
-            >
-              <button
-                className="page-link"
-                onClick={() =>
-                  handleFilterChange("page", pagination.currentPage - 1)
-                }
-                disabled={pagination.currentPage === 1}
-              >
-                Previous
-              </button>
-            </li>
-            {(() => {
-              const total = pagination.totalPages;
-              const current = pagination.currentPage;
-              const delta = 2;
-              let pages = [];
-
-              // Always show first page
-              pages.push(1);
-
-              // Add dots if needed before window
-              if (current - delta > 2) {
-                pages.push("...");
-              }
-
-              // Add window around current
-              for (
-                let i = Math.max(2, current - delta);
-                i <= Math.min(total - 1, current + delta);
-                i++
-              ) {
-                pages.push(i);
-              }
-
-              // Add dots if needed after window
-              if (current + delta < total - 1) {
-                pages.push("...");
-              }
-
-              // Always show last page if > 1
-              if (total > 1) {
-                pages.push(total);
-              }
-
-              return pages.map((page, index) => (
-                <li
-                  key={index}
-                  className={`page-item ${page === current ? "active" : ""} ${
-                    page === "..." ? "disabled" : ""
-                  }`}
-                >
-                  {page === "..." ? (
-                    <span className="page-link">...</span>
-                  ) : (
-                    <button
-                      className="page-link"
-                      onClick={() => handleFilterChange("page", page)}
-                    >
-                      {page}
-                    </button>
-                  )}
-                </li>
-              ));
-            })()}
-            <li
-              className={`page-item ${
-                pagination.currentPage === pagination.totalPages
-                  ? "disabled"
-                  : ""
-              }`}
-            >
-              <button
-                className="page-link"
-                onClick={() =>
-                  handleFilterChange("page", pagination.currentPage + 1)
-                }
-                disabled={pagination.currentPage === pagination.totalPages}
-              >
-                Next
-              </button>
-            </li>
-          </ul>
-        </nav>
-      )}
+      {renderPagination()}
     </div>
   );
 };
@@ -546,96 +468,38 @@ const PortCodeSea = () => {
     setTimeout(() => setAlert(null), 5000);
   }, []);
 
-  const handleAddNew = useCallback(() => {
-    setEditingPort(null);
-    setShowForm(true);
-  }, []);
+  const handleAddNew = () => { setEditingPort(null); setShowForm(true); };
+  const handleEdit = (p) => { setEditingPort(p); setShowForm(true); };
+  const handleSave = () => { setShowForm(false); setEditingPort(null); setRefresh((p) => p + 1); showAlert(editingPort ? "Port updated" : "Port created"); };
+  const handleCancel = () => { setShowForm(false); setEditingPort(null); };
 
-  const handleEdit = useCallback((port) => {
-    setEditingPort(port);
-    setShowForm(true);
-  }, []);
-
-  const handleDelete = useCallback(
-    async (ids) => {
+  const handleDelete = async (ids) => {
+    if (window.confirm("Delete record?")) {
       try {
-        if (ids.length === 1) {
-          if (window.confirm("Are you sure you want to delete this port?")) {
-            await PortService.delete(ids[0]);
-            showAlert("Port deleted successfully");
-            setRefresh((prev) => prev + 1);
-          }
-        }
-      } catch (error) {
-        showAlert(error.message || "Error deleting port", "danger");
-      }
-    },
-    [showAlert]
-  );
-
-  const handleSave = useCallback(() => {
-    setShowForm(false);
-    setEditingPort(null);
-    setRefresh((prev) => prev + 1);
-    showAlert(
-      editingPort ? "Port updated successfully" : "Port created successfully"
-    );
-  }, [editingPort, showAlert]);
-
-  const handleCancel = useCallback(() => {
-    setShowForm(false);
-    setEditingPort(null);
-  }, []);
+        await PortService.delete(ids[0]);
+        showAlert("Record deleted");
+        setRefresh((p) => p + 1);
+      } catch (e) { showAlert(e.message, "danger"); }
+    }
+  };
 
   return (
-    <Container fluid className="py-4">
-      <Row>
-        <Col>
-          {alert && (
-            <Alert
-              variant={alert.type}
-              dismissible
-              onClose={() => setAlert(null)}
-              className="mb-4"
-            >
-              {alert.message}
-            </Alert>
-          )}
-
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h1 className="mb-0">Port Code-Sea </h1>
-            <div>
-              {showForm && (
-                <Button
-                  variant="outline-secondary"
-                  className="me-2"
-                  onClick={handleCancel}
-                >
-                  Back to List
-                </Button>
-              )}
-              <Button variant="success" onClick={handleAddNew}>
-                Add New Port
-              </Button>
-            </div>
+    <div style={{ background: colors.background, minHeight: "100vh" }}>
+      <Container className="py-4">
+        {alert && <Alert variant={alert.type} dismissible onClose={() => setAlert(null)} className="shadow-sm border-0">{alert.message}</Alert>}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h2 className="fw-900 mb-0" style={{ color: colors.textMain, letterSpacing: "-0.5px" }}>Maritime Port Master</h2>
+            <p className="text-muted small mb-0">Manage global terminal and UNECE codes</p>
           </div>
-
-          {showForm ? (
-            <PortForm
-              portData={editingPort}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
-          ) : (
-            <PortList
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              refresh={refresh}
-            />
-          )}
-        </Col>
-      </Row>
-    </Container>
+          <Button onClick={showForm ? handleCancel : handleAddNew} style={customStyles.btnPrimary}>{showForm ? "View All Ports" : "+ Register Port"}</Button>
+        </div>
+        <div className="animate-fade-in">
+          {showForm ? <PortForm portData={editingPort} onSave={handleSave} onCancel={handleCancel} /> : <PortList onEdit={handleEdit} onDelete={handleDelete} refresh={refresh} />}
+        </div>
+      </Container>
+      <style>{`.animate-fade-in { animation: fadeIn 0.3s ease-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } } .page-link { color: ${colors.primary}; border: none; background: #fff; } .page-item.active .page-link { background: ${colors.primary} !important; color: #fff !important; }`}</style>
+    </div>
   );
 };
 

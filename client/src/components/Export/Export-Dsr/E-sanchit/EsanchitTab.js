@@ -134,6 +134,16 @@ const ESanchitTab = ({ formik }) => {
     setIsDialogOpen(false);
   };
 
+  const handleDelete = (idx) => {
+    const doc = docs[idx];
+    const label = doc.irn || doc.documentReferenceNo || `Row ${idx + 1}`;
+    if (window.confirm(`⚠️ Are you sure you want to delete e-Sanchit document "${label}"?\n\nThis action cannot be undone.`)) {
+      const updated = [...(formik.values.eSanchitDocuments || [])];
+      updated.splice(idx, 1);
+      formik.setFieldValue("eSanchitDocuments", updated);
+    }
+  };
+
   const docs = formik.values.eSanchitDocuments || [];
 
   return (
@@ -184,7 +194,7 @@ const ESanchitTab = ({ formik }) => {
                       ? formatDate(doc.dateOfIssue)
                       : ""}
                   </td>
-                  <td style={styles.td}>
+                  <td style={{ ...styles.td, whiteSpace: "nowrap" }}>
                     <button
                       type="button"
                       style={styles.smallButton}
@@ -194,6 +204,16 @@ const ESanchitTab = ({ formik }) => {
                       }}
                     >
                       Edit
+                    </button>
+                    <button
+                      type="button"
+                      style={styles.linkButton}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(idx);
+                      }}
+                    >
+                      Delete
                     </button>
                   </td>
                 </tr>

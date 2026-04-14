@@ -118,23 +118,94 @@ const EditChargeModal = ({
     }
   }, [isOpen]);
 
+  // Shared calculation logic
+  const calculateDerivedFields = (row, section) => {
+    const sectionRef = row[section] || {};
+    const qty = parseFloat(sectionRef.qty ?? 1) || 0;
+    const rate = parseFloat(sectionRef.rate ?? 0) || 0;
+    const exRate = parseFloat(sectionRef.exchangeRate ?? 1) || 1;
+
+    // We expect sectionRef.amount to be set before calling this if it's a Qty/Rate change
+    // But if it's 0 (initial state), we fall back to Qty * Rate
+    let amount = sectionRef.amount;
+    if (amount === undefined || amount === null || (amount === 0 && rate > 0)) {
+      amount = qty * rate;
+    }
+
+    sectionRef.amount = amount;
+    sectionRef.amountINR = Math.round((amount * exRate) * 100) / 100;
+
+    const includeGst = sectionRef.isGst || false;
+    const gstRate = parseFloat(sectionRef.gstRate) || 18;
+
+    // Inclusive math as per user requirement (Total = Basic + GST)
+    // Basic = Total / (1 + Rate/100)
+    const derivedBasic = Math.round((amount / (1 + (gstRate / 100))) * 100) / 100;
+    const derivedGst = Math.round((amount - derivedBasic) * 100) / 100;
+
+    sectionRef.basicAmount = derivedBasic;
+    sectionRef.gstAmount = derivedGst;
+
+    // GST Split Logic
+    const partyName = sectionRef.partyName;
+    const party = [...shippingLines, ...suppliers, ...organizations, ...exporters].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
+    const branchIndex = sectionRef.branchIndex || 0;
+    const gstin = party?.branches?.[branchIndex]?.gst || "";
+
+    if (gstin.startsWith("24")) {
+      sectionRef.cgst = derivedGst / 2;
+      sectionRef.sgst = derivedGst / 2;
+      sectionRef.igst = 0;
+    } else {
+      sectionRef.cgst = 0;
+      sectionRef.sgst = 0;
+      sectionRef.igst = derivedGst;
+    }
+
+    const isTds = sectionRef.isTds || false;
+    const tdsPercent = parseFloat(sectionRef.tdsPercent) || 0;
+    if (isTds) {
+      sectionRef.tdsAmount = Math.round((sectionRef.basicAmount * (tdsPercent / 100)) * 100) / 100;
+    } else {
+      sectionRef.tdsAmount = 0;
+    }
+
+    sectionRef.netPayable = includeGst 
+      ? Math.round((amount - sectionRef.tdsAmount) * 100) / 100
+      : Math.round((derivedBasic - sectionRef.tdsAmount) * 100) / 100;
+    
+    return sectionRef;
+  };
+
   useEffect(() => {
     if (isOpen) {
-      const initialData = JSON.parse(JSON.stringify(selectedCharges)).map(charge => ({
-        ...charge,
-        invoice_number: charge.invoice_number || '',
-        invoice_date: charge.invoice_date || '',
-        remark: charge.remark || '',
-        purchase_book_no: charge.purchase_book_no || '',
-        purchase_book_status: charge.purchase_book_status || '',
-        payment_request_no: charge.payment_request_no || '',
-        payment_request_status: charge.payment_request_status || ''
-      }));
+      const initialData = JSON.parse(JSON.stringify(selectedCharges)).map(charge => {
+        const row = {
+          ...charge,
+          invoice_number: charge.invoice_number || '',
+          invoice_date: charge.invoice_date || '',
+          remark: charge.remark || '',
+          purchase_book_no: charge.purchase_book_no || '',
+          purchase_book_status: charge.purchase_book_status || '',
+          payment_request_no: charge.payment_request_no || '',
+          payment_request_status: charge.payment_request_status || ''
+        };
+
+        // Normalize amount from total if needed and trigger recalcs
+        ['revenue', 'cost'].forEach(sec => {
+          if (row[sec]) {
+            if (!row[sec].amount && row[sec].total) row[sec].amount = row[sec].total;
+            row[sec] = calculateDerivedFields(row, sec);
+          }
+        });
+
+        return row;
+      });
       setFormData(initialData);
       setPanelOpen(selectedCharges.reduce((acc, _, i) => ({ ...acc, [i]: 'cost' }), {}));
       setUploadIndex(null);
     }
-  }, [isOpen, selectedCharges]);
+  }, [isOpen, selectedCharges, shippingLines]); // added shippingLines to ensure party-based recalcs work if master data loads later
 
   if (!isOpen) return null;
 
@@ -169,7 +240,7 @@ const EditChargeModal = ({
       }
 
       // Auto-populate Payable To if type is 'Importer' in Cost section
-      if (section === 'cost' && field === 'partyType' && value === 'Importer' && exporterName) {
+      if (section === 'cost' && field === 'partyType' && value === 'EXPORTER' && exporterName) {
         updated[index][section].partyName = exporterName;
       }
 
@@ -190,68 +261,15 @@ const EditChargeModal = ({
       const fieldsToTriggerRecalc = ['qty', 'rate', 'isGst', 'gstRate', 'isTds', 'tdsPercent', 'exchangeRate', 'partyName', 'amount'];
       if (fieldsToTriggerRecalc.includes(field)) {
         const sectionRef = updated[index][section];
-        const qty = parseFloat(sectionRef.qty ?? 1) || 0;
-        const rate = parseFloat(sectionRef.rate ?? 0) || 0;
-        const exRate = parseFloat(sectionRef.exchangeRate ?? 1) || 1;
-
-        // Total Amount: Qty * Rate (Rate is typically GST-inclusive in this workflow)
-        let amount = qty * rate;
-
-        // If the user manually edited 'amount' field (if we enable it later), use that
-        if (field === 'amount') {
-          amount = parseFloat(value) || 0;
+        
+        // Recalculate amount if qty or rate changed (unless manual amount override)
+        if (field !== 'amount' && (field === 'qty' || field === 'rate')) {
+           const q = parseFloat(sectionRef.qty ?? 1) || 0;
+           const r = parseFloat(sectionRef.rate ?? 0) || 0;
+           sectionRef.amount = q * r;
         }
 
-        sectionRef.amount = amount;
-        sectionRef.amountINR = amount * exRate;
-
-        const includeGst = sectionRef.isGst || false;
-        const gstRate = parseFloat(sectionRef.gstRate) || 18;
-
-        let derivedBasic, derivedGst;
-
-        if (includeGst) {
-          // Calculation as per screenshot:
-          // Basic = Total / (1 + Rate/100) -> Rounded to 1 decimal for display consistency
-          derivedBasic = Math.round((amount / (1 + (gstRate / 100))) * 10) / 10;
-          // GST is Basic * Rate %
-          derivedGst = (derivedBasic * (gstRate / 100));
-        } else {
-          derivedBasic = amount;
-          derivedGst = 0;
-        }
-
-        sectionRef.basicAmount = derivedBasic;
-        sectionRef.gstAmount = derivedGst;
-
-        // GST Split Logic based on GSTIN (24 = Gujarat)
-        const partyName = sectionRef.partyName;
-        const party = [...shippingLines, ...suppliers, ...organizations, ...exporters].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
-        const branchIndex = sectionRef.branchIndex || 0;
-        const gstin = party?.branches?.[branchIndex]?.gst || "";
-
-        if (gstin.startsWith("24")) {
-          sectionRef.cgst = derivedGst / 2;
-          sectionRef.sgst = derivedGst / 2;
-          sectionRef.igst = 0;
-        } else {
-          sectionRef.cgst = 0;
-          sectionRef.sgst = 0;
-          sectionRef.igst = derivedGst;
-        }
-
-        // TDS Calculation: ALWAYS on the GST-exclusive Basic Amount
-        const isTds = sectionRef.isTds || false;
-        const tdsPercent = parseFloat(sectionRef.tdsPercent) || 0;
-        if (isTds) {
-          sectionRef.tdsAmount = sectionRef.basicAmount * (tdsPercent / 100);
-        } else {
-          sectionRef.tdsAmount = 0;
-        }
-
-        // Net Payable Calculation:
-        // Always subtract TDS from the Total Amount
-        sectionRef.netPayable = amount - sectionRef.tdsAmount;
+        updated[index][section] = calculateDerivedFields(updated[index], section);
       }
 
       // Open dropdown when typing party name
@@ -621,7 +639,7 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">Payable Type</span>
                                 <select className="ep-select" value={row.cost?.partyType || ''} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'cost')}>
-                                  <option>Vendor</option><option>Transporter</option><option>Importer</option><option>Others</option><option>Agent</option>
+                                  <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option>
                                 </select>
                               </div>
                               <div className="ep-row">
@@ -652,7 +670,7 @@ const EditChargeModal = ({
                                         const type = row.cost?.partyType?.toUpperCase();
                                         const list = (type === 'AGENT' || type === 'OTHERS') ? [...shippingLines, ...exporters] :
                                           (type === 'VENDOR' || type === 'TRANSPORTER') ? [...suppliers, ...shippingLines, ...exporters] :
-                                            (type === 'IMPORTER') ? [...organizations, ...exporters] : [];
+                                            (type === 'EXPORTER') ? [...organizations, ...exporters] : [];
 
                                         const filtered = list.filter(item => !row.cost?.partyName || (item.name && item.name.toLowerCase().includes(row.cost.partyName.toLowerCase())))
                                           .slice(0, 30);

@@ -34,12 +34,16 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         if (requesterUsername) {
             const requester = await UserModel.findOne({ username: requesterUsername });
             if (requester && requester.role !== "Admin") {
-                const branchRestrictions = requester.selected_branches || [];
-                if (branchRestrictions.length > 0) {
-                    filter.$and.push({
-                        branch_code: { $in: branchRestrictions }
-                    });
-                }
+                let branchRestrictions = requester.selected_branches || [];
+                
+                // Resilience: Map full branch names to codes if necessary
+                const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+                branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
+                // Always apply branch restriction for non-admins
+                filter.$and.push({
+                    branch_code: { $in: branchRestrictions }
+                });
 
                 const portRestrictions = requester.selected_ports || [];
                 const icdRestrictions = requester.selected_icd_codes || [];
@@ -65,7 +69,14 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                         ]
                     });
                 }
+            } else if (!requester && requesterUsername !== "Admin") {
+                 // If a username is provided but user doesn't exist, and it's not a generic Admin check, restrict everything
+                 filter.$and.push({ _id: null });
             }
+        } else {
+             // If no requester username is provided, restrict everything for safety
+             // (Assuming all dashboard requests must be authenticated)
+             filter.$and.push({ _id: null });
         }
 
         // --- MANDATORY BASE CONDITIONS FOR OPERATION MODULE ---
