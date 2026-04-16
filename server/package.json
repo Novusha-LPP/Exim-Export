@@ -5,7 +5,9 @@
   "main": "app.js",
   "scripts": {
     "start": "nodemon app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "convert:drawback": "node scripts/convertDrawbackExcelToJson.mjs",
+    "convert:rodtep": "node scripts/convertRodtepExcelToJson.mjs"
   },
   "keywords": [
     "export",

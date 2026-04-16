@@ -21,7 +21,7 @@ function ShipmentTabPanel(props) {
   );
 }
 
-const ShipmentTab = ({ formik, directories, params, onUpdate }) => {
+const ShipmentTab = ({ formik, directories, params, onUpdate, isEditable = true }) => {
   const [activeSubTab, setActiveSubTab] = useState(0);
 
   const handleSubTabChange = (event, newValue) => {
@@ -59,44 +59,48 @@ const ShipmentTab = ({ formik, directories, params, onUpdate }) => {
         </Tabs>
       </Box>
 
-      {/* Tab Content */}
-      <ShipmentTabPanel value={activeSubTab} index={0}>
-        <ShipmentMainTab
-          formik={formik}
-          directories={directories}
-          params={params}
-        />
-      </ShipmentTabPanel>
-
-      {/* {(formik.values.consignmentType || "").toUpperCase() !== "AIR" && (
-        <ShipmentTabPanel value={activeSubTab} index={1}>
-          <StuffingDetailsTab
+      <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
+        {/* Tab Content */}
+        <ShipmentTabPanel value={activeSubTab} index={0}>
+          <ShipmentMainTab
             formik={formik}
             directories={directories}
             params={params}
+            isEditable={isEditable}
           />
         </ShipmentTabPanel>
-      )} */}
-
-      {/* <ShipmentTabPanel value={activeSubTab} index={2}>
-        <ShippingBillPrintingTab 
-          formik={formik} 
-          directories={directories} 
-          params={params}
-        />
-      </ShipmentTabPanel>
-       */}
-      {(formik.values.consignmentType || "").toUpperCase() !== "AIR" &&
-        formik.values.annexure_c_details && (
+  
+        {/* {(formik.values.consignmentType || "").toUpperCase() !== "AIR" && (
           <ShipmentTabPanel value={activeSubTab} index={1}>
-            <AnnexC1DetailsTab
+            <StuffingDetailsTab
               formik={formik}
               directories={directories}
               params={params}
-              onUpdate={onUpdate}
             />
           </ShipmentTabPanel>
-        )}
+        )} */}
+  
+        {/* <ShipmentTabPanel value={activeSubTab} index={2}>
+          <ShippingBillPrintingTab 
+            formik={formik} 
+            directories={directories} 
+            params={params}
+          />
+        </ShipmentTabPanel>
+         */}
+        {(formik.values.consignmentType || "").toUpperCase() !== "AIR" &&
+          formik.values.annexure_c_details && (
+            <ShipmentTabPanel value={activeSubTab} index={1}>
+              <AnnexC1DetailsTab
+                formik={formik}
+                directories={directories}
+                params={params}
+                onUpdate={onUpdate}
+                isEditable={isEditable}
+              />
+            </ShipmentTabPanel>
+          )}
+      </fieldset>
     </Box>
   );
 };

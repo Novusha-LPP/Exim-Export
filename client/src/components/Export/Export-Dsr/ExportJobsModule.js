@@ -85,7 +85,23 @@ function ExportJobsModule() {
   const [isLocked, setIsLocked] = useState(false);
   const [lockDialogOpen, setLockDialogOpen] = useState(false);
   const [lockedByUser, setLockedByUser] = useState(null);
+  const [isEditable, setIsEditable] = useState(false);
   const hasLockedRef = useRef(false);
+
+  const isNewJob = !data?.job_no;
+
+  // Auto-lock when SB Date is present (unless manually unlocked)
+  useEffect(() => {
+    if (data && !loading && isLocked) {
+      if (formik.values.sb_date && !isNewJob) {
+        setIsEditable(false);
+      } else {
+        setIsEditable(true);
+      }
+    } else {
+      setIsEditable(false);
+    }
+  }, [formik.values.sb_date, data, loading, isLocked, isNewJob]);
 
   // Lock the job when the component mounts
   const lockJob = useCallback(async () => {
@@ -466,6 +482,8 @@ function ExportJobsModule() {
           directories={directories}
           exportJobsUsers={exportJobsUsers}
           onUpdate={formik.handleSubmit}
+          isEditable={isEditable}
+          setIsEditable={setIsEditable}
         />
       </Box>
 
@@ -518,6 +536,7 @@ function ExportJobsModule() {
                   job={data}
                   formik={formik}
                   directories={directories}
+                  isEditable={isEditable}
                 />
               ),
             },
@@ -528,6 +547,7 @@ function ExportJobsModule() {
                   job={data}
                   formik={formik}
                   directories={directories}
+                  isEditable={isEditable}
                 />
               ),
             },
@@ -540,6 +560,7 @@ function ExportJobsModule() {
                       job={data}
                       formik={formik}
                       onUpdate={formik.handleSubmit}
+                      isEditable={isEditable}
                     />
                   ),
                 },
@@ -548,23 +569,23 @@ function ExportJobsModule() {
             {
               label: "Invoice",
               component: (
-                <InvoiceTab formik={formik} directories={directories} />
+                <InvoiceTab formik={formik} directories={directories} isEditable={isEditable} />
               ),
             },
-            { label: "Product", component: <ProductTab formik={formik} /> },
-            { label: "ESanchit", component: <ESanchitTab formik={formik} /> },
+            { label: "Product", component: <ProductTab formik={formik} isEditable={isEditable} /> },
+            { label: "ESanchit", component: <ESanchitTab formik={formik} isEditable={isEditable} /> },
             {
               label: "Charges",
-              component: <ChargesTab job={data} formik={formik} />,
+              component: <ChargesTab job={data} formik={formik} isEditable={isEditable} />,
             },
 
             {
               label: "Operations",
-              component: <OperationsTab formik={formik} />,
+              component: <OperationsTab formik={formik} isEditable={isEditable} />,
             },
             {
               label: "Tracking Completed",
-              component: <TrackingCompletedTab job={data} formik={formik} isAdmin={user?.role === "Admin"} />,
+              component: <TrackingCompletedTab job={data} formik={formik} isAdmin={user?.role === "Admin"} isEditable={isEditable} />,
             },
           ];
 

@@ -23,6 +23,7 @@ const MODULE_OPTIONS = [
   { value: "export-documentation", label: "Documentation" },
   { value: "export-esanchit", label: "E-Sanchit" },
   { value: "export-charges", label: "Charges" },
+  { value: "export-billing", label: "Billing" },
 ];
 
 const RaiseQueryDialog = ({ open, onClose, job, onQueryRaised }) => {
@@ -42,6 +43,8 @@ const RaiseQueryDialog = ({ open, onClose, job, onQueryRaised }) => {
     ? "export-esanchit"
     : pathname.startsWith("/export-charges")
     ? "export-charges"
+    : pathname.startsWith("/export-billing")
+    ? "export-billing"
     : "export-dsr";
 
   // Filter out current module from target options

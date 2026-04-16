@@ -331,9 +331,10 @@ const LogisysEditableHeader = ({
   onUpdate,
   directories,
   exportJobsUsers = [],
+  isEditable,
+  setIsEditable
 }) => {
-  // Lock state - default to locked (not editable)
-  const [isEditable, setIsEditable] = useState(false);
+  // removed local isEditable state
 
   useEffect(() => {
     const isAir = formik.values.consignmentType === "AIR";
@@ -375,7 +376,15 @@ const LogisysEditableHeader = ({
   };
 
   const toggleLock = () => {
-    setIsEditable(!isEditable);
+    if (setIsEditable) {
+      if (!isEditable) {
+        if (window.confirm("⚠️ WARNING: You are about to unlock this job for editing. \n\nUnlocking a job with an SB Date may lead to data inconsistencies if not handled carefully. \n\nDo you want to proceed and unlock?")) {
+          setIsEditable(true);
+        }
+      } else {
+        setIsEditable(false);
+      }
+    }
   };
 
   const shipperOpts = (directories?.exporters || []).map((exp) => ({
@@ -662,6 +671,7 @@ const LogisysEditableHeader = ({
             value={formik.values.icegateId || "RAJANSFPL"}
             onChange={(e) => formik.setFieldValue("icegateId", e.target.value)}
             style={{ ...styles.input, cursor: "pointer", paddingRight: 4 }}
+            disabled={!isEditable}
           >
             <option value="RAJANSFPL">RAJANSFPL</option>
             <option value="SURAJAMD">SURAJAMD</option>

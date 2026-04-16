@@ -182,7 +182,10 @@ const RS = "\r\n";
 
 const pad = (s, n) => String(s ?? "").padStart(n, "0");
 const trunc = (s, n) => String(s ?? "").slice(0, n);
-const clean = (s) => String(s ?? "")
+
+const toAscii = (s) => String(s ?? "").replace(/[^\x00-\x7F]/g, " ");
+
+const clean = (s) => toAscii(s)
     .replace(/[\r\n\t]/g, " ")
     // ALLOW , . / - ( ) : & per ICEGATE spec
     .replace(/[^a-zA-Z0-9\s,.\/:()\-&]/g, " ")
@@ -191,7 +194,7 @@ const clean = (s) => String(s ?? "")
     .trim();
 
 // FIX 23 / FIX 40: preserve internal spaces (consignee name, beneficiary name, marks_nos)
-const preserveSpaces = (s) => String(s ?? "").replace(/[\r\n\t]/g, " ").replace(/^ +| +$/g, "");
+const preserveSpaces = (s) => toAscii(s).replace(/[\r\n\t]/g, " ").replace(/^ +| +$/g, "");
 
 // FIX 37: title-case ("GANDHINAGAR" -> "Gandhinagar")
 const toTitleCase = (s) => String(s ?? "").replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
@@ -364,7 +367,6 @@ function validateJobData(job) {
 export function generateSBFlatFile(job) {
     const loc = CUSTOM_HOUSE_MAP[(job.custom_house || "").toUpperCase()] || "INAMD4";
     const sbNo = extractSbNo(job.job_no);
-    const jdt = fmtDate(job.sb_date || new Date());
     const sid = clean(job.icegateId || "RAJANSFPL").toUpperCase();
 
     const now = new Date();
@@ -376,9 +378,9 @@ export function generateSBFlatFile(job) {
     const seq = sbNo;
 
     // FIX 1: Standard prefix — 2 extra empty fields after date
-    const PD = `F${FS}${loc}${FS}${sbNo}${FS}${jdt}${FS}${FS}`;
+    const PD = `F${FS}${loc}${FS}${sbNo}${FS}${fdt}${FS}${FS}`;
     // CONTAINER prefix — NO extra empties
-    const PD_CONTAINER = `F${FS}${loc}${FS}${sbNo}${FS}${jdt}`;
+    const PD_CONTAINER = `F${FS}${loc}${FS}${sbNo}${FS}${fdt}`;
 
     const invs = job.invoices || [];
     const con0 = (job.consignees || [])[0] || {};

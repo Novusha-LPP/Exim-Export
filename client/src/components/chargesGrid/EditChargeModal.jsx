@@ -4,9 +4,13 @@ import RequestPaymentModal from './RequestPaymentModal';
 import PurchaseBookModal from './PurchaseBookModal';
 import { Chip } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
+import PrintIcon from '@mui/icons-material/Print';
 import axios from 'axios';
 import './charges.css';
 import { SHIPPING_LINES } from '../../utils/masterList';
+import { generatePurchaseBookPDF } from '../../utils/purchaseBookPrint';
+import { generatePaymentRequestPDF } from '../../utils/paymentRequestPrint';
+import logoImage from '../../assets/images/logo.jpg';
 
 const EditChargeModal = ({
   isOpen,
@@ -170,10 +174,10 @@ const EditChargeModal = ({
       sectionRef.tdsAmount = 0;
     }
 
-    sectionRef.netPayable = includeGst 
+    sectionRef.netPayable = includeGst
       ? Math.round((amount - sectionRef.tdsAmount) * 100) / 100
       : Math.round((derivedBasic - sectionRef.tdsAmount) * 100) / 100;
-    
+
     return sectionRef;
   };
 
@@ -261,12 +265,12 @@ const EditChargeModal = ({
       const fieldsToTriggerRecalc = ['qty', 'rate', 'isGst', 'gstRate', 'isTds', 'tdsPercent', 'exchangeRate', 'partyName', 'amount'];
       if (fieldsToTriggerRecalc.includes(field)) {
         const sectionRef = updated[index][section];
-        
+
         // Recalculate amount if qty or rate changed (unless manual amount override)
         if (field !== 'amount' && (field === 'qty' || field === 'rate')) {
-           const q = parseFloat(sectionRef.qty ?? 1) || 0;
-           const r = parseFloat(sectionRef.rate ?? 0) || 0;
-           sectionRef.amount = q * r;
+          const q = parseFloat(sectionRef.qty ?? 1) || 0;
+          const r = parseFloat(sectionRef.rate ?? 0) || 0;
+          sectionRef.amount = q * r;
         }
 
         updated[index][section] = calculateDerivedFields(updated[index], section);
@@ -320,6 +324,43 @@ const EditChargeModal = ({
     return Number(num).toFixed(2);
   };
 
+  const printPaymentAdvice = async (requestNo) => {
+    try {
+      const localUser = JSON.parse(localStorage.getItem("exim_user") || "{}");
+      const response = await axios.get(`${import.meta.env.VITE_API_STRING}/tally/payment-request`, {
+        params: { request_no: requestNo },
+        headers: { username: localUser.username || "", "user-role": localUser.role || "" },
+      });
+      generatePaymentRequestPDF(response.data, logoImage);
+    } catch (error) {
+      console.error(error);
+      alert("Print failed");
+    }
+  };
+  const printPurchaseBook = async (entryNo) => {
+    if (!entryNo) return;
+
+    try {
+      const localUser = JSON.parse(localStorage.getItem("exim_user") || "{}");
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_STRING}/tally/purchase-entry`,
+        {
+          params: { entry_no: entryNo },
+          headers: {
+            username: localUser.username || "",
+            "user-role": localUser.role || "",
+          },
+        }
+      );
+
+      const data = response.data || {};
+      generatePurchaseBookPDF(data, logoImage);
+    } catch (error) {
+      console.error("Error printing purchase book:", error);
+      alert("Unable to load purchase book for printing.");
+    }
+  };
+
   return (
     <div className="modal-overlay active" onMouseDown={() => setActiveDropdown({ index: null, section: null })}>
       <div className="edit-charge-modal" ref={modalRef} onMouseDown={(e) => e.stopPropagation()}>
@@ -355,6 +396,27 @@ const EditChargeModal = ({
                     <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold' }}>PB No</span>
                     <div className="ep-inline">
                       <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', width: '60%' }} value={row.purchase_book_no || ''} />
+                      <button
+                        type="button"
+                        className="upload-btn"
+                        style={{
+                          marginLeft: '10px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          backgroundColor: row.purchase_book_no ? '#1d4ed8' : '#cbd5e1',
+                          color: '#fff',
+                          borderColor: row.purchase_book_no ? '#1e40af' : '#94a3b8',
+                          cursor: row.purchase_book_no ? 'pointer' : 'not-allowed',
+                          opacity: row.purchase_book_no ? 1 : 0.8
+                        }}
+                        disabled={!row.purchase_book_no}
+                        title={row.purchase_book_no ? 'Print purchase book' : 'Create purchase book first'}
+                        onClick={() => printPurchaseBook(row.purchase_book_no)}
+                      >
+                        <PrintIcon style={{ fontSize: '14px' }} />
+                        Print PB
+                      </button>
                       <span className="ep-status-pill" style={{ marginLeft: '10px', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: row.purchase_book_status ? '#e8f5e9' : '#f5f5f5', color: row.purchase_book_status === 'Active' ? '#2e7d32' : '#757575', border: '1px solid #ddd' }}>
                         {row.purchase_book_status || 'Pending'}
                       </span>
@@ -364,6 +426,27 @@ const EditChargeModal = ({
                     <span className="form-label" style={{ color: '#d32f2f', fontWeight: 'bold' }}>PR No</span>
                     <div className="ep-inline">
                       <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', width: '60%' }} value={row.payment_request_no || ''} />
+                      <button
+                        type="button"
+                        className="upload-btn"
+                        style={{
+                          marginLeft: '10px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          backgroundColor: row.payment_request_no ? '#1d4ed8' : '#cbd5e1',
+                          color: '#fff',
+                          borderColor: row.payment_request_no ? '#1e40af' : '#94a3b8',
+                          cursor: row.payment_request_no ? 'pointer' : 'not-allowed',
+                          opacity: row.payment_request_no ? 1 : 0.8
+                        }}
+                        disabled={!row.payment_request_no}
+                        title={row.payment_request_no ? 'Print payment advice' : 'Create payment request first'}
+                        onClick={() => printPaymentAdvice(row.payment_request_no)}
+                      >
+                        <PrintIcon style={{ fontSize: '14px' }} />
+                        Print Advice
+                      </button>
                       <span className="ep-status-pill" style={{ marginLeft: '10px', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: row.payment_request_status ? '#e8f5e9' : '#f5f5f5', color: row.payment_request_status === 'Active' ? '#2e7d32' : '#757575', border: '1px solid #ddd' }}>
                         {row.payment_request_status || 'Pending'}
                       </span>
@@ -931,6 +1014,6 @@ const EditChargeModal = ({
       />
     </div>
   );
-};
+}
 
 export default memo(EditChargeModal);

@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.get("/getRodtep_R", async (req, res) => {
   try {
-    const { tariff_item } = req.query;
+    const { tariff_item, chapter } = req.query;
     if (!tariff_item) {
       return res.json({ success: true, count: 0, data: [] });
     }
@@ -19,6 +19,10 @@ router.get("/getRodtep_R", async (req, res) => {
         { tariff_item: { $regex: new RegExp(`^${trimmed}`) } },
       ],
     };
+
+    if (chapter) {
+      query.chapter = String(chapter).trim();
+    }
 
     if (isNum) {
       query.$or.push({ tariff_item: Number(trimmed) });

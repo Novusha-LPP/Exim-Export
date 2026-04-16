@@ -571,8 +571,13 @@ const chargeSchema = new Schema(
     remark: { type: String, trim: true },
     purchase_book_no: { type: String, trim: true },
     purchase_book_status: { type: String, trim: true },
+    purchase_book_is_approved: { type: Boolean, default: false },
     payment_request_no: { type: String, trim: true },
     payment_request_status: { type: String, trim: true },
+    payment_request_is_approved: { type: Boolean, default: false },
+    payment_request_receipt_url: { type: String, trim: true },
+    purchase_book_receipt_url: { type: String, trim: true },
+    payment_request_transaction_type: { type: String, trim: true },
 
     revenue: {
       particulars: { type: String },

@@ -28,13 +28,13 @@ const ExportChecklistGenerator = ({
   };
   const FONT_SIZES = {
     title: 12,
-    sectionHeader: 10,
-    fieldLabel: 7,
+    sectionHeader: 11,
+    fieldLabel: 7.5,
     fieldValue: 8,
     footer: 7,
-    declaration: 8,
-    tableHeader: 8,
-    tableContent: 7,
+    declaration: 8.5,
+    tableHeader: 8.5,
+    tableContent: 7.5,
   };
 
   // ==================== HELPER FUNCTIONS ====================
@@ -93,7 +93,7 @@ const ExportChecklistGenerator = ({
     const leftX = PAGE_CONFIG.margins.left;
 
     return {
-      drawLine: (x1, y, x2, lineWidth = 0.6) => {
+      drawLine: (x1, y, x2, lineWidth = 0.8) => {
         pdf.setLineWidth(lineWidth);
         pdf.line(x1, y, x2, y);
       },
@@ -104,7 +104,7 @@ const ExportChecklistGenerator = ({
         pdf.text(`${label}: `, x, y);
 
         if (value) {
-          pdf.setFont("helvetica", "normal");
+          pdf.setFont("helvetica", "bold");
           pdf.setFontSize(FONT_SIZES.fieldValue);
 
           const valueStr = value.toString();
@@ -262,14 +262,14 @@ const ExportChecklistGenerator = ({
           pdf.setFont("helvetica", "bold");
           pdf.text(label, leftColX, exporterY);
 
-          // Render Value in Normal
+          // Render Value in Bold
           const labelWidth = pdf.getTextWidth(label);
-          pdf.setFont("helvetica", "normal");
+          pdf.setFont("helvetica", "bold");
           const splitValue = pdf.splitTextToSize(value, 250 - labelWidth);
           pdf.text(splitValue, leftColX + labelWidth, exporterY);
           exporterY += Math.max(splitValue.length * 9, 9);
         } else {
-          pdf.setFont("helvetica", "normal");
+          pdf.setFont("helvetica", "bold");
           const splitLines = pdf.splitTextToSize(line, 250);
           pdf.text(splitLines, leftColX, exporterY);
           exporterY += splitLines.length * 9;
@@ -288,7 +288,7 @@ const ExportChecklistGenerator = ({
 
     consigneeLines.forEach((line) => {
       if (line) {
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldValue);
         const splitLines = pdf.splitTextToSize(line, 250);
         pdf.text(splitLines, rightColX, consigneeY);
@@ -346,7 +346,7 @@ const ExportChecklistGenerator = ({
         pdf.setFontSize(FONT_SIZES.fieldLabel);
         pdf.text(leftFields[i].label, leftColX, leftY);
 
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldValue);
         const val = String(leftFields[i].value || "");
         const splitVal = pdf.splitTextToSize(val, 140);
@@ -359,7 +359,7 @@ const ExportChecklistGenerator = ({
         pdf.setFontSize(FONT_SIZES.fieldLabel);
         pdf.text(rightFields[i].label, rightColX, rightY);
 
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldValue);
         const val = String(rightFields[i].value || "");
         const splitVal = pdf.splitTextToSize(val, 140);
@@ -426,7 +426,7 @@ const ExportChecklistGenerator = ({
         pdf.setFontSize(FONT_SIZES.fieldLabel);
         pdf.text(invoiceLeftFields[i].label, leftColX, invoiceLeftY);
 
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldValue);
         const leftVal = String(invoiceLeftFields[i].value || "");
         const leftSplit = pdf.splitTextToSize(leftVal, 160);
@@ -437,7 +437,7 @@ const ExportChecklistGenerator = ({
         pdf.setFont("helvetica", "bold");
         pdf.text(invoiceRightFields[i].label, rightColX, invoiceRightY);
 
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont("helvetica", "bold");
         const rightVal = String(invoiceRightFields[i].value || "");
         const rightSplit = pdf.splitTextToSize(rightVal, 160);
         pdf.text(rightSplit, rightColX + 80, invoiceRightY);
@@ -466,7 +466,7 @@ const ExportChecklistGenerator = ({
         { label: "Packing Charges", ...inv.packingChargesData },
       ];
 
-      pdf.setFont("helvetica", "normal");
+      pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.tableContent);
 
       rateItemsData.forEach((item) => {
@@ -634,8 +634,8 @@ const ExportChecklistGenerator = ({
       head: [itemHeaders],
       body: itemRows.length > 0 ? itemRows : [["", "", "", "", "", "", ""]],
       startY: yPos,
-      styles: { fontSize: FONT_SIZES.tableContent, cellPadding: 2, overflow: "linebreak", lineWidth: 0.3 },
-      headStyles: { fillColor: [220, 220, 220], textColor: 0, fontStyle: "bold", fontSize: 7 },
+      styles: { fontSize: FONT_SIZES.tableContent, cellPadding: 2, overflow: "linebreak", lineWidth: 0.3, fontStyle: "bold", textColor: 0 },
+      headStyles: { fillColor: [180, 180, 180], textColor: 0, fontStyle: "bold", fontSize: 7.5 },
       columnStyles: {
         0: { cellWidth: 40 },
         1: { cellWidth: 90 },
@@ -716,12 +716,14 @@ const ExportChecklistGenerator = ({
           fontSize: FONT_SIZES.tableContent,
           cellPadding: 2,
           overflow: "linebreak",
+          fontStyle: "bold",
+          textColor: 0,
         },
         headStyles: {
-          fillColor: [220, 220, 220],
+          fillColor: [180, 180, 180],
           textColor: 0,
           fontStyle: "bold",
-          fontSize: FONT_SIZES.tableHeader,
+          fontSize: 8.5,
         },
         margin: { left: leftX },
         tableWidth: rightX - leftX,
@@ -772,12 +774,14 @@ const ExportChecklistGenerator = ({
           fontSize: FONT_SIZES.tableContent,
           cellPadding: 2,
           overflow: "linebreak",
+          fontStyle: "bold",
+          textColor: 0,
         },
         headStyles: {
-          fillColor: [220, 220, 220],
+          fillColor: [180, 180, 180],
           textColor: 0,
           fontStyle: "bold",
-          fontSize: FONT_SIZES.tableHeader,
+          fontSize: 8.5,
         },
         margin: { left: leftX },
         tableWidth: rightX - leftX,
@@ -826,12 +830,14 @@ const ExportChecklistGenerator = ({
           fontSize: FONT_SIZES.tableContent,
           cellPadding: 2,
           overflow: "linebreak",
+          fontStyle: "bold",
+          textColor: 0,
         },
         headStyles: {
-          fillColor: [220, 220, 220],
+          fillColor: [180, 180, 180],
           textColor: 0,
           fontStyle: "bold",
-          fontSize: FONT_SIZES.tableHeader,
+          fontSize: 8.5,
         },
         margin: { left: leftX },
         tableWidth: rightX - leftX,
@@ -856,7 +862,7 @@ const ExportChecklistGenerator = ({
           ["Voyage Number", data.voyageNumber || "", "", ""],
         ],
         startY: yPos,
-        styles: { fontSize: FONT_SIZES.tableContent, cellPadding: 2 },
+        styles: { fontSize: FONT_SIZES.tableContent, cellPadding: 2, fontStyle: "bold", textColor: 0 },
         columnStyles: {
           0: { fontStyle: "bold", cellWidth: 80 },
           1: { cellWidth: (rightX - leftX) / 2 - 80 },
@@ -909,11 +915,14 @@ const ExportChecklistGenerator = ({
         styles: {
           fontSize: FONT_SIZES.tableContent,
           cellPadding: 2,
+          fontStyle: "bold",
+          textColor: 0,
         },
         headStyles: {
-          fillColor: [220, 220, 220],
+          fillColor: [180, 180, 180],
           textColor: 0,
           fontStyle: "bold",
+          fontSize: 8.5,
         },
         margin: { left: leftX },
         tableWidth: rightX - leftX,
@@ -958,11 +967,14 @@ const ExportChecklistGenerator = ({
         styles: {
           fontSize: FONT_SIZES.tableContent,
           cellPadding: 2,
+          fontStyle: "bold",
+          textColor: 0,
         },
         headStyles: {
-          fillColor: [220, 220, 220],
+          fillColor: [180, 180, 180],
           textColor: 0,
           fontStyle: "bold",
+          fontSize: 8.5,
         },
         margin: { left: leftX },
         tableWidth: rightX - leftX,
@@ -1000,11 +1012,14 @@ const ExportChecklistGenerator = ({
         styles: {
           fontSize: FONT_SIZES.tableContent,
           cellPadding: 2,
+          fontStyle: "bold",
+          textColor: 0,
         },
         headStyles: {
-          fillColor: [220, 220, 220],
+          fillColor: [180, 180, 180],
           textColor: 0,
           fontStyle: "bold",
+          fontSize: 8.5,
         },
         margin: { left: leftX },
         tableWidth: rightX - leftX,
@@ -1047,11 +1062,14 @@ const ExportChecklistGenerator = ({
         styles: {
           fontSize: FONT_SIZES.tableContent,
           cellPadding: 2,
+          fontStyle: "bold",
+          textColor: 0,
         },
         headStyles: {
-          fillColor: [220, 220, 220],
+          fillColor: [180, 180, 180],
           textColor: 0,
           fontStyle: "bold",
+          fontSize: 8.5,
         },
         margin: { left: leftX },
         tableWidth: rightX - leftX,
@@ -1085,11 +1103,14 @@ const ExportChecklistGenerator = ({
         styles: {
           fontSize: FONT_SIZES.tableContent,
           cellPadding: 2,
+          fontStyle: "bold",
+          textColor: 0,
         },
         headStyles: {
-          fillColor: [220, 220, 220],
+          fillColor: [180, 180, 180],
           textColor: 0,
           fontStyle: "bold",
+          fontSize: 8.5,
         },
         margin: { left: leftX },
         tableWidth: rightX - leftX,
@@ -1158,7 +1179,7 @@ const ExportChecklistGenerator = ({
           ["", "", "", "", "Beneficiary Party Code", sd.beneficiaryPartyCode || ""],
         ],
         startY: yPos,
-        styles: { fontSize: 7, cellPadding: 1.5, overflow: "linebreak" },
+        styles: { fontSize: 7, cellPadding: 1.5, overflow: "linebreak", fontStyle: "bold", textColor: 0 },
         columnStyles: {
           0: { fontStyle: "bold", cellWidth: 55 },
           1: { cellWidth: 75 },
@@ -1185,8 +1206,8 @@ const ExportChecklistGenerator = ({
           ["Pin Code", sd.issuingPartyPinCode || "", "Pin Code", sd.beneficiaryPartyPinCode || ""],
         ],
         startY: yPos,
-        styles: { fontSize: 7, cellPadding: 1.5, overflow: "linebreak" },
-        headStyles: { fillColor: [220, 220, 220], textColor: 0, fontStyle: "bold" },
+        styles: { fontSize: 7, cellPadding: 1.5, overflow: "linebreak", fontStyle: "bold", textColor: 0 },
+        headStyles: { fillColor: [180, 180, 180], textColor: 0, fontStyle: "bold" },
         columnStyles: {
           0: { fontStyle: "bold", cellWidth: 45 },
           1: { cellWidth: (rightX - leftX) / 2 - 45 },

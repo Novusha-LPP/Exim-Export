@@ -1212,7 +1212,7 @@ function ShippingLineDropdownField({
   );
 }
 
-function ShipmentMainTab({ formik, onUpdate, directories }) {
+function ShipmentMainTab({ formik, onUpdate, directories, isEditable = true }) {
   const consignmentType = toUpper(formik.values.consignmentType || "");
   const isAir = consignmentType == "AIR";
 
@@ -1339,7 +1339,8 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
 
 
   return (
-    <div style={styles.page}>
+    <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
+      <div style={styles.page}>
       <div style={styles.row}>
         {/* Left: further split into two cols */}
         <div style={styles.col}>
@@ -2092,6 +2093,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
         </div>
       </div>
     </div>
+    </fieldset>
   );
 }
 

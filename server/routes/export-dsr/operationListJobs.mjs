@@ -21,6 +21,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             jobOwner = "",
             detailedStatus = "",
             month = "",
+            pendingQueries = false,
         } = { ...req.params, ...req.query };
 
         // Normalize status to lowercase, fallback to "pending"
@@ -191,7 +192,20 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         // --------------------------------------------------------
 
         if (jobOwner) filter.$and.push({ job_owner: { $regex: jobOwner, $options: "i" } });
-        if (detailedStatus) filter.$and.push({ detailedStatus: detailedStatus });
+        if (detailedStatus) {
+            const statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+            if (statusArray.includes("Pending")) {
+                filter.$and.push({
+                    $or: [
+                        { detailedStatus: { $in: statusArray } },
+                        { detailedStatus: { $in: [null, "", "Pending"] } },
+                        { detailedStatus: { $exists: false } }
+                    ]
+                });
+            } else {
+                filter.$and.push({ detailedStatus: { $in: statusArray } });
+            }
+        }
 
         if (search) {
             filter.$and.push({
@@ -206,6 +220,16 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                     { "containers.containerNo": { $regex: search, $options: "i" } }
                 ],
             });
+        }
+
+        if (pendingQueries === "true" || pendingQueries === true) {
+            // Import QueryModel dynamically if not at top
+            const QueryModel = (await import("../../model/export/QueryModel.mjs")).default;
+            const queryFilter = { status: "open" };
+            // Optional: filter by current module if needed
+            const openQueries = await QueryModel.find(queryFilter).select("job_no").lean();
+            const openJobNos = [...new Set(openQueries.map(q => q.job_no))];
+            filter.$and.push({ job_no: { $in: openJobNos } });
         }
 
         if (exporter) filter.$and.push({ exporter: { $regex: exporter, $options: "i" } });

@@ -243,12 +243,13 @@ router.post("/api/queries/jobs-status", async (req, res) => {
 
     const statusMap = {};
     jobNos.forEach(j => {
-      statusMap[j] = { hasQueries: false, hasUnseen: false };
+      statusMap[j] = { hasQueries: false, hasUnseen: false, hasOpenQueries: false };
     });
 
     queries.forEach(q => {
-      if (!statusMap[q.job_no]) statusMap[q.job_no] = { hasQueries: true, hasUnseen: false };
+      if (!statusMap[q.job_no]) statusMap[q.job_no] = { hasQueries: true, hasUnseen: false, hasOpenQueries: false };
       statusMap[q.job_no].hasQueries = true;
+      if (q.status === "open") statusMap[q.job_no].hasOpenQueries = true;
 
       // Check unseen replies/queries from the perspective of currentModule
       if (currentModule) {

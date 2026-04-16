@@ -200,7 +200,7 @@ const ConsigneeCountryAutocomplete = ({ value, onChange }) => {
   );
 };
 
-const GeneralTab = ({ formik, directories }) => {
+const GeneralTab = ({ formik, directories, isEditable = true }) => {
   const saveTimeoutRef = useRef(null);
   const [exporterDetails, setExporterDetails] = useState(null);
 
@@ -659,8 +659,9 @@ const GeneralTab = ({ formik, directories }) => {
   };
 
   return (
-    <div
-      style={{
+    <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
+      <div
+        style={{
         background: "#fafaffff",
         borderRadius: 8,
         padding: 15,
@@ -1047,6 +1048,7 @@ const GeneralTab = ({ formik, directories }) => {
         ))}
       </div>
     </div>
+    </fieldset>
   );
 };
 

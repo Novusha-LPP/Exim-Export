@@ -167,10 +167,11 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
           <!-- Details Table -->
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px;">
             <tr>
+              <td style="border: 1px solid black; padding: 4px; width: 50%; vertical-align: top;">
                 <div style="margin-bottom: 2px;"><strong>Shipping Line</strong></div>
                 <div>${data.shipping_line_airline || ""}</div>
               </td>
-              <td style="border: 1px solid black; padding: 4px; width: 60%; vertical-align: top;">
+              <td style="border: 1px solid black; padding: 4px; width: 50%; vertical-align: top;">
                 <div style="margin-bottom: 2px;"><strong>Booking No</strong></div>
                 <div>${data.booking_no || ""}</div>
               </td>
@@ -266,7 +267,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
           </table>
 
           <!-- Certifications Table -->
-          <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; font-weight: bold; border: 2px solid black;">
+          <table style="width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 11px; font-weight: bold; border: 2px solid black;">
             <tr>
               <td style="border: 1px solid black; width: 30px; text-align: center; vertical-align: middle; padding: 4px;">1</td>
               <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">I do hereby certify that I have satisfied by self description, marks, quantity, measurement and weight of goods consigned by me have been correctly entered in the note.</td>
@@ -293,21 +294,21 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
             </tr>
           </table>
 
-          <!-- Signature / Footer Section - Forced Page Break -->
+          <!-- Signature / Footer Section - Avoid Page Break -->
           <!-- Footer Table to ensure block stays together -->
-          <table style="width: 100%; margin-top: 10px; page-break-inside: avoid;">
-            <tr style="page-break-inside: avoid;">
+          <table style="width: 100%; margin-top: 10px; page-break-inside: avoid; break-inside: avoid;">
+            <tr style="page-break-inside: avoid; break-inside: avoid;">
                 <td style="border: none; padding: 0;">
-                    <div style="border: 1px solid black; padding: 10px; margin-bottom: 20px; min-height: 40px; font-size: 12px;">
+                    <div style="border: 1px solid black; padding: 10px; margin-bottom: 20px; min-height: 40px; font-size: 12px; page-break-inside: avoid; break-inside: avoid;">
                       <strong>Remarks, if any (PDA A/C/Cheque No):</strong>
                     </div>
 
-                    <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; page-break-inside: avoid; break-inside: avoid;">
                       <div>DATE ________________________</div>
                       <div style="text-align: right;">STAMP AND SIGNATURE OF SHIPPER OR AGENT (CHA)</div>
                     </div>
 
-                    <div style="border: 1px solid black; padding: 10px; margin-top: 30px; font-size: 12px;">
+                    <div style="border: 1px solid black; padding: 10px; margin-top: 30px; font-size: 12px; page-break-inside: avoid; break-inside: avoid;">
                        <strong>CES (NS) PVT. LTD.</strong><br/>
                        DATE & TIME OF BOOKING OR (EA) :
                     </div>
@@ -348,8 +349,8 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         y: 15,
         width: 545,
         windowWidth: 900,
-        margin: [20, 15, 110, 15],
-        autoPaging: 'slice',
+        margin: [20, 15, 30, 15],
+        autoPaging: true,
       });
     } catch (error) {
       console.error("Error generating PDF:", error);

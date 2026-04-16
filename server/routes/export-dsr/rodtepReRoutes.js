@@ -35,32 +35,32 @@ const router = express.Router();
 // Search by description or tariff line
 router.get("/getRodtep_RE", async (req, res) => {
   try {
-    const { tariff_line } = req.query;
-    if (!tariff_line) {
+    const { tariff_item, tariff_line, chapter } = req.query;
+    const code = tariff_item || tariff_line;
+    if (!code) {
       return res.json({ success: true, count: 0, data: [] });
     }
 
-    const trimmed = tariff_line.toString().trim();
+    const trimmed = code.toString().trim();
     const isNum = !isNaN(trimmed);
 
-    // Build a query that handles both String and Number types
-    // and supports regex for partial matches if it's a string
     const query = {
       $or: [
-        { tariff_line: trimmed },
-        { tariff_line: { $regex: new RegExp(`^${trimmed}`) } }
-      ]
+        { tariff_item: trimmed },
+        { tariff_item: { $regex: new RegExp(`^${trimmed}`) } },
+      ],
     };
 
-    if (isNum) {
-      query.$or.push({ tariff_line: Number(trimmed) });
-      query.$or.push({ tariff_line: trimmed.toString() });
+    if (chapter) {
+      query.chapter = String(chapter).trim();
     }
 
-    console.log("Searching Rodtep_RE with query:", JSON.stringify(query));
+    if (isNum) {
+      query.$or.push({ tariff_item: Number(trimmed) });
+      query.$or.push({ tariff_item: trimmed.toString() });
+    }
 
     const entries = await Rodtep_RE.find(query).limit(50).lean();
-    console.log(`Found ${entries.length} entries for ${trimmed}`);
 
     res.json({ success: true, count: entries.length, data: entries });
   } catch (err) {
