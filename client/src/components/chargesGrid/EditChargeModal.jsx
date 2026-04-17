@@ -155,13 +155,18 @@ const EditChargeModal = ({
     sectionRef.amount = amount;
     sectionRef.amountINR = Math.round((amount * exRate) * 100) / 100;
 
-    const includeGst = sectionRef.isGst || false;
+    const includeGst = sectionRef.isGst !== false;
     const gstRate = parseFloat(sectionRef.gstRate) || 18;
 
     // Inclusive math as per user requirement (Total = Basic + GST)
     // Basic = Total / (1 + Rate/100)
-    const derivedBasic = Math.round((amount / (1 + (gstRate / 100))) * 100) / 100;
-    const derivedGst = Math.round((amount - derivedBasic) * 100) / 100;
+    let derivedBasic = amount;
+    let derivedGst = 0;
+
+    if (includeGst) {
+        derivedBasic = Math.round((amount / (1 + (gstRate / 100))) * 100) / 100;
+        derivedGst = Math.round((amount - derivedBasic) * 100) / 100;
+    }
 
     sectionRef.basicAmount = derivedBasic;
     sectionRef.gstAmount = derivedGst;
@@ -215,6 +220,7 @@ const EditChargeModal = ({
         ['revenue', 'cost'].forEach(sec => {
           if (row[sec]) {
             if (!row[sec].amount && row[sec].total) row[sec].amount = row[sec].total;
+            if (row[sec].isGst === undefined) row[sec].isGst = true;
             row[sec] = calculateDerivedFields(row, sec);
           }
         });
@@ -647,6 +653,32 @@ const EditChargeModal = ({
                                 }
                                 return null;
                               })()}
+
+                              {/* GST FIELDS FOR REVENUE */}
+                              <div className="ep-row">
+                                <span className="ep-label">Include GST?</span>
+                                <div className="ep-inline">
+                                  <input type="checkbox" checked={row.revenue?.isGst !== false} onChange={e => handleFieldChange(i, 'isGst', e.target.checked, 'revenue')} />
+                                  {row.revenue?.isGst !== false && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      <input type="number" style={{ width: '50px' }} value={row.revenue?.gstRate ?? 18} onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'revenue')} />
+                                      <span style={{ fontSize: '11px' }}>%</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="ep-row">
+                                <span className="ep-label">Basic Amount</span>
+                                <div className="ep-inline">
+                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.basicAmount)} />
+                                </div>
+                              </div>
+                              <div className="ep-row">
+                                <span className="ep-label">GST Amount</span>
+                                <div className="ep-inline">
+                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.gstAmount)} />
+                                </div>
+                              </div>
                             </div>
                             <div className="ep-copy-row">
                               Copy to Cost <input type="checkbox" checked={row.copyToCost || false} onChange={e => handleFieldChange(i, 'copyToCost', e.target.checked)} />
@@ -818,8 +850,8 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">Include GST?</span>
                                 <div className="ep-inline">
-                                  <input type="checkbox" checked={row.cost?.isGst || false} onChange={e => handleFieldChange(i, 'isGst', e.target.checked, 'cost')} />
-                                  {row.cost?.isGst && (
+                                  <input type="checkbox" checked={row.cost?.isGst !== false} onChange={e => handleFieldChange(i, 'isGst', e.target.checked, 'cost')} />
+                                  {row.cost?.isGst !== false && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                       <input type="number" style={{ width: '50px' }} value={row.cost?.gstRate ?? 18} onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'cost')} />
                                       <span style={{ fontSize: '11px' }}>%</span>
