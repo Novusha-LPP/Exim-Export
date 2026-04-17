@@ -724,45 +724,93 @@ const UploadDocsDialog = ({ open, onClose, jobNo }) => {
     }
   }, [open, jobNo]);
 
-  const uploadOptions = [
-    { field: "leoUpload", title: "LEO" },
-    { field: "stuffingSheetUpload", title: "Stuffing Sheet" },
-    { field: "stuffingPhotoUpload", title: "Stuffing Photo" },
-    { field: "eGatePassUpload", title: "Gate Pass" },
-    { field: "handoverImageUpload", title: "HO/DOC Copy" },
-    { field: "billingDocsSentUpload", title: "Bill Doc Copy" },
-    { field: "transporterDetails", title: "Transporter", uploadType: "section" },
-    { field: "booking_copy", title: "Booking", uploadType: "toplevel" },
-    { field: "otherDocUpload", title: "Other Doc" },
+  const categories = [
+    {
+      name: "1. Shipping / Port Documents",
+      items: [
+        { field: "leoUpload", title: "LEO" },
+        { field: "eGatePassUpload", title: "Gate Pass" },
+        { field: "booking_copy", title: "Booking" },
+        { field: "forwardingNoteDocUpload", title: "Forwarding Note" },
+        { field: "handoverImageUpload", title: "HO/DOC Copy" },
+      ]
+    },
+    {
+      name: "2. VGM / ODEX Documents",
+      items: [
+        { field: "manualVgmUpload", title: "Manual VGM" },
+        { field: "odexVgmUpload", title: "Odex VGM" },
+        { field: "odexEsbUpload", title: "Odex ESB" },
+        { field: "odexForm13Upload", title: "Odex Form 13" },
+        { field: "cmaForwardingNoteUpload", title: "CMA Forwarding Note" },
+      ]
+    },
+    {
+      name: "3. Container & Cargo Photos",
+      items: [
+        { field: "images", title: "Container Door Photo", uploadType: "container" },
+        { field: "stuffingPhotoUpload", title: "Stuffing Photo" },
+        { field: "images", title: "Carting Photo", uploadType: "section" },
+      ]
+    },
+    {
+      name: "4. Operational Documents",
+      items: [
+        { field: "weighmentImages", title: "Weighment Slip", uploadType: "container" },
+        { field: "stuffingSheetUpload", title: "Stuffing Sheet" },
+      ]
+    },
+    {
+      name: "5. Billing & Others",
+      items: [
+        { field: "billingDocsSentUpload", title: "Bill Doc Copy" },
+        { field: "otherDocUpload", title: "Other Doc" },
+      ]
+    }
   ];
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", py: 1.5, px: 2 }}>
-        <div style={{ fontSize: "16px", fontWeight: 700 }}>Upload Documents</div>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: "8px" } }}>
+      <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", py: 1.5, px: 2, borderBottom: `1px solid ${THEME.border}` }}>
+        <div style={{ fontSize: "16px", fontWeight: 700, color: THEME.blue }}>Upload Documents</div>
         <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
       </DialogTitle>
-      <DialogContent sx={{ p: 2 }}>
+      <DialogContent sx={{ p: 2, backgroundColor: THEME.bg }}>
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}><CircularProgress size={24} /></Box>
         ) : job ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <div style={{ fontSize: "12px", color: THEME.textMuted, marginBottom: "4px" }}>
-              Job: <span style={{ fontWeight: 600, color: THEME.blue }}>{jobNo}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ fontSize: "13px", color: THEME.textMuted, borderBottom: `1px solid ${THEME.border}`, pb: 1 }}>
+              Job: <span style={{ fontWeight: 700, color: THEME.text }}>{jobNo}</span>
             </div>
-            {uploadOptions.map((opt) => (
-              <UploadItem
-                key={opt.field}
-                job={job}
-                field={opt.field}
-                title={opt.title}
-                uploadType={opt.uploadType || "status"}
-                onSuccess={(newJobData) => setJob(newJobData)}
-              />
+
+            {categories.map((cat) => (
+              <div key={cat.name}>
+                <div style={{
+                  fontSize: "11px", fontWeight: 700, color: THEME.blue,
+                  textTransform: "uppercase", letterSpacing: "0.05em",
+                  marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px"
+                }}>
+                  {cat.name}
+                  <div style={{ flex: 1, height: "1px", background: THEME.border }}></div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  {cat.items.map((opt) => (
+                    <UploadItem
+                      key={opt.field}
+                      job={job}
+                      field={opt.field}
+                      title={opt.title}
+                      uploadType={opt.uploadType || "status"}
+                      onSuccess={(newJobData) => setJob(newJobData)}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         ) : (
-          <div style={{ textAlign: "center", color: THEME.red, fontSize: "12px" }}>Job not found</div>
+          <div style={{ textAlign: "center", color: THEME.red, fontSize: "12px", py: 4 }}>Job not found</div>
         )}
       </DialogContent>
     </Dialog>
@@ -793,6 +841,10 @@ const UploadItem = ({ job, field, title, uploadType, onSuccess }) => {
         const section = Array.isArray(ops[field]) ? ops[field] : [];
         const item = section[0] || {};
         currentFiles = Array.isArray(item.images) ? item.images : [];
+      } else if (uploadType === "container") {
+        dotPath = `containers.0.${field}`;
+        const container = job.containers?.[0] || {};
+        currentFiles = Array.isArray(container[field]) ? container[field] : [];
       } else {
         dotPath = `operations.0.statusDetails.0.${field}`;
         const ops = job.operations?.[0] || {};
@@ -816,6 +868,7 @@ const UploadItem = ({ job, field, title, uploadType, onSuccess }) => {
   const hasDocs = (() => {
     if (uploadType === "toplevel") return job[field]?.length > 0;
     if (uploadType === "section") return job.operations?.[0]?.[field]?.[0]?.images?.length > 0;
+    if (uploadType === "container") return job.containers?.[0]?.[field]?.length > 0;
     return job.operations?.[0]?.statusDetails?.[0]?.[field]?.length > 0;
   })();
 

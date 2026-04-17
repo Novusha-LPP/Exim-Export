@@ -572,6 +572,15 @@ router.get("/global-search-jobs", async (req, res) => {
           "operations.statusDetails.railOutReachedDate": 1,
           "operations.statusDetails.leoDate": 1,
           "operations.statusDetails.leoUpload": 1,
+          "operations.statusDetails.booking_copy": 1,
+          "operations.statusDetails.bookingUpload": 1,
+          "operations.statusDetails.forwardingNoteDocUpload": 1,
+          "operations.statusDetails.manualVgmUpload": 1,
+          "operations.statusDetails.odexVgmUpload": 1,
+          "operations.statusDetails.odexEsbUpload": 1,
+          "operations.statusDetails.odexForm13Upload": 1,
+          "operations.statusDetails.cmaForwardingNoteUpload": 1,
+          "operations.statusDetails.otherDocUpload": 1,
           "operations.statusDetails.stuffingSheetUpload": 1,
           "operations.statusDetails.stuffingPhotoUpload": 1,
           "operations.statusDetails.eGatePassUpload": 1,
@@ -1026,6 +1035,14 @@ router.get("/exports/:status?", async (req, res) => {
       "operations.statusDetails.railOutReachedDate": 1,
       "operations.statusDetails.leoDate": 1,
       "operations.statusDetails.leoUpload": 1,
+      "operations.statusDetails.booking_copy": 1,
+      "operations.statusDetails.forwardingNoteDocUpload": 1,
+      "operations.statusDetails.manualVgmUpload": 1,
+      "operations.statusDetails.odexVgmUpload": 1,
+      "operations.statusDetails.odexEsbUpload": 1,
+      "operations.statusDetails.odexForm13Upload": 1,
+      "operations.statusDetails.cmaForwardingNoteUpload": 1,
+      "operations.statusDetails.otherDocUpload": 1,
       "operations.statusDetails.stuffingSheetUpload": 1,
       "operations.statusDetails.stuffingPhotoUpload": 1,
       "operations.statusDetails.eGatePassUpload": 1,
@@ -1261,7 +1278,7 @@ router.get("/filtered-exporters", async (req, res) => {
     if (detailedStatus) {
       const statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
       if (statusArray.includes("Pending")) {
-        filter.$and.push({ 
+        filter.$and.push({
           $or: [
             { detailedStatus: { $in: statusArray } },
             { detailedStatus: { $in: [null, "", "Pending"] } },

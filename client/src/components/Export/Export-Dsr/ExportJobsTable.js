@@ -24,6 +24,9 @@ import {
   ListItemText,
   Badge,
   Box,
+  Button,
+  Divider,
+  ListSubheader,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -351,6 +354,10 @@ const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSucce
         const section = Array.isArray(ops[field]) ? ops[field] : [];
         const item = section[idx] || {};
         currentFiles = Array.isArray(item.images) ? [...item.images] : [];
+      } else if (uploadType === "container") {
+        dotPath = `containers.0.${field}`;
+        const container = job.containers?.[0] || {};
+        currentFiles = Array.isArray(container[field]) ? [...container[field]] : [];
       } else {
         dotPath = `operations.0.statusDetails.0.${field}`;
         const ops = job.operations?.[0] || {};
@@ -547,6 +554,7 @@ const ExportJobsTable = () => {
   const [customHouses, setCustomHouses] = useState([]); // Re-added customHouses state
   const [jobOwnersList, setJobOwnersList] = useState([]); // Stores fetched users for Job Owner dropdown
 
+
   // Fetch Job Owners (Users)
   // Fetch Job Owners (Users)
   useEffect(() => {
@@ -686,9 +694,35 @@ const ExportJobsTable = () => {
     setExpandedDocs((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Documents Menu State
+  // Documents Menu State (Uploaded Docs)
   const [docsAnchorEl, setDocsAnchorEl] = useState(null);
   const [selectedDocJob, setSelectedDocJob] = useState(null);
+
+  const handleDocsClick = (event, job) => {
+    event.stopPropagation();
+    setDocsAnchorEl(event.currentTarget);
+    setSelectedDocJob(job);
+  };
+
+  const handleDocsClose = () => {
+    setDocsAnchorEl(null);
+    setSelectedDocJob(null);
+  };
+
+  // Generated Documents Menu State
+  const [genDocsAnchorEl, setGenDocsAnchorEl] = useState(null);
+  const [selectedGenDocJob, setSelectedGenDocJob] = useState(null);
+
+  const handleGenDocsClick = (event, job) => {
+    event.stopPropagation();
+    setGenDocsAnchorEl(event.currentTarget);
+    setSelectedGenDocJob(job);
+  };
+
+  const handleGenDocsClose = () => {
+    setGenDocsAnchorEl(null);
+    setSelectedGenDocJob(null);
+  };
 
   // SB Track Dialog State
   const [sbTrackOpen, setSbTrackOpen] = useState(false);
@@ -1351,102 +1385,92 @@ const ExportJobsTable = () => {
     const links = [];
 
     // 1. eSanchit Documents
-    if (job.eSanchitDocuments && Array.isArray(job.eSanchitDocuments)) {
+    if (job.eSanchitDocuments && Array.isArray(job.eSanchitDocuments) && job.eSanchitDocuments.some(d => d.fileUrl)) {
+      links.push({ title: "eSanchit Documents", isHeader: true });
       job.eSanchitDocuments.forEach((doc, idx) => {
         if (doc.fileUrl) {
-          let title =
-            `eSanchit ${idx + 1}`;
-
-          if (title === "380") title = "Commercial Invoice";
-
-          links.push({ title, url: doc.fileUrl, field: null });
+          links.push({ title: `eSanchit ${idx + 1}`, url: doc.fileUrl, field: null });
         }
       });
     }
 
-    // 2. Operations Documents
+    // 2. Operations Documents by Category
     const ops = job.operations && job.operations[0];
     const status = ops ? (ops.statusDetails && ops.statusDetails[0]) || {} : {};
+    const firstContainer = job.containers && job.containers[0];
+    const firstTransporter = ops && ops.transporterDetails && ops.transporterDetails[0];
 
-    const statusFiles = [
-      { field: "leoUpload", title: "LEO" },
-      { field: "stuffingSheetUpload", title: "Stuffing Sheet" },
-      { field: "stuffingPhotoUpload", title: "Stuffing Photo" },
-      { field: "eGatePassUpload", title: "Gate Pass" },
-      { field: "handoverImageUpload", title: "HO/DOC Copy" },
-      { field: "billingDocsSentUpload", title: "Bill Doc Copy" },
-      { field: "otherDocUpload", title: "Other Doc" },
+    const categories = [
+      {
+        name: "1. Shipping / Port Documents",
+        files: [
+          { field: "leoUpload", title: "LEO", source: "status" },
+          { field: "eGatePassUpload", title: "Gate Pass", source: "status" },
+          { field: "booking_copy", title: "Booking", source: "status" },
+          { field: "forwardingNoteDocUpload", title: "Forwarding Note", source: "status" },
+          { field: "handoverImageUpload", title: "HO/DOC Copy", source: "status" },
+        ]
+      },
+      {
+        name: "2. VGM / ODEX Documents",
+        files: [
+          { field: "manualVgmUpload", title: "Manual VGM", source: "status" },
+          { field: "odexVgmUpload", title: "Odex VGM", source: "status" },
+          { field: "odexEsbUpload", title: "Odex ESB", source: "status" },
+          { field: "odexForm13Upload", title: "Odex Form 13", source: "status" },
+          { field: "cmaForwardingNoteUpload", title: "CMA Forwarding Note", source: "status" },
+        ]
+      },
+      {
+        name: "3. Container & Cargo Photos",
+        files: [
+          { field: "images", title: "Container Door Photo", source: "container" },
+          { field: "stuffingPhotoUpload", title: "Stuffing Photo", source: "status" },
+          { field: "images", title: "Carting Photo", source: "transporter" },
+        ]
+      },
+      {
+        name: "4. Operational Documents",
+        files: [
+          { field: "weighmentImages", title: "Weighment Slip", source: "container" },
+          { field: "stuffingSheetUpload", title: "Stuffing Sheet", source: "status" },
+        ]
+      },
+      {
+        name: "5. Billing & Others",
+        files: [
+          { field: "billingDocsSentUpload", title: "Bill Doc Copy", source: "status" },
+          { field: "otherDocUpload", title: "Other Doc", source: "status" },
+        ]
+      }
     ];
 
-    statusFiles.forEach((f) => {
-      const urls = Array.isArray(status[f.field]) ? status[f.field] : [];
-      if (urls.length > 0) {
-        urls.forEach((url) => {
-          if (url) links.push({ title: f.title, url, field: f.field });
-        });
-      } else {
-        links.push({ title: f.title, url: null, field: f.field });
-      }
-    });
+    categories.forEach(cat => {
+      links.push({ title: cat.name, isHeader: true });
+      cat.files.forEach(f => {
+        let urls = [];
+        let uploadType = "status";
 
-    if (ops) {
-      // Other Sections (Transporter only - Booking moved to top-level)
-      const sections = [
-        { field: "transporterDetails", title: "Transporter" },
-      ];
+        if (f.source === "status") {
+          urls = Array.isArray(status[f.field]) ? status[f.field] : [];
+          uploadType = "status";
+        } else if (f.source === "container") {
+          urls = firstContainer && Array.isArray(firstContainer[f.field]) ? firstContainer[f.field] : [];
+          uploadType = "container";
+        } else if (f.source === "transporter") {
+          urls = firstTransporter && Array.isArray(firstTransporter[f.field]) ? firstTransporter[f.field] : [];
+          uploadType = "section"; // 'section' is used in QueriesPanel for transporterDetails
+        }
 
-      sections.forEach((s) => {
-        if (ops[s.field] && Array.isArray(ops[s.field]) && ops[s.field].length > 0) {
-          ops[s.field].forEach((item, index) => {
-            const urls = Array.isArray(item.images) ? item.images : [];
-            const displayTitle = ops[s.field].length > 1 ? `${s.title} ${index + 1}` : s.title;
-
-            if (urls.length > 0) {
-              urls.forEach((url) => {
-                if (url) links.push({ title: displayTitle, url, field: s.field, uploadType: "section", idx: index });
-              });
-            } else {
-              links.push({ title: displayTitle, url: null, field: s.field, uploadType: "section", idx: index });
-            }
+        if (urls.length > 0) {
+          urls.forEach(url => {
+            if (url) links.push({ title: f.title, url, field: f.field, uploadType });
           });
         } else {
-          links.push({ title: s.title, url: null, field: s.field, uploadType: "section", idx: 0 });
+          links.push({ title: f.title, url: null, field: f.field, uploadType });
         }
       });
-    }
-
-    // Booking Copy (top-level field)
-    const bookingCopyUrls = Array.isArray(job.booking_copy) ? job.booking_copy : [];
-    if (bookingCopyUrls.length > 0) {
-      bookingCopyUrls.forEach((url) => {
-        if (url) links.push({ title: "Booking", url, field: "booking_copy", uploadType: "toplevel" });
-      });
-    } else {
-      links.push({ title: "Booking", url: null, field: "booking_copy", uploadType: "toplevel" });
-    }
-
-    // 3. Container & Weighment Images (from Job Containers)
-    if (job.containers && Array.isArray(job.containers)) {
-      job.containers.forEach((cd, idx) => {
-        const prefix = job.containers.length > 1 ? `Cont ${idx + 1}` : "Cont";
-        // Container Photos
-        if (Array.isArray(cd.images)) {
-          cd.images.forEach((url) => {
-            if (url) links.push({ title: `${prefix} Photo`, url, field: null });
-          });
-        } else if (!cd.images || cd.images.length === 0) {
-          links.push({ title: `${prefix} Photo`, url: null, field: null });
-        }
-        // Weighment Slip Photos
-        if (Array.isArray(cd.weighmentImages)) {
-          cd.weighmentImages.forEach((url) => {
-            if (url) links.push({ title: `${prefix} Weighment`, url, field: null });
-          });
-        } else if (!cd.weighmentImages || cd.weighmentImages.length === 0) {
-          links.push({ title: `${prefix} Weighment`, url: null, field: null });
-        }
-      });
-    }
+    });
 
     return links;
   };
@@ -1959,9 +1983,9 @@ const ExportJobsTable = () => {
                     return <em style={{ fontSize: "12px", color: "#6b7280" }}>All Detailed Status</em>;
                   }
                   return (
-                    <div style={{ 
-                      overflow: 'hidden', 
-                      textOverflow: 'ellipsis', 
+                    <div style={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
                       fontSize: "12px"
                     }}>
@@ -2006,9 +2030,9 @@ const ExportJobsTable = () => {
                       py: 0,
                     }}
                   >
-                    <Checkbox 
-                      size="small" 
-                      checked={selectedDetailedStatus.indexOf(status) > -1} 
+                    <Checkbox
+                      size="small"
+                      checked={selectedDetailedStatus.indexOf(status) > -1}
                       sx={{ p: 0.5 }}
                     />
                     <span
@@ -2023,9 +2047,9 @@ const ExportJobsTable = () => {
                         flexShrink: 0,
                       }}
                     />
-                    <ListItemText 
-                      primary={status} 
-                      primaryTypographyProps={{ fontSize: '12px' }} 
+                    <ListItemText
+                      primary={status}
+                      primaryTypographyProps={{ fontSize: '12px' }}
                     />
                   </MenuItem>
                 ))}
@@ -2884,138 +2908,24 @@ const ExportJobsTable = () => {
                           })()}
                         </td>
 
-                        {/* Column 9: Docs */}
                         <td style={s.td}>
-                          <div
+                          <Button
+                            size="small"
+                            onClick={(e) => handleDocsClick(e, job)}
+                            endIcon={<ArrowDropDownIcon />}
                             style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              wordBreak: "break-word",
-                              gap: "4px",
+                              fontSize: "10px",
+                              padding: "2px 8px",
+                              textTransform: "none",
+                              backgroundColor: "#f9fafb",
+                              border: "1px solid #d1d5db",
+                              color: "#374151",
+                              borderRadius: "4px",
+                              fontWeight: "600"
                             }}
                           >
-                            {(() => {
-                              const docLinks = getDocumentLinks(job);
-                              const isExpanded = expandedDocs[job._id];
-                              const visibleLinks = isExpanded ? docLinks : docLinks.slice(0, 1);
-
-                              if (docLinks.length === 0) {
-                                return <span style={{ fontSize: "10px", color: "#9ca3af" }}>No Attachments</span>;
-                              }
-
-                              return (
-                                <>
-                                  {visibleLinks.map((link, i) => (
-                                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
-                                      {link.url ? (
-                                        <a
-                                          href={link.url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          style={{
-                                            fontSize: "10px",
-                                            color: "#2563eb",
-                                            textDecoration: "underline",
-                                            fontWeight: "600",
-                                            display: "inline-block",
-                                            whiteSpace: "nowrap",
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis",
-                                            maxWidth: "140px",
-                                          }}
-                                          onClick={(e) => e.stopPropagation()}
-                                          title={link.title}
-                                        >
-                                          {link.title}
-                                        </a>
-                                      ) : (
-                                        <span
-                                          style={{
-                                            fontSize: "10px",
-                                            color: "#9ca3af",
-                                            fontWeight: "600",
-                                            display: "inline-block",
-                                            whiteSpace: "nowrap",
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis",
-                                            maxWidth: "140px",
-                                          }}
-                                          title={link.title}
-                                        >
-                                          {link.title}
-                                        </span>
-                                      )}
-
-                                      {link.field && (
-                                        <div onClick={(e) => e.stopPropagation()}>
-                                          <QuickUploadButton
-                                            job={job}
-                                            field={link.field}
-                                            uploadType={link.uploadType || "status"}
-                                            idx={link.idx || 0}
-                                            onSuccess={(url) => {
-                                              setJobs((prevJobs) =>
-                                                prevJobs.map((j) => {
-                                                  if (j._id === job._id) {
-                                                    if (link.uploadType === "toplevel") {
-                                                      const currFiles = Array.isArray(j[link.field]) ? j[link.field] : [];
-                                                      return { ...j, [link.field]: [...currFiles, url] };
-                                                    }
-
-                                                    const newOps = JSON.parse(JSON.stringify(j.operations || []));
-                                                    if (!newOps[0]) newOps[0] = {};
-
-                                                    if (link.uploadType === "section") {
-                                                      if (!Array.isArray(newOps[0][link.field])) newOps[0][link.field] = [];
-                                                      while (newOps[0][link.field].length <= (link.idx || 0)) {
-                                                        newOps[0][link.field].push({});
-                                                      }
-                                                      const currFiles = Array.isArray(newOps[0][link.field][link.idx || 0].images)
-                                                        ? newOps[0][link.field][link.idx || 0].images
-                                                        : [];
-                                                      newOps[0][link.field][link.idx || 0].images = [...currFiles, url];
-                                                    } else {
-                                                      if (!newOps[0].statusDetails) newOps[0].statusDetails = [{}];
-                                                      if (!newOps[0].statusDetails[0]) newOps[0].statusDetails[0] = {};
-
-                                                      const currFiles = Array.isArray(newOps[0].statusDetails[0][link.field])
-                                                        ? newOps[0].statusDetails[0][link.field]
-                                                        : [];
-                                                      newOps[0].statusDetails[0][link.field] = [...currFiles, url];
-                                                    }
-
-                                                    return { ...j, operations: newOps };
-                                                  }
-                                                  return j;
-                                                })
-                                              );
-                                            }}
-                                          />
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                  {docLinks.length > 1 && (
-                                    <div
-                                      onClick={(e) => toggleDocs(e, job._id)}
-                                      style={{
-                                        fontSize: "10px",
-                                        color: "#4b5563",
-                                        cursor: "pointer",
-                                        fontWeight: "700",
-                                        marginTop: "2px",
-                                        display: "inline-block",
-                                        textAlign: "left",
-                                        userSelect: "none"
-                                      }}
-                                    >
-                                      {isExpanded ? "Hide Docs ▲" : `+${docLinks.length - 1} more ▼`}
-                                    </div>
-                                  )}
-                                </>
-                              );
-                            })()}
-                          </div>
+                            Docs
+                          </Button>
                         </td>
 
                         {/* Column 10: Status */}
@@ -3038,31 +2948,24 @@ const ExportJobsTable = () => {
                             >
                               Copy
                             </button>
-                            <button
+                            <Button
+                              size="small"
+                              onClick={(e) => handleGenDocsClick(e, job)}
+                              endIcon={<ArrowDropDownIcon />}
                               style={{
-                                background: "#fff",
-                                border: "1.2px solid #1976d2",
-                                color: "#1976d2",
-                                padding: "3px 8px",
-                                borderRadius: 4,
-                                fontWeight: 500,
-                                fontSize: 11,
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                width: "100%",
-                              }}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedDocJob(job);
-                                setDocsAnchorEl(e.currentTarget);
+                                fontSize: "10px",
+                                padding: "2px 8px",
+                                textTransform: "none",
+                                backgroundColor: "#ffffff",
+                                border: "1px solid #3b82f6",
+                                color: "#3b82f6",
+                                borderRadius: "4px",
+                                fontWeight: "600",
+                                width: "100%"
                               }}
                             >
                               Docs
-                              <ArrowDropDownIcon sx={{ fontSize: 14, ml: 0.3 }} />
-                            </button>
+                            </Button>
                             {/* Query Traffic Light: Red=Raise, Yellow=View, Green=Resolved */}
                             <div style={{ display: "flex", gap: "6px", justifyContent: "center", width: "100%", flexWrap: "wrap", margin: "4px 0" }}>
                               {/* RED - Raise Query */}
@@ -3103,12 +3006,12 @@ const ExportJobsTable = () => {
                                           );
                                           const queriesFetched = resp.data?.data?.queries || resp.data?.data || [];
                                           setQueryChatData(queriesFetched);
-                                          
+
                                           if (queriesFetched.length > 0) {
                                             axios.put(`${import.meta.env.VITE_API_STRING}/queries/mark-seen`, {
                                               queryIds: queriesFetched.map(q => q._id)
                                             }).catch(console.error);
-                                            
+
                                             setJobQueriesStatus(prev => ({
                                               ...prev,
                                               [job.job_no]: { ...prev[job.job_no], hasUnseen: false }
@@ -3585,182 +3488,6 @@ const ExportJobsTable = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Documents Menu */}
-      <Menu
-        anchorEl={docsAnchorEl}
-        open={Boolean(docsAnchorEl)}
-        onClose={() => {
-          setDocsAnchorEl(null);
-          setSelectedDocJob(null);
-        }}
-      >
-        <ExportChecklistGenerator
-          jobNo={selectedDocJob?.job_no}
-          renderAsIcon={false}
-        >
-          <MenuItem
-            disableRipple
-            onClick={() => {
-              setDocsAnchorEl(null);
-              setSelectedDocJob(null);
-            }}
-            sx={{ fontSize: 13, minWidth: 150 }}
-          >
-            Checklist
-          </MenuItem>
-        </ExportChecklistGenerator>
-
-        <FileCoverGenerator jobNo={selectedDocJob?.job_no}>
-          <MenuItem
-            disableRipple
-            onClick={() => {
-              setDocsAnchorEl(null);
-              setSelectedDocJob(null);
-            }}
-            sx={{ fontSize: 13, minWidth: 150 }}
-          >
-            File Cover
-          </MenuItem>
-        </FileCoverGenerator>
-
-        {(selectedDocJob?.custom_house?.toUpperCase().includes("SACHANA")) && (
-          <ConsignmentNoteGenerator jobNo={selectedDocJob?.job_no}>
-            <MenuItem
-              disableRipple
-              onClick={() => {
-                setDocsAnchorEl(null);
-                setSelectedDocJob(null);
-              }}
-              sx={{ fontSize: 13, minWidth: 150 }}
-            >
-              Forwarding Note (Sachana)
-            </MenuItem>
-          </ConsignmentNoteGenerator>
-        )}
-
-        {(selectedDocJob?.custom_house?.toUpperCase().includes("THAR")) && (
-          <ForwardingNoteTharGenerator jobNo={selectedDocJob?.job_no}>
-            <MenuItem
-              disableRipple
-              onClick={() => {
-                setDocsAnchorEl(null);
-                setSelectedDocJob(null);
-              }}
-              sx={{ fontSize: 13, minWidth: 150 }}
-            >
-              Forwarding Note (THAR)
-            </MenuItem>
-          </ForwardingNoteTharGenerator>
-        )}
-
-        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") &&
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") &&
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") &&
-          selectedDocJob?.transportMode !== "AIR") && (
-            <AnnexureCGenerator jobNo={selectedDocJob?.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => {
-                  setDocsAnchorEl(null);
-                  setSelectedDocJob(null);
-                }}
-                sx={{ fontSize: 13, minWidth: 150 }}
-              >
-                Annexure C
-              </MenuItem>
-            </AnnexureCGenerator>
-          )}
-
-        {(selectedDocJob?.custom_house?.toUpperCase().includes("SABARMATI") || selectedDocJob?.custom_house?.toUpperCase().includes("CONCOR")) && (
-          <ConcorForwardingNoteGenerator jobNo={selectedDocJob?.job_no}>
-            <MenuItem
-              disableRipple
-              onClick={() => {
-                setDocsAnchorEl(null);
-                setSelectedDocJob(null);
-              }}
-              sx={{ fontSize: 13, minWidth: 150 }}
-            >
-              Forwarding Note (CONCOR)
-            </MenuItem>
-          </ConcorForwardingNoteGenerator>
-        )}
-
-        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") &&
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") &&
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") &&
-          selectedDocJob?.transportMode !== "AIR") && (
-            <VGMAuthorizationGenerator jobNo={selectedDocJob?.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => {
-                  setDocsAnchorEl(null);
-                  setSelectedDocJob(null);
-                }}
-                sx={{ fontSize: 13, minWidth: 150 }}
-              >
-                VGM Authorization
-              </MenuItem>
-            </VGMAuthorizationGenerator>
-          )}
-
-        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") &&
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") &&
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") &&
-          selectedDocJob?.transportMode !== "AIR") && (
-            <FreightCertificateGenerator jobNo={selectedDocJob?.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => {
-                  setDocsAnchorEl(null);
-                  setSelectedDocJob(null);
-                }}
-                sx={{ fontSize: 13, minWidth: 150 }}
-              >
-                Freight Certificate
-              </MenuItem>
-            </FreightCertificateGenerator>
-          )}
-
-        {(!selectedDocJob?.custom_house?.toUpperCase().includes("ACC") &&
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIRPORT") &&
-          !selectedDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") &&
-          selectedDocJob?.transportMode !== "AIR") && (
-            <BillOfLadingGenerator jobNo={selectedDocJob?.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => {
-                  setDocsAnchorEl(null);
-                  setSelectedDocJob(null);
-                }}
-                sx={{ fontSize: 13, minWidth: 150 }}
-              >
-                Bill of Lading
-              </MenuItem>
-            </BillOfLadingGenerator>
-          )}
-
-        <MenuItem
-          onClick={() => {
-            if (!selectedDocJob) return;
-            const downloadUrl = `${import.meta.env.VITE_API_STRING}/generate-sb-file/${selectedDocJob._id}`;
-            window.open(downloadUrl, "_blank");
-            setDocsAnchorEl(null);
-            setSelectedDocJob(null);
-          }}
-          sx={{
-            fontSize: 13,
-            minWidth: 150,
-            color: "#166534",
-            fontWeight: "bold",
-            borderTop: "1px solid #eee",
-            marginTop: "5px",
-            paddingTop: "8px"
-          }}
-        >
-          Export SB Flat File (.sb)
-        </MenuItem>
-      </Menu>
 
       {/* SB Track Dialog */}
       <SBTrackDialog
@@ -4057,6 +3784,237 @@ const ExportJobsTable = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* 1. UPLOADED DOCUMENTS MENU */}
+      <Menu
+        anchorEl={docsAnchorEl}
+        open={Boolean(docsAnchorEl)}
+        onClose={handleDocsClose}
+        PaperProps={{
+          style: {
+            maxHeight: 450,
+            width: '280px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0',
+            padding: '4px 0'
+          },
+        }}
+      >
+        {selectedDocJob && (() => {
+          const links = getDocumentLinks(selectedDocJob);
+          if (links.length === 0) return <MenuItem disabled style={{ fontSize: '13px' }}>No uploaded documents</MenuItem>;
+
+          return links.map((link, idx) => {
+            if (link.isHeader) {
+              return (
+                <ListSubheader key={idx} style={{
+                  lineHeight: '34px',
+                  backgroundColor: '#f8fafc',
+                  color: '#0369a1',
+                  fontWeight: '800',
+                  fontSize: '11px',
+                  textTransform: 'uppercase',
+                  borderBottom: '1px solid #f1f5f9'
+                }}>
+                  {link.title}
+                </ListSubheader>
+              );
+            }
+
+            return (
+              <MenuItem
+                key={idx}
+                style={{
+                  padding: '4px 16px',
+                  minHeight: '36px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderBottom: '1px solid #f1f5f9'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
+                  {link.url ? (
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        fontSize: '13px',
+                        color: '#2563eb',
+                        textDecoration: 'none',
+                        fontWeight: '600',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {link.title}
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '500' }}>
+                      {link.title}
+                    </span>
+                  )}
+                </div>
+
+                <div onClick={(e) => e.stopPropagation()} style={{ marginLeft: '8px' }}>
+                  <QuickUploadButton
+                    job={selectedDocJob}
+                    field={link.field}
+                    uploadType={link.uploadType || "status"}
+                    idx={link.idx || 0}
+                    onSuccess={(url) => {
+                      setJobs((prevJobs) =>
+                        prevJobs.map((j) => {
+                          if (j._id === selectedDocJob._id) {
+                            if (link.uploadType === "toplevel") {
+                              const currFiles = Array.isArray(j[link.field]) ? j[link.field] : [];
+                              return { ...j, [link.field]: [...currFiles, url] };
+                            }
+
+                            const newOps = JSON.parse(JSON.stringify(j.operations || []));
+                            if (!newOps[0]) newOps[0] = {};
+
+                            if (link.uploadType === "section") {
+                              if (!Array.isArray(newOps[0][link.field])) newOps[0][link.field] = [];
+                              while (newOps[0][link.field].length <= (link.idx || 0)) {
+                                newOps[0][link.field].push({});
+                              }
+                              const currFiles = Array.isArray(newOps[0][link.field][link.idx || 0].images)
+                                ? newOps[0][link.field][link.idx || 0].images
+                                : [];
+                              newOps[0][link.field][link.idx || 0].images = [...currFiles, url];
+                            } else if (link.uploadType === "container") {
+                              const newContainers = JSON.parse(JSON.stringify(j.containers || []));
+                              if (!newContainers[0]) newContainers[0] = {};
+                              const currFiles = Array.isArray(newContainers[0][link.field]) ? newContainers[0][link.field] : [];
+                              newContainers[0][link.field] = [...currFiles, url];
+                              return { ...j, containers: newContainers };
+                            } else {
+                              if (!newOps[0].statusDetails) newOps[0].statusDetails = [{}];
+                              if (!newOps[0].statusDetails[0]) newOps[0].statusDetails[0] = {};
+
+                              const currFiles = Array.isArray(newOps[0].statusDetails[0][link.field])
+                                ? newOps[0].statusDetails[0][link.field]
+                                : [];
+                              newOps[0].statusDetails[0][link.field] = [...currFiles, url];
+                            }
+
+                            return { ...j, operations: newOps };
+                          }
+                          return j;
+                        })
+                      );
+                    }}
+                  />
+                </div>
+              </MenuItem>
+            );
+          });
+        })()}
+      </Menu>
+
+      {/* 2. GENERATED DOCUMENTS MENU */}
+      <Menu
+        anchorEl={genDocsAnchorEl}
+        open={Boolean(genDocsAnchorEl)}
+        onClose={handleGenDocsClose}
+        PaperProps={{
+          style: {
+            maxHeight: 450,
+            width: '280px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0',
+            padding: '4px 0'
+          },
+        }}
+      >
+        {selectedGenDocJob && (() => (
+          <>
+            <ListSubheader style={{
+              lineHeight: '34px',
+              backgroundColor: '#f1f5f9',
+              color: '#1e293b',
+              fontWeight: '800',
+              fontSize: '11px',
+              textTransform: 'uppercase',
+              borderBottom: '1px solid #e2e8f0',
+              letterSpacing: '0.05em'
+            }}>
+              1. GENERATED DOCUMENTS
+            </ListSubheader>
+
+            <ExportChecklistGenerator jobNo={selectedGenDocJob?.job_no} renderAsIcon={false}>
+              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Checklist</MenuItem>
+            </ExportChecklistGenerator>
+
+            <FileCoverGenerator jobNo={selectedGenDocJob?.job_no}>
+              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>File Cover</MenuItem>
+            </FileCoverGenerator>
+
+            {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SACHANA")) && (
+              <ConsignmentNoteGenerator jobNo={selectedGenDocJob?.job_no}>
+                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Forwarding Note (Sachana)</MenuItem>
+              </ConsignmentNoteGenerator>
+            )}
+
+            {(selectedGenDocJob?.custom_house?.toUpperCase().includes("THAR")) && (
+              <ForwardingNoteTharGenerator jobNo={selectedGenDocJob?.job_no}>
+                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Forwarding Note (THAR)</MenuItem>
+              </ForwardingNoteTharGenerator>
+            )}
+
+            {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SABARMATI") || selectedGenDocJob?.custom_house?.toUpperCase().includes("CONCOR")) && (
+              <ConcorForwardingNoteGenerator jobNo={selectedGenDocJob?.job_no}>
+                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Forwarding Note (CONCOR)</MenuItem>
+              </ConcorForwardingNoteGenerator>
+            )}
+
+            {(!selectedGenDocJob?.custom_house?.toUpperCase().includes("ACC") &&
+              !selectedGenDocJob?.custom_house?.toUpperCase().includes("AIRPORT") &&
+              !selectedGenDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") &&
+              selectedGenDocJob?.transportMode !== "AIR") && (
+                <>
+                  <AnnexureCGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Annexure C</MenuItem>
+                  </AnnexureCGenerator>
+                  <VGMAuthorizationGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>VGM Authorization</MenuItem>
+                  </VGMAuthorizationGenerator>
+                  <FreightCertificateGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Freight Certificate</MenuItem>
+                  </FreightCertificateGenerator>
+                  <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Bill of Lading</MenuItem>
+                  </BillOfLadingGenerator>
+                </>
+              )}
+
+            <MenuItem
+              onClick={() => {
+                if (!selectedGenDocJob) return;
+                const downloadUrl = `${import.meta.env.VITE_API_STRING}/generate-sb-file/${selectedGenDocJob._id}`;
+                window.open(downloadUrl, "_blank");
+                handleGenDocsClose();
+              }}
+              style={{
+                fontSize: '13px',
+                minHeight: '40px',
+                color: '#166534',
+                fontWeight: 'bold',
+                backgroundColor: '#f0fdf4',
+                borderBottom: '2px solid #bbf7d0'
+              }}
+            >
+              Export SB Flat File (.sb)
+            </MenuItem>
+          </>
+        ))()}
+      </Menu>
     </>
   );
 };

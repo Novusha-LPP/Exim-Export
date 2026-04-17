@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const shippingLineSchema = new mongoose.Schema({
+const transporterSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, unique: true, uppercase: true },
   active: { type: String, default: "Yes", uppercase: true },
   branches: [{
@@ -31,5 +31,5 @@ const shippingLineSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now },
 });
 
-const ShippingLineModel = mongoose.model("ShippingLine", shippingLineSchema);
-export default ShippingLineModel;
+const TransporterModel = mongoose.model("Transporter", transporterSchema);
+export default TransporterModel;

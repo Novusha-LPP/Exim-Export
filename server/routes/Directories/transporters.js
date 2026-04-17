@@ -1,9 +1,9 @@
 import express from 'express';
-import ShippingLine from "../../model/Directorties/ShippingLine.js";
+import Transporter from "../../model/Directorties/Transporter.js";
 
 const router = express.Router();
 
-// GET /api/shippingLines - Get all shipping lines with pagination and search
+// GET /api/transporters - Get all transporters with pagination and search
 router.get('/', async (req, res) => {
   try {
     const {
@@ -30,15 +30,15 @@ router.get('/', async (req, res) => {
 
     if (active) query.active = active;
 
-    const total = await ShippingLine.countDocuments(query);
-    const shippingLines = await ShippingLine.find(query)
+    const total = await Transporter.countDocuments(query);
+    const transporters = await Transporter.find(query)
       .sort({ created_at: -1 })
       .skip(skip)
       .limit(limitNum);
 
     res.json({
       success: true,
-      data: shippingLines,
+      data: transporters,
       pagination: {
         currentPage: pageNum,
         totalPages: Math.ceil(total / limitNum),
@@ -51,78 +51,78 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/shippingLines/:id - Get shipping line by ID
+// GET /api/transporters/:id - Get transporter by ID
 router.get('/:id', async (req, res) => {
   try {
-    const shippingLine = await ShippingLine.findById(req.params.id);
-    if (!shippingLine) {
-      return res.status(404).json({ message: 'Shipping Line not found' });
+    const transporter = await Transporter.findById(req.params.id);
+    if (!transporter) {
+      return res.status(404).json({ message: 'Transporter not found' });
     }
-    res.json({ success: true, data: shippingLine });
+    res.json({ success: true, data: transporter });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// POST /api/shippingLines - Create new shipping line
+// POST /api/transporters - Create new transporter
 router.post('/', async (req, res) => {
   try {
-    const shippingLine = new ShippingLine(req.body);
-    const savedShippingLine = await shippingLine.save();
+    const transporter = new Transporter(req.body);
+    const savedTransporter = await transporter.save();
     
     res.status(201).json({
       success: true,
-      message: 'Shipping Line created successfully',
-      data: savedShippingLine
+      message: 'Transporter created successfully',
+      data: savedTransporter
     });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ 
-        message: 'Shipping Line with this name already exists' 
+        message: 'Transporter with this name already exists' 
       });
     }
     res.status(400).json({ message: error.message });
   }
 });
 
-// PUT /api/shippingLines/:id - Update shipping line
+// PUT /api/transporters/:id - Update transporter
 router.put('/:id', async (req, res) => {
   try {
-    const shippingLine = await ShippingLine.findByIdAndUpdate(
+    const transporter = await Transporter.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
 
-    if (!shippingLine) {
-      return res.status(404).json({ message: 'Shipping Line not found' });
+    if (!transporter) {
+      return res.status(404).json({ message: 'Transporter not found' });
     }
 
     res.json({
       success: true,
-      message: 'Shipping Line updated successfully',
-      data: shippingLine
+      message: 'Transporter updated successfully',
+      data: transporter
     });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ 
-        message: 'Shipping Line with this name already exists' 
+        message: 'Transporter with this name already exists' 
       });
     }
     res.status(400).json({ message: error.message });
   }
 });
 
-// DELETE /api/shippingLines/:id - Delete shipping line
+// DELETE /api/transporters/:id - Delete transporter
 router.delete('/:id', async (req, res) => {
   try {
-    const shippingLine = await ShippingLine.findByIdAndDelete(req.params.id);
-    if (!shippingLine) {
-      return res.status(404).json({ message: 'Shipping Line not found' });
+    const transporter = await Transporter.findByIdAndDelete(req.params.id);
+    if (!transporter) {
+      return res.status(404).json({ message: 'Transporter not found' });
     }
     res.json({
       success: true,
-      message: 'Shipping Line deleted successfully'
+      message: 'Transporter deleted successfully'
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

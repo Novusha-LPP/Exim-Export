@@ -44,6 +44,9 @@ import genrateExportChecklist from "./routes/export-dsr/generateExportChecklist.
 import gatwayPort from "./routes/Directories/gatwayPort.js";
 import license from "./routes/Directories/license.js";
 import districts from "./routes/Directories/districts.js";
+import transporters from "./routes/Directories/transporters.js";
+import terminalCodes from "./routes/Directories/terminalcodes.js";
+
 import getExportJobsModuleUsers from "./routes/export-dsr/getExportJobsModuleUsers.mjs";
 
 //============== EXPORT DSR =========================
@@ -197,6 +200,9 @@ app.use(getExpJob);
 app.use("/api/gateway-ports", auditMiddleware("Directory"), gatwayPort);
 app.use("/api/licenses", auditMiddleware("Directory"), license);
 app.use("/api/districts", auditMiddleware("Directory"), districts);
+app.use("/api/transporters", auditMiddleware("Directory"), transporters);
+app.use("/api/terminalCodes", auditMiddleware("Directory"), terminalCodes);
+
 // app.set("trust proxy", 1); // Trust first proxy (NGINX, AWS ELB, etc.)
 
 //============== EXPORT DSR =========================

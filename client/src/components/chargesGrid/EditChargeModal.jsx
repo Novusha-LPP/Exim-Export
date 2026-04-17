@@ -41,7 +41,9 @@ const EditChargeModal = ({
   const [suppliers, setSuppliers] = useState([]);
   const [organizations, setOrganizations] = useState([]);
   const [exporters, setExporters] = useState([]);
-  const [activeDropdown, setActiveDropdown] = useState({ index: null, section: null }); // Track which row/section has open dropdown
+  const [transporters, setTransporters] = useState([]);
+  const [terminalCodes, setTerminalCodes] = useState([]);
+  const [activeDropdown, setActiveDropdown] = useState({ index: null, section: null });
   const [searchLoading, setSearchLoading] = useState(false);
   const dropdownRef = useRef(null);
   const modalRef = useRef(null);
@@ -70,28 +72,41 @@ const EditChargeModal = ({
 
   const fetchMasterData = async () => {
     try {
-      const [slRes, supRes, orgRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_STRING}/get-shipping-lines`),
+      const [slRes, supRes, orgRes, transRes, termRes] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_API_STRING}/api/shippingLines?limit=1000`),
         axios.get(`${import.meta.env.VITE_API_STRING}/get-suppliers`),
-        axios.get(`${import.meta.env.VITE_API_STRING}/organization`)
+        axios.get(`${import.meta.env.VITE_API_STRING}/organization`),
+        axios.get(`${import.meta.env.VITE_API_STRING}/api/transporters?limit=1000`),
+        axios.get(`${import.meta.env.VITE_API_STRING}/api/terminalCodes?limit=1000`)
       ]);
 
-      // Combine shipping lines and ensure they all have a 'name' property for filtering
-      const masterSLs = SHIPPING_LINES.map(sl => ({ name: sl.label, value: sl.value, city: 'Master List' }));
-      const apiSLs = (slRes.data || []).map(sl => ({
-        name: sl.shippingName || sl.name || '',
-        value: sl.shippingLineCode || sl.value || '',
-        city: sl.location || sl.city || ''
+      // Map API Shipping Lines to standard { name, city, branches, tds_percent }
+      const apiSLs = (slRes.data?.data || []).map(sl => ({
+        name: sl.name || '',
+        city: sl.branches?.[0]?.city || '',
+        branches: sl.branches || [],
+        tds_percent: sl.tds_percent || 0
       }));
 
-      const combinedSL = [...apiSLs];
-      masterSLs.forEach(msl => {
-        if (!combinedSL.find(sl => (sl.name || '').toUpperCase() === msl.name.toUpperCase())) {
-          combinedSL.push(msl);
-        }
-      });
+      // Map Transporters
+      const apiTrans = (transRes.data?.data || []).map(t => ({
+        name: t.name || '',
+        city: t.branches?.[0]?.city || '',
+        branches: t.branches || [],
+        tds_percent: t.tds_percent || 0
+      }));
 
-      setShippingLines(combinedSL);
+      // Map Terminal Codes
+      const apiTerms = (termRes.data?.data || []).map(t => ({
+        name: t.name || '',
+        city: t.branches?.[0]?.city || '',
+        branches: t.branches || [],
+        tds_percent: t.tds_percent || 0
+      }));
+
+      setShippingLines(apiSLs);
+      setTransporters(apiTrans);
+      setTerminalCodes(apiTerms);
       setSuppliers(supRes.data || []);
       setOrganizations(orgRes.data?.organizations || []);
     } catch (error) {
@@ -103,10 +118,11 @@ const EditChargeModal = ({
     if (!searchTerm || searchTerm.length < 2) return;
     setSearchLoading(true);
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/directory?search=${searchTerm}&limit=50`);
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/api/directory?search=${searchTerm}&limit=50`);
       const mapped = (res.data?.data || []).map(e => ({
         name: e.organization,
-        city: e.branchInfo?.[0]?.city || 'Directory'
+        city: e.branchInfo?.[0]?.city || 'Directory',
+        branches: e.branchInfo || []
       }));
       setExporters(mapped);
     } catch (error) {
@@ -229,12 +245,13 @@ const EditChargeModal = ({
       updated[index][section] = updated[index][section] || {};
       updated[index][section][field] = value;
 
-      // Auto-populate TDS if selecting a shipping line
+      // Auto-populate TDS if selecting a party from directories
       if (section === 'cost' && field === 'partyName') {
-        const matchedSL = shippingLines.find(sl => sl.name?.toUpperCase() === value?.toUpperCase());
-        if (matchedSL && matchedSL.tds_percent > 0) {
+        const allParties = [...shippingLines, ...transporters, ...terminalCodes, ...suppliers, ...organizations, ...exporters];
+        const matchedParty = allParties.find(p => p.name?.toUpperCase() === value?.toUpperCase());
+        if (matchedParty && matchedParty.tds_percent > 0) {
           updated[index][section].isTds = true;
-          updated[index][section].tdsPercent = matchedSL.tds_percent;
+          updated[index][section].tdsPercent = matchedParty.tds_percent;
         }
       }
 
@@ -244,7 +261,7 @@ const EditChargeModal = ({
       }
 
       // Auto-populate Payable To if type is 'Importer' in Cost section
-      if (section === 'cost' && field === 'partyType' && value === 'EXPORTER' && exporterName) {
+      if (section === 'cost' && field === 'partyType' && (value === 'EXPORTER' || value === 'Exporter') && exporterName) {
         updated[index][section].partyName = exporterName;
       }
 
@@ -587,8 +604,10 @@ const EditChargeModal = ({
                                       {searchLoading && <li className="ep-dropdown-item"><span className="ep-item-sub">Searching...</span></li>}
                                       {!searchLoading && (() => {
                                         const type = row.revenue?.partyType?.toUpperCase();
-                                        const list = (type === 'AGENT' || type === 'CARRIER') ? [...shippingLines, ...exporters] :
-                                          (type === 'CUSTOMER') ? [...organizations, ...exporters] : [];
+                                        let list = [];
+                                        if (type === 'AGENT') list = [...shippingLines, ...exporters];
+                                        else if (type === 'CARRIER') list = [...shippingLines, ...terminalCodes];
+                                        else if (type === 'CUSTOMER') list = [...organizations, ...exporters];
 
                                         const filtered = list.filter(item => !row.revenue?.partyName || (item.name && item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase())))
                                           .slice(0, 30);
@@ -722,7 +741,13 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">Payable Type</span>
                                 <select className="ep-select" value={row.cost?.partyType || ''} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'cost')}>
-                                  <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option>
+                                  <option>Vendor</option>
+                                  <option>Transporter</option>
+                                  <option>Exporter</option>
+                                  <option>CFS</option>
+                                  <option>Terminal</option>
+                                  <option>Agent</option>
+                                  <option>Others</option>
                                 </select>
                               </div>
                               <div className="ep-row">
@@ -751,9 +776,12 @@ const EditChargeModal = ({
                                       {searchLoading && <li className="ep-dropdown-item"><span className="ep-item-sub">Searching...</span></li>}
                                       {!searchLoading && (() => {
                                         const type = row.cost?.partyType?.toUpperCase();
-                                        const list = (type === 'AGENT' || type === 'OTHERS') ? [...shippingLines, ...exporters] :
-                                          (type === 'VENDOR' || type === 'TRANSPORTER') ? [...suppliers, ...shippingLines, ...exporters] :
-                                            (type === 'EXPORTER') ? [...organizations, ...exporters] : [];
+                                        let list = [];
+                                        if (type === 'AGENT' || type === 'OTHERS') list = [...shippingLines, ...exporters];
+                                        else if (type === 'VENDOR') list = [...suppliers, ...shippingLines, ...exporters];
+                                        else if (type === 'TRANSPORTER') list = [...transporters, ...exporters];
+                                        else if (type === 'CFS' || type === 'TERMINAL') list = [...terminalCodes, ...exporters];
+                                        else if (type === 'EXPORTER') list = [...organizations, ...exporters];
 
                                         const filtered = list.filter(item => !row.cost?.partyName || (item.name && item.name.toLowerCase().includes(row.cost.partyName.toLowerCase())))
                                           .slice(0, 30);

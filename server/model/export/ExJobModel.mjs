@@ -564,7 +564,7 @@ const chargeSchema = new Schema(
   {
     chargeHead: { type: String },
     category: { type: String },
-    
+
     // Top-level fields
     invoice_number: { type: String, trim: true },
     invoice_date: { type: String, trim: true },
@@ -678,6 +678,7 @@ const statusDetailsSchema = new Schema(
     goodsReportDate: { type: String, trim: true },
     leoDate: { type: String, trim: true },
     leoUpload: [String],
+    booking_copy: [String], // Added for status-level storage
     stuffingDate: { type: String, trim: true },
     stuffingSheetUpload: [String],
     stuffingPhotoUpload: [String],
@@ -685,12 +686,22 @@ const statusDetailsSchema = new Schema(
     eGatePassUpload: [String],
     icdPort: { type: String, trim: true },
     handoverForwardingNoteDate: { type: String, trim: true },
+    forwardingNoteUpload: [String],
     handoverImageUpload: [String],
+    manualVgmUpload: [String],
+    odexVgmUpload: [String],
+    odexEsbUpload: [String],
+    odexForm13Upload: [String],
+    cmaForwardingNoteUpload: [String],
+    containerDoorPhotoUpload: [String],
+    cartingPhotoUpload: [String],
+    weighmentSlipUpload: [String],
     forwarderName: { type: String, trim: true },
     handoverConcorTharSanganaRailRoadDate: { type: String, trim: true },
     billingDocsSentDt: { type: String, trim: true },
     billingDocsSentUpload: [String],
     otherDocUpload: [String],
+    forwardingNoteDocUpload: [String],
     billingDocsStatus: { type: String, trim: true },
     railRoad: { type: String, trim: true },
     concorPrivate: { type: String, trim: true },
@@ -1133,8 +1144,13 @@ exportJobSchema.pre("save", function (next) {
   if (!this.operations || this.operations.length === 0) {
     this.operations = [{
       transporterDetails: [],
-      statusDetails: []
+      statusDetails: [{}]
     }];
+  } else if (this.operations[0]) {
+    // Ensure the first operation has at least one statusDetails entry
+    if (!this.operations[0].statusDetails || this.operations[0].statusDetails.length === 0) {
+      this.operations[0].statusDetails = [{}];
+    }
   }
 
   // Sync stuffing_seal_no with annexC1Details
@@ -1232,7 +1248,7 @@ exportJobSchema.pre("save", function (next) {
   // Priorities: Date fields are now EXCEPTIONAL and are the absolute source of truth
   const op0Status = (this.operations && this.operations[0] && this.operations[0].statusDetails && this.operations[0].statusDetails[0]);
   const isAirJob = (this.job_no && String(this.job_no).toUpperCase().includes('/AIR/'));
-  
+
   const syncMap = [
     { date: this.sb_date, name: "SB Filed" },
     { date: op0Status ? op0Status.leoDate : null, name: "L.E.O" },

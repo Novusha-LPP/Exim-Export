@@ -1,9 +1,9 @@
 import express from 'express';
-import ShippingLine from "../../model/Directorties/ShippingLine.js";
+import TerminalCode from "../../model/Directorties/TerminalCode.js";
 
 const router = express.Router();
 
-// GET /api/shippingLines - Get all shipping lines with pagination and search
+// GET /api/terminalCodes - Get all terminal codes with pagination and search
 router.get('/', async (req, res) => {
   try {
     const {
@@ -30,15 +30,15 @@ router.get('/', async (req, res) => {
 
     if (active) query.active = active;
 
-    const total = await ShippingLine.countDocuments(query);
-    const shippingLines = await ShippingLine.find(query)
+    const total = await TerminalCode.countDocuments(query);
+    const terminalCodes = await TerminalCode.find(query)
       .sort({ created_at: -1 })
       .skip(skip)
       .limit(limitNum);
 
     res.json({
       success: true,
-      data: shippingLines,
+      data: terminalCodes,
       pagination: {
         currentPage: pageNum,
         totalPages: Math.ceil(total / limitNum),
@@ -51,78 +51,78 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/shippingLines/:id - Get shipping line by ID
+// GET /api/terminalCodes/:id - Get terminal code by ID
 router.get('/:id', async (req, res) => {
   try {
-    const shippingLine = await ShippingLine.findById(req.params.id);
-    if (!shippingLine) {
-      return res.status(404).json({ message: 'Shipping Line not found' });
+    const terminalCode = await TerminalCode.findById(req.params.id);
+    if (!terminalCode) {
+      return res.status(404).json({ message: 'Terminal Code not found' });
     }
-    res.json({ success: true, data: shippingLine });
+    res.json({ success: true, data: terminalCode });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// POST /api/shippingLines - Create new shipping line
+// POST /api/terminalCodes - Create new terminal code
 router.post('/', async (req, res) => {
   try {
-    const shippingLine = new ShippingLine(req.body);
-    const savedShippingLine = await shippingLine.save();
+    const terminalCode = new TerminalCode(req.body);
+    const savedTerminalCode = await terminalCode.save();
     
     res.status(201).json({
       success: true,
-      message: 'Shipping Line created successfully',
-      data: savedShippingLine
+      message: 'Terminal Code created successfully',
+      data: savedTerminalCode
     });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ 
-        message: 'Shipping Line with this name already exists' 
+        message: 'Terminal Code with this name already exists' 
       });
     }
     res.status(400).json({ message: error.message });
   }
 });
 
-// PUT /api/shippingLines/:id - Update shipping line
+// PUT /api/terminalCodes/:id - Update terminal code
 router.put('/:id', async (req, res) => {
   try {
-    const shippingLine = await ShippingLine.findByIdAndUpdate(
+    const terminalCode = await TerminalCode.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
 
-    if (!shippingLine) {
-      return res.status(404).json({ message: 'Shipping Line not found' });
+    if (!terminalCode) {
+      return res.status(404).json({ message: 'Terminal Code not found' });
     }
 
     res.json({
       success: true,
-      message: 'Shipping Line updated successfully',
-      data: shippingLine
+      message: 'Terminal Code updated successfully',
+      data: terminalCode
     });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ 
-        message: 'Shipping Line with this name already exists' 
+        message: 'Terminal Code with this name already exists' 
       });
     }
     res.status(400).json({ message: error.message });
   }
 });
 
-// DELETE /api/shippingLines/:id - Delete shipping line
+// DELETE /api/terminalCodes/:id - Delete terminal code
 router.delete('/:id', async (req, res) => {
   try {
-    const shippingLine = await ShippingLine.findByIdAndDelete(req.params.id);
-    if (!shippingLine) {
-      return res.status(404).json({ message: 'Shipping Line not found' });
+    const terminalCode = await TerminalCode.findByIdAndDelete(req.params.id);
+    if (!terminalCode) {
+      return res.status(404).json({ message: 'Terminal Code not found' });
     }
     res.json({
       success: true,
-      message: 'Shipping Line deleted successfully'
+      message: 'Terminal Code deleted successfully'
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
