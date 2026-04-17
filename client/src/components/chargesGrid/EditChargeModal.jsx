@@ -73,11 +73,11 @@ const EditChargeModal = ({
   const fetchMasterData = async () => {
     try {
       const [slRes, supRes, orgRes, transRes, termRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_STRING}/api/shippingLines?limit=1000`),
+        axios.get(`${import.meta.env.VITE_API_STRING}/shippingLines?limit=1000`),
         axios.get(`${import.meta.env.VITE_API_STRING}/get-suppliers`),
         axios.get(`${import.meta.env.VITE_API_STRING}/organization`),
-        axios.get(`${import.meta.env.VITE_API_STRING}/api/transporters?limit=1000`),
-        axios.get(`${import.meta.env.VITE_API_STRING}/api/terminalCodes?limit=1000`)
+        axios.get(`${import.meta.env.VITE_API_STRING}/transporters?limit=1000`),
+        axios.get(`${import.meta.env.VITE_API_STRING}/terminalCodes?limit=1000`)
       ]);
 
       // Map API Shipping Lines to standard { name, city, branches, tds_percent }
@@ -118,7 +118,7 @@ const EditChargeModal = ({
     if (!searchTerm || searchTerm.length < 2) return;
     setSearchLoading(true);
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/api/directory?search=${searchTerm}&limit=50`);
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/directory?search=${searchTerm}&limit=50`);
       const mapped = (res.data?.data || []).map(e => ({
         name: e.organization,
         city: e.branchInfo?.[0]?.city || 'Directory',
@@ -603,11 +603,7 @@ const EditChargeModal = ({
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
                                       {searchLoading && <li className="ep-dropdown-item"><span className="ep-item-sub">Searching...</span></li>}
                                       {!searchLoading && (() => {
-                                        const type = row.revenue?.partyType?.toUpperCase();
-                                        let list = [];
-                                        if (type === 'AGENT') list = [...shippingLines, ...exporters];
-                                        else if (type === 'CARRIER') list = [...shippingLines, ...terminalCodes];
-                                        else if (type === 'CUSTOMER') list = [...organizations, ...exporters];
+                                        const list = [...shippingLines, ...organizations, ...terminalCodes, ...transporters, ...suppliers, ...exporters];
 
                                         const filtered = list.filter(item => !row.revenue?.partyName || (item.name && item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase())))
                                           .slice(0, 30);
@@ -744,7 +740,6 @@ const EditChargeModal = ({
                                   <option>Vendor</option>
                                   <option>Transporter</option>
                                   <option>Exporter</option>
-                                  <option>CFS</option>
                                   <option>Terminal</option>
                                   <option>Agent</option>
                                   <option>Others</option>
@@ -775,13 +770,7 @@ const EditChargeModal = ({
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
                                       {searchLoading && <li className="ep-dropdown-item"><span className="ep-item-sub">Searching...</span></li>}
                                       {!searchLoading && (() => {
-                                        const type = row.cost?.partyType?.toUpperCase();
-                                        let list = [];
-                                        if (type === 'AGENT' || type === 'OTHERS') list = [...shippingLines, ...exporters];
-                                        else if (type === 'VENDOR') list = [...suppliers, ...shippingLines, ...exporters];
-                                        else if (type === 'TRANSPORTER') list = [...transporters, ...exporters];
-                                        else if (type === 'CFS' || type === 'TERMINAL') list = [...terminalCodes, ...exporters];
-                                        else if (type === 'EXPORTER') list = [...organizations, ...exporters];
+                                        const list = [...shippingLines, ...suppliers, ...organizations, ...transporters, ...terminalCodes, ...exporters];
 
                                         const filtered = list.filter(item => !row.cost?.partyName || (item.name && item.name.toLowerCase().includes(row.cost.partyName.toLowerCase())))
                                           .slice(0, 30);
@@ -809,7 +798,7 @@ const EditChargeModal = ({
                                 </div>
                               </div>
                               {(() => {
-                                const party = [...shippingLines, ...suppliers, ...organizations, ...exporters].find(p => p.name && p.name.toUpperCase() === row.cost?.partyName?.toUpperCase());
+                                const party = [...shippingLines, ...suppliers, ...organizations, ...exporters, ...transporters, ...terminalCodes].find(p => p.name && p.name.toUpperCase() === row.cost?.partyName?.toUpperCase());
                                 if (party && party.branches?.length > 1) {
                                   return (
                                     <div className="ep-row">
@@ -884,7 +873,7 @@ const EditChargeModal = ({
                                       }}
                                       onClick={() => {
                                         const partyName = row.cost?.partyName;
-                                        const partyDetails = [...shippingLines, ...suppliers, ...organizations, ...exporters].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
+                                        const partyDetails = [...shippingLines, ...suppliers, ...organizations, ...exporters, ...transporters, ...terminalCodes].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
                                         setPurchaseBookData(() => {
                                           const cost = row.cost || {};
                                           const rate = parseFloat(cost.gstRate) || 18;

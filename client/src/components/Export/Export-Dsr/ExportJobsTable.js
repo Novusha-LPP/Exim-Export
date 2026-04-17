@@ -125,10 +125,16 @@ const s = {
   // Toolbar
   toolbar: {
     display: "flex",
-    gap: "10px",
+    gap: "12px",
+    rowGap: "10px",
     alignItems: "center",
-    marginBottom: "10px",
+    marginBottom: "15px",
     flexWrap: "wrap",
+    backgroundColor: "#fff",
+    padding: "10px",
+    borderRadius: "8px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    border: "1px solid #e5e7eb"
   },
   input: {
     height: "30px",
@@ -2120,10 +2126,10 @@ const ExportJobsTable = () => {
             <div
               style={{
                 display: "flex",
-                flex: 1,
-                minWidth: "100px", // Ensure it doesn't get too small
-                justifyContent: "flex-end",
+                alignItems: "center",
+                justifyContent: "flex-start",
                 gap: "10px",
+                marginLeft: "auto" // Push to right if space permits
               }}
             >
               <input
@@ -2912,38 +2918,39 @@ const ExportJobsTable = () => {
                           <Button
                             size="small"
                             onClick={(e) => handleDocsClick(e, job)}
-                            endIcon={<ArrowDropDownIcon />}
+                            endIcon={<ArrowDropDownIcon style={{ fontSize: '14px' }} />}
                             style={{
                               fontSize: "10px",
-                              padding: "2px 8px",
+                              padding: "1px 6px",
                               textTransform: "none",
-                              backgroundColor: "#f9fafb",
-                              border: "1px solid #d1d5db",
-                              color: "#374151",
+                              backgroundColor: "#f8fafc",
+                              border: "1px solid #cbd5e1",
+                              color: "#475569",
                               borderRadius: "4px",
-                              fontWeight: "600"
+                              fontWeight: "600",
+                              minWidth: '70px'
                             }}
                           >
-                            Docs
+                            Files
                           </Button>
                         </td>
 
-                        {/* Column 10: Status */}
-                        <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#c6f6d5" : "inherit" }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#ecfdf5" : "inherit", minWidth: '100px' }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                             <button
                               className="copy-btn"
                               onClick={(e) => handleCopyJob(job, e)}
                               style={{
-                                padding: "6px 12px",
+                                padding: "4px 8px",
                                 backgroundColor: "#10b981",
                                 color: "white",
                                 border: "none",
-                                borderRadius: "3px",
+                                borderRadius: "4px",
                                 fontSize: "11px",
-                                fontWeight: "600",
+                                fontWeight: "700",
                                 cursor: "pointer",
                                 width: "100%",
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                               }}
                             >
                               Copy
@@ -2951,17 +2958,18 @@ const ExportJobsTable = () => {
                             <Button
                               size="small"
                               onClick={(e) => handleGenDocsClick(e, job)}
-                              endIcon={<ArrowDropDownIcon />}
+                              endIcon={<ArrowDropDownIcon style={{ fontSize: '14px' }} />}
                               style={{
                                 fontSize: "10px",
-                                padding: "2px 8px",
+                                padding: "1px 6px",
                                 textTransform: "none",
-                                backgroundColor: "#ffffff",
+                                backgroundColor: "#eff6ff",
                                 border: "1px solid #3b82f6",
-                                color: "#3b82f6",
+                                color: "#2563eb",
                                 borderRadius: "4px",
-                                fontWeight: "600",
-                                width: "100%"
+                                fontWeight: "700",
+                                width: "100%",
+                                minHeight: '24px'
                               }}
                             >
                               Docs

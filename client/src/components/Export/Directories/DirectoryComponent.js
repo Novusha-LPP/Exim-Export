@@ -7,6 +7,9 @@ import PortCodeSea from "./PortCodeSea.js";
 import PortCodeAir from "./PortCodeAir.js";
 import GatewayPortDirectory from "./GatwayPort.js";
 import District from "./District.js";
+import ShippingLineMaster from "./ShippingLineMaster.js";
+import TransporterMaster from "./TransporterMaster.js";
+import TerminalCodeMaster from "./TerminalCodeMaster.js";
 
 function DirectoryComponent({ directoryType }) {
   const renderDirectory = () => {
@@ -27,6 +30,12 @@ function DirectoryComponent({ directoryType }) {
         return <GatewayPortDirectory />;
       case "District":
         return <District />;
+      case "Shipping Line":
+        return <ShippingLineMaster />;
+      case "Transporter":
+        return <TransporterMaster />;
+      case "Terminal Code":
+        return <TerminalCodeMaster />;
       default:
         return null;
     }
