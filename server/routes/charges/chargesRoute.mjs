@@ -248,6 +248,125 @@ router.put('/charges/:id', async (req, res) => {
     }
 });
 
+// --- APPROVAL WORKFLOW ---
+router.post('/approve-purchase-entry', async (req, res) => {
+    try {
+        const { requestNo } = req.body;
+        const job = await ExJobModel.findOne({ 'charges.purchase_book_no': requestNo });
+        if (!job) return res.status(404).json({ success: false, message: 'Purchase book entry not found' });
+
+        job.charges.forEach(charge => {
+            if (charge.purchase_book_no === requestNo) {
+                charge.purchase_book_is_approved = true;
+                charge.purchase_book_status = 'Approved';
+            }
+        });
+        await job.save();
+        res.json({ success: true, message: 'Approved successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.post('/reject-purchase-entry', async (req, res) => {
+    try {
+        const { requestNo, reason } = req.body;
+        const job = await ExJobModel.findOne({ 'charges.purchase_book_no': requestNo });
+        if (!job) return res.status(404).json({ success: false, message: 'Purchase book entry not found' });
+
+        job.charges.forEach(charge => {
+            if (charge.purchase_book_no === requestNo) {
+                charge.purchase_book_no = null;
+                charge.purchase_book_status = null;
+                charge.purchase_book_is_approved = false;
+                charge.remark = (charge.remark ? charge.remark + " | " : "") + `Rejected PB: ${reason || 'No reason'}`;
+            }
+        });
+        await job.save();
+        res.json({ success: true, message: 'Rejected successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.post('/approve-payment-request', async (req, res) => {
+    try {
+        const { requestNo } = req.body;
+        const job = await ExJobModel.findOne({ 'charges.payment_request_no': requestNo });
+        if (!job) return res.status(404).json({ success: false, message: 'Payment request not found' });
+
+        job.charges.forEach(charge => {
+            if (charge.payment_request_no === requestNo) {
+                charge.payment_request_is_approved = true;
+                charge.payment_request_status = 'Approved';
+            }
+        });
+        await job.save();
+        res.json({ success: true, message: 'Approved successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.post('/reject-payment-request', async (req, res) => {
+    try {
+        const { requestNo, reason } = req.body;
+        const job = await ExJobModel.findOne({ 'charges.payment_request_no': requestNo });
+        if (!job) return res.status(404).json({ success: false, message: 'Payment request not found' });
+
+        job.charges.forEach(charge => {
+            if (charge.payment_request_no === requestNo) {
+                charge.payment_request_no = null;
+                charge.payment_request_status = null;
+                charge.payment_request_is_approved = false;
+                charge.remark = (charge.remark ? charge.remark + " | " : "") + `Rejected PR: ${reason || 'No reason'}`;
+            }
+        });
+        await job.save();
+        res.json({ success: true, message: 'Rejected successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.post('/update-purchase-utr', async (req, res) => {
+    try {
+        const { requestNo, bankName, utr } = req.body;
+        const job = await ExJobModel.findOne({ 'charges.purchase_book_no': requestNo });
+        if (!job) return res.status(404).json({ success: false, message: 'Purchase book entry not found' });
+
+        job.charges.forEach(charge => {
+            if (charge.purchase_book_no === requestNo) {
+                charge.purchase_book_status = 'Completed';
+                charge.remark = (charge.remark ? charge.remark + " | " : "") + `UTR: ${utr}, Bank: ${bankName}`;
+            }
+        });
+        await job.save();
+        res.json({ success: true, message: 'UTR updated' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.post('/update-payment-utr', async (req, res) => {
+    try {
+        const { requestNo, bankName, utr } = req.body;
+        const job = await ExJobModel.findOne({ 'charges.payment_request_no': requestNo });
+        if (!job) return res.status(404).json({ success: false, message: 'Payment request not found' });
+
+        job.charges.forEach(charge => {
+            if (charge.payment_request_no === requestNo) {
+                charge.payment_request_status = 'Completed';
+                charge.remark = (charge.remark ? charge.remark + " | " : "") + `UTR: ${utr}, Bank: ${bankName}`;
+            }
+        });
+        await job.save();
+        res.json({ success: true, message: 'UTR updated' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 router.delete('/charges/:id', async (req, res) => {
     try {
         const job = await ExJobModel.findOne({ 'charges._id': req.params.id });

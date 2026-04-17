@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
-    const { tariff_item, search, page = 1, limit = 20 } = req.query;
+    const { tariff_item, chapter, search, page = 1, limit = 20 } = req.query;
     const query = {};
 
     const pageNum = Math.max(1, parseInt(page));
@@ -63,6 +63,10 @@ router.get("/", async (req, res) => {
 
     if (tariff_item) {
       query.tariff_item = tariff_item;
+    }
+
+    if (chapter) {
+      query.chapter = String(chapter).trim().padStart(2, "0");
     }
 
     const total = await Drawback.countDocuments(query);

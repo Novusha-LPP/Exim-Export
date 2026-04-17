@@ -37,7 +37,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
 
       const formatDate = (date, options = { day: "2-digit", month: "short", year: "numeric" }) => {
         const d = parseDateSafe(date);
-        if (!d) return "Invalid Date";
+        if (!d) return "";
         return d.toLocaleDateString("en-GB", options);
       };
 
@@ -116,6 +116,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
 
       // LCL/FCL and Rail/Road
       const mode = data.consignmentType || "";
+      const isLCL = mode.toString().toUpperCase().includes("LCL");
       const railing = statusDetails.railRoad || statusDetails.concorPrivate || "";
 
       doc.autoTable({
@@ -232,9 +233,9 @@ const FileCoverGenerator = ({ jobNo, children }) => {
 
       const containerBody = containerRows.map((c) => [
         c.containerNo || "",
-        c.containerSize || c.type || c.size || "20",
+        isLCL ? "" : (c.containerSize || c.type || c.size || "20"),
         c.sealNo || "", // Customs Seal
-        sLineSealNo, // S/Line Seal (Same for all containers usually, or per container if structured differently later)
+        sLineSealNo || "", // S/Line Seal
       ]);
 
       // Dynamic scaling logic to fit everything on one A4 page properly

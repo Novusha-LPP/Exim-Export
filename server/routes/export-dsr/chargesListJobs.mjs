@@ -21,6 +21,7 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             jobOwner = "",
             detailedStatus = "",
             month = "",
+            pendingQueries = false,
         } = { ...req.params, ...req.query };
 
         const normalizedStatus = (status || "all").toLowerCase();
@@ -128,6 +129,13 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             });
         }
 
+        if (pendingQueries === "true" || pendingQueries === true) {
+            const QueryModel = (await import("../../model/export/QueryModel.mjs")).default;
+            const openQueries = await QueryModel.find({ status: "open" }).select("job_no").lean();
+            const openJobNos = [...new Set(openQueries.map(q => q.job_no))];
+            filter.$and.push({ job_no: { $in: openJobNos } });
+        }
+
         if (year && year !== "all") filter.$and.push({ year });
         if (exporter) filter.$and.push({ exporter: { $regex: exporter, $options: "i" } });
         if (country) filter.$and.push({ destination_country: { $regex: country, $options: "i" } });
@@ -135,7 +143,20 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
         if (branch) filter.$and.push({ branch_code: branch });
         if (customHouse) filter.$and.push({ custom_house: { $regex: customHouse, $options: "i" } });
         if (jobOwner) filter.$and.push({ job_owner: jobOwner });
-        if (detailedStatus) filter.$and.push({ detailedStatus });
+        if (detailedStatus) {
+            const statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+            if (statusArray.includes("Pending")) {
+                filter.$and.push({
+                    $or: [
+                        { detailedStatus: { $in: statusArray } },
+                        { detailedStatus: { $in: [null, "", "Pending"] } },
+                        { detailedStatus: { $exists: false } }
+                    ]
+                });
+            } else {
+                filter.$and.push({ detailedStatus: { $in: statusArray } });
+            }
+        }
         
         if (month) {
             const [yearStr, monthStr] = month.split("-");

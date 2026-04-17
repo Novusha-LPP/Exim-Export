@@ -116,7 +116,7 @@ const getTabsForEximCode = (eximCode) => {
   }
 };
 
-const ProductTab = ({ formik, directories, params }) => {
+const ProductTab = ({ formik, directories, params, isEditable = true }) => {
   const [activeSubTab, setActiveSubTab] = useState(0);
   const [selectedInvoiceIndex, setSelectedInvoiceIndex] = useState(0);
   const [selectedProductIndex, setSelectedProductIndex] = useState(() => {
@@ -331,11 +331,13 @@ const ProductTab = ({ formik, directories, params }) => {
       </Tabs>
 
       {/* Dynamic Tab Content */}
-      {availableTabs.map((tabName, index) => (
-        <ProductTabPanel key={tabName} value={activeSubTab} index={index}>
-          {renderTabContent(tabName)}
-        </ProductTabPanel>
-      ))}
+      <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
+        {availableTabs.map((tabName, index) => (
+          <ProductTabPanel key={tabName} value={activeSubTab} index={index}>
+            {renderTabContent(tabName)}
+          </ProductTabPanel>
+        ))}
+      </fieldset>
     </Box>
   );
 };

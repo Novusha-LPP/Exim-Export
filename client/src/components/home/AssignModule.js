@@ -20,6 +20,7 @@ const allModules = [
   "Export - Audit Trail",
   "Export - Operation",
   "Export - Charges",
+  "Export - Billing",
   "Directories",
   "Open Points",
   "Export - Reports"

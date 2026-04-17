@@ -106,7 +106,7 @@ const styles = {
   },
 };
 
-const ESanchitTab = ({ formik }) => {
+const ESanchitTab = ({ formik, isEditable = true }) => {
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -195,26 +195,28 @@ const ESanchitTab = ({ formik }) => {
                       : ""}
                   </td>
                   <td style={{ ...styles.td, whiteSpace: "nowrap" }}>
-                    <button
-                      type="button"
-                      style={styles.smallButton}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(doc, idx);
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      style={styles.linkButton}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(idx);
-                      }}
-                    >
-                      Delete
-                    </button>
+                    <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, display: 'inline' }}>
+                      <button
+                        type="button"
+                        style={styles.smallButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(doc, idx);
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        style={styles.linkButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(idx);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </fieldset>
                   </td>
                 </tr>
               ))}
@@ -235,6 +237,7 @@ const ESanchitTab = ({ formik }) => {
             type="button"
             style={styles.primaryButton}
             onClick={handleNew}
+            disabled={!isEditable}
           >
             New
           </button>
@@ -249,6 +252,7 @@ const ESanchitTab = ({ formik }) => {
           onClose={() => setIsDialogOpen(false)}
           onSave={handleSave}
           jobData={formik.values}
+          isEditable={isEditable}
         />
       )}
     </div>

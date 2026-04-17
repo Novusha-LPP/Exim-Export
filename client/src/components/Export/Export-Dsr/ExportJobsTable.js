@@ -20,6 +20,10 @@ import {
   Menu,
   Pagination,
   CircularProgress,
+  Checkbox,
+  ListItemText,
+  Badge,
+  Box,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -276,6 +280,8 @@ const movementTypeOptions = [
 const getStatusColor = (statusValue) => {
   switch (statusValue) {
     // Export Status Mappings
+    case "Pending":
+      return "#f9fafb"; // Very Light Gray
     case "SB Filed":
       return "#e6f3ff"; // Light Blue - Keep existing
 
@@ -460,6 +466,32 @@ const ExportJobsTable = () => {
           : "export-dsr";
 
   const [jobQueriesStatus, setJobQueriesStatus] = useState({});
+  const [onlyPendingQueries, setOnlyPendingQueries] = useState(savedFilters.onlyPendingQueries || false);
+  const [unresolvedCount, setUnresolvedCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnresolvedCount = async () => {
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/queries/count`, {
+          params: {
+            targetModule: currentModuleForQueries,
+            status: "open",
+          },
+          headers: {
+            username: user?.username || "",
+          },
+        });
+        setUnresolvedCount(res.data?.count || 0);
+      } catch (error) {
+        setUnresolvedCount(0);
+      }
+    };
+
+    fetchUnresolvedCount();
+    // Refresh every minute
+    const interval = setInterval(fetchUnresolvedCount, 60000);
+    return () => clearInterval(interval);
+  }, [user?.username, currentModuleForQueries]);
 
   useEffect(() => {
     const jobNos = jobs.map(j => j.job_no).filter(Boolean);
@@ -508,7 +540,7 @@ const ExportJobsTable = () => {
   const [selectedBranch, setSelectedBranch] = useState(initialBranch);
   const [selectedMonth, setSelectedMonth] = useState(savedFilters.selectedMonth || "");
   const [selectedExporterFilter, setSelectedExporterFilter] = useState(savedFilters.selectedExporterFilter || "");
-  const [selectedDetailedStatus, setSelectedDetailedStatus] = useState(savedFilters.selectedDetailedStatus || "");
+  const [selectedDetailedStatus, setSelectedDetailedStatus] = useState(Array.isArray(savedFilters.selectedDetailedStatus) ? savedFilters.selectedDetailedStatus : savedFilters.selectedDetailedStatus ? [savedFilters.selectedDetailedStatus] : []);
   const [selectedCustomHouse, setSelectedCustomHouse] = useState(savedFilters.selectedCustomHouse || "");
   const [selectedJobOwner, setSelectedJobOwner] = useState(savedFilters.selectedJobOwner || "");
   const [selectedGoodsStuffedAt, setSelectedGoodsStuffedAt] = useState(savedFilters.selectedGoodsStuffedAt || "");
@@ -597,6 +629,7 @@ const ExportJobsTable = () => {
     selectedGoodsStuffedAt,
     page,
     sortConfig,
+    onlyPendingQueries,
   ]);
 
   const handleClearFilters = () => {
@@ -607,7 +640,10 @@ const ExportJobsTable = () => {
     // Branch filter is NOT cleared per user request
     setSelectedMonth("");
     setSelectedExporterFilter("");
-    setSelectedDetailedStatus("");
+    // Detailed Status filter is NOT cleared if it has multiple selections per user request
+    if (!Array.isArray(selectedDetailedStatus) || selectedDetailedStatus.length <= 1) {
+      setSelectedDetailedStatus([]);
+    }
     setSelectedCustomHouse("");
     setSelectedJobOwner("");
     setSelectedGoodsStuffedAt("");
@@ -998,6 +1034,7 @@ const ExportJobsTable = () => {
             branch: selectedBranch,
             exporter: selectedExporterFilter,
             detailedStatus: selectedDetailedStatus,
+            pendingQueries: onlyPendingQueries,
             customHouse: selectedCustomHouse,
             month: selectedMonth,
             goods_stuffed_at: selectedGoodsStuffedAt,
@@ -1043,6 +1080,7 @@ const ExportJobsTable = () => {
     selectedGoodsStuffedAt,
     page,
     sortConfig,
+    onlyPendingQueries,
   ]);
 
   const handleSort = (key) => {
@@ -1905,12 +1943,32 @@ const ExportJobsTable = () => {
               )}
             />
 
-            {/* Detailed Status Filter - MUI Select */}
-            <FormControl size="small" style={{ minWidth: 160 }}>
+            {/* Detailed Status Filter - MUI Select Multi-Select */}
+            <FormControl size="small" style={{ width: 160, minWidth: 160 }}>
               <Select
+                multiple
                 value={selectedDetailedStatus}
-                onChange={(e) => setSelectedDetailedStatus(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedDetailedStatus(typeof value === 'string' ? value.split(',') : value);
+                  setPage(1);
+                }}
                 displayEmpty
+                renderValue={(selected) => {
+                  if (selected.length === 0) {
+                    return <em style={{ fontSize: "12px", color: "#6b7280" }}>All Detailed Status</em>;
+                  }
+                  return (
+                    <div style={{ 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis', 
+                      whiteSpace: 'nowrap',
+                      fontSize: "12px"
+                    }}>
+                      {selected.join(", ")}
+                    </div>
+                  );
+                }}
                 inputProps={{ "aria-label": "Without label" }}
                 sx={{
                   height: 30,
@@ -1919,13 +1977,15 @@ const ExportJobsTable = () => {
                     padding: "4px 4px",
                     display: "flex",
                     alignItems: "center",
+                    overflow: 'hidden'
                   },
                 }}
               >
-                <MenuItem value="" sx={{ fontSize: "12px" }}>
+                <MenuItem disabled value="" sx={{ fontSize: "12px" }}>
                   <em>All Detailed Status</em>
                 </MenuItem>
                 {[
+                  "Pending",
                   "SB Filed",
                   "L.E.O",
                   "Container HO",
@@ -1941,23 +2001,32 @@ const ExportJobsTable = () => {
                     sx={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 1,
+                      gap: 0,
                       fontSize: "0.75rem",
+                      py: 0,
                     }}
                   >
+                    <Checkbox 
+                      size="small" 
+                      checked={selectedDetailedStatus.indexOf(status) > -1} 
+                      sx={{ p: 0.5 }}
+                    />
                     <span
                       style={{
                         display: "inline-block",
-                        width: "15px",
-                        height: "15px",
+                        width: "12px",
+                        height: "12px",
                         borderRadius: "50%",
                         backgroundColor: getStatusColor(status),
                         border: "1px solid #666",
-                        marginRight: "6px",
+                        marginRight: "8px",
                         flexShrink: 0,
                       }}
                     />
-                    {status}
+                    <ListItemText 
+                      primary={status} 
+                      primaryTypographyProps={{ fontSize: '12px' }} 
+                    />
                   </MenuItem>
                 ))}
               </Select>
@@ -1973,6 +2042,55 @@ const ExportJobsTable = () => {
               <option value="FACTORY">FACTORY</option>
               <option value="DOCK">DOCK</option>
             </select>
+
+            <Box sx={{ position: "relative", display: "inline-flex" }}>
+              <button
+                onClick={() => {
+                  setOnlyPendingQueries(!onlyPendingQueries);
+                  setPage(1);
+                }}
+                style={{
+                  height: "30px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "0 10px",
+                  borderRadius: "4px",
+                  border: "1px solid",
+                  backgroundColor: onlyPendingQueries ? "#fee2e2" : "#f3f4f6",
+                  borderColor: onlyPendingQueries ? "#ef4444" : "#d1d5db",
+                  color: onlyPendingQueries ? "#dc2626" : "#4b5563",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  transition: "all 0.2s"
+                }}
+              >
+                <div style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  backgroundColor: onlyPendingQueries ? "#dc2626" : "#9ca3af"
+                }} />
+                Pending Queries
+              </button>
+              {unresolvedCount > 0 && (
+                <Badge
+                  badgeContent={unresolvedCount}
+                  color="error"
+                  sx={{
+                    position: "absolute",
+                    top: 0,
+                    right: 0,
+                    '& .MuiBadge-badge': {
+                      fontSize: '9px',
+                      height: 16,
+                      minWidth: 16,
+                      transform: 'translate(40%, -40%)'
+                    }
+                  }}
+                />
+              )}
+            </Box>
 
             {/* Search Input */}
             <div
@@ -2959,6 +3077,8 @@ const ExportJobsTable = () => {
                                     width: 18, height: 18, borderRadius: "50%",
                                     backgroundColor: "#ef4444", cursor: "pointer",
                                     border: "2px solid #dc2626",
+                                    opacity: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? 0.5 : 1,
+                                    filter: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? "grayscale(0.6)" : "none",
                                     flexShrink: 0,
                                     transition: "transform 0.15s",
                                   }}
@@ -3005,6 +3125,8 @@ const ExportJobsTable = () => {
                                         width: 18, height: 18, borderRadius: "50%",
                                         backgroundColor: "#f59e0b", cursor: "pointer",
                                         border: "2px solid #d97706",
+                                        opacity: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? 0.5 : 1,
+                                        filter: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? "grayscale(0.6)" : "none",
                                         flexShrink: 0,
                                         position: "relative",
                                         transition: "transform 0.15s",
@@ -3062,6 +3184,8 @@ const ExportJobsTable = () => {
                                         width: 18, height: 18, borderRadius: "50%",
                                         backgroundColor: "#22c55e", cursor: "pointer",
                                         border: "2px solid #16a34a",
+                                        opacity: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? 0.5 : 1,
+                                        filter: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? "grayscale(0.6)" : "none",
                                         flexShrink: 0,
                                         transition: "transform 0.15s",
                                       }}

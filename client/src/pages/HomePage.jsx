@@ -17,6 +17,7 @@ import ExportDocumentationModule from "../components/Export/Export-Dsr/ExportDoc
 import ExportEsanchitModule from "../components/Export/Export-Dsr/ExportEsanchitModule.js";
 import EximOperationModule from "../components/Export/Export-Dsr/EximOperationModule.js";
 import ExportChargesModule from "../components/Export/Export-Dsr/ExportChargesModule.js";
+import ExportBillingPage from "../components/Export/Export-Billing/ExportBillingPage.jsx";
 
 // import auditrail
 import AllUsersPage from "./AllUsersPage.js";
@@ -177,6 +178,16 @@ function HomePage() {
               element={
                 <ProtectedRoute requiredModule="Export - Charges">
                   <DsrTabs />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Export - Billing */}
+            <Route
+              path="/export-billing"
+              element={
+                <ProtectedRoute requiredModule="Export - Billing">
+                  <ExportBillingPage />
                 </ProtectedRoute>
               }
             />

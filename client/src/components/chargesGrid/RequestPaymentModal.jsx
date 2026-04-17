@@ -25,7 +25,10 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
         "jobNo": '',
         "chargeRef": '',
         "jobRef": '',
-        "apiKeyName": ''
+        "apiKeyName": '',
+        "Gross Amount": '',
+        "TDS Amount": '',
+        "TDS Category": 'U/S N/A 0.00 %'
     });
 
     useEffect(() => {
@@ -87,7 +90,10 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
                     "Status": '',
                     "jobNo": jobRefStr,
                     "chargeRef": initialData.chargeId || '',
-                    "jobRef": initialData.jobId || ''
+                    "jobRef": initialData.jobId || '',
+                    "Gross Amount": initialData.basicAmount || initialData.amount || '',
+                    "TDS Amount": initialData.tdsAmount || 0,
+                    "TDS Category": initialData.tdsCategory || 'U/S N/A 0.00 %'
                 }));
             }
         };

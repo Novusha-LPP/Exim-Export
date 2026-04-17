@@ -429,7 +429,18 @@ router.get("/global-search-jobs", async (req, res) => {
       }
 
       if (detailedStatus) {
-        filter.$and.push({ detailedStatus: detailedStatus });
+        const statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+        if (statusArray.includes("Pending")) {
+          filter.$and.push({
+            $or: [
+              { detailedStatus: { $in: statusArray } },
+              { detailedStatus: { $in: [null, "", "Pending"] } },
+              { detailedStatus: { $exists: false } }
+            ]
+          });
+        } else {
+          filter.$and.push({ detailedStatus: { $in: statusArray } });
+        }
       }
 
       if (customHouse) {
@@ -614,6 +625,7 @@ router.get("/exports/:status?", async (req, res) => {
       detailedStatus = "",
       jobOwner = "",
       month = "",
+      pendingQueries = false,
     } = { ...req.params, ...req.query };
 
     const filter = {};
@@ -812,6 +824,15 @@ router.get("/exports/:status?", async (req, res) => {
       });
     }
 
+    if (pendingQueries === "true" || pendingQueries === true) {
+      // Import QueryModel dynamically if not at top
+      const QueryModel = (await import("../../model/export/QueryModel.mjs")).default;
+      const queryFilter = { status: "open" };
+      const openQueries = await QueryModel.find(queryFilter).select("job_no").lean();
+      const openJobNos = [...new Set(openQueries.map(q => q.job_no))];
+      filter.$and.push({ job_no: { $in: openJobNos } });
+    }
+
     // Additional filters
     if (exporter && exporter.toLowerCase() !== "all") {
       filter.$and.push({
@@ -904,9 +925,20 @@ router.get("/exports/:status?", async (req, res) => {
     }
 
     if (detailedStatus) {
-      filter.$and.push({
-        detailedStatus: detailedStatus,
-      });
+      const statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+      if (statusArray.includes("Pending")) {
+        filter.$and.push({
+          $or: [
+            { detailedStatus: { $in: statusArray } },
+            { detailedStatus: { $in: [null, "", "Pending"] } },
+            { detailedStatus: { $exists: false } }
+          ]
+        });
+      } else {
+        filter.$and.push({
+          detailedStatus: { $in: statusArray },
+        });
+      }
     }
 
     if (req.query.goods_stuffed_at) {
@@ -1226,7 +1258,20 @@ router.get("/filtered-exporters", async (req, res) => {
     if (consignmentType) filter.$and.push({ consignmentType: consignmentType });
     if (branch) filter.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
     if (year && year !== "all") filter.$and.push({ year: year });
-    if (detailedStatus) filter.$and.push({ detailedStatus: detailedStatus });
+    if (detailedStatus) {
+      const statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+      if (statusArray.includes("Pending")) {
+        filter.$and.push({ 
+          $or: [
+            { detailedStatus: { $in: statusArray } },
+            { detailedStatus: { $in: [null, "", "Pending"] } },
+            { detailedStatus: { $exists: false } }
+          ]
+        });
+      } else {
+        filter.$and.push({ detailedStatus: { $in: statusArray } });
+      }
+    }
     if (customHouse) filter.$and.push({ custom_house: { $regex: customHouse, $options: "i" } });
     if (goods_stuffed_at) filter.$and.push({ goods_stuffed_at: goods_stuffed_at });
 

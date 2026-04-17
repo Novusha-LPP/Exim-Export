@@ -90,11 +90,9 @@ function ExportEsanchitModule() {
   };
 
   const handleClose = async () => {
-    try {
-      window.close();
-      navigate("/export-esanchit");
-    } catch (error) {
-      window.close();
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
       navigate("/export-esanchit");
     }
   };

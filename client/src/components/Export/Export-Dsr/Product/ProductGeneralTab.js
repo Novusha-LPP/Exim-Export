@@ -1163,7 +1163,7 @@ function ProductRow({
         : product.ritc.toString();
 
       const endpoint = useReApi
-        ? `${apiBase}/getRodtep_RE?tariff_line=${ritcToSearch}`
+        ? `${apiBase}/getRodtep_RE?tariff_item=${ritcToSearch}`
         : `${apiBase}/getRodtep_R?tariff_item=${ritcToSearch}`;
 
       try {
@@ -1177,17 +1177,14 @@ function ProductRow({
             entry =
               data.data.find(
                 (e) =>
-                  (e.tariff_line || e.tariff_item || "").toString() ===
-                  ritcToSearch,
+                  (e.tariff_item || "").toString() === ritcToSearch,
               ) || data.data[0];
           }
         }
 
         if (entry) {
           const rate = parseFloat(entry.rate_percentage_fob ?? entry.rate ?? 0);
-          const cap = parseFloat(
-            entry.cap_rs_per_uqc ?? entry.cap_per_uqc ?? entry.cap ?? 0,
-          );
+          const cap = parseFloat(entry.cap_per_uqc ?? entry.cap ?? 0);
           const uqc = toUpper(entry.uqc || "");
 
           const currentRate = parseFloat(product.rodtepInfo?.ratePercent) || 0;

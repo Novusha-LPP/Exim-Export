@@ -59,9 +59,6 @@ function DsrTabs() {
   // Clear badge when user clicks on the Queries tab
   const handleChange = (event, newValue) => {
     setTabValue(newValue);
-    if (newValue === 2) {
-      setQueryBadgeCount(0);
-    }
   };
 
   return (
@@ -76,30 +73,7 @@ function DsrTabs() {
             >
               <Tab label="Dashboard" {...a11yProps(0)} key={0} />
               <Tab label="Jobs" {...a11yProps(1)} key={1} />
-              <Tab
-                label={
-                  <Badge
-                    badgeContent={queryBadgeCount}
-                    color="error"
-                    max={99}
-                    sx={{
-                      "& .MuiBadge-badge": {
-                        fontSize: "10px",
-                        height: "18px",
-                        minWidth: "18px",
-                        right: -8,
-                        top: -2,
-                      },
-                    }}
-                  >
-                    <span style={{ paddingRight: queryBadgeCount > 0 ? "10px" : 0 }}>
-                      Queries
-                    </span>
-                  </Badge>
-                }
-                {...a11yProps(2)}
-                key={2}
-              />
+
             </Tabs>
           </Box>
           <CustomTabPanel value={tabValue} index={0}>
@@ -108,9 +82,7 @@ function DsrTabs() {
           <CustomTabPanel value={tabValue} index={1}>
             <ExportJobsTable />
           </CustomTabPanel>
-          <CustomTabPanel value={tabValue} index={2}>
-            <QueriesPanel />
-          </CustomTabPanel>
+
         </Box>
       ) : (
         <ExportJobsTable />

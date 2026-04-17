@@ -13,7 +13,7 @@ const getMilestones = (isAir) => [
 const getMandatoryNames = (isAir) =>
   new Set(["SB Filed", "L.E.O", "Billing Pending"]);
 
-const TrackingCompletedTab = ({ formik, directories, params, isAdmin }) => {
+const TrackingCompletedTab = ({ formik, directories, params, isAdmin, isEditable = true }) => {
   const [filter, setFilter] = useState("Show All");
   const [exportJobsUsers, setExportJobsUsers] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0); // Default to first milestone
@@ -83,6 +83,7 @@ const TrackingCompletedTab = ({ formik, directories, params, isAdmin }) => {
         : allMilestones;
 
   return (
+    <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
     <div
       style={{
         fontFamily:
@@ -587,6 +588,7 @@ const TrackingCompletedTab = ({ formik, directories, params, isAdmin }) => {
         </div>
       </div>
     </div>
+    </fieldset>
   );
 };
 

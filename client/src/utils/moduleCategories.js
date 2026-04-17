@@ -3,6 +3,7 @@ export const moduleCategories = {
   "Export - e-Sanchit": "Export",
   "Export - Operation": "Export",
   "Export - Charges": "Export",
+  "Export - Billing": "Export",
   "Export - ESanchit": "Export",
   Directories: "Export",
   "Export - Jobs": "Export",

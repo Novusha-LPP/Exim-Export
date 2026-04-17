@@ -2,30 +2,23 @@ import mongoose from "mongoose";
 
 const rodtepReSchema = new mongoose.Schema(
   {
-    rodtep_entry: {
-      type: Number,
-    },
-    tariff_line: {
-      type: mongoose.Schema.Types.Mixed, // Allows matching both String and Number types in the database
+    chapter: { type: String, trim: true, index: true },
+    rodtep_entry: { type: Number },
+    tariff_item: {
+      type: mongoose.Schema.Types.Mixed,
       index: true,
     },
-    description: {
-      type: String,
-    },
-    uqc: {
-      type: String,
-    },
-    rate_percentage_fob: {
-      type: Number,
-    },
-    cap_rs_per_uqc: {
-      type: Number,
-    },
+    description_of_goods: { type: String, trim: true },
+    uqc: { type: String, trim: true },
+    rate_percentage_fob: { type: Number },
+    cap_per_uqc: { type: Number },
   },
   {
     timestamps: true,
   }
 );
+
+rodtepReSchema.index({ chapter: 1, tariff_item: 1 });
 
 const Rodtep_RE = mongoose.model("Rodtep_RE", rodtepReSchema, "rodtep_res");
 

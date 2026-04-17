@@ -230,7 +230,6 @@ function useExportJobDetails(params, setFileSnackbar) {
       // Invoice Details
       exchange_rate: "",
 
-      // Containers Information
       containers: [
         {
           serialNumber: 1,
@@ -245,6 +244,7 @@ function useExportJobDetails(params, setFileSnackbar) {
           sealDeviceId: "",
           tareWeightKgs: 0,
           rfid: "",
+          weighmentTransporterName: "",
         },
       ],
 
@@ -731,6 +731,12 @@ function useExportJobDetails(params, setFileSnackbar) {
 
 
 
+      // Port of Loading Validation
+      if (!values.port_of_loading || values.port_of_loading.trim() === "") {
+        alert("Port of Loading is mandatory");
+        return Promise.reject(new Error("Validation failed: Port of Loading is mandatory"));
+      }
+
       // TC_SHP_037: Verify Sailing Date cannot be before Job Date
       if (values.sailing_date && values.job_date) {
         const sd = new Date(values.sailing_date);
@@ -756,8 +762,9 @@ function useExportJobDetails(params, setFileSnackbar) {
           "user-role": user.role || "unknown",
         };
 
+        const { charges, ...receivedValues } = values;
         const syncedValues = {
-          ...values,
+          ...receivedValues,
           drawbackDetails: (values.drawbackDetails || []).map((dbk, i) => {
             const product = values.products?.[i];
             if (product) {

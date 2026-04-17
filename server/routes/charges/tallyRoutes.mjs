@@ -143,7 +143,31 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         if (!entryNo) return res.status(400).json({ error: "entry_no required" });
         const entry = await PurchaseBookEntryModel.findOne({ entryNo }).lean();
         if (!entry) return res.status(404).json({ error: "Not found" });
-        res.status(200).json(entry);
+
+        let enriched = { ...entry };
+
+        // Enrich with charge attachments from the job
+        if (entry.chargeRef && entry.jobRef) {
+            try {
+                const job = await ExJobModel.findById(entry.jobRef).lean();
+                if (job) {
+                    const charge = job.charges?.find(c => c._id?.toString() === entry.chargeRef);
+                    if (charge) {
+                        enriched.url = charge.cost?.url || [];
+                        enriched.chargeHead = charge.chargeHead || "";
+                    }
+                }
+            } catch (e) {
+                console.error("Error enriching purchase entry:", e);
+            }
+        }
+
+        // Build full address from stored fields
+        enriched.address = [entry.address1, entry.address2, entry.address3, entry.state, entry.country, entry.pinCode].filter(Boolean).join(", ");
+        enriched.gstin = entry.gstinNo || "";
+        enriched.pan = entry.pan || (entry.gstinNo ? entry.gstinNo.substring(2, 12) : "");
+
+        res.status(200).json(enriched);
     } catch (error) {
         res.status(500).send({ error: "Internal Server Error" });
     }
@@ -167,6 +191,9 @@ const mapPaymentRequestData = (data) => ({
     instrumentDate: data["Instrument Date"] || data.instrumentDate,
     transferMode: data["Transfer Mode"] || data.transferMode,
     beneficiaryCode: data["Beneficiary Code"] || data.beneficiaryCode,
+    grossAmount: data["Gross Amount"] || data.grossAmount,
+    tdsAmount: data["TDS Amount"] || data.tdsAmount,
+    tdsCategory: data["TDS Category"] || data.tdsCategory,
     status: data["Status"] || data.status || ''
 });
 
@@ -177,6 +204,86 @@ router.post("/payment-request", authApiKey, async (req, res) => {
         res.status(201).json({ success: true, id: request._id, "Request No": request.requestNo });
     } catch (error) {
         if (error.code === 11000) return res.status(400).json({ error: "Duplicate." });
+        res.status(500).send({ error: "Internal Server Error" });
+    }
+});
+
+router.get("/payment-request", authApiKey, async (req, res) => {
+    try {
+        const requestNo = req.query.request_no || req.query.requestNo;
+        if (!requestNo) {
+            return res.status(400).json({ error: "request_no required" });
+        }
+
+        const request = await PaymentRequestModel.findOne({ requestNo }).lean();
+        if (!request) {
+            return res.status(404).json({ error: "Not found" });
+        }
+
+        // Enrich with charge details from the job
+        let enriched = { ...request };
+        if (request.chargeRef && request.jobRef) {
+            try {
+                const job = await ExJobModel.findById(request.jobRef).lean();
+                if (job) {
+                    const charge = job.charges?.find(c => c._id?.toString() === request.chargeRef);
+                    if (charge) {
+                        const cost = charge.cost || {};
+                        enriched.chargeHead = charge.chargeHead || "";
+                        enriched.category = charge.category || "";
+                        enriched.invoiceNo = charge.invoice_number || cost.invoiceNo || "";
+                        enriched.invoiceDate = charge.invoice_date || cost.invoiceDate || "";
+                        enriched.description = cost.chargeDescription || charge.chargeHead || "";
+                        enriched.url = cost.url || [];
+                        
+                        // GST details
+                        enriched.isGst = cost.isGst || false;
+                        enriched.gstPercent = cost.gstRate || 18;
+                        enriched.taxableValue = cost.basicAmount || 0;
+                        enriched.gstAmount = cost.gstAmount || 0;
+                        enriched.cgstAmt = cost.cgst || 0;
+                        enriched.sgstAmt = cost.sgst || 0;
+                        enriched.igstAmt = cost.igst || 0;
+                        
+                        // TDS details
+                        enriched.isTds = cost.isTds || false;
+                        enriched.tdsPercent = cost.tdsPercent || 0;
+                        enriched.tdsAmount = enriched.tdsAmount || cost.tdsAmount || 0;
+                        enriched.netPayable = cost.netPayable || request.amount || 0;
+                        
+                        // Party details
+                        enriched.partyName = cost.partyName || request.paymentTo || "";
+                        enriched.partyType = cost.partyType || "";
+                    }
+
+                    // Enrich with supplier directory info (GSTIN, PAN, address)
+                    enriched.jobNo = enriched.jobNo || job.job_no || "";
+                }
+            } catch (e) {
+                console.error("Error enriching payment request:", e);
+            }
+        }
+
+        // Try to get supplier GSTIN/PAN/address from directory
+        if (enriched.paymentTo) {
+            try {
+                const mongoose = (await import("mongoose")).default;
+                const DirectoryModel = mongoose.models.directory || mongoose.model("directory", new mongoose.Schema({}, { strict: false, collection: "directories" }));
+                const supplier = await DirectoryModel.findOne({ organization: { $regex: new RegExp(`^${enriched.paymentTo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).lean();
+                if (supplier) {
+                    const branch = supplier.branchInfo?.[0] || {};
+                    enriched.address = [branch.address, branch.city, branch.state, branch.country, branch.pinCode ? `- ${branch.pinCode}` : ""].filter(Boolean).join(", ");
+                    enriched.gstin = branch.gst || supplier.gstin || "";
+                    enriched.pan = supplier.pan || enriched.gstin?.substring(2, 12) || "";
+                }
+            } catch (dirErr) {
+                console.error("Directory lookup error:", dirErr);
+            }
+        }
+
+        res.status(200).json(enriched);
+    } catch (error) {
+        console.error("Payment request fetch error:", error);
         res.status(500).send({ error: "Internal Server Error" });
     }
 });

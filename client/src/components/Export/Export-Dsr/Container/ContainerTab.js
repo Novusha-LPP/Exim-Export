@@ -145,7 +145,7 @@ const styles = {
   }
 };
 
-function ContainerTab({ formik }) {
+function ContainerTab({ formik, isEditable = true }) {
   const stuffedAt = (formik.values.goods_stuffed_at || "").toUpperCase();
   // const showSLineSeal = stuffedAt === "FACTORY";
 
@@ -203,6 +203,49 @@ function ContainerTab({ formik }) {
     formik.values.no_of_containers,
     formik.values.total_no_of_pkgs,
     formik.values.gross_weight_kg,
+    formik.setFieldValue
+  ]);
+
+  // SYNC: Weighment to Transporter Details (Single Vehicle Case)
+  useEffect(() => {
+    if (formik.values.containers && formik.values.containers.length === 1) {
+      const c = formik.values.containers[0];
+      const vehicle = (c.weighmentVehicleNo || "").toUpperCase().trim();
+      const weight = Number(c.grossWeight || 0);
+      const transporter = (c.weighmentTransporterName || "").toUpperCase().trim();
+      const pkgs = Number(c.pkgsStuffed || 0);
+
+      // Only sync if there's at least a vehicle number or weight
+      if (vehicle || weight > 0) {
+        const ops = [...(formik.values.operations || [])];
+        if (ops.length > 0) {
+          const op = { ...ops[0] };
+          const transporterDetails = [...(op.transporterDetails || [{ transporterName: "", vehicleNo: "", noOfPackages: 0, grossWeightKgs: 0 }])];
+          
+          if (transporterDetails.length > 0) {
+            const td = { ...transporterDetails[0] };
+            let changed = false;
+            
+            if (td.vehicleNo !== vehicle) { td.vehicleNo = vehicle; changed = true; }
+            if (td.grossWeightKgs !== weight) { td.grossWeightKgs = weight; changed = true; }
+            if (td.transporterName !== transporter) { td.transporterName = transporter; changed = true; }
+            if (td.noOfPackages !== pkgs) { td.noOfPackages = pkgs; changed = true; }
+
+            if (changed) {
+              transporterDetails[0] = td;
+              op.transporterDetails = transporterDetails;
+              ops[0] = op;
+              formik.setFieldValue("operations", ops);
+            }
+          }
+        }
+      }
+    }
+  }, [
+    formik.values.containers?.[0]?.weighmentVehicleNo,
+    formik.values.containers?.[0]?.grossWeight,
+    formik.values.containers?.[0]?.weighmentTransporterName,
+    formik.values.containers?.[0]?.pkgsStuffed,
     formik.setFieldValue
   ]);
 
@@ -321,7 +364,7 @@ function ContainerTab({ formik }) {
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button type="button" style={{ ...styles.btnAction, ...styles.btnSecondary }} onClick={exportToExcel}>Export</button>
-            <button type="button" style={styles.btnAction} onClick={handleAdd}>+ New Row</button>
+            <button type="button" style={styles.btnAction} onClick={handleAdd} disabled={!isEditable}>+ New Row</button>
           </div>
         </div>
 
@@ -355,12 +398,13 @@ function ContainerTab({ formik }) {
                   <td style={{ ...styles.td, textAlign: 'center', color: '#64748b', fontWeight: 700 }}>{row.serialNumber}</td>
                   <td style={styles.td}>
                     <div>
-                      <input
+                       <input
                         style={styles.input}
                         value={toUpperVal(row.containerNo || "")}
                         onChange={(e) => handleFieldChange(idx, "containerNo", toUpperVal(e.target.value))}
                         placeholder="CONT. NO"
                         maxLength={11}
+                        disabled={!isEditable}
                       />
                       {row.showWarning && (
                         <div style={{ color: "#e53e3e", fontSize: "9px", marginTop: "2px", fontWeight: "700", lineHeight: "1" }}>
@@ -369,39 +413,49 @@ function ContainerTab({ formik }) {
                       )}
                     </div>
                   </td>
-                  <td style={styles.td}>
-                    <input style={styles.input} value={toUpperVal(row.sealNo || "")}
-                      onChange={(e) => handleFieldChange(idx, "sealNo", toUpperVal(e.target.value))} placeholder="SEAL ID" />
+                   <td style={styles.td}>
+                    <input
+                      style={styles.input}
+                      value={toUpperVal(row.sealNo || "")}
+                      onChange={(e) => handleFieldChange(idx, "sealNo", toUpperVal(e.target.value))}
+                      placeholder="SEAL ID"
+                      disabled={!isEditable}
+                    />
                   </td>
                   <td style={styles.td}>
-                    <DateInput style={styles.input} value={row.sealDate || ""} onChange={(e) => handleFieldChange(idx, "sealDate", e.target.value)} />
+                    <DateInput
+                      style={styles.input}
+                      value={row.sealDate || ""}
+                      onChange={(e) => handleFieldChange(idx, "sealDate", e.target.value)}
+                      disabled={!isEditable}
+                    />
                   </td>
                   {/* {showSLineSeal && */}
-                  <td style={styles.td}>
+                   <td style={styles.td}>
                     <input style={styles.input} value={toUpperVal(row.shippingLineSealNo || "")}
-                      onChange={(e) => handleFieldChange(idx, "shippingLineSealNo", toUpperVal(e.target.value))} placeholder="LINE SEAL" />
+                      onChange={(e) => handleFieldChange(idx, "shippingLineSealNo", toUpperVal(e.target.value))} placeholder="LINE SEAL" disabled={!isEditable} />
                   </td>
                   <td style={styles.td}>
-                    <select style={styles.select} value={row.type || ""} onChange={(e) => handleFieldChange(idx, "type", e.target.value)}>
+                    <select style={styles.select} value={row.type || ""} onChange={(e) => handleFieldChange(idx, "type", e.target.value)} disabled={!isEditable}>
                       <option value="">Select</option>
                       {containerTypes.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </td>
                   <td style={styles.td}>
                     <input type="number" style={styles.input} value={row.pkgsStuffed || ""}
-                      onChange={(e) => handleFieldChange(idx, "pkgsStuffed", Number(e.target.value || 0))} />
+                      onChange={(e) => handleFieldChange(idx, "pkgsStuffed", Number(e.target.value || 0))} disabled={!isEditable} />
                   </td>
                   <td style={styles.td}>
                     <input type="number" step="0.001" style={styles.input} value={row.grossWeight || ""}
-                      onChange={(e) => handleFieldChange(idx, "grossWeight", parseFloat(e.target.value || 0))} />
+                      onChange={(e) => handleFieldChange(idx, "grossWeight", parseFloat(e.target.value || 0))} disabled={!isEditable} />
                   </td>
                   <td style={styles.td}>
                     <input type="number" step="0.001" style={styles.input} value={row.tareWeightKgs || ""}
-                      onChange={(e) => handleFieldChange(idx, "tareWeightKgs", parseFloat(e.target.value || 0))} />
+                      onChange={(e) => handleFieldChange(idx, "tareWeightKgs", parseFloat(e.target.value || 0))} disabled={!isEditable} />
                   </td>
                   <td style={styles.td}>
                     <input type="number" step="0.001" style={styles.input} value={row.maxGrossWeightKgs || ""}
-                      onChange={(e) => handleFieldChange(idx, "maxGrossWeightKgs", parseFloat(e.target.value || 0))} />
+                      onChange={(e) => handleFieldChange(idx, "maxGrossWeightKgs", parseFloat(e.target.value || 0))} disabled={!isEditable} />
                   </td>
                   <td style={styles.td}>
                     <input style={{ ...styles.input, ...styles.readOnlyInput }} value={row.maxPayloadKgs || ""} readOnly disabled />
@@ -414,7 +468,7 @@ function ContainerTab({ formik }) {
                     </div>
                   </td>
                   <td style={{ ...styles.td, textAlign: 'center' }}>
-                    <button type="button" style={styles.trashBtn} onClick={() => handleDelete(idx)}>
+                    <button type="button" style={{ ...styles.trashBtn, opacity: isEditable ? 1 : 0.5 }} onClick={() => handleDelete(idx)} disabled={!isEditable}>
                       <FontAwesomeIcon icon={faTrash} />
                     </button>
                   </td>
@@ -435,8 +489,9 @@ function ContainerTab({ formik }) {
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={{ ...styles.th, width: 40, textAlign: 'center' }}>#</th>
+                 <th style={{ ...styles.th, width: 40, textAlign: 'center' }}>#</th>
                 <th style={{ ...styles.th, width: 140 }}>Container No</th>
+                <th style={{ ...styles.th, width: 140 }}>Transporter Name</th>
                 <th style={{ ...styles.th, width: 120 }}>Reg / Slip No</th>
                 <th style={{ ...styles.th, width: 160 }}>Weighbridge Name</th>
                 <th style={{ ...styles.th, width: 200 }}>Weighbridge Address</th>
@@ -455,28 +510,32 @@ function ContainerTab({ formik }) {
               {rows.map((row, idx) => (
                 <tr key={idx}>
                   <td style={{ ...styles.td, textAlign: 'center', color: '#64748b', fontWeight: 700 }}>{row.serialNumber}</td>
-                  <td style={styles.td}>
+                   <td style={styles.td}>
                     <input style={{ ...styles.input, ...styles.readOnlyInput }} value={toUpperVal(row.containerNo || "")} readOnly disabled />
                   </td>
                   <td style={styles.td}>
+                    <input style={styles.input} value={toUpperVal(row.weighmentTransporterName || "")}
+                      onChange={(e) => handleFieldChange(idx, "weighmentTransporterName", toUpperVal(e.target.value))} placeholder="TRANSPORTER" disabled={!isEditable} />
+                  </td>
+                  <td style={styles.td}>
                     <input style={styles.input} value={toUpperVal(row.weighmentRegNo || "")}
-                      onChange={(e) => handleFieldChange(idx, "weighmentRegNo", toUpperVal(e.target.value))} placeholder="SLIP NO" />
+                      onChange={(e) => handleFieldChange(idx, "weighmentRegNo", toUpperVal(e.target.value))} placeholder="SLIP NO" disabled={!isEditable} />
                   </td>
                   <td style={styles.td}>
                     <input style={styles.input} value={toUpperVal(row.weighBridgeName || "")}
-                      onChange={(e) => handleFieldChange(idx, "weighBridgeName", toUpperVal(e.target.value))} placeholder="BRIDGE NAME" />
+                      onChange={(e) => handleFieldChange(idx, "weighBridgeName", toUpperVal(e.target.value))} placeholder="BRIDGE NAME" disabled={!isEditable} />
                   </td>
                   <td style={styles.td}>
                     <input style={styles.input} value={row.weighmentAddress || ""}
-                      onChange={(e) => handleFieldChange(idx, "weighmentAddress", e.target.value)} placeholder="ADDRESS" />
+                      onChange={(e) => handleFieldChange(idx, "weighmentAddress", e.target.value)} placeholder="ADDRESS" disabled={!isEditable} />
                   </td>
                   <td style={styles.td}>
                     <input type="datetime-local" style={styles.input} value={row.weighmentDateTime || ""}
-                      onChange={(e) => handleFieldChange(idx, "weighmentDateTime", e.target.value)} />
+                      onChange={(e) => handleFieldChange(idx, "weighmentDateTime", e.target.value)} disabled={!isEditable} />
                   </td>
                   <td style={styles.td}>
                     <input style={styles.input} value={toUpperVal(row.weighmentVehicleNo || "")}
-                      onChange={(e) => handleFieldChange(idx, "weighmentVehicleNo", toUpperVal(e.target.value))} placeholder="VEHICLE NO" />
+                      onChange={(e) => handleFieldChange(idx, "weighmentVehicleNo", toUpperVal(e.target.value))} placeholder="VEHICLE NO" disabled={!isEditable} />
                   </td>
                   <td style={styles.td}>
                     <input style={{ ...styles.input, ...styles.readOnlyInput }} value={row.vgmWtInvoice || ""} readOnly disabled />

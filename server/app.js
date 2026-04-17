@@ -43,6 +43,7 @@ import seaPorts from "./routes/Directories/seaports.js";
 import genrateExportChecklist from "./routes/export-dsr/generateExportChecklist.mjs";
 import gatwayPort from "./routes/Directories/gatwayPort.js";
 import license from "./routes/Directories/license.js";
+import districts from "./routes/Directories/districts.js";
 import getExportJobsModuleUsers from "./routes/export-dsr/getExportJobsModuleUsers.mjs";
 
 //============== EXPORT DSR =========================
@@ -74,6 +75,7 @@ import generateFlatFile from "./routes/export-dsr/generateFlatFile.mjs";
 import operationPendingJobs from "./routes/export-dsr/operationPendingJobs.mjs";
 import operationListJobs from "./routes/export-dsr/operationListJobs.mjs";
 import chargesListJobs from "./routes/export-dsr/chargesListJobs.mjs";
+import exportBillingJobs from "./routes/export-dsr/exportBillingJobs.mjs";
 import queryRoutes from "./routes/export-dsr/queryRoutes.mjs";
 import chargesRoute from "./routes/charges/chargesRoute.mjs";
 import tallyRoutes from "./routes/charges/tallyRoutes.mjs";
@@ -194,6 +196,7 @@ app.use(genrateExportChecklist);
 app.use(getExpJob);
 app.use("/api/gateway-ports", auditMiddleware("Directory"), gatwayPort);
 app.use("/api/licenses", auditMiddleware("Directory"), license);
+app.use("/api/districts", auditMiddleware("Directory"), districts);
 // app.set("trust proxy", 1); // Trust first proxy (NGINX, AWS ELB, etc.)
 
 //============== EXPORT DSR =========================
@@ -226,6 +229,7 @@ app.use(generateFlatFile);
 app.use(operationPendingJobs);
 app.use(operationListJobs);
 app.use(chargesListJobs);
+app.use(exportBillingJobs);
 app.use(queryRoutes);
 app.use(testDsrEmailRoute);
 app.use(apiKeyRoutes);

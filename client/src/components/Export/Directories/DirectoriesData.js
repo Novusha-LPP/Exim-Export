@@ -22,6 +22,7 @@ export const viewMasterList = [
   "Port Code-Sea",
   "Port Code-Air",
   "Gateway Port",
+  "District",
 ];
 
 export const directoryFields = {
