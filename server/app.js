@@ -43,6 +43,7 @@ import seaPorts from "./routes/Directories/seaports.js";
 import genrateExportChecklist from "./routes/export-dsr/generateExportChecklist.mjs";
 import gatwayPort from "./routes/Directories/gatwayPort.js";
 import license from "./routes/Directories/license.js";
+import districts from "./routes/Directories/districts.js";
 import getExportJobsModuleUsers from "./routes/export-dsr/getExportJobsModuleUsers.mjs";
 
 //============== EXPORT DSR =========================
@@ -195,6 +196,7 @@ app.use(genrateExportChecklist);
 app.use(getExpJob);
 app.use("/api/gateway-ports", auditMiddleware("Directory"), gatwayPort);
 app.use("/api/licenses", auditMiddleware("Directory"), license);
+app.use("/api/districts", auditMiddleware("Directory"), districts);
 // app.set("trust proxy", 1); // Trust first proxy (NGINX, AWS ELB, etc.)
 
 //============== EXPORT DSR =========================
