@@ -739,6 +739,9 @@ const LogisysEditableHeader = ({
                 style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
               />
               VGM
+              {formik.values.vgm_done && formik.values.vgm_date && (
+                <span style={{ fontSize: 9, color: "#059669", marginLeft: 2 }}>({formik.values.vgm_date})</span>
+              )}
             </label>
 
             <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: isEditable ? "pointer" : "default", fontSize: 11, fontWeight: 500, color: "#1976d2", opacity: isEditable ? 1 : 0.6 }}>
@@ -751,6 +754,9 @@ const LogisysEditableHeader = ({
                 style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
               />
               Form 13
+              {formik.values.form13_done && formik.values.form13_date && (
+                <span style={{ fontSize: 9, color: "#059669", marginLeft: 2 }}>({formik.values.form13_date})</span>
+              )}
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: isEditable ? "pointer" : "default", fontSize: 11, fontWeight: 500, color: "#1976d2", opacity: isEditable ? 1 : 0.6 }}>
               <input
@@ -762,6 +768,9 @@ const LogisysEditableHeader = ({
                 style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
               />
               Shipping Bill
+              {formik.values.shipping_bill_done && formik.values.shipping_bill_done_date && (
+                <span style={{ fontSize: 9, color: "#059669", marginLeft: 2 }}>({formik.values.shipping_bill_done_date})</span>
+              )}
             </label>
           </div>
 

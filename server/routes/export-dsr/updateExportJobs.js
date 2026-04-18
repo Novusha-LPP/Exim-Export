@@ -429,7 +429,11 @@ router.get("/global-search-jobs", async (req, res) => {
       }
 
       if (detailedStatus) {
-        const statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+        let statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+        if (statusArray.includes("Rail Out")) {
+          statusArray = [...statusArray, "Road Out", "Road out", "road out", "RAIL OUT", "ROAD OUT"];
+        }
+
         if (statusArray.includes("Pending")) {
           filter.$and.push({
             $or: [
@@ -934,7 +938,11 @@ router.get("/exports/:status?", async (req, res) => {
     }
 
     if (detailedStatus) {
-      const statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+      let statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+      if (statusArray.includes("Rail Out")) {
+        statusArray = [...statusArray, "Road Out"];
+      }
+
       if (statusArray.includes("Pending")) {
         filter.$and.push({
           $or: [
@@ -1276,7 +1284,11 @@ router.get("/filtered-exporters", async (req, res) => {
     if (branch) filter.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
     if (year && year !== "all") filter.$and.push({ year: year });
     if (detailedStatus) {
-      const statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+      let statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+      if (statusArray.includes("Rail Out")) {
+        statusArray = [...statusArray, "Road Out"];
+      }
+
       if (statusArray.includes("Pending")) {
         filter.$and.push({
           $or: [
@@ -1352,6 +1364,29 @@ router.post("/exports", auditMiddleware("Job"), async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error creating job",
+      error: error.message,
+    });
+  }
+});
+
+// POST /api/sync-all-job-statuses - One-time sync to match detailed status for all jobs
+router.post("/sync-all-job-statuses", async (req, res) => {
+  try {
+    const jobs = await ExportJobModel.find({});
+    let count = 0;
+    for (const job of jobs) {
+      await job.save(); // Triggers the pre-save hook logic
+      count++;
+    }
+    res.json({
+      success: true,
+      message: `Successfully synchronized ${count} jobs.`,
+    });
+  } catch (error) {
+    console.error("Error syncing jobs:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error synchronizing jobs",
       error: error.message,
     });
   }
@@ -1530,10 +1565,8 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
         : "";
     }
 
-    // Business Logic: If "Billing Done" is selected in detailedStatus, mark job as completed
-    if (updateData.detailedStatus === "Billing Done") {
-      updateData.status = "Completed";
-    }
+    // Business Logic: Status is determined by pre-save hook in the model
+    // but we can set it here if desired. Removing one-way logic to allow model to handle it.
 
     const updatedExportJob = await ExJobModel.findOneAndUpdate(
       { job_no: { $regex: `^${job_no}$`, $options: "i" } },
@@ -1583,10 +1616,7 @@ router.patch(
           : "";
       }
 
-      // Business Logic: If Billing Done is selected, mark as Completed
-      if (updateObject.detailedStatus === "Billing Done") {
-        updateObject.status = "Completed";
-      }
+      // Business Logic: Status is determined by pre-save hook in the model
 
       const updatedExportJob = await ExJobModel.findOneAndUpdate(
         { job_no: { $regex: `^${job_no}$`, $options: "i" } },

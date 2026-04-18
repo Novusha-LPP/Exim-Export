@@ -83,7 +83,7 @@ const EditChargeModal = ({
       // Map API Shipping Lines to standard { name, city, branches, tds_percent }
       const apiSLs = (slRes.data?.data || []).map(sl => ({
         name: sl.name || '',
-        city: sl.branches?.[0]?.city || '',
+        city: sl.branches?.[0]?.city || 'Shipping Line',
         branches: sl.branches || [],
         tds_percent: sl.tds_percent || 0
       }));
@@ -91,7 +91,7 @@ const EditChargeModal = ({
       // Map Transporters
       const apiTrans = (transRes.data?.data || []).map(t => ({
         name: t.name || '',
-        city: t.branches?.[0]?.city || '',
+        city: t.branches?.[0]?.city || 'Transporter',
         branches: t.branches || [],
         tds_percent: t.tds_percent || 0
       }));
@@ -99,7 +99,7 @@ const EditChargeModal = ({
       // Map Terminal Codes
       const apiTerms = (termRes.data?.data || []).map(t => ({
         name: t.name || '',
-        city: t.branches?.[0]?.city || '',
+        city: t.branches?.[0]?.city || 'Terminal',
         branches: t.branches || [],
         tds_percent: t.tds_percent || 0
       }));
@@ -122,7 +122,8 @@ const EditChargeModal = ({
       const mapped = (res.data?.data || []).map(e => ({
         name: e.organization,
         city: e.branchInfo?.[0]?.city || 'Directory',
-        branches: e.branchInfo || []
+        branches: e.branchInfo || [],
+        isFromDirectory: true
       }));
       setExporters(mapped);
     } catch (error) {
@@ -164,8 +165,8 @@ const EditChargeModal = ({
     let derivedGst = 0;
 
     if (includeGst) {
-        derivedBasic = Math.round((amount / (1 + (gstRate / 100))) * 100) / 100;
-        derivedGst = Math.round((amount - derivedBasic) * 100) / 100;
+      derivedBasic = Math.round((amount / (1 + (gstRate / 100))) * 100) / 100;
+      derivedGst = Math.round((amount - derivedBasic) * 100) / 100;
     }
 
     sectionRef.basicAmount = derivedBasic;
@@ -216,11 +217,23 @@ const EditChargeModal = ({
           payment_request_status: charge.payment_request_status || ''
         };
 
+        // Standardize attachments into a single row-level array
+        row.attachments = Array.isArray(charge.attachments) ? charge.attachments : 
+                         (Array.isArray(charge.revenue?.url) ? charge.revenue.url : 
+                         (Array.isArray(charge.cost?.url) ? charge.cost.url : []));
+
         // Normalize amount from total if needed and trigger recalcs
         ['revenue', 'cost'].forEach(sec => {
           if (row[sec]) {
             if (!row[sec].amount && row[sec].total) row[sec].amount = row[sec].total;
             if (row[sec].isGst === undefined) row[sec].isGst = true;
+            // Default party type to 'Others' for cost
+            if (sec === 'cost' && !row[sec].partyType) row[sec].partyType = 'Others';
+            // Default revenue party to exporter
+            if (sec === 'revenue' && !row[sec].partyName && exporterName) {
+              row[sec].partyName = exporterName;
+              row[sec].partyType = 'Customer';
+            }
             row[sec] = calculateDerivedFields(row, sec);
           }
         });
@@ -283,6 +296,16 @@ const EditChargeModal = ({
         // Also trigger recalculation of amounts
         field = 'qty';
         value = updated[index][section].qty;
+      }
+
+      // Handle Copy to Cost logic (Copy only RATE as per user request)
+      if (field === 'copyToCost' && value === true && updated[index].revenue) {
+        const rev = updated[index].revenue;
+        updated[index].cost = {
+          ...updated[index].cost,
+          rate: rev.rate
+        };
+        updated[index].cost = calculateDerivedFields(updated[index], 'cost');
       }
 
       const fieldsToTriggerRecalc = ['qty', 'rate', 'isGst', 'gstRate', 'isTds', 'tdsPercent', 'exchangeRate', 'partyName', 'amount'];
@@ -530,16 +553,16 @@ const EditChargeModal = ({
                             <div className="ep-desc-row">
                               <span className="ep-label">Attachment</span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
-                                {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? (
-                                  row.revenue.url.map((url, urlIdx) => (
+                                {Array.isArray(row.attachments) && row.attachments.length > 0 ? (
+                                  row.attachments.map((url, urlIdx) => (
                                     <Chip
                                       key={urlIdx}
                                       icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
                                       label={extractFileName(url)}
                                       size="small"
                                       onDelete={() => {
-                                        const newUrls = row.revenue.url.filter((_, i) => i !== urlIdx);
-                                        handleFieldChange(i, 'url', newUrls, 'revenue');
+                                        const newUrls = row.attachments.filter((_, i) => i !== urlIdx);
+                                        handleFieldChange(i, 'attachments', newUrls);
                                       }}
                                       component="a"
                                       href={url && url.toString().startsWith('http') ? url : '#'}
@@ -553,8 +576,8 @@ const EditChargeModal = ({
                                 ) : (
                                   <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>No files attached</span>
                                 )}
-                                <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('revenue'); }}>
-                                  {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? 'Edit Files' : 'Upload Files'}
+                                <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('attachments'); }}>
+                                  {Array.isArray(row.attachments) && row.attachments.length > 0 ? 'Edit Files' : 'Upload Files'}
                                 </button>
                               </div>
                             </div>
@@ -609,10 +632,19 @@ const EditChargeModal = ({
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
                                       {searchLoading && <li className="ep-dropdown-item"><span className="ep-item-sub">Searching...</span></li>}
                                       {!searchLoading && (() => {
-                                        const list = [...shippingLines, ...organizations, ...terminalCodes, ...transporters, ...suppliers, ...exporters];
+                                        let list = [...shippingLines, ...organizations, ...terminalCodes, ...transporters, ...suppliers, ...exporters];
+                                        const pType = row.revenue?.partyType;
+                                        if (pType === 'Carrier') list = [...shippingLines];
+                                        else if (pType === 'Agent') list = [...exporters]; // Or any specific list for agents
 
-                                        const filtered = list.filter(item => !row.revenue?.partyName || (item.name && item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase())))
-                                          .slice(0, 30);
+                                        const seen = new Set();
+                                        const filtered = list.filter(item => {
+                                          if (!item.name || (row.revenue?.partyName && !item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase()))) return false;
+                                          const key = item.name.toUpperCase();
+                                          if (seen.has(key)) return false;
+                                          seen.add(key);
+                                          return true;
+                                        }).slice(0, 30);
 
                                         if (filtered.length === 0) {
                                           return <li className="ep-dropdown-item"><span className="ep-item-sub">No results found</span></li>;
@@ -621,7 +653,7 @@ const EditChargeModal = ({
                                         return filtered.map((item, idx) => (
                                           <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'revenue', item)}>
                                             <span className="ep-item-name">{item.name}</span>
-                                            <span className="ep-item-sub">{item.city || 'Master Directory'}</span>
+                                            <span className="ep-item-sub">{item.city || (item.isFromDirectory ? 'Directory' : 'Master')}</span>
                                           </li>
                                         ));
                                       })()}
@@ -718,16 +750,16 @@ const EditChargeModal = ({
                             <div className="ep-desc-row">
                               <span className="ep-label">Attachment</span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
-                                {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? (
-                                  row.cost.url.map((url, urlIdx) => (
+                                {Array.isArray(row.attachments) && row.attachments.length > 0 ? (
+                                  row.attachments.map((url, urlIdx) => (
                                     <Chip
                                       key={urlIdx}
                                       icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
                                       label={extractFileName(url)}
                                       size="small"
                                       onDelete={() => {
-                                        const newUrls = row.cost.url.filter((_, i) => i !== urlIdx);
-                                        handleFieldChange(i, 'url', newUrls, 'cost');
+                                        const newUrls = row.attachments.filter((_, i) => i !== urlIdx);
+                                        handleFieldChange(i, 'attachments', newUrls);
                                       }}
                                       component="a"
                                       href={url && url.toString().startsWith('http') ? url : '#'}
@@ -741,8 +773,8 @@ const EditChargeModal = ({
                                 ) : (
                                   <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>No files attached</span>
                                 )}
-                                <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('cost'); }}>
-                                  {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? 'Edit Files' : 'Upload Files'}
+                                <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('attachments'); }}>
+                                  {Array.isArray(row.attachments) && row.attachments.length > 0 ? 'Edit Files' : 'Upload Files'}
                                 </button>
                               </div>
                             </div>
@@ -802,10 +834,22 @@ const EditChargeModal = ({
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
                                       {searchLoading && <li className="ep-dropdown-item"><span className="ep-item-sub">Searching...</span></li>}
                                       {!searchLoading && (() => {
-                                        const list = [...shippingLines, ...suppliers, ...organizations, ...transporters, ...terminalCodes, ...exporters];
+                                        let list = [...shippingLines, ...suppliers, ...organizations, ...transporters, ...terminalCodes, ...exporters];
+                                        const pType = row.cost?.partyType;
+                                        if (pType === 'Terminal') list = [...terminalCodes];
+                                        else if (pType === 'Transporter') list = [...transporters];
+                                        else if (pType === 'Vendor') list = [...suppliers];
+                                        else if (pType === 'Exporter') list = [...exporters];
+                                        else if (pType === 'Agent') list = [...exporters]; 
 
-                                        const filtered = list.filter(item => !row.cost?.partyName || (item.name && item.name.toLowerCase().includes(row.cost.partyName.toLowerCase())))
-                                          .slice(0, 30);
+                                        const seen = new Set();
+                                        const filtered = list.filter(item => {
+                                          if (!item.name || (row.cost?.partyName && !item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))) return false;
+                                          const key = item.name.toUpperCase();
+                                          if (seen.has(key)) return false;
+                                          seen.add(key);
+                                          return true;
+                                        }).slice(0, 30);
 
                                         if (filtered.length === 0) {
                                           return <li className="ep-dropdown-item"><span className="ep-item-sub">No results found</span></li>;
@@ -814,7 +858,7 @@ const EditChargeModal = ({
                                         return filtered.map((item, idx) => (
                                           <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'cost', item)}>
                                             <span className="ep-item-name">{item.name}</span>
-                                            <span className="ep-item-sub">{item.city || 'Master Directory'}</span>
+                                            <span className="ep-item-sub">{item.city || (item.isFromDirectory ? 'Directory' : 'Master')}</span>
                                           </li>
                                         ));
                                       })()}
@@ -1000,10 +1044,10 @@ const EditChargeModal = ({
         <FileUploadModal
           isOpen={true}
           onClose={() => { setUploadIndex(null); setUploadSection(null); }}
-          chargeLabel={`${formData[uploadIndex]?.chargeHead} (${uploadSection})`}
-          initialUrls={formData[uploadIndex]?.[uploadSection]?.url || []}
+          chargeLabel={`${formData[uploadIndex]?.chargeHead}`}
+          initialUrls={formData[uploadIndex]?.attachments || []}
           onAttach={(urls) => {
-            handleFieldChange(uploadIndex, 'url', urls, uploadSection);
+            handleFieldChange(uploadIndex, 'attachments', urls);
             setUploadIndex(null);
             setUploadSection(null);
           }}

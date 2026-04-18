@@ -231,6 +231,7 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
                                     <option value="RTGS">RTGS</option>
                                     <option value="IMPS">IMPS</option>
                                     <option value="CHEQUE">CHEQUE</option>
+                                    <option value="CASH">CASH</option>
                                 </select>
                             </div>
                             <div className="ep-row">

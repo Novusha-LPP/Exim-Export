@@ -21,6 +21,7 @@ const allModules = [
   "Export - Operation",
   "Export - Charges",
   "Export - Billing",
+  "Freight Forwarding",
   "Directories",
   "Open Points",
   "Export - Reports"

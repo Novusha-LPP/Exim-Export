@@ -63,7 +63,7 @@ const s = {
     fontFamily:
       "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
     backgroundColor: "#fafaffff",
-    padding: "10px 15px", // Responsive padding
+    padding: "5px 15px", // Reduced from 10px 15px
     minHeight: "100vh",
     color: "#333",
     fontSize: "12px",
@@ -74,11 +74,11 @@ const s = {
     margin: "0 auto",
   },
   headerRow: {
-    marginBottom: "10px",
+    marginBottom: "5px",
     paddingBottom: "0",
   },
   pageTitle: {
-    fontSize: "20px",
+    fontSize: "18px",
     fontWeight: "700",
     color: "#111",
     margin: "0",
@@ -88,12 +88,12 @@ const s = {
   tabContainer: {
     display: "flex",
     borderBottom: "1px solid #e5e7eb",
-    marginBottom: "15px",
+    marginBottom: "10px",
   },
   tab: {
-    padding: "8px 20px",
+    padding: "6px 15px",
     cursor: "pointer",
-    fontSize: "13px",
+    fontSize: "12px",
     fontWeight: "600",
     color: "#6b7280",
     borderBottom: "3px solid transparent",
@@ -125,37 +125,37 @@ const s = {
   // Toolbar
   toolbar: {
     display: "flex",
-    gap: "12px",
-    rowGap: "10px",
+    gap: "6px",
+    rowGap: "8px",
     alignItems: "center",
-    marginBottom: "15px",
+    marginBottom: "8px",
     flexWrap: "wrap",
     backgroundColor: "#fff",
-    padding: "10px",
-    borderRadius: "8px",
+    padding: "6px 10px",
+    borderRadius: "6px",
     boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
     border: "1px solid #e5e7eb"
   },
   input: {
-    height: "30px",
-    padding: "0 8px",
+    height: "28px",
+    padding: "0 6px",
     fontSize: "12px",
     border: "1px solid #d1d5db",
     borderRadius: "3px",
     outline: "none",
     color: "#333",
-    minWidth: "200px",
+    minWidth: "150px",
   },
   select: {
-    height: "30px",
-    padding: "0 18px 0 4px",
+    height: "28px",
+    padding: "0 4px",
     fontSize: "12px",
     border: "1px solid #d1d5db",
     borderRadius: "3px",
     backgroundColor: "#fff",
     color: "#333",
     cursor: "pointer",
-    minWidth: "10px",
+    minWidth: "60px",
   },
 
   // Table
@@ -163,43 +163,46 @@ const s = {
     overflowX: "auto",
     border: "1px solid #ccccccff",
     borderRadius: "3px",
-    maxHeight: "600px",
+    maxHeight: "700px",
     overflowY: "auto",
   },
   table: {
     width: "100%",
-    borderCollapse: "collapse",
+    borderCollapse: "separate",
+    borderSpacing: 0,
     fontSize: "11px",
-    tableLayout: "auto", // Allow stretching
+    tableLayout: "auto",
   },
   th: {
-    padding: "8px 6px", // Reduced padding
+    padding: "10px 8px",
     textAlign: "left",
     fontWeight: "700",
-    fontSize: "13px", // Slightly smaller
+    fontSize: "12px",
     color: "#ffffff",
-    borderBottom: "1px solid #dbdbdbff",
-    borderRight: "1px solid #dbdbdbff",
-    whiteSpace: "normal", // Allow wrapping
-    wordBreak: "break-word", // Break long words
-    verticalAlign: "top", // Align to top for better readability
-    // position: "sticky",
+    borderBottom: "2px solid rgba(255,255,255,0.1)",
+    borderRight: "1px solid rgba(255,255,255,0.05)",
+    whiteSpace: "normal",
+    wordBreak: "break-word",
+    verticalAlign: "middle",
     top: 0,
     zIndex: 10,
   },
   td: {
-    padding: "6px 6px", // Reduced padding
-    borderBottom: "1px solid #dbdbdbff",
-    color: "#1f2937",
-    whiteSpace: "normal", // Allow wrapping
-    wordBreak: "break-word", // Break long words
+    padding: "10px 8px",
+    borderBottom: "1px solid #e2e8f0",
+    color: "#1e293b",
+    whiteSpace: "normal",
+    wordBreak: "break-word",
     verticalAlign: "top",
-    alignItems: "center",
-    justifyContent: "center",
+    transition: "all 0.2s ease",
   },
   rowHover: {
-    cursor: "pointer",
-    transition: "background 0.1s",
+    transition: "transform 0.2s, box-shadow 0.2s",
+    "&:hover": {
+      backgroundColor: "#f8fafc !important",
+      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+      zIndex: 2,
+    }
   },
 
   // Clickable job number
@@ -286,33 +289,26 @@ const movementTypeOptions = [
   { value: "AIR", label: "AIR" },
 ];
 
-const getStatusColor = (statusValue) => {
-  switch (statusValue) {
-    // Export Status Mappings
-    case "Pending":
-      return "#f9fafb"; // Very Light Gray
-    case "SB Filed":
-      return "#e6f3ff"; // Light Blue - Keep existing
-
-    case "L.E.O":
-      return "#ffebee"; // Very Light Rose
-    case "Container HO":
-    case "File Handover to IATA":
-      return "#daffdeff"; // Light Sky Blue
-    case "Rail Out":
-    case "Departure":
-      return "#ede7f6"; // Light Lavender
-    case "Billing Pending":
-      return "#fff3e0"; // Light Peach
-    case "Billing Done":
-      return "#cfd8dc"; // Light Blue Gray
-    case "Completed":
-      return "#e0f7fa"; // Light Cyan / Tealish
-
-    default:
-      return "transparent";
-  }
+// --- UI UX Premium Themes ---
+const statusThemes = {
+  "Pending": { bg: "#f8fafc", border: "#94a3b8", text: "#475569", light: "#f1f5f9" },
+  "SB Filed": { bg: "#f0f9ff", border: "#0ea5e9", text: "#0369a1", light: "#e0f2fe" },
+  "L.E.O": { bg: "#fff1f2", border: "#f43f5e", text: "#be123c", light: "#ffe4e6" },
+  "Container HO": { bg: "#f0fdf4", border: "#22c55e", text: "#15803d", light: "#dcfce7" },
+  "File Handover to IATA": { bg: "#f0fdf4", border: "#22c55e", text: "#15803d", light: "#dcfce7" },
+  "Rail Out": { bg: "#f5f3ff", border: "#8b5cf6", text: "#6d28d9", light: "#ede9fe" },
+  "Departure": { bg: "#f5f3ff", border: "#8b5cf6", text: "#6d28d9", light: "#ede9fe" },
+  "Billing Pending": { bg: "#fff7ed", border: "#f59e0b", text: "#b45309", light: "#ffedd5" },
+  "Billing Done": { bg: "#f0fdfa", border: "#14b8a6", text: "#0f766e", light: "#ccfbf1" },
+  "Completed": { bg: "#f1f5f9", border: "#64748b", text: "#334155", light: "#e2e8f0" },
+  "default": { bg: "transparent", border: "#e5e7eb", text: "#374151", light: "#f9fafb" }
 };
+
+const getStatusTheme = (statusValue) => {
+  return statusThemes[statusValue] || statusThemes["default"];
+};
+
+const getStatusColor = (statusValue) => getStatusTheme(statusValue).bg;
 
 const buildShippingLineUrls = (num, containerFirst = "") => ({
   MSC: "https://www.msc.com/en/track-a-shipment",
@@ -1408,7 +1404,7 @@ const ExportJobsTable = () => {
 
     const categories = [
       {
-        name: "1. Shipping / Port Documents",
+        name: "1. Shipping/Port Docs",
         files: [
           { field: "leoUpload", title: "LEO", source: "status" },
           { field: "eGatePassUpload", title: "Gate Pass", source: "status" },
@@ -1418,7 +1414,7 @@ const ExportJobsTable = () => {
         ]
       },
       {
-        name: "2. VGM / ODEX Documents",
+        name: "2. VGM / ODEX Docs",
         files: [
           { field: "manualVgmUpload", title: "Manual VGM", source: "status" },
           { field: "odexVgmUpload", title: "Odex VGM", source: "status" },
@@ -1428,7 +1424,7 @@ const ExportJobsTable = () => {
         ]
       },
       {
-        name: "3. Container & Cargo Photos",
+        name: "3. Container & Cargo",
         files: [
           { field: "images", title: "Container Door Photo", source: "container" },
           { field: "stuffingPhotoUpload", title: "Stuffing Photo", source: "status" },
@@ -1436,7 +1432,7 @@ const ExportJobsTable = () => {
         ]
       },
       {
-        name: "4. Operational Documents",
+        name: "4. Operational Docs",
         files: [
           { field: "weighmentImages", title: "Weighment Slip", source: "container" },
           { field: "stuffingSheetUpload", title: "Stuffing Sheet", source: "status" },
@@ -1825,21 +1821,18 @@ const ExportJobsTable = () => {
           <div style={s.toolbar}>
             {/* Year Filter */}
             <select
-              style={s.select}
+              style={{ ...s.select, width: "80px" }}
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
             >
               <option value="">All Years</option>
-              <option value="26-27">26-27</option>
-              <option value="25-26">25-26</option>
-              <option value="24-25">24-25</option>
-              <option value="23-24">23-24</option>
-              <option value="22-23">22-23</option>
-              <option value="21-22">21-22</option>
+              {["26-27", "25-26", "24-25", "23-24", "22-23", "21-22"].map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
             </select>
             {/* Month Filter */}
             <select
-              style={s.select}
+              style={{ ...s.select, width: "100px" }}
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
             >
@@ -1847,23 +1840,19 @@ const ExportJobsTable = () => {
               <option value="today">Today</option>
               <option value="yesterday">Yesterday</option>
               <option value="weekly">Weekly</option>
-              <option value="1">January</option>
-              <option value="2">February</option>
-              <option value="3">March</option>
-              <option value="4">April</option>
-              <option value="5">May</option>
-              <option value="6">June</option>
-              <option value="7">July</option>
-              <option value="8">August</option>
-              <option value="9">September</option>
-              <option value="10">October</option>
-              <option value="11">November</option>
-              <option value="12">December</option>
+              {[
+                { v: "1", l: "January" }, { v: "2", l: "February" }, { v: "3", l: "March" },
+                { v: "4", l: "April" }, { v: "5", l: "May" }, { v: "6", l: "June" },
+                { v: "7", l: "July" }, { v: "8", l: "August" }, { v: "9", l: "September" },
+                { v: "10", l: "October" }, { v: "11", l: "November" }, { v: "12", l: "December" }
+              ].map(m => (
+                <option key={m.v} value={m.v}>{m.l}</option>
+              ))}
             </select>
 
             {/* Branch Filter */}
             <select
-              style={{ ...s.select, minWidth: "110px" }}
+              style={{ ...s.select, width: "110px" }}
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
             >
@@ -1876,7 +1865,7 @@ const ExportJobsTable = () => {
 
             {/* Custom House Filter */}
             <select
-              style={s.select}
+              style={{ ...s.select, width: "140px" }}
               value={selectedCustomHouse}
               onChange={(e) => setSelectedCustomHouse(e.target.value)}
             >
@@ -1911,7 +1900,7 @@ const ExportJobsTable = () => {
 
             {/* Movement Type Filter */}
             <select
-              style={s.select}
+              style={{ ...s.select, width: "100px" }}
               value={selectedMovementType}
               onChange={(e) => setSelectedMovementType(e.target.value)}
             >
@@ -1923,7 +1912,7 @@ const ExportJobsTable = () => {
 
             {/* Job Owner Filter */}
             <select
-              style={{ ...s.select, minWidth: "100px" }}
+              style={{ ...s.select, width: "110px" }}
               value={selectedJobOwner}
               onChange={(e) => setSelectedJobOwner(e.target.value)}
             >
@@ -1974,7 +1963,7 @@ const ExportJobsTable = () => {
             />
 
             {/* Detailed Status Filter - MUI Select Multi-Select */}
-            <FormControl size="small" style={{ width: 160, minWidth: 160 }}>
+            <FormControl size="small" style={{ width: 140, minWidth: 140 }}>
               <Select
                 multiple
                 value={selectedDetailedStatus}
@@ -2001,7 +1990,7 @@ const ExportJobsTable = () => {
                 }}
                 inputProps={{ "aria-label": "Without label" }}
                 sx={{
-                  height: 30,
+                  height: 28,
                   fontSize: "12px",
                   "& .MuiSelect-select": {
                     padding: "4px 4px",
@@ -2064,7 +2053,7 @@ const ExportJobsTable = () => {
 
             {/* Goods Stuffed At Filter */}
             <select
-              style={s.select}
+              style={{ ...s.select, width: "100px" }}
               value={selectedGoodsStuffedAt}
               onChange={(e) => setSelectedGoodsStuffedAt(e.target.value)}
             >
@@ -2080,11 +2069,11 @@ const ExportJobsTable = () => {
                   setPage(1);
                 }}
                 style={{
-                  height: "30px",
+                  height: "28px",
                   display: "flex",
                   alignItems: "center",
-                  gap: "6px",
-                  padding: "0 10px",
+                  gap: "4px",
+                  padding: "0 5px",
                   borderRadius: "4px",
                   border: "1px solid",
                   backgroundColor: onlyPendingQueries ? "#fee2e2" : "#f3f4f6",
@@ -2101,7 +2090,7 @@ const ExportJobsTable = () => {
                   width: 8, height: 8, borderRadius: "50%",
                   backgroundColor: onlyPendingQueries ? "#dc2626" : "#9ca3af"
                 }} />
-                Pending Queries
+                Pending Qs
               </button>
               {unresolvedCount > 0 && (
                 <Badge
@@ -2128,12 +2117,12 @@ const ExportJobsTable = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "flex-start",
-                gap: "10px",
+                gap: "5px",
                 marginLeft: "auto" // Push to right if space permits
               }}
             >
               <input
-                style={{ ...s.input, minWidth: "200px" }}
+                style={{ ...s.input, width: "160px", minWidth: "130px", padding: "0 4px" }}
                 placeholder="Search by Job No, Exporter, Consignee..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -2145,8 +2134,8 @@ const ExportJobsTable = () => {
                   sx={{
                     backgroundColor: "#f3f4f6",
                     "&:hover": { backgroundColor: "#e5e7eb" },
-                    height: "30px",
-                    width: "30px",
+                    height: "28px",
+                    width: "28px",
                     borderRadius: "4px",
                   }}
                 >
@@ -2161,16 +2150,16 @@ const ExportJobsTable = () => {
           <div style={s.tableContainer}>
             <table style={s.table}>
               <colgroup>
-                <col style={{ minWidth: "120px" }} />
-                <col style={{ minWidth: "80px" }} />
+                <col style={{ minWidth: "175px" }} />
+                <col style={{ minWidth: "150px" }} />
                 <col style={{ minWidth: "100px" }} />
                 <col style={{ minWidth: "100px" }} />
                 <col style={{ minWidth: "90px" }} />
                 <col style={{ minWidth: "160px" }} />
-                <col style={{ minWidth: "120px" }} />
+                <col style={{ minWidth: "160px" }} />
+                <col style={{ minWidth: "125px" }} />
                 <col style={{ minWidth: "85px" }} />
-                <col style={{ minWidth: "180px" }} />
-                <col style={{ minWidth: "80px" }} />
+                <col style={{ minWidth: "70px" }} />
               </colgroup>
               <thead>
                 <tr
@@ -2200,9 +2189,9 @@ const ExportJobsTable = () => {
                   <th style={{ ...s.th, width: "6%", minWidth: "65px" }}>SB / Date</th>
                   <th style={{ ...s.th, width: "12%", minWidth: "140px" }}>Port</th>
                   <th style={{ ...s.th, width: "10%", minWidth: "110px" }}>Container</th>
-                  <th style={{ ...s.th, width: "7%", minWidth: "75px" }}>Handover</th>
+                  <th style={{ ...s.th, width: "10%", minWidth: "110px" }}>Handover</th>
                   <th style={{ ...s.th, width: "7%", minWidth: "75px" }}>Docs</th>
-                  <th style={{ ...s.th, width: "8%", minWidth: "85px", textAlign: "center" }}>Status</th>
+                  <th style={{ ...s.th, width: "5%", minWidth: "65px", textAlign: "center" }}>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -2220,26 +2209,21 @@ const ExportJobsTable = () => {
                   </tr>
                 ) : (
                   jobs.map((job, idx) => {
-                    const rowBg =
-                      getStatusColor(
-                        (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
+                    const currentStatus = (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
                           ? job.detailedStatus[job.detailedStatus.length - 1]
-                          : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status) || "",
-                      ) || "#ffffff";
+                          : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status) || "";
+                    const theme = getStatusTheme(currentStatus);
+                    
                     return (
                       <tr
                         key={job._id || idx}
                         style={{
-                          ...s.rowHover,
-                          backgroundColor: rowBg,
-                          cursor: "default", // Row is no longer clickable as a whole
+                          backgroundColor: theme.bg,
+                          borderLeft: `4px solid ${theme.border}`,
+                          cursor: "default",
+                          transition: "all 0.2s ease",
                         }}
-                      // onMouseEnter={(e) =>
-                      //   (e.currentTarget.style.backgroundColor = "#eef2ff")
-                      // } // Hover highlight
-                      // onMouseLeave={(e) =>
-                      //   (e.currentTarget.style.backgroundColor = rowBg)
-                      // }
+                        className="table-row-hover"
                       >
                         {/* <td
                         style={{
@@ -2267,14 +2251,16 @@ const ExportJobsTable = () => {
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "space-between",
+                              marginBottom: "4px"
                             }}
                           >
                             <div
                               style={{
-                                textDecoration: "underline",
-                                marginBottom: "2px",
-                                fontWeight: "600",
-                                color: "#2563eb",
+                                fontWeight: "800",
+                                color: "#1e40af",
+                                fontSize: "12px",
+                                letterSpacing: "0.2px",
+                                whiteSpace: "nowrap"
                               }}
                             >
                               {job.job_no}
@@ -2299,7 +2285,8 @@ const ExportJobsTable = () => {
                               color: "#32363dff",
                               fontSize: "10px",
                               fontWeight: "normal",
-                              marginBottom: "4px"
+                              marginBottom: "4px",
+                              whiteSpace: "nowrap"
                             }}
                           >
                             {formatDate(job.job_date)}
@@ -2379,39 +2366,40 @@ const ExportJobsTable = () => {
 
                         {/* Column 3: Exporter */}
                         <td style={s.td}>
-                          {/* ... existing exporter content ... */}
                           <div
                             style={{
-                              fontWeight: "600",
-                              color: "#111",
-                              marginBottom: "2px",
-                              maxWidth: "150px", // Prevent stretching
-                              wordBreak: "break-word"
+                              fontWeight: "700",
+                              color: "rgba(0,0,0,0.85)",
+                              fontSize: "12px",
+                              marginBottom: "4px",
+                              lineHeight: "1.3",
                             }}
                           >
                             {job.exporter}
                             {job.exporter_branch_name && job.exporter_branch_name.toLowerCase() !== "main" && (
-                              ` (${job.exporter_branch_name})`
+                              <span style={{ fontWeight: "500", color: "#64748b", fontSize: "10px" }}>
+                                {` (${job.exporter_branch_name})`}
+                              </span>
                             )}
                           </div>
-                          <div style={{ fontSize: "11px", color: "#4b5563", marginTop: "4px" }}>
+                          <div style={{ fontSize: "10px", color: "#475569", display: "flex", flexDirection: "column", gap: "2px" }}>
                             {job.consignees?.[0]?.consignee_name && (
                               <div style={{ display: "flex", gap: "4px", alignItems: "baseline" }}>
-                                <span style={{ fontWeight: "700", color: "#666" }}>CONS:</span>
-                                <span style={{ color: "#111" }}>
-                                  {job.consignees[0].consignee_name.length > 30
-                                    ? `${job.consignees[0].consignee_name.substring(0, 30)}...`
+                                <span style={{ fontWeight: "700", color: "#94a3b8", fontSize: "9px" }}>CONS:</span>
+                                <span style={{ color: "#334155", fontWeight: "500" }}>
+                                  {job.consignees[0].consignee_name.length > 35
+                                    ? `${job.consignees[0].consignee_name.substring(0, 35)}...`
                                     : job.consignees[0].consignee_name}
                                 </span>
                               </div>
                             )}
 
                             {job.buyerThirdPartyInfo?.buyer?.name && (
-                              <div style={{ display: "flex", gap: "4px", alignItems: "baseline", marginTop: "2px" }}>
-                                <span style={{ fontWeight: "700", color: "#666" }}>THIRD PARTY:</span>
-                                <span style={{ color: "#6b7280", fontStyle: "italic" }}>
+                              <div style={{ display: "flex", gap: "4px", alignItems: "baseline" }}>
+                                <span style={{ fontWeight: "700", color: "#94a3b8", fontSize: "9px" }}>3rd PARTY:</span>
+                                <span style={{ color: "#64748b", fontStyle: "italic" }}>
                                   {job.buyerThirdPartyInfo.buyer.name.length > 30
-                                    ? `${job.buyerThirdPartyInfo.buyer.name.substring(0, 20)}...`
+                                    ? `${job.buyerThirdPartyInfo.buyer.name.substring(0, 25)}...`
                                     : job.buyerThirdPartyInfo.buyer.name}
                                 </span>
                               </div>
@@ -2626,12 +2614,17 @@ const ExportJobsTable = () => {
                           </div>
                           <div
                             style={{
-                              color: "#111",
+                              color: "#1e293b",
                               fontSize: "11px",
-                              fontWeight: "600",
+                              fontWeight: "800",
+                              marginTop: "4px",
+                              backgroundColor: "rgba(0,0,0,0.03)",
+                              padding: "2px 4px",
+                              borderRadius: "4px",
+                              display: "inline-block"
                             }}
                           >
-                            {job.invoices?.[0]?.termsOfInvoice}{" "}
+                            <span style={{ color: "#64748b", fontWeight: "600" }}>{job.invoices?.[0]?.termsOfInvoice}</span>{" "}
                             {job.invoices?.[0]?.currency}{" "}
                             {job.invoices?.[0]?.invoiceValue?.toLocaleString()}
                           </div>
@@ -2691,28 +2684,23 @@ const ExportJobsTable = () => {
 
                         {/* Column 6: Port */}
                         <td style={s.td}>
-                          <div style={{ marginBottom: "6px" }}>
-                            <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px", alignItems: "baseline" }}>
-                              <span style={{ fontWeight: "700", fontSize: "11px", color: "#111" }}>Dest:</span>
-                              <span style={{ fontSize: "11px", color: "#374151", fontWeight: "600" }}>{job.destination_port || "-"}</span>
+                          <div style={{ marginBottom: "6px", display: "flex", flexDirection: "column", gap: "1px" }}>
+                            <div style={{ display: "flex", gap: "6px", alignItems: "baseline" }}>
+                              <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>DEST</span>
+                              <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.destination_port || "-"}</span>
                             </div>
-                            <div style={{ fontSize: "10px", color: "#6b7280", fontStyle: "italic", paddingLeft: "35px" }}>
+                            <div style={{ fontSize: "10px", color: "#64748b", fontStyle: "italic", paddingLeft: "41px" }}>
                               {job.destination_country || "-"}
                             </div>
                           </div>
-                          <div>
-                            <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px", alignItems: "baseline" }}>
-                              <span style={{ fontWeight: "700", fontSize: "11px", color: "#111" }}>Discharge:</span>
-                              <span style={{ fontSize: "11px", color: "#374151", fontWeight: "600" }}>{job.port_of_discharge || "-"}</span>
-
+                          <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+                            <div style={{ display: "flex", gap: "6px", alignItems: "baseline" }}>
+                              <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>POL</span>
+                              <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.port_of_loading || "-"}</span>
                             </div>
-                            <div style={{ fontSize: "10px", color: "#6b7280", fontStyle: "italic", paddingLeft: "60px" }}>
-                              {job.discharge_country || "-"}
-
-                            </div>
-                            <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px", alignItems: "baseline" }}>
-                              <span style={{ fontWeight: "700", fontSize: "11px", color: "#111" }}>POL:</span>
-                              <span style={{ fontSize: "11px", color: "#374151", fontWeight: "600" }}>{job.port_of_loading}</span>
+                            <div style={{ display: "flex", gap: "6px", alignItems: "baseline" }}>
+                              <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>DISCH</span>
+                              <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.port_of_discharge || "-"}</span>
                             </div>
                           </div>
                         </td>
@@ -2728,145 +2716,54 @@ const ExportJobsTable = () => {
                                   color: "#374151",
                                   display: "flex",
                                   flexDirection: "column",
-                                  gap: "2px",
+                                  gap: "3px",
                                 }}
                               >
                                 {job.containers
                                   .filter((c) => c.containerNo)
-                                  .map((container, index) => {
-                                    // const weightShortage = parseFloat(container.weight_shortage) || 0;
-                                    // const containerColor = getShortageColor(weightShortage);
-                                    // const tooltipText = getShortageText(weightShortage);
-
-                                    return (
-                                      <div
-                                        key={index}
-                                        style={{
-                                          display: "flex",
-                                          justifyContent: "space-between",
-                                          alignItems: "center",
-                                        }}
-                                      >
-                                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                                          <a
-                                            href={`https://www.ldb.co.in/ldb/containersearch/39/${container.containerNo}/1726651147706`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            style={{
-                                              fontWeight: "bold",
-                                              textDecoration: "none",
-                                              cursor: "pointer",
-                                              fontSize: "11px",
-                                              color: "#2563eb",
-                                            }}
-                                            onMouseOver={(e) =>
-                                              (e.target.style.textDecoration = "underline")
-                                            }
-                                            onMouseOut={(e) =>
-                                              (e.target.style.textDecoration = "none")
-                                            }
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            {container.containerNo}
-                                          </a>
-
-                                          {/* Shipping Line Tracking Link */}
-                                          {(() => {
-                                            const bookingNo = job.booking_no || "";
-                                            const containerFirst = job.containers?.[0]?.containerNo || "";
-                                            const urls = buildShippingLineUrls(bookingNo, containerFirst);
-
-                                            let linerRaw = job.shipping_line_airline || "";
-                                            // Handle cases like "MSC - MSC" by taking the part after " - "
-                                            let liner = linerRaw.includes(" - ") ? linerRaw.split(" - ").pop().trim() : linerRaw.trim();
-
-                                            const matchKey = Object.keys(urls).find(key => liner.toUpperCase().includes(key.toUpperCase()));
-                                            const url = matchKey ? urls[matchKey] : "#";
-
-                                            if (liner && url !== "#") {
-                                              return (
-                                                <Tooltip title={`Track on ${liner}`}>
-                                                  <a
-                                                    href={url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    style={{ display: 'flex', alignItems: 'center' }}
-                                                  >
-                                                    <FontAwesomeIcon icon={faShip} style={{ fontSize: 10, color: "#2563eb" }} />
-                                                  </a>
-                                                </Tooltip>
-                                              );
-                                            }
-                                            return null;
-                                          })()}
-
-                                          {/* CONCOR Container Track Button */}
-                                          {job.custom_house?.toUpperCase().includes("ICD") && (
-                                            <Tooltip title="Track on CONCOR India">
-                                              <IconButton
-                                                size="small"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setContainerTrackContainers(job.containers || []);
-                                                  setContainerTrackOpen(true);
-                                                }}
-                                                style={{ padding: 0, marginLeft: 2 }}
-                                              >
-                                                <FontAwesomeIcon icon={faAnchor} style={{ fontSize: 10, color: "#7c3aed" }} />
-                                              </IconButton>
-                                            </Tooltip>
-                                          )}
-                                        </div>
-
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                          <IconButton
-                                            size="small"
-                                            onClick={(e) =>
-                                              handleCopyText(container.containerNo, e)
-                                            }
-                                            style={{ padding: 0, marginLeft: 4 }}
-                                            title="Copy Container No"
-                                          >
-                                            <ContentCopyIcon
-                                              style={{ fontSize: 10 }}
-                                            />
-                                          </IconButton>
-                                          {container.size && <span style={{ fontSize: '10px', marginLeft: 4, color: '#6b7280' }}>| "{container.size}"</span>}
-                                        </div>
+                                  .map((container, index) => (
+                                    <div
+                                      key={index}
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        backgroundColor: "rgba(37, 99, 235, 0.05)",
+                                        padding: "2px 4px",
+                                        borderRadius: "3px"
+                                      }}
+                                    >
+                                      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                        <a
+                                          href={`https://www.ldb.co.in/ldb/containersearch/39/${container.containerNo}/1726651147706`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          style={{
+                                            fontWeight: "800",
+                                            textDecoration: "none",
+                                            fontSize: "11px",
+                                            color: "#2563eb",
+                                          }}
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          {container.containerNo}
+                                        </a>
                                       </div>
-                                    );
-                                  })}
+                                      <span style={{ fontSize: '9px', fontWeight: '800', color: '#64748b' }}>{container.size || ""}</span>
+                                    </div>
+                                  ))}
                               </div>
                             ) : (
-                              <div
-                                style={{
-                                  fontWeight: "600",
-                                  fontSize: "11px",
-                                  color: "#374151",
-                                }}
-                              >
-                                -
-                              </div>
+                              <div style={{ fontWeight: "600", color: "#94a3b8" }}>-</div>
                             )}
                           </div>
-                          <div style={{ color: "#6b7280", fontSize: "10px", marginTop: "4px" }}>
-                            <div style={{ fontWeight: "600" }}>
+                          <div style={{ color: "#475569", fontSize: "10px", marginTop: "6px", backgroundColor: "#f1f5f9", padding: "4px", borderRadius: "4px" }}>
+                            <div style={{ fontWeight: "800", color: "#1e293b", marginBottom: "2px" }}>
                               {job.total_no_of_pkgs} {job.package_unit}
                             </div>
-                            <div>
-                              G: {job.gross_weight_kg} kg | N: {job.net_weight_kg} kg
+                            <div style={{ fontSize: "9px" }}>
+                              <span style={{ fontWeight: "700" }}>G:</span> {job.gross_weight_kg} kg | <span style={{ fontWeight: "700" }}>N:</span> {job.net_weight_kg} kg
                             </div>
-                          </div>
-                          <div style={{ color: "#6b7280", fontSize: "10px", marginTop: "2px" }}>
-                            <span>Place:</span>{" "}
-                            <span style={{ fontWeight: "500" }}>
-                              {formatDate(
-                                job.operations?.[0]?.statusDetails?.[0]
-                                  ?.containerPlacementDate,
-                                "dd-MM-yy"
-                              )}
-                            </span>
                           </div>
                         </td>
 
@@ -2878,38 +2775,44 @@ const ExportJobsTable = () => {
                             const reachedLbl = opDetails.railRoad === "road" ? "Road Rch" : "Rail Rch";
 
                             return (
-                              <>
-                                <div style={{ fontSize: "10px" }}>
-                                  <span style={{ color: "#6b7280" }}>Leo:</span>{" "}
-                                  <span style={{ fontWeight: "500" }}>
-                                    {formatDate(opDetails.leoDate, "dd-MM-yy")}
-                                  </span>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                                <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                  <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>LEO</span>
+                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.leoDate, "dd-MM-yy")}</span>
                                 </div>
-                                <div style={{ marginTop: "2px", fontSize: "10px" }}>
-                                  <span style={{ color: "#6b7280" }}>DHo:</span>{" "}
-                                  <span style={{ fontWeight: "500" }}>
-                                    {formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}
-                                  </span>
+                                <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                  <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>DHO</span>
+                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}</span>
                                 </div>
-                                <div style={{ marginTop: "2px", fontSize: "10px" }}>
-                                  <span style={{ color: "#6b7280" }}>{outLbl}:</span>{" "}
-                                  <span style={{ fontWeight: "500" }}>
-                                    {formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}
-                                  </span>
+                                <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                  <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{outLbl.toUpperCase()}</span>
+                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}</span>
                                 </div>
-                                <div style={{ marginTop: "2px", fontSize: "10px" }}>
-                                  <span style={{ color: "#6b7280" }}>{reachedLbl}:</span>{" "}
-                                  <span style={{ fontWeight: "500" }}>
-                                    {formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}
-                                  </span>
+                                <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                  <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{reachedLbl.toUpperCase()}</span>
+                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}</span>
                                 </div>
-                                <div style={{ marginTop: "2px", fontSize: "10px" }}>
-                                  <span style={{ color: "#6b7280" }}>Bill:</span>{" "}
-                                  <span style={{ fontWeight: "500" }}>
-                                    {formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}
-                                  </span>
+                                <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                  <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL</span>
+                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}</span>
                                 </div>
-                              </>
+
+                                {job.vgm_done && (
+                                  <div style={{ marginTop: "4px", backgroundColor: "#ecfdf5", border: "1px solid #10b981", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#065f46" }}>
+                                    <span style={{ fontWeight: "800" }}>VGM:</span> {formatDate(job.vgm_date, "dd-MM-yy")}
+                                  </div>
+                                )}
+                                {job.form13_done && (
+                                  <div style={{ marginTop: "2px", backgroundColor: "#f0f9ff", border: "1px solid #0ea5e9", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#0369a1" }}>
+                                    <span style={{ fontWeight: "800" }}>F13:</span> {formatDate(job.form13_date, "dd-MM-yy")}
+                                  </div>
+                                )}
+                                {job.shipping_bill_done && (
+                                  <div style={{ marginTop: "2px", backgroundColor: "#fef2f8", border: "1px solid #f43f5e", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#9f1239" }}>
+                                    <span style={{ fontWeight: "800" }}>SB DONE:</span> {formatDate(job.shipping_bill_done_date, "dd-MM-yy")}
+                                  </div>
+                                )}
+                              </div>
                             );
                           })()}
                         </td>
@@ -3111,13 +3014,17 @@ const ExportJobsTable = () => {
                           <div
                             style={{
                               textAlign: "center",
-                              marginTop: "6px",
+                              marginTop: "8px",
                               fontSize: "10px",
-                              fontWeight: "700",
-                              color: "#374151",
-                              backgroundColor: "rgba(255,255,255,0.6)",
-                              padding: "2px 4px",
-                              borderRadius: "4px",
+                              fontWeight: "800",
+                              color: theme.text,
+                              backgroundColor: theme.bg,
+                              border: `1px solid ${theme.border}`,
+                              padding: "4px 2px",
+                              borderRadius: "6px",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.4px",
+                              boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
                             }}
                           >
                             {(isChargesModule && activeTab === "Completed")
@@ -3801,7 +3708,7 @@ const ExportJobsTable = () => {
         PaperProps={{
           style: {
             maxHeight: 450,
-            width: '280px',
+            width: '220px',
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
             borderRadius: '12px',
             border: '1px solid #e2e8f0',
@@ -3817,11 +3724,11 @@ const ExportJobsTable = () => {
             if (link.isHeader) {
               return (
                 <ListSubheader key={idx} style={{
-                  lineHeight: '34px',
+                  lineHeight: '22px',
                   backgroundColor: '#f8fafc',
                   color: '#0369a1',
                   fontWeight: '800',
-                  fontSize: '11px',
+                  fontSize: '10px',
                   textTransform: 'uppercase',
                   borderBottom: '1px solid #f1f5f9'
                 }}>
@@ -3834,8 +3741,8 @@ const ExportJobsTable = () => {
               <MenuItem
                 key={idx}
                 style={{
-                  padding: '4px 16px',
-                  minHeight: '36px',
+                  padding: '2px 12px',
+                  minHeight: '30px',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -3933,7 +3840,7 @@ const ExportJobsTable = () => {
         PaperProps={{
           style: {
             maxHeight: 450,
-            width: '280px',
+            width: '170px',
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
             borderRadius: '12px',
             border: '1px solid #e2e8f0',
@@ -3944,41 +3851,40 @@ const ExportJobsTable = () => {
         {selectedGenDocJob && (() => (
           <>
             <ListSubheader style={{
-              lineHeight: '34px',
+              lineHeight: '22px',
               backgroundColor: '#f1f5f9',
               color: '#1e293b',
               fontWeight: '800',
-              fontSize: '11px',
+              fontSize: '10px',
               textTransform: 'uppercase',
               borderBottom: '1px solid #e2e8f0',
               letterSpacing: '0.05em'
             }}>
-              1. GENERATED DOCUMENTS
             </ListSubheader>
 
             <ExportChecklistGenerator jobNo={selectedGenDocJob?.job_no} renderAsIcon={false}>
-              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Checklist</MenuItem>
+              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Checklist</MenuItem>
             </ExportChecklistGenerator>
 
             <FileCoverGenerator jobNo={selectedGenDocJob?.job_no}>
-              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>File Cover</MenuItem>
+              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>File Cover</MenuItem>
             </FileCoverGenerator>
 
             {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SACHANA")) && (
               <ConsignmentNoteGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Forwarding Note (Sachana)</MenuItem>
+                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Forwarding Note (Sachana)</MenuItem>
               </ConsignmentNoteGenerator>
             )}
 
             {(selectedGenDocJob?.custom_house?.toUpperCase().includes("THAR")) && (
               <ForwardingNoteTharGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Forwarding Note (THAR)</MenuItem>
+                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Forwarding Note (THAR)</MenuItem>
               </ForwardingNoteTharGenerator>
             )}
 
             {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SABARMATI") || selectedGenDocJob?.custom_house?.toUpperCase().includes("CONCOR")) && (
               <ConcorForwardingNoteGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Forwarding Note (CONCOR)</MenuItem>
+                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Forwarding Note (CONCOR)</MenuItem>
               </ConcorForwardingNoteGenerator>
             )}
 
@@ -3988,16 +3894,16 @@ const ExportJobsTable = () => {
               selectedGenDocJob?.transportMode !== "AIR") && (
                 <>
                   <AnnexureCGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Annexure C</MenuItem>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Annexure C</MenuItem>
                   </AnnexureCGenerator>
                   <VGMAuthorizationGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>VGM Authorization</MenuItem>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>VGM Authorization</MenuItem>
                   </VGMAuthorizationGenerator>
                   <FreightCertificateGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Freight Certificate</MenuItem>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Freight Certificate</MenuItem>
                   </FreightCertificateGenerator>
                   <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '13px', minHeight: '36px', borderBottom: '1px solid #f1f5f9' }}>Bill of Lading</MenuItem>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Bill of Lading</MenuItem>
                   </BillOfLadingGenerator>
                 </>
               )}
@@ -4010,8 +3916,9 @@ const ExportJobsTable = () => {
                 handleGenDocsClose();
               }}
               style={{
-                fontSize: '13px',
-                minHeight: '40px',
+                fontSize: '12px',
+                minHeight: '34px',
+                padding: '4px 12px',
                 color: '#166534',
                 fontWeight: 'bold',
                 backgroundColor: '#f0fdf4',

@@ -186,16 +186,17 @@ const trunc = (s, n) => String(s ?? "").slice(0, n);
 const toAscii = (s) => String(s ?? "").replace(/[^\x00-\x7F]/g, " ");
 
 const clean = (s) => toAscii(s)
-    .replace(/[\r\n\t]/g, " ")
-    // ALLOW , . / - ( ) : & per ICEGATE spec
+    .replace(/[\x00-\x1F\x7F]/g, " ")   // 🔥 REMOVE ALL CONTROL CHARS
+    .replace(/\s+/g, " ")               // normalize spaces
     .replace(/[^a-zA-Z0-9\s,.\/:()\-&]/g, " ")
     .toUpperCase()
-    // .replace(/\s+/g, " ") // REMOVED: ICEGATE flat files preserve internal spacing for field position accuracy
     .trim();
 
 // FIX 23 / FIX 40: preserve internal spaces (consignee name, beneficiary name, marks_nos)
-const preserveSpaces = (s) => toAscii(s).replace(/[\r\n\t]/g, " ").replace(/^ +| +$/g, "");
-
+const preserveSpaces = (s) =>
+    toAscii(s)
+        .replace(/[\x00-\x1F\x7F]/g, " ")
+        .replace(/^ +| +$/g, "");
 // FIX 37: title-case ("GANDHINAGAR" -> "Gandhinagar")
 const toTitleCase = (s) => String(s ?? "").replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
 
@@ -307,8 +308,13 @@ const getUnitIndicator = (unit) => {
     return "M";
 };
 
-const row = (prefix, ...fields) => prefix + FS + fields.join(FS) + RS;
+const sanitizeField = (f) =>
+    String(f ?? "")
+        .replace(/[\x00-\x1F\x7F]/g, " ")  // 🔥 kill hidden chars
+        .trim();
 
+const row = (prefix, ...fields) =>
+    prefix + FS + fields.map(sanitizeField).join(FS) + RS;
 // ─── Validation Logic ─────────────────────────────────────────────────────────
 
 function validateJobData(job) {
@@ -521,7 +527,7 @@ export function generateSBFlatFile(job) {
         nc,                                                                 // [35] Nature of cargo
         parseFloat(job.gross_weight_kg || 0).toFixed(3),                  // [36] Gross weight
         parseFloat(job.net_weight_kg || 0).toFixed(3),                    // [37] Net weight
-        "KGS",                                                              // [38] Weight unit
+        (job.gross_weight_unit || job.net_weight_unit || "KGS"),                                                              // [38] Weight unit
         clean(String(job.total_no_of_pkgs || job.totalPackages || "")),   // [39] Total packages
         preserveSpaces(job.marks_nos || job.marksAndNumbers || ""),       // [40] Marks & numbers
         loosePktsFinal,                                                     // [41] Loose packets — FIX 58

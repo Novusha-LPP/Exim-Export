@@ -3,6 +3,14 @@ import ExJobModel from "../../model/export/ExJobModel.mjs";
 
 const router = express.Router();
 
+const BRANCH_CUSTOM_HOUSE_MAP = {
+  AMD: ["AHMEDABAD AIR CARGO", "ICD SABARMATI", "ICD SACHANA", "ICD VIROCHAN NAGAR", "THAR DRY PORT"],
+  BRD: ["ANKLESHWAR ICD", "ICD VARNAMA"],
+  GIM: ["MUNDRA SEA", "KANDLA SEA"],
+  COK: ["COCHIN AIR CARGO", "COCHIN SEA"],
+  HAZ: ["HAZIRA"],
+};
+
 const SCRAP_HS_CODES = [
   "26203090", "26204010", "72041000", "72042110", "72042190",
   "72042910", "72042990", "72044900", "72045000", "74040011",
@@ -14,17 +22,26 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
   const { year, month } = req.params;
   const monthInt = parseInt(month, 10);
   const grade = req.query.grade || "";
+  const branchCode = (req.query.branch_code || "").toUpperCase();
+  const branchCustomHouses = BRANCH_CUSTOM_HOUSE_MAP[branchCode] || [];
 
   try {
+    const matchConditions = {
+      year,
+      // Check for LEO Date presence in operations.statusDetails.leoDate
+      "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
+      sb_date: { $type: "string", $ne: "" },
+      exporter: { $ne: null, $ne: "" },
+      transportMode: { $ne: "AIR" }, // Air jobs should not appear in detailed report
+    };
+
+    if (branchCustomHouses.length > 0) {
+      matchConditions.custom_house = { $in: branchCustomHouses };
+    }
+
     const pipeline = [
       {
-        $match: {
-          year,
-          // Check for LEO Date presence in operations.statusDetails.leoDate
-          "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
-          sb_date: { $type: "string", $ne: "" },
-          exporter: { $ne: null, $ne: "" },
-        },
+        $match: matchConditions,
       },
       {
         $addFields: {
@@ -120,16 +137,52 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
       },
       {
         $addFields: {
+          uniqueContainers: {
+            $reduce: {
+              input: { $ifNull: ["$containers", []] },
+              initialValue: { list: [], seen: [] },
+              in: {
+                $let: {
+                  vars: {
+                    normalizedNo: {
+                      $toUpper: {
+                        $trim: { input: { $ifNull: ["$$this.containerNo", ""] } }
+                      }
+                    }
+                  },
+                  in: {
+                    $cond: [
+                      {
+                        $or: [
+                          { $eq: ["$$normalizedNo", ""] },
+                          { $in: ["$$normalizedNo", "$$value.seen"] }
+                        ]
+                      },
+                      "$$value",
+                      {
+                        list: { $concatArrays: ["$$value.list", ["$$this"]] },
+                        seen: { $concatArrays: ["$$value.seen", ["$$normalizedNo"]] }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+      },
+      {
+        $addFields: {
           containerNumbers: {
             $map: {
-              input: { $ifNull: ["$containers", []] },
+              input: "$uniqueContainers.list",
               as: "c",
               in: "$$c.containerNo",
             },
           },
           sizeCounts: {
             $reduce: {
-              input: { $ifNull: ["$containers", []] },
+              input: "$uniqueContainers.list",
               initialValue: { ft20: 0, ft40: 0 },
               in: {
                 ft20: {
@@ -172,7 +225,7 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
           teus: {
             $sum: {
               $map: {
-                input: { $ifNull: ["$containers", []] },
+                input: "$uniqueContainers.list",
                 as: "c",
                 in: {
                   $cond: [
@@ -200,44 +253,6 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
               },
             },
           },
-          // Determine if Scrap based on RITC in products (nested in invoices)
-          isScrap: {
-            $gt: [
-              {
-                $size: {
-                  $filter: {
-                    input: {
-                      $reduce: {
-                        input: { $ifNull: ["$invoices", []] },
-                        initialValue: [],
-                        in: {
-                          $concatArrays: [
-                            "$$value",
-                            { $ifNull: ["$$this.products", []] },
-                          ],
-                        },
-                      },
-                    },
-                    as: "p",
-                    cond: { $in: ["$$p.ritc", SCRAP_HS_CODES] },
-                  },
-                },
-              },
-              0,
-            ],
-          },
-          rmsStatus: {
-            $cond: [
-              {
-                $and: [
-                  { $ne: ["$firstStatus.rms", null] },
-                  { $ne: ["$firstStatus.rms", ""] },
-                ],
-              },
-              "RMS",
-              "No RMS",
-            ],
-          },
           milestoneRemarks: {
             $reduce: {
               input: {
@@ -263,15 +278,7 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
       },
       {
         $addFields: {
-          remarks: {
-            $concat: [
-              { $cond: ["$isScrap", "SCRAP", "OTHERS"] },
-              "\n",
-              "$rmsStatus",
-              { $cond: [{ $eq: ["$milestoneRemarks", ""] }, "", "\n"] },
-              "$milestoneRemarks",
-            ],
-          },
+          remarks: "$milestoneRemarks",
 
         },
       },
@@ -361,12 +368,12 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
             $cond: [
               { $eq: ["$consignmentType", "LCL"] },
               1,
-              { $size: { $ifNull: ["$containers", []] } },
+              { $size: { $ifNull: ["$uniqueContainers.list", []] } },
             ],
           },
           noOfContrSize: 1,
           teus: {
-            $cond: [{ $eq: ["$consignmentType", "LCL"] }, 1, "$teus"],
+            $cond: [{ $eq: ["$consignmentType", "LCL"] }, 0, "$teus"],
           },
           leo_date: {
             $dateToString: {
@@ -377,6 +384,7 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
           remarks: 1,
           consignment_type: "$consignmentType",
           type_of_sb: "$sb_type", // Comparable to type_of_b_e
+          transport_mode: "$transportMode",
         },
       },
     ];

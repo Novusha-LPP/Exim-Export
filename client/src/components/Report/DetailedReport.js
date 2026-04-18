@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useMemo } from "react";
 import {
   Container,
   Typography,
@@ -47,6 +47,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { UserContext } from "../../contexts/UserContext";
+import { getOptionsForBranch } from "../common/CustomHouseDropdown";
 
 const columns = [
   { label: "Srl No.", key: "srlNo", minWidth: 50 },
@@ -79,6 +80,15 @@ const DetailedReport = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState("AMD");
+
+  const BRANCH_OPTIONS = [
+    { value: "AMD", label: "Ahmedabad" },
+    { value: "BRD", label: "Baroda" },
+    { value: "GIM", label: "Gandhidham" },
+    { value: "COK", label: "Cochin" },
+    { value: "HAZ", label: "Hazira" },
+  ];
 
   const gradeOptions = [
     { value: "", label: "All Grades" },
@@ -119,6 +129,39 @@ const DetailedReport = () => {
     { value: "12", label: "December" },
   ];
 
+  const allowedCustomHouses = useMemo(() => {
+    if (!selectedBranch) return null;
+    const houses = new Set();
+    getOptionsForBranch(selectedBranch).forEach((group) => {
+      (group.items || []).forEach((item) => houses.add(String(item.value || "").toUpperCase()));
+    });
+    return houses;
+  }, [selectedBranch]);
+
+  const processedData = useMemo(() => {
+    let rows = [...data];
+    if (allowedCustomHouses) {
+      rows = rows.filter((row) => allowedCustomHouses.has(String(row.location || "").toUpperCase()));
+    }
+    rows = rows.filter((row) => {
+      const transportMode = String(row.transport_mode || "").toUpperCase();
+      const location = String(row.location || "").toUpperCase();
+      const isAir = transportMode === "AIR" || location.includes("AIR");
+      return !isAir;
+    });
+    return rows;
+  }, [data, allowedCustomHouses]);
+
+  const isLclJob = (row) => String(row?.consignment_type || "").toUpperCase() === "LCL";
+
+  const detailedRows = useMemo(() => {
+    return processedData;
+  }, [processedData]);
+
+  const lclJobCount = useMemo(() => {
+    return processedData.filter((row) => isLclJob(row)).length;
+  }, [processedData]);
+
   const fetchData = async () => {
     setLoading(true);
     setError("");
@@ -130,6 +173,9 @@ const DetailedReport = () => {
       // Only include grade when user is Sr. Manager
       if (isSrManager && gradeFilter) {
         url.searchParams.append('grade', gradeFilter);
+      }
+      if (selectedBranch) {
+        url.searchParams.append('branch_code', selectedBranch);
       }
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error("Failed to fetch data");
@@ -144,7 +190,7 @@ const DetailedReport = () => {
 
   useEffect(() => {
     fetchData();
-  }, [year, month, gradeFilter]); // ✅ Added gradeFilter dependency
+  }, [year, month, gradeFilter, selectedBranch]); // ✅ Added gradeFilter dependency
 
   const handlePreviousMonth = () => {
     const prev = parseInt(month) - 1;
@@ -169,7 +215,7 @@ const DetailedReport = () => {
   const generateSummaryData = () => {
     const locationGroups = {};
 
-    data.forEach(row => {
+    processedData.forEach(row => {
       const location = row.location || 'Unknown';
       if (!locationGroups[location]) {
         locationGroups[location] = {
@@ -207,97 +253,35 @@ const DetailedReport = () => {
   // Generate summary for dialog (with LCL row)
   const generateSummaryRows = () => {
     const summaryData = {};
-    let lclContainers = 0, lcl20 = 0, lcl40 = 0, lclTeus = 0;
-    let lclTeusSubtract = 0;
-    let exBondContainers = 0, exBond20 = 0, exBond40 = 0, exBondTeus = 0;
-    let total20 = 0, total40 = 0, totalTeus = 0, totalContainers = 0;
-    let scrapTotal20 = 0, scrapTotal40 = 0, scrapTotalTeus = 0, scrapTotalContainers = 0;
-    let othersTotal20 = 0, othersTotal40 = 0, othersTotalTeus = 0, othersTotalContainers = 0;
-    data.forEach(row => {
+    processedData.forEach(row => {
       const location = row.location || 'Unknown';
-      const remarks = (row.remarks || '').toLowerCase();
       const consignmentType = (row.consignment_type || '').toUpperCase();
       const sizeInfo = row.noOfContrSize || '';
       const count20 = parseInt((sizeInfo.match(/(\d+)\s*x\s*20/i) || [0, 0])[1]) || 0;
       const count40 = parseInt((sizeInfo.match(/(\d+)\s*x\s*40/i) || [0, 0])[1]) || 0;
       const teus = parseInt(row.teus) || 0;
-      const containers = parseInt(row.totalContainers) || 0;
 
-      if (consignmentType === 'LCL' || remarks.includes('lcl')) {
-        lclContainers += 1;
-        lcl20 += 1;
-        lcl40 += 0;
-        lclTeus += 1;
+      if (consignmentType === 'LCL') {
         return;
       }
       if (!summaryData[location]) {
-        summaryData[location] = {
-          scrap: { count20: 0, count40: 0, teus: 0, containers: 0 },
-          others: { count20: 0, count40: 0, teus: 0, containers: 0 }
-        };
+        summaryData[location] = { count20: 0, count40: 0, teus: 0 };
       }
-      if (remarks.includes('scrap')) {
-        summaryData[location].scrap.count20 += count20;
-        summaryData[location].scrap.count40 += count40;
-        summaryData[location].scrap.teus += teus;
-        summaryData[location].scrap.containers += containers;
-        scrapTotal20 += count20;
-        scrapTotal40 += count40;
-        scrapTotalTeus += teus;
-        scrapTotalContainers += containers;
-      } else {
-        summaryData[location].others.count20 += count20;
-        summaryData[location].others.count40 += count40;
-        summaryData[location].others.teus += teus;
-        summaryData[location].others.containers += containers;
-        othersTotal20 += count20;
-        othersTotal40 += count40;
-        othersTotalTeus += teus;
-        othersTotalContainers += containers;
-      }
-      total20 += count20;
-      total40 += count40;
-      totalTeus += teus;
-      totalContainers += containers;
+      summaryData[location].count20 += count20;
+      summaryData[location].count40 += count40;
+      summaryData[location].teus += teus;
     });
-    // Build rows in requested order
-    const scrapRows = [];
-    const othersRows = [];
-    const icdTotalRows = [];
-    Object.entries(summaryData).forEach(([location, details]) => {
-      scrapRows.push({ location, details: 'Scrap', ...details.scrap });
-    });
-    Object.entries(summaryData).forEach(([location, details]) => {
-      othersRows.push({ location, details: 'Others', ...details.others });
-    });
-    Object.entries(summaryData).forEach(([location, details]) => {
-      // ICD-wise total = Scrap + Others for this location
-      icdTotalRows.push({
-        location,
-        details: 'TOTAL',
-        count20: details.scrap.count20 + details.others.count20,
-        count40: details.scrap.count40 + details.others.count40,
-        teus: details.scrap.teus + details.others.teus,
-        containers: details.scrap.containers + details.others.containers
-      });
-    });
-    const rows = [];
-    // All scrap rows
-    rows.push(...scrapRows);
-    // All others rows
-    rows.push(...othersRows);
-    // ICD-wise total rows
-    rows.push(...icdTotalRows);
-    // ...removed SCRAP TOTAL and OTHERS TOTAL rows...
-    // LCL row
-    rows.push({ location: 'LCL', details: '', count20: lcl20, count40: lcl40, teus: lclTeus, containers: lclContainers });
-    // Calculate summary TOTAL TEUS as sum of all ICD-wise total TEUS
-    const summaryTotalTeus = icdTotalRows.reduce((sum, row) => sum + (parseInt(row.teus) || 0), 0);
-    const summaryTotal20 = icdTotalRows.reduce((sum, row) => sum + (parseInt(row.count20) || 0), 0);
-    const summaryTotal40 = icdTotalRows.reduce((sum, row) => sum + (parseInt(row.count40) || 0), 0);
-    const summaryTotalContainers = icdTotalRows.reduce((sum, row) => sum + (parseInt(row.containers) || 0), 0);
-    // Final TOTAL row
-    rows.push({ location: 'TOTAL', details: '', count20: summaryTotal20, count40: summaryTotal40, teus: summaryTotalTeus, containers: summaryTotalContainers });
+    const rows = Object.entries(summaryData).map(([location, details]) => ({
+      location,
+      count20: details.count20,
+      count40: details.count40,
+      teus: details.teus,
+    }));
+    const summaryTotalTeus = rows.reduce((sum, row) => sum + (parseInt(row.teus) || 0), 0);
+    const summaryTotal20 = rows.reduce((sum, row) => sum + (parseInt(row.count20) || 0), 0);
+    const summaryTotal40 = rows.reduce((sum, row) => sum + (parseInt(row.count40) || 0), 0);
+    rows.push({ location: 'LCL JOBS', count20: '', count40: '', teus: lclJobCount });
+    rows.push({ location: 'TOTAL', count20: summaryTotal20, count40: summaryTotal40, teus: summaryTotalTeus });
     return rows;
   };
 
@@ -336,7 +320,7 @@ const DetailedReport = () => {
     const workbook = XLSX.utils.book_new();
 
     // Prepare main data
-    const excelData = data.map((row, index) => {
+    const excelData = detailedRows.map((row, index) => {
       const excelRow = {};
 
       // Calculate invoice value for display
@@ -368,6 +352,9 @@ const DetailedReport = () => {
           case 'remarks':
             excelRow[col.label] = row[col.key] || '';
             break;
+          case 'teus':
+            excelRow[col.label] = isLclJob(row) ? 'LCL' : (row.teus || '');
+            break;
           default:
             excelRow[col.label] = row[col.key] || '';
         }
@@ -382,6 +369,7 @@ const DetailedReport = () => {
     const range = XLSX.utils.decode_range(worksheet['!ref']);
     const colWidths = [];
     let remarksColIndex = -1;
+    let commodityColIndex = -1;
 
     for (let col = range.s.c; col <= range.e.c; col++) {
       let maxWidth = 0;
@@ -399,56 +387,77 @@ const DetailedReport = () => {
       if (worksheet[XLSX.utils.encode_cell({ r: 0, c: col })]?.v === 'REMARKS') {
         remarksColIndex = col;
       }
+      if (worksheet[XLSX.utils.encode_cell({ r: 0, c: col })]?.v === 'COMMODITY') {
+        commodityColIndex = col;
+        colWidths[col] = { wch: 30 }; // keep commodity compact in Excel
+      }
     }
     worksheet['!cols'] = colWidths;
 
-    // Apply text wrapping to remarks column cells
+    // Apply text wrapping to remarks and commodity columns
     for (let row = range.s.r; row <= range.e.r; row++) {
-      if (remarksColIndex !== -1) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: remarksColIndex });
-        if (worksheet[cellAddress]) {
-          worksheet[cellAddress].z = '@'; // Text format
-          if (!worksheet[cellAddress].s) {
-            worksheet[cellAddress].s = {};
-          }
-          worksheet[cellAddress].s.alignment = {
-            wrapText: true,
-            vertical: 'top',
-            horizontal: 'center'
-          };
+      [remarksColIndex, commodityColIndex].forEach((colIdx) => {
+        if (colIdx === -1) return;
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: colIdx });
+        if (!worksheet[cellAddress]) return;
+        worksheet[cellAddress].z = '@'; // Text format
+        if (!worksheet[cellAddress].s) {
+          worksheet[cellAddress].s = {};
         }
-      }
+        worksheet[cellAddress].s.alignment = {
+          wrapText: true,
+          vertical: 'top',
+          horizontal: colIdx === commodityColIndex ? 'left' : 'center'
+        };
+      });
+    }
+
+    // Add compact summary block in the same main sheet (below detailed rows)
+    const summaryRows = generateSummaryRows();
+    const summaryStartRow = excelData.length + 3; // 1 header + data + 2-gap
+    const monthName = months.find(m => m.value === month)?.label || 'Unknown';
+    const summaryAoa = [
+      [`Summary of Export - ${monthName}-${year}`],
+      ['Particulars', '20', '40', 'TEUS'],
+      ...summaryRows.map((row) => [row.location, row.count20, row.count40, row.teus]),
+    ];
+    XLSX.utils.sheet_add_aoa(worksheet, summaryAoa, { origin: `D${summaryStartRow}` });
+
+    // Make summary columns reasonably visible
+    if (worksheet['!cols']) {
+      const ensureWidth = (idx, wch) => {
+        if (!worksheet['!cols'][idx] || (worksheet['!cols'][idx].wch || 0) < wch) {
+          worksheet['!cols'][idx] = { wch };
+        }
+      };
+      ensureWidth(3, 28); // Particulars (column D)
+      ensureWidth(4, 8);  // 20
+      ensureWidth(5, 8);  // 40
+      ensureWidth(6, 10); // TEUS
     }
 
     // Add main worksheet
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Export Clearance Report');
 
-    // Create summary worksheet using generateSummaryRows
-    const monthName = months.find(m => m.value === month)?.label || 'Unknown';
+    // Also keep separate summary worksheet
     const summarySheet = [];
     summarySheet.push([`Summary -- ${monthName} --${year}`]);
-    summarySheet.push(['Particulars', 'Details', '20', '40', 'TEUS', 'Containers']);
-    const summaryRows = generateSummaryRows();
+    summarySheet.push(['Particulars', '20', '40', 'TEUS']);
     summaryRows.forEach(row => {
       summarySheet.push([
         row.location,
-        row.details,
         row.count20,
         row.count40,
-        row.teus,
-        row.containers
+        row.teus
       ]);
     });
 
     const summaryWorksheet = XLSX.utils.aoa_to_sheet(summarySheet);
-    // Auto-fit summary columns
     const summaryColWidths = [
-      { wch: 20 }, // Particulars
-      { wch: 12 }, // Details
+      { wch: 24 }, // Particulars
       { wch: 8 },  // 20
       { wch: 8 },  // 40
-      { wch: 10 }, // TEUS
-      { wch: 10 }  // Containers
+      { wch: 10 } // TEUS
     ];
     summaryWorksheet['!cols'] = summaryColWidths;
 
@@ -476,7 +485,7 @@ const DetailedReport = () => {
     // Main table - build headers/data based on visible columns and role
     const visibleCols = columns.filter((col) => !(col.key === 'invoice_value' && !isSrManager));
     const tableHeaders = visibleCols.map(c => c.label);
-    const tableData = data.map((row, index) => {
+    const tableData = detailedRows.map((row, index) => {
       const containerNos = row.containerNumbers ? row.containerNumbers.join('\n') : '';
       const sbDate = row.sb_date ? new Date(row.sb_date).toLocaleDateString('en-GB').replace(/\//g, '-') : '';
       const leoDate = row.leo_date ? new Date(row.leo_date).toLocaleDateString('en-GB').replace(/\//g, '-') : '';
@@ -511,7 +520,7 @@ const DetailedReport = () => {
           case 'size':
             return deriveSize(row.noOfContrSize);
           case 'teus':
-            return row.teus || '';
+            return isLclJob(row) ? 'LCL' : (row.teus || '');
           case 'leo_date':
             return leoDate;
           case 'remarks':
@@ -597,14 +606,12 @@ const DetailedReport = () => {
 
     // Prepare summary table data
     const summaryRows = generateSummaryRows();
-    const summaryHeaders = ['Particulars', 'Details', '20', '40', 'TEUS', 'Containers'];
+    const summaryHeaders = ['Particulars', '20', '40', 'TEUS'];
     const summaryBody = summaryRows.map(row => [
       row.location,
-      row.details,
       row.count20,
       row.count40,
-      row.teus,
-      row.containers
+      row.teus
     ]);
     doc.autoTable({
       head: [summaryHeaders],
@@ -684,7 +691,7 @@ const DetailedReport = () => {
             startIcon={exportLoading ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
             endIcon={!exportLoading && <ArrowDropDownIcon />}
             onClick={handleExportClick}
-            disabled={loading || data.length === 0 || exportLoading}
+            disabled={loading || detailedRows.length === 0 || exportLoading}
             size="small"
             sx={{
               fontWeight: 'bold',
@@ -712,7 +719,7 @@ const DetailedReport = () => {
             variant="outlined"
             startIcon={<TableViewIcon fontSize="small" sx={{ color: '#1976d2' }} />}
             onClick={() => setSummaryOpen(true)}
-            disabled={loading || data.length === 0}
+            disabled={loading || processedData.length === 0}
             size="small"
             sx={{
               fontWeight: 'bold',
@@ -803,22 +810,18 @@ const DetailedReport = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell align="center" sx={{ fontWeight: 'bold', background: '#ffe0b2', color: '#333' }}>Particulars</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#ffe0b2', color: '#333' }}>Details</TableCell>
                     <TableCell align="center" sx={{ fontWeight: 'bold', background: '#ffe0b2', color: '#333' }}>20</TableCell>
                     <TableCell align="center" sx={{ fontWeight: 'bold', background: '#ffe0b2', color: '#333' }}>40</TableCell>
                     <TableCell align="center" sx={{ fontWeight: 'bold', background: '#ffe0b2', color: '#333' }}>TEUS</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#ffe0b2', color: '#333' }}>Containers</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {generateSummaryRows().map((row, idx) => (
-                    <TableRow key={idx} sx={{ background: row.location === 'LCL' ? '#e3f2fd' : (row.details === 'Scrap' ? '#fffde7' : row.details === 'Others' ? '#f7faff' : undefined) }}>
-                      <TableCell align="center" sx={{ fontWeight: row.location === 'LCL' ? 'bold' : 'normal' }}>{row.location}</TableCell>
-                      <TableCell align="center">{row.details}</TableCell>
+                    <TableRow key={idx} sx={{ background: row.location === 'LCL JOBS' ? '#e3f2fd' : undefined }}>
+                      <TableCell align="center" sx={{ fontWeight: row.location === 'LCL JOBS' ? 'bold' : 'normal' }}>{row.location}</TableCell>
                       <TableCell align="center">{row.count20}</TableCell>
                       <TableCell align="center">{row.count40}</TableCell>
                       <TableCell align="center">{row.teus}</TableCell>
-                      <TableCell align="center">{row.containers}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -877,6 +880,21 @@ const DetailedReport = () => {
             </Select>
           </FormControl>
 
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>Branch</InputLabel>
+            <Select
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              label="Branch"
+            >
+              {BRANCH_OPTIONS.map((branch) => (
+                <MenuItem key={branch.value} value={branch.value}>
+                  {branch.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <IconButton
               size="small"
@@ -923,21 +941,17 @@ const DetailedReport = () => {
       )}
 
       {/* Data Summary Card */}
-      {data.length > 0 && (
+      {processedData.length > 0 && (
         <Card elevation={1} sx={{ marginBottom: 2, padding: 1 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-              Report Summary: {data.length} records found for {months.find(m => m.value === month)?.label} {year}
+              Report Summary: {detailedRows.length} records found for {months.find(m => m.value === month)?.label} {year}
             </Typography>
             <Typography variant="body2" sx={{ color: '#666' }}>
               Total TEUs: {
                 (() => {
-                  const filteredData = data.filter(row => row.be_filing_type !== "Ex-Bond" && row.type_of_b_e !== "Ex-Bond");
-                  const totalTeus = filteredData.reduce((sum, row) => {
-                    const consType = (row.consignment_type || '').toUpperCase();
-                    const remarks = (row.remarks || '').toLowerCase();
-                    const isLCL = consType === 'LCL' || remarks.includes('lcl');
-                    if (isLCL) return sum + 1;
+                  const totalTeus = detailedRows.reduce((sum, row) => {
+                    if (isLclJob(row)) return sum;
                     return sum + (parseInt(row.teus) || 0);
                   }, 0);
 
@@ -950,7 +964,7 @@ const DetailedReport = () => {
       )}
 
       {/* Data Table */}
-      {data.length > 0 && (
+      {processedData.length > 0 && (
         <Card elevation={1} sx={{ overflow: 'hidden' }}>
           <TableContainer sx={{ maxHeight: 'calc(100vh - 200px)' }}>
             <Table stickyHeader size="small">
@@ -999,7 +1013,7 @@ const DetailedReport = () => {
                         ))}
                     </TableRow>
                   ))
-                  : data.map((row, idx) => (
+                  : detailedRows.map((row, idx) => (
                     <TableRow
                       key={idx}
                       sx={{
@@ -1034,7 +1048,7 @@ const DetailedReport = () => {
                       </TableCell>
 
                       {/* COMMODITY */}
-                      <TableCell align="left" sx={{ fontSize: "0.75rem", padding: "6px 8px", maxWidth: 120, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <TableCell align="left" sx={{ fontSize: "0.58rem", lineHeight: 1.1, padding: "6px 8px", maxWidth: 120, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         <Tooltip title={row.commodity}>
                           <span>{row.commodity}</span>
                         </Tooltip>
@@ -1092,7 +1106,7 @@ const DetailedReport = () => {
 
                       {/* Teus */}
                       <TableCell align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px", fontWeight: 'bold', color: '#1976d2' }}>
-                        {row.teus}
+                        {isLclJob(row) ? "LCL" : row.teus}
                       </TableCell>
 
                       {/* CLRG DATE */}
@@ -1121,7 +1135,7 @@ const DetailedReport = () => {
       )}
 
       {/* No Data State */}
-      {!loading && data.length === 0 && (
+      {!loading && detailedRows.length === 0 && (
         <Card elevation={1} sx={{ padding: 4, textAlign: 'center' }}>
           <Typography variant="h6" color="textSecondary" sx={{ mb: 2 }}>
             No Data Available

@@ -853,8 +853,11 @@ const exportJobSchema = new mongoose.Schema(
     status: { type: String, trim: true },
     detailedStatus: { type: String, default: "" },
     vgm_done: { type: Boolean, default: false },
+    vgm_date: { type: String, trim: true },
     form13_done: { type: Boolean, default: false },
+    form13_date: { type: String, trim: true },
     shipping_bill_done: { type: Boolean, default: false },
+    shipping_bill_done_date: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Exporter Information
     exporter_address: { type: String, trim: true },
@@ -1284,6 +1287,15 @@ exportJobSchema.pre("save", function (next) {
 
   const detailedSet = new Set(currentStatusItems);
 
+  // Normalize "Road Out" to "Rail Out" to ensure consistency
+  if (detailedSet.has("Road Out")) {
+    detailedSet.delete("Road Out");
+    detailedSet.add("Rail Out");
+  } else if (detailedSet.has("Road out")) {
+    detailedSet.delete("Road out");
+    detailedSet.add("Rail Out");
+  }
+
   // A. Update detailedSet based on Milestones (handling unchecks)
   (this.milestones || []).forEach((m) => {
     if (m.milestoneName) {
@@ -1305,6 +1317,7 @@ exportJobSchema.pre("save", function (next) {
     "L.E.O",
     isAir ? "File Handover to IATA" : "Container HO",
     isAir ? "Departure" : "Rail Out",
+    "Road Out", // Treat Road Out as equivalent status
     "Billing Pending",
     "Billing Done"
   ];
@@ -1349,21 +1362,50 @@ exportJobSchema.pre("save", function (next) {
     });
 
     // Make sure detailedStatus is a primitive String and properly reflects the latest tracked tracking progression point.
-    // If milestones were populated, we'll force it to the highest chronological milestone achieved.
+    // Normalized check: If the latest milestone is "Road Out", we treat it as "Rail Out" for the primary detailedStatus label.
+    if (latestCompletedMilestone === "Road Out" || latestCompletedMilestone === "Road out") {
+      latestCompletedMilestone = "Rail Out";
+    }
+
     if (latestCompletedMilestone) {
       this.detailedStatus = latestCompletedMilestone;
     } else {
       // If no milestones are checked but they typed something custom
-      this.detailedStatus = Array.from(detailedSet).pop() || "";
+      let customSt = Array.from(detailedSet).pop() || "";
+      if (customSt === "Road Out" || customSt === "Road out") customSt = "Rail Out";
+      this.detailedStatus = customSt;
     }
   } else {
     // If there are no milestones array to reference, simply store the topmost status
     this.detailedStatus = Array.from(detailedSet).pop() || "";
   }
 
-  // 2. Business Logic: If Billing Done is selected, mark as Completed
+  // 2. Business Logic: Status transitions
   if (this.detailedStatus.includes("Billing Done")) {
     this.status = "Completed";
+  } else if (this.status === "Completed" && !this.isJobCanceled) {
+    // Revert to Pending if Billing Done is removed and it was previously Completed
+    this.status = "Pending";
+  }
+
+  // 3. Auto-populate completion dates for VGM, Form 13, and shipping bill
+  const getTodayStr = () => {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, "0");
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const year = today.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  if (this.isModified("vgm_done") || this.isModified("form13_done") || this.isModified("shipping_bill_done")) {
+    if (this.vgm_done && !this.vgm_date) this.vgm_date = getTodayStr();
+    else if (!this.vgm_done) this.vgm_date = "";
+
+    if (this.form13_done && !this.form13_date) this.form13_date = getTodayStr();
+    else if (!this.form13_done) this.form13_date = "";
+
+    if (this.shipping_bill_done && !this.shipping_bill_done_date) this.shipping_bill_done_date = getTodayStr();
+    else if (!this.shipping_bill_done) this.shipping_bill_done_date = "";
   }
 
   next();

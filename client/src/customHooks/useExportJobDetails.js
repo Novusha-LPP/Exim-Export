@@ -731,11 +731,6 @@ function useExportJobDetails(params, setFileSnackbar) {
 
 
 
-      // Port of Loading Validation
-      if (!values.port_of_loading || values.port_of_loading.trim() === "") {
-        alert("Port of Loading is mandatory");
-        return Promise.reject(new Error("Validation failed: Port of Loading is mandatory"));
-      }
 
       // TC_SHP_037: Verify Sailing Date cannot be before Job Date
       if (values.sailing_date && values.job_date) {

@@ -18,6 +18,7 @@ import ExportEsanchitModule from "../components/Export/Export-Dsr/ExportEsanchit
 import EximOperationModule from "../components/Export/Export-Dsr/EximOperationModule.js";
 import ExportChargesModule from "../components/Export/Export-Dsr/ExportChargesModule.js";
 import ExportBillingPage from "../components/Export/Export-Billing/ExportBillingPage.jsx";
+import FreightForwardingModule from "../components/Export/FreightForwarding/FreightForwardingModule.js";
 
 // import auditrail
 import AllUsersPage from "./AllUsersPage.js";
@@ -63,12 +64,12 @@ function HomePage() {
             width: {
               lg: `calc(100% - ${drawerWidth}px)`,
               height: "100vh",
-              padding: "20px",
+              padding: "5px 15px",
               paddingTop: 0,
             },
           }}
         >
-          <Toolbar />
+          <Toolbar sx={{ minHeight: "60px !important" }} />
           <Routes>
             {/* Public Routes - No protection needed */}
             <Route path="/" element={<Home />} />
@@ -188,6 +189,14 @@ function HomePage() {
               element={
                 <ProtectedRoute requiredModule="Export - Billing">
                   <ExportBillingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/freight-forwarding"
+              element={
+                <ProtectedRoute requiredModule="Freight Forwarding">
+                  <FreightForwardingModule />
                 </ProtectedRoute>
               }
             />

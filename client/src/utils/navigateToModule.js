@@ -22,6 +22,8 @@ export const navigateToModule = (module, navigate) => {
       return navigate("/export-charges");
     case "Export - Billing":
       return navigate("/export-billing");
+    case "Freight Forwarding":
+      return navigate("/freight-forwarding");
     case "Export - Audit Trail":
       return navigate("/export-audit-trail");
     case "Export - Reports":
