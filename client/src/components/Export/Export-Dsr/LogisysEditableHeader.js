@@ -753,7 +753,7 @@ const LogisysEditableHeader = ({
                 disabled={!isEditable}
                 style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
               />
-              Form 13
+              FORM 13
               {formik.values.form13_done && formik.values.form13_date && (
                 <span style={{ fontSize: 9, color: "#059669", marginLeft: 2 }}>({formik.values.form13_date})</span>
               )}
@@ -767,7 +767,7 @@ const LogisysEditableHeader = ({
                 disabled={!isEditable}
                 style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
               />
-              Shipping Bill
+              SHIPPING BILL
               {formik.values.shipping_bill_done && formik.values.shipping_bill_done_date && (
                 <span style={{ fontSize: 9, color: "#059669", marginLeft: 2 }}>({formik.values.shipping_bill_done_date})</span>
               )}
@@ -788,7 +788,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                Checklist
+                CHECKLIST
               </MenuItem>
             </ExportChecklistGenerator>
 
@@ -798,7 +798,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                File Cover
+                FILE COVER
               </MenuItem>
             </FileCoverGenerator>
 
@@ -808,7 +808,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                Consignment Note
+                CONSIGNMENT NOTE
               </MenuItem>
             </ConsignmentNoteGenerator>
 
@@ -818,7 +818,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                Forwarding Note (THAR)
+                FORWARDING NOTE (THAR)
               </MenuItem>
             </ForwardingNoteTharGenerator>
 
@@ -828,7 +828,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                Annexure C
+                ANNEXURE C
               </MenuItem>
             </AnnexureCGenerator>
 
@@ -838,7 +838,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                Forwarding Note (CONCOR)
+                FORWARDING NOTE (CONCOR)
               </MenuItem>
             </ConcorForwardingNoteGenerator>
 
@@ -848,7 +848,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                VGM Authorization
+                VGM AUTHORIZATION
               </MenuItem>
             </VGMAuthorizationGenerator>
 
@@ -858,7 +858,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                Freight Certificate
+                FREIGHT CERTIFICATE
               </MenuItem>
             </FreightCertificateGenerator>
 
@@ -868,7 +868,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                Bill of Lading
+                DRAFT BILL OF LADING
               </MenuItem>
             </BillOfLadingGenerator>
           </Menu>

@@ -696,6 +696,11 @@ const statusDetailsSchema = new Schema(
     containerDoorPhotoUpload: [String],
     cartingPhotoUpload: [String],
     weighmentSlipUpload: [String],
+    clpUpload: [String],
+    completionCopyUpload: [String],
+    movementCopyUpload: [String],
+    shippingInstructionsUpload: [String],
+    form13CopyUpload: [String],
     forwarderName: { type: String, trim: true },
     handoverConcorTharSanganaRailRoadDate: { type: String, trim: true },
     billingDocsSentDt: { type: String, trim: true },
@@ -1406,6 +1411,15 @@ exportJobSchema.pre("save", function (next) {
 
     if (this.shipping_bill_done && !this.shipping_bill_done_date) this.shipping_bill_done_date = getTodayStr();
     else if (!this.shipping_bill_done) this.shipping_bill_done_date = "";
+  }
+
+  // 4. Sync leo_date with operations[0].statusDetails[0].leoDate
+  const op0 = this.operations && this.operations[0];
+  const stat0 = op0 && op0.statusDetails && op0.statusDetails[0];
+  if (stat0 && stat0.leoDate) {
+    this.leo_date = stat0.leoDate;
+  } else if (this.leo_date && stat0) {
+    stat0.leoDate = this.leo_date;
   }
 
   next();

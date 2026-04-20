@@ -1466,50 +1466,50 @@ const ExportJobsTable = () => {
 
     const categories = [
       {
-        name: "1. Shipping/Port Docs",
+        name: "1. SHIPPING/PORT DOCS",
         files: [
           { field: "leoUpload", title: "LEO", source: "status" },
-          { field: "eGatePassUpload", title: "Gate Pass", source: "status" },
-          { field: "booking_copy", title: "Booking", source: "toplevel" },
-          { field: "forwardingNoteDocUpload", title: "Forwarding Note", source: "status" },
+          { field: "eGatePassUpload", title: "GATE PASS", source: "status" },
+          { field: "booking_copy", title: "BOOKING", source: "toplevel" },
+          { field: "forwardingNoteDocUpload", title: "FORWARDING NOTE", source: "status" },
           { field: "clpUpload", title: "CONTAINER LOAD PLAN (CLP)", source: "status" },
           { field: "completionCopyUpload", title: "COMPLETION COPY", source: "status" },
           { field: "movementCopyUpload", title: "MOVEMENT COPY", source: "status" },
-          { field: "shippingInstructionsUpload", title: "Shipping instructions", source: "status" },
-          { field: "handoverImageUpload", title: "HO/DOC Copy", source: "status" },
+          { field: "shippingInstructionsUpload", title: "SHIPPING INSTRUCTIONS", source: "status" },
+          { field: "handoverImageUpload", title: "HO/DOC COPY", source: "status" },
         ]
       },
       {
-        name: "2. VGM / ODEX Docs",
+        name: "2. VGM / ODEX DOCS",
         files: [
-          { field: "manualVgmUpload", title: "Manual VGM", source: "status" },
-          { field: "odexVgmUpload", title: "Odex VGM", source: "status" },
-          { field: "odexEsbUpload", title: "Odex ESB", source: "status" },
-          { field: "odexForm13Upload", title: "Odex Form 13", source: "status" },
+          { field: "manualVgmUpload", title: "MANUAL VGM", source: "status" },
+          { field: "odexVgmUpload", title: "ODEX VGM", source: "status" },
+          { field: "odexEsbUpload", title: "ODEX ESB", source: "status" },
+          { field: "odexForm13Upload", title: "ODEX FORM 13", source: "status" },
           { field: "form13CopyUpload", title: "FORM-13 COPY", source: "status" },
-          { field: "cmaForwardingNoteUpload", title: "CMA Forwarding Note", source: "status" },
+          { field: "cmaForwardingNoteUpload", title: "CMA FORWARDING NOTE", source: "status" },
         ]
       },
       {
-        name: "3. Container & Cargo",
+        name: "3. CONTAINER & CARGO",
         files: [
-          { field: "images", title: "Container Door Photo", source: "container" },
-          { field: "stuffingPhotoUpload", title: "Stuffing Photo", source: "status" },
-          { field: "transporterDetails", title: "Carting Photo", source: "section" },
+          { field: "images", title: "CONTAINER DOOR PHOTO", source: "container" },
+          { field: "stuffingPhotoUpload", title: "STUFFING PHOTO", source: "status" },
+          { field: "transporterDetails", title: "CARTING PHOTO", source: "section" },
         ]
       },
       {
-        name: "4. Operational Docs",
+        name: "4. OPERATIONAL DOCS",
         files: [
-          { field: "weighmentImages", title: "Weighment Slip", source: "container" },
-          { field: "stuffingSheetUpload", title: "Stuffing Sheet", source: "status" },
+          { field: "weighmentImages", title: "WEIGHMENT SLIP", source: "container" },
+          { field: "stuffingSheetUpload", title: "STUFFING SHEET", source: "status" },
         ]
       },
       {
-        name: "5. Billing & Others",
+        name: "5. BILLING & OTHERS",
         files: [
-          { field: "billingDocsSentUpload", title: "Bill Doc Copy", source: "status" },
-          { field: "otherDocUpload", title: "Other Doc", source: "status" },
+          { field: "billingDocsSentUpload", title: "BILL DOC COPY", source: "status" },
+          { field: "otherDocUpload", title: "OTHER DOC", source: "status" },
         ]
       }
     ];
@@ -4059,28 +4059,28 @@ const ExportJobsTable = () => {
             </ListSubheader>
 
             <ExportChecklistGenerator jobNo={selectedGenDocJob?.job_no} renderAsIcon={false}>
-              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Checklist</MenuItem>
+              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>CHECKLIST</MenuItem>
             </ExportChecklistGenerator>
 
             <FileCoverGenerator jobNo={selectedGenDocJob?.job_no}>
-              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>File Cover</MenuItem>
+              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>FILE COVER</MenuItem>
             </FileCoverGenerator>
 
             {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SACHANA")) && (
               <ConsignmentNoteGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Forwarding Note (Sachana)</MenuItem>
+                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>FORWARDING NOTE (SACHANA)</MenuItem>
               </ConsignmentNoteGenerator>
             )}
 
             {(selectedGenDocJob?.custom_house?.toUpperCase().includes("THAR")) && (
               <ForwardingNoteTharGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Forwarding Note (THAR)</MenuItem>
+                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>FORWARDING NOTE (THAR)</MenuItem>
               </ForwardingNoteTharGenerator>
             )}
 
             {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SABARMATI") || selectedGenDocJob?.custom_house?.toUpperCase().includes("CONCOR")) && (
               <ConcorForwardingNoteGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Forwarding Note (CONCOR)</MenuItem>
+                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>FORWARDING NOTE (CONCOR)</MenuItem>
               </ConcorForwardingNoteGenerator>
             )}
 
@@ -4090,16 +4090,16 @@ const ExportJobsTable = () => {
               selectedGenDocJob?.transportMode !== "AIR") && (
                 <>
                   <AnnexureCGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Annexure C</MenuItem>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>ANNEXURE C</MenuItem>
                   </AnnexureCGenerator>
                   <VGMAuthorizationGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>VGM Authorization</MenuItem>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>VGM AUTHORIZATION</MenuItem>
                   </VGMAuthorizationGenerator>
                   <FreightCertificateGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Freight Certificate</MenuItem>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>FREIGHT CERTIFICATE</MenuItem>
                   </FreightCertificateGenerator>
                   <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>Bill of Lading</MenuItem>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>BILL OF LADING</MenuItem>
                   </BillOfLadingGenerator>
                 </>
               )}

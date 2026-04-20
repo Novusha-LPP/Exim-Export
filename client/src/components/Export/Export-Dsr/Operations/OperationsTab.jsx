@@ -88,6 +88,17 @@ const getDefaultItem = (section) => {
       eGatePassUpload: [],
       icdPort: "",
       handoverForwardingNoteDate: "",
+      forwardingNoteUpload: [],
+      forwardingNoteDocUpload: [],
+      clpUpload: [],
+      completionCopyUpload: [],
+      movementCopyUpload: [],
+      shippingInstructionsUpload: [],
+      form13CopyUpload: [],
+      manualVgmUpload: [],
+      odexVgmUpload: [],
+      odexEsbUpload: [],
+      odexForm13Upload: [],
       handoverImageUpload: [],
       forwarderName: "",
       handoverConcorTharSanganaRailRoadDate: "",
@@ -799,6 +810,11 @@ const OperationsTab = ({ formik, isEditable = true }) => {
         formik.setFieldValue("port_of_loading", finalValue);
       }
 
+      // SYNC: leo_date with Header
+      if (section === "statusDetails" && field === "leoDate") {
+        formik.setFieldValue("leo_date", finalValue);
+      }
+
 
       return updatedOp;
     });
@@ -899,26 +915,26 @@ const OperationsTab = ({ formik, isEditable = true }) => {
       columns={[
         {
           field: "transporterName",
-          label: "Transporter Name",
+          label: "TRANSPORTER NAME",
           width: "110px",
         },
-        { field: "vehicleNo", label: "Vehicle No.", width: "10px" },
+        { field: "vehicleNo", label: "VEHICLE NO.", width: "10px" },
         {
           field: "noOfPackages",
-          label: "Packages",
+          label: "PACKAGES",
           type: "number",
           width: "80px",
         },
         {
           field: "grossWeightKgs",
-          label: "Cargo Wt (KG)",
+          label: "CARGO WT (KG)",
           type: "number",
           width: "100px",
         },
 
         {
           field: "images",
-          label: "Images",
+          label: "IMAGES",
           type: "upload",
           width: "180px",
           bucketPath: "transporter_images",
@@ -1331,34 +1347,34 @@ const StatusSection = ({
   const row1Fields = [
     {
       field: "gateInDate",
-      label: "Gate-In/Carting",
+      label: "GATE-IN/CARTING",
       type: "date",
       width: 1,
     },
     {
       field: "rms",
-      label: "RMS Status",
+      label: "RMS STATUS",
       type: "select",
       options: ["RMS", "Assessment"],
       width: 1,
     },
     {
       field: "goodsRegistrationDate",
-      label: "Goods Registration",
+      label: "GOODS REGISTRATION",
       type: "date",
       width: 1,
     },
     {
       field: "goodsReportDate",
-      label: "Goods Report",
+      label: "GOODS REPORT",
       type: "date",
       width: 1,
     },
-    { field: "leoDate", label: "LEO", type: "date", width: 1 },
-    { field: "leoUpload", label: "LEO Copy", type: "upload", width: 1 },
+    { field: "leoDate", label: "LEO DATE", type: "date", width: 1 },
+    { field: "leoUpload", label: "LEO COPY", type: "upload", width: 1 },
     {
       field: "icdPort",
-      label: "ICD/Port",
+      label: "ICD/PORT",
       type: "text",
       width: 1,
       readOnly: true,
@@ -1369,73 +1385,133 @@ const StatusSection = ({
   const allRow2Pool = [
     {
       field: "containerPlacementDate",
-      label: "Container Placement",
+      label: "CONTAINER PLACEMENT",
       type: "date",
       width: 1,
       hidden: isAir || isLclDock || isFclFactory,
     },
     {
       field: "stuffingDate",
-      label: "Stuffing",
+      label: "STUFFING",
       type: "date",
       width: 1,
       hidden: hideStuffing || isLclDock || isFclFactory,
     },
     {
       field: "stuffingSheetUpload",
-      label: "Stuffing Sheet",
+      label: "STUFFING SHEET",
       type: "upload",
       width: 1,
       hidden: hideStuffing || isLclDock || isFclFactory,
     },
     {
       field: "stuffingPhotoUpload",
-      label: "Stuffing Photo",
+      label: "STUFFING PHOTO",
       type: "upload",
       width: 1,
       hidden: hideStuffing,
     },
     {
       field: "eGatePassCopyDate",
-      label: "Gate Pass",
+      label: "GATE PASS",
       type: "date",
       width: 1,
     },
     {
       field: "eGatePassUpload",
-      label: "Gate Pass Copy",
+      label: "GATE PASS COPY",
       type: "upload",
       width: 1,
     },
     {
       field: "handoverForwardingNoteDate",
-      label: "Handover Doc",
+      label: "FORWARDING NOTE DATE",
       type: "date",
       width: 1,
     },
     {
+      field: "forwardingNoteDocUpload",
+      label: "FORWARDING NOTE",
+      type: "upload",
+      width: 1,
+    },
+    {
+      field: "clpUpload",
+      label: "CONTAINER LOAD PLAN (CLP)",
+      type: "upload",
+      width: 1,
+    },
+    {
+      field: "completionCopyUpload",
+      label: "COMPLETION COPY",
+      type: "upload",
+      width: 1,
+    },
+    {
+      field: "movementCopyUpload",
+      label: "MOVEMENT COPY",
+      type: "upload",
+      width: 1,
+    },
+    {
+      field: "shippingInstructionsUpload",
+      label: "SHIPPING INSTRUCTIONS",
+      type: "upload",
+      width: 1,
+    },
+    {
+      field: "manualVgmUpload",
+      label: "MANUAL VGM",
+      type: "upload",
+      width: 1,
+    },
+    {
+      field: "odexVgmUpload",
+      label: "ODEX VGM",
+      type: "upload",
+      width: 1,
+    },
+    {
+      field: "odexEsbUpload",
+      label: "ODEX ESB",
+      type: "upload",
+      width: 1,
+    },
+    {
+      field: "odexForm13Upload",
+      label: "ODEX FORM 13",
+      type: "upload",
+      width: 1,
+    },
+    {
+      field: "form13CopyUpload",
+      label: "FORM-13 COPY",
+      type: "upload",
+      width: 1,
+    },
+    {
       field: "handoverImageUpload",
-      label: "Handover Copy",
+      label: "HANDOVER COPY",
       type: "upload",
       width: 1,
       hidden: isAir || isLclDock,
     },
     {
       field: "forwarderName",
-      label: "Forwarder",
+      label: "FORWARDER",
       type: "text",
       width: 1,
     },
     {
       field: "dispatchDetails",
-      label: "Dispatch Tracking",
+      label: "DISPATCH TRACKING",
       type: "dispatch",
       width: 2,
       hidden: isAir || isLclDock,
     },
     {
       field: "operational_lock",
-      label: "Operational Lock",
+      label: "OPERATIONAL LOCK",
       type: "checkbox",
       width: 1,
     },
