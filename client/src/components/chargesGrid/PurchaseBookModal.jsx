@@ -64,9 +64,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, o
         const fetchNextSequence = async () => {
             if (isOpen && initialData) {
                 const party = initialData.partyDetails;
-                const branchIndex = initialData.branchIndex || 0;
-                const branch = party?.branches?.[branchIndex] || {};
-
+                const branch = initialData.branch || party?.branches?.[initialData.branchIndex || 0] || party?.branchInfo?.[0] || {};
                 const jobNum = initialData.jobDisplayNumber || initialData.jobNumber || jobNumber || '';
 
                 // Fetch next sequence from backend using canonical job reference
@@ -92,24 +90,24 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, o
                     "Supplier Inv No": initialData.invoice_number || '',
                     "Supplier Inv Date": initialData.invoice_date || '',
                     "Supplier Name": initialData.partyName || '',
-                    "Address 1": branch.address || '',
-                    "Address 2": branch.city || '',
-                    "Address 3": branch.state || branch.city || '',
-                    "State": branch.state || '',
-                    "Country": branch.country || '',
-                    "Pin Code": branch.pincode || branch.postal_code || '',
-                    "GSTIN No": branch.gst || '',
-                    "PAN": branch.pan || '',
-                    "CIN": party?.cin || '',
-                    "Credit Terms": party?.credit_terms || '',
-                    "Taxable Value": initialData.basicAmount ? initialData.basicAmount.toFixed(2) : (initialData.amount ? initialData.amount.toFixed(2) : ''),
+                    "Address 1": branch.address || branch.Address || branch.addr || '',
+                    "Address 2": branch.city || branch.City || '',
+                    "Address 3": branch.state || branch.State || branch.city || '',
+                    "State": branch.state || branch.State || '',
+                    "Country": branch.country || branch.Country || 'India',
+                    "Pin Code": branch.pincode || branch.Pincode || branch.postal_code || branch.pinCode || '',
+                    "GSTIN No": branch.gst || branch.GST || branch.gstin || '',
+                    "PAN": branch.pan || branch.PAN || party?.pan || '',
+                    "CIN": party?.cin || party?.CIN || party?.cin_no || '',
+                    "Credit Terms": party?.credit_terms || party?.CreditTerms || initialData.creditTerms || '',
+                    "Description of Services": initialData.chargeHead || initialData.description || '',
+                    "Taxable Value": initialData.basicAmount ? Number(initialData.basicAmount).toFixed(2) : (initialData.amount ? Number(initialData.amount).toFixed(2) : ''),
                     "GST%": initialData.gstRate || '',
-                    "CGST": (initialData.cgst > 0) ? initialData.cgst.toFixed(2) : '',
-                    "SGST": (initialData.sgst > 0) ? initialData.sgst.toFixed(2) : '',
-                    "IGST": (initialData.igst > 0) ? initialData.igst.toFixed(2) : '',
-                    "TDS": initialData.tdsAmount ? initialData.tdsAmount.toFixed(2) : '',
-                    "Total": initialData.netPayable ? initialData.netPayable.toFixed(2) : '',
-                    "Description of Services": initialData.chargeHead || '',
+                    "CGST": (initialData.cgst > 0) ? Number(initialData.cgst).toFixed(2) : '',
+                    "SGST": (initialData.sgst > 0) ? Number(initialData.sgst).toFixed(2) : '',
+                    "IGST": (initialData.igst > 0) ? Number(initialData.igst).toFixed(2) : '',
+                    "TDS": initialData.tdsAmount ? Number(initialData.tdsAmount).toFixed(2) : '',
+                    "Total": initialData.totalAmount ? Number(initialData.totalAmount).toFixed(2) : (initialData.netPayable ? Number(initialData.netPayable).toFixed(2) : ''),
                     "SAC": initialData.cthNo || '',
                     "Status": '',
                     "chargeRef": initialData.chargeId || '',

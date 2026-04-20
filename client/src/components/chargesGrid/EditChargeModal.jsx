@@ -82,33 +82,57 @@ const EditChargeModal = ({
 
       // Map API Shipping Lines to standard { name, city, branches, tds_percent }
       const apiSLs = (slRes.data?.data || []).map(sl => ({
+        ...sl,
         name: sl.name || '',
         city: sl.branches?.[0]?.city || 'Shipping Line',
         branches: sl.branches || [],
-        tds_percent: sl.tds_percent || 0
+        tds_percent: sl.tds_percent || 0,
+        masterType: 'Shipping Line'
       }));
 
       // Map Transporters
       const apiTrans = (transRes.data?.data || []).map(t => ({
+        ...t,
         name: t.name || '',
         city: t.branches?.[0]?.city || 'Transporter',
         branches: t.branches || [],
-        tds_percent: t.tds_percent || 0
+        tds_percent: t.tds_percent || 0,
+        masterType: 'Transporter'
       }));
 
       // Map Terminal Codes
       const apiTerms = (termRes.data?.data || []).map(t => ({
+        ...t,
         name: t.name || '',
         city: t.branches?.[0]?.city || 'Terminal',
         branches: t.branches || [],
-        tds_percent: t.tds_percent || 0
+        tds_percent: t.tds_percent || 0,
+        masterType: 'Terminal'
+      }));
+
+      // Map Suppliers/Vendors
+      const apiSups = (supRes.data || []).map(s => ({
+        ...s,
+        name: s.name || s.supplier_name || s.organization || '',
+        branches: s.branches || s.branchInfo || [],
+        tds_percent: s.tds_percent || 0,
+        masterType: 'Vendor'
+      }));
+
+      // Map Organizations
+      const apiOrgs = (orgRes.data?.organizations || []).map(o => ({
+        ...o,
+        name: o.name || o.organization || '',
+        branches: o.branches || o.branchInfo || [],
+        tds_percent: o.tds_percent || 0,
+        masterType: 'Organization'
       }));
 
       setShippingLines(apiSLs);
       setTransporters(apiTrans);
       setTerminalCodes(apiTerms);
-      setSuppliers(supRes.data || []);
-      setOrganizations(orgRes.data?.organizations || []);
+      setSuppliers(apiSups);
+      setOrganizations(apiOrgs);
     } catch (error) {
       console.error("Error fetching master data:", error);
     }
@@ -172,11 +196,22 @@ const EditChargeModal = ({
     sectionRef.basicAmount = derivedBasic;
     sectionRef.gstAmount = derivedGst;
 
-    // GST Split Logic
+    // Aggressive normalization for robust matching
+    const normalize = (s) => (s || '').toString().trim().toUpperCase().replace(/\s+/g, ' ');
     const partyName = sectionRef.partyName;
-    const party = [...shippingLines, ...suppliers, ...organizations, ...exporters].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
+    const pNameNorm = normalize(partyName);
+    
+    // Prioritize search list based on partyType to avoid shadowing (e.g. name exists in both Suppliers and Transporters)
+    const partyType = sectionRef.partyType;
+    let lookupList = [];
+    if (partyType === 'Transporter') lookupList = [...transporters, ...shippingLines, ...suppliers, ...organizations, ...exporters, ...terminalCodes];
+    else if (partyType === 'Vendor') lookupList = [...suppliers, ...organizations, ...transporters, ...shippingLines, ...exporters, ...terminalCodes];
+    else if (partyType === 'Terminal') lookupList = [...terminalCodes, ...shippingLines, ...suppliers, ...organizations, ...exporters, ...transporters];
+    else lookupList = [...shippingLines, ...suppliers, ...organizations, ...exporters, ...transporters, ...terminalCodes];
+
+    const party = lookupList.find(p => normalize(p.name) === pNameNorm);
     const branchIndex = sectionRef.branchIndex || 0;
-    const gstin = party?.branches?.[branchIndex]?.gst || "";
+    const gstin = party?.branches?.[branchIndex]?.gst || party?.branches?.[branchIndex]?.GST || "";
 
     if (gstin.startsWith("24")) {
       sectionRef.cgst = derivedGst / 2;
@@ -227,12 +262,15 @@ const EditChargeModal = ({
           if (row[sec]) {
             if (!row[sec].amount && row[sec].total) row[sec].amount = row[sec].total;
             if (row[sec].isGst === undefined) row[sec].isGst = true;
-            // Default party type to 'Others' for cost
-            if (sec === 'cost' && !row[sec].partyType) row[sec].partyType = 'Others';
-            // Default revenue party to exporter
-            if (sec === 'revenue' && !row[sec].partyName && exporterName) {
+            // Default party type to 'Others' for cost and auto-set shipping line if empty
+            if (sec === 'cost' && !row[sec].partyType) {
+              row[sec].partyType = 'Others';
+              if (!row[sec].partyName && shippingLineAirline) {
+                row[sec].partyName = shippingLineAirline;
+              }
+            }
+            if (sec === 'cost' && (row[sec].partyType === 'Exporter' || row[sec].partyType === 'EXPORTER') && !row[sec].partyName && exporterName) {
               row[sec].partyName = exporterName;
-              row[sec].partyType = 'Customer';
             }
             row[sec] = calculateDerivedFields(row, sec);
           }
@@ -345,6 +383,13 @@ const EditChargeModal = ({
 
   const handleSelectParty = (index, section, item) => {
     handleFieldChange(index, 'partyName', item.name, section);
+    
+    // Auto-set TDS if available for cost side
+    if (section === 'cost' && item.tds_percent) {
+      handleFieldChange(index, 'isTds', true, section);
+      handleFieldChange(index, 'tdsPercent', item.tds_percent, section);
+    }
+
     // Initialize branch index and trigger recalc
     const updated = [...formData];
     updated[index][section].branchIndex = 0;
@@ -544,7 +589,7 @@ const EditChargeModal = ({
                     <tr>
                       <th style={{ width: '60px' }}></th>
                       <th style={{ width: '80px' }}>Basis</th>
-                      <th>Qty/Unit</th>
+                      <th>Qty</th>
                       <th style={{ width: '40px' }}></th>
                       <th>Rate</th>
                       <th>Total Amount</th>
@@ -626,7 +671,7 @@ const EditChargeModal = ({
                                 {/* Override Auto Rate Removed as requested */}
                               </div>
                               <div className="ep-row">
-                                <span className="ep-label">Qty/Unit</span>
+                                <span className="ep-label">Qty</span>
                                 <div className="ep-inline">
                                   <input 
                                     type="number" 
@@ -694,8 +739,12 @@ const EditChargeModal = ({
 
                                         return filtered.map((item, idx) => (
                                           <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'revenue', item)}>
-                                            <span className="ep-item-name">{item.name}</span>
-                                            <span className="ep-item-sub">{item.city || (item.isFromDirectory ? 'Directory' : 'Master')}</span>
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                              <span className="ep-item-name">{item.name}</span>
+                                              <span className="ep-item-sub">
+                                                {item.city || 'Master'} • <span style={{ color: '#1976d2', fontWeight: 'bold' }}>{item.masterType || (item.isFromDirectory ? 'Directory' : 'Master')}</span>
+                                              </span>
+                                            </div>
                                           </li>
                                         ));
                                       })()}
@@ -917,8 +966,12 @@ const EditChargeModal = ({
 
                                         return filtered.map((item, idx) => (
                                           <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'cost', item)}>
-                                            <span className="ep-item-name">{item.name}</span>
-                                            <span className="ep-item-sub">{item.city || (item.isFromDirectory ? 'Directory' : 'Master')}</span>
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                              <span className="ep-item-name">{item.name}</span>
+                                              <span className="ep-item-sub">
+                                                {item.city || 'Master'} • <span style={{ color: '#1976d2', fontWeight: 'bold' }}>{item.masterType || (item.isFromDirectory ? 'Directory' : 'Master')}</span>
+                                              </span>
+                                            </div>
                                           </li>
                                         ));
                                       })()}
@@ -934,7 +987,16 @@ const EditChargeModal = ({
                                 </div>
                               </div>
                               {(() => {
-                                const party = [...shippingLines, ...suppliers, ...organizations, ...exporters, ...transporters, ...terminalCodes].find(p => p.name && p.name.toUpperCase() === row.cost?.partyName?.toUpperCase());
+                                const normalize = (s) => (s || '').toString().trim().toUpperCase().replace(/\s+/g, ' ');
+                                const pNameNorm = normalize(row.cost?.partyName);
+                                const pType = row.cost?.partyType;
+                                
+                                let lookupList = [];
+                                if (pType === 'Transporter') lookupList = [...transporters, ...shippingLines, ...suppliers, ...organizations, ...exporters, ...terminalCodes];
+                                else if (pType === 'Vendor') lookupList = [...suppliers, ...organizations, ...transporters, ...shippingLines, ...exporters, ...terminalCodes];
+                                else lookupList = [...shippingLines, ...suppliers, ...organizations, ...exporters, ...transporters, ...terminalCodes];
+
+                                const party = lookupList.find(p => normalize(p.name) === pNameNorm);
                                 if (party && party.branches?.length > 1) {
                                   return (
                                     <div className="ep-row">
@@ -1020,30 +1082,46 @@ const EditChargeModal = ({
                                         borderColor: '#1565c0'
                                       }}
                                       onClick={() => {
+                                        const normalize = (s) => (s || '').toString().trim().toUpperCase().replace(/\s+/g, ' ');
                                         const partyName = row.cost?.partyName;
-                                        const partyDetails = [...shippingLines, ...suppliers, ...organizations, ...exporters, ...transporters, ...terminalCodes].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
+                                        const pNameNorm = normalize(partyName);
+                                        const pType = row.cost?.partyType;
+
+                                        let lookupList = [];
+                                        if (pType === 'Transporter') lookupList = [...transporters, ...shippingLines, ...suppliers, ...organizations, ...exporters, ...terminalCodes];
+                                        else if (pType === 'Vendor') lookupList = [...suppliers, ...organizations, ...transporters, ...shippingLines, ...exporters, ...terminalCodes];
+                                        else lookupList = [...shippingLines, ...suppliers, ...organizations, ...exporters, ...transporters, ...terminalCodes];
+
+                                        const partyDetails = lookupList.find(p => normalize(p.name) === pNameNorm);
                                         setPurchaseBookData(() => {
                                           const cost = row.cost || {};
                                           const rate = parseFloat(cost.gstRate) || 18;
                                           const amt = parseFloat(cost.amount) || 0;
-                                          const includeGst = cost.isGst || false;
+                                          const includeGst = cost.isGst !== false;
+                                          const isTds = cost.isTds || false;
+                                          const tdsPct = parseFloat(cost.tdsPercent) || 0;
 
                                           let basic = amt;
                                           let totalGst = 0;
 
                                           if (includeGst) {
-                                            basic = amt / (1 + (rate / 100));
-                                            totalGst = amt - basic;
+                                            basic = Math.round((amt / (1 + (rate / 100))) * 100) / 100;
+                                            totalGst = Math.round((amt - basic) * 100) / 100;
                                           } else {
-                                            totalGst = amt * (rate / 100);
+                                            totalGst = Math.round((amt * (rate / 100)) * 100) / 100;
                                           }
 
-                                          const branch = partyDetails?.branches?.[cost.branchIndex || 0] || {};
-                                          const isGujarat = branch.gst?.startsWith('24');
+                                          const tdsAmt = isTds ? Math.round((basic * (tdsPct / 100)) * 100) / 100 : 0;
+                                          const totalAmt = includeGst ? amt : (amt + totalGst);
+                                          const netPayable = Math.round((totalAmt - tdsAmt) * 100) / 100;
 
+                                          const branch = partyDetails?.branches?.[cost.branchIndex || 0] || partyDetails?.branchInfo?.[0] || {};
+                                          const isGujarat = branch.gst?.startsWith('24') || branch.GST?.startsWith('24');
+                                          
                                           return {
                                             partyName,
                                             partyDetails,
+                                            branch,
                                             amount: amt,
                                             basicAmount: basic,
                                             gstAmount: totalGst,
@@ -1051,9 +1129,9 @@ const EditChargeModal = ({
                                             cgst: isGujarat ? totalGst / 2 : 0,
                                             sgst: isGujarat ? totalGst / 2 : 0,
                                             igst: !isGujarat ? totalGst : 0,
-                                            tdsAmount: cost.tdsAmount,
-                                            netPayable: cost.netPayable,
-                                            totalAmount: cost.totalAmount,
+                                            tdsAmount: tdsAmt,
+                                            netPayable: netPayable,
+                                            totalAmount: totalAmt,
                                             chargeHead: row.chargeHead,
                                             invoice_number: row.invoice_number,
                                             invoice_date: row.invoice_date,
@@ -1075,8 +1153,17 @@ const EditChargeModal = ({
                                       className="upload-btn"
                                       style={{ backgroundColor: '#d32f2f', color: '#fff', borderColor: '#b71c1c' }}
                                       onClick={() => {
+                                        const normalize = (s) => (s || '').toString().trim().toUpperCase().replace(/\s+/g, ' ');
                                         const partyName = row.cost?.partyName;
-                                        const partyDetails = [...shippingLines, ...suppliers].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
+                                        const pNameNorm = normalize(partyName);
+                                        const pType = row.cost?.partyType;
+
+                                        let lookupList = [];
+                                        if (pType === 'Transporter') lookupList = [...transporters, ...shippingLines, ...suppliers, ...organizations, ...exporters, ...terminalCodes];
+                                        else if (pType === 'Vendor') lookupList = [...suppliers, ...organizations, ...transporters, ...shippingLines, ...exporters, ...terminalCodes];
+                                        else lookupList = [...shippingLines, ...suppliers, ...organizations, ...exporters, ...transporters, ...terminalCodes];
+
+                                        const partyDetails = lookupList.find(p => normalize(p.name) === pNameNorm);
                                         setPaymentRequestData({
                                           partyName,
                                           partyDetails,
