@@ -44,6 +44,8 @@ import TableViewIcon from '@mui/icons-material/TableView';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { UserContext } from "../../contexts/UserContext";
@@ -247,6 +249,7 @@ const DetailedReport = () => {
       locationGroups[location].total.containers += containers;
     });
 
+    const monthName = months.find(m => String(m.value) === String(month))?.label || 'Unknown';
     return locationGroups;
   };
 
@@ -280,8 +283,46 @@ const DetailedReport = () => {
     const summaryTotalTeus = rows.reduce((sum, row) => sum + (parseInt(row.teus) || 0), 0);
     const summaryTotal20 = rows.reduce((sum, row) => sum + (parseInt(row.count20) || 0), 0);
     const summaryTotal40 = rows.reduce((sum, row) => sum + (parseInt(row.count40) || 0), 0);
+
+    // Add LCL and Total
     rows.push({ location: 'LCL JOBS', count20: '', count40: '', teus: lclJobCount });
-    rows.push({ location: 'TOTAL', count20: summaryTotal20, count40: summaryTotal40, teus: summaryTotalTeus });
+    rows.push({ location: 'TOTAL', count20: summaryTotal20, count40: summaryTotal40, teus: summaryTotalTeus + (parseInt(lclJobCount) || 0) });
+    return rows;
+  };
+
+  const generateExporterSummaryRows = () => {
+    const summaryData = {};
+    processedData.forEach(row => {
+      const exporter = row.exporter || 'Unknown';
+      const consignmentType = (row.consignment_type || '').toUpperCase();
+      const sizeInfo = row.noOfContrSize || '';
+      const count20 = parseInt((sizeInfo.match(/(\d+)\s*x\s*20/i) || [0, 0])[1]) || 0;
+      const count40 = parseInt((sizeInfo.match(/(\d+)\s*x\s*40/i) || [0, 0])[1]) || 0;
+      const teus = parseInt(row.teus) || 0;
+
+      if (consignmentType === 'LCL') {
+        if (!summaryData[exporter]) summaryData[exporter] = { count20: 0, count40: 0, teus: 0 };
+        summaryData[exporter].teus += 1; // Count LCL as 1 TEU for summary purposes or just job count
+        return;
+      }
+      if (!summaryData[exporter]) {
+        summaryData[exporter] = { count20: 0, count40: 0, teus: 0 };
+      }
+      summaryData[exporter].count20 += count20;
+      summaryData[exporter].count40 += count40;
+      summaryData[exporter].teus += teus;
+    });
+
+    const rows = Object.entries(summaryData).map(([exporter, details]) => ({
+      exporter,
+      count20: details.count20,
+      count40: details.count40,
+      teus: details.teus,
+    }));
+
+    // Sort by teus descending
+    rows.sort((a, b) => b.teus - a.teus);
+
     return rows;
   };
 
@@ -317,156 +358,100 @@ const DetailedReport = () => {
   };
 
   const exportToExcel = async () => {
-    const workbook = XLSX.utils.book_new();
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Export Clearance Report');
+    const monthName = months.find(m => String(m.value) === String(month))?.label || 'Unknown';
 
-    // Prepare main data
-    const excelData = detailedRows.map((row, index) => {
-      const excelRow = {};
+    // 1. Prepare Columns
+    const visibleCols = columns.filter((col) => !(col.key === 'invoice_value' && !isSrManager));
+    worksheet.columns = visibleCols.map(col => ({
+      header: col.label,
+      key: col.key,
+      width: col.key === 'job_no' ? 22 : (col.key === 'commodity' ? 45 : (col.minWidth / 5) || 16)
+    }));
 
-      // Calculate invoice value for display
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true, size: 10 };
+    worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+    // 2. Add Data Rows
+    detailedRows.forEach((row, index) => {
       const invValue = row.invoice_value && row.inv_currency
         ? `${row.inv_currency} ${(parseFloat(row.invoice_value)).toFixed(2)}`
         : '';
 
-      const visibleCols = columns.filter((col) => !(col.key === 'invoice_value' && !isSrManager));
+      const rowData = {};
       visibleCols.forEach(col => {
         switch (col.key) {
-          case 'srlNo':
-            excelRow[col.label] = String(index + 1).padStart(3, "0");
-            break;
-          case 'invoice_value':  // Custom PRICE column handling
-            excelRow[col.label] = invValue;
-            break;
-          case 'size':
-            excelRow[col.label] = deriveSize(row.noOfContrSize);
-            break;
-          case 'containerNumbers':
-            excelRow[col.label] = row.containerNumbers ? row.containerNumbers.join('; ') : '';
-            break;
-          case 'sb_date':
-            excelRow[col.label] = row.sb_date ? new Date(row.sb_date).toLocaleDateString('en-GB') : '';
-            break;
-          case 'leo_date':
-            excelRow[col.label] = row.leo_date ? new Date(row.leo_date).toLocaleDateString('en-GB') : '';
-            break;
-          case 'remarks':
-            excelRow[col.label] = row[col.key] || '';
-            break;
-          case 'teus':
-            excelRow[col.label] = isLclJob(row) ? 'LCL' : (row.teus || '');
-            break;
-          default:
-            excelRow[col.label] = row[col.key] || '';
+          case 'srlNo': rowData[col.key] = String(index + 1).padStart(3, "0"); break;
+          case 'invoice_value': rowData[col.key] = invValue; break;
+          case 'size': rowData[col.key] = deriveSize(row.noOfContrSize); break;
+          case 'containerNumbers': rowData[col.key] = row.containerNumbers ? row.containerNumbers.join('; ') : ''; break;
+          case 'sb_date': rowData[col.key] = row.sb_date ? new Date(row.sb_date).toLocaleDateString('en-GB') : ''; break;
+          case 'leo_date': rowData[col.key] = row.leo_date ? new Date(row.leo_date).toLocaleDateString('en-GB') : ''; break;
+          case 'teus': rowData[col.key] = isLclJob(row) ? 'LCL' : (row.teus || ''); break;
+          default: rowData[col.key] = row[col.key] || '';
         }
       });
-      return excelRow;
+
+      const excelRow = worksheet.addRow(rowData);
+
+      // Apply cell styling
+      excelRow.eachCell((cell, colNumber) => {
+        const colKey = visibleCols[colNumber - 1].key;
+
+        // Default alignment
+        cell.alignment = { vertical: 'top', horizontal: 'center', wrapText: true };
+        if (colKey === 'exporter' || colKey === 'commodity') {
+          cell.alignment.horizontal = 'left';
+        }
+
+        // Commodity font size (8pt) smaller than others (10pt)
+        if (colKey === 'commodity') {
+          cell.font = { size: 8, name: 'Arial Narrow' };
+        } else {
+          cell.font = { size: 10, name: 'Calibri' };
+        }
+      });
     });
 
-    // Create main worksheet
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-
-    // Auto-fit columns
-    const range = XLSX.utils.decode_range(worksheet['!ref']);
-    const colWidths = [];
-    let remarksColIndex = -1;
-    let commodityColIndex = -1;
-
-    for (let col = range.s.c; col <= range.e.c; col++) {
-      let maxWidth = 0;
-      for (let row = range.s.r; row <= range.e.r; row++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        const cell = worksheet[cellAddress];
-        if (cell && cell.v) {
-          const cellValue = String(cell.v);
-          maxWidth = Math.max(maxWidth, cellValue.length);
-        }
-      }
-      colWidths.push({ wch: Math.min(Math.max(maxWidth + 2, 10), 50) });
-
-      // Find remarks column index
-      if (worksheet[XLSX.utils.encode_cell({ r: 0, c: col })]?.v === 'REMARKS') {
-        remarksColIndex = col;
-      }
-      if (worksheet[XLSX.utils.encode_cell({ r: 0, c: col })]?.v === 'COMMODITY') {
-        commodityColIndex = col;
-        colWidths[col] = { wch: 30 }; // keep commodity compact in Excel
-      }
-    }
-    worksheet['!cols'] = colWidths;
-
-    // Apply text wrapping to remarks and commodity columns
-    for (let row = range.s.r; row <= range.e.r; row++) {
-      [remarksColIndex, commodityColIndex].forEach((colIdx) => {
-        if (colIdx === -1) return;
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: colIdx });
-        if (!worksheet[cellAddress]) return;
-        worksheet[cellAddress].z = '@'; // Text format
-        if (!worksheet[cellAddress].s) {
-          worksheet[cellAddress].s = {};
-        }
-        worksheet[cellAddress].s.alignment = {
-          wrapText: true,
-          vertical: 'top',
-          horizontal: colIdx === commodityColIndex ? 'left' : 'center'
-        };
-      });
-    }
-
-    // Add compact summary block in the same main sheet (below detailed rows)
+    // 3. Add Summaries Below Table
     const summaryRows = generateSummaryRows();
-    const summaryStartRow = excelData.length + 3; // 1 header + data + 2-gap
-    const monthName = months.find(m => m.value === month)?.label || 'Unknown';
-    const summaryAoa = [
-      [`Summary of Export - ${monthName}-${year}`],
-      ['Particulars', '20', '40', 'TEUS'],
-      ...summaryRows.map((row) => [row.location, row.count20, row.count40, row.teus]),
-    ];
-    XLSX.utils.sheet_add_aoa(worksheet, summaryAoa, { origin: `D${summaryStartRow}` });
+    const exporterSummaryRows = generateExporterSummaryRows();
+    let currentRow = worksheet.rowCount + 3;
 
-    // Make summary columns reasonably visible
-    if (worksheet['!cols']) {
-      const ensureWidth = (idx, wch) => {
-        if (!worksheet['!cols'][idx] || (worksheet['!cols'][idx].wch || 0) < wch) {
-          worksheet['!cols'][idx] = { wch };
-        }
-      };
-      ensureWidth(3, 28); // Particulars (column D)
-      ensureWidth(4, 8);  // 20
-      ensureWidth(5, 8);  // 40
-      ensureWidth(6, 10); // TEUS
-    }
-
-    // Add main worksheet
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Export Clearance Report');
-
-    // Also keep separate summary worksheet
-    const summarySheet = [];
-    summarySheet.push([`Summary -- ${monthName} --${year}`]);
-    summarySheet.push(['Particulars', '20', '40', 'TEUS']);
+    // Location Summary
+    worksheet.getRow(currentRow).values = [`SUMMARY BY LOCATION - ${monthName} ${year}`];
+    worksheet.getRow(currentRow).font = { bold: true, size: 11 };
+    currentRow++;
+    worksheet.getRow(currentRow).values = ['Particulars', '20', '40', 'TEUS'];
+    worksheet.getRow(currentRow).font = { bold: true, size: 10 };
+    currentRow++;
     summaryRows.forEach(row => {
-      summarySheet.push([
-        row.location,
-        row.count20,
-        row.count40,
-        row.teus
-      ]);
+      worksheet.getRow(currentRow).values = [row.location, row.count20, row.count40, row.teus];
+      worksheet.getRow(currentRow).font = { size: 10 };
+      currentRow++;
     });
 
-    const summaryWorksheet = XLSX.utils.aoa_to_sheet(summarySheet);
-    const summaryColWidths = [
-      { wch: 24 }, // Particulars
-      { wch: 8 },  // 20
-      { wch: 8 },  // 40
-      { wch: 10 } // TEUS
-    ];
-    summaryWorksheet['!cols'] = summaryColWidths;
-
-    XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Summary');
+    // Exporter Summary
+    currentRow += 2;
+    worksheet.getRow(currentRow).values = [`SUMMARY BY EXPORTER - ${monthName} ${year}`];
+    worksheet.getRow(currentRow).font = { bold: true, size: 11 };
+    currentRow++;
+    worksheet.getRow(currentRow).values = ['Exporter Name', '20', '40', 'TEUS'];
+    worksheet.getRow(currentRow).font = { bold: true, size: 10 };
+    currentRow++;
+    exporterSummaryRows.forEach(row => {
+      worksheet.getRow(currentRow).values = [row.exporter, row.count20, row.count40, row.teus];
+      worksheet.getRow(currentRow).font = { size: 10 };
+      currentRow++;
+    });
 
     // Generate filename and save
     const timestamp = new Date().toISOString().slice(0, 10);
     const filename = `export_clearance_report_${monthName}_${year}_${timestamp}.xlsx`;
-    XLSX.writeFile(workbook, filename);
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), filename);
   };
 
 
@@ -533,27 +518,33 @@ const DetailedReport = () => {
 
     // Build columnStyles dynamically so hidden columns (eg. PRICE) are not present
     const styleMap = {
-      srlNo: { cellWidth: 12, halign: 'center' },
-      job_no: { cellWidth: 12, halign: 'center' },
-      location: { cellWidth: 18, halign: 'center' },
-      exporter: { cellWidth: 35, halign: 'left' },
-      commodity: { cellWidth: 55, halign: 'left' },
-      invoice_value: { cellWidth: 18, halign: 'center' },
-      sb_no: { cellWidth: 18, halign: 'center' },
-      sb_date: { cellWidth: 22, halign: 'center' },
+      srlNo: { cellWidth: 8, halign: 'center' },
+      job_no: { cellWidth: 32, halign: 'center' },
+      location: { cellWidth: 25, halign: 'center' },
+      exporter: { cellWidth: 40, halign: 'left' }, // Decreased by 20
+      commodity: { halign: 'left' }, // Auto-width to fill space
+      invoice_value: { cellWidth: 20, halign: 'center' },
+      sb_no: { cellWidth: 15, halign: 'center' },
+      sb_date: { cellWidth: 20, halign: 'center' },
       containerNumbers: { cellWidth: 25, halign: 'center' },
-      totalContainers: { cellWidth: 15, halign: 'center' },
-      size: { cellWidth: 18, halign: 'center' },
-      teus: { cellWidth: 12, halign: 'center' },
-      leo_date: { cellWidth: 18, halign: 'center' },
-      remarks: { cellWidth: 20, halign: 'center' }
+      totalContainers: { cellWidth: 8, halign: 'center' },
+      size: { cellWidth: 15, halign: 'center' },
+      teus: { cellWidth: 10, halign: 'center' },
+      leo_date: { cellWidth: 20, halign: 'center' },
+      remarks: { cellWidth: 10, halign: 'center' }
     };
+    // Total adjusted to approx 287mm to fill the page without overflow
 
     const columnStyles = {};
     visibleCols.forEach((col, idx) => {
-      const cfg = styleMap[col.key] || { cellWidth: 18, halign: 'center' };
-      columnStyles[idx] = { cellWidth: cfg.cellWidth, halign: cfg.halign };
+      const cfg = styleMap[col.key] || { halign: 'center' };
+      columnStyles[idx] = {
+        cellWidth: cfg.cellWidth || 'auto',
+        halign: cfg.halign,
+        fontSize: col.key === 'commodity' ? 5 : 7
+      };
     });
+    // Total width will now fill the page as Commodity takes all remaining space
 
     doc.autoTable({
       head: [tableHeaders],
@@ -580,7 +571,7 @@ const DetailedReport = () => {
       bodyStyles: {
         fillColor: [255, 255, 255],
         textColor: [0, 0, 0],
-        fontSize: 6,
+        fontSize: 8,
         valign: 'middle',
         lineColor: [205, 133, 63],
         lineWidth: 0.3
@@ -588,7 +579,15 @@ const DetailedReport = () => {
       alternateRowStyles: {
         fillColor: [255, 255, 255],
       },
+      rowPageBreak: 'avoid',
       columnStyles: columnStyles,
+      didParseCell: (data) => {
+        // Force font size 6 for commodity column (smaller than others)
+        const colKey = visibleCols[data.column.index]?.key;
+        if (colKey === 'commodity') {
+          data.cell.styles.fontSize = 6;
+        }
+      },
       margin: { top: 25, right: 5, bottom: 15, left: 5 },
       theme: 'grid',
       tableLineColor: [205, 133, 63],
@@ -628,6 +627,57 @@ const DetailedReport = () => {
       },
       headStyles: {
         fillColor: [255, 224, 178],
+        textColor: [51, 51, 51],
+        fontStyle: 'bold',
+        fontSize: 8,
+        halign: 'center',
+        valign: 'middle',
+        lineColor: [205, 133, 63],
+        lineWidth: 0.5
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [51, 51, 51],
+        fontSize: 8,
+        halign: 'center',
+        valign: 'middle',
+        lineColor: [205, 133, 63],
+        lineWidth: 0.3
+      },
+      alternateRowStyles: {
+        fillColor: [247, 250, 255],
+      },
+      margin: { top: 25, right: 5, bottom: 15, left: 5 },
+      theme: 'grid',
+      tableLineColor: [205, 133, 63],
+      tableLineWidth: 0.5
+    });
+
+    // Add exporter summary table
+    const exporterSummaryRows = generateExporterSummaryRows();
+    const exporterHeaders = ['Exporter Name', '20', '40', 'TEUS'];
+    const exporterBody = exporterSummaryRows.map(row => [
+      row.exporter,
+      row.count20,
+      row.count40,
+      row.teus
+    ]);
+
+    doc.autoTable({
+      head: [exporterHeaders],
+      body: exporterBody,
+      startY: doc.lastAutoTable.finalY + 10,
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        halign: 'center',
+        valign: 'middle',
+        lineColor: [205, 133, 63],
+        lineWidth: 0.3,
+        textColor: [0, 0, 0]
+      },
+      headStyles: {
+        fillColor: [225, 245, 254],
         textColor: [51, 51, 51],
         fontStyle: 'bold',
         fontSize: 8,
@@ -805,7 +855,8 @@ const DetailedReport = () => {
             Summary - {months.find(m => m.value === month)?.label} {year}
           </DialogTitle>
           <DialogContent sx={{ background: '#fff' }}>
-            <TableContainer>
+            <TableContainer sx={{ mb: 4 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: '#f57c00' }}>By Location</Typography>
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -817,8 +868,32 @@ const DetailedReport = () => {
                 </TableHead>
                 <TableBody>
                   {generateSummaryRows().map((row, idx) => (
-                    <TableRow key={idx} sx={{ background: row.location === 'LCL JOBS' ? '#e3f2fd' : undefined }}>
-                      <TableCell align="center" sx={{ fontWeight: row.location === 'LCL JOBS' ? 'bold' : 'normal' }}>{row.location}</TableCell>
+                    <TableRow key={idx} sx={{ background: row.location === 'LCL JOBS' ? '#e3f2fd' : (row.location === 'TOTAL' ? '#fff3e0' : undefined) }}>
+                      <TableCell align="center" sx={{ fontWeight: (row.location === 'LCL JOBS' || row.location === 'TOTAL') ? 'bold' : 'normal' }}>{row.location}</TableCell>
+                      <TableCell align="center">{row.count20}</TableCell>
+                      <TableCell align="center">{row.count40}</TableCell>
+                      <TableCell align="center">{row.teus}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <TableContainer>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: '#0288d1' }}>By Exporter</Typography>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#e1f5fe', color: '#333' }}>Exporter Name</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#e1f5fe', color: '#333' }}>20</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#e1f5fe', color: '#333' }}>40</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#e1f5fe', color: '#333' }}>TEUS</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {generateExporterSummaryRows().map((row, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell align="left" sx={{ fontSize: '0.75rem' }}>{row.exporter}</TableCell>
                       <TableCell align="center">{row.count20}</TableCell>
                       <TableCell align="center">{row.count40}</TableCell>
                       <TableCell align="center">{row.teus}</TableCell>

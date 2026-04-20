@@ -2210,10 +2210,10 @@ const ExportJobsTable = () => {
                 ) : (
                   jobs.map((job, idx) => {
                     const currentStatus = (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
-                          ? job.detailedStatus[job.detailedStatus.length - 1]
-                          : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status) || "";
+                      ? job.detailedStatus[job.detailedStatus.length - 1]
+                      : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status) || "";
                     const theme = getStatusTheme(currentStatus);
-                    
+
                     return (
                       <tr
                         key={job._id || idx}
@@ -2726,30 +2726,97 @@ const ExportJobsTable = () => {
                                       key={index}
                                       style={{
                                         display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
+                                        flexDirection: "column",
                                         backgroundColor: "rgba(37, 99, 235, 0.05)",
                                         padding: "2px 4px",
-                                        borderRadius: "3px"
+                                        borderRadius: "6px",
+                                        marginBottom: "4px",
+                                        border: "1px solid rgba(37, 99, 235, 0.1)"
                                       }}
                                     >
-                                      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                                        <a
-                                          href={`https://www.ldb.co.in/ldb/containersearch/39/${container.containerNo}/1726651147706`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          style={{
-                                            fontWeight: "800",
-                                            textDecoration: "none",
-                                            fontSize: "11px",
-                                            color: "#2563eb",
-                                          }}
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          {container.containerNo}
-                                        </a>
+                                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "4px", flexWrap: "wrap" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                          <a
+                                            href={`https://www.ldb.co.in/ldb/containersearch/39/${container.containerNo}/1726651147706`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                              fontWeight: "800",
+                                              textDecoration: "none",
+                                              cursor: "pointer",
+                                              fontSize: "11px",
+                                              color: "#2563eb",
+                                            }}
+                                            onMouseOver={(e) => (e.target.style.textDecoration = "underline")}
+                                            onMouseOut={(e) => (e.target.style.textDecoration = "none")}
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            {container.containerNo}
+                                          </a>
+
+                                          {/* Shipping Line Tracking Link */}
+                                          {(() => {
+                                            const bookingNo = job.booking_no || "";
+                                            const containerFirst = job.containers?.[0]?.containerNo || "";
+                                            const urls = buildShippingLineUrls(bookingNo, containerFirst);
+
+                                            let linerRaw = job.shipping_line_airline || "";
+                                            let liner = linerRaw.includes(" - ") ? linerRaw.split(" - ").pop().trim() : linerRaw.trim();
+
+                                            const matchKey = Object.keys(urls).find(key => liner.toUpperCase().includes(key.toUpperCase()));
+                                            const url = matchKey ? urls[matchKey] : "#";
+
+                                            if (liner && url !== "#") {
+                                              return (
+                                                <Tooltip title={`Track on ${liner}`}>
+                                                  <a
+                                                    href={url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{ display: 'flex', alignItems: 'center' }}
+                                                  >
+                                                    <FontAwesomeIcon icon={faShip} style={{ fontSize: 10, color: "#2563eb" }} />
+                                                  </a>
+                                                </Tooltip>
+                                              );
+                                            }
+                                            return null;
+                                          })()}
+
+                                          {/* CONCOR Container Track Button */}
+                                          {job.custom_house?.toUpperCase().includes("ICD") && (
+                                            <Tooltip title="Track on CONCOR India">
+                                              <IconButton
+                                                size="small"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setContainerTrackContainers(job.containers || []);
+                                                  setContainerTrackOpen(true);
+                                                }}
+                                                style={{ padding: 0, marginLeft: 2 }}
+                                              >
+                                                <FontAwesomeIcon icon={faAnchor} style={{ fontSize: 10, color: "#7c3aed" }} />
+                                              </IconButton>
+                                            </Tooltip>
+                                          )}
+
+                                          <IconButton
+                                            size="small"
+                                            onClick={(e) => handleCopyText(container.containerNo, e)}
+                                            style={{ padding: 0, marginLeft: 2 }}
+                                            title="Copy Container No"
+                                          >
+                                            <ContentCopyIcon style={{ fontSize: 10, color: "#64748b" }} />
+                                          </IconButton>
+                                        </div>
+
+                                        {container.size && (
+                                          <span style={{ fontSize: '9px', color: '#475569', fontWeight: "800" }}>
+                                            {container.size}
+                                          </span>
+                                        )}
                                       </div>
-                                      <span style={{ fontSize: '9px', fontWeight: '800', color: '#64748b' }}>{container.size || ""}</span>
                                     </div>
                                   ))}
                               </div>

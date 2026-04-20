@@ -407,6 +407,38 @@ const EditChargeModal = ({
     }
   };
 
+  const handleCopyToCost = (idx) => {
+    const updated = [...formData];
+    const rev = updated[idx].revenue || {};
+    updated[idx].cost = {
+      ...updated[idx].cost,
+      basis: rev.basis,
+      qty: rev.qty,
+      currency: rev.currency,
+      rate: rev.rate,
+      isGst: rev.isGst,
+      gstRate: rev.gstRate
+    };
+    updated[idx].cost = calculateDerivedFields(updated[idx], 'cost');
+    setFormData(updated);
+  };
+
+  const handleCopyToRevenue = (idx) => {
+    const updated = [...formData];
+    const cost = updated[idx].cost || {};
+    updated[idx].revenue = {
+      ...updated[idx].revenue,
+      basis: cost.basis,
+      qty: cost.qty,
+      currency: cost.currency,
+      rate: cost.rate,
+      isGst: cost.isGst,
+      gstRate: cost.gstRate
+    };
+    updated[idx].revenue = calculateDerivedFields(updated[idx], 'revenue');
+    setFormData(updated);
+  };
+
   return (
     <div className="modal-overlay active" onMouseDown={() => setActiveDropdown({ index: null, section: null })}>
       <div className="edit-charge-modal" ref={modalRef} onMouseDown={(e) => e.stopPropagation()}>
@@ -590,15 +622,19 @@ const EditChargeModal = ({
                                   <option>Per Container</option>
                                 </select>
                               </div>
-                              <div className="ep-row">
-                                <span className="ep-label">Override Auto Rate</span>
-                                <input type="checkbox" checked={row.revenue?.overrideAutoRate || false} onChange={e => handleFieldChange(i, 'overrideAutoRate', e.target.checked, 'revenue')} />
+                              <div className="ep-row" style={{ visibility: 'hidden' }}>
+                                {/* Override Auto Rate Removed as requested */}
                               </div>
                               <div className="ep-row">
                                 <span className="ep-label">Qty/Unit</span>
                                 <div className="ep-inline">
-                                  <input type="number" step="0.01" value={row.revenue?.qty ?? 1.00} onChange={e => handleFieldChange(i, 'qty', e.target.value, 'revenue')} />
-                                  <input type="text" value={row.revenue?.unit || ''} onChange={e => handleFieldChange(i, 'unit', e.target.value, 'revenue')} />
+                                  <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={row.revenue?.qty || ''} 
+                                    onFocus={e => e.target.select()}
+                                    onChange={e => handleFieldChange(i, 'qty', e.target.value, 'revenue')} 
+                                  />
                                 </div>
                               </div>
                               <div className="ep-row">
@@ -610,7 +646,13 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">Rate</span>
                                 <div className="ep-inline">
-                                  <input type="number" step="0.01" value={row.revenue?.rate ?? 0.00} onChange={e => handleFieldChange(i, 'rate', e.target.value, 'revenue')} />
+                                  <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={row.revenue?.rate || ''} 
+                                    onFocus={e => e.target.select()}
+                                    onChange={e => handleFieldChange(i, 'rate', e.target.value, 'revenue')} 
+                                  />
                                   <select value={row.revenue?.currency || 'INR'} onChange={e => handleFieldChange(i, 'currency', e.target.value, 'revenue')}>
                                     <option>INR</option><option>USD</option><option>EUR</option>
                                   </select>
@@ -693,7 +735,13 @@ const EditChargeModal = ({
                                   <input type="checkbox" checked={row.revenue?.isGst !== false} onChange={e => handleFieldChange(i, 'isGst', e.target.checked, 'revenue')} />
                                   {row.revenue?.isGst !== false && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <input type="number" style={{ width: '50px' }} value={row.revenue?.gstRate ?? 18} onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'revenue')} />
+                                      <input 
+                                        type="number" 
+                                        style={{ width: '50px' }} 
+                                        value={row.revenue?.gstRate ?? ''} 
+                                        onFocus={e => e.target.select()}
+                                        onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'revenue')} 
+                                      />
                                       <span style={{ fontSize: '11px' }}>%</span>
                                     </div>
                                   )}
@@ -702,19 +750,21 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">Basic Amount</span>
                                 <div className="ep-inline">
-                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.basicAmount)} />
+                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={row.revenue?.basicAmount || ''} />
                                 </div>
                               </div>
                               <div className="ep-row">
                                 <span className="ep-label">GST Amount</span>
                                 <div className="ep-inline">
-                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.gstAmount)} />
+                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={row.revenue?.gstAmount || ''} />
                                 </div>
                               </div>
                             </div>
                             <div className="ep-copy-row">
-                              Copy to Cost <input type="checkbox" checked={row.copyToCost || false} onChange={e => handleFieldChange(i, 'copyToCost', e.target.checked)} />
-                            </div>
+                               <button type="button" className="upload-btn" style={{ backgroundColor: '#2563eb', color: '#fff' }} onClick={() => handleCopyToCost(i)}>
+                                 Copy to Cost
+                               </button>
+                             </div>
                           </div>
                         </td>
                       </tr>
@@ -787,15 +837,19 @@ const EditChargeModal = ({
                                   <option>Per Container</option>
                                 </select>
                               </div>
-                              <div className="ep-row">
-                                <span className="ep-label">Override Auto Rate</span>
-                                <input type="checkbox" checked={row.cost?.overrideAutoRate || false} onChange={e => handleFieldChange(i, 'overrideAutoRate', e.target.checked, 'cost')} />
+                              <div className="ep-row" style={{ visibility: 'hidden' }}>
+                                {/* Override Auto Rate Removed as requested */}
                               </div>
                               <div className="ep-row">
-                                <span className="ep-label">Qty/Unit</span>
+                                <span className="ep-label">Qty</span>
                                 <div className="ep-inline">
-                                  <input type="number" step="0.01" value={row.cost?.qty ?? 1.00} onChange={e => handleFieldChange(i, 'qty', e.target.value, 'cost')} />
-                                  <input type="text" value={row.cost?.unit || ''} onChange={e => handleFieldChange(i, 'unit', e.target.value, 'cost')} />
+                                  <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={row.cost?.qty || ''} 
+                                    onFocus={e => e.target.select()}
+                                    onChange={e => handleFieldChange(i, 'qty', e.target.value, 'cost')} 
+                                  />
                                 </div>
                               </div>
                               <div className="ep-row">
@@ -812,7 +866,13 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">Rate</span>
                                 <div className="ep-inline">
-                                  <input type="number" step="0.01" value={row.cost?.rate ?? 0.00} onChange={e => handleFieldChange(i, 'rate', e.target.value, 'cost')} />
+                                  <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={row.cost?.rate || ''} 
+                                    onFocus={e => e.target.select()}
+                                    onChange={e => handleFieldChange(i, 'rate', e.target.value, 'cost')} 
+                                  />
                                   <select value={row.cost?.currency || 'INR'} onChange={e => handleFieldChange(i, 'currency', e.target.value, 'cost')}>
                                     <option>INR</option><option>USD</option><option>EUR</option>
                                   </select>
@@ -897,7 +957,13 @@ const EditChargeModal = ({
                                   <input type="checkbox" checked={row.cost?.isGst !== false} onChange={e => handleFieldChange(i, 'isGst', e.target.checked, 'cost')} />
                                   {row.cost?.isGst !== false && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <input type="number" style={{ width: '50px' }} value={row.cost?.gstRate ?? 18} onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'cost')} />
+                                      <input 
+                                        type="number" 
+                                        style={{ width: '50px' }} 
+                                        value={row.cost?.gstRate || ''} 
+                                        onFocus={e => e.target.select()}
+                                        onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'cost')} 
+                                      />
                                       <span style={{ fontSize: '11px' }}>%</span>
                                     </div>
                                   )}
@@ -921,7 +987,13 @@ const EditChargeModal = ({
                                   <input type="checkbox" checked={row.cost?.isTds || false} onChange={e => handleFieldChange(i, 'isTds', e.target.checked, 'cost')} />
                                   {row.cost?.isTds && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <input type="number" style={{ width: '50px' }} value={row.cost?.tdsPercent ?? 0} onChange={e => handleFieldChange(i, 'tdsPercent', e.target.value, 'cost')} />
+                                      <input 
+                                        type="number" 
+                                        style={{ width: '50px' }} 
+                                        value={row.cost?.tdsPercent || ''} 
+                                        onFocus={e => e.target.select()}
+                                        onChange={e => handleFieldChange(i, 'tdsPercent', e.target.value, 'cost')} 
+                                      />
                                       <span style={{ fontSize: '11px' }}>%</span>
                                     </div>
                                   )}
@@ -1023,6 +1095,11 @@ const EditChargeModal = ({
                                 </div>
                               </div>
                             </div>
+                            <div className="ep-copy-row" style={{ display: 'flex', gap: '10px' }}>
+                               <button type="button" className="upload-btn" style={{ backgroundColor: '#10b981', color: '#fff' }} onClick={() => handleCopyToRevenue(i)}>
+                                 Copy to Revenue
+                               </button>
+                             </div>
                           </div>
                         </td>
                       </tr>
