@@ -58,6 +58,80 @@ import { faShip, faAnchor } from "@fortawesome/free-solid-svg-icons";
 import QuestionAnswerIcon from "@mui/icons-material/QuestionAnswer";
 import RaiseQueryDialog from "./Queries/RaiseQueryDialog";
 
+const ResponsiveStyles = () => (
+  <style>
+    {`
+      @media (max-width: 1200px) {
+        .toolbar-responsive {
+          justify-content: flex-start !important;
+        }
+        .search-container-responsive {
+          margin-left: 0 !important;
+          width: 100% !important;
+        }
+        .search-input-responsive {
+          flex: 1 !important;
+          width: auto !important;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .wrapper-responsive {
+          padding: 5px !important;
+        }
+        .tab-container-responsive {
+          overflow-x: auto !important;
+          white-space: nowrap !important;
+          scrollbar-width: none !important;
+        }
+        .tab-container-responsive::-webkit-scrollbar {
+          display: none !important;
+        }
+        .toolbar-responsive {
+          padding: 8px !important;
+          gap: 8px !important;
+        }
+        .toolbar-responsive > * {
+          flex-grow: 1 !important;
+          min-width: calc(50% - 8px) !important;
+        }
+        .search-container-responsive {
+          min-width: 100% !important;
+        }
+        .table-container-responsive {
+          max-height: calc(100vh - 250px) !important;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .toolbar-responsive > * {
+          min-width: 100% !important;
+        }
+        .page-title-responsive {
+          font-size: 16px !important;
+        }
+      }
+
+      /* Custom scrollbar for better look */
+      .table-container-responsive::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      .table-container-responsive::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      .table-container-responsive::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+      }
+      .table-container-responsive::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+    `}
+  </style>
+);
+
+
 // --- Clean Enterprise Styles ---
 const s = {
   wrapper: {
@@ -1710,10 +1784,12 @@ const ExportJobsTable = () => {
 
   return (
     <>
-      <div style={s.wrapper}>
+      <ResponsiveStyles />
+      <div style={s.wrapper} className="wrapper-responsive">
         <div style={s.container}>
           {/* Title and Count */}
           <div
+            className="header-row-responsive"
             style={{
               ...s.headerRow,
               display: "flex",
@@ -1722,7 +1798,7 @@ const ExportJobsTable = () => {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <h1 style={s.pageTitle}>Export Jobs:</h1>
+              <h1 style={s.pageTitle} className="page-title-responsive">Export Jobs:</h1>
               <span
                 style={{
                   fontSize: "20px",
@@ -1769,6 +1845,7 @@ const ExportJobsTable = () => {
                     fontWeight: "600",
                     fontSize: "13px",
                   }}
+                  className="create-btn-responsive"
                   onClick={() => setOpenAddDialog(true)}
                 >
                   + Create Job
@@ -1801,56 +1878,52 @@ const ExportJobsTable = () => {
           </div>
 
           {/* Tabs */}
-          <div style={s.tabContainer}>
+          <div style={s.tabContainer} className="tab-container-responsive">
             <button
               style={
-                activeTab === "Pending" ? { ...s.tab, ...s.activeTab } : s.tab
+                activeTab === "Requested" ? { ...s.tab, ...s.activeTab } : s.tab
               }
-              onClick={() => setActiveTab("Pending")}
+              onClick={() => setActiveTab("Requested")}
             >
-              Pending{" "}
+              Requested{" "}
               <span
                 style={
-                  activeTab === "Pending"
+                  activeTab === "Requested"
                     ? { ...s.badge, ...s.activeBadge }
                     : s.badge
                 }
               ></span>
             </button>
-            {!isOperationModule && !isChargesModule && (
-              <button
+            <button
+              style={
+                activeTab === "Active" ? { ...s.tab, ...s.activeTab } : s.tab
+              }
+              onClick={() => setActiveTab("Active")}
+            >
+              Active{" "}
+              <span
                 style={
-                  activeTab === "Booking Pending" ? { ...s.tab, ...s.activeTab } : s.tab
+                  activeTab === "Active"
+                    ? { ...s.badge, ...s.activeBadge }
+                    : s.badge
                 }
-                onClick={() => setActiveTab("Booking Pending")}
-              >
-                Booking Pending{" "}
-                <span
-                  style={
-                    activeTab === "Booking Pending"
-                      ? { ...s.badge, ...s.activeBadge }
-                      : s.badge
-                  }
-                ></span>
-              </button>
-            )}
-            {!isOperationModule && !isChargesModule && (
-              <button
+              ></span>
+            </button>
+            <button
+              style={
+                activeTab === "Operations" ? { ...s.tab, ...s.activeTab } : s.tab
+              }
+              onClick={() => setActiveTab("Operations")}
+            >
+              Operations{" "}
+              <span
                 style={
-                  activeTab === "Handover Pending" ? { ...s.tab, ...s.activeTab } : s.tab
+                  activeTab === "Operations"
+                    ? { ...s.badge, ...s.activeBadge }
+                    : s.badge
                 }
-                onClick={() => setActiveTab("Handover Pending")}
-              >
-                Handover Pending{" "}
-                <span
-                  style={
-                    activeTab === "Handover Pending"
-                      ? { ...s.badge, ...s.activeBadge }
-                      : s.badge
-                  }
-                ></span>
-              </button>
-            )}
+              ></span>
+            </button>
             {!isOperationModule && !isChargesModule && (
               <button
                 style={
@@ -1920,7 +1993,7 @@ const ExportJobsTable = () => {
           </div>
 
           {/* Filters */}
-          <div style={s.toolbar}>
+          <div style={s.toolbar} className="toolbar-responsive">
             {/* Year Filter */}
             <select
               style={{ ...s.select, width: "80px" }}
@@ -2215,6 +2288,7 @@ const ExportJobsTable = () => {
 
             {/* Search Input */}
             <div
+              className="search-container-responsive"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -2224,6 +2298,7 @@ const ExportJobsTable = () => {
               }}
             >
               <input
+                className="search-input-responsive"
                 style={{ ...s.input, width: "160px", minWidth: "130px", padding: "0 4px" }}
                 placeholder="Search by Job No, Exporter, Consignee..."
                 value={searchQuery}
@@ -2249,19 +2324,18 @@ const ExportJobsTable = () => {
           </div>
 
           {/* Table */}
-          <div style={s.tableContainer}>
+          <div style={s.tableContainer} className="table-container-responsive">
             <table style={s.table}>
               <colgroup>
                 <col style={{ minWidth: "175px" }} />
-                <col style={{ minWidth: "150px" }} />
-                <col style={{ minWidth: "100px" }} />
+                <col style={{ minWidth: "200px" }} />
+                <col style={{ minWidth: "110px" }} />
                 <col style={{ minWidth: "100px" }} />
                 <col style={{ minWidth: "90px" }} />
                 <col style={{ minWidth: "160px" }} />
                 <col style={{ minWidth: "160px" }} />
                 <col style={{ minWidth: "125px" }} />
                 <col style={{ minWidth: "85px" }} />
-                <col style={{ minWidth: "70px" }} />
               </colgroup>
               <thead>
                 <tr
@@ -2274,7 +2348,7 @@ const ExportJobsTable = () => {
                   }}
                 >
                   <th
-                    style={{ ...s.th, width: "10%", minWidth: "100px", cursor: "pointer", userSelect: "none" }}
+                    style={{ ...s.th, width: "12%", minWidth: "110px", cursor: "pointer", userSelect: "none" }}
                     onClick={() => handleSort('job_no')}
                     title="Click to sort by Job Number"
                   >
@@ -2285,9 +2359,8 @@ const ExportJobsTable = () => {
                       </span>
                     )}
                   </th>
-                  <th style={{ ...s.th, width: "22%", minWidth: "180px" }}>Exporter</th>
-                  <th style={{ ...s.th, width: "10%", minWidth: "95px" }}>KYC / Codes</th>
-                  <th style={{ ...s.th, width: "8%", minWidth: "85px" }}>Invoice</th>
+                  <th style={{ ...s.th, width: "28%", minWidth: "200px" }}>Exporter</th>
+                  <th style={{ ...s.th, width: "10%", minWidth: "95px" }}>Invoice</th>
                   <th style={{ ...s.th, width: "6%", minWidth: "65px" }}>SB / Date</th>
                   <th style={{ ...s.th, width: "12%", minWidth: "140px" }}>Port</th>
                   <th style={{ ...s.th, width: "10%", minWidth: "110px" }}>Container</th>
@@ -2299,13 +2372,13 @@ const ExportJobsTable = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="10" style={s.message}>
+                    <td colSpan="9" style={s.message}>
                       Loading jobs...
                     </td>
                   </tr>
                 ) : jobs.length === 0 ? (
                   <tr>
-                    <td colSpan="10" style={s.message}>
+                    <td colSpan="9" style={s.message}>
                       No jobs found.
                     </td>
                   </tr>
@@ -2559,124 +2632,7 @@ const ExportJobsTable = () => {
                           })()}
                         </td>
 
-                        {/* NEW Column: KYC / Codes */}
-                        <td style={s.td}>
-                          <div
-                            style={{
-                              fontSize: "10px",
-                              color: "#000000ff",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "2px",
-                            }}
-                          >
-                            {/* IE Code */}
-                            {job.ieCode && (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <div>
-                                  <span style={{ fontWeight: "700" }}>
-                                    IEC:
-                                  </span>{" "}
-                                  {job.ieCode}
-                                </div>
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) =>
-                                    handleCopyText(job.ieCode, e)
-                                  }
-                                  style={{ padding: 0, marginLeft: 4 }}
-                                  title="Copy IEC"
-                                >
-                                  <ContentCopyIcon style={{ fontSize: 10 }} />
-                                </IconButton>
-                              </div>
-                            )}
 
-                            {/* PAN */}
-                            {job.panNo && (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <div>
-                                  <span style={{ fontWeight: "700" }}>
-                                    PAN:
-                                  </span>{" "}
-                                  {job.panNo}
-                                </div>
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) => handleCopyText(job.panNo, e)}
-                                  style={{ padding: 0, marginLeft: 4 }}
-                                  title="Copy PAN"
-                                >
-                                  <ContentCopyIcon style={{ fontSize: 10 }} />
-                                </IconButton>
-                              </div>
-                            )}
-
-                            {/* GST */}
-                            {job.exporter_gstin && (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <div>
-                                  <span style={{ fontWeight: "700" }}>
-                                    GST:
-                                  </span>{" "}
-                                  {job.exporter_gstin}
-                                </div>
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) =>
-                                    handleCopyText(job.exporter_gstin, e)
-                                  }
-                                  style={{ padding: 0, marginLeft: 4 }}
-                                  title="Copy GST"
-                                >
-                                  <ContentCopyIcon style={{ fontSize: 10 }} />
-                                </IconButton>
-                              </div>
-                            )}
-
-                            {/* AD Code */}
-                            {job.adCode && (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <div>
-                                  <span style={{ fontWeight: "700" }}>AD:</span>{" "}
-                                  {job.adCode}
-                                </div>
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) => handleCopyText(job.adCode, e)}
-                                  style={{ padding: 0, marginLeft: 4 }}
-                                  title="Copy AD Code"
-                                >
-                                  <ContentCopyIcon style={{ fontSize: 10 }} />
-                                </IconButton>
-                              </div>
-                            )}
-                          </div>
-                        </td>
 
                         {/* Column 4: Invoice */}
                         <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#c6f6d5" : "inherit" }}>
