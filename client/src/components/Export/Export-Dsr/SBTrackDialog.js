@@ -156,6 +156,12 @@ function SBTrackDialog({ open, onClose, sbNo, sbDate, customHouse, onUpdateStatu
                         const firstEgm = egmStatusList[0];
                         if (firstEgm.egmNo && firstEgm.egmNo !== "N.A.") updates.egm_no = firstEgm.egmNo;
                         updates.egm_date = extractDate(firstEgm.egmDate);
+
+                        // If only one container, auto-populate container and seal no
+                        if (egmStatusList.length === 1) {
+                            if (firstEgm.containerNo && firstEgm.containerNo !== "N.A.") updates.container_no = firstEgm.containerNo;
+                            if (firstEgm.sealNo && firstEgm.sealNo !== "N.A.") updates.seal_no = firstEgm.sealNo;
+                        }
                     }
 
                     const roslStatusList = fetchedData.roslStatusModel || [];

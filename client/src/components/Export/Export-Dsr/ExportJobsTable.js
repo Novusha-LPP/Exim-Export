@@ -35,6 +35,7 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { uploadFileToS3 } from "../../../utils/awsFileUpload";
 import AddExJobs from "./AddExJobs";
 import { formatDate } from "../../../utils/dateUtils";
@@ -357,8 +358,8 @@ const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSucce
         const item = section[idx] || {};
         currentFiles = Array.isArray(item.images) ? [...item.images] : [];
       } else if (uploadType === "container") {
-        dotPath = `containers.0.${field}`;
-        const container = job.containers?.[0] || {};
+        dotPath = `containers.${idx}.${field}`;
+        const container = job.containers?.[idx] || {};
         currentFiles = Array.isArray(container[field]) ? [...container[field]] : [];
       } else {
         dotPath = `operations.0.statusDetails.0.${field}`;
@@ -379,7 +380,6 @@ const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSucce
       if (onSuccess) onSuccess(url);
     } catch (err) {
       console.error("Quick upload err:", err);
-      // alert("Failed to upload document.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -408,6 +408,70 @@ const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSucce
         style={{ display: "none" }}
       />
     </>
+  );
+};
+
+const QuickDeleteButton = ({ job, field, url, uploadType = "status", idx = 0, onSuccess }) => {
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this document?")) return;
+    setDeleting(true);
+    try {
+      let dotPath = "";
+      let currentFiles = [];
+
+      if (uploadType === "toplevel") {
+        dotPath = field;
+        currentFiles = Array.isArray(job[field]) ? [...job[field]] : [];
+      } else if (uploadType === "section") {
+        dotPath = `operations.0.${field}.${idx}.images`;
+        const ops = job.operations?.[0] || {};
+        const section = Array.isArray(ops[field]) ? ops[field] : [];
+        const item = section[idx] || {};
+        currentFiles = Array.isArray(item.images) ? [...item.images] : [];
+      } else if (uploadType === "container") {
+        dotPath = `containers.${idx}.${field}`;
+        const container = job.containers?.[idx] || {};
+        currentFiles = Array.isArray(container[field]) ? [...container[field]] : [];
+      } else {
+        dotPath = `operations.0.statusDetails.0.${field}`;
+        const ops = job.operations?.[0] || {};
+        const status = (ops.statusDetails && ops.statusDetails[0]) || {};
+        currentFiles = Array.isArray(status[field]) ? [...status[field]] : [];
+      }
+
+      const newValue = currentFiles.filter(f => f !== url);
+
+      await axios.patch(
+        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(job.job_no)}/fields`,
+        {
+          fieldUpdates: [{ field: dotPath, value: newValue }]
+        }
+      );
+
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      console.error("Quick delete err:", err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <IconButton
+      size="small"
+      onClick={handleDelete}
+      disabled={deleting}
+      style={{ padding: "1px", marginLeft: "2px" }}
+      title="Delete Document"
+    >
+      {deleting ? (
+        <CircularProgress size={12} style={{ color: "#dc2626" }} />
+      ) : (
+        <DeleteIcon style={{ fontSize: "14px", color: "#dc2626" }} />
+      )}
+    </IconButton>
   );
 };
 
@@ -1399,8 +1463,6 @@ const ExportJobsTable = () => {
     // 2. Operations Documents by Category
     const ops = job.operations && job.operations[0];
     const status = ops ? (ops.statusDetails && ops.statusDetails[0]) || {} : {};
-    const firstContainer = job.containers && job.containers[0];
-    const firstTransporter = ops && ops.transporterDetails && ops.transporterDetails[0];
 
     const categories = [
       {
@@ -1408,8 +1470,12 @@ const ExportJobsTable = () => {
         files: [
           { field: "leoUpload", title: "LEO", source: "status" },
           { field: "eGatePassUpload", title: "Gate Pass", source: "status" },
-          { field: "booking_copy", title: "Booking", source: "status" },
+          { field: "booking_copy", title: "Booking", source: "toplevel" },
           { field: "forwardingNoteDocUpload", title: "Forwarding Note", source: "status" },
+          { field: "clpUpload", title: "CONTAINER LOAD PLAN (CLP)", source: "status" },
+          { field: "completionCopyUpload", title: "COMPLETION COPY", source: "status" },
+          { field: "movementCopyUpload", title: "MOVEMENT COPY", source: "status" },
+          { field: "shippingInstructionsUpload", title: "Shipping instructions", source: "status" },
           { field: "handoverImageUpload", title: "HO/DOC Copy", source: "status" },
         ]
       },
@@ -1420,6 +1486,7 @@ const ExportJobsTable = () => {
           { field: "odexVgmUpload", title: "Odex VGM", source: "status" },
           { field: "odexEsbUpload", title: "Odex ESB", source: "status" },
           { field: "odexForm13Upload", title: "Odex Form 13", source: "status" },
+          { field: "form13CopyUpload", title: "FORM-13 COPY", source: "status" },
           { field: "cmaForwardingNoteUpload", title: "CMA Forwarding Note", source: "status" },
         ]
       },
@@ -1428,7 +1495,7 @@ const ExportJobsTable = () => {
         files: [
           { field: "images", title: "Container Door Photo", source: "container" },
           { field: "stuffingPhotoUpload", title: "Stuffing Photo", source: "status" },
-          { field: "images", title: "Carting Photo", source: "transporter" },
+          { field: "transporterDetails", title: "Carting Photo", source: "section" },
         ]
       },
       {
@@ -1450,26 +1517,61 @@ const ExportJobsTable = () => {
     categories.forEach(cat => {
       links.push({ title: cat.name, isHeader: true });
       cat.files.forEach(f => {
-        let urls = [];
-        let uploadType = "status";
-
-        if (f.source === "status") {
-          urls = Array.isArray(status[f.field]) ? status[f.field] : [];
-          uploadType = "status";
-        } else if (f.source === "container") {
-          urls = firstContainer && Array.isArray(firstContainer[f.field]) ? firstContainer[f.field] : [];
-          uploadType = "container";
-        } else if (f.source === "transporter") {
-          urls = firstTransporter && Array.isArray(firstTransporter[f.field]) ? firstTransporter[f.field] : [];
-          uploadType = "section"; // 'section' is used in QueriesPanel for transporterDetails
-        }
-
-        if (urls.length > 0) {
-          urls.forEach(url => {
-            if (url) links.push({ title: f.title, url, field: f.field, uploadType });
-          });
+        if (f.source === "container") {
+          const containers = job.containers || [];
+          if (containers.length === 0) {
+            links.push({ title: f.title, url: null, field: f.field, uploadType: "container", idx: 0 });
+          } else {
+            containers.forEach((c, cIdx) => {
+              const urls = Array.isArray(c[f.field]) ? c[f.field] : [];
+              const cNo = c.containerNo || c.container_no || `#${cIdx + 1}`;
+              const displayTitle = containers.length > 1 ? `${f.title} (${cNo})` : f.title;
+              if (urls.length > 0) {
+                urls.forEach(url => {
+                  if (url) links.push({ title: displayTitle, url, field: f.field, uploadType: "container", idx: cIdx });
+                });
+              } else {
+                links.push({ title: displayTitle, url: null, field: f.field, uploadType: "container", idx: cIdx });
+              }
+            });
+          }
+        } else if (f.source === "section") {
+          const sectionData = ops ? ops[f.field] || [] : [];
+          if (sectionData.length === 0) {
+            links.push({ title: f.title, url: null, field: f.field, uploadType: "section", idx: 0 });
+          } else {
+            sectionData.forEach((sItem, sIdx) => {
+              const urls = Array.isArray(sItem.images) ? sItem.images : [];
+              const sName = sItem.transporterName || sItem.name || `${sIdx + 1}`;
+              const displayTitle = sectionData.length > 1 ? `${f.title} (${sName})` : f.title;
+              if (urls.length > 0) {
+                urls.forEach(url => {
+                  if (url) links.push({ title: displayTitle, url, field: f.field, uploadType: "section", idx: sIdx });
+                });
+              } else {
+                links.push({ title: displayTitle, url: null, field: f.field, uploadType: "section", idx: sIdx });
+              }
+            });
+          }
+        } else if (f.source === "toplevel") {
+          const urls = Array.isArray(job[f.field]) ? job[f.field] : [];
+          if (urls.length > 0) {
+            urls.forEach(url => {
+              if (url) links.push({ title: f.title, url, field: f.field, uploadType: "toplevel" });
+            });
+          } else {
+            links.push({ title: f.title, url: null, field: f.field, uploadType: "toplevel" });
+          }
         } else {
-          links.push({ title: f.title, url: null, field: f.field, uploadType });
+          // source === "status"
+          const urls = Array.isArray(status[f.field]) ? status[f.field] : [];
+          if (urls.length > 0) {
+            urls.forEach(url => {
+              if (url) links.push({ title: f.title, url, field: f.field, uploadType: "status" });
+            });
+          } else {
+            links.push({ title: f.title, url: null, field: f.field, uploadType: "status" });
+          }
         }
       });
     });
@@ -3534,6 +3636,17 @@ const ExportJobsTable = () => {
             if (updates.egm_no) fullJob.egm_no = updates.egm_no;
             if (updates.egm_date) fullJob.egm_date = updates.egm_date;
 
+            // Auto-populate Container and Seal no if exactly one container is present
+            if (updates.container_no || updates.seal_no) {
+              if (!fullJob.containers || fullJob.containers.length === 0) {
+                fullJob.containers = [{}];
+              }
+              if (fullJob.containers.length === 1) {
+                if (updates.container_no) fullJob.containers[0].containerNo = updates.container_no;
+                if (updates.seal_no) fullJob.containers[0].sealNo = updates.seal_no;
+              }
+            }
+
             // Update drawback fields (now inside drawbackDetailsSchema within products of invoices)
             if (updates.drawback_scroll_no || updates.drawback_scroll_date || updates.rosctl_scroll_no || updates.rosctl_scroll_date) {
               if (fullJob.invoices && fullJob.invoices.length > 0) {
@@ -3842,7 +3955,37 @@ const ExportJobsTable = () => {
                   )}
                 </div>
 
-                <div onClick={(e) => e.stopPropagation()} style={{ marginLeft: '8px' }}>
+                <div onClick={(e) => e.stopPropagation()} style={{ marginLeft: '8px', display: 'flex', alignItems: 'center' }}>
+                  {link.url && (
+                    <QuickDeleteButton
+                      job={selectedDocJob}
+                      field={link.field}
+                      url={link.url}
+                      uploadType={link.uploadType || "status"}
+                      idx={link.idx || 0}
+                      onSuccess={() => {
+                        setJobs((prevJobs) =>
+                          prevJobs.map((j) => {
+                            if (j._id === selectedDocJob._id) {
+                              const updatedJob = JSON.parse(JSON.stringify(j));
+                              if (link.uploadType === "toplevel") {
+                                updatedJob[link.field] = updatedJob[link.field].filter(u => u !== link.url);
+                              } else if (link.uploadType === "section") {
+                                updatedJob.operations[0][link.field][link.idx].images = updatedJob.operations[0][link.field][link.idx].images.filter(u => u !== link.url);
+                              } else if (link.uploadType === "container") {
+                                updatedJob.containers[link.idx][link.field] = updatedJob.containers[link.idx][link.field].filter(u => u !== link.url);
+                              } else {
+                                updatedJob.operations[0].statusDetails[0][link.field] = updatedJob.operations[0].statusDetails[0][link.field].filter(u => u !== link.url);
+                              }
+                              setSelectedDocJob(updatedJob);
+                              return updatedJob;
+                            }
+                            return j;
+                          })
+                        );
+                      }}
+                    />
+                  )}
                   <QuickUploadButton
                     job={selectedDocJob}
                     field={link.field}
@@ -3852,40 +3995,26 @@ const ExportJobsTable = () => {
                       setJobs((prevJobs) =>
                         prevJobs.map((j) => {
                           if (j._id === selectedDocJob._id) {
+                            const updatedJob = JSON.parse(JSON.stringify(j));
                             if (link.uploadType === "toplevel") {
-                              const currFiles = Array.isArray(j[link.field]) ? j[link.field] : [];
-                              return { ...j, [link.field]: [...currFiles, url] };
-                            }
-
-                            const newOps = JSON.parse(JSON.stringify(j.operations || []));
-                            if (!newOps[0]) newOps[0] = {};
-
-                            if (link.uploadType === "section") {
-                              if (!Array.isArray(newOps[0][link.field])) newOps[0][link.field] = [];
-                              while (newOps[0][link.field].length <= (link.idx || 0)) {
-                                newOps[0][link.field].push({});
-                              }
-                              const currFiles = Array.isArray(newOps[0][link.field][link.idx || 0].images)
-                                ? newOps[0][link.field][link.idx || 0].images
-                                : [];
-                              newOps[0][link.field][link.idx || 0].images = [...currFiles, url];
+                              if (!Array.isArray(updatedJob[link.field])) updatedJob[link.field] = [];
+                              updatedJob[link.field].push(url);
+                            } else if (link.uploadType === "section") {
+                              if (!Array.isArray(updatedJob.operations[0][link.field])) updatedJob.operations[0][link.field] = [];
+                              if (!updatedJob.operations[0][link.field][link.idx]) updatedJob.operations[0][link.field][link.idx] = { images: [] };
+                              if (!Array.isArray(updatedJob.operations[0][link.field][link.idx].images)) updatedJob.operations[0][link.field][link.idx].images = [];
+                              updatedJob.operations[0][link.field][link.idx].images.push(url);
                             } else if (link.uploadType === "container") {
-                              const newContainers = JSON.parse(JSON.stringify(j.containers || []));
-                              if (!newContainers[0]) newContainers[0] = {};
-                              const currFiles = Array.isArray(newContainers[0][link.field]) ? newContainers[0][link.field] : [];
-                              newContainers[0][link.field] = [...currFiles, url];
-                              return { ...j, containers: newContainers };
+                              if (!updatedJob.containers[link.idx]) updatedJob.containers[link.idx] = {};
+                              if (!Array.isArray(updatedJob.containers[link.idx][link.field])) updatedJob.containers[link.idx][link.field] = [];
+                              updatedJob.containers[link.idx][link.field].push(url);
                             } else {
-                              if (!newOps[0].statusDetails) newOps[0].statusDetails = [{}];
-                              if (!newOps[0].statusDetails[0]) newOps[0].statusDetails[0] = {};
-
-                              const currFiles = Array.isArray(newOps[0].statusDetails[0][link.field])
-                                ? newOps[0].statusDetails[0][link.field]
-                                : [];
-                              newOps[0].statusDetails[0][link.field] = [...currFiles, url];
+                              if (!updatedJob.operations[0].statusDetails[0]) updatedJob.operations[0].statusDetails[0] = {};
+                              if (!Array.isArray(updatedJob.operations[0].statusDetails[0][link.field])) updatedJob.operations[0].statusDetails[0][link.field] = [];
+                              updatedJob.operations[0].statusDetails[0][link.field].push(url);
                             }
-
-                            return { ...j, operations: newOps };
+                            setSelectedDocJob(updatedJob);
+                            return updatedJob;
                           }
                           return j;
                         })

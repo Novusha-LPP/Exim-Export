@@ -233,7 +233,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
               </td>
               <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
                  <div style="margin-bottom: 2px;"><strong>LEO Date</strong></div>
-                 <div>${formatDate(data.statusDetails?.[0]?.leoDate)}</div>
+                 <div>${formatDate(statusDetails.leoDate)}</div>
               </td>
             </tr>
           </table>
