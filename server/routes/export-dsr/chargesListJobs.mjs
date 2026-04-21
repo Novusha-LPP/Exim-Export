@@ -101,6 +101,7 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
         if (normalizedStatus === "pending") {
              filter.$and.push({
                 status: { $regex: "^pending$", $options: "i" },
+                send_for_billing: { $ne: true },
                 $or: [
                     { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
                     { "operations.statusDetails": { $size: 0 } }

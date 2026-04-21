@@ -25,6 +25,7 @@ import {
   CardContent,
   Checkbox,
   FormControlLabel,
+  Tooltip
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
@@ -33,6 +34,7 @@ import ImagePreview from "../../../gallery/ImagePreview.js";
 import DateInput from "../../../common/DateInput.js";
 
 const ChargesTab = ({ job, formik, isEditable = true }) => {
+  const [chargesCount, setChargesCount] = React.useState(0);
   // Try every known location where the job _id could live
   const parentId =
     job?._id ||
@@ -95,6 +97,7 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
           containerCount={containerCount}
           hideTabs={false}
           isEditable={isEditable}
+          onChargesCountChange={setChargesCount}
         />
 
         {/* Fine Section */}
@@ -226,7 +229,7 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
               </FieldArray>
             </CardContent>
           </Card>
-  
+
           {/* Invoice & Documents Section */}
           <Card sx={sectionCardStyle}>
             <Box sx={headerBoxStyle}>
@@ -291,26 +294,64 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
                     </Box>
                   </Box>
                 </Grid>
-                <Grid item xs={12} md={2} sx={{ display: 'flex', alignItems: 'center', pt: { md: 3.5 } }}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={formik.values.financial_lock || false}
-                        onChange={(e) => formik.setFieldValue("financial_lock", e.target.checked)}
-                        color="primary"
-                      />
-                    }
-                    label={
-                      <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
-                        Financial Lock
-                      </Typography>
-                    }
-                  />
-                </Grid>
               </Grid>
             </CardContent>
           </Card>
         </fieldset>
+
+        <Card sx={sectionCardStyle}>
+          <CardContent sx={{ p: 2 }}>
+            <Grid container spacing={4} alignItems="center">
+              <Grid item xs={12} md={12} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formik.values.financial_lock || false}
+                      onChange={(e) => formik.setFieldValue("financial_lock", e.target.checked)}
+                      color="primary"
+                    />
+                  }
+                  label={
+                    <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+                      Financial Lock
+                    </Typography>
+                  }
+                />
+                <FormControlLabel
+                  control={
+                    <Tooltip title={chargesCount === 0 ? "Please add at least one charge before sending for billing" : ""}>
+                      <span>
+                        <Checkbox
+                          checked={formik.values.send_for_billing || false}
+                          disabled={chargesCount === 0}
+                          onChange={(e) => {
+                            formik.setFieldValue("send_for_billing", e.target.checked);
+                            if (e.target.checked) {
+                              formik.setFieldValue("send_for_billing_date", new Date().toISOString());
+                            }
+                          }}
+                          color="success"
+                        />
+                      </span>
+                    </Tooltip>
+                  }
+                  label={
+                    <Typography
+                      sx={{
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: chargesCount === 0 ? '#94a3b8' : '#16a34a',
+                        cursor: chargesCount === 0 ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      Send for Billing
+                    </Typography>
+                  }
+                />
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
       </Box>
     </FormikProvider>
   );

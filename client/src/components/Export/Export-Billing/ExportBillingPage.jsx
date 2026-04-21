@@ -43,6 +43,7 @@ import { generatePaymentRequestPDF } from "../../../utils/paymentRequestPrint";
 import { generatePurchaseBookPDF } from "../../../utils/purchaseBookPrint";
 
 const PAYMENT_TABS = [
+  { key: "billing-pending", label: "Billing Pending" },
   { key: "payment-requested", label: "Payment Requested" },
   { key: "payment", label: "Payment" },
   { key: "payment-completed", label: "Payment Completed" },
@@ -50,6 +51,7 @@ const PAYMENT_TABS = [
 ];
 
 const PURCHASE_TABS = [
+  { key: "billing-pending", label: "Billing Pending" },
   { key: "purchase-book-requested", label: "Purchase Book Requested" },
   { key: "purchase-book", label: "Purchase Book" },
   { key: "purchase-book-completed", label: "Purchase Book Completed" },

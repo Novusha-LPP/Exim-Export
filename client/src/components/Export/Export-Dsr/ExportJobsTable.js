@@ -64,6 +64,7 @@ const ResponsiveStyles = () => (
       @media (max-width: 1200px) {
         .toolbar-responsive {
           justify-content: flex-start !important;
+          flex-wrap: wrap !important;
         }
         .search-container-responsive {
           margin-left: 0 !important;
@@ -77,29 +78,34 @@ const ResponsiveStyles = () => (
 
       @media (max-width: 768px) {
         .wrapper-responsive {
-          padding: 5px !important;
+          padding: 4px !important;
         }
         .tab-container-responsive {
           overflow-x: auto !important;
           white-space: nowrap !important;
           scrollbar-width: none !important;
+          padding-bottom: 4px !important;
         }
         .tab-container-responsive::-webkit-scrollbar {
           display: none !important;
         }
         .toolbar-responsive {
-          padding: 8px !important;
-          gap: 8px !important;
+          padding: 6px !important;
+          gap: 6px !important;
         }
         .toolbar-responsive > * {
           flex-grow: 1 !important;
-          min-width: calc(50% - 8px) !important;
+          min-width: calc(50% - 6px) !important;
+          height: 32px !important;
         }
         .search-container-responsive {
           min-width: 100% !important;
         }
         .table-container-responsive {
-          max-height: calc(100vh - 250px) !important;
+          max-height: calc(100vh - 220px) !important;
+        }
+        .s-td {
+          padding: 4px 6px !important;
         }
       }
 
@@ -108,25 +114,30 @@ const ResponsiveStyles = () => (
           min-width: 100% !important;
         }
         .page-title-responsive {
-          font-size: 16px !important;
+          font-size: 14px !important;
+        }
+        .tab-responsive {
+          padding: 6px 10px !important;
+          font-size: 11px !important;
         }
       }
 
       /* Custom scrollbar for better look */
       .table-container-responsive::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
       }
       .table-container-responsive::-webkit-scrollbar-track {
-        background: #f1f1f1;
+        background: #f8fafc;
       }
       .table-container-responsive::-webkit-scrollbar-thumb {
         background: #cbd5e1;
-        border-radius: 4px;
+        border-radius: 10px;
       }
       .table-container-responsive::-webkit-scrollbar-thumb:hover {
         background: #94a3b8;
       }
+
     `}
   </style>
 );
@@ -1526,10 +1537,10 @@ const ExportJobsTable = () => {
 
     // 1. eSanchit Documents
     if (job.eSanchitDocuments && Array.isArray(job.eSanchitDocuments) && job.eSanchitDocuments.some(d => d.fileUrl)) {
-      links.push({ title: "eSanchit Documents", isHeader: true });
+      links.push({ title: "ESANCHIT DOCUMENTS", isHeader: true });
       job.eSanchitDocuments.forEach((doc, idx) => {
         if (doc.fileUrl) {
-          links.push({ title: `eSanchit ${idx + 1}`, url: doc.fileUrl, field: null });
+          links.push({ title: `ESANCHIT ${idx + 1}`, url: doc.fileUrl, field: null });
         }
       });
     }
@@ -1881,49 +1892,53 @@ const ExportJobsTable = () => {
           <div style={s.tabContainer} className="tab-container-responsive">
             <button
               style={
-                activeTab === "Requested" ? { ...s.tab, ...s.activeTab } : s.tab
+                activeTab === "Pending" ? { ...s.tab, ...s.activeTab } : s.tab
               }
-              onClick={() => setActiveTab("Requested")}
+              onClick={() => setActiveTab("Pending")}
             >
-              Requested{" "}
+              Pending{" "}
               <span
                 style={
-                  activeTab === "Requested"
+                  activeTab === "Pending"
                     ? { ...s.badge, ...s.activeBadge }
                     : s.badge
                 }
               ></span>
             </button>
-            <button
-              style={
-                activeTab === "Active" ? { ...s.tab, ...s.activeTab } : s.tab
-              }
-              onClick={() => setActiveTab("Active")}
-            >
-              Active{" "}
-              <span
+            {!isOperationModule && !isChargesModule && (
+              <button
                 style={
-                  activeTab === "Active"
-                    ? { ...s.badge, ...s.activeBadge }
-                    : s.badge
+                  activeTab === "Booking Pending" ? { ...s.tab, ...s.activeTab } : s.tab
                 }
-              ></span>
-            </button>
-            <button
-              style={
-                activeTab === "Operations" ? { ...s.tab, ...s.activeTab } : s.tab
-              }
-              onClick={() => setActiveTab("Operations")}
-            >
-              Operations{" "}
-              <span
+                onClick={() => setActiveTab("Booking Pending")}
+              >
+                Booking Pending{" "}
+                <span
+                  style={
+                    activeTab === "Booking Pending"
+                      ? { ...s.badge, ...s.activeBadge }
+                      : s.badge
+                  }
+                ></span>
+              </button>
+            )}
+            {!isOperationModule && !isChargesModule && (
+              <button
                 style={
-                  activeTab === "Operations"
-                    ? { ...s.badge, ...s.activeBadge }
-                    : s.badge
+                  activeTab === "Handover Pending" ? { ...s.tab, ...s.activeTab } : s.tab
                 }
-              ></span>
-            </button>
+                onClick={() => setActiveTab("Handover Pending")}
+              >
+                Handover Pending{" "}
+                <span
+                  style={
+                    activeTab === "Handover Pending"
+                      ? { ...s.badge, ...s.activeBadge }
+                      : s.badge
+                  }
+                ></span>
+              </button>
+            )}
             {!isOperationModule && !isChargesModule && (
               <button
                 style={
@@ -2398,7 +2413,7 @@ const ExportJobsTable = () => {
                           cursor: "default",
                           transition: "all 0.2s ease",
                         }}
-                        className="table-row-hover"
+                        className="table-row-hover job-row-glow"
                       >
                         {/* <td
                         style={{
@@ -2869,9 +2884,9 @@ const ExportJobsTable = () => {
                                           </IconButton>
                                         </div>
 
-                                        {container.size && (
-                                          <span style={{ fontSize: '9px', color: '#475569', fontWeight: "800" }}>
-                                            {container.size}
+                                        {container.type && (
+                                          <span style={{ fontSize: '9px', color: '#445566', fontWeight: "900", backgroundColor: "#e2e8f0", padding: "1px 4px", borderRadius: "3px" }}>
+                                            {container.type.toUpperCase()}
                                           </span>
                                         )}
                                       </div>
@@ -4015,28 +4030,28 @@ const ExportJobsTable = () => {
             </ListSubheader>
 
             <ExportChecklistGenerator jobNo={selectedGenDocJob?.job_no} renderAsIcon={false}>
-              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>CHECKLIST</MenuItem>
+              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CHECKLIST</MenuItem>
             </ExportChecklistGenerator>
 
             <FileCoverGenerator jobNo={selectedGenDocJob?.job_no}>
-              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>FILE COVER</MenuItem>
+              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FILE COVER</MenuItem>
             </FileCoverGenerator>
 
             {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SACHANA")) && (
               <ConsignmentNoteGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>FORWARDING NOTE (SACHANA)</MenuItem>
+                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (SACHANA)</MenuItem>
               </ConsignmentNoteGenerator>
             )}
 
             {(selectedGenDocJob?.custom_house?.toUpperCase().includes("THAR")) && (
               <ForwardingNoteTharGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>FORWARDING NOTE (THAR)</MenuItem>
+                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (THAR)</MenuItem>
               </ForwardingNoteTharGenerator>
             )}
 
             {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SABARMATI") || selectedGenDocJob?.custom_house?.toUpperCase().includes("CONCOR")) && (
               <ConcorForwardingNoteGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>FORWARDING NOTE (CONCOR)</MenuItem>
+                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (CONCOR)</MenuItem>
               </ConcorForwardingNoteGenerator>
             )}
 
@@ -4046,16 +4061,16 @@ const ExportJobsTable = () => {
               selectedGenDocJob?.transportMode !== "AIR") && (
                 <>
                   <AnnexureCGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>ANNEXURE C</MenuItem>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>ANNEXURE C</MenuItem>
                   </AnnexureCGenerator>
                   <VGMAuthorizationGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>VGM AUTHORIZATION</MenuItem>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>VGM AUTHORIZATION</MenuItem>
                   </VGMAuthorizationGenerator>
                   <FreightCertificateGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>FREIGHT CERTIFICATE</MenuItem>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FREIGHT CERTIFICATE</MenuItem>
                   </FreightCertificateGenerator>
                   <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px' }}>BILL OF LADING</MenuItem>
+                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>BILL OF LADING</MenuItem>
                   </BillOfLadingGenerator>
                 </>
               )}
@@ -4077,7 +4092,7 @@ const ExportJobsTable = () => {
                 borderBottom: '2px solid #bbf7d0'
               }}
             >
-              Export SB Flat File (.sb)
+              EXPORT SB FLAT FILE (.SB)
             </MenuItem>
           </>
         ))()}

@@ -6,8 +6,7 @@ import UserModel from "../../model/userModel.mjs";
 const router = express.Router();
 
 const PAYMENT_TABS = [
-  "export-billing",
-  "clearance-completed",
+  "billing-pending",
   "payment-requested",
   "payment",
   "payment-completed",
@@ -15,8 +14,7 @@ const PAYMENT_TABS = [
 ];
 
 const PURCHASE_TABS = [
-  "export-billing",
-  "clearance-completed",
+  "billing-pending",
   "purchase-book-requested",
   "purchase-book",
   "purchase-book-completed",
@@ -94,6 +92,7 @@ function summarizeJob(job) {
     charge_heads: chargeHeads,
     charge_count: charges.length,
     financial_lock: Boolean(job.financial_lock),
+    send_for_billing: Boolean(job.send_for_billing),
     unresolved_queries: 0,
     // Add flags for tab logic
     hasPurchaseBook,
@@ -102,6 +101,8 @@ function summarizeJob(job) {
     hasPaymentRequest,
     allPrApproved,
     prCompleted,
+    hasUnprocessedPb: charges.some((c) => !c.purchase_book_no),
+    hasUnprocessedPr: charges.some((c) => !c.payment_request_no),
   };
 }
 
@@ -109,12 +110,9 @@ function matchesTab(job, workMode, tab) {
   const hasHandover = Boolean(job.handover_date);
   const hasBillingDone = Boolean(job.billing_date);
 
-  if (tab === "export-billing") {
-    return hasHandover && !hasBillingDone;
-  }
-
-  if (tab === "clearance-completed") {
-    return hasHandover;
+  if (tab === "billing-pending") {
+    // Show in billing-pending if flagged, regardless of partial progress
+    return job.send_for_billing;
   }
 
   if (tab === "export-completed-billing") {
@@ -264,6 +262,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       booking_no: 1,
       sb_no: 1,
       financial_lock: 1,
+      send_for_billing: 1,
       "invoices.invoiceNumber": 1,
       "containers.containerNo": 1,
       "containers.type": 1,

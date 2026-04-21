@@ -19,8 +19,9 @@ router.post("/api/export-dsr/test-dsr-email", async (req, res) => {
     }
 
     // 1. Find directory to get emails
+    const escapedName = String(exporterName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const directory = await Directory.findOne({ 
-        organization: { $regex: `^${exporterName}$`, $options: "i" } 
+        organization: { $regex: `^${escapedName}$`, $options: "i" } 
     });
 
     if (!directory) {

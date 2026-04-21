@@ -25,9 +25,16 @@ const ChargesGrid = ({
   invoiceValue = '',
   invoiceCount = 1,
   containerCount = 0,
-  cthNo = ''
+  cthNo = '',
+  onChargesCountChange = () => {}
 }) => {
   const { charges, loading, error, addChargesBulk, updateCharge, deleteCharge } = useCharges(parentId, parentModule);
+
+  React.useEffect(() => {
+    if (charges) {
+      onChargesCountChange(charges.length);
+    }
+  }, [charges, onChargesCountChange]);
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedIds, setSelectedIds] = useState(new Set());

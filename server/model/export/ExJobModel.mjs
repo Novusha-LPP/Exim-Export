@@ -1081,6 +1081,8 @@ const exportJobSchema = new mongoose.Schema(
     isJobCanceled: { type: Boolean, default: false },
     jobCanceledDate: { type: String, trim: true },
     cancellationReason: { type: String, trim: true },
+    send_for_billing: { type: Boolean, default: false },
+    send_for_billing_date: { type: Date },
     milestones: [milestoneSchema],
     customerremark: { type: String, trim: true },
     shipmenttype: { type: String, trim: true },

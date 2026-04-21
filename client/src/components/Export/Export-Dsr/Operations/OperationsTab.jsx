@@ -88,17 +88,6 @@ const getDefaultItem = (section) => {
       eGatePassUpload: [],
       icdPort: "",
       handoverForwardingNoteDate: "",
-      forwardingNoteUpload: [],
-      forwardingNoteDocUpload: [],
-      clpUpload: [],
-      completionCopyUpload: [],
-      movementCopyUpload: [],
-      shippingInstructionsUpload: [],
-      form13CopyUpload: [],
-      manualVgmUpload: [],
-      odexVgmUpload: [],
-      odexEsbUpload: [],
-      odexForm13Upload: [],
       handoverImageUpload: [],
       forwarderName: "",
       handoverConcorTharSanganaRailRoadDate: "",
@@ -810,11 +799,6 @@ const OperationsTab = ({ formik, isEditable = true }) => {
         formik.setFieldValue("port_of_loading", finalValue);
       }
 
-      // SYNC: leo_date with Header
-      if (section === "statusDetails" && field === "leoDate") {
-        formik.setFieldValue("leo_date", finalValue);
-      }
-
 
       return updatedOp;
     });
@@ -915,26 +899,26 @@ const OperationsTab = ({ formik, isEditable = true }) => {
       columns={[
         {
           field: "transporterName",
-          label: "TRANSPORTER NAME",
+          label: "Transporter Name",
           width: "110px",
         },
-        { field: "vehicleNo", label: "VEHICLE NO.", width: "10px" },
+        { field: "vehicleNo", label: "Vehicle No.", width: "10px" },
         {
           field: "noOfPackages",
-          label: "PACKAGES",
+          label: "Packages",
           type: "number",
           width: "80px",
         },
         {
           field: "grossWeightKgs",
-          label: "CARGO WT (KG)",
+          label: "Cargo Wt (KG)",
           type: "number",
           width: "100px",
         },
 
         {
           field: "images",
-          label: "IMAGES",
+          label: "Images",
           type: "upload",
           width: "180px",
           bucketPath: "transporter_images",
@@ -1002,9 +986,9 @@ const OperationsTab = ({ formik, isEditable = true }) => {
     <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
       <div style={styles.container}>
 
-      {/* Main Content Area */}
-      <div style={styles.contentArea}>{renderedContent}</div>
-    </div>
+        {/* Main Content Area */}
+        <div style={styles.contentArea}>{renderedContent}</div>
+      </div>
     </fieldset>
   );
 };
@@ -1347,34 +1331,34 @@ const StatusSection = ({
   const row1Fields = [
     {
       field: "gateInDate",
-      label: "GATE-IN/CARTING",
+      label: "Gate-In/Carting",
       type: "date",
       width: 1,
     },
     {
       field: "rms",
-      label: "RMS STATUS",
+      label: "RMS Status",
       type: "select",
       options: ["RMS", "Assessment"],
       width: 1,
     },
     {
       field: "goodsRegistrationDate",
-      label: "GOODS REGISTRATION",
+      label: "Goods Registration",
       type: "date",
       width: 1,
     },
     {
       field: "goodsReportDate",
-      label: "GOODS REPORT",
+      label: "Goods Report",
       type: "date",
       width: 1,
     },
-    { field: "leoDate", label: "LEO DATE", type: "date", width: 1 },
-    { field: "leoUpload", label: "LEO COPY", type: "upload", width: 1 },
+    { field: "leoDate", label: "LEO", type: "date", width: 1 },
+    { field: "leoUpload", label: "LEO Copy", type: "upload", width: 1 },
     {
       field: "icdPort",
-      label: "ICD/PORT",
+      label: "ICD/Port",
       type: "text",
       width: 1,
       readOnly: true,
@@ -1385,133 +1369,73 @@ const StatusSection = ({
   const allRow2Pool = [
     {
       field: "containerPlacementDate",
-      label: "CONTAINER PLACEMENT",
+      label: "Container Placement",
       type: "date",
       width: 1,
       hidden: isAir || isLclDock || isFclFactory,
     },
     {
       field: "stuffingDate",
-      label: "STUFFING",
+      label: "Stuffing",
       type: "date",
       width: 1,
       hidden: hideStuffing || isLclDock || isFclFactory,
     },
     {
       field: "stuffingSheetUpload",
-      label: "STUFFING SHEET",
+      label: "Stuffing Sheet",
       type: "upload",
       width: 1,
       hidden: hideStuffing || isLclDock || isFclFactory,
     },
     {
       field: "stuffingPhotoUpload",
-      label: "STUFFING PHOTO",
+      label: "Stuffing Photo",
       type: "upload",
       width: 1,
       hidden: hideStuffing,
     },
     {
       field: "eGatePassCopyDate",
-      label: "GATE PASS",
+      label: "Gate Pass",
       type: "date",
       width: 1,
     },
     {
       field: "eGatePassUpload",
-      label: "GATE PASS COPY",
+      label: "Gate Pass Copy",
       type: "upload",
       width: 1,
     },
     {
       field: "handoverForwardingNoteDate",
-      label: "FORWARDING NOTE DATE",
+      label: "Handover Doc",
       type: "date",
       width: 1,
     },
     {
-      field: "forwardingNoteDocUpload",
-      label: "FORWARDING NOTE",
-      type: "upload",
-      width: 1,
-    },
-    {
-      field: "clpUpload",
-      label: "CONTAINER LOAD PLAN (CLP)",
-      type: "upload",
-      width: 1,
-    },
-    {
-      field: "completionCopyUpload",
-      label: "COMPLETION COPY",
-      type: "upload",
-      width: 1,
-    },
-    {
-      field: "movementCopyUpload",
-      label: "MOVEMENT COPY",
-      type: "upload",
-      width: 1,
-    },
-    {
-      field: "shippingInstructionsUpload",
-      label: "SHIPPING INSTRUCTIONS",
-      type: "upload",
-      width: 1,
-    },
-    {
-      field: "manualVgmUpload",
-      label: "MANUAL VGM",
-      type: "upload",
-      width: 1,
-    },
-    {
-      field: "odexVgmUpload",
-      label: "ODEX VGM",
-      type: "upload",
-      width: 1,
-    },
-    {
-      field: "odexEsbUpload",
-      label: "ODEX ESB",
-      type: "upload",
-      width: 1,
-    },
-    {
-      field: "odexForm13Upload",
-      label: "ODEX FORM 13",
-      type: "upload",
-      width: 1,
-    },
-    {
-      field: "form13CopyUpload",
-      label: "FORM-13 COPY",
-      type: "upload",
-      width: 1,
-    },
-    {
       field: "handoverImageUpload",
-      label: "HANDOVER COPY",
+      label: "Handover Copy",
       type: "upload",
       width: 1,
       hidden: isAir || isLclDock,
     },
     {
       field: "forwarderName",
-      label: "FORWARDER",
+      label: "Forwarder",
       type: "text",
       width: 1,
     },
     {
       field: "dispatchDetails",
-      label: "DISPATCH TRACKING",
+      label: "Dispatch Tracking",
       type: "dispatch",
       width: 2,
       hidden: isAir || isLclDock,
     },
     {
       field: "operational_lock",
-      label: "OPERATIONAL LOCK",
+      label: "Operational Lock",
       type: "checkbox",
       width: 1,
     },
@@ -1950,40 +1874,40 @@ const StatusSection = ({
 
                   {/* Row 3 Grid - only rendered if there are overflow fields */}
                   {row3Fields.length > 0 && (
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: `repeat(${r3Cols}, 1fr)`,
-                    }}
-                  >
-                    {/* Headers 3 */}
-                    {row3Fields.map((f) => (
-                      <div
-                        key={`h3-${f.field}`}
-                        style={{
-                          ...styles.th,
-                          gridColumn: `span ${f.width || 1}`,
-                          borderBottom: "1px solid #cbd5e1",
-                          borderRight: "1px solid #e2e8f0",
-                        }}
-                      >
-                        {f.label}
-                      </div>
-                    ))}
-                    {/* Data 3 */}
-                    {row3Fields.map((f) => (
-                      <div
-                        key={`d3-${f.field}`}
-                        style={{
-                          ...styles.td,
-                          gridColumn: `span ${f.width || 1}`,
-                          borderRight: "1px solid #e2e8f0",
-                        }}
-                      >
-                        {renderCell(f, item, rowIdx)}
-                      </div>
-                    ))}
-                  </div>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: `repeat(${r3Cols}, 1fr)`,
+                      }}
+                    >
+                      {/* Headers 3 */}
+                      {row3Fields.map((f) => (
+                        <div
+                          key={`h3-${f.field}`}
+                          style={{
+                            ...styles.th,
+                            gridColumn: `span ${f.width || 1}`,
+                            borderBottom: "1px solid #cbd5e1",
+                            borderRight: "1px solid #e2e8f0",
+                          }}
+                        >
+                          {f.label}
+                        </div>
+                      ))}
+                      {/* Data 3 */}
+                      {row3Fields.map((f) => (
+                        <div
+                          key={`d3-${f.field}`}
+                          style={{
+                            ...styles.td,
+                            gridColumn: `span ${f.width || 1}`,
+                            borderRight: "1px solid #e2e8f0",
+                          }}
+                        >
+                          {renderCell(f, item, rowIdx)}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
