@@ -179,8 +179,8 @@ const airPortOptions = [
   "INAMD4 - AHMEDABAD AIR PORT",
 ];
 
-function CreateFreightEnquiry({ onCreate, onClose }) {
-  const [formData, setFormData] = useState(emptyForm);
+function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLabel = "Create Enquiry" }) {
+  const [formData, setFormData] = useState({ ...emptyForm, ...(initialData || {}) });
   const [organizations, setOrganizations] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
@@ -246,10 +246,11 @@ function CreateFreightEnquiry({ onCreate, onClose }) {
       }
 
       // Default options to show if search is empty or no results
-      const defaults = type === "AIR" ? airPortOptions : seaPortOptions;
+      const isAir = type.includes("Air");
+      const defaults = isAir ? airPortOptions : seaPortOptions;
       
       try {
-        const endpoint = type === "AIR" ? "airPorts" : (type === "SEA" ? "seaPorts" : "ports");
+        const endpoint = isAir ? "airPorts" : (type.includes("Sea") ? "seaPorts" : "ports");
         const res = await axios.get(`${import.meta.env.VITE_API_STRING}/${endpoint}`, {
           params: { search: search.trim(), limit: 100 }
         });
@@ -283,7 +284,7 @@ function CreateFreightEnquiry({ onCreate, onClose }) {
   }, [formData.organization_name, formData.shipment_type, formData.port_of_loading]);
 
   const handleChange = (field, value) => {
-    const upperFields = ["organization_name", "consignment_type", "goods_stuffed", "port_of_loading", "port_of_destination", "shipment_type", "dimension", "remarks"];
+    const upperFields = ["organization_name", "consignment_type", "goods_stuffed", "port_of_loading", "port_of_destination", "dimension", "remarks"];
     setFormData((prev) => ({
       ...prev,
       [field]: upperFields.includes(field) ? toUpper(value) : value,
@@ -366,10 +367,10 @@ function CreateFreightEnquiry({ onCreate, onClose }) {
                   onChange={(e) => handleChange("shipment_type", e.target.value)}
                 >
                   <option value="">SELECT</option>
-                  <option value="SEA">SEA</option>
-                  <option value="AIR">AIR</option>
-                  <option value="ROAD">ROAD</option>
-                  <option value="RAIL">RAIL</option>
+                  <option value="Import-Sea">Import - Sea</option>
+                  <option value="Export-Sea">Export - Sea</option>
+                  <option value="Import-Air">Import - Air</option>
+                  <option value="Export-Air">Export - Air</option>
                 </select>
               </div>
               <div style={s.col}>
@@ -569,7 +570,7 @@ function CreateFreightEnquiry({ onCreate, onClose }) {
             Cancel
           </button>
           <button type="submit" style={s.btnPrimary} disabled={requiredMissing || isSubmitting}>
-            {isSubmitting ? "Creating..." : "Create Enquiry"}
+            {isSubmitting ? "Processing..." : submitLabel}
           </button>
         </div>
       </form>

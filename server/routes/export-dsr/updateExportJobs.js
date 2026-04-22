@@ -1,6 +1,7 @@
 import express from "express";
 import ExportJobModel from "../../model/export/ExJobModel.mjs";
 import ExJobModel from "../../model/export/ExJobModel.mjs";
+import FreightEnquiryModel from "../../model/export/FreightEnquiryModel.mjs";
 import auditMiddleware from "../../middleware/auditTrail.mjs";
 import UserModel from "../../model/userModel.mjs";
 
@@ -565,6 +566,8 @@ router.get("/global-search-jobs", async (req, res) => {
           total_ar_amount: 1,
           outstanding_balance: 1,
           cha: 1,
+          freight_done: 1,
+          freight_enquiry_id: 1,
           isLocked: 1,
           branch_code: 1,
           transportMode: 1,
@@ -698,11 +701,18 @@ router.get("/exports/:status?", async (req, res) => {
       });
     }
 
+    // Separate General Jobs from Actual Jobs
+    if (status && status.toLowerCase() === "general-jobs") {
+      filter.$and.push({ isGeneralJob: true });
+    } else {
+      filter.$and.push({ isGeneralJob: { $ne: true } });
+    }
+
     // Status filtering logic with job tracking consideration
     // Job is considered "completed" if:
     // 1. Explicit status is "completed", OR
     // 2. jobTracking is enabled (regardless of milestone status)
-    if (status && status.toLowerCase() !== "all") {
+    if (status && status.toLowerCase() !== "all" && status.toLowerCase() !== "general-jobs") {
       const statusLower = status.toLowerCase();
 
       if (statusLower === "pending") {
@@ -821,7 +831,6 @@ router.get("/exports/:status?", async (req, res) => {
     }
 
     // Search filter
-    // Search filter
     if (search) {
       filter.$and.push({
         $or: [
@@ -829,21 +838,14 @@ router.get("/exports/:status?", async (req, res) => {
           { exporter: { $regex: search, $options: "i" } },
           { ieCode: { $regex: search, $options: "i" } },
           { "consignees.consignee_name": { $regex: search, $options: "i" } },
-
-          // 1. Search by SB Number (Shipping Bill)
           { sb_no: { $regex: search, $options: "i" } },
-
-          // 2. Search in Invoices Array (Invoice Number)
           { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
-
-          // 4. Search in Containers Array
           { "containers.containerNo": { $regex: search, $options: "i" } }
         ],
       });
     }
 
     if (pendingQueries === "true" || pendingQueries === true) {
-      // Import QueryModel dynamically if not at top
       const QueryModel = (await import("../../model/export/QueryModel.mjs")).default;
       const queryFilter = { status: "open" };
       const openQueries = await QueryModel.find(queryFilter).select("job_no").lean();
@@ -1042,6 +1044,7 @@ router.get("/exports/:status?", async (req, res) => {
       transportMode: 1,
       movement_type: 1,
       port_of_loading: 1,
+      isGeneralJob: 1,
       "operations.statusDetails.containerPlacementDate": 1,
       "operations.statusDetails.handoverForwardingNoteDate": 1,
       "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": 1,
@@ -1073,7 +1076,54 @@ router.get("/exports/:status?", async (req, res) => {
       lockedAt: 1
     };
 
-    // Execute queries in parallel
+    // When search is active, use aggregation to prioritize results by match type
+    // Priority: 1=job_no, 2=sb_no, 3=container, 4=invoice, 5=exporter/other
+    if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const aggPipeline = [
+        { $match: filter },
+        {
+          $addFields: {
+            _searchPriority: {
+              $switch: {
+                branches: [
+                  { case: { $regexMatch: { input: { $ifNull: ["$job_no", ""] }, regex: escapedSearch, options: "i" } }, then: 1 },
+                  { case: { $regexMatch: { input: { $ifNull: ["$sb_no", ""] }, regex: escapedSearch, options: "i" } }, then: 2 },
+                  { case: { $gt: [{ $size: { $filter: { input: { $ifNull: ["$containers", []] }, as: "c", cond: { $regexMatch: { input: { $ifNull: ["$$c.containerNo", ""] }, regex: escapedSearch, options: "i" } } } } }, 0] }, then: 3 },
+                  { case: { $gt: [{ $size: { $filter: { input: { $ifNull: ["$invoices", []] }, as: "inv", cond: { $regexMatch: { input: { $ifNull: ["$$inv.invoiceNumber", ""] }, regex: escapedSearch, options: "i" } } } } }, 0] }, then: 4 },
+                ],
+                default: 5
+              }
+            }
+          }
+        },
+        { $sort: { _searchPriority: 1, ...sort } },
+        { $project: selectProjection },
+      ];
+
+      const totalCount = await ExportJobModel.countDocuments(filter);
+      const jobs = await ExportJobModel.aggregate([
+        ...aggPipeline,
+        { $skip: skip },
+        { $limit: parseInt(limit) },
+      ]);
+
+      return res.json({
+        success: true,
+        data: {
+          jobs,
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(totalCount / parseInt(limit)),
+            totalCount,
+            hasNextPage: page < Math.ceil(totalCount / parseInt(limit)),
+            hasPrevPage: page > 1,
+          },
+        },
+      });
+    }
+
+    // No search - use standard find with sort
     const [jobs, totalCount] = await Promise.all([
       ExportJobModel.find(filter)
         .select(selectProjection)
@@ -1379,6 +1429,66 @@ router.post("/exports", auditMiddleware("Job"), async (req, res) => {
   }
 });
 
+// POST /api/create-general-job - Create a new general job
+router.post("/create-general-job", auditMiddleware("Job"), async (req, res) => {
+  try {
+    const { year } = req.body;
+    if (!year) return res.status(400).json({ success: false, message: "Year is required" });
+
+    // Generate next job number using max sequence finding
+    // Sequence: GEN/EXP/XXXX/YY-YY
+    const jobs = await ExportJobModel.find({
+      job_no: new RegExp(`^GEN/EXP/\\d+/${year}$`, 'i')
+    }).select('job_no').lean();
+
+    let maxNum = 0;
+    jobs.forEach(job => {
+      if (job && job.job_no) {
+        const parts = job.job_no.split('/');
+        const currentNum = parseInt(parts[2]);
+        if (!isNaN(currentNum) && currentNum > maxNum) {
+          maxNum = currentNum;
+        }
+      }
+    });
+
+    const nextNum = maxNum + 1;
+
+    const job_no = `GEN/EXP/${String(nextNum).padStart(4, '0')}/${year}`;
+
+    const requester = await UserModel.findOne({ username: req.headers["username"] || req.headers["x-username"] });
+    let branch_code = "";
+    if (requester && requester.selected_branches && requester.selected_branches.length > 0) {
+      const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+      branch_code = BRANCH_MAP[requester.selected_branches[0].toUpperCase()] || requester.selected_branches[0];
+    }
+
+    const newJobData = {
+      job_no,
+      jobNumber: job_no, // REQUIRED for unique index
+      year,
+      isGeneralJob: true,
+      status: "Pending",
+      exporter: "GENERAL JOB",
+      custom_house: "GEN",
+      branch_code: branch_code || "GEN",
+      job_date: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'),
+      createdBy: req.headers["username"] || "System",
+    };
+
+    const newJob = new ExportJobModel(newJobData);
+    const savedJob = await newJob.save();
+    res.status(201).json({ success: true, data: savedJob });
+  } catch (error) {
+    console.error("Error creating general job:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error creating general job",
+      error: error.message,
+    });
+  }
+});
+
 // POST /api/sync-all-job-statuses - One-time sync to match detailed status for all jobs
 router.post("/sync-all-job-statuses", async (req, res) => {
   try {
@@ -1423,9 +1533,34 @@ router.get("/:job_no(.*)", async (req, res, next) => {
 
     const username = req.headers["username"]; // Identify who is requesting
 
-    const exportJob = await ExJobModel.findOne({
+    let exportJob = await ExJobModel.findOne({
       job_no: { $regex: `^${job_no}$`, $options: "i" },
     });
+
+    // JIT CREATION: If not found and it's a Freight Forwarding enquiry, create from FreightEnquiry
+    if (!exportJob && job_no.startsWith("FF/")) {
+      const enquiry = await FreightEnquiryModel.findOne({
+        enquiry_no: job_no,
+        status: "Converted"
+      });
+      if (enquiry) {
+        console.log(`[JIT] Creating job record for converted enquiry: ${job_no}`);
+        exportJob = new ExJobModel({
+          job_no: enquiry.enquiry_no,
+          jobNumber: enquiry.enquiry_no,
+          year: String(new Date().getFullYear()).slice(-2) + "-" + String(new Date().getFullYear() + 1).slice(-2),
+          job_date: enquiry.enquiry_date || new Date().toISOString().split("T")[0],
+          exporter: enquiry.organization_name,
+          consignmentType: enquiry.consignment_type,
+          port_of_loading: enquiry.port_of_loading,
+          port_of_discharge: enquiry.port_of_destination,
+          isGeneralJob: true,
+          status: "Pending",
+          detailedStatus: "Created from Freight Enquiry"
+        });
+        await exportJob.save();
+      }
+    }
 
     if (!exportJob) {
       return res.status(404).json({ message: "Export job not found" });

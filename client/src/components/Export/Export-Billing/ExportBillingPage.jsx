@@ -48,6 +48,7 @@ const PAYMENT_TABS = [
   { key: "payment", label: "Payment" },
   { key: "payment-completed", label: "Payment Completed" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
+  { key: "general-jobs", label: "General Jobs" },
 ];
 
 const PURCHASE_TABS = [
@@ -56,6 +57,7 @@ const PURCHASE_TABS = [
   { key: "purchase-book", label: "Purchase Book" },
   { key: "purchase-book-completed", label: "Purchase Book Completed" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
+  { key: "general-jobs", label: "General Jobs" },
 ];
 
 function getCurrentFinancialYear() {
@@ -643,9 +645,9 @@ function BillingDetailsDialog({ open, onClose, row, requestNo, workMode, activeT
       <DialogActions sx={{ p: 2, borderTop: "1px solid #ccc", justifyContent: "space-between", gap: 2 }}>
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button
-            size="medium"
+            size="small"
             variant="outlined"
-            sx={{ fontWeight: 'bold', px: 3 }}
+            sx={{ fontWeight: 600, px: 2 }}
             onClick={async () => {
               if (!requestNo) {
                 return alert(`Select a specific ${refTitle} pill to print.`);
@@ -676,7 +678,7 @@ function BillingDetailsDialog({ open, onClose, row, requestNo, workMode, activeT
           >
             PRINT
           </Button>
-          <Button onClick={onClose} size="medium" variant="outlined" sx={{ fontWeight: 'bold', px: 3 }}>
+          <Button onClick={onClose} size="small" variant="outlined" sx={{ fontWeight: 600, px: 2 }}>
             CLOSE
           </Button>
         </Box>
@@ -684,13 +686,13 @@ function BillingDetailsDialog({ open, onClose, row, requestNo, workMode, activeT
           <Button
             variant="contained"
             color="error"
-            size="medium"
+            size="small"
             disabled={loading}
             onClick={() => {
               if (rejectMode) handleAction("reject");
               else setRejectMode(true);
             }}
-            sx={{ fontWeight: "700", px: 4, py: 1 }}
+            sx={{ fontWeight: "700", px: 2, py: 0.5, fontSize: '12px' }}
           >
             {loading && rejectMode ? "REJECTING..." : "REJECT REQUEST"}
           </Button>
@@ -698,10 +700,10 @@ function BillingDetailsDialog({ open, onClose, row, requestNo, workMode, activeT
             <Button
               variant="contained"
               color="success"
-              size="medium"
+              size="small"
               disabled={loading}
               onClick={() => handleAction("approve")}
-              sx={{ fontWeight: "700", px: 4, py: 1 }}
+              sx={{ fontWeight: "700", px: 2, py: 0.5, fontSize: '12px' }}
             >
               {loading && !rejectMode ? "APPROVING..." : "APPROVE REQUEST"}
             </Button>
@@ -836,6 +838,27 @@ function ExportBillingPage() {
     showUnresolvedOnly,
     user?.username,
   ]);
+
+  const handleCreateGeneralJob = async () => {
+    if (!window.confirm(`Create a new General Job for year ${selectedYear}?`)) return;
+    try {
+      setLoading(true);
+      const res = await axios.post(`${import.meta.env.VITE_API_STRING}/create-general-job`, {
+        year: selectedYear
+      }, {
+        headers: { username: user?.username || "" }
+      });
+      if (res.data.success) {
+        alert(`Job Created: ${res.data.data.job_no}`);
+        fetchRows();
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create general job.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchRows();
@@ -1221,6 +1244,28 @@ function ExportBillingPage() {
             <ToggleButton value="payment">Payment</ToggleButton>
             <ToggleButton value="purchase-book">Purchase Book</ToggleButton>
           </ToggleButtonGroup>
+
+          {activeTab === "general-jobs" && (
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<OpenInNewIcon />}
+              onClick={handleCreateGeneralJob}
+              sx={{
+                fontWeight: 700,
+                textTransform: "none",
+                borderRadius: "4px",
+                height: 32,
+                fontSize: '11px',
+                background: "linear-gradient(135deg, #1a237e 0%, #283593 100%)",
+                "&:hover": {
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                }
+              }}
+            >
+              Create Gen Job
+            </Button>
+          )}
         </Box>
       </Box>
 

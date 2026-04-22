@@ -65,9 +65,10 @@ router.post(
           newJobNo = `${branch_code}/${sequenceStr}/${yearFormat}`;
         }
 
-        // Check for duplicates
+        // Check for duplicates (only within the same job type)
         const existingJob = await ExportJobModel.findOne({
           job_no: { $regex: `^${newJobNo}$`, $options: "i" },
+          isGeneralJob: { $ne: true } // Manual jobs are actual jobs by default
         });
 
         if (existingJob) {
@@ -151,9 +152,12 @@ router.post(
     } catch (error) {
       console.error("Error adding export job:", error);
       if (error.code === 11000 || error.message.includes("duplicate")) {
+        // Try to extract the duplicate key from error message for better debugging
+        const conflictedNum = (error.message.match(/dup key: \{ [^:]+: "([^"]+)" \}/) || [null, "unknown"])[1];
         return res.status(409).json({
           success: false,
-          message: "Job number conflict detected. Please try again.",
+          message: `Job number conflict detected (${conflictedNum}). This number might already be in use or in a cancelled job. Please try another number.`,
+          error: error.message
         });
       }
       res.status(500).json({
@@ -222,12 +226,13 @@ router.post(
 
         const existingJob = await ExportJobModel.findOne({
           job_no: { $regex: `^${newJobNo}$`, $options: "i" },
+          isGeneralJob: sourceJob.isGeneralJob // Check duplicates within same type
         });
 
         if (existingJob) {
           return res.status(409).json({
             success: false,
-            message: `Job number ${newJobNo} already exists.`,
+            message: `Job number ${newJobNo} already exists in ${sourceJob.isGeneralJob ? 'General' : 'Actual'} Jobs.`,
           });
         }
 
@@ -300,9 +305,11 @@ router.post(
     } catch (error) {
       console.error("Error copying export job:", error);
       if (error.code === 11000 || error.message.includes("duplicate")) {
+        const conflictedNum = (error.message.match(/dup key: \{ [^:]+: "([^"]+)" \}/) || [null, "unknown"])[1];
         return res.status(409).json({
           success: false,
-          message: "Job number conflict detected. Please try again.",
+          message: `Job number conflict detected for ${conflictedNum}. Please try another number.`,
+          error: error.message
         });
       }
       res.status(500).json({
@@ -355,10 +362,50 @@ router.post("/api/jobs/suggest-sequence", async (req, res) => {
 // Route 4: Fix Index (Utility)
 router.delete("/api/jobs/fix-export-indexes", async (req, res) => {
   try {
-    await ExportJobModel.collection.dropIndex("account_fields.name_1");
-    res.json({ success: true, message: "Problematic index dropped successfully" });
+    // Drop old non-compound unique indexes if they exist
+    const collections = await ExportJobModel.db.db.listCollections({ name: ExportJobModel.collection.name }).toArray();
+    if (collections.length > 0) {
+      const indexes = await ExportJobModel.collection.indexes();
+      const indexesToDrop = ["jobNumber_1", "job_no_1", "account_fields.name_1"];
+      
+      for (const idxName of indexesToDrop) {
+        if (indexes.some(i => i.name === idxName)) {
+          await ExportJobModel.collection.dropIndex(idxName);
+          console.log(`Dropped legacy index: ${idxName}`);
+        }
+      }
+    }
+
+    // Trigger Mongoose to re-recreate indexes based on current schema
+    await ExportJobModel.syncIndexes();
+
+    res.json({ 
+      success: true, 
+      message: "Legacy unique indexes dropped and new compound indexes synced successfully." 
+    });
   } catch (error) {
-    console.error("Error dropping index:", error);
+    console.error("Error fixing indexes:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Route 5: Permanent Delete Job (Utility)
+router.delete("/api/jobs/permanent-delete/:job_no", async (req, res) => {
+  try {
+    const raw = req.params.job_no || "";
+    const job_no = decodeURIComponent(raw);
+
+    const deleted = await ExportJobModel.findOneAndDelete({ 
+      job_no: { $regex: `^${job_no}$`, $options: "i" } 
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Job not found" });
+    }
+
+    res.json({ success: true, message: `Job ${job_no} permanently deleted from database.` });
+  } catch (error) {
+    console.error("Error deleting job:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

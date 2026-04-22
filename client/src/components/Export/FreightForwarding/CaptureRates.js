@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import CreateFreightEnquiry from "./CreateFreightEnquiry";
 import FreightQuotation from "./FreightQuotation";
 
 const THEME = {
@@ -22,25 +23,39 @@ const s = {
 
 function CaptureRates({ enquiry, onUpdate, forwarders }) {
   const [showAdd, setShowAdd] = useState(false);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [selectedRateForQuote, setSelectedRateForQuote] = useState(null);
   const [newRate, setNewRate] = useState({
     forwarder_name: "",
     base_rates: [
-      { charge_name: "Agency Charges", amount: 0 },
-      { charge_name: "VGM / ESB / FORM-13 filing", amount: 0 },
-      { charge_name: "Certificate of Origin", amount: 0 },
-      { charge_name: "Concor Charges", amount: 0 },
-      { charge_name: "Transportation Charges", amount: 0 },
-      { charge_name: "Lift on Lift off", amount: 0 },
+      { charge_name: "Agency Charges", amount: 2750 },
+      { charge_name: "VGM / ESB / FORM-13 filing", amount: 500 },
+      { charge_name: "Certificate of Origin", amount: 500 },
+      { charge_name: "Concor Charges", amount: 25000 },
+      { charge_name: "Transportation Charges", amount: 10000 },
+      { charge_name: "Lift on Lift off", amount: 2500 },
     ],
     shipping_line_rates: [
-      { charge_name: "Ocean Freight", amount: 0 },
-      { charge_name: "Terminal Handling Charges", amount: 0 },
-      { charge_name: "BL Charges", amount: 0 },
-      { charge_name: "Seal Charges", amount: 0 },
-      { charge_name: "MUC Charges", amount: 0 },
+      { charge_name: "Ocean Freight", amount: 300 },
+      { charge_name: "Terminal Handling Charges", amount: 15000 },
+      { charge_name: "BL Charges", amount: 5500 },
+      { charge_name: "Seal Charges", amount: 1000 },
+      { charge_name: "MUC Charges", amount: 175 },
     ],
   });
+
+  const handleUpdateEnquiryDetails = async (updatedData) => {
+    try {
+      const res = await axios.put(`${import.meta.env.VITE_API_STRING}/freight-enquiries/${enquiry._id}`, updatedData);
+      if (res.data.success) {
+        onUpdate(res.data.data);
+        setIsEditingDetails(false);
+        alert("Enquiry updated successfully");
+      }
+    } catch (err) {
+      alert("Error updating enquiry details");
+    }
+  };
 
   const handleSaveRate = async () => {
     try {
@@ -61,12 +76,91 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
     }
   };
 
+  const handleUpdateStatus = async (newStatus) => {
+    if (!window.confirm(`Are you sure you want to mark this enquiry as ${newStatus}?`)) return;
+    try {
+      const res = await axios.put(`${import.meta.env.VITE_API_STRING}/freight-enquiries/${enquiry._id}`, { status: newStatus });
+      if (res.data.success) {
+        onUpdate(res.data.data);
+        alert(`Enquiry marked as ${newStatus}`);
+      }
+    } catch (err) {
+      alert("Error updating status");
+    }
+  };
+
+  const handlePushChargesToJob = async (rate) => {
+    if (!enquiry.source_job_no) {
+      alert("No source job linked to this enquiry.");
+      return;
+    }
+    if (!window.confirm(`Push these charges to Job ${enquiry.source_job_no}?`)) return;
+
+    try {
+      // 1. Fetch job to get its _id (using the existing search endpoint)
+      const jobRes = await axios.get(`${import.meta.env.VITE_API_STRING}/exports`, {
+        params: { search: enquiry.source_job_no }
+      });
+      const job = jobRes.data.data.find(j => j.job_no === enquiry.source_job_no);
+      if (!job) {
+        alert("Source Job not found. Internal ID required for pushing charges.");
+        return;
+      }
+
+      // 2. Prepare charges from rates
+      const charges = [
+        ...rate.base_rates.map(r => ({
+          chargeHead: r.charge_name,
+          category: "Logistics",
+          parentId: job._id || job.id,
+          parentModule: "Job",
+          cost: {
+            amount: Number(r.amount),
+            total: Number(r.amount),
+            particulars: r.charge_name,
+            vendorName: rate.forwarder_name,
+            basicAmount: Number(r.amount),
+            netPayable: Number(r.amount)
+          }
+        })),
+        ...rate.shipping_line_rates.map(r => ({
+          chargeHead: r.charge_name,
+          category: "Logistics",
+          parentId: job._id || job.id,
+          parentModule: "Job",
+          cost: {
+            amount: Number(r.amount),
+            total: Number(r.amount),
+            particulars: r.charge_name,
+            vendorName: rate.forwarder_name,
+            basicAmount: Number(r.amount),
+            netPayable: Number(r.amount)
+          }
+        }))
+      ].filter(c => c.cost.amount > 0);
+
+      if (charges.length === 0) {
+        alert("No charges with amount > 0 to push.");
+        return;
+      }
+
+      // 3. Post to bulk charges
+      const res = await axios.post(`${import.meta.env.VITE_API_STRING}/charges/bulk`, { charges });
+      if (res.data.success) {
+        alert("Charges successfully transferred to Job!");
+      }
+    } catch (err) {
+      console.error("Error pushing charges:", err);
+      alert("Error pushing charges to job. Check console for details.");
+    }
+  };
+
   if (selectedRateForQuote) {
     return (
-      <FreightQuotation 
-        enquiry={enquiry} 
-        selectedRate={selectedRateForQuote} 
-        onBack={() => setSelectedRateForQuote(null)} 
+      <FreightQuotation
+        enquiry={enquiry}
+        selectedRate={selectedRateForQuote}
+        onBack={() => setSelectedRateForQuote(null)}
       />
     );
   }
@@ -74,22 +168,65 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
   return (
     <div style={{ padding: "20px" }}>
       <div style={s.section}>
-        <div style={s.title}>Enquiry Details</div>
-        <div style={s.grid}>
-          {Object.entries({
-            "No": enquiry.enquiry_no,
-            "Org": enquiry.organization_name,
-            "POL": enquiry.port_of_loading,
-            "POD": enquiry.port_of_destination,
-            "Type": enquiry.consignment_type,
-            "Stuffing": enquiry.goods_stuffed
-          }).map(([k, v]) => (
-            <div key={k}>
-              <div style={s.label}>{k}</div>
-              <div style={s.value}>{v}</div>
-            </div>
-          ))}
+        <div style={{ ...s.title, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>Enquiry Details</span>
+          <div style={{ display: "flex", gap: "8px" }}>
+            {enquiry.status === "Open" && (
+              <>
+                <button
+                  onClick={() => handleUpdateStatus("Converted")}
+                  style={{ ...s.btn, backgroundColor: "#059669", color: "#fff" }}
+                >
+                  Success
+                </button>
+                <button
+                  onClick={() => handleUpdateStatus("Rejected")}
+                  style={{ ...s.btn, backgroundColor: "#dc2626", color: "#fff" }}
+                >
+                  Reject
+                </button>
+              </>
+            )}
+            {!isEditingDetails && (
+              <button
+                onClick={() => setIsEditingDetails(true)}
+                style={{ ...s.btn, backgroundColor: "#6366f1", color: "#fff" }}
+              >
+                Edit Info
+              </button>
+            )}
+          </div>
         </div>
+
+        {isEditingDetails ? (
+          <div style={{ background: "#fff", border: `1px solid ${THEME.border}`, borderRadius: "8px", overflow: "hidden" }}>
+            <CreateFreightEnquiry
+              initialData={enquiry}
+              submitLabel="Save Changes"
+              onCreate={handleUpdateEnquiryDetails}
+              onClose={() => setIsEditingDetails(false)}
+            />
+          </div>
+        ) : (
+          <div style={s.grid}>
+            {Object.entries({
+              "No": enquiry.enquiry_no,
+              "Org": enquiry.organization_name,
+              "POL": enquiry.port_of_loading,
+              "POD": enquiry.port_of_destination,
+              "Type": enquiry.consignment_type,
+              "Stuffing": enquiry.goods_stuffed,
+              "Pkgs": enquiry.no_packages,
+              "G.W": enquiry.gross_weight,
+              "N.W": enquiry.net_weight
+            }).map(([k, v]) => (
+              <div key={k}>
+                <div style={s.label}>{k}</div>
+                <div style={s.value}>{v || "-"}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={s.section}>
@@ -104,8 +241,8 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
           <div style={{ background: "#f9fafb", padding: "15px", borderRadius: "8px", marginBottom: "20px" }}>
             <div style={{ marginBottom: "15px" }}>
               <label style={s.label}>Forwarder</label>
-              <select 
-                style={s.input} 
+              <select
+                style={s.input}
                 onChange={(e) => setNewRate({ ...newRate, forwarder_name: e.target.value })}
               >
                 <option value="">Select Forwarder</option>
@@ -119,9 +256,9 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
                 {newRate.base_rates.map((item, idx) => (
                   <div key={idx} style={{ display: "flex", gap: "10px", marginTop: "5px" }}>
                     <div style={{ flex: 2, fontSize: "12px" }}>{item.charge_name}</div>
-                    <input 
-                      type="number" 
-                      style={{ ...s.input, flex: 1 }} 
+                    <input
+                      type="number"
+                      style={{ ...s.input, flex: 1 }}
                       value={item.amount}
                       onChange={(e) => {
                         const next = [...newRate.base_rates];
@@ -137,9 +274,9 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
                 {newRate.shipping_line_rates.map((item, idx) => (
                   <div key={idx} style={{ display: "flex", gap: "10px", marginTop: "5px" }}>
                     <div style={{ flex: 2, fontSize: "12px" }}>{item.charge_name}</div>
-                    <input 
-                      type="number" 
-                      style={{ ...s.input, flex: 1 }} 
+                    <input
+                      type="number"
+                      style={{ ...s.input, flex: 1 }}
                       value={item.amount}
                       onChange={(e) => {
                         const next = [...newRate.shipping_line_rates];
@@ -151,8 +288,8 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
                 ))}
               </div>
             </div>
-            <button 
-              onClick={handleSaveRate} 
+            <button
+              onClick={handleSaveRate}
               style={{ ...s.btn, ...s.btnPrimary, marginTop: "15px", width: "100%" }}
             >
               Save Rate Entry
@@ -174,12 +311,22 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
                 <td style={{ padding: "8px", fontSize: "13px" }}>{r.forwarder_name}</td>
                 <td style={{ padding: "8px", fontSize: "13px", textAlign: "right", fontWeight: 700 }}>₹{r.total?.toLocaleString()}</td>
                 <td style={{ padding: "8px", fontSize: "13px", textAlign: "right" }}>
-                   <button 
-                     onClick={() => setSelectedRateForQuote(r)}
-                     style={{ ...s.btn, backgroundColor: "#10b981", color: "#fff" }}
+                  <div style={{ display: "flex", gap: "5px", justifyContent: "flex-end" }}>
+                    {enquiry.status === "Converted" && (
+                      <button
+                        onClick={() => handlePushChargesToJob(r)}
+                        style={{ ...s.btn, backgroundColor: "#2563eb", color: "#fff" }}
+                      >
+                        Push to Job
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setSelectedRateForQuote(r)}
+                      style={{ ...s.btn, backgroundColor: "#10b981", color: "#fff" }}
                     >
                       Prepare Quote
                     </button>
+                  </div>
                 </td>
               </tr>
             ))}

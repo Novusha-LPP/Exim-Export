@@ -262,12 +262,17 @@ const EditChargeModal = ({
           if (row[sec]) {
             if (!row[sec].amount && row[sec].total) row[sec].amount = row[sec].total;
             if (row[sec].isGst === undefined) row[sec].isGst = true;
-            // Default party type to 'Others' for cost and auto-set shipping line if empty
-            if (sec === 'cost' && !row[sec].partyType) {
-              row[sec].partyType = 'Others';
-              if (!row[sec].partyName && shippingLineAirline) {
-                row[sec].partyName = shippingLineAirline;
+            // Default revenue receivable to Exporter
+            if (sec === 'revenue' && !row[sec].partyType) {
+              row[sec].partyType = 'Customer';
+              if (!row[sec].partyName && exporterName) {
+                row[sec].partyName = exporterName;
               }
+            }
+            // Default cost side to empty
+            if (sec === 'cost' && !row[sec].partyType) {
+              row[sec].partyType = '';
+              row[sec].partyName = '';
             }
             if (sec === 'cost' && (row[sec].partyType === 'Exporter' || row[sec].partyType === 'EXPORTER') && !row[sec].partyName && exporterName) {
               row[sec].partyName = exporterName;
@@ -500,9 +505,13 @@ const EditChargeModal = ({
                       <button type="button" className="search-btn">🔍</button>
                     </div>
                   </div>
-                  <div className="form-row" style={{ gridColumn: 'span 2' }}>
+                  <div className="form-row" style={{ gridColumn: 'span 1' }}>
                     <span className="form-label">Category</span>
                     <input type="text" className="form-input" value={row.category || ''} onChange={e => handleFieldChange(i, 'category', e.target.value)} />
+                  </div>
+                  <div className="form-row" style={{ gridColumn: 'span 1' }}>
+                    <span className="form-label">SAC / HSN</span>
+                    <input type="text" className="form-input" value={row.hsnCode || ''} onChange={e => handleFieldChange(i, 'hsnCode', e.target.value)} placeholder="Enter HSN Code" />
                   </div>
 
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>

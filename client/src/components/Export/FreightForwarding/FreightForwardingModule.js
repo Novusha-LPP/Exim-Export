@@ -2,9 +2,11 @@ import React, { useMemo, useState, useEffect } from "react";
 import axios from "axios";
 import { Dialog, DialogContent, DialogTitle, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import { useNavigate } from "react-router-dom";
 import CreateFreightEnquiry from "./CreateFreightEnquiry";
 import ForwarderDirectory from "./ForwarderDirectory";
 import CaptureRates from "./CaptureRates";
+import AddExJobs from "../Export-Dsr/AddExJobs";
 
 const THEME = {
   blue: "#2563eb",
@@ -23,9 +25,11 @@ function FreightForwardingModule() {
     shipment_type: "",
     status: "",
   });
-  const [activeTab, setActiveTab] = useState("enquiries");
+  const [activeTab, setActiveTab] = useState("Enquiry");
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
+  const [selectedJob, setSelectedJob] = useState(null);
   const [forwarders, setForwarders] = useState([]);
+  const [loadingJob, setLoadingJob] = useState(false);
 
   useEffect(() => {
     fetchEnquiries();
@@ -52,6 +56,12 @@ function FreightForwardingModule() {
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
+      // 1. Status Tab Filter
+      if (activeTab === "Enquiry" && row.status !== "Open") return false;
+      if (activeTab === "Success" && row.status !== "Converted") return false;
+      if (activeTab === "Rejected" && row.status !== "Rejected") return false;
+
+      // 2. Additional Filters
       const needle = filters.search.trim().toUpperCase();
       const matchSearch =
         !needle ||
@@ -62,7 +72,7 @@ function FreightForwardingModule() {
       const matchStatus = !filters.status || row.status === filters.status;
       return matchSearch && matchShipment && matchStatus;
     });
-  }, [rows, filters]);
+  }, [rows, filters, activeTab]);
 
   const handleCreateEnquiry = async (newRow) => {
     try {
@@ -74,6 +84,26 @@ function FreightForwardingModule() {
     } catch (error) {
       console.error("Error creating enquiry:", error);
       alert("Failed to create enquiry. Please try again.");
+    }
+  };
+
+  const navigate = useNavigate();
+
+  const handleUpdateEnquiry = (updated) => {
+    setRows(rows.map(r => r._id === updated._id ? updated : r));
+    setSelectedEnquiry(updated);
+  };
+
+  const handleRowClick = async (row) => {
+    // Priority: Use enquiry_no for navigation if in Success tab as requested by user
+    // Fallback to source_job_no or remarks-based job_no
+    let jobNo = row.enquiry_no;
+    
+    if (activeTab === "Success") {
+      const encodedJobNo = encodeURIComponent(jobNo);
+      navigate(`/export-charges/job/${encodedJobNo}`);
+    } else {
+      setSelectedEnquiry(row);
     }
   };
 
@@ -101,9 +131,9 @@ function FreightForwardingModule() {
         }}
       >
         <div>
-          <h2 style={{ margin: 0, color: THEME.text, fontSize: 20 }}>Freight Forwarding Enquiries</h2>
+          <h2 style={{ margin: 0, color: THEME.text, fontSize: 20 }}>Freight Forwarding Module</h2>
           <p style={{ margin: "3px 0 0", color: THEME.textMuted, fontSize: 12 }}>
-            Manage enquiry flow from quote stage to shipment planning.
+            Track enquiries and coordinate with forwarders for best freight rates.
           </p>
         </div>
         <button
@@ -124,21 +154,21 @@ function FreightForwardingModule() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "5px", marginBottom: "12px" }}>
-        {["enquiries", "forwarders"].map((tab) => (
+      <div style={{ display: "flex", gap: "10px", marginBottom: "16px", borderBottom: `1px solid ${THEME.border}`, paddingBottom: "8px" }}>
+        {["Enquiry", "Success", "Rejected", "Forwarders"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
-              padding: "6px 14px",
-              borderRadius: "4px",
+              padding: "8px 20px",
+              borderRadius: "6px",
               border: "none",
-              backgroundColor: activeTab === tab ? THEME.blue : "#e5e7eb",
-              color: activeTab === tab ? "#fff" : "#111827",
-              fontSize: "12px",
+              backgroundColor: activeTab === tab ? THEME.blue : "transparent",
+              color: activeTab === tab ? "#fff" : THEME.textMuted,
+              fontSize: "13px",
               fontWeight: 700,
               cursor: "pointer",
-              textTransform: "capitalize",
+              transition: "all 0.2s",
             }}
           >
             {tab}
@@ -146,7 +176,7 @@ function FreightForwardingModule() {
         ))}
       </div>
 
-      {activeTab === "enquiries" ? (
+      {activeTab !== "Forwarders" ? (
         <>
           <div
             style={{
@@ -180,10 +210,10 @@ function FreightForwardingModule() {
               style={{ height: 32, border: `1px solid ${THEME.border}`, borderRadius: 6, padding: "0 8px" }}
             >
               <option value="">All Shipment Types</option>
-              <option value="SEA">SEA</option>
-              <option value="AIR">AIR</option>
-              <option value="ROAD">ROAD</option>
-              <option value="RAIL">RAIL</option>
+              <option value="Import-Sea">Import - Sea</option>
+              <option value="Export-Sea">Export - Sea</option>
+              <option value="Import-Air">Import - Air</option>
+              <option value="Export-Air">Export - Air</option>
             </select>
             <select
               value={filters.status}
@@ -201,7 +231,7 @@ function FreightForwardingModule() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ backgroundColor: "#f8fafc", borderBottom: `1px solid ${THEME.border}` }}>
-                    {["Enquiry No", "Date", "Organization", "Shipment", "Booking Info", "POL", "Destination", "Contact", "Status"].map((h) => (
+                    {["Enquiry No", "Date", "Organization", "Shipment", "Booking Info", "POL", "Destination", "Source Job", "Status"].map((h) => (
                       <th key={h} style={{ textAlign: "left", padding: "10px", color: THEME.textMuted, fontWeight: 700 }}>
                         {h}
                       </th>
@@ -213,25 +243,39 @@ function FreightForwardingModule() {
                     filteredRows.map((row) => (
                       <tr 
                         key={row.enquiry_no} 
-                        style={{ borderBottom: `1px solid ${THEME.border}`, cursor: "pointer" }}
-                        onClick={() => setSelectedEnquiry(row)}
+                        style={{ 
+                          borderBottom: `1px solid ${THEME.border}`, 
+                          cursor: loadingJob ? "wait" : "pointer",
+                          opacity: loadingJob ? 0.7 : 1
+                        }}
+                        onClick={() => !loadingJob && handleRowClick(row)}
                       >
-                        <td style={{ padding: "10px", fontWeight: 700, color: THEME.blue }}>{row.enquiry_no}</td>
+                        <td style={{ padding: "10px", fontWeight: 700, color: THEME.blue }}>
+                          <span 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedEnquiry(row);
+                            }}
+                            style={{ cursor: "pointer", textDecoration: "underline" }}
+                          >
+                            {row.enquiry_no}
+                          </span>
+                        </td>
                         <td style={{ padding: "10px" }}>{row.enquiry_date}</td>
                         <td style={{ padding: "10px" }}>{row.organization_name}</td>
                         <td style={{ padding: "10px" }}>{row.shipment_type}</td>
                         <td style={{ padding: "10px" }}>{[row.container_size, row.consignment_type, row.goods_stuffed].filter(Boolean).join(" / ") || "-"}</td>
                         <td style={{ padding: "10px" }}>{row.port_of_loading || "-"}</td>
                         <td style={{ padding: "10px" }}>{row.port_of_destination || "-"}</td>
-                        <td style={{ padding: "10px" }}>{row.contact_no || "-"}</td>
+                        <td style={{ padding: "10px", fontWeight: 600 }}>{row.source_job_no || "-"}</td>
                         <td style={{ padding: "10px" }}>
                           <span
                             style={{
                               display: "inline-block",
                               padding: "2px 8px",
                               borderRadius: 12,
-                              backgroundColor: "#ecfdf5",
-                              color: "#059669",
+                              backgroundColor: row.status === "Converted" ? "#ecfdf5" : "#fff7ed",
+                              color: row.status === "Converted" ? "#059669" : "#ea580c",
                               fontWeight: 700,
                               fontSize: 11,
                             }}
@@ -292,9 +336,32 @@ function FreightForwardingModule() {
             <CaptureRates 
               enquiry={selectedEnquiry} 
               forwarders={forwarders}
-              onUpdate={(updated) => {
-                setRows(rows.map(r => r._id === updated._id ? updated : r));
-                setSelectedEnquiry(updated);
+              onUpdate={handleUpdateEnquiry}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* JOB VIEW DIALOG - Specific request for Success tab */}
+      <Dialog
+        open={!!selectedJob}
+        onClose={() => setSelectedJob(null)}
+        fullScreen
+      >
+        <DialogTitle sx={{ m: 0, p: 2, display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#f3f4f6" }}>
+          <span style={{ fontWeight: 700, fontSize: "16px" }}>Export Job Detail - {selectedJob?.job_no}</span>
+          <IconButton onClick={() => setSelectedJob(null)}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          {selectedJob && (
+            <AddExJobs 
+              job={selectedJob} 
+              onClose={() => setSelectedJob(null)}
+              // Pass required props for internal updates if necessary
+              onUpdateJob={(updated) => {
+                setSelectedJob(updated);
               }}
             />
           )}

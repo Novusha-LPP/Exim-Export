@@ -81,7 +81,10 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         }
 
         // --- MANDATORY BASE CONDITIONS FOR OPERATION MODULE ---
-        // 1. Handle main document status
+        // 1. Exclude General Jobs from Operation Module
+        filter.$and.push({ isGeneralJob: { $ne: true } });
+
+        // 2. Handle main document status
         if (normalizedStatus === "cancelled") {
             filter.$and.push({
                 $or: [
@@ -344,9 +347,58 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             containers: 1,
             otherInfo: 1, annexC1Details: 1,
             total_ar_amount: 1, outstanding_balance: 1, cha: 1,
-            lockedBy: 1, lockedAt: 1
+            lockedBy: 1, lockedAt: 1,
+            isGeneralJob: 1
         };
 
+        // When search is active, use aggregation to prioritize results by match type
+        // Priority: 1=job_no, 2=sb_no, 3=container, 4=invoice, 5=exporter/other
+        if (search) {
+            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const aggPipeline = [
+                { $match: filter },
+                {
+                    $addFields: {
+                        _searchPriority: {
+                            $switch: {
+                                branches: [
+                                    { case: { $regexMatch: { input: { $ifNull: ["$job_no", ""] }, regex: escapedSearch, options: "i" } }, then: 1 },
+                                    { case: { $regexMatch: { input: { $ifNull: ["$sb_no", ""] }, regex: escapedSearch, options: "i" } }, then: 2 },
+                                    { case: { $gt: [{ $size: { $filter: { input: { $ifNull: ["$containers", []] }, as: "c", cond: { $regexMatch: { input: { $ifNull: ["$$c.containerNo", ""] }, regex: escapedSearch, options: "i" } } } } }, 0] }, then: 3 },
+                                    { case: { $gt: [{ $size: { $filter: { input: { $ifNull: ["$invoices", []] }, as: "inv", cond: { $regexMatch: { input: { $ifNull: ["$$inv.invoiceNumber", ""] }, regex: escapedSearch, options: "i" } } } } }, 0] }, then: 4 },
+                                ],
+                                default: 5
+                            }
+                        }
+                    }
+                },
+                { $sort: { _searchPriority: 1, ...sort } },
+                { $project: selectProjection },
+            ];
+
+            const totalCount = await ExportJobModel.countDocuments(filter);
+            const jobs = await ExportJobModel.aggregate([
+                ...aggPipeline,
+                { $skip: skip },
+                { $limit: parseInt(limit) },
+            ]);
+
+            return res.json({
+                success: true,
+                data: {
+                    jobs,
+                    pagination: {
+                        currentPage: parseInt(page),
+                        totalPages: Math.ceil(totalCount / parseInt(limit)),
+                        totalCount,
+                        hasNextPage: page < Math.ceil(totalCount / parseInt(limit)),
+                        hasPrevPage: page > 1,
+                    },
+                },
+            });
+        }
+
+        // No search - use standard find with sort
         const [jobs, totalCount] = await Promise.all([
             ExportJobModel.find(filter)
                 .select(selectProjection)

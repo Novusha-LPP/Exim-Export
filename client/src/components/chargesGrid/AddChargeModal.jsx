@@ -10,10 +10,12 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
   const [selectedNames, setSelectedNames] = useState(new Set());
   const [customName, setCustomName] = useState('');
   const [customCategory, setCustomCategory] = useState('');
+  const [customHsnCode, setCustomHsnCode] = useState('');
 
   const [editingChargeId, setEditingChargeId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editCategory, setEditCategory] = useState('');
+  const [editHsnCode, setEditHsnCode] = useState('');
 
 
   useEffect(() => {
@@ -22,6 +24,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
       setSearchTerm('');
       setCustomName('');
       setCustomCategory('');
+      setCustomHsnCode('');
       setSelectedNames(new Set());
     }
   }, [isOpen, fetchChargeHeads]);
@@ -48,10 +51,11 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
       alert('A charge with this name already exists.');
       return;
     }
-    const res = await addChargeHead(name, cat);
+    const res = await addChargeHead(name, cat, customHsnCode.trim() || undefined);
     if (res.success) {
       setCustomName('');
       setCustomCategory('');
+      setCustomHsnCode('');
       const newSelected = new Set(selectedNames);
       newSelected.add(name);
       setSelectedNames(newSelected);
@@ -72,13 +76,14 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
     setEditingChargeId(ch._id);
     setEditName(ch.name);
     setEditCategory(ch.category || '');
+    setEditHsnCode(ch.hsnCode || '');
   };
 
   const handleSaveEdit = async (ch, e) => {
     e.preventDefault();
     e.stopPropagation();
     if (!editName.trim()) return alert('Name is required');
-    const res = await updateChargeHead(ch._id, editName.trim(), editCategory);
+    const res = await updateChargeHead(ch._id, editName.trim(), editCategory, editHsnCode.trim() || undefined);
     if (res.success) {
       setEditingChargeId(null);
       // optionally update selectedNames if name changed, kept simple
@@ -149,16 +154,16 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
                         style={{ padding: '4px' }}
                       >
                         <option value="">-- Category --</option>
-                        <option>Freight</option>
                         <option>Reimbursement</option>
-                        <option>Insurance</option>
-                        <option>Surcharge</option>
-                        <option>Transport</option>
-                        <option>Service Charge</option>
-                        <option>Customs</option>
-                        <option>Miscellaneous</option>
-                        <option>Document</option>
+                        <option>Margin</option>
                       </select>
+                      <input 
+                        type="text" 
+                        value={editHsnCode} 
+                        onChange={e => setEditHsnCode(e.target.value)} 
+                        placeholder="HSN Code"
+                        style={{ width: '100px', padding: '4px' }} 
+                      />
                       <button type="button" onClick={(e) => handleSaveEdit(ch, e)} style={{ background: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer' }}>Save</button>
                       <button type="button" onClick={handleCancelEdit} style={{ background: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer' }}>Cancel</button>
                     </div>
@@ -175,6 +180,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
                       />
                       <span className="predefined-item-name">{ch.name}</span>
                       <span className="predefined-item-cat">{ch.category}</span>
+                      {ch.hsnCode && <span style={{ fontSize: '10px', color: '#666', marginLeft: '4px', background: '#f0f4f8', padding: '1px 6px', borderRadius: '8px' }}>HSN: {ch.hsnCode}</span>}
                     </label>
                     {isAdmin && (
                       <div style={{ display: 'flex', gap: '8px', paddingRight: '12px' }}>
@@ -202,16 +208,16 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
                 onChange={(e) => setCustomCategory(e.target.value)}
               >
                 <option value="">-- Category --</option>
-                <option>Freight</option>
                 <option>Reimbursement</option>
-                <option>Insurance</option>
-                <option>Surcharge</option>
-                <option>Transport</option>
-                <option>Service Charge</option>
-                <option>Customs</option>
-                <option>Miscellaneous</option>
-                <option>Document</option>
+                <option>Margin</option>
               </select>
+              <input 
+                type="text" 
+                placeholder="HSN Code" 
+                value={customHsnCode}
+                onChange={(e) => setCustomHsnCode(e.target.value)}
+                style={{ width: '120px' }}
+              />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button type="button" className="add-custom-btn" onClick={handleAddCustom}>Add to List</button>

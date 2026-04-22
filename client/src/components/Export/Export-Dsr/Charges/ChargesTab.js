@@ -309,6 +309,7 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
                       checked={formik.values.financial_lock || false}
                       onChange={(e) => formik.setFieldValue("financial_lock", e.target.checked)}
                       color="primary"
+                      disabled={!isEditable}
                     />
                   }
                   label={
@@ -317,31 +318,28 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
                     </Typography>
                   }
                 />
+                
                 <FormControlLabel
                   control={
-                    <Tooltip title={chargesCount === 0 ? "Please add at least one charge before sending for billing" : ""}>
-                      <span>
-                        <Checkbox
-                          checked={formik.values.send_for_billing || false}
-                          disabled={chargesCount === 0}
-                          onChange={(e) => {
-                            formik.setFieldValue("send_for_billing", e.target.checked);
-                            if (e.target.checked) {
-                              formik.setFieldValue("send_for_billing_date", new Date().toISOString());
-                            }
-                          }}
-                          color="success"
-                        />
-                      </span>
-                    </Tooltip>
+                    <Checkbox
+                      checked={formik.values.send_for_billing || false}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        formik.setFieldValue("send_for_billing", checked);
+                        if (checked) {
+                          formik.setFieldValue("send_for_billing_date", new Date().toISOString());
+                        }
+                      }}
+                      color="success"
+                      disabled={!isEditable || (chargesCount === 0 && (formik.values.charges || []).length === 0)}
+                    />
                   }
                   label={
                     <Typography
                       sx={{
                         fontSize: '12px',
                         fontWeight: 600,
-                        color: chargesCount === 0 ? '#94a3b8' : '#16a34a',
-                        cursor: chargesCount === 0 ? 'not-allowed' : 'pointer'
+                        color: (chargesCount > 0 || (formik.values.charges || []).length > 0) ? '#16a34a' : '#94a3b8',
                       }}
                     >
                       Send for Billing

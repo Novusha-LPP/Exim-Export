@@ -77,10 +77,21 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
         }
 
         // --- MANDATORY BASE CONDITION FOR CHARGES MODULE ---
-        // Must have a handover date
+        // Must have a handover date, UNLESS it's a general job
         filter.$and.push({
-            "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] }
+            $or: [
+                { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
+                { isGeneralJob: true }
+            ]
         });
+
+        // Apply Tab specific status filtering if not "all"
+        if (normalizedStatus === "general-jobs" || normalizedStatus === "general jobs") {
+            filter.$and.push({ isGeneralJob: true });
+        } else {
+            // Exclude isGeneralJob from other tabs to keep them clean.
+            filter.$and.push({ isGeneralJob: { $ne: true } });
+        }
 
         // Exclude Cancelled by default unless specifically asked
         if (normalizedStatus !== "cancelled") {
@@ -205,7 +216,8 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             booking_copy: 1,
             containers: 1,
             isLocked: 1, lockedBy: 1, lockedAt: 1,
-            operational_lock: 1
+            operational_lock: 1,
+            isGeneralJob: 1
         };
 
         const [jobs, totalCount] = await Promise.all([

@@ -1248,6 +1248,26 @@ const ExportJobsTable = () => {
     }
   };
 
+  const handleCreateGeneralJob = async () => {
+    const yearToUse = (selectedYear === "all" || !selectedYear) ? getCurrentFinancialYear() : selectedYear;
+    if (!window.confirm(`Create a new General Job for year ${yearToUse}?`)) return;
+    try {
+      setLoading(true);
+      const res = await axios.post(`${import.meta.env.VITE_API_STRING}/create-general-job`, {
+        year: yearToUse
+      });
+      if (res.data.success) {
+        alert(`Job Created: ${res.data.data.job_no}`);
+        fetchJobs();
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create general job.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const timer = setTimeout(fetchJobs, 300);
     return () => clearTimeout(timer);
@@ -1886,6 +1906,28 @@ const ExportJobsTable = () => {
                 </button>
               </div>
             )}
+            {isChargesModule && activeTab === "General Jobs" && (
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  style={{
+                    ...s.btnPrimary,
+                    padding: "8px 20px",
+                    height: "auto",
+                    backgroundColor: "#1a237e",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                  }}
+                  onClick={handleCreateGeneralJob}
+                >
+                  + Create Gen Job
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Tabs */}
@@ -1988,6 +2030,16 @@ const ExportJobsTable = () => {
                 }
               ></span>
             </button>
+            {isChargesModule && (
+              <button
+                style={
+                  activeTab === "General Jobs" ? { ...s.tab, ...s.activeTab } : s.tab
+                }
+                onClick={() => setActiveTab("General Jobs")}
+              >
+                General Jobs
+              </button>
+            )}
             {!isOperationModule && !isChargesModule && (
               <button
                 style={
@@ -2705,256 +2757,279 @@ const ExportJobsTable = () => {
 
                         {/* Column 5: SB */}
                         <td style={s.td}>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <Tooltip title={job.sb_no && job.sb_date && job.custom_house ? "Click to track SB on ICEGATE" : ""}>
+                          {!(job.isGeneralJob || job.exporter === "GENERAL JOB") ? (
+                            <>
                               <div
                                 style={{
-                                  fontWeight: "600",
-                                  color: job.sb_no && job.sb_date && job.custom_house ? "#2563eb" : "#b91c1c",
-                                  marginBottom: "2px",
-                                  cursor: job.sb_no && job.sb_date && job.custom_house ? "pointer" : "default",
-                                  textDecoration: job.sb_no && job.sb_date && job.custom_house ? "underline" : "none",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
                                 }}
-                                onClick={(e) => job.sb_no && job.sb_date && job.custom_house && handleSBTrack(job, e)}
                               >
-                                {job.sb_no || "-"}
-                              </div>
-                            </Tooltip>
-                            <div style={{ display: "flex", alignItems: "center" }}>
-                              {job.sb_no && job.sb_date && job.custom_house && (
-                                <Tooltip title="Track on ICEGATE">
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => handleSBTrack(job, e)}
-                                    style={{ padding: 2 }}
+                                <Tooltip title={job.sb_no && job.sb_date && job.custom_house ? "Click to track SB on ICEGATE" : ""}>
+                                  <div
+                                    style={{
+                                      fontWeight: "600",
+                                      color: job.sb_no && job.sb_date && job.custom_house ? "#2563eb" : "#b91c1c",
+                                      marginBottom: "2px",
+                                      cursor: job.sb_no && job.sb_date && job.custom_house ? "pointer" : "default",
+                                      textDecoration: job.sb_no && job.sb_date && job.custom_house ? "underline" : "none",
+                                    }}
+                                    onClick={(e) => job.sb_no && job.sb_date && job.custom_house && handleSBTrack(job, e)}
                                   >
-                                    <TrackChangesIcon style={{ fontSize: 12, color: "#2563eb" }} />
-                                  </IconButton>
+                                    {job.sb_no || "-"}
+                                  </div>
                                 </Tooltip>
-                              )}
-                              {job.sb_no && (
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) => handleCopyText(job.sb_no, e)}
-                                  style={{ padding: 2 }}
-                                  title="Copy SB No"
-                                >
-                                  <ContentCopyIcon style={{ fontSize: 12 }} />
-                                </IconButton>
-                              )}
-                            </div>
-                          </div>
-                          <div style={{ color: "#4b5563", fontSize: "10px" }}>
-                            {formatDate(job.sb_date)}
-                          </div>
+                                <div style={{ display: "flex", alignItems: "center" }}>
+                                  {job.sb_no && job.sb_date && job.custom_house && (
+                                    <Tooltip title="Track on ICEGATE">
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => handleSBTrack(job, e)}
+                                        style={{ padding: 2 }}
+                                      >
+                                        <TrackChangesIcon style={{ fontSize: 12, color: "#2563eb" }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+                                  {job.sb_no && (
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => handleCopyText(job.sb_no, e)}
+                                      style={{ padding: 2 }}
+                                      title="Copy SB No"
+                                    >
+                                      <ContentCopyIcon style={{ fontSize: 12 }} />
+                                    </IconButton>
+                                  )}
+                                </div>
+                              </div>
+                              <div style={{ color: "#4b5563", fontSize: "10px" }}>
+                                {formatDate(job.sb_date)}
+                              </div>
+                            </>
+                          ) : (
+                            <div style={{ color: "#94a3b8", fontSize: "10px" }}>N/A</div>
+                          )}
                         </td>
 
                         {/* Column 6: Port */}
                         <td style={s.td}>
-                          <div style={{ marginBottom: "6px", display: "flex", flexDirection: "column", gap: "1px" }}>
-                            <div style={{ display: "flex", gap: "6px", alignItems: "baseline" }}>
-                              <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>DEST</span>
-                              <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.destination_port || "-"}</span>
-                            </div>
-                            <div style={{ fontSize: "10px", color: "#64748b", fontStyle: "italic", paddingLeft: "41px" }}>
-                              {job.destination_country || "-"}
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
-                            <div style={{ display: "flex", gap: "6px", alignItems: "baseline" }}>
-                              <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>POL</span>
-                              <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.port_of_loading || "-"}</span>
-                            </div>
-                            <div style={{ display: "flex", gap: "6px", alignItems: "baseline" }}>
-                              <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>DISCH</span>
-                              <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.port_of_discharge || "-"}</span>
-                            </div>
-                          </div>
+                          {!(job.isGeneralJob || job.exporter === "GENERAL JOB") ? (
+                            <>
+                              <div style={{ marginBottom: "6px", display: "flex", flexDirection: "column", gap: "1px" }}>
+                                <div style={{ display: "flex", gap: "6px", alignItems: "baseline" }}>
+                                  <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>DEST</span>
+                                  <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.destination_port || "-"}</span>
+                                </div>
+                                <div style={{ fontSize: "10px", color: "#64748b", fontStyle: "italic", paddingLeft: "41px" }}>
+                                  {job.destination_country || "-"}
+                                </div>
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+                                <div style={{ display: "flex", gap: "6px", alignItems: "baseline" }}>
+                                  <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>POL</span>
+                                  <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.port_of_loading || "-"}</span>
+                                </div>
+                                <div style={{ display: "flex", gap: "6px", alignItems: "baseline" }}>
+                                  <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>DISCH</span>
+                                  <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.port_of_discharge || "-"}</span>
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <div style={{ color: "#94a3b8", fontSize: "10px" }}>N/A</div>
+                          )}
                         </td>
 
                         {/* Column 7: Container Placement */}
                         <td style={s.td}>
-                          <div style={{ marginBottom: "2px" }}>
-                            {job.containers && job.containers.length > 0 ? (
-                              <div
-                                style={{
-                                  fontWeight: "600",
-                                  fontSize: "11px",
-                                  color: "#374151",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "3px",
-                                }}
-                              >
-                                {job.containers
-                                  .filter((c) => c.containerNo)
-                                  .map((container, index) => (
-                                    <div
-                                      key={index}
-                                      style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        backgroundColor: "rgba(37, 99, 235, 0.05)",
-                                        padding: "2px 4px",
-                                        borderRadius: "6px",
-                                        marginBottom: "4px",
-                                        border: "1px solid rgba(37, 99, 235, 0.1)"
-                                      }}
-                                    >
-                                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "4px", flexWrap: "wrap" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                                          <a
-                                            href={`https://www.ldb.co.in/ldb/containersearch/39/${container.containerNo}/1726651147706`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            style={{
-                                              fontWeight: "800",
-                                              textDecoration: "none",
-                                              cursor: "pointer",
-                                              fontSize: "11px",
-                                              color: "#2563eb",
-                                            }}
-                                            onMouseOver={(e) => (e.target.style.textDecoration = "underline")}
-                                            onMouseOut={(e) => (e.target.style.textDecoration = "none")}
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            {container.containerNo}
-                                          </a>
+                          {!(job.isGeneralJob || job.exporter === "GENERAL JOB") ? (
+                            <div style={{ marginBottom: "2px" }}>
+                              {job.containers && job.containers.length > 0 ? (
+                                <div
+                                  style={{
+                                    fontWeight: "600",
+                                    fontSize: "11px",
+                                    color: "#374151",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "3px",
+                                  }}
+                                >
+                                  {job.containers
+                                    .filter((c) => c.containerNo)
+                                    .map((container, index) => (
+                                      <div
+                                        key={index}
+                                        style={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          backgroundColor: "rgba(37, 99, 235, 0.05)",
+                                          padding: "2px 4px",
+                                          borderRadius: "6px",
+                                          marginBottom: "4px",
+                                          border: "1px solid rgba(37, 99, 235, 0.1)"
+                                        }}
+                                      >
+                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "4px", flexWrap: "wrap" }}>
+                                          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                            <a
+                                              href={`https://www.ldb.co.in/ldb/containersearch/39/${container.containerNo}/1726651147706`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              style={{
+                                                fontWeight: "800",
+                                                textDecoration: "none",
+                                                cursor: "pointer",
+                                                fontSize: "11px",
+                                                color: "#2563eb",
+                                              }}
+                                              onMouseOver={(e) => (e.target.style.textDecoration = "underline")}
+                                              onMouseOut={(e) => (e.target.style.textDecoration = "none")}
+                                              onClick={(e) => e.stopPropagation()}
+                                            >
+                                              {container.containerNo}
+                                            </a>
 
-                                          {/* Shipping Line Tracking Link */}
-                                          {(() => {
-                                            const bookingNo = job.booking_no || "";
-                                            const containerFirst = job.containers?.[0]?.containerNo || "";
-                                            const urls = buildShippingLineUrls(bookingNo, containerFirst);
+                                            {/* Shipping Line Tracking Link */}
+                                            {(() => {
+                                              const bookingNo = job.booking_no || "";
+                                              const containerFirst = job.containers?.[0]?.containerNo || "";
+                                              const urls = buildShippingLineUrls(bookingNo, containerFirst);
 
-                                            let linerRaw = job.shipping_line_airline || "";
-                                            let liner = linerRaw.includes(" - ") ? linerRaw.split(" - ").pop().trim() : linerRaw.trim();
+                                              let linerRaw = job.shipping_line_airline || "";
+                                              let liner = linerRaw.includes(" - ") ? linerRaw.split(" - ").pop().trim() : linerRaw.trim();
 
-                                            const matchKey = Object.keys(urls).find(key => liner.toUpperCase().includes(key.toUpperCase()));
-                                            const url = matchKey ? urls[matchKey] : "#";
+                                              const matchKey = Object.keys(urls).find(key => liner.toUpperCase().includes(key.toUpperCase()));
+                                              const url = matchKey ? urls[matchKey] : "#";
 
-                                            if (liner && url !== "#") {
-                                              return (
-                                                <Tooltip title={`Track on ${liner}`}>
-                                                  <a
-                                                    href={url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    style={{ display: 'flex', alignItems: 'center' }}
-                                                  >
-                                                    <FontAwesomeIcon icon={faShip} style={{ fontSize: 10, color: "#2563eb" }} />
-                                                  </a>
-                                                </Tooltip>
-                                              );
-                                            }
-                                            return null;
-                                          })()}
+                                              if (liner && url !== "#") {
+                                                return (
+                                                  <Tooltip title={`Track on ${liner}`}>
+                                                    <a
+                                                      href={url}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      onClick={(e) => e.stopPropagation()}
+                                                      style={{ display: 'flex', alignItems: 'center' }}
+                                                    >
+                                                      <FontAwesomeIcon icon={faShip} style={{ fontSize: 10, color: "#2563eb" }} />
+                                                    </a>
+                                                  </Tooltip>
+                                                );
+                                              }
+                                              return null;
+                                            })()}
 
-                                          {/* CONCOR Container Track Button */}
-                                          {job.custom_house?.toUpperCase().includes("ICD") && (
-                                            <Tooltip title="Track on CONCOR India">
-                                              <IconButton
-                                                size="small"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setContainerTrackContainers(job.containers || []);
-                                                  setContainerTrackOpen(true);
-                                                }}
-                                                style={{ padding: 0, marginLeft: 2 }}
-                                              >
-                                                <FontAwesomeIcon icon={faAnchor} style={{ fontSize: 10, color: "#7c3aed" }} />
-                                              </IconButton>
-                                            </Tooltip>
+                                            {/* CONCOR Container Track Button */}
+                                            {job.custom_house?.toUpperCase().includes("ICD") && (
+                                              <Tooltip title="Track on CONCOR India">
+                                                <IconButton
+                                                  size="small"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setContainerTrackContainers(job.containers || []);
+                                                    setContainerTrackOpen(true);
+                                                  }}
+                                                  style={{ padding: 0, marginLeft: 2 }}
+                                                >
+                                                  <FontAwesomeIcon icon={faAnchor} style={{ fontSize: 10, color: "#7c3aed" }} />
+                                                </IconButton>
+                                              </Tooltip>
+                                            )}
+
+                                            <IconButton
+                                              size="small"
+                                              onClick={(e) => handleCopyText(container.containerNo, e)}
+                                              style={{ padding: 0, marginLeft: 2 }}
+                                              title="Copy Container No"
+                                            >
+                                              <ContentCopyIcon style={{ fontSize: 10, color: "#64748b" }} />
+                                            </IconButton>
+                                          </div>
+
+                                          {container.type && (
+                                            <span style={{ fontSize: '9px', color: '#445566', fontWeight: "900", backgroundColor: "#e2e8f0", padding: "1px 4px", borderRadius: "3px" }}>
+                                              {container.type.toUpperCase()}
+                                            </span>
                                           )}
-
-                                          <IconButton
-                                            size="small"
-                                            onClick={(e) => handleCopyText(container.containerNo, e)}
-                                            style={{ padding: 0, marginLeft: 2 }}
-                                            title="Copy Container No"
-                                          >
-                                            <ContentCopyIcon style={{ fontSize: 10, color: "#64748b" }} />
-                                          </IconButton>
                                         </div>
-
-                                        {container.type && (
-                                          <span style={{ fontSize: '9px', color: '#445566', fontWeight: "900", backgroundColor: "#e2e8f0", padding: "1px 4px", borderRadius: "3px" }}>
-                                            {container.type.toUpperCase()}
-                                          </span>
-                                        )}
                                       </div>
-                                    </div>
-                                  ))}
+                                    ))}
+                                </div>
+                              ) : (
+                                <div style={{ fontWeight: "600", color: "#94a3b8" }}>-</div>
+                              )}
+                            </div>
+                          ) : (
+                            <div style={{ color: "#94a3b8", fontSize: "10px" }}>N/A</div>
+                          )}
+                          {!(job.isGeneralJob || job.exporter === "GENERAL JOB") && (
+                            <div style={{ color: "#475569", fontSize: "10px", marginTop: "6px", backgroundColor: "#f1f5f9", padding: "4px", borderRadius: "4px" }}>
+                              <div style={{ fontWeight: "800", color: "#1e293b", marginBottom: "2px" }}>
+                                {job.total_no_of_pkgs} {job.package_unit}
                               </div>
-                            ) : (
-                              <div style={{ fontWeight: "600", color: "#94a3b8" }}>-</div>
-                            )}
-                          </div>
-                          <div style={{ color: "#475569", fontSize: "10px", marginTop: "6px", backgroundColor: "#f1f5f9", padding: "4px", borderRadius: "4px" }}>
-                            <div style={{ fontWeight: "800", color: "#1e293b", marginBottom: "2px" }}>
-                              {job.total_no_of_pkgs} {job.package_unit}
+                              <div style={{ fontSize: "9px" }}>
+                                <span style={{ fontWeight: "700" }}>G:</span> {job.gross_weight_kg} kg | <span style={{ fontWeight: "700" }}>N:</span> {job.net_weight_kg} kg
+                              </div>
                             </div>
-                            <div style={{ fontSize: "9px" }}>
-                              <span style={{ fontWeight: "700" }}>G:</span> {job.gross_weight_kg} kg | <span style={{ fontWeight: "700" }}>N:</span> {job.net_weight_kg} kg
-                            </div>
-                          </div>
+                          )}
                         </td>
 
                         {/* Column 8: Handover DATE */}
                         <td style={s.td}>
-                          {(() => {
-                            const opDetails = job.operations?.[0]?.statusDetails?.[0] || {};
-                            const outLbl = opDetails.railRoad === "road" ? "Road Out" : "Rail Out";
-                            const reachedLbl = opDetails.railRoad === "road" ? "Road Rch" : "Rail Rch";
+                          {!(job.isGeneralJob || job.exporter === "GENERAL JOB") && (
+                            <>
+                              {(() => {
+                                const opDetails = job.operations?.[0]?.statusDetails?.[0] || {};
+                                const outLbl = opDetails.railRoad === "road" ? "Road Out" : "Rail Out";
+                                const reachedLbl = opDetails.railRoad === "road" ? "Road Rch" : "Rail Rch";
 
-                            return (
-                              <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                                <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                  <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>LEO</span>
-                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.leoDate, "dd-MM-yy")}</span>
-                                </div>
-                                <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                  <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>DHO</span>
-                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}</span>
-                                </div>
-                                <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                  <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{outLbl.toUpperCase()}</span>
-                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}</span>
-                                </div>
-                                <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                  <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{reachedLbl.toUpperCase()}</span>
-                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}</span>
-                                </div>
-                                <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                  <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL</span>
-                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}</span>
-                                </div>
+                                return (
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                                    <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                      <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>LEO</span>
+                                      <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.leoDate, "dd-MM-yy")}</span>
+                                    </div>
+                                    <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                      <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>DHO</span>
+                                      <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}</span>
+                                    </div>
+                                    <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                      <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{outLbl.toUpperCase()}</span>
+                                      <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}</span>
+                                    </div>
+                                    <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                      <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{reachedLbl.toUpperCase()}</span>
+                                      <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}</span>
+                                    </div>
+                                    <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                      <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL</span>
+                                      <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}</span>
+                                    </div>
 
-                                {job.vgm_done && (
-                                  <div style={{ marginTop: "4px", backgroundColor: "#ecfdf5", border: "1px solid #10b981", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#065f46" }}>
-                                    <span style={{ fontWeight: "800" }}>VGM:</span> {formatDate(job.vgm_date, "dd-MM-yy")}
+                                    {job.vgm_done && (
+                                      <div style={{ marginTop: "4px", backgroundColor: "#ecfdf5", border: "1px solid #10b981", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#065f46" }}>
+                                        <span style={{ fontWeight: "800" }}>VGM:</span> {formatDate(job.vgm_date, "dd-MM-yy")}
+                                      </div>
+                                    )}
+                                    {job.form13_done && (
+                                      <div style={{ marginTop: "2px", backgroundColor: "#f0f9ff", border: "1px solid #0ea5e9", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#0369a1" }}>
+                                        <span style={{ fontWeight: "800" }}>F13:</span> {formatDate(job.form13_date, "dd-MM-yy")}
+                                      </div>
+                                    )}
+                                    {job.shipping_bill_done && (
+                                      <div style={{ marginTop: "2px", backgroundColor: "#fef2f8", border: "1px solid #f43f5e", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#9f1239" }}>
+                                        <span style={{ fontWeight: "800" }}>SB DONE:</span> {formatDate(job.shipping_bill_done_date, "dd-MM-yy")}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                                {job.form13_done && (
-                                  <div style={{ marginTop: "2px", backgroundColor: "#f0f9ff", border: "1px solid #0ea5e9", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#0369a1" }}>
-                                    <span style={{ fontWeight: "800" }}>F13:</span> {formatDate(job.form13_date, "dd-MM-yy")}
-                                  </div>
-                                )}
-                                {job.shipping_bill_done && (
-                                  <div style={{ marginTop: "2px", backgroundColor: "#fef2f8", border: "1px solid #f43f5e", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#9f1239" }}>
-                                    <span style={{ fontWeight: "800" }}>SB DONE:</span> {formatDate(job.shipping_bill_done_date, "dd-MM-yy")}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
+                                );
+                              })()}
+                            </>
+                          )}
+                          {(job.isGeneralJob || job.exporter === "GENERAL JOB") && <div style={{ color: "#94a3b8", fontSize: "10px" }}>-</div>}
                         </td>
 
                         <td style={s.td}>

@@ -1228,16 +1228,23 @@ function ShipmentMainTab({ formik, onUpdate, directories, isEditable = true }) {
           (formik.values.exporter || "").toUpperCase(),
       );
 
-      if (dir && dir.branchInfo && dir.branchInfo.length > 0) {
-        // Use the first branch's state as default reference
-        const state = dir.branchInfo[0].state;
+      if (dir) {
+        // Auto-populate State of Origin
+        if (dir.branchInfo && dir.branchInfo.length > 0) {
+          const state = dir.branchInfo[0].state;
+          if (state && !formik.values.state_of_origin) {
+            formik.setFieldValue("state_of_origin", toUpper(state));
+          }
+        }
 
-        if (state && !formik.values.state_of_origin) {
-          formik.setFieldValue("state_of_origin", toUpper(state));
+        // Auto-populate AEO Code into Marks & Nos
+        const aeoCode = dir.registrationDetails?.aeoCode;
+        if (aeoCode && !formik.values.marks_nos) {
+          formik.setFieldValue("marks_nos", toUpper(aeoCode));
         }
       }
     }
-  }, [formik.values.exporter, directories, formik.values.state_of_origin]);
+  }, [formik.values.exporter, directories, formik.values.state_of_origin, formik.values.marks_nos]);
 
   useEffect(() => {
     if (isAir) {

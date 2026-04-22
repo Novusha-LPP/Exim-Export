@@ -5,7 +5,7 @@ const freightEnquirySchema = new mongoose.Schema(
     enquiry_no: { type: String, unique: true, required: true },
     enquiry_date: { type: String, required: true },
     organization_name: { type: String, required: true },
-    shipment_type: { type: String, enum: ["SEA", "AIR", "ROAD", "RAIL"], required: true },
+    shipment_type: { type: String, enum: ["Import-Sea", "Export-Sea", "Import-Air", "Export-Air"], required: true },
     container_size: { type: String },
     consignment_type: { type: String, enum: ["LCL", "FCL", "AIR", ""] },
     goods_stuffed: { type: String, enum: ["FACTORY STUFFED", "DOCK STUFFED", ""] },
@@ -18,6 +18,7 @@ const freightEnquirySchema = new mongoose.Schema(
     dimension: { type: String },
     no_packages: { type: String },
     remarks: { type: String },
+    source_job_no: { type: String },
     status: { type: String, default: "Open" },
     received_rates: [
       {
@@ -40,6 +41,7 @@ const freightEnquirySchema = new mongoose.Schema(
       }
     ],
     selected_rate_index: { type: Number, default: -1 },
+    charges: { type: Array, default: [] },
   },
   { timestamps: true }
 );

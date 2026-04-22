@@ -588,40 +588,19 @@ const ESanchitEditDialog = ({
     if (
       isBeneficiaryPartyEmpty &&
       jobData.consignees &&
-      jobData.consignees.length > 0 &&
-      consigneeList.length > 0
+      jobData.consignees.length > 0
     ) {
       const firstConsignee = jobData.consignees[0];
       const consigneeName = toUpper(firstConsignee.consignee_name || "");
 
-      // Try to find full consignee details from the consignee list
-      const fullConsignee = consigneeList.find(
-        (c) => toUpper(c.consignee_name || "") === consigneeName,
+      handleBeneficiaryPartyChange("name", consigneeName);
+      handleBeneficiaryPartyChange(
+        "addressLine1",
+        toUpper(firstConsignee.consignee_address || ""),
       );
-
-      if (fullConsignee) {
-        handleBeneficiaryPartyChange(
-          "name",
-          toUpper(fullConsignee.consignee_name || ""),
-        );
-        handleBeneficiaryPartyChange(
-          "addressLine1",
-          toUpper(fullConsignee.consignee_address || ""),
-        );
-        handleBeneficiaryPartyChange("addressLine2", "");
-        handleBeneficiaryPartyChange("city", "");
-        handleBeneficiaryPartyChange("pinCode", "");
-      } else {
-        // Fallback to job data if not found in consignee list
-        handleBeneficiaryPartyChange("name", consigneeName);
-        handleBeneficiaryPartyChange(
-          "addressLine1",
-          toUpper(firstConsignee.consignee_address || ""),
-        );
-        handleBeneficiaryPartyChange("addressLine2", "");
-        handleBeneficiaryPartyChange("city", "");
-        handleBeneficiaryPartyChange("pinCode", "");
-      }
+      handleBeneficiaryPartyChange("addressLine2", "");
+      handleBeneficiaryPartyChange("city", "");
+      handleBeneficiaryPartyChange("pinCode", "");
     }
   }, [open, jobData, organizations, consigneeList]);
 
@@ -910,14 +889,18 @@ const ESanchitEditDialog = ({
                   options={consigneeList}
                   onChange={(selectedConsignee) => {
                     if (selectedConsignee) {
-                      handleBeneficiaryPartyChange(
-                        "name",
-                        toUpper(selectedConsignee.consignee_name || ""),
-                      );
+                      const name = toUpper(selectedConsignee.consignee_name || "");
+                      handleBeneficiaryPartyChange("name", name);
                       handleBeneficiaryPartyChange("code", "");
+
+                      // Prioritize job-specific address if names match
+                      const jobConsignee = jobData?.consignees?.find(
+                        (c) => toUpper(c.consignee_name || "") === name
+                      );
+
                       handleBeneficiaryPartyChange(
                         "addressLine1",
-                        toUpper(selectedConsignee.consignee_address || ""),
+                        toUpper(jobConsignee?.consignee_address || selectedConsignee.consignee_address || ""),
                       );
                       handleBeneficiaryPartyChange("addressLine2", "");
                       handleBeneficiaryPartyChange("city", "");

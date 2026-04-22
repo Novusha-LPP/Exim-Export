@@ -23,9 +23,9 @@ export const useChargeHeads = () => {
         }
     }, []);
 
-    const addChargeHead = async (name, category) => {
+    const addChargeHead = async (name, category, hsnCode) => {
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_STRING}/charge-heads`, { name, category });
+            const res = await axios.post(`${import.meta.env.VITE_API_STRING}/charge-heads`, { name, category, hsnCode });
             if (res.data.success) {
                 await fetchChargeHeads(); // refetch after adding
                 return { success: true, data: res.data.data };
@@ -35,9 +35,9 @@ export const useChargeHeads = () => {
         }
     };
 
-    const updateChargeHead = async (id, name, category) => {
+    const updateChargeHead = async (id, name, category, hsnCode) => {
         try {
-            const res = await axios.put(`${import.meta.env.VITE_API_STRING}/charge-heads/${id}`, { name, category });
+            const res = await axios.put(`${import.meta.env.VITE_API_STRING}/charge-heads/${id}`, { name, category, hsnCode });
             if (res.data.success) {
                 await fetchChargeHeads();
                 return { success: true, data: res.data.data };

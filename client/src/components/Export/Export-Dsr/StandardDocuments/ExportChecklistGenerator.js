@@ -1647,7 +1647,7 @@ const ExportChecklistGenerator = ({
 
             packingChargesData: {
               rate: "",
-              currency: "",
+              currency: inv.currency || "",
               amount: inv.packing_charges || inv.packingFOB || "",
             },
           };

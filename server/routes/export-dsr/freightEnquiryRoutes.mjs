@@ -1,5 +1,6 @@
 import express from "express";
 import FreightEnquiryModel from "../../model/export/FreightEnquiryModel.mjs";
+import ExJobModel from "../../model/export/ExJobModel.mjs";
 import ForwarderModel from "../../model/export/ForwarderModel.mjs";
 import transporter from "../../utils/mailer.mjs";
 
@@ -18,15 +19,23 @@ router.get("/freight-enquiries", async (req, res) => {
 // Create new enquiry
 router.post("/freight-enquiries", async (req, res) => {
   try {
-    // Generate sequential enquiry number
-    const lastEnquiry = await FreightEnquiryModel.findOne().sort({ createdAt: -1 });
+    // Generate sequential enquiry number based on shipment type
+    const { shipment_type } = req.body;
+    let typeCode = "MISC";
+    if (shipment_type === "Import-Sea") typeCode = "IMP/SEA";
+    else if (shipment_type === "Export-Sea") typeCode = "EXP/SEA";
+    else if (shipment_type === "Import-Air") typeCode = "IMP/AIR";
+    else if (shipment_type === "Export-Air") typeCode = "EXP/AIR";
+
+    const lastEnquiry = await FreightEnquiryModel.findOne({ shipment_type }).sort({ createdAt: -1 });
     let nextNo = 1;
     if (lastEnquiry && lastEnquiry.enquiry_no) {
-      const parts = lastEnquiry.enquiry_no.split("-");
-      const lastNo = parseInt(parts[parts.length - 1]);
+      const parts = lastEnquiry.enquiry_no.split("/");
+      const lastNoPart = parts[parts.length - 1];
+      const lastNo = parseInt(lastNoPart);
       if (!isNaN(lastNo)) nextNo = lastNo + 1;
     }
-    const enquiry_no = `FF-${nextNo.toString().padStart(5, "0")}`;
+    const enquiry_no = `FF/${typeCode}/${nextNo.toString().padStart(4, "0")}`;
 
     const newEnquiry = new FreightEnquiryModel({
       ...req.body,
@@ -104,6 +113,42 @@ router.post("/freight-enquiries/:id/rates", async (req, res) => {
       { received_rates: req.body.rates },
       { new: true }
     );
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update enquiry details
+router.put("/freight-enquiries/:id", async (req, res) => {
+  try {
+    const updated = await FreightEnquiryModel.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true }
+    ).lean();
+
+    // AUTO-CONVERSION: Create an Export Job entry if status is Converted and it's an Export type
+    if (req.body.status === "Converted" && updated.enquiry_no && String(updated.shipment_type).startsWith("Export")) {
+      const existingJob = await ExJobModel.findOne({ job_no: updated.enquiry_no });
+      if (!existingJob) {
+        const newJob = new ExJobModel({
+          job_no: updated.enquiry_no,
+          jobNumber: updated.enquiry_no,
+          year: String(new Date().getFullYear()).slice(-2) + "-" + String(new Date().getFullYear() + 1).slice(-2),
+          job_date: updated.enquiry_date || new Date().toISOString().split("T")[0],
+          exporter: updated.organization_name,
+          consignmentType: updated.consignment_type,
+          port_of_loading: updated.port_of_loading,
+          port_of_discharge: updated.port_of_destination,
+          isGeneralJob: true,
+          status: "Pending",
+          detailedStatus: "Created from Freight Enquiry"
+        });
+        await newJob.save();
+      }
+    }
+
     res.status(200).json({ success: true, data: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

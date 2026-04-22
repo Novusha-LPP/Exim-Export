@@ -79,6 +79,7 @@ const ChargesGrid = ({
         parentModule,
         chargeHead: finalName,
         category: head.category,
+        hsnCode: head.hsnCode || '',
         revenue: {},
         cost: {},
         copyToCost: true
@@ -99,12 +100,26 @@ const ChargesGrid = ({
   };
 
   const handleDeleteSelected = async () => {
+    // Check if any selected charges have approved payment requests
+    const approvedCharges = charges.filter(c => selectedIds.has(c._id) && c.payment_request_is_approved);
+    const deletableIds = [...selectedIds].filter(id => !approvedCharges.find(c => c._id === id));
+
+    if (approvedCharges.length > 0 && deletableIds.length === 0) {
+      alert(`Cannot delete: All selected charges have approved payment requests.\n\nProtected charges:\n${approvedCharges.map(c => `• ${c.chargeHead}`).join('\n')}`);
+      return;
+    }
+
+    let message = `Are you sure you want to delete ${deletableIds.length} selected charge(s)? This action cannot be undone.`;
+    if (approvedCharges.length > 0) {
+      message += `\n\nNote: ${approvedCharges.length} charge(s) with approved payment requests will be skipped:\n${approvedCharges.map(c => `• ${c.chargeHead}`).join('\n')}`;
+    }
+
     setConfirmState({
       open: true,
       title: 'Delete Charges',
-      message: `Are you sure you want to delete ${selectedIds.size} selected charges? This action cannot be undone.`,
+      message,
       onConfirm: async () => {
-        for (const id of selectedIds) {
+        for (const id of deletableIds) {
           await deleteCharge(id);
         }
         setSelectedIds(new Set());

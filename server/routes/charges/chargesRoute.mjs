@@ -1,5 +1,6 @@
 import express from 'express';
 import ExJobModel from '../../model/export/ExJobModel.mjs';
+import FreightEnquiryModel from '../../model/export/FreightEnquiryModel.mjs';
 import ChargeHeadModel from '../../model/export/chargesHead.mjs';
 import ShippingLine from '../../model/Directorties/ShippingLine.js';
 import Directory from '../../model/Directorties/Directory.js';
@@ -24,7 +25,7 @@ router.get('/charge-heads', async (req, res) => {
 
 router.post('/charge-heads', async (req, res) => {
     try {
-        const { name, category } = req.body;
+        const { name, category, hsnCode } = req.body;
 
         // Check dupe (case insensitive)
         const existing = await ChargeHeadModel.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
@@ -32,7 +33,7 @@ router.post('/charge-heads', async (req, res) => {
             return res.status(409).json({ success: false, message: "Charge head already exists" });
         }
 
-        const newHead = new ChargeHeadModel({ name, category, isSystem: false });
+        const newHead = new ChargeHeadModel({ name, category, hsnCode, isSystem: false });
         await newHead.save();
         res.json({ success: true, data: newHead });
     } catch (error) {
@@ -74,7 +75,7 @@ router.post('/charge-heads/seed', async (req, res) => {
 router.put('/charge-heads/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, category, isActive } = req.body;
+        const { name, category, isActive, hsnCode } = req.body;
 
         // Optional: check dupe name if name is provided
         if (name) {
@@ -84,9 +85,12 @@ router.put('/charge-heads/:id', async (req, res) => {
             }
         }
 
+        const updateObj = { name, category, isActive };
+        if (hsnCode !== undefined) updateObj.hsnCode = hsnCode;
+
         const updated = await ChargeHeadModel.findByIdAndUpdate(
             id,
-            { $set: { name, category, isActive } },
+            { $set: updateObj },
             { new: true }
         );
 
@@ -166,13 +170,14 @@ router.get('/organization', async (req, res) => {
 router.get('/charges', async (req, res) => {
     try {
         const { parentId, parentModule } = req.query;
-        if (!parentId || !['Job', 'ExportJob'].includes(parentModule)) {
-            return res.status(400).json({ success: false, message: 'Valid Job parentId required' });
+        if (!parentId || !['Job', 'ExportJob', 'FreightEnquiry'].includes(parentModule)) {
+            return res.status(400).json({ success: false, message: 'Valid parentId and parentModule required' });
         }
-        const job = await ExJobModel.findById(parentId);
-        if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+        const model = parentModule === 'FreightEnquiry' ? FreightEnquiryModel : ExJobModel;
+        const record = await model.findById(parentId);
+        if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
 
-        res.json({ success: true, data: job.charges || [] });
+        res.json({ success: true, data: record.charges || [] });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -181,22 +186,25 @@ router.get('/charges', async (req, res) => {
 router.post('/charges', async (req, res) => {
     try {
         const { parentId, parentModule } = req.body;
-        if (!parentId || !['Job', 'ExportJob'].includes(parentModule)) return res.status(400).json({ success: false, message: 'Valid Job parentId required' });
+        if (!parentId || !['Job', 'ExportJob', 'FreightEnquiry'].includes(parentModule)) {
+            return res.status(400).json({ success: false, message: 'Valid parentId and parentModule required' });
+        }
 
-        const job = await ExJobModel.findById(parentId);
-        if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+        const model = parentModule === 'FreightEnquiry' ? FreightEnquiryModel : ExJobModel;
+        const record = await model.findById(parentId);
+        if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
 
-        job.charges.push(req.body);
-        await job.save();
+        record.charges.push(req.body);
+        await record.save();
 
-        const newCharge = job.charges[job.charges.length - 1];
+        const newCharge = record.charges[record.charges.length - 1];
         res.json({ success: true, data: newCharge });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// Add multiple charges at once
+// Update bulk charges to support FreightEnquiry as well
 router.post('/charges/bulk', async (req, res) => {
     try {
         const { charges } = req.body;
@@ -204,14 +212,19 @@ router.post('/charges/bulk', async (req, res) => {
             return res.status(400).json({ success: false, message: "Expected 'charges' array." });
         }
 
-        const parentId = charges[0].parentId;
-        const job = await ExJobModel.findById(parentId);
-        if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+        const { parentId, parentModule } = charges[0];
+        if (!['Job', 'ExportJob', 'FreightEnquiry'].includes(parentModule)) {
+             return res.status(400).json({ success: false, message: 'Invalid parentModule' });
+        }
 
-        charges.forEach(chargeData => job.charges.push(chargeData));
-        await job.save();
+        const model = parentModule === 'FreightEnquiry' ? FreightEnquiryModel : ExJobModel;
+        const record = await model.findById(parentId);
+        if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
 
-        const savedCharges = job.charges.slice(-charges.length);
+        charges.forEach(chargeData => record.charges.push(chargeData));
+        await record.save();
+
+        const savedCharges = record.charges.slice(-charges.length);
         res.json({ success: true, data: savedCharges });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -220,10 +233,14 @@ router.post('/charges/bulk', async (req, res) => {
 
 router.put('/charges/:id', async (req, res) => {
     try {
-        const job = await ExJobModel.findOne({ 'charges._id': req.params.id });
-        if (!job) return res.status(404).json({ success: false, message: 'Charge not found' });
+        // Find in either Job or FreightEnquiry
+        let record = await ExJobModel.findOne({ 'charges._id': req.params.id });
+        if (!record) {
+            record = await FreightEnquiryModel.findOne({ 'charges._id': req.params.id });
+        }
+        if (!record) return res.status(404).json({ success: false, message: 'Charge not found' });
 
-        const charge = job.charges.id(req.params.id);
+        const charge = record.charges.id(req.params.id);
 
         // Assign fields
         if (req.body.revenue) {
@@ -371,6 +388,12 @@ router.delete('/charges/:id', async (req, res) => {
     try {
         const job = await ExJobModel.findOne({ 'charges._id': req.params.id });
         if (!job) return res.status(404).json({ success: false, message: 'Charge not found' });
+
+        // Block deletion if payment request is approved
+        const charge = job.charges.id(req.params.id);
+        if (charge && charge.payment_request_is_approved) {
+            return res.status(403).json({ success: false, message: 'Cannot delete charge with approved payment request' });
+        }
 
         job.charges.pull(req.params.id);
         await job.save();

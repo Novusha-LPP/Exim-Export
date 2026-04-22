@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
+import axios from "axios";
 import { createPortal } from "react-dom";
 import { UserContext } from "../../../contexts/UserContext";
 import DateInput from "../../common/DateInput.js";
@@ -770,6 +771,57 @@ const LogisysEditableHeader = ({
               SHIPPING BILL
               {formik.values.shipping_bill_done && formik.values.shipping_bill_done_date && (
                 <span style={{ fontSize: 9, color: "#059669", marginLeft: 2 }}>({formik.values.shipping_bill_done_date})</span>
+              )}
+            </label>
+
+            <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: isEditable ? "pointer" : "default", fontSize: 11, fontWeight: 700, color: "#2563eb", opacity: isEditable ? 1 : 0.8 }}>
+              <input
+                type="checkbox"
+                name="freight_done"
+                checked={!!formik.values.freight_done}
+                onChange={async (e) => {
+                  const checked = e.target.checked;
+                  if (checked && !formik.values.freight_done) {
+                    if (window.confirm("Create a new Freight Forwarding enquiry from this job?")) {
+                      try {
+                        const payload = {
+                          organization_name: formik.values.exporter,
+                          shipment_type: toUpper(formik.values.transportMode) === "AIR" ? "Export-Air" : "Export-Sea",
+                          port_of_loading: formik.values.port_of_loading,
+                          port_of_destination: formik.values.port_of_discharge || formik.values.final_destination,
+                          gross_weight: formik.values.gross_weight_kg,
+                          net_weight: formik.values.net_weight_kg,
+                          no_packages: formik.values.total_no_of_pkgs,
+                          consignment_type: formik.values.consignmentType,
+                          goods_stuffed: formik.values.goods_stuffed_at === "DOCK" ? "DOCK STUFFED" : (formik.values.goods_stuffed_at === "FACTORY" ? "FACTORY STUFFED" : ""),
+                          container_size: formik.values.containers?.[0]?.type || "",
+                          source_job_no: formik.values.job_no,
+                          remarks: `Created automatically from Export Job: ${formik.values.job_no}`,
+                          enquiry_date: new Date().toISOString().split("T")[0],
+                          status: "Open"
+                        };
+
+                        const res = await axios.post(`${import.meta.env.VITE_API_STRING}/freight-enquiries`, payload);
+                        if (res.data.success) {
+                          formik.setFieldValue("freight_done", true);
+                          formik.setFieldValue("freight_enquiry_id", res.data.data.enquiry_no);
+                          alert(`Freight Enquiry ${res.data.data.enquiry_no} created successfully!`);
+                        }
+                      } catch (error) {
+                        console.error("Error creating freight enquiry:", error);
+                        alert("Failed to create freight enquiry.");
+                      }
+                    }
+                  } else {
+                    formik.setFieldValue("freight_done", checked);
+                  }
+                }}
+                disabled={!isEditable}
+                style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
+              />
+              FREIGHT
+              {formik.values.freight_done && formik.values.freight_enquiry_id && (
+                <span style={{ fontSize: 9, color: "#059669", marginLeft: 2 }}>({formik.values.freight_enquiry_id})</span>
               )}
             </label>
           </div>

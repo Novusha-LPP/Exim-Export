@@ -76,6 +76,7 @@ const registrationDetailsSchema = new Schema(
     binNo: String,
     ieCode: { type: String },
     panNo: { type: String },
+    aeoCode: { type: String },
     gstinBranchCodeFree: String,
     gstinBranchCode15: String,
     msmeRegistered: { type: Boolean, default: false },

@@ -391,12 +391,11 @@ export function generateSBFlatFile(job) {
     const invs = job.invoices || [];
     const con0 = (job.consignees || [])[0] || {};
     const containers = job.containers || [];
-
     const isNFEI = invs.some(inv =>
         (inv.products || []).some(p => (p.eximCode || "").split(" ")[0] === "99")
     );
-    const isPortStuffing = ["DOCK", "PORT", "CFS"].includes((job.goods_stuffed_at || "").toUpperCase());
-    const emitContainer = job.transportMode === "SEA" && containers.length > 0 && !isPortStuffing;
+    const validContainers = containers.filter(c => (c.containerNo || "").trim().length > 0);
+    const emitContainer = job.transportMode === "SEA" && validContainers.length > 0;
 
     // FIX 55: Consignee — join name + " " + address as ONE string, then split35 across 5 slots.
     // Logisys treats the entire consignee block as a continuous 175-char field (5 × 35).
@@ -483,7 +482,7 @@ export function generateSBFlatFile(job) {
         mappedSealType = "S";
     } else if (sst.includes("WAREHOUSE") || sst.includes("WEARHOUSE")) {
         mappedSealType = "W";
-    } else if (isContainerized || containers.length > 0) {
+    } else if (isContainerized || validContainers.length > 0) {
         // Fallback: default to 'S' for containerized sea shipments if not explicitly warehouse
         mappedSealType = "S";
     }
@@ -519,9 +518,9 @@ export function generateSBFlatFile(job) {
         "",                                                                 // [27] RBI Waiver No
         "",                                                                 // [28] RBI Waiver Date
         loc,                                                                // [29] Port of Loading — FIX 15
-        podisc,                                                             // [30] Port of destination
+        podisc,
+        cntry(job.discharge_country || ""),                                // [32] Discharge country                                                             // [30] Port of destination
         cntry(job.destination_country || ""),                              // [31] Dest country
-        cntry(job.discharge_country || ""),                                // [32] Discharge country
         podest,                                                             // [33] Port of discharge
         mappedSealType,                                                     // [34] Seal type — FIX 57
         nc,                                                                 // [35] Nature of cargo
@@ -713,7 +712,7 @@ export function generateSBFlatFile(job) {
         const ac = job.annexC1Details || {};
         const dot = (v) => clean(v) || ".";
         const euSeal = clean(ac.virtualSealNumber || job.annex_seal_number || "")
-            || clean((containers[0] || {}).sealNo || "");
+            || clean((validContainers[0] || {}).sealNo || "");
         out += `<TABLE>EOU${RS}`;
         out += row(PD,
             clean(ac.ieCodeOfEOU || job.ie_code_of_eou || iec),
@@ -830,7 +829,7 @@ export function generateSBFlatFile(job) {
 
     if (emitContainer) {
         out += `<TABLE>CONTAINER${RS}`;
-        containers.forEach(c => {
+        validContainers.forEach(c => {
             // FIX Bug 7: send raw size number only (e.g. "40"), not ISO type code ("45G0")
             // FIX Bug 6: Extract size "20" or "40" correctly from name/type
             const rawSizeStr = clean(c.containerSize || c.type || "20");
@@ -843,7 +842,7 @@ export function generateSBFlatFile(job) {
                 clean(c.containerNo),
                 containerSize,
                 rawSealNo,
-                fmtDate(sealDate || now),
+                fmtDate(sealDate || ""),
                 "RFID",
                 "", "", "",
             );

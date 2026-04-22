@@ -564,6 +564,7 @@ const chargeSchema = new Schema(
   {
     chargeHead: { type: String },
     category: { type: String },
+    hsnCode: { type: String, trim: true },
 
     // Top-level fields
     invoice_number: { type: String, trim: true },
@@ -752,10 +753,11 @@ const exportJobSchema = new mongoose.Schema(
       default: Date.now,
     },
     isBuyer: { type: Boolean },
+    isGeneralJob: { type: Boolean, default: false },
 
     ////////////////////////////////////////////////// Excel sheet
     year: { type: String, trim: true },
-    jobNumber: { type: String, trim: true, unique: true },
+    jobNumber: { type: String, trim: true }, // unique index handled below with isGeneralJob
     custom_house: { type: String, trim: true },
     job_date: { type: String, trim: true },
     exporter: { type: String, trim: true },
@@ -863,6 +865,8 @@ const exportJobSchema = new mongoose.Schema(
     form13_date: { type: String, trim: true },
     shipping_bill_done: { type: Boolean, default: false },
     shipping_bill_done_date: { type: String, trim: true },
+    freight_done: { type: Boolean, default: false },
+    freight_enquiry_id: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Exporter Information
     exporter_address: { type: String, trim: true },
@@ -924,7 +928,6 @@ const exportJobSchema = new mongoose.Schema(
 
     job_no: {
       type: String,
-      unique: true,
       uppercase: true,
     },
 
@@ -1133,6 +1136,7 @@ const exportJobSchema = new mongoose.Schema(
     houseblno: { type: String, trim: true }, // House BL Number
     icegateId: { type: String, trim: true, default: "RAJANSFPL" },
     isLocked: { type: Boolean, default: false },
+    isGeneralJob: { type: Boolean, default: false },
     lockedBy: { type: String, trim: true, default: null }, // User who currently has the job open
     lockedAt: { type: Date, default: null }, // Timestamp when the job was locked
   },
@@ -1173,7 +1177,8 @@ exportJobSchema.pre("save", function (next) {
 });
 
 // Remove redundant indexes and add compound indexes
-exportJobSchema.index({ jobNumber: 1 }, { unique: true });
+exportJobSchema.index({ jobNumber: 1, isGeneralJob: 1 }, { unique: true });
+exportJobSchema.index({ job_no: 1, isGeneralJob: 1 }, { unique: true });
 exportJobSchema.index({ filingMode: 1, status: 1 }); // Compound index
 exportJobSchema.index({ jobDate: -1, customHouse: 1 }); // Common query pattern
 exportJobSchema.index({ createdAt: -1 }); // For recent jobs

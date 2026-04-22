@@ -53,6 +53,7 @@ const validationSchema = Yup.object({
         "Invalid PAN format (e.g., ABCDE1234F)",
       )
       .required("PAN No is required"),
+    aeoCode: Yup.string().max(100),
     msmeRegistered: Yup.boolean(),
   }),
 
@@ -175,6 +176,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
     registrationDetails: {
       ieCode: directory?.registrationDetails?.ieCode || "",
       panNo: directory?.registrationDetails?.panNo || "",
+      aeoCode: directory?.registrationDetails?.aeoCode || "",
       msmeRegistered: directory?.registrationDetails?.msmeRegistered || false,
     },
     kycDocuments: {
@@ -603,6 +605,36 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                       inputProps={{
                         style: { textTransform: "uppercase" },
                         maxLength: 10,
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      name="registrationDetails.aeoCode"
+                      label="AEO Code"
+                      value={values.registrationDetails.aeoCode}
+                      onChange={(e) => {
+                        const uppercaseValue = e.target.value.toUpperCase();
+                        setFieldValue(
+                          "registrationDetails.aeoCode",
+                          uppercaseValue,
+                        );
+                      }}
+                      onBlur={handleBlur}
+                      error={
+                        touched.registrationDetails?.aeoCode &&
+                        Boolean(errors.registrationDetails?.aeoCode)
+                      }
+                      helperText={
+                        touched.registrationDetails?.aeoCode &&
+                        errors.registrationDetails?.aeoCode
+                      }
+                      margin="dense"
+                      inputProps={{
+                        style: { textTransform: "uppercase" },
                       }}
                     />
                   </Grid>

@@ -11,6 +11,8 @@ const PAYMENT_TABS = [
   "payment",
   "payment-completed",
   "export-completed-billing",
+  "general-jobs",
+  "General Jobs",
 ];
 
 const PURCHASE_TABS = [
@@ -19,6 +21,8 @@ const PURCHASE_TABS = [
   "purchase-book",
   "purchase-book-completed",
   "export-completed-billing",
+  "general-jobs",
+  "General Jobs",
 ];
 
 function escapeRegex(value) {
@@ -93,6 +97,7 @@ function summarizeJob(job) {
     charge_count: charges.length,
     financial_lock: Boolean(job.financial_lock),
     send_for_billing: Boolean(job.send_for_billing),
+    isGeneralJob: Boolean(job.isGeneralJob),
     unresolved_queries: 0,
     // Add flags for tab logic
     hasPurchaseBook,
@@ -110,13 +115,20 @@ function matchesTab(job, workMode, tab) {
   const hasHandover = Boolean(job.handover_date);
   const hasBillingDone = Boolean(job.billing_date);
 
+  // General Jobs tab
+  if (tab === "general-jobs" || tab === "General Jobs") {
+    return job.isGeneralJob === true;
+  }
+
+  // Standard tabs logic
   if (tab === "billing-pending") {
-    // Show in billing-pending if flagged, regardless of partial progress
-    return job.send_for_billing;
+    // Show in billing-pending if flagged, but only if billing is not done
+    // This now allows general jobs to show up here too if flagged.
+    return job.send_for_billing && !hasBillingDone;
   }
 
   if (tab === "export-completed-billing") {
-    return hasBillingDone || job.financial_lock || /billing done|completed/i.test(job.detailedStatus);
+    return hasBillingDone;
   }
 
   if (workMode === "payment") {
@@ -263,6 +275,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       sb_no: 1,
       financial_lock: 1,
       send_for_billing: 1,
+      isGeneralJob: 1,
       "invoices.invoiceNumber": 1,
       "containers.containerNo": 1,
       "containers.type": 1,
@@ -320,6 +333,22 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       .filter((job) =>
         String(unresolvedOnly).toLowerCase() === "true" ? job.unresolved_queries > 0 : true
       );
+
+    // If search is active, apply prioritized sort in memory
+    if (search) {
+      const s = String(search).toLowerCase();
+      summarized.sort((a, b) => {
+        const getPriority = (job) => {
+          if (String(job.job_no || "").toLowerCase().includes(s)) return 1;
+          if (String(job.sb_no || "").toLowerCase().includes(s)) return 2;
+          if (String(job.booking_no || "").toLowerCase().includes(s)) return 3;
+          if ((job.container_summary || []).some(c => String(c).toLowerCase().includes(s))) return 3;
+          if ((job.invoice_numbers || []).some(i => String(i).toLowerCase().includes(s))) return 4;
+          return 5;
+        };
+        return getPriority(a) - getPriority(b);
+      });
+    }
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.max(1, parseInt(limit, 10) || 50);
