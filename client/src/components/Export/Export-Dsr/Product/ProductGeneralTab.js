@@ -1137,16 +1137,16 @@ function ProductRow({
 }) {
   const [rodtepLoading, setRodtepLoading] = useState(false);
 
-  // Sync rodtepInfo.unit with product.qtyUnit (from Product Main Tab)
+  // Keep RoDTEP unit aligned with SQC unit, but let users enter RoDTEP qty manually.
   const prevRodtepUnitRef = useRef(product.rodtepInfo?.unit);
   useEffect(() => {
-    const mainUnit = product.qtyUnit;
+    const mainUnit = product.socunit;
 
     if (mainUnit !== undefined && prevRodtepUnitRef.current !== mainUnit) {
       handleUnitChange(index, "unit", mainUnit);
       prevRodtepUnitRef.current = mainUnit;
     }
-  }, [product.qtyUnit, index]);
+  }, [product.socunit, index]);
 
   // Fetch RoDTEP data when RITC or eximCode changes
   useEffect(() => {
@@ -2423,30 +2423,24 @@ const ProductGeneralTab = ({
     [formik.setFieldValue, selectedInvoiceIndex],
   );
 
-  // Sync RoDTEP Quantity & Unit with SQC values
-  // Replace the RoDTEP sync effect:
+  // Sync only RoDTEP unit from SQC unit. RoDTEP quantity stays user-controlled.
   useEffect(() => {
     const currentProducts = products || [];
     let changed = false;
     const updatedProducts = currentProducts.map((prod, idx) => {
-      // Only update if product has changed
-      const sqcQty = parseFloat(prod.socQuantity) || 0;
       const sqcUnit = (prod.socunit || "").trim();
 
       const currentRodtep = prod.rodtepInfo || {};
-      const currentRodtepQty = parseFloat(currentRodtep.quantity) || 0;
       const currentRodtepUnit = (currentRodtep.unit || "").trim();
 
-      const isQtyDifferent = Math.abs(currentRodtepQty - sqcQty) > 0.001;
       const isUnitDifferent = currentRodtepUnit !== sqcUnit;
 
-      if (isQtyDifferent || isUnitDifferent) {
+      if (isUnitDifferent) {
         changed = true;
         return {
           ...prod,
           rodtepInfo: {
             ...currentRodtep,
-            quantity: sqcQty,
             unit: sqcUnit,
           },
         };
@@ -2464,7 +2458,7 @@ const ProductGeneralTab = ({
         formik.setFieldValue("invoices", updatedInvoices);
       }
     }
-  }, [products, selectedInvoiceIndex, invoices, formik]); // Remove formik.setFieldValue from dependencies if it's causing loops
+  }, [products, selectedInvoiceIndex, invoices, formik]);
   // Recalculate PMV when important fields change. Using serialized deps to avoid infinite loops.
   const serializedPmvInputs = JSON.stringify(
     (products || []).map((p) => ({

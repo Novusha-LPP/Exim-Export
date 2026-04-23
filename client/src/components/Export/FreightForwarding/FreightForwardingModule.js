@@ -10,6 +10,7 @@ import CreateFreightEnquiry from "./CreateFreightEnquiry";
 import ForwarderDirectory from "./ForwarderDirectory";
 import CaptureRates from "./CaptureRates";
 import AddExJobs from "../Export-Dsr/AddExJobs";
+import FreightBillOfLadingGenerator from "./FreightBillOfLadingGenerator";
 
 const THEME = {
   blue: "#2563eb",
@@ -246,13 +247,16 @@ function FreightForwardingModule() {
     setSelectedEnquiry(prev => prev?._id === updated._id ? updated : prev);
   };
 
-  const handleRowClick = async (row) => {
-    if (activeTab === "Success") {
-      const encodedJobNo = encodeURIComponent(row.enquiry_no);
-      navigate(`/export-charges/job/${encodedJobNo}`);
-    } else {
+  const handleRowClick = (row) => {
+    if (activeTab !== "Success") {
       setSelectedEnquiry(row);
     }
+  };
+
+  const handleSuccessJobClick = (e, row) => {
+    e.stopPropagation();
+    const encodedJobNo = encodeURIComponent(row.enquiry_no);
+    navigate(`/export-charges/job/${encodedJobNo}`);
   };
 
   return (
@@ -393,17 +397,24 @@ function FreightForwardingModule() {
                         key={row.enquiry_no} 
                         style={{ 
                           borderBottom: `1px solid ${THEME.border}`, 
-                          cursor: loadingJob ? "wait" : "pointer",
+                          cursor: activeTab === "Success" ? "default" : (loadingJob ? "wait" : "pointer"),
                           opacity: loadingJob ? 0.7 : 1
                         }}
                         onClick={() => !loadingJob && handleRowClick(row)}
                       >
                         <td style={{ padding: "10px", fontWeight: 700, color: THEME.blue }}>
-                          <span 
-                            style={{ cursor: "pointer", textDecoration: "underline" }}
-                          >
-                            {row.enquiry_no}
-                          </span>
+                          {activeTab === "Success" ? (
+                            <span
+                              onClick={(e) => handleSuccessJobClick(e, row)}
+                              style={{ cursor: "pointer", textDecoration: "underline" }}
+                            >
+                              {row.enquiry_no}
+                            </span>
+                          ) : (
+                            <span style={{ cursor: "pointer", textDecoration: "underline" }}>
+                              {row.enquiry_no}
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: "10px" }}>{row.enquiry_date}</td>
                         <td style={{ padding: "10px" }}>{row.organization_name}</td>
@@ -415,19 +426,41 @@ function FreightForwardingModule() {
                           <DocsUploadCell row={row} onUpdate={handleUpdateEnquiry} />
                         </td>
                         <td style={{ padding: "10px" }}>
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "2px 8px",
-                              borderRadius: 12,
-                              backgroundColor: row.status === "Converted" ? "#ecfdf5" : "#fff7ed",
-                              color: row.status === "Converted" ? "#059669" : "#ea580c",
-                              fontWeight: 700,
-                              fontSize: 11,
-                            }}
-                          >
-                            {row.status}
-                          </span>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "2px 8px",
+                                borderRadius: 12,
+                                backgroundColor: row.status === "Converted" ? "#ecfdf5" : "#fff7ed",
+                                color: row.status === "Converted" ? "#059669" : "#ea580c",
+                                fontWeight: 700,
+                                fontSize: 11,
+                              }}
+                            >
+                              {row.status}
+                            </span>
+                            {row.shipment_type !== "Import-Air" && row.shipment_type !== "Export-Air" && (
+                              <FreightBillOfLadingGenerator enquiry={row}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{
+                                    padding: "4px 10px",
+                                    borderRadius: 6,
+                                    border: `1px solid ${THEME.blue}`,
+                                    backgroundColor: "#eff6ff",
+                                    color: THEME.blue,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  Generate BL
+                                </button>
+                              </FreightBillOfLadingGenerator>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
