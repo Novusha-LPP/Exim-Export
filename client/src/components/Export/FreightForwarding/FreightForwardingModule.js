@@ -1,7 +1,10 @@
 import React, { useMemo, useState, useEffect } from "react";
 import axios from "axios";
-import { Dialog, DialogContent, DialogTitle, IconButton } from "@mui/material";
+import { Dialog, DialogContent, DialogTitle, IconButton, Menu, MenuItem, Typography, CircularProgress, Tooltip } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import GetAppIcon from "@mui/icons-material/GetApp";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { useNavigate } from "react-router-dom";
 import CreateFreightEnquiry from "./CreateFreightEnquiry";
 import ForwarderDirectory from "./ForwarderDirectory";
@@ -16,6 +19,154 @@ const THEME = {
   white: "#ffffff",
   bg: "#fafaff",
 };
+
+const DOC_TYPES = [
+  { label: "LEO", field: "leo_copy" },
+  { label: "INVOICE", field: "invoice" },
+  { label: "PACKING LIST", field: "packing_list" },
+  { label: "BILL OF LADING", field: "bill_of_lading" },
+];
+
+function DocsUploadCell({ row, onUpdate }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [uploading, setUploading] = useState(null);
+
+  const handleOpen = (e) => {
+    e.stopPropagation();
+    setAnchorEl(e.currentTarget);
+  };
+
+  const handleClose = (e) => {
+    if (e) e.stopPropagation();
+    setAnchorEl(null);
+  };
+
+  const handleUpload = async (e, field) => {
+    e.stopPropagation();
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(field);
+    const formData = new FormData();
+    formData.append("files", file);
+    formData.append("folderName", `freight-docs/${row.enquiry_no}`);
+
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_STRING}/upload`, formData);
+      const url = res.data.locations[0];
+      
+      const updatedDocs = { ...(row.documents || {}), [field]: url };
+      const updateRes = await axios.put(`${import.meta.env.VITE_API_STRING}/freight-enquiries/${row._id}`, { documents: updatedDocs });
+      
+      if (updateRes.data.success) {
+        onUpdate(updateRes.data.data);
+      }
+    } catch (error) {
+      console.error("Upload failed", error);
+      alert("Upload failed");
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const handleDelete = async (e, field) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to delete this document?`)) return;
+
+    try {
+      const updatedDocs = { ...(row.documents || {}) };
+      delete updatedDocs[field];
+      
+      const updateRes = await axios.put(`${import.meta.env.VITE_API_STRING}/freight-enquiries/${row._id}`, { documents: updatedDocs });
+      
+      if (updateRes.data.success) {
+        onUpdate(updateRes.data.data);
+      }
+    } catch (error) {
+      console.error("Delete failed", error);
+      alert("Delete failed");
+    }
+  };
+
+  const docs = row.documents || {};
+  const uploadedCount = Object.values(docs).filter(Boolean).length;
+
+  return (
+    <div onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={handleOpen}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          padding: "4px 8px",
+          borderRadius: 6,
+          border: `1px solid ${THEME.border}`,
+          backgroundColor: uploadedCount > 0 ? "#eff6ff" : "#fff",
+          cursor: "pointer",
+          fontSize: 11,
+          fontWeight: 700,
+          color: uploadedCount > 0 ? THEME.blue : THEME.textMuted,
+          transition: "all 0.2s"
+        }}
+      >
+        <CloudUploadIcon style={{ fontSize: 14 }} />
+        {uploadedCount > 0 ? `Docs (${uploadedCount})` : "Upload Docs"}
+      </button>
+      <Menu 
+        anchorEl={anchorEl} 
+        open={Boolean(anchorEl)} 
+        onClose={handleClose} 
+        PaperProps={{ style: { maxHeight: 350, width: 220, borderRadius: 8, boxShadow: "0 4px 20px rgba(0,0,0,0.1)" } }}
+      >
+        <Typography variant="overline" sx={{ px: 2, fontWeight: 800, color: THEME.textMuted, display: 'block', borderBottom: `1px solid ${THEME.border}`, mb: 1 }}>
+          SHIPPING / VGM DOCS
+        </Typography>
+        {DOC_TYPES.map((doc) => (
+          <MenuItem 
+            key={doc.field} 
+            sx={{ display: "flex", justifyContent: "space-between", py: 0.8, px: 2, borderBottom: `1px solid ${THEME.border}22` }}
+          >
+            <span style={{ fontSize: 11, fontWeight: 600, color: THEME.text }}>{doc.label}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {docs[doc.field] && (
+                <Tooltip title="View">
+                  <IconButton 
+                    size="small" 
+                    onClick={(e) => { e.stopPropagation(); window.open(docs[doc.field], "_blank"); }}
+                    sx={{ color: "#059669", p: 0.5 }}
+                  >
+                    <GetAppIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {uploading === doc.field ? (
+                <CircularProgress size={14} />
+              ) : (
+                <label style={{ cursor: "pointer", display: 'flex', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                  <input type="file" hidden onChange={(e) => handleUpload(e, doc.field)} />
+                  <CloudUploadIcon sx={{ fontSize: 16, color: THEME.blue }} />
+                </label>
+              )}
+              <Tooltip title="Delete Document">
+                <span>
+                  <IconButton 
+                    size="small" 
+                    onClick={(e) => handleDelete(e, doc.field)}
+                    sx={{ color: docs[doc.field] ? "#dc2626" : "#e2e8f0", p: 0.5 }}
+                    disabled={!docs[doc.field]}
+                  >
+                    <DeleteIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </div>
+          </MenuItem>
+        ))}
+      </Menu>
+    </div>
+  );
+}
 
 function FreightForwardingModule() {
   const [rows, setRows] = useState([]);
@@ -91,16 +242,13 @@ function FreightForwardingModule() {
 
   const handleUpdateEnquiry = (updated) => {
     setRows(rows.map(r => r._id === updated._id ? updated : r));
-    setSelectedEnquiry(updated);
+    // Only update selectedEnquiry if the dialog is already open for this record
+    setSelectedEnquiry(prev => prev?._id === updated._id ? updated : prev);
   };
 
   const handleRowClick = async (row) => {
-    // Priority: Use enquiry_no for navigation if in Success tab as requested by user
-    // Fallback to source_job_no or remarks-based job_no
-    let jobNo = row.enquiry_no;
-    
     if (activeTab === "Success") {
-      const encodedJobNo = encodeURIComponent(jobNo);
+      const encodedJobNo = encodeURIComponent(row.enquiry_no);
       navigate(`/export-charges/job/${encodedJobNo}`);
     } else {
       setSelectedEnquiry(row);
@@ -231,8 +379,8 @@ function FreightForwardingModule() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ backgroundColor: "#f8fafc", borderBottom: `1px solid ${THEME.border}` }}>
-                    {["Enquiry No", "Date", "Organization", "Shipment", "Booking Info", "POL", "Destination", "Source Job", "Status"].map((h) => (
-                      <th key={h} style={{ textAlign: "left", padding: "10px", color: THEME.textMuted, fontWeight: 700 }}>
+                    {["Enquiry No", "Date", "Organization", "Shipment", "Booking Info", "POL", "Destination", "Docs Upload", "Status"].map((h) => (
+                      <th key={h} style={{ textAlign: h === "Docs Upload" ? "center" : "left", padding: "10px", color: THEME.textMuted, fontWeight: 700 }}>
                         {h}
                       </th>
                     ))}
@@ -252,10 +400,6 @@ function FreightForwardingModule() {
                       >
                         <td style={{ padding: "10px", fontWeight: 700, color: THEME.blue }}>
                           <span 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedEnquiry(row);
-                            }}
                             style={{ cursor: "pointer", textDecoration: "underline" }}
                           >
                             {row.enquiry_no}
@@ -267,7 +411,9 @@ function FreightForwardingModule() {
                         <td style={{ padding: "10px" }}>{[row.container_size, row.consignment_type, row.goods_stuffed].filter(Boolean).join(" / ") || "-"}</td>
                         <td style={{ padding: "10px" }}>{row.port_of_loading || "-"}</td>
                         <td style={{ padding: "10px" }}>{row.port_of_destination || "-"}</td>
-                        <td style={{ padding: "10px", fontWeight: 600 }}>{row.source_job_no || "-"}</td>
+                        <td style={{ padding: "10px" }}>
+                          <DocsUploadCell row={row} onUpdate={handleUpdateEnquiry} />
+                        </td>
                         <td style={{ padding: "10px" }}>
                           <span
                             style={{

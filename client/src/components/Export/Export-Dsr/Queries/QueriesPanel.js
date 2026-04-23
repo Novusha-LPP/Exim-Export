@@ -885,7 +885,13 @@ const UploadItem = ({ job, field, title, uploadType, onSuccess }) => {
         <IconButton size="small" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
           {uploading ? <CircularProgress size={16} /> : <CloudUploadIcon sx={{ fontSize: 18, color: THEME.blue }} />}
         </IconButton>
-        <input type="file" ref={fileInputRef} onChange={handleUpload} style={{ display: "none" }} />
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleUpload}
+          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,application/pdf,image/jpeg,image/png,video/mp4"
+          style={{ display: "none" }}
+        />
       </div>
     </div>
   );

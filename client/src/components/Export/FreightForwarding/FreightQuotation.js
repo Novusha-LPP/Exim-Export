@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import surajCompanyLogo from "../../../assets/images/surajCompanyLogo.jpeg";
 
 const THEME = {
   blue: "#2563eb",
@@ -9,19 +10,21 @@ const THEME = {
 const s = {
   quoteWrapper: {
     fontFamily: "'Segoe UI', Roboto, sans-serif",
-    width: "794px", // A4 width approx
+    width: "100%",
+    maxWidth: "800px",
     margin: "0 auto",
-    padding: "40px",
+    padding: "30px",
     backgroundColor: "#fff",
     color: THEME.text,
+    boxSizing: "border-box",
   },
-  header: { display: "flex", justifyContent: "space-between", marginBottom: "20px" },
-  address: { fontSize: "12px", lineHeight: "1.6" },
-  title: { textAlign: "center", fontSize: "16px", fontWeight: "bold", textDecoration: "underline", margin: "15px 0" },
-  table: { width: "100%", borderCollapse: "collapse", marginBottom: "15px" },
-  th: { backgroundColor: "#e2e8f0", padding: "8px", textAlign: "left", fontSize: "13px", border: `1px solid ${THEME.border}` },
-  td: { padding: "8px", border: `1px solid ${THEME.border}`, fontSize: "13px" },
-  footerNote: { fontSize: "11px", marginTop: "15px", display: "flex", flexDirection: "column", gap: "5px" },
+  header: { display: "flex", justifyContent: "space-between", marginBottom: "10px" },
+  address: { fontSize: "12px", lineHeight: "1.5" },
+  title: { textAlign: "center", fontSize: "15px", fontWeight: "bold", textDecoration: "underline", margin: "10px 0" },
+  table: { width: "100%", borderCollapse: "collapse", marginBottom: "10px" },
+  th: { backgroundColor: "#e2e8f0", padding: "6px", textAlign: "left", fontSize: "12px", border: `1px solid ${THEME.border}` },
+  td: { padding: "6px", border: `1px solid ${THEME.border}`, fontSize: "12px" },
+  footerNote: { fontSize: "10.5px", marginTop: "10px", display: "flex", flexDirection: "column", gap: "3px" },
   input: { border: "none", backgroundColor: "#f8fafc", width: "80px", textAlign: "right", padding: "2px" },
 };
 
@@ -53,11 +56,14 @@ function FreightQuotation({ enquiry, selectedRate, onBack }) {
               left: 0;
               top: 0;
               width: 100%;
+              max-width: none !important;
               margin: 0 !important;
-              padding: 1.5cm 2cm !important;
+              padding: 0.5cm 1.8cm !important;
               box-shadow: none !important;
               background-color: white !important;
+              page-break-after: avoid;
             }
+            body, html { margin: 0 !important; padding: 0 !important; height: 100%; overflow: hidden; }
             .no-print {
               display: none !important;
               visibility: hidden !important;
@@ -87,15 +93,18 @@ function FreightQuotation({ enquiry, selectedRate, onBack }) {
 
       <div style={s.quoteWrapper} id="quotation-print-area">
         <div style={s.header}>
-          <div style={s.address}>
-            <strong>A 204 to 206, Wall Street II</strong><br />
-            Opp Orient Club, Ellis Bridge<br />
-            Ahmedabad - 380006<br />
-            Phone: 079-26402005 / 26402006<br />
-            Email: sojith@surajforwarders.com
-          </div>
-          <div style={{ textAlign: "right", fontSize: "12px" }}>
-            Date: {new Date().toLocaleDateString("en-GB")}
+          <img src={surajCompanyLogo} alt="Logo" style={{ height: "70px", width: "auto" }} />
+          <div style={{ textAlign: "right" }}>
+            <div style={s.address}>
+              <strong>A 204 to 206, Wall Street II</strong><br />
+              Opp Orient Club, Ellis Bridge<br />
+              Ahmedabad - 380006<br />
+              Phone: 079-26402005 / 26402006<br />
+              Email: sojith@surajforwarders.com
+            </div>
+            <div style={{ fontSize: "12px", marginTop: "8px" }}>
+              Date: {new Date().toLocaleDateString("en-GB")}
+            </div>
           </div>
         </div>
 
@@ -188,7 +197,7 @@ function FreightQuotation({ enquiry, selectedRate, onBack }) {
           <div>➤ Rates valid till: {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString("en-GB")}</div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "40px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
           <div style={{ fontSize: "12px", fontWeight: "bold" }}>For Suraj Forwarders</div>
           <div style={{ fontSize: "12px", fontWeight: "bold" }}>Authorized Signatory</div>
         </div>

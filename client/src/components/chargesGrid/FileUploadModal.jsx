@@ -85,10 +85,11 @@ const FileUploadModal = ({ isOpen, onClose, chargeLabel, initialUrls = [], onAtt
             <div style={{ fontSize: '28px', marginBottom: '6px', opacity: 0.5 }}>⬆</div>
             <p><strong>Drag &amp; drop files here</strong></p>
             <p>or <span className="browse-link" onClick={(e) => { e.stopPropagation(); fileInputRef.current && fileInputRef.current.click()}}>browse to upload</span></p>
-            <p style={{ color: '#8aA0b0', fontSize: '11px', marginTop: '6px' }}>PDF, JPG, PNG, XLSX, DOCX supported</p>
+            <p style={{ color: '#8aA0b0', fontSize: '11px', marginTop: '6px' }}>PDF, JPG, PNG, XLSX, DOCX, MP4 supported</p>
             <input 
                type="file" 
                multiple
+               accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.doc,.docx,.mp4,application/pdf,image/jpeg,image/png,video/mp4"
                ref={fileInputRef}
                style={{ display: 'none' }} 
                onChange={handleFileChange} 

@@ -4,7 +4,7 @@ import "jspdf-autotable";
 import axios from "axios";
 import { IconButton, Button } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
-import logo from "../../../../assets/images/logo.png";
+import logo from "../../../../assets/images/surajLogo.jpeg";
 
 const FileCoverGenerator = ({ jobNo, children }) => {
   const generateFileCover = async (e) => {
@@ -41,11 +41,15 @@ const FileCoverGenerator = ({ jobNo, children }) => {
         return d.toLocaleDateString("en-GB", options);
       };
 
+      const getContainerSizeLabel = (value) => {
+        const raw = (value || "").toString().toUpperCase().trim();
+        const sizeMatch = raw.match(/\b(20|40|45)\b/);
+        return sizeMatch ? sizeMatch[1] : raw;
+      };
+
       // ==================== HEADER ====================
-      // Composite Header Logo (Branding + Subtext + AEO)
       try {
-        // Adjusted dimensions (wider) to fit the new full-header logo
-        doc.addImage(logo, "PNG", 8, 20, 110, 26);
+        doc.addImage(logo, "JPEG", 9, 11, 190, 52);
       } catch (err) {
         console.warn("Logo add failed", err);
       }
@@ -55,30 +59,9 @@ const FileCoverGenerator = ({ jobNo, children }) => {
       doc.setFont("helvetica", "bold");
       const jobNoText = `JOB NO. ${data.job_no || ""}`;
       const jobNoWidth = doc.getTextWidth(jobNoText);
-      doc.text(jobNoText, (pageWidth - jobNoWidth) / 2, 18);
+      doc.text(jobNoText, (pageWidth - jobNoWidth) / 2, 20);
 
-
-      // Address Block (Right Aligned)
-      const rightMargin = 15;
-      const addressX = 130;
-      doc.setFontSize(10);
-      doc.text("A-204 to 207, Wall Street - II,", addressX, 25);
-      doc.text("Opp. Orient Club, Ellis Bridge,", addressX, 29);
-      doc.text("Ahmedabad - 380 006.", addressX, 33);
-      doc.text("Phone : (079) 2640 1929 / 2640 2005 / 6", addressX, 37);
-      doc.setTextColor(0, 0, 0);
-      doc.text("Email : info@surajforwarders.com", addressX, 41);
-
-      // CHA License Box (Bottom Right of Header)
-      doc.setFillColor(0, 0, 139); // Dark Blue
-      doc.rect(addressX, 43, 72, 6, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.text("CHA LICENCE NO : ABOFS1766LCH005", addressX + 2, 47.2);
-      doc.setTextColor(0, 0, 0);
-
-      let yPos = 55;
+      let yPos = 60;
 
       // ==================== MAIN TABLE ====================
       // Mapping Data
@@ -116,7 +99,11 @@ const FileCoverGenerator = ({ jobNo, children }) => {
 
       // LCL/FCL and Rail/Road
       const mode = data.consignmentType || "";
-      const isLCL = mode.toString().toUpperCase().includes("LCL");
+      const normalizedMode = mode.toString().toUpperCase();
+      const normalizedTransportMode = (data.transportMode || "").toString().toUpperCase();
+      const isLCL = normalizedMode.includes("LCL");
+      const isAir = normalizedMode === "AIR" || normalizedTransportMode === "AIR";
+      const hideContainerSizeColumn = isLCL || isAir;
       const railing = statusDetails.railRoad || statusDetails.concorPrivate || "";
 
       doc.autoTable({
@@ -231,12 +218,37 @@ const FileCoverGenerator = ({ jobNo, children }) => {
       // Booking Details for S/Line Seal No
       const sLineSealNo = data.shipping_line_airline || "";
 
-      const containerBody = containerRows.map((c) => [
-        c.containerNo || "",
-        isLCL ? "" : (c.containerSize || c.type || c.size || "20"),
-        c.sealNo || "", // Customs Seal
-        sLineSealNo || "", // S/Line Seal
-      ]);
+      const containerBody = containerRows.map((c) => (
+        hideContainerSizeColumn
+          ? [
+              c.containerNo || "",
+              c.sealNo || "", // Customs Seal
+              sLineSealNo || "", // S/Line Seal
+            ]
+          : [
+              c.containerNo || "",
+              getContainerSizeLabel(c.containerSize || c.type || c.size || "20"),
+              c.sealNo || "", // Customs Seal
+              sLineSealNo || "", // S/Line Seal
+            ]
+      ));
+
+      const containerHead = hideContainerSizeColumn
+        ? [["Container No", "Customs Seal No", "S/Line Seal No"]]
+        : [["Container No", "Size", "Customs Seal No", "S/Line Seal No"]];
+
+      const containerColumnStyles = hideContainerSizeColumn
+        ? {
+            0: { width: 60, fontStyle: "bold" },
+            1: { width: 65, fontStyle: "bold" },
+            2: { width: 65 },
+          }
+        : {
+            0: { width: 50, fontStyle: "bold" },
+            1: { width: 20, halign: "center" },
+            2: { width: 60, fontStyle: "bold" },
+            3: { width: 60 },
+          };
 
       // Dynamic scaling logic to fit everything on one A4 page properly
       const containerCount = containerBody.length;
@@ -269,7 +281,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
           cellPadding: dynamicPadding,
           minCellHeight: dynamicMinHeight,
         },
-        head: [["Container No", "Size", "Customs Seal No", "S/Line Seal No"]],
+        head: containerHead,
         headStyles: {
           fillColor: [255, 255, 255],
           textColor: [0, 0, 0],
@@ -278,12 +290,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
           lineWidth: 0.8,
         },
         body: containerBody,
-        columnStyles: {
-          0: { width: 50, fontStyle: "bold" },
-          1: { width: 20, halign: "center" },
-          2: { width: 60, fontStyle: "bold" },
-          3: { width: 60 },
-        },
+        columnStyles: containerColumnStyles,
         margin: { bottom: 10 },
       });
 

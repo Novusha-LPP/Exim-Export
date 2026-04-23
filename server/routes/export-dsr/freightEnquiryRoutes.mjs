@@ -155,5 +155,14 @@ router.put("/freight-enquiries/:id", async (req, res) => {
   }
 });
 
+// Delete an enquiry
+router.delete("/freight-enquiries/:id", async (req, res) => {
+  try {
+    await FreightEnquiryModel.findByIdAndDelete(req.params.id);
+    res.status(200).json({ success: true, message: "Enquiry deleted" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 export default router;

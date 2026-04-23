@@ -417,6 +417,12 @@ const buildShippingLineUrls = (num, containerFirst = "") => ({
     : "#",
 });
 
+const getContainerSizeLabel = (value) => {
+  const raw = (value || "").toString().toUpperCase().trim();
+  const sizeMatch = raw.match(/\b(20|40|45)\b/);
+  return sizeMatch ? sizeMatch[1] : raw;
+};
+
 const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSuccess }) => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
@@ -490,6 +496,7 @@ const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSucce
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,application/pdf,image/jpeg,image/png,video/mp4"
         style={{ display: "none" }}
       />
     </>
@@ -882,6 +889,12 @@ const ExportJobsTable = () => {
   // Container Track Dialog State
   const [containerTrackOpen, setContainerTrackOpen] = useState(false);
   const [containerTrackContainers, setContainerTrackContainers] = useState([]);
+  const [expandedContainers, setExpandedContainers] = useState({});
+
+  const toggleContainers = (e, id) => {
+    e.stopPropagation();
+    setExpandedContainers((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // Query Dialog State
   const [queryDialogOpen, setQueryDialogOpen] = useState(false);
@@ -1073,7 +1086,7 @@ const ExportJobsTable = () => {
           if (job.containers && job.containers.length > 0) {
             job.containers.forEach(c => {
               if (c.containerNo) contCol.push(`Cont: ${c.containerNo}`);
-              if (c.type) contCol.push(`Size: ${c.type}`);
+              if (c.type) contCol.push(`Size: ${getContainerSizeLabel(c.type)}`);
             });
           }
           const placeDate = job.operations?.[0]?.statusDetails?.[0]?.containerPlacementDate;
@@ -2419,20 +2432,20 @@ const ExportJobsTable = () => {
                     onClick={() => handleSort('job_no')}
                     title="Click to sort by Job Number"
                   >
-                    Job No / Owner
+                    Job No
                     {sortConfig.key === 'job_no' && (
                       <span style={{ marginLeft: "5px", fontSize: "10px" }}>
                         {sortConfig.direction === 'asc' ? '▲' : '▼'}
                       </span>
                     )}
                   </th>
-                  <th style={{ ...s.th, width: "28%", minWidth: "200px" }}>Exporter</th>
+                  <th style={{ ...s.th, width: "20%", minWidth: "180px" }}>Exporter</th>
                   <th style={{ ...s.th, width: "10%", minWidth: "95px" }}>Invoice</th>
-                  <th style={{ ...s.th, width: "6%", minWidth: "65px" }}>SB / Date</th>
+                  <th style={{ ...s.th, width: "8%", minWidth: "65px" }}>SB No</th>
                   <th style={{ ...s.th, width: "12%", minWidth: "140px" }}>Port</th>
                   <th style={{ ...s.th, width: "10%", minWidth: "110px" }}>Container</th>
                   <th style={{ ...s.th, width: "10%", minWidth: "110px" }}>Handover</th>
-                  <th style={{ ...s.th, width: "7%", minWidth: "75px" }}>Docs</th>
+                  <th style={{ ...s.th, width: "6%", minWidth: "65px" }}>Docs</th>
                   <th style={{ ...s.th, width: "5%", minWidth: "65px", textAlign: "center" }}>Status</th>
                 </tr>
               </thead>
@@ -2847,21 +2860,31 @@ const ExportJobsTable = () => {
                           {!(job.isGeneralJob || job.exporter === "GENERAL JOB") ? (
                             <div style={{ marginBottom: "2px" }}>
                               {job.containers && job.containers.length > 0 ? (
-                                <div
-                                  style={{
-                                    fontWeight: "600",
-                                    fontSize: "11px",
-                                    color: "#374151",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: "3px",
-                                  }}
-                                >
-                                  {job.containers
-                                    .filter((c) => c.containerNo)
-                                    .map((container, index) => (
+                                (() => {
+                                  const validContainers = job.containers.filter((c) => c.containerNo);
+                                  const containerKey = job._id || job.job_no || idx;
+                                  const isExpanded = !!expandedContainers[containerKey];
+                                  const visibleContainers = isExpanded ? validContainers : validContainers.slice(0, 3);
+                                  const hiddenCount = Math.max(validContainers.length - 3, 0);
+
+                                  if (validContainers.length === 0) {
+                                    return <div style={{ fontWeight: "600", color: "#94a3b8" }}>-</div>;
+                                  }
+
+                                  return (
+                                    <div
+                                      style={{
+                                        fontWeight: "600",
+                                        fontSize: "11px",
+                                        color: "#374151",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "3px",
+                                      }}
+                                    >
+                                      {visibleContainers.map((container, index) => (
                                       <div
-                                        key={index}
+                                        key={`${container.containerNo}-${index}`}
                                         style={{
                                           display: "flex",
                                           flexDirection: "column",
@@ -2872,18 +2895,20 @@ const ExportJobsTable = () => {
                                           border: "1px solid rgba(37, 99, 235, 0.1)"
                                         }}
                                       >
-                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "4px", flexWrap: "wrap" }}>
-                                          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px", flexWrap: "nowrap" }}>
+                                          <div style={{ display: "flex", alignItems: "center", gap: "4px", flex: 1, minWidth: 0 }}>
                                             <a
                                               href={`https://www.ldb.co.in/ldb/containersearch/39/${container.containerNo}/1726651147706`}
                                               target="_blank"
                                               rel="noopener noreferrer"
                                               style={{
+                                                display: "inline-block",
                                                 fontWeight: "800",
                                                 textDecoration: "none",
                                                 cursor: "pointer",
                                                 fontSize: "11px",
                                                 color: "#2563eb",
+                                                whiteSpace: "nowrap",
                                               }}
                                               onMouseOver={(e) => (e.target.style.textDecoration = "underline")}
                                               onMouseOut={(e) => (e.target.style.textDecoration = "none")}
@@ -2950,14 +2975,35 @@ const ExportJobsTable = () => {
                                           </div>
 
                                           {container.type && (
-                                            <span style={{ fontSize: '9px', color: '#445566', fontWeight: "900", backgroundColor: "#e2e8f0", padding: "1px 4px", borderRadius: "3px" }}>
-                                              {container.type.toUpperCase()}
+                                            <span style={{ fontSize: '9px', color: '#445566', fontWeight: "900", backgroundColor: "#e2e8f0", padding: "1px 6px", borderRadius: "3px", flexShrink: 0, minWidth: "24px", textAlign: "center" }}>
+                                              {getContainerSizeLabel(container.type)}
                                             </span>
                                           )}
                                         </div>
                                       </div>
                                     ))}
-                                </div>
+                                      {hiddenCount > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => toggleContainers(e, containerKey)}
+                                          style={{
+                                            alignSelf: "flex-start",
+                                            border: isExpanded ? "none" : "1px solid #f59e0b",
+                                            background: isExpanded ? "transparent" : "#fff7ed",
+                                            color: isExpanded ? "#475569" : "#b45309",
+                                            fontSize: "10px",
+                                            fontWeight: "700",
+                                            cursor: "pointer",
+                                            padding: isExpanded ? "2px 0" : "3px 8px",
+                                            borderRadius: "999px",
+                                          }}
+                                        >
+                                          {isExpanded ? "Show less" : `Show ${hiddenCount} more`}
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })()
                               ) : (
                                 <div style={{ fontWeight: "600", color: "#94a3b8" }}>-</div>
                               )}

@@ -164,6 +164,7 @@ const QuickUploadButton = ({ row, field, onSuccess }) => {
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,application/pdf,image/jpeg,image/png,video/mp4"
         style={{ display: "none" }}
       />
     </>
