@@ -258,7 +258,7 @@ router.put('/charges/:id', async (req, res) => {
             }
         }
 
-        await job.save();
+        await record.save();
         res.json({ success: true, data: charge });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

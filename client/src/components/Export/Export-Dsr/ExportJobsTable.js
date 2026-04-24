@@ -712,6 +712,51 @@ const ExportJobsTable = () => {
   const [customHouses, setCustomHouses] = useState([]); // Re-added customHouses state
   const [jobOwnersList, setJobOwnersList] = useState([]); // Stores fetched users for Job Owner dropdown
 
+  // General Job Modal
+  const [generalJobModalOpen, setGeneralJobModalOpen] = useState(false);
+  const [generalJobForm, setGeneralJobForm] = useState({
+    exporter: "",
+    exporter_address: "",
+    exporter_gstin: "",
+    panNo: ""
+  });
+  const [organizations, setOrganizations] = useState([]);
+  const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+  const [isDirectoriesLoading, setIsDirectoriesLoading] = useState(false);
+  const directoryRef = useRef(null);
+
+  // Fetch Directories for General Job Autocomplete
+  useEffect(() => {
+    if (!generalJobModalOpen) return;
+    const fetchOrgs = async () => {
+      try {
+        setIsDirectoriesLoading(true);
+        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/directory`, {
+          params: { limit: 2000 }
+        });
+        if (response.data.success) {
+          setOrganizations(response.data.data || []);
+        }
+      } catch (err) {
+        console.error("Error fetching directories:", err);
+      } finally {
+        setIsDirectoriesLoading(false);
+      }
+    };
+    fetchOrgs();
+  }, [generalJobModalOpen]);
+
+  // Click outside for directory dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (directoryRef.current && !directoryRef.current.contains(e.target)) {
+        setShowOrgDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
 
   // Fetch Job Owners (Users)
   // Fetch Job Owners (Users)
@@ -1261,24 +1306,66 @@ const ExportJobsTable = () => {
     }
   };
 
-  const handleCreateGeneralJob = async () => {
+  const handleCreateGeneralJob = () => {
+    setGeneralJobForm({
+      exporter: "",
+      exporter_address: "",
+      exporter_gstin: "",
+      panNo: ""
+    });
+    setGeneralJobModalOpen(true);
+  };
+
+  const handleGeneralJobSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!generalJobForm.exporter) {
+      alert("Exporter name is required");
+      return;
+    }
     const yearToUse = (selectedYear === "all" || !selectedYear) ? getCurrentFinancialYear() : selectedYear;
-    if (!window.confirm(`Create a new General Job for year ${yearToUse}?`)) return;
     try {
       setLoading(true);
       const res = await axios.post(`${import.meta.env.VITE_API_STRING}/create-general-job`, {
+        ...generalJobForm,
         year: yearToUse
       });
       if (res.data.success) {
         alert(`Job Created: ${res.data.data.job_no}`);
+        setGeneralJobModalOpen(false);
         fetchJobs();
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to create general job.");
+      alert(err.response?.data?.message || "Failed to create general job.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDirectorySelect = (org) => {
+    let address = org.address || "";
+    const panNo = org.registrationDetails?.panNo || "";
+    let gstin = "";
+    
+    if (org.branchInfo && org.branchInfo.length > 0) {
+      const branch = org.branchInfo[0];
+      gstin = branch.gstNo || branch.gstin || "";
+      if (!address) {
+        address = branch.address || "";
+        const cityState = [branch.city, branch.state, branch.postalCode].filter(Boolean).join(", ");
+        if (cityState) {
+          address = address ? `${address}\n${cityState}` : cityState;
+        }
+      }
+    }
+
+    setGeneralJobForm({
+      exporter: org.organization.toUpperCase(),
+      exporter_address: address.toUpperCase(),
+      exporter_gstin: gstin.toUpperCase(),
+      panNo: panNo.toUpperCase()
+    });
+    setShowOrgDropdown(false);
   };
 
   useEffect(() => {
@@ -2044,14 +2131,24 @@ const ExportJobsTable = () => {
               ></span>
             </button>
             {isChargesModule && (
-              <button
-                style={
-                  activeTab === "General Jobs" ? { ...s.tab, ...s.activeTab } : s.tab
-                }
-                onClick={() => setActiveTab("General Jobs")}
-              >
-                General Jobs
-              </button>
+              <>
+                <button
+                  style={
+                    activeTab === "General Jobs" ? { ...s.tab, ...s.activeTab } : s.tab
+                  }
+                  onClick={() => setActiveTab("General Jobs")}
+                >
+                  General Jobs
+                </button>
+                <button
+                  style={
+                    activeTab === "Freight Forwarding" ? { ...s.tab, ...s.activeTab } : s.tab
+                  }
+                  onClick={() => setActiveTab("Freight Forwarding")}
+                >
+                  Freight Forwarding
+                </button>
+              </>
             )}
             {!isOperationModule && !isChargesModule && (
               <button
@@ -4218,6 +4315,138 @@ const ExportJobsTable = () => {
           </>
         ))()}
       </Menu>
+
+      {/* CREATE GENERAL JOB DIALOG */}
+      <Dialog
+        open={generalJobModalOpen}
+        onClose={() => setGeneralJobModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          style: { borderRadius: '12px', padding: '8px', overflow: 'visible' }
+        }}
+      >
+        <DialogTitle style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '800', fontSize: '16px', color: '#1e293b' }}>
+          CREATE GENERAL JOB
+          <IconButton onClick={() => setGeneralJobModalOpen(false)} size="small">
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers style={{ overflow: 'visible' }}>
+          <Box sx={{ py: 1, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            <Box ref={directoryRef}>
+              <InputLabel style={{ fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>EXPORTER NAME *</InputLabel>
+              <Autocomplete
+                options={organizations}
+                getOptionLabel={(option) => typeof option === 'string' ? option : (option.organization || "")}
+                loading={isDirectoriesLoading}
+                freeSolo
+                value={generalJobForm.exporter}
+                disablePortal
+                // Ensure popover appears over the dialog
+                PopperProps={{
+                  style: { zIndex: 10001 }
+                }}
+                onInputChange={(event, newInputValue) => {
+                  setGeneralJobForm(prev => ({ ...prev, exporter: newInputValue.toUpperCase() }));
+                }}
+                onChange={(event, value) => {
+                  if (typeof value === 'object' && value !== null) {
+                    handleDirectorySelect(value);
+                  } else if (typeof value === 'string') {
+                    setGeneralJobForm(prev => ({ ...prev, exporter: value.toUpperCase() }));
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search from directory or type name..."
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    InputProps={{
+                      ...params.InputProps,
+                      style: { fontSize: '13px', fontWeight: '600' }
+                    }}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <MenuItem {...props} key={option._id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 12px' }}>
+                    <div style={{ fontWeight: '700', fontSize: '12px', color: '#1e293b' }}>{option.organization.toUpperCase()}</div>
+                    <div style={{ fontSize: '10px', color: '#64748b' }}>
+                      {option.registrationDetails?.panNo && `PAN: ${option.registrationDetails.panNo}`}
+                      {option.registrationDetails?.ieCode && ` | IE: ${option.registrationDetails.ieCode}`}
+                    </div>
+                  </MenuItem>
+                )}
+              />
+            </Box>
+
+            <Box>
+              <InputLabel style={{ fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>EXPORTER ADDRESS</InputLabel>
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                variant="outlined"
+                size="small"
+                value={generalJobForm.exporter_address}
+                onChange={(e) => setGeneralJobForm(prev => ({ ...prev, exporter_address: e.target.value.toUpperCase() }))}
+                inputProps={{ style: { fontSize: '12px', fontWeight: '600' } }}
+              />
+            </Box>
+
+            <Box style={{ display: 'flex', gap: '15px' }}>
+              <Box style={{ flex: 1 }}>
+                <InputLabel style={{ fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>GST NO</InputLabel>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  value={generalJobForm.exporter_gstin}
+                  onChange={(e) => setGeneralJobForm(prev => ({ ...prev, exporter_gstin: e.target.value.toUpperCase() }))}
+                  inputProps={{ style: { fontSize: '12px', fontWeight: '600' } }}
+                />
+              </Box>
+              <Box style={{ flex: 1 }}>
+                <InputLabel style={{ fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>PAN NO</InputLabel>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  value={generalJobForm.panNo}
+                  onChange={(e) => setGeneralJobForm(prev => ({ ...prev, panNo: e.target.value.toUpperCase() }))}
+                  inputProps={{ style: { fontSize: '12px', fontWeight: '600' } }}
+                />
+              </Box>
+            </Box>
+          </Box>
+        </DialogContent>
+        <div style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: '12px', backgroundColor: '#f8fafc', borderRadius: '0 0 12px 12px' }}>
+          <Button 
+            onClick={() => setGeneralJobModalOpen(false)} 
+            style={{ color: '#64748b', fontWeight: '700', fontSize: '12px' }}
+          >
+            CANCEL
+          </Button>
+          <Button
+            onClick={handleGeneralJobSubmit}
+            variant="contained"
+            disabled={loading || !generalJobForm.exporter}
+            style={{ 
+              backgroundColor: '#2563eb', 
+              color: '#fff', 
+              borderRadius: '8px', 
+              fontWeight: '800', 
+              fontSize: '12px',
+              padding: '8px 24px',
+              boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)'
+            }}
+          >
+            {loading ? <CircularProgress size={16} color="inherit" /> : "CREATE JOB"}
+          </Button>
+        </div>
+      </Dialog>
     </>
   );
 };

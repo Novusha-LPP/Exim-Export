@@ -40,15 +40,11 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
                 const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
                 branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
 
-                // Always apply branch restriction for non-admins
-                filter.$and.push({
-                    branch_code: { $in: branchRestrictions }
-                });
-
                 const portRestrictions = requester.selected_ports || [];
                 const icdRestrictions = requester.selected_icd_codes || [];
                 const combinedRestrictions = [...new Set([...portRestrictions, ...icdRestrictions])];
 
+                let combinedRegexStr = "";
                 if (combinedRestrictions.length > 0) {
                     const finalRestrictions = [];
                     combinedRestrictions.forEach(res => {
@@ -58,14 +54,30 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
                         }
                     });
 
-                    const combinedRegexStr = finalRestrictions.map(r =>
+                    combinedRegexStr = finalRestrictions.map(r =>
                         `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
                     ).join('|');
+                }
 
+                if (branchRestrictions.length > 0 || combinedRegexStr) {
+                    const restrictions = [];
+                    if (branchRestrictions.length > 0) {
+                        restrictions.push({ branch_code: { $in: branchRestrictions } });
+                    }
+                    if (combinedRegexStr) {
+                        restrictions.push({
+                            $or: [
+                                { custom_house: { $regex: combinedRegexStr, $options: "i" } },
+                                { port_of_loading: { $regex: combinedRegexStr, $options: "i" } }
+                            ]
+                        });
+                    }
+
+                    // Bypass restrictions for FF and GEN jobs
                     filter.$and.push({
                         $or: [
-                            { custom_house: { $regex: combinedRegexStr, $options: "i" } },
-                            { port_of_loading: { $regex: combinedRegexStr, $options: "i" } }
+                            { job_no: { $regex: "^(FF|GEN)/", $options: "i" } },
+                            { $and: restrictions }
                         ]
                     });
                 }
@@ -88,8 +100,12 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
         // Apply Tab specific status filtering if not "all"
         if (normalizedStatus === "general-jobs" || normalizedStatus === "general jobs") {
             filter.$and.push({ isGeneralJob: true });
+            filter.$and.push({ job_no: { $regex: "^GEN/", $options: "i" } });
+        } else if (normalizedStatus === "freight-forwarding" || normalizedStatus === "freight forwarding") {
+            filter.$and.push({ job_no: { $regex: "^FF/", $options: "i" } });
         } else {
-            // Exclude isGeneralJob from other tabs to keep them clean.
+            // Pending/Completed Tabs: Exclude both GEN and FF jobs
+            filter.$and.push({ job_no: { $regex: "^(?!GEN/|FF/).*", $options: "i" } });
             filter.$and.push({ isGeneralJob: { $ne: true } });
         }
 

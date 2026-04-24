@@ -4,6 +4,14 @@ import ExJobModel from "../../model/export/ExJobModel.mjs";
 import ForwarderModel from "../../model/export/ForwarderModel.mjs";
 import transporter from "../../utils/mailer.mjs";
 
+const getCurrentFinancialYear = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = date.getMonth(); // 0-based: 0=Jan, 3=April
+  const startYear = month < 3 ? year - 1 : year;
+  const endYear = startYear + 1;
+  return `${String(startYear).slice(-2)}-${String(endYear).slice(-2)}`;
+};
+
 const router = express.Router();
 
 // Get all enquiries
@@ -31,11 +39,13 @@ router.post("/freight-enquiries", async (req, res) => {
     let nextNo = 1;
     if (lastEnquiry && lastEnquiry.enquiry_no) {
       const parts = lastEnquiry.enquiry_no.split("/");
-      const lastNoPart = parts[parts.length - 1];
-      const lastNo = parseInt(lastNoPart);
+      // Look for the 4-digit numeric sequence part
+      const seqPart = parts.find(p => p.length === 4 && /^\d+$/.test(p));
+      const lastNo = seqPart ? parseInt(seqPart) : 0;
       if (!isNaN(lastNo)) nextNo = lastNo + 1;
     }
-    const enquiry_no = `FF/${typeCode}/${nextNo.toString().padStart(4, "0")}`;
+    const currentFY = getCurrentFinancialYear();
+    const enquiry_no = `FF/${typeCode}/${nextNo.toString().padStart(4, "0")}/${currentFY}`;
 
     const newEnquiry = new FreightEnquiryModel({
       ...req.body,
@@ -141,7 +151,7 @@ router.put("/freight-enquiries/:id", async (req, res) => {
           consignmentType: updated.consignment_type,
           port_of_loading: updated.port_of_loading,
           port_of_discharge: updated.port_of_destination,
-          isGeneralJob: true,
+          isGeneralJob: false,
           status: "Pending",
           detailedStatus: "Created from Freight Enquiry"
         });
