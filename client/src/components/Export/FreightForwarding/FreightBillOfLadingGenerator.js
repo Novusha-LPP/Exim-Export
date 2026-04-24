@@ -23,7 +23,17 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
 
     const bl = enquiry?.bl_details || {};
     const isOriginal = mode === 'original';
-    
+
+    // Split logic for description overflow
+    const desc = bl.description_of_goods || "";
+    const charLimit = 800; // Safer limit to fit within 265px height
+    let p1_desc = desc;
+    let p2_desc = "";
+    if (desc.length > charLimit) {
+      p1_desc = desc.substring(0, charLimit);
+      p2_desc = desc.substring(charLimit);
+    }
+
     // Borders are rendered transparent in Original mode to keep text placement identical
     const bColor = isOriginal ? 'transparent' : '#000';
     const b22 = `border: 2.2px solid ${bColor};`;
@@ -99,7 +109,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                     Ph : (079) 3008 2020 / 21 / 22 | Fax : (079) 2640 1929<br/>
                     Email : info@surajforwarders.com | Site : www.surajforwarders.co
                  </div>
-                 <div style="font-weight: 900; font-size: 12px; margin-bottom: 8px; border-bottom: 1.2px solid ${isOriginal ? 'transparent' : '#000'}; display: inline-block; padding-bottom: 2px;">REGN NO. MTO/DGS/1148/JAN/2022</div>
+                 <div style="font-weight: 900; font-size: 12px; margin-bottom: 8px; border-bottom: 1.2px solid ${isOriginal ? 'transparent' : '#000'}; display: inline-block; padding-bottom: 2px;">REGN NO. MTO/DGS/1148/JAN/2026</div>
                  <div style="font-size: 7px; text-align: justify; margin-bottom: 6px; font-weight: 700; line-height: 1.2; color: ${isOriginal ? 'transparent' : '#000'};">${LEGAL_TEXT_1}</div>
                  <div style="font-size: 7px; text-align: justify; margin-bottom: 12px; font-weight: 700; line-height: 1.2; color: ${isOriginal ? 'transparent' : '#000'};">${LEGAL_TEXT_2}</div>
                  
@@ -176,26 +186,29 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
               <th style="width: 15%; padding: 8px 6px; font-size: 8.5px; font-weight: 900; text-align: center;">Measurement</th>
             </tr>
             <tr>
-              <td style="${br18} min-height: 280px; height: 280px; vertical-align: top; padding: 10px 8px; font-size: 9.5px; line-height: 1.4;">
+              <td style="${br18} min-height: 280px; height: 280px; vertical-align: top; padding: 12px 14px; font-size: 9.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
                  <div style="font-weight: 900; white-space: pre-wrap;">${bl.container_numbers || "[CONTAINER DETAILS]"}</div> 
-                 <div style="font-weight: 700; font-size: 8px; margin-top: 5px; white-space: pre-wrap;">${bl.seal_numbers ? 'SEALS: ' + bl.seal_numbers : ''}</div>
+                 <div style="font-weight: 700; font-size: 8px; margin-top: 6px; white-space: pre-wrap;">${bl.seal_numbers ? 'SEALS: ' + bl.seal_numbers : ''}</div>
               </td>
-              <td style="${br18} vertical-align: top; padding: 10px 8px; font-size: 9.5px; line-height: 1.4; font-weight: 900; white-space: pre-wrap;">${bl.marks_numbers || "[SHIPPING MARKS]"}</td>
-              <td style="${br18} vertical-align: top; padding: 10px 8px; font-size: 9.5px; line-height: 1.4; font-weight: 700;">
-                 <div style="font-weight: 900; margin-bottom: 8px; white-space: pre-wrap;">${bl.packages_description || "[NUMBER & KIND OF PACKAGES]"}</div>
-                 <div style="white-space: pre-wrap;">${bl.description_of_goods || "[GOODS DESCRIPTION]"}</div>
-                 <div style="margin-top: 8px;">${bl.hsn_code ? 'HSN: ' + bl.hsn_code : ''}</div>
-                 <div style="margin-top: 15px; font-style: italic; font-weight: 600; font-size: 8px; text-align: center; color: #555;">(Particulars above furnished by consignor / consignee)</div>
+              <td style="${br18} vertical-align: top; padding: 12px 14px; font-size: 9.5px; line-height: 1.45; font-weight: 900; white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word;">${bl.marks_numbers || "[SHIPPING MARKS]"}</td>
+              <td style="${br18} vertical-align: top; padding: 12px 14px; font-size: 9.5px; line-height: 1.45; font-weight: 700; overflow-wrap: break-word; word-wrap: break-word;">
+                 <div style="height: 265px; overflow: hidden; display: flex; flex-direction: column;">
+                    <div style="font-weight: 900; margin-bottom: 10px; white-space: pre-wrap;">${bl.packages_description || "[NUMBER & KIND OF PACKAGES]"}</div>
+                    <div style="white-space: pre-wrap; flex: 1;">${p1_desc || "[GOODS DESCRIPTION]"}</div>
+                    ${p2_desc ? '<div style="font-weight: 900; color: #d32f2f; margin-top: 5px; font-size: 8px;">... CONTINUED ON ANNEXURE</div>' : ""}
+                    <div style="margin-top: 5px;">${bl.hsn_code ? 'HSN: ' + bl.hsn_code : ''}</div>
+                 </div>
+                 <div style="margin-top: 5px; font-style: italic; font-weight: 600; font-size: 8px; text-align: center; color: #555;">(Particulars above furnished by consignor / consignee)</div>
               </td>
-              <td style="${br18} vertical-align: top; padding: 10px 8px; font-size: 10px; font-weight: 900; text-align: right;">
+              <td style="${br18} vertical-align: top; padding: 12px 14px; font-size: 10px; font-weight: 900; text-align: right;">
                  ${bl.gross_weight || enquiry?.gross_weight || "0.000"} KGS
                  <br/><br/>
                  <span style="font-size: 9px; font-weight: 700; color: #333;">NET WEIGHT<br/>${enquiry?.net_weight || "0.000"} KGS</span>
               </td>
-              <td style="vertical-align: top; padding: 10px 8px; font-size: 10px; font-weight: 900; text-align: right;">
+              <td style="vertical-align: top; padding: 12px 14px; font-size: 10px; font-weight: 900; text-align: right;">
                  ${bl.measurement || "[CBM] CBM"}
                  <br/><br/><br/><br/><br/>
-                 <div style="font-size: 9px; font-weight: 900; text-align: center; border-top: 1px solid ${isOriginal ? 'transparent' : '#eee'}; padding-top: 12px; line-height: 1.3;">FREIGHT PREPAID<br/>FCL/FCL<br/>CY/CY</div>
+                 <div style="font-size: 9.5px; font-weight: 900; text-align: center; border-top: 1px solid ${isOriginal ? 'transparent' : '#eee'}; padding-top: 12px; line-height: 1.35;">FREIGHT PREPAID<br/>FCL/FCL<br/>CY/CY</div>
               </td>
             </tr>
           </table>
@@ -240,7 +253,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
         </div>
 
         <!-- SECOND PAGE (ANNEXURE) -->
-        <div style="padding: 40px 30px; min-height: 990px; box-sizing: border-box; background-color: #fff; position: relative;">
+        <div style="${b22} padding: 40px 30px; min-height: 990px; box-sizing: border-box; background-color: #fff; position: relative;">
           ${watermark}
           <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid ${isOriginal ? 'transparent' : '#000'}; padding-bottom: 10px; margin-bottom: 25px;">
               <span style="font-size: 19px; font-weight: 900; text-transform: uppercase;">Annexure to the Multimodal Transport Document.</span>
@@ -249,26 +262,26 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
 
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 50px; table-layout: fixed;">
               <tr style="border-bottom: 2px solid ${isOriginal ? 'transparent' : '#000'};">
-                 <th style="width: 20%; font-size: 10px; font-weight: 900; text-align: left; padding: 10px 6px;">No. Containers /<br/>Packages</th>
-                 <th style="width: 15%; font-size: 10px; font-weight: 900; text-align: left; padding: 10px 6px;">Marks and Numbers</th>
-                 <th style="width: 35%; font-size: 10px; font-weight: 900; text-align: left; padding: 10px 6px;">Description of goods</th>
-                 <th style="width: 15%; font-size: 10px; font-weight: 900; text-align: center; padding: 10px 6px;">Gross Weight<br/>(Kilos)</th>
-                 <th style="width: 15%; font-size: 10px; font-weight: 900; text-align: center; padding: 10px 6px;">Measurement (cu.<br/>metres)</th>
+                 <th style="width: 20%; ${br18} font-size: 10px; font-weight: 900; text-align: left; padding: 10px 10px;">No. Containers /<br/>Packages</th>
+                 <th style="width: 18%; ${br18} font-size: 10px; font-weight: 900; text-align: left; padding: 10px 10px;">Marks and Numbers</th>
+                 <th style="width: 47%; ${br18} font-size: 10px; font-weight: 900; text-align: left; padding: 10px 10px;">Description of goods</th>
+                 <th style="width: 15%; font-size: 10px; font-weight: 900; text-align: center; padding: 10px 10px;">Gross Weight<br/>(Kilos)</th>
               </tr>
-              <tr>
-                 <td colspan="5" style="padding-top: 80px; text-align: center; font-size: 14px; line-height: 2.5; font-weight: 900; letter-spacing: 0.2px;">
-                    <div style="margin-bottom: 15px;">21 DAYS DETENTION FREE AT DESTINATION</div>
-                    <div style="margin-bottom: 15px;">"LCL DESTINATION CHARGES ON CONSIGNEES ACCOUNT"</div>
-                    <div style="margin-bottom: 15px; max-width: 80%; margin-left: 10%; line-height: 1.8;">"NO LIABILITY ATTACHES TO CARRIER IF MARKS & NOS. ON PACKAGES & MTD DO NOT MATCH OR ARE INADEQUATE/MISSING"</div>
-                    <div style="text-transform: uppercase; margin-top: 30px; max-width: 85%; margin-left: 7.5%; line-height: 1.8;">IN CASE THE GOODS LIES UNDELIVERED DEMURRAGE/WAREHOUSING & ANY OTHER CHARGES WILL BE ON SHIPPER'S ACCOUNT</div>
+              <tr style="border-bottom: 2px solid ${isOriginal ? 'transparent' : '#000'};">
+                 <td style="${br18} min-height: 800px; vertical-align: top; padding: 12px 14px; font-size: 9.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
+                    <div style="font-weight: 900; white-space: pre-wrap;">${p2_desc ? (bl.container_numbers || "") : ""}</div> 
+                    <div style="font-weight: 700; font-size: 8px; margin-top: 6px; white-space: pre-wrap;">${p2_desc && bl.seal_numbers ? 'SEALS: ' + bl.seal_numbers : ''}</div>
                  </td>
+                 <td style="${br18} vertical-align: top; padding: 12px 14px; font-size: 9.5px; line-height: 1.45; font-weight: 900; white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word;">${p2_desc ? (bl.marks_numbers || "") : ""}</td>
+                 <td style="${br18} vertical-align: top; padding: 12px 14px; font-size: 9.5px; line-height: 1.45; font-weight: 700; overflow-wrap: break-word; word-wrap: break-word;">
+                    ${p2_desc ? `
+                       <div style="font-weight: 900; margin-bottom: 5px; font-size: 8px; color: #555;">[CONTINUED DESCRIPTION OF GOODS]</div>
+                       <div style="white-space: pre-wrap;">${p2_desc}</div>
+                    ` : '&nbsp;'}
+                 </td>
+                 <td style="vertical-align: top; padding: 12px 14px; font-size: 10px; font-weight: 900; text-align: center;">${p2_desc ? (bl.gross_weight || enquiry?.gross_weight || "") + " KGS" : ""}</td>
               </tr>
           </table>
-          
-          <div style="position: absolute; bottom: 80px; right: 50px; text-align: center;">
-             <div style="font-weight: 900; font-size: 14px; margin-bottom: 75px; text-transform: uppercase;">FOR SURAJ FORWARDERS PVT. LTD.</div>
-             <div style="font-weight: 900; font-size: 11px;">(Authorised Signatory)</div>
-          </div>
         </div>
       </div>`;
 
@@ -311,8 +324,19 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
   const triggerDownload = async (mode) => {
     const bl = enquiry?.bl_details || {};
     const isOriginal = mode === 'original';
+
+    // Split logic for description overflow
+    const desc = bl.description_of_goods || "";
+    const charLimit = 800;
+    let p1_desc = desc;
+    let p2_desc = "";
+    if (desc.length > charLimit) {
+      p1_desc = desc.substring(0, charLimit);
+      p2_desc = desc.substring(charLimit);
+    }
+
     const bColor = isOriginal ? 'transparent' : '#000';
-    
+
     // Explicitly define all borders for the mode
     const b22 = `border: 2.2px solid ${bColor};`;
     const b18 = `border: 1.8px solid ${bColor};`;
@@ -448,19 +472,21 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
               <th style="width: 15%; padding: 8px 6px; font-size: 8.5px; font-weight: 900; text-align: center; color: ${isOriginal ? 'transparent' : '#000'};">Measurement</th>
             </tr>
             <tr>
-              <td style="${br18} min-height: 280px; height: 280px; vertical-align: top; padding: 10px 8px; font-size: 9.5px; line-height: 1.4;">
+              <td style="${br18} min-height: 280px; height: 280px; vertical-align: top; padding: 12px 14px; font-size: 9.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
                  <div style="font-weight: 900; white-space: pre-wrap;">${bl.container_numbers || "[CONTAINER DETAILS]"}</div> 
-                 <div style="font-weight: 700; font-size: 8px; margin-top: 5px; white-space: pre-wrap;">${bl.seal_numbers ? 'SEALS: ' + bl.seal_numbers : ''}</div>
+                 <div style="font-weight: 700; font-size: 8px; margin-top: 6px; white-space: pre-wrap;">${bl.seal_numbers ? 'SEALS: ' + bl.seal_numbers : ''}</div>
               </td>
-              <td style="${br18} vertical-align: top; padding: 10px 8px; font-size: 9.5px; line-height: 1.4; font-weight: 900; white-space: pre-wrap;">${bl.marks_numbers || "[SHIPPING MARKS]"}</td>
-              <td style="${br18} vertical-align: top; padding: 10px 8px; font-size: 9.5px; line-height: 1.4; font-weight: 700;">
-                 <div style="font-weight: 900; margin-bottom: 8px; white-space: pre-wrap;">${bl.packages_description || "[NUMBER & KIND OF PACKAGES]"}</div>
-                 <div style="white-space: pre-wrap;">${bl.description_of_goods || "[GOODS DESCRIPTION]"}</div>
-                 <div style="margin-top: 8px;">${bl.hsn_code ? 'HSN: ' + bl.hsn_code : ''}</div>
-                 <div style="margin-top: 15px; font-style: italic; font-weight: 600; font-size: 8px; text-align: center; color: #555;">(Particulars above furnished by consignor / consignee)</div>
+              <td style="${br18} vertical-align: top; padding: 12px 14px; font-size: 9.5px; line-height: 1.45; font-weight: 900; white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word;">${bl.marks_numbers || "[SHIPPING MARKS]"}</td>
+              <td style="${br18} vertical-align: top; padding: 12px 14px; font-size: 9.5px; line-height: 1.45; font-weight: 700; overflow-wrap: break-word; word-wrap: break-word;">
+                 <div style="height: 265px; overflow: hidden; display: flex; flex-direction: column;">
+                    <div style="font-weight: 900; margin-bottom: 10px; white-space: pre-wrap;">${bl.packages_description || "[NUMBER & KIND OF PACKAGES]"}</div>
+                    <div style="white-space: pre-wrap; flex: 1;">${p1_desc || "[GOODS DESCRIPTION]"}</div>
+                    ${p2_desc ? '<div style="font-weight: 900; color: #d32f2f; margin-top: 5px; font-size: 8px;">... CONTINUED ON ANNEXURE</div>' : ""}
+                    <div style="margin-top: 5px;">${bl.hsn_code ? 'HSN: ' + bl.hsn_code : ''}</div>
+                 </div>
               </td>
-              <td style="${br18} vertical-align: top; padding: 10px 8px; font-size: 10px; font-weight: 900; text-align: right;">${bl.gross_weight || enquiry?.gross_weight || "0.000"} KGS<br/><br/><span style="font-size: 9px; font-weight: 700; color: #333;">NET WEIGHT<br/>${enquiry?.net_weight || "0.000"} KGS</span></td>
-              <td style="vertical-align: top; padding: 10px 8px; font-size: 10px; font-weight: 900; text-align: right;">${bl.measurement || "[CBM] CBM"}<br/><br/><br/><br/><br/><div style="font-size: 9px; font-weight: 900; text-align: center; border-top: 1px solid ${isOriginal ? 'transparent' : '#eee'}; padding-top: 12px; line-height: 1.3; color: ${isOriginal ? 'transparent' : '#000'};">FREIGHT PREPAID<br/>FCL/FCL<br/>CY/CY</div></td>
+              <td style="${br18} vertical-align: top; padding: 12px 14px; font-size: 10px; font-weight: 900; text-align: right;">${bl.gross_weight || enquiry?.gross_weight || "0.000"} KGS<br/><br/><span style="font-size: 9px; font-weight: 700; color: #333;">NET WEIGHT<br/>${enquiry?.net_weight || "0.000"} KGS</span></td>
+              <td style="vertical-align: top; padding: 12px 14px; font-size: 10px; font-weight: 900; text-align: right;">${bl.measurement || "[CBM] CBM"}<br/><br/><br/><br/><br/><div style="font-size: 9.5px; font-weight: 900; text-align: center; border-top: 1px solid ${isOriginal ? 'transparent' : '#eee'}; padding-top: 12px; line-height: 1.35; color: ${isOriginal ? 'transparent' : '#000'};">FREIGHT PREPAID<br/>FCL/FCL<br/>CY/CY</div></td>
             </tr>
           </table>
           <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
@@ -498,7 +524,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
             </tr>
           </table>
         </div>
-        <div style="padding: 40px 30px; min-height: 990px; box-sizing: border-box; background-color: #fff; position: relative;">
+        <div style="${b22} padding: 40px 30px; min-height: 990px; box-sizing: border-box; background-color: #fff; position: relative;">
           ${watermark}
           <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid ${isOriginal ? 'transparent' : '#000'}; padding-bottom: 10px; margin-bottom: 25px;">
               <span style="font-size: 19px; font-weight: 900; text-transform: uppercase; color: ${isOriginal ? 'transparent' : '#000'};">Annexure to the Multimodal Transport Document.</span>
@@ -506,32 +532,33 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
           </div>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 50px; table-layout: fixed;">
               <tr style="border-bottom: 2px solid ${isOriginal ? 'transparent' : '#000'};">
-                 <th style="width: 20%; font-size: 10px; font-weight: 900; text-align: left; padding: 10px 6px; color: ${isOriginal ? 'transparent' : '#000'};">No. Containers /<br/>Packages</th>
-                 <th style="width: 15%; font-size: 10px; font-weight: 900; text-align: left; padding: 10px 6px; color: ${isOriginal ? 'transparent' : '#000'};">Marks and Numbers</th>
-                 <th style="width: 35%; font-size: 10px; font-weight: 900; text-align: left; padding: 10px 6px; color: ${isOriginal ? 'transparent' : '#000'};">Description of goods</th>
-                 <th style="width: 15%; font-size: 10px; font-weight: 900; text-align: center; padding: 10px 6px; color: ${isOriginal ? 'transparent' : '#000'};">Gross Weight<br/>(Kilos)</th>
-                 <th style="width: 15%; font-size: 10px; font-weight: 900; text-align: center; padding: 10px 6px; color: ${isOriginal ? 'transparent' : '#000'};">Measurement (cu.<br/>metres)</th>
+                 <th style="width: 20%; ${br18} font-size: 10px; font-weight: 900; text-align: left; padding: 10px 10px; color: ${isOriginal ? 'transparent' : '#000'};">No. Containers /<br/>Packages</th>
+                 <th style="width: 18%; ${br18} font-size: 10px; font-weight: 900; text-align: left; padding: 10px 10px; color: ${isOriginal ? 'transparent' : '#000'};">Marks and Numbers</th>
+                 <th style="width: 47%; ${br18} font-size: 10px; font-weight: 900; text-align: left; padding: 10px 10px; color: ${isOriginal ? 'transparent' : '#000'};">Description of goods</th>
+                 <th style="width: 15%; font-size: 10px; font-weight: 900; text-align: center; padding: 10px 10px; color: ${isOriginal ? 'transparent' : '#000'};">Gross Weight<br/>(Kilos)</th>
               </tr>
-              <tr>
-                 <td colspan="5" style="padding-top: 80px; text-align: center; font-size: 14px; line-height: 2.5; font-weight: 900; letter-spacing: 0.2px; color: ${isOriginal ? 'transparent' : '#000'};">
-                    <div style="margin-bottom: 15px;">21 DAYS DETENTION FREE AT DESTINATION</div>
-                    <div style="margin-bottom: 15px;">"LCL DESTINATION CHARGES ON CONSIGNEES ACCOUNT"</div>
-                    <div style="margin-bottom: 15px; max-width: 80%; margin-left: 10%; line-height: 1.8;">"NO LIABILITY ATTACHES TO CARRIER IF MARKS & NOS. ON PACKAGES & MTD DO NOT MATCH OR ARE INADEQUATE/MISSING"</div>
-                    <div style="text-transform: uppercase; margin-top: 30px; max-width: 85%; margin-left: 7.5%; line-height: 1.8;">IN CASE THE GOODS LIES UNDELIVERED DEMURRAGE/WAREHOUSING & ANY OTHER CHARGES WILL BE ON SHIPPER'S ACCOUNT</div>
+              <tr style="border-bottom: 2px solid ${isOriginal ? 'transparent' : '#000'};">
+                 <td style="${br18} min-height: 800px; vertical-align: top; padding: 12px 14px; font-size: 9.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
+                    <div style="font-weight: 900; white-space: pre-wrap;">${p2_desc ? (bl.container_numbers || "") : ""}</div> 
+                    <div style="font-weight: 700; font-size: 8px; margin-top: 6px; white-space: pre-wrap;">${p2_desc && bl.seal_numbers ? 'SEALS: ' + bl.seal_numbers : ''}</div>
                  </td>
+                 <td style="${br18} vertical-align: top; padding: 12px 14px; font-size: 9.5px; line-height: 1.45; font-weight: 900; white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word;">${p2_desc ? (bl.marks_numbers || "") : ""}</td>
+                 <td style="${br18} vertical-align: top; padding: 12px 14px; font-size: 9.5px; line-height: 1.45; font-weight: 700; overflow-wrap: break-word; word-wrap: break-word;">
+                    ${p2_desc ? `
+                       <div style="font-weight: 900; margin-bottom: 5px; font-size: 8px; color: #555;">[CONTINUED DESCRIPTION OF GOODS]</div>
+                       <div style="white-space: pre-wrap;">${p2_desc}</div>
+                    ` : '&nbsp;'}
+                 </td>
+                 <td style="vertical-align: top; padding: 12px 14px; font-size: 10px; font-weight: 900; text-align: center;">${p2_desc ? (bl.gross_weight || enquiry?.gross_weight || "") + " KGS" : ""}</td>
               </tr>
           </table>
-          <div style="position: absolute; bottom: 80px; right: 50px; text-align: center;">
-             <div style="font-weight: 900; font-size: 14px; margin-bottom: 75px; text-transform: uppercase; color: ${isOriginal ? 'transparent' : '#000'};">FOR SURAJ FORWARDERS PVT. LTD.</div>
-             <div style="font-weight: 900; font-size: 11px; color: ${isOriginal ? 'transparent' : '#000'};">(Authorised Signatory)</div>
-          </div>
         </div>
       </div>`;
 
     try {
       const element = document.createElement("div");
       element.innerHTML = templateMarkup;
-      
+
       await html2pdf()
         .from(element)
         .set({
@@ -554,7 +581,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
     try {
       const element = document.createElement("div");
       element.innerHTML = editedHtml;
-      
+
       await html2pdf()
         .from(element)
         .set({
@@ -613,9 +640,9 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
           >
             Download Original
           </Button>
-          <Button 
-            onClick={handleEdit} 
-            variant="outlined" 
+          <Button
+            onClick={handleEdit}
+            variant="outlined"
             sx={{ fontWeight: 700, borderRadius: 2, px: 3 }}
           >
             Edit Mode

@@ -1137,17 +1137,6 @@ function ProductRow({
 }) {
   const [rodtepLoading, setRodtepLoading] = useState(false);
 
-  // Keep RoDTEP unit aligned with SQC unit, but let users enter RoDTEP qty manually.
-  const prevRodtepUnitRef = useRef(product.rodtepInfo?.unit);
-  useEffect(() => {
-    const mainUnit = product.socunit;
-
-    if (mainUnit !== undefined && prevRodtepUnitRef.current !== mainUnit) {
-      handleUnitChange(index, "unit", mainUnit);
-      prevRodtepUnitRef.current = mainUnit;
-    }
-  }, [product.socunit, index]);
-
   // Fetch RoDTEP data when RITC or eximCode changes
   useEffect(() => {
     const fetchRodtepData = async () => {
@@ -1235,7 +1224,8 @@ function ProductRow({
 
     let capAmount = Infinity;
     if (cap > 0) {
-      capAmount = (parseFloat(product.socQuantity) || 0) * cap;
+      // Use RoDTEP specific quantity for calculation as it allows manual override
+      capAmount = (parseFloat(product.rodtepInfo?.quantity) || 0) * cap;
     }
 
     let finalAmount = 0;
@@ -1259,6 +1249,7 @@ function ProductRow({
     product.rodtepInfo?.claim,
     product.rodtepInfo?.ratePercent,
     product.rodtepInfo?.capValuePerUnits,
+    product.rodtepInfo?.quantity,
     product.quantity,
     product.amount,
     invoice.freightInsuranceCharges,
@@ -1540,6 +1531,27 @@ function ProductRow({
             }
           />
         </div>
+        {/* Row 4 */}
+        <div style={styles.field}>
+          <label style={styles.label}>SQC Quantity</label>
+          <input
+            style={styles.input}
+            type="number"
+            value={product.socQuantity || ""}
+            placeholder="0.00000"
+            onChange={(e) =>
+              handleProductChange(index, "socQuantity", e.target.value)
+            }
+          />
+        </div>
+        <UnitDropdownField
+          label="SQC Unit"
+          fieldName={`invoices[${selectedInvoiceIndex}].products[${index}].socunit`}
+          formik={formik}
+          unitOptions={unitCodes}
+          placeholder="SQC Unit"
+          onSelect={(val) => handleProductChange(index, "socunit", val)}
+        />
         <div style={styles.field}>
           <label style={styles.label}>Material Code</label>
           <input
@@ -2423,25 +2435,30 @@ const ProductGeneralTab = ({
     [formik.setFieldValue, selectedInvoiceIndex],
   );
 
-  // Sync only RoDTEP unit from SQC unit. RoDTEP quantity stays user-controlled.
+  // Sync RoDTEP unit and quantity from SQC values.
   useEffect(() => {
     const currentProducts = products || [];
     let changed = false;
-    const updatedProducts = currentProducts.map((prod, idx) => {
+    const updatedProducts = currentProducts.map((prod) => {
       const sqcUnit = (prod.socunit || "").trim();
+      const sqcQty = parseFloat(prod.socQuantity) || 0;
 
       const currentRodtep = prod.rodtepInfo || {};
       const currentRodtepUnit = (currentRodtep.unit || "").trim();
+      const currentRodtepQty = parseFloat(currentRodtep.quantity) || 0;
 
-      const isUnitDifferent = currentRodtepUnit !== sqcUnit;
+      const isUnitDifferent = sqcUnit !== "" && currentRodtepUnit !== sqcUnit;
+      // Sync quantity if it's currently 0 or undefined and we have an SQC quantity to provide as default
+      const isQtyMissing = sqcQty > 0 && currentRodtepQty === 0;
 
-      if (isUnitDifferent) {
+      if (isUnitDifferent || isQtyMissing) {
         changed = true;
         return {
           ...prod,
           rodtepInfo: {
             ...currentRodtep,
-            unit: sqcUnit,
+            unit: isUnitDifferent ? sqcUnit : (currentRodtep.unit || ""),
+            quantity: isQtyMissing ? sqcQty : (currentRodtep.quantity || 0),
           },
         };
       }
@@ -2458,7 +2475,7 @@ const ProductGeneralTab = ({
         formik.setFieldValue("invoices", updatedInvoices);
       }
     }
-  }, [products, selectedInvoiceIndex, invoices, formik]);
+  }, [products, selectedInvoiceIndex, invoices]);
   // Recalculate PMV when important fields change. Using serialized deps to avoid infinite loops.
   const serializedPmvInputs = JSON.stringify(
     (products || []).map((p) => ({
