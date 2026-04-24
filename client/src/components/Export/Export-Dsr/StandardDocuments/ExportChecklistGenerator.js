@@ -846,6 +846,63 @@ const ExportChecklistGenerator = ({
       yPos = pdf.lastAutoTable.finalY + 10;
     }
 
+    // EPCG DETAILS SECTION
+    if (data.epcgData && data.epcgData.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("EPCG DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
+
+      const epcgHeaders = [
+        "Sr No",
+        "Regn No\nDate",
+        "Item SNo\n(Part-C)",
+        "Item SNo\n(Part-E)",
+        "Raw Material",
+        "Quantity",
+        "Export Quantity",
+        "Indigenous/\nImported",
+        "Inv No",
+        "Item No",
+      ];
+
+      pdf.autoTable({
+        head: [epcgHeaders],
+        body: data.epcgData.map((d) => [
+          d.srNo,
+          d.regnNoDate,
+          d.itemSnoPartC,
+          d.itemSnoPartE,
+          d.rawMaterial,
+          d.quantity,
+          d.exportQuantity,
+          d.indigenousImported,
+          d.invNo,
+          d.itemNo,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+          overflow: "linebreak",
+          fontStyle: "bold",
+          textColor: 0,
+        },
+        headStyles: {
+          fillColor: [180, 180, 180],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: 8.5,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
+
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
+
     // VESSEL DETAILS - compact table
     if (data.vesselName || data.voyageNumber || data.factoryStuffed === "Yes") {
       pdf.setFont("helvetica", "bold");

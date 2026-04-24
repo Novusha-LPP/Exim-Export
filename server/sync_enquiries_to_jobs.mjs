@@ -30,7 +30,7 @@ async function syncConvertedEnquiries() {
           consignmentType: enquiry.consignment_type,
           port_of_loading: enquiry.port_of_loading,
           port_of_discharge: enquiry.port_of_destination,
-          isGeneralJob: true,
+          isGeneralJob: false,
           status: "Pending",
           detailedStatus: "Created from Freight Enquiry (Backfill)"
         });

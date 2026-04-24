@@ -1463,15 +1463,20 @@ router.post("/create-general-job", auditMiddleware("Job"), async (req, res) => {
       branch_code = BRANCH_MAP[requester.selected_branches[0].toUpperCase()] || requester.selected_branches[0];
     }
 
+    const { exporter, exporter_address, exporter_gstin, panNo } = req.body;
+
     const newJobData = {
       job_no,
       jobNumber: job_no, // REQUIRED for unique index
       year,
       isGeneralJob: true,
       status: "Pending",
-      exporter: "GENERAL JOB",
-      custom_house: "GEN",
+      exporter: exporter || "GENERAL JOB",
+      exporter_address: exporter_address || "",
+      exporter_gstin: exporter_gstin || "",
+      panNo: panNo || "",
       branch_code: branch_code || "GEN",
+      custom_house: "GEN",
       job_date: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'),
       createdBy: req.headers["username"] || "System",
     };

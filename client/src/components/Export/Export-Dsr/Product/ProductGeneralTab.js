@@ -1235,7 +1235,7 @@ function ProductRow({
 
     let capAmount = Infinity;
     if (cap > 0) {
-      capAmount = (parseFloat(product.quantity) || 0) * cap;
+      capAmount = (parseFloat(product.socQuantity) || 0) * cap;
     }
 
     let finalAmount = 0;
