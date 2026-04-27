@@ -4,7 +4,7 @@ import { useFormik } from "formik";
 import { formatDate } from "../utils/dateUtils";
 import { syncAllProductsDrawbackAndRodtep } from "../utils/fobCalculations";
 
-function useExportJobDetails(params, setFileSnackbar) {
+function useExportJobDetails(params, setFileSnackbar, navigate) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lockError, setLockError] = useState(null);
@@ -800,6 +800,19 @@ function useExportJobDetails(params, setFileSnackbar) {
         if (setFileSnackbar) {
           setFileSnackbar(true);
           setTimeout(() => setFileSnackbar(false), 3000);
+        }
+
+        // Redirection logic if Job Number changed
+        if (navigate && response.data.data?.job_no && response.data.data.job_no !== params.job_no) {
+          const updatedJobNo = response.data.data.job_no;
+          const currentPath = window.location.pathname;
+          const oldJobNoEncoded = encodeURIComponent(params.job_no);
+          const newJobNoEncoded = encodeURIComponent(updatedJobNo);
+
+          if (currentPath.includes(oldJobNoEncoded)) {
+            const nextPath = currentPath.replace(oldJobNoEncoded, newJobNoEncoded);
+            navigate(nextPath, { replace: true });
+          }
         }
       } catch (error) {
         console.error("Error updating export job:", error);

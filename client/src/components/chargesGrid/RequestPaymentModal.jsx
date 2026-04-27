@@ -257,7 +257,7 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
                         <button type="button" className="btn" onClick={handleSubmit} disabled={loading}>
                             {loading ? "Submitting..." : "Submit Request"}
                         </button>
-                        <button type="button" className="btn" onClick={onClose} style={{ marginRight: '30px' }}>Cancel</button>
+                        <button type="button" className="btn btn-secondary" onClick={onClose} style={{ marginRight: '30px' }}>Cancel</button>
                     </div>
                 </form>
             </div>

@@ -1400,6 +1400,11 @@ exportJobSchema.pre("save", function (next) {
     this.status = "Pending";
   }
 
+  // Auto-sync jobNumber with job_no for indexing and consistency
+  if (this.isModified("job_no")) {
+    this.jobNumber = this.job_no;
+  }
+
   // 3. Auto-populate completion dates for VGM, Form 13, and shipping bill
   const getTodayStr = () => {
     const today = new Date();

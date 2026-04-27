@@ -41,7 +41,8 @@ function ExportDocumentationModule() {
 
   const { data, loading, formik, lockError } = useExportJobDetails(
     { job_no: decodedJobNo },
-    setFileSnackbar
+    setFileSnackbar,
+    navigate
   );
 
   const getInitialTab = () => {

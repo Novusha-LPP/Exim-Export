@@ -179,6 +179,11 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
           } else if (qUnit === "KGS" && sUnit === "MTS") {
             current.socQuantity = formatSocQty(val / 1000);
           }
+
+          // Sync RoDTEP quantity if it exists
+          if (current.rodtepInfo) {
+            current.rodtepInfo.quantity = parseFloat(current.socQuantity) || 0;
+          }
         }
       } else if (field === "socQuantity") {
         const val = parseFloat(current.socQuantity);
@@ -192,6 +197,11 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
           } else if (sUnit === "MTS" && qUnit === "KGS") {
             current.quantity = formatQty(val * 1000);
             autoRecalc = true;
+          }
+
+          // Sync RoDTEP quantity if it exists
+          if (current.rodtepInfo) {
+            current.rodtepInfo.quantity = val || 0;
           }
         }
       }
@@ -235,6 +245,24 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
           current.socunit = matched;
         } else {
           current.socunit = u; // fallback
+        }
+
+        // After setting socunit, trigger the quantity conversion/sync if quantity exists
+        const val = parseFloat(current.quantity);
+        if (!isNaN(val)) {
+          const qUnit = (current.qtyUnit || "").toUpperCase();
+          const sUnit = (current.socunit || "").toUpperCase();
+          if (qUnit === sUnit && qUnit !== "") {
+            current.socQuantity = formatSocQty(val);
+          } else if (qUnit === "MTS" && sUnit === "KGS") {
+            current.socQuantity = formatSocQty(val * 1000);
+          } else if (qUnit === "KGS" && sUnit === "MTS") {
+            current.socQuantity = formatSocQty(val / 1000);
+          }
+
+          if (current.rodtepInfo) {
+            current.rodtepInfo.quantity = parseFloat(current.socQuantity) || 0;
+          }
         }
       }
 
@@ -283,6 +311,11 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
           break;
       }
 
+      // Sync RoDTEP quantity on blur to ensure consistency
+      if ((field === "quantity" || field === "socQuantity") && current.rodtepInfo) {
+        current.rodtepInfo.quantity = parseFloat(current.socQuantity) || 0;
+      }
+
       updated[idx] = current;
       setProducts(updated);
     },
@@ -321,7 +354,11 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
     (idx) => {
       const next = [...products];
       const source = next[idx] || {};
-      const clone = { ...source };
+      // Deep clone to avoid shared references especially for rodtepInfo object
+      const clone = JSON.parse(JSON.stringify(source));
+      // Remove _id from clone so it's treated as a new record in DB
+      delete clone._id;
+      
       next.splice(idx + 1, 0, clone);
       const resequenced = next.map((p, i) => ({
         ...p,
@@ -331,6 +368,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
     },
     [products, setProducts],
   );
+
 
   const openExportModal = (idx) => {
     setProductToExportIndex(idx);

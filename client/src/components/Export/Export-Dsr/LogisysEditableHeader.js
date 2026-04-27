@@ -22,6 +22,26 @@ import BillOfLadingGenerator from "./StandardDocuments/BillOfLadingGenerator";
 // Helper function
 const toUpper = (str) => (str || "").toUpperCase();
 
+// Helper to split job number into prefix, sequence, and suffix
+const getJobNoParts = (jn) => {
+  const p = (jn || "").split("/");
+  if (p.length >= 4) {
+    return {
+      prefix: p.slice(0, -2).join("/") + "/",
+      seq: p[p.length - 2],
+      suffix: "/" + p[p.length - 1],
+    };
+  }
+  if (p.length === 3) {
+    return {
+      prefix: p[0] + "/",
+      seq: p[1],
+      suffix: "/" + p[2],
+    };
+  }
+  return { prefix: "", seq: jn, suffix: "" };
+};
+
 // Compact styles for single-row layout
 const styles = {
   field: {
@@ -337,6 +357,28 @@ const LogisysEditableHeader = ({
 }) => {
   // removed local isEditable state
 
+  const [hasShownJobNoWarning, setHasShownJobNoWarning] = useState(false);
+
+  // Reset warning show state when job is locked
+  useEffect(() => {
+    if (!isEditable) setHasShownJobNoWarning(false);
+  }, [isEditable]);
+
+  const handleJobNoFocus = () => {
+    if (!hasShownJobNoWarning) {
+      const confirmEdit = window.confirm(
+        "⚠️ WARNING: Changing the Job Number sequence is a critical operation.\n\n" +
+        "This will update the job identifier and may affect document tracking.\n\n" +
+        "Are you sure you want to proceed?"
+      );
+      if (confirmEdit) {
+        setHasShownJobNoWarning(true);
+      } else {
+        document.activeElement.blur();
+      }
+    }
+  };
+
   useEffect(() => {
     const isAir = formik.values.consignmentType === "AIR";
     const mode = isAir ? "AIR" : "SEA";
@@ -462,39 +504,110 @@ const LogisysEditableHeader = ({
               disabled={!isEditable}
             />
           ) : (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                background: "#eef4fa",
-                border: "1px solid #e0e0e0",
-                borderRadius: 3,
-                padding: "1px 4px",
-                fontSize: 11,
-                color: "#000",
-                height: 22,
-                whiteSpace: "nowrap",
-              }}
-            >
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                {formik.values.job_no}
-              </span>
-              <button
-                title="Copy"
-                onClick={() => handleCopyText(formik.values.job_no)}
+            isEditable ? (
+              <div
                 style={{
-                  background: "none",
-                  border: "none",
-                  marginLeft: 4,
-                  cursor: "pointer",
-                  fontSize: 10,
-                  color: "#666",
-                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  background: "#fff",
+                  border: "1.5px solid #3b82f6",
+                  borderRadius: 6,
+                  padding: "0 6px",
+                  fontSize: 11,
+                  color: "#1e293b",
+                  height: 24,
+                  whiteSpace: "nowrap",
+                  boxShadow: "0 0 0 2px rgba(59, 130, 246, 0.1)",
                 }}
               >
-                📋
-              </button>
-            </div>
+                <span
+                  style={{
+                    color: "#94a3b8",
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: "0.3px",
+                  }}
+                >
+                  {getJobNoParts(formik.values.job_no).prefix}
+                </span>
+                <input
+                  style={{
+                    border: "none",
+                    outline: "none",
+                    width: 45,
+                    textAlign: "center",
+                    fontSize: 11.5,
+                    background: "transparent",
+                    color: "#2563eb",
+                    fontWeight: 800,
+                    padding: 0,
+                    margin: "0 2px",
+                    letterSpacing: "1px",
+                  }}
+                  value={getJobNoParts(formik.values.job_no).seq}
+                  onChange={(e) => {
+                    const parts = getJobNoParts(formik.values.job_no);
+                    const newSeq = e.target.value;
+                    formik.setFieldValue(
+                      "job_no",
+                      `${parts.prefix}${newSeq}${parts.suffix}`
+                    );
+                  }}
+                  onFocus={handleJobNoFocus}
+                />
+                <span
+                  style={{
+                    color: "#94a3b8",
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: "0.3px",
+                  }}
+                >
+                  {getJobNoParts(formik.values.job_no).suffix}
+                </span>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 6,
+                  padding: "0 8px",
+                  fontSize: 11,
+                  color: "#475569",
+                  height: 24,
+                  whiteSpace: "nowrap",
+                  fontWeight: 600,
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {formik.values.job_no}
+                </span>
+                <button
+                  title="Copy"
+                  onClick={() => handleCopyText(formik.values.job_no)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    marginLeft: 6,
+                    cursor: "pointer",
+                    fontSize: 10,
+                    color: "#94a3b8",
+                    padding: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    transition: "color 0.2s",
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.color = "#64748b")}
+                  onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+                >
+                  📋
+                </button>
+              </div>
+            )
           )}
         </div>
 

@@ -42,6 +42,30 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import { generatePaymentRequestPDF } from "../../../utils/paymentRequestPrint";
 import { generatePurchaseBookPDF } from "../../../utils/purchaseBookPrint";
 
+const s = {
+  wrapper: {
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+    backgroundColor: "#fafaffff",
+    padding: "5px 15px",
+    minHeight: "100vh",
+    color: "#333",
+    fontSize: "12px",
+  },
+  toolbar: {
+    display: "flex",
+    gap: "8px",
+    rowGap: "10px",
+    alignItems: "center",
+    marginBottom: "10px",
+    flexWrap: "wrap",
+    backgroundColor: "#fff",
+    padding: "8px 12px",
+    borderRadius: "8px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    border: "1px solid #e5e7eb",
+  }
+};
+
 const PAYMENT_TABS = [
   { key: "billing-pending", label: "Billing Pending" },
   { key: "payment-requested", label: "Payment Requested" },
@@ -974,7 +998,7 @@ function ExportBillingPage() {
           const job = row.original;
           const status = jobQueriesStatus[job.job_no] || {};
           const isDull = status.hasQueries && !status.hasOpenQueries;
-          
+
           return (
             <Box sx={{ display: "flex", gap: 0.8, justifyContent: "center", alignItems: "center" }}>
               {/* RED - Raise Query */}
@@ -1164,7 +1188,7 @@ function ExportBillingPage() {
 
     const finalColumns = [...commonStart];
     finalColumns.splice(4, 0, refCol); // Insert besides Queries
-    
+
     return [
       ...finalColumns,
       {
@@ -1206,15 +1230,17 @@ function ExportBillingPage() {
   );
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box sx={s.wrapper}>
       <Box
         sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           gap: 2,
-          mb: 2,
+          mb: 1.5,
           flexWrap: "wrap",
+          borderBottom: "1px solid #e5e7eb",
+          pb: 0.5
         }}
       >
         <Tabs
@@ -1225,46 +1251,56 @@ function ExportBillingPage() {
           }}
           variant="scrollable"
           scrollButtons="auto"
-          sx={{ minHeight: 40 }}
+          sx={{
+            minHeight: 40,
+            '& .MuiTabs-indicator': { backgroundColor: '#2563eb', height: 3 },
+            '& .MuiTab-root': {
+              fontSize: '12px',
+              textTransform: 'none',
+              fontWeight: 600,
+              minHeight: 40,
+              color: '#64748b',
+              '&.Mui-selected': { color: '#2563eb' }
+            }
+          }}
         >
           {tabs.map((tab) => (
-            <Tab key={tab.key} label={tab.label} sx={{ fontSize: '11px', textTransform: 'none', fontWeight: 600, minHeight: 40 }} />
+            <Tab key={tab.key} label={tab.label} />
           ))}
         </Tabs>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary" }}>
-            Work Mode:
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", fontSize: '11px', letterSpacing: '0.5px' }}>
+            WORK MODE:
           </Typography>
           <ToggleButtonGroup
             size="small"
             exclusive
             value={workMode}
             onChange={(event, value) => value && setWorkMode(value)}
+            sx={{ height: 28, '& .MuiToggleButton-root': { py: 0, px: 2, fontSize: '10px', fontWeight: 700 } }}
           >
-            <ToggleButton value="payment">Payment</ToggleButton>
-            <ToggleButton value="purchase-book">Purchase Book</ToggleButton>
+            <ToggleButton value="payment">PAYMENT</ToggleButton>
+            <ToggleButton value="purchase-book">PURCHASE BOOK</ToggleButton>
           </ToggleButtonGroup>
 
           {activeTab === "general-jobs" && (
             <Button
               variant="contained"
               size="small"
-              startIcon={<OpenInNewIcon />}
+              startIcon={<OpenInNewIcon sx={{ fontSize: '14px' }} />}
               onClick={handleCreateGeneralJob}
               sx={{
                 fontWeight: 700,
                 textTransform: "none",
                 borderRadius: "4px",
-                height: 32,
+                height: 28,
                 fontSize: '11px',
-                background: "linear-gradient(135deg, #1a237e 0%, #283593 100%)",
-                "&:hover": {
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                }
+                backgroundColor: "#2563eb",
+                "&:hover": { backgroundColor: "#1d4ed8", boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }
               }}
             >
-              Create Gen Job
+              Create Job
             </Button>
           )}
         </Box>
@@ -1282,44 +1318,55 @@ function ExportBillingPage() {
         enablePagination={false}
         enableStickyHeader
         initialState={{ density: "compact" }}
-        muiTableContainerProps={{ sx: { maxHeight: "68vh" } }}
+        muiTableContainerProps={{
+          sx: {
+            maxHeight: "72vh",
+            border: "1px solid #cbd5e1",
+            borderRadius: "4px"
+          }
+        }}
         muiTableHeadCellProps={{
           sx: {
             py: 0.8,
             px: 1,
-            fontSize: '11px',
-            fontWeight: 800,
-            backgroundColor: "#f8fafc",
-            borderBottom: '2px solid #e2e8f0',
-            '& .Mui-TableHeadCell-Content': { justifyContent: 'space-between' }
+            fontSize: '12px',
+            fontWeight: 700,
+            backgroundColor: "#19448aff",
+            color: "#fff",
+            borderBottom: '1px solid #334155',
+            '& .Mui-TableHeadCell-Content': { justifyContent: 'space-between' },
+            '& .Mui-TableHeadCell-Content-Labels': { color: '#fff' },
+            '& .Mui-TableHeadCell-Content-Wrapper': { color: '#fff' },
+            '& svg': { color: '#fff !important' }
           }
         }}
         muiTableBodyCellProps={{
           sx: {
-            py: 0.5,
+            py: 1.2,
             px: 1,
-            fontSize: '11px',
-            borderBottom: '1px solid #f1f5f9'
+            fontSize: '11.5px',
+            borderBottom: '1px solid #f1f5f9',
+            color: '#334155'
+          }
+        }}
+        muiTableBodyRowProps={{
+          sx: {
+            '&:hover': {
+              backgroundColor: '#f8fafc',
+              transition: 'background-color 0.2s'
+            }
           }
         }}
         renderTopToolbarCustomActions={() => (
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "flex-start",
-              alignItems: "center",
-              width: "100%",
-              gap: 1.5,
-              flexWrap: "wrap",
-              py: 0.5,
-            }}
-          >
-            <Typography variant="body2" sx={{ fontWeight: 800, minWidth: '80px', color: '#1e293b' }}>
-              Jobs: {totalJobs}
-            </Typography>
+          <Box sx={s.toolbar}>
+            <Box sx={{ display: 'flex', alignItems: 'center', minWidth: '80px', pr: 1.5, borderRight: '1px solid #e5e7eb' }}>
+              <Typography variant="body2" sx={{ fontWeight: 800, color: '#1e293b', fontSize: '13px' }}>
+                Jobs: {totalJobs}
+              </Typography>
+            </Box>
 
             <Autocomplete
-              sx={{ minWidth: 200 }}
+              sx={{ width: 220 }}
               freeSolo
               options={exporterOptions}
               value={selectedExporter || ""}
@@ -1328,7 +1375,15 @@ function ExportBillingPage() {
                 setPage(1);
               }}
               renderInput={(params) => (
-                <TextField {...params} size="small" label="Exporter" InputProps={{ ...params.InputProps, inline: true, sx: { height: 32, fontSize: '12px' } }} InputLabelProps={{ sx: { fontSize: '12px', top: -4 } }} />
+                <TextField
+                  {...params}
+                  size="small"
+                  placeholder="Filter Exporter"
+                  InputProps={{
+                    ...params.InputProps,
+                    sx: { height: 28, fontSize: '11px', backgroundColor: '#f9fafb' }
+                  }}
+                />
               )}
             />
 
@@ -1340,11 +1395,11 @@ function ExportBillingPage() {
                 setSelectedYear(event.target.value);
                 setPage(1);
               }}
-              sx={{ width: 100 }}
-              InputProps={{ sx: { height: 32, fontSize: '12px' } }}
+              sx={{ width: 90 }}
+              InputProps={{ sx: { height: 28, fontSize: '11px', backgroundColor: '#f9fafb' } }}
             >
               {years.map((year) => (
-                <MenuItem key={year} value={year} sx={{ fontSize: '12px' }}>
+                <MenuItem key={year} value={year} sx={{ fontSize: '11px' }}>
                   {year}
                 </MenuItem>
               ))}
@@ -1354,19 +1409,19 @@ function ExportBillingPage() {
               size="small"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search jobs..."
+              placeholder="Search Job No, Ref..."
               sx={{ flex: 1, minWidth: 200, maxWidth: 400 }}
               InputProps={{
-                sx: { height: 32, fontSize: '12px' },
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <SearchIcon fontSize="inherit" />
+                sx: { height: 28, fontSize: '11px', backgroundColor: '#f9fafb' },
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ fontSize: 16, color: '#64748b' }} />
                   </InputAdornment>
                 ),
               }}
             />
 
-            <Box sx={{ position: "relative" }}>
+            <Box sx={{ position: "relative", ml: 'auto' }}>
               <Button
                 variant="contained"
                 size="small"
@@ -1375,24 +1430,35 @@ function ExportBillingPage() {
                   setPage(1);
                 }}
                 sx={{
-                  borderRadius: 1.5,
+                  borderRadius: '6px',
                   textTransform: "none",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   fontSize: '11px',
-                  height: 32,
+                  height: 28,
                   px: 2,
                   boxShadow: 'none',
-                  backgroundColor: showUnresolvedOnly ? "#ef4444" : "#2563eb"
+                  backgroundColor: showUnresolvedOnly ? "#ef4444" : "#2563eb",
+                  "&:hover": { backgroundColor: showUnresolvedOnly ? "#dc2626" : "#1d4ed8" }
                 }}
               >
-                {showUnresolvedOnly ? "Show All Jobs" : "Pending Queries"}
+                {showUnresolvedOnly ? "Showing Pending" : "View Pending Queries"}
               </Button>
               {unresolvedCount > 0 && (
                 <Badge
                   badgeContent={unresolvedCount}
                   color="error"
                   overlap="circular"
-                  sx={{ position: "absolute", top: -4, right: -4, '& .MuiBadge-badge': { fontSize: '9px', height: 16, minWidth: 16 } }}
+                  sx={{
+                    position: "absolute",
+                    top: -4,
+                    right: -4,
+                    '& .MuiBadge-badge': {
+                      fontSize: '9px',
+                      height: 16,
+                      minWidth: 16,
+                      border: '2px solid #fff'
+                    }
+                  }}
                 />
               )}
             </Box>

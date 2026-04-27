@@ -104,13 +104,13 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
     if (window.confirm(`Are you sure you want to delete "${ch.name}"?`)) {
       const res = await deleteChargeHead(ch._id);
       if (!res.success) {
-         alert(res.error || 'Error deleting charge');
+        alert(res.error || 'Error deleting charge');
       } else {
-         const newSelected = new Set(selectedNames);
-         if (newSelected.has(ch.name)) {
-             newSelected.delete(ch.name);
-             setSelectedNames(newSelected);
-         }
+        const newSelected = new Set(selectedNames);
+        if (newSelected.has(ch.name)) {
+          newSelected.delete(ch.name);
+          setSelectedNames(newSelected);
+        }
       }
     }
   };
@@ -123,11 +123,11 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
           <div className="section-label">Search or select predefined charges</div>
           <div className="add-search-wrap">
             <span>🔍</span>
-            <input 
-              type="text" 
-              placeholder="Type to filter charges..." 
+            <input
+              type="text"
+              placeholder="Type to filter charges..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)} 
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
@@ -142,14 +142,14 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
                 if (isEditing) {
                   return (
                     <div key={ch._id || ch.name} className="predefined-item-edit" style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 12px', borderBottom: '1px solid #dee2e6' }}>
-                      <input 
-                        type="text" 
-                        value={editName} 
-                        onChange={e => setEditName(e.target.value)} 
-                        style={{ flex: 1, padding: '4px' }} 
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        style={{ flex: 1, padding: '4px' }}
                       />
-                      <select 
-                        value={editCategory} 
+                      <select
+                        value={editCategory}
                         onChange={e => setEditCategory(e.target.value)}
                         style={{ padding: '4px' }}
                       >
@@ -157,15 +157,15 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
                         <option>Reimbursement</option>
                         <option>Margin</option>
                       </select>
-                      <input 
-                        type="text" 
-                        value={editHsnCode} 
-                        onChange={e => setEditHsnCode(e.target.value)} 
+                      <input
+                        type="text"
+                        value={editHsnCode}
+                        onChange={e => setEditHsnCode(e.target.value)}
                         placeholder="HSN Code"
-                        style={{ width: '100px', padding: '4px' }} 
+                        style={{ width: '100px', padding: '4px' }}
                       />
-                      <button type="button" onClick={(e) => handleSaveEdit(ch, e)} style={{ background: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer' }}>Save</button>
-                      <button type="button" onClick={handleCancelEdit} style={{ background: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer' }}>Cancel</button>
+                      <button type="button" onClick={(e) => handleSaveEdit(ch, e)} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+                      <button type="button" onClick={handleCancelEdit} style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontWeight: 700 }}>Cancel</button>
                     </div>
                   );
                 }
@@ -173,10 +173,10 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
                 return (
                   <div key={ch._id || ch.name} style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #f1f5f9' }}>
                     <label className={`predefined-item ${isChecked ? 'checked' : ''}`} style={{ flex: 1, borderBottom: 'none', margin: 0 }}>
-                      <input 
-                        type="checkbox" 
-                        checked={isChecked} 
-                        onChange={() => handleToggle(ch.name)} 
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => handleToggle(ch.name)}
                       />
                       <span className="predefined-item-name">{ch.name}</span>
                       <span className="predefined-item-cat">{ch.category}</span>
@@ -185,7 +185,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
                     {isAdmin && (
                       <div style={{ display: 'flex', gap: '8px', paddingRight: '12px' }}>
                         <button type="button" title="Edit" onClick={(e) => handleEditClick(ch, e)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>✎</button>
-                        <button type="button" title="Delete" onClick={(e) => handleDelete(ch, e)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc3545' }}>🗑</button>
+                        <button type="button" title="Delete" onClick={(e) => handleDelete(ch, e)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}>🗑</button>
                       </div>
                     )}
                   </div>
@@ -197,23 +197,23 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
           <div className="custom-charge-box">
             <div className="section-label">➕ Add Custom Charge</div>
             <div className="custom-row">
-              <input 
-                type="text" 
-                placeholder="Enter charge name..." 
+              <input
+                type="text"
+                placeholder="Enter charge name..."
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
               />
-              <select 
-                value={customCategory} 
+              <select
+                value={customCategory}
                 onChange={(e) => setCustomCategory(e.target.value)}
               >
                 <option value="">-- Category --</option>
                 <option>Reimbursement</option>
                 <option>Margin</option>
               </select>
-              <input 
-                type="text" 
-                placeholder="HSN Code" 
+              <input
+                type="text"
+                placeholder="HSN Code"
                 value={customHsnCode}
                 onChange={(e) => setCustomHsnCode(e.target.value)}
                 style={{ width: '120px' }}
@@ -227,7 +227,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
         <div className="add-modal-footer">
           <span className="sel-count">{selectedNames.size ? `${selectedNames.size} charge${selectedNames.size > 1 ? 's' : ''} selected` : ''}</span>
           <button type="button" className="btn" onClick={handleAddSelected} disabled={selectedNames.size === 0}>Add Selected</button>
-          <button type="button" className="btn" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
         </div>
       </div>
     </div>

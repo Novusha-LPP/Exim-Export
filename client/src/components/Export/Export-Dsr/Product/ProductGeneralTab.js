@@ -2369,6 +2369,14 @@ const ProductGeneralTab = ({
         value,
       );
 
+      // Sync RoDTEP quantity if SQC quantity is changed
+      if (field === "socQuantity") {
+        formik.setFieldValue(
+          `invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.quantity`,
+          parseFloat(value) || 0,
+        );
+      }
+
       // If PMV calculation method changes to percentage or currency/percentage changes, recalculate PMV
       if (
         (field === "pmvInfo.calculationMethod" && value === "percentage") ||

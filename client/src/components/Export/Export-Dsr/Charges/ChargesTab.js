@@ -1,34 +1,6 @@
-/**
- * ChargesTab.js
- * Wrapper that plugs the shared ChargesGrid component into the Export DSR job view.
- * Reads the job _id from multiple sources to handle different parent module patterns.
- */
 import React from "react";
 import ChargesGrid from "../../../chargesGrid/index.jsx";
 import { FieldArray, FormikProvider } from "formik";
-import {
-  Box,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Button,
-  Grid,
-  TextField,
-  MenuItem,
-  Card,
-  CardContent,
-  Checkbox,
-  FormControlLabel,
-  Tooltip
-} from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import AddIcon from "@mui/icons-material/Add";
 import FileUpload from "../../../gallery/FileUpload.js";
 import ImagePreview from "../../../gallery/ImagePreview.js";
 import DateInput from "../../../common/DateInput.js";
@@ -62,26 +34,9 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
     );
   }
 
-  const headerBoxStyle = {
-    background: "linear-gradient(to right, #f8fafc 0%, #ffffff 100%)",
-    px: 2,
-    py: 1.25,
-    borderBottom: "1px solid #eef2f6",
-    display: 'flex',
-    alignItems: 'center',
-  };
-
-  const sectionCardStyle = {
-    boxShadow: "0 2px 12px rgba(0,0,0,0.03)",
-    borderRadius: "10px",
-    border: "1px solid #eef2f6",
-    overflow: "hidden",
-    mb: 2.5
-  };
-
   return (
     <FormikProvider value={formik}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <ChargesGrid
           parentId={parentId}
           parentModule="ExportJob"
@@ -101,256 +56,233 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
         />
 
         {/* Fine Section */}
-        <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
-          <Card sx={sectionCardStyle}>
-            {/* ... rest of Fines and Billing sections ... */}
-            <Box sx={headerBoxStyle}>
-              <Box component="span" sx={{ width: 3, height: 16, bgcolor: "#ef4444", mr: 1, borderRadius: 0.5 }} />
-              <Typography variant="h6" sx={{ fontSize: "14px", fontWeight: 700, color: "#334155" }}>
-                Fine Report & Penalties
-              </Typography>
-            </Box>
-            <CardContent sx={{ p: 2 }}>
+        <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%' }}>
+          <div className="grid-wrapper" style={{ border: 'none', boxShadow: 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ width: '4px', height: '16px', background: '#e11d48', marginRight: '8px', borderRadius: '2px' }}></span>
+              <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Fine Report & Penalties</h3>
+            </div>
+
+            <div style={{ padding: '12px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '20px' }}>
               <FieldArray name="fines">
                 {({ push, remove }) => (
-                  <Box>
-                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: "8px", border: "1px solid #f1f5f9", overflow: 'hidden' }}>
-                      <Table size="small">
-                        <TableHead sx={{ backgroundColor: "#fbfcfd" }}>
-                          <TableRow>
-                            <TableCell sx={{ fontWeight: 600, color: "#64748b", py: 1.25, fontSize: "11px", textTransform: 'uppercase', letterSpacing: '0.02em' }}>Fine Type</TableCell>
-                            <TableCell sx={{ fontWeight: 600, color: "#64748b", py: 1.25, fontSize: "11px", textTransform: 'uppercase', letterSpacing: '0.02em' }}>Accountability</TableCell>
-                            <TableCell sx={{ fontWeight: 600, color: "#64748b", py: 1.25, fontSize: "11px", textTransform: 'uppercase', letterSpacing: '0.02em' }}>Amount (INR)</TableCell>
-                            <TableCell sx={{ fontWeight: 600, color: "#64748b", py: 1.25, fontSize: "11px", textTransform: 'uppercase', letterSpacing: '0.02em' }}>Remarks</TableCell>
-                            <TableCell sx={{ width: 40 }}></TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
+                  <div>
+                    <div className="charge-table-wrap" style={{ margin: 0, border: '1px solid #e2e8f0' }}>
+                      <table className="charge-table">
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: 'left', paddingLeft: '12px' }}>Fine Type</th>
+                            <th style={{ textAlign: 'left', paddingLeft: '12px' }}>Accountability</th>
+                            <th style={{ textAlign: 'right', paddingRight: '12px' }}>Amount (INR)</th>
+                            <th style={{ textAlign: 'left', paddingLeft: '12px' }}>Remarks</th>
+                            <th style={{ width: '40px' }}></th>
+                          </tr>
+                        </thead>
+                        <tbody>
                           {formik.values.fines && formik.values.fines.length > 0 ? (
                             formik.values.fines.map((fine, index) => (
-                              <TableRow key={index} sx={{ "&:hover": { backgroundColor: "#f9fafb" }, transition: 'background-color 0.2s' }}>
-                                <TableCell>
-                                  <TextField
-                                    select
-                                    fullWidth
-                                    size="small"
+                              <tr key={index}>
+                                <td style={{ padding: '4px 12px' }}>
+                                  <select
                                     name={`fines.${index}.fineType`}
                                     value={fine.fineType || ""}
                                     onChange={formik.handleChange}
-                                    variant="standard"
-                                    InputProps={{ disableUnderline: true, style: { fontSize: "13px", color: '#1e293b' } }}
+                                    className="ep-select"
+                                    style={{ width: '100%', height: '28px', background: '#f8fafc', border: '1px solid #e2e8f0' }}
                                   >
-                                    <MenuItem value="Challan">Challan</MenuItem>
-                                    <MenuItem value="Fine by Officer">Fine by Officer</MenuItem>
-                                    <MenuItem value="Notesheet Amount">Notesheet Amount</MenuItem>
-                                    <MenuItem value="Misc">Miscellaneous</MenuItem>
-                                  </TextField>
-                                </TableCell>
-                                <TableCell>
-                                  <TextField
-                                    select
-                                    fullWidth
-                                    size="small"
+                                    <option value="Challan">Challan</option>
+                                    <option value="Fine by Officer">Fine by Officer</option>
+                                    <option value="Notesheet Amount">Notesheet Amount</option>
+                                    <option value="Misc">Miscellaneous</option>
+                                  </select>
+                                </td>
+                                <td style={{ padding: '4px 12px' }}>
+                                  <select
                                     name={`fines.${index}.accountability`}
                                     value={fine.accountability || ""}
                                     onChange={formik.handleChange}
-                                    variant="standard"
-                                    InputProps={{ disableUnderline: true, style: { fontSize: "13px", color: '#1e293b' } }}
+                                    className="ep-select"
+                                    style={{ width: '100%', height: '28px', background: '#f8fafc', border: '1px solid #e2e8f0' }}
                                   >
-                                    <MenuItem value="By Us">By Us</MenuItem>
-                                    <MenuItem value="By Exporter">By Exporter</MenuItem>
-                                  </TextField>
-                                </TableCell>
-                                <TableCell>
-                                  <TextField
-                                    fullWidth
-                                    size="small"
+                                    <option value="By Us">By Us</option>
+                                    <option value="By Exporter">By Exporter</option>
+                                  </select>
+                                </td>
+                                <td style={{ padding: '4px 12px' }}>
+                                  <input
                                     type="number"
                                     name={`fines.${index}.amount`}
                                     value={fine.amount || ""}
                                     onChange={formik.handleChange}
-                                    variant="standard"
+                                    className="ep-desc-input"
                                     placeholder="0"
-                                    InputProps={{ disableUnderline: true, style: { fontSize: "13px", fontWeight: 600, color: '#0f172a' } }}
+                                    style={{ width: '100%', height: '28px', textAlign: 'right', fontWeight: 600 }}
                                   />
-                                </TableCell>
-                                <TableCell>
-                                  <TextField
-                                    fullWidth
-                                    size="small"
+                                </td>
+                                <td style={{ padding: '4px 12px' }}>
+                                  <input
+                                    type="text"
                                     name={`fines.${index}.remarks`}
                                     value={fine.remarks || ""}
                                     onChange={formik.handleChange}
-                                    variant="standard"
+                                    className="ep-desc-input"
                                     placeholder="Details..."
-                                    InputProps={{ disableUnderline: true, style: { fontSize: "13px", color: '#475569' } }}
+                                    style={{ width: '100%', height: '28px' }}
                                   />
-                                </TableCell>
-                                <TableCell align="center">
-                                  <IconButton
-                                    size="small"
-                                    sx={{ color: '#cbd5e1', '&:hover': { color: '#ef4444' } }}
+                                </td>
+                                <td style={{ textAlign: 'center', padding: '4px' }}>
+                                  <button
+                                    type="button"
                                     onClick={() => remove(index)}
+                                    title="Remove Penalty"
+                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '14px', fontWeight: 'bold' }}
                                   >
-                                    <DeleteIcon sx={{ fontSize: "16px" }} />
-                                  </IconButton>
-                                </TableCell>
-                              </TableRow>
+                                    ✕
+                                  </button>
+                                </td>
+                              </tr>
                             ))
                           ) : (
-                            <TableRow>
-                              <TableCell colSpan={5} align="center" sx={{ py: 3, color: "#94a3b8", fontStyle: "italic", fontSize: "12px" }}>
+                            <tr>
+                              <td colSpan={5} style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', fontStyle: 'italic' }}>
                                 No fines recorded for this shipment.
-                              </TableCell>
-                            </TableRow>
+                              </td>
+                            </tr>
                           )}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                    <Box sx={{ mt: 1.5 }}>
-                      <Button
-                        startIcon={<AddIcon sx={{ fontSize: '16px' }} />}
-                        size="small"
-                        variant="text"
-                        sx={{
-                          textTransform: "none",
-                          fontSize: "12px",
-                          color: "#6366f1",
-                          fontWeight: 600,
-                          '&:hover': { background: '#f5f3ff' }
-                        }}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div style={{ marginTop: '10px' }}>
+                      <button
+                        type="button"
                         onClick={() => push({ fineType: "Challan", accountability: "By Exporter", amount: 0, remarks: "" })}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#2563eb',
+                          fontWeight: 700,
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 8px',
+                          borderRadius: '4px'
+                        }}
+                        onMouseEnter={(e) => e.target.style.background = '#eff6ff'}
+                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
                       >
-                        Add Penalty Entry
-                      </Button>
-                    </Box>
-                  </Box>
+                        <span style={{ fontSize: '14px' }}>+</span> Add Penalty Entry
+                      </button>
+                    </div>
+                  </div>
                 )}
               </FieldArray>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Invoice & Documents Section */}
-          <Card sx={sectionCardStyle}>
-            <Box sx={headerBoxStyle}>
-              <Box component="span" sx={{ width: 3, height: 16, bgcolor: "#6366f1", mr: 1, borderRadius: 0.5 }} />
-              <Typography variant="h6" sx={{ fontSize: "14px", fontWeight: 700, color: "#334155" }}>
-                Billing Submission & Document Proof
-              </Typography>
-            </Box>
-            <CardContent sx={{ p: 2 }}>
-              <Grid container spacing={4} alignItems="flex-start">
-                <Grid item xs={12} md={4}>
-                  <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, mb: 1, display: "block", fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Billing Date
-                  </Typography>
-                  <DateInput
-                    name="operations[0].statusDetails[0].billingDocsSentDt"
-                    value={formik.values.operations?.[0]?.statusDetails?.[0]?.billingDocsSentDt || ""}
-                    onChange={(e) => formik.setFieldValue("operations[0].statusDetails[0].billingDocsSentDt", e.target.value)}
-                    style={{
-                      width: "100%",
-                      fontSize: "13px",
-                      padding: "8px 12px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "8px",
-                      height: "38px",
-                      background: "#fcfdfe",
-                      outline: "none",
-                      boxSizing: "border-box",
-                      fontWeight: 500,
+          <div className="grid-wrapper" style={{ border: 'none', boxShadow: 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ width: '4px', height: '16px', background: '#2563eb', marginRight: '8px', borderRadius: '2px' }}></span>
+              <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Billing Submission & Document Proof</h3>
+            </div>
+
+            <div style={{ padding: '16px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '20px', display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1', minWidth: '250px', maxWidth: '300px' }}>
+                <span className="form-label" style={{ display: 'block', textAlign: 'left', marginBottom: '8px', width: 'auto' }}>Billing Date</span>
+                <DateInput
+                  name="operations[0].statusDetails[0].billingDocsSentDt"
+                  value={formik.values.operations?.[0]?.statusDetails?.[0]?.billingDocsSentDt || ""}
+                  onChange={(e) => formik.setFieldValue("operations[0].statusDetails[0].billingDocsSentDt", e.target.value)}
+                  style={{
+                    width: "100%",
+                    fontSize: "12px",
+                    padding: "0 8px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "4px",
+                    height: "28px",
+                    background: "#f9fafb",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    fontWeight: 500,
+                    color: '#1e293b'
+                  }}
+                />
+              </div>
+              <div style={{ flex: '2', minWidth: '350px' }}>
+                <span className="form-label" style={{ display: 'block', textAlign: 'left', marginBottom: '8px', width: 'auto' }}>Invoice Document / Bill Copy</span>
+                <div style={{
+                  padding: '12px',
+                  border: '1px dashed #cbd5e1',
+                  borderRadius: '6px',
+                  background: '#f8fafc',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px'
+                }}>
+                  <FileUpload
+                    bucketPath="billing_docs"
+                    onFilesUploaded={(urls) => {
+                      const current = formik.values.operations?.[0]?.statusDetails?.[0]?.billingDocsSentUpload || [];
+                      formik.setFieldValue("operations[0].statusDetails[0].billingDocsSentUpload", [...current, ...urls]);
                     }}
                   />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, mb: 1, display: "block", fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Invoice Document / Bill Copy
-                  </Typography>
-                  <Box sx={{
-                    p: 1.5,
-                    border: "1px dashed #e2e8f0",
-                    borderRadius: "10px",
-                    bgcolor: "#fbfcfd",
-                    transition: 'all 0.2s',
-                    '&:hover': { borderColor: '#cbd5e1', bgcolor: '#f8fafc' }
-                  }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <FileUpload
-                        bucketPath="billing_docs"
-                        onFilesUploaded={(urls) => {
-                          const current = formik.values.operations?.[0]?.statusDetails?.[0]?.billingDocsSentUpload || [];
-                          formik.setFieldValue("operations[0].statusDetails[0].billingDocsSentUpload", [...current, ...urls]);
-                        }}
-                      />
-                      <ImagePreview
-                        images={formik.values.operations?.[0]?.statusDetails?.[0]?.billingDocsSentUpload || []}
-                        onDeleteImage={(index) => {
-                          const current = formik.values.operations?.[0]?.statusDetails?.[0]?.billingDocsSentUpload || [];
-                          const updated = current.filter((_, i) => i !== index);
-                          formik.setFieldValue("operations[0].statusDetails[0].billingDocsSentUpload", updated);
-                        }}
-                        readOnly={!isEditable}
-                      />
-                    </Box>
-                  </Box>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
+                  <ImagePreview
+                    images={formik.values.operations?.[0]?.statusDetails?.[0]?.billingDocsSentUpload || []}
+                    onDeleteImage={(index) => {
+                      const current = formik.values.operations?.[0]?.statusDetails?.[0]?.billingDocsSentUpload || [];
+                      const updated = current.filter((_, i) => i !== index);
+                      formik.setFieldValue("operations[0].statusDetails[0].billingDocsSentUpload", updated);
+                    }}
+                    readOnly={!isEditable}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </fieldset>
 
-        <Card sx={sectionCardStyle}>
-          <CardContent sx={{ p: 2 }}>
-            <Grid container spacing={4} alignItems="center">
-              <Grid item xs={12} md={12} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={formik.values.financial_lock || false}
-                      onChange={(e) => formik.setFieldValue("financial_lock", e.target.checked)}
-                      color="primary"
-                      disabled={!isEditable}
-                    />
+        <div className="grid-wrapper" style={{ border: 'none', boxShadow: 'none' }}>
+          <div style={{ padding: '16px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '32px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: !isEditable ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+              <input
+                type="checkbox"
+                checked={formik.values.financial_lock || false}
+                onChange={(e) => formik.setFieldValue("financial_lock", e.target.checked)}
+                disabled={!isEditable}
+                style={{ width: '16px', height: '16px', cursor: !isEditable ? 'not-allowed' : 'pointer' }}
+              />
+              Financial Lock
+            </label>
+
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: (!isEditable || (chargesCount === 0 && (formik.values.charges || []).length === 0)) ? 'not-allowed' : 'pointer',
+              fontSize: '13px',
+              fontWeight: 600,
+              color: (chargesCount > 0 || (formik.values.charges || []).length > 0) ? '#16a34a' : '#94a3b8'
+            }}>
+              <input
+                type="checkbox"
+                checked={formik.values.send_for_billing || false}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  formik.setFieldValue("send_for_billing", checked);
+                  if (checked) {
+                    formik.setFieldValue("send_for_billing_date", new Date().toISOString());
                   }
-                  label={
-                    <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
-                      Financial Lock
-                    </Typography>
-                  }
-                />
-                
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={formik.values.send_for_billing || false}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        formik.setFieldValue("send_for_billing", checked);
-                        if (checked) {
-                          formik.setFieldValue("send_for_billing_date", new Date().toISOString());
-                        }
-                      }}
-                      color="success"
-                      disabled={!isEditable || (chargesCount === 0 && (formik.values.charges || []).length === 0)}
-                    />
-                  }
-                  label={
-                    <Typography
-                      sx={{
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: (chargesCount > 0 || (formik.values.charges || []).length > 0) ? '#16a34a' : '#94a3b8',
-                      }}
-                    >
-                      Send for Billing
-                    </Typography>
-                  }
-                />
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-      </Box>
+                }}
+                disabled={!isEditable || (chargesCount === 0 && (formik.values.charges || []).length === 0)}
+                style={{ width: '16px', height: '16px', cursor: (!isEditable || (chargesCount === 0 && (formik.values.charges || []).length === 0)) ? 'not-allowed' : 'pointer' }}
+              />
+              Send for Billing
+            </label>
+          </div>
+        </div>
+      </div>
     </FormikProvider>
   );
 };

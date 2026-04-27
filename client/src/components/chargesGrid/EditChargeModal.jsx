@@ -200,7 +200,7 @@ const EditChargeModal = ({
     const normalize = (s) => (s || '').toString().trim().toUpperCase().replace(/\s+/g, ' ');
     const partyName = sectionRef.partyName;
     const pNameNorm = normalize(partyName);
-    
+
     // Prioritize search list based on partyType to avoid shadowing (e.g. name exists in both Suppliers and Transporters)
     const partyType = sectionRef.partyType;
     let lookupList = [];
@@ -253,9 +253,9 @@ const EditChargeModal = ({
         };
 
         // Standardize attachments into a single row-level array
-        row.attachments = Array.isArray(charge.attachments) ? charge.attachments : 
-                         (Array.isArray(charge.revenue?.url) ? charge.revenue.url : 
-                         (Array.isArray(charge.cost?.url) ? charge.cost.url : []));
+        row.attachments = Array.isArray(charge.attachments) ? charge.attachments :
+          (Array.isArray(charge.revenue?.url) ? charge.revenue.url :
+            (Array.isArray(charge.cost?.url) ? charge.cost.url : []));
 
         // Normalize amount from total if needed and trigger recalcs
         ['revenue', 'cost'].forEach(sec => {
@@ -388,7 +388,7 @@ const EditChargeModal = ({
 
   const handleSelectParty = (index, section, item) => {
     handleFieldChange(index, 'partyName', item.name, section);
-    
+
     // Auto-set TDS if available for cost side
     if (section === 'cost' && item.tds_percent) {
       handleFieldChange(index, 'isTds', true, section);
@@ -497,11 +497,11 @@ const EditChargeModal = ({
           {formData.map((row, i) => (
             <div key={row._id || i} style={{ marginBottom: formData.length > 1 ? '30px' : '0' }}>
               <div className="form-section-new">
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginRight: '30px', gap: '10px 20px' }}>
+                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px 12px' }}>
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
                     <span className="form-label">Charge</span>
                     <div className="form-input-search">
-                      <input type="text" readOnly className="form-input" style={{ background: '#f5f8fc', color: '#1a3a5c', fontWeight: 'bold' }} value={row.chargeHead || ''} />
+                      <input type="text" readOnly className="form-input" style={{ color: '#1e293b', fontWeight: 800 }} value={row.chargeHead || ''} />
                       <button type="button" className="search-btn">🔍</button>
                     </div>
                   </div>
@@ -525,9 +525,9 @@ const EditChargeModal = ({
 
                   {/* Tally Numbers & Status Row */}
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
-                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold' }}>PB No</span>
+                    <span className="form-label" style={{ color: '#2563eb', fontWeight: 800 }}>PB No</span>
                     <div className="ep-inline">
-                      <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', width: '60%' }} value={row.purchase_book_no || ''} />
+                      <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', flex: 1, minWidth: '120px' }} value={row.purchase_book_no || ''} />
                       <button
                         type="button"
                         className="upload-btn"
@@ -555,9 +555,9 @@ const EditChargeModal = ({
                     </div>
                   </div>
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
-                    <span className="form-label" style={{ color: '#d32f2f', fontWeight: 'bold' }}>PR No</span>
+                    <span className="form-label" style={{ color: '#ef4444', fontWeight: 800 }}>PR No</span>
                     <div className="ep-inline">
-                      <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', width: '60%' }} value={row.payment_request_no || ''} />
+                      <input type="text" readOnly className="form-input" style={{ background: '#fef2f2', color: '#dc2626', flex: 1, minWidth: '120px' }} value={row.payment_request_no || ''} />
                       <button
                         type="button"
                         className="upload-btn"
@@ -566,9 +566,9 @@ const EditChargeModal = ({
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '6px',
-                          backgroundColor: row.payment_request_no ? '#1d4ed8' : '#cbd5e1',
+                          backgroundColor: row.payment_request_no ? '#ef4444' : '#cbd5e1',
                           color: '#fff',
-                          borderColor: row.payment_request_no ? '#1e40af' : '#94a3b8',
+                          borderColor: row.payment_request_no ? '#dc2626' : '#94a3b8',
                           cursor: row.payment_request_no ? 'pointer' : 'not-allowed',
                           opacity: row.payment_request_no ? 1 : 0.8
                         }}
@@ -579,7 +579,7 @@ const EditChargeModal = ({
                         <PrintIcon style={{ fontSize: '14px' }} />
                         Print Advice
                       </button>
-                      <span className="ep-status-pill" style={{ marginLeft: '10px', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: row.payment_request_status ? '#e8f5e9' : '#f5f5f5', color: row.payment_request_status === 'Active' ? '#2e7d32' : '#757575', border: '1px solid #ddd' }}>
+                      <span className="ep-status-pill" style={{ marginLeft: '10px', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: row.payment_request_status ? '#ecfdf5' : '#f8fafc', color: row.payment_request_status === 'Active' ? '#059669' : '#64748b', border: '1px solid #e2e8f0' }}>
                         {row.payment_request_status || 'Pending'}
                       </span>
                     </div>
@@ -682,12 +682,12 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">Qty</span>
                                 <div className="ep-inline">
-                                  <input 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={row.revenue?.qty || ''} 
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={row.revenue?.qty || ''}
                                     onFocus={e => e.target.select()}
-                                    onChange={e => handleFieldChange(i, 'qty', e.target.value, 'revenue')} 
+                                    onChange={e => handleFieldChange(i, 'qty', e.target.value, 'revenue')}
                                   />
                                 </div>
                               </div>
@@ -700,12 +700,12 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">Rate</span>
                                 <div className="ep-inline">
-                                  <input 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={row.revenue?.rate || ''} 
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={row.revenue?.rate || ''}
                                     onFocus={e => e.target.select()}
-                                    onChange={e => handleFieldChange(i, 'rate', e.target.value, 'revenue')} 
+                                    onChange={e => handleFieldChange(i, 'rate', e.target.value, 'revenue')}
                                   />
                                   <select value={row.revenue?.currency || 'INR'} onChange={e => handleFieldChange(i, 'currency', e.target.value, 'revenue')}>
                                     <option>INR</option><option>USD</option><option>EUR</option>
@@ -793,12 +793,12 @@ const EditChargeModal = ({
                                   <input type="checkbox" checked={row.revenue?.isGst !== false} onChange={e => handleFieldChange(i, 'isGst', e.target.checked, 'revenue')} />
                                   {row.revenue?.isGst !== false && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <input 
-                                        type="number" 
-                                        style={{ width: '50px' }} 
-                                        value={row.revenue?.gstRate ?? ''} 
+                                      <input
+                                        type="number"
+                                        style={{ width: '50px' }}
+                                        value={row.revenue?.gstRate ?? ''}
                                         onFocus={e => e.target.select()}
-                                        onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'revenue')} 
+                                        onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'revenue')}
                                       />
                                       <span style={{ fontSize: '11px' }}>%</span>
                                     </div>
@@ -819,10 +819,10 @@ const EditChargeModal = ({
                               </div>
                             </div>
                             <div className="ep-copy-row">
-                               <button type="button" className="upload-btn" style={{ backgroundColor: '#2563eb', color: '#fff' }} onClick={() => handleCopyToCost(i)}>
-                                 Copy to Cost
-                               </button>
-                             </div>
+                              <button type="button" className="upload-btn" style={{ backgroundColor: '#2563eb', color: '#fff' }} onClick={() => handleCopyToCost(i)}>
+                                Copy to Cost
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -901,12 +901,12 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">Qty</span>
                                 <div className="ep-inline">
-                                  <input 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={row.cost?.qty || ''} 
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={row.cost?.qty || ''}
                                     onFocus={e => e.target.select()}
-                                    onChange={e => handleFieldChange(i, 'qty', e.target.value, 'cost')} 
+                                    onChange={e => handleFieldChange(i, 'qty', e.target.value, 'cost')}
                                   />
                                 </div>
                               </div>
@@ -924,12 +924,12 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">Rate</span>
                                 <div className="ep-inline">
-                                  <input 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={row.cost?.rate || ''} 
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={row.cost?.rate || ''}
                                     onFocus={e => e.target.select()}
-                                    onChange={e => handleFieldChange(i, 'rate', e.target.value, 'cost')} 
+                                    onChange={e => handleFieldChange(i, 'rate', e.target.value, 'cost')}
                                   />
                                   <select value={row.cost?.currency || 'INR'} onChange={e => handleFieldChange(i, 'currency', e.target.value, 'cost')}>
                                     <option>INR</option><option>USD</option><option>EUR</option>
@@ -958,7 +958,7 @@ const EditChargeModal = ({
                                         else if (pType === 'Transporter') list = [...transporters];
                                         else if (pType === 'Vendor') list = [...suppliers];
                                         else if (pType === 'Exporter') list = [...exporters];
-                                        else if (pType === 'Agent') list = [...exporters]; 
+                                        else if (pType === 'Agent') list = [...exporters];
 
                                         const seen = new Set();
                                         const filtered = list.filter(item => {
@@ -999,7 +999,7 @@ const EditChargeModal = ({
                                 const normalize = (s) => (s || '').toString().trim().toUpperCase().replace(/\s+/g, ' ');
                                 const pNameNorm = normalize(row.cost?.partyName);
                                 const pType = row.cost?.partyType;
-                                
+
                                 let lookupList = [];
                                 if (pType === 'Transporter') lookupList = [...transporters, ...shippingLines, ...suppliers, ...organizations, ...exporters, ...terminalCodes];
                                 else if (pType === 'Vendor') lookupList = [...suppliers, ...organizations, ...transporters, ...shippingLines, ...exporters, ...terminalCodes];
@@ -1028,12 +1028,12 @@ const EditChargeModal = ({
                                   <input type="checkbox" checked={row.cost?.isGst !== false} onChange={e => handleFieldChange(i, 'isGst', e.target.checked, 'cost')} />
                                   {row.cost?.isGst !== false && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <input 
-                                        type="number" 
-                                        style={{ width: '50px' }} 
-                                        value={row.cost?.gstRate || ''} 
+                                      <input
+                                        type="number"
+                                        style={{ width: '50px' }}
+                                        value={row.cost?.gstRate || ''}
                                         onFocus={e => e.target.select()}
-                                        onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'cost')} 
+                                        onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'cost')}
                                       />
                                       <span style={{ fontSize: '11px' }}>%</span>
                                     </div>
@@ -1058,12 +1058,12 @@ const EditChargeModal = ({
                                   <input type="checkbox" checked={row.cost?.isTds || false} onChange={e => handleFieldChange(i, 'isTds', e.target.checked, 'cost')} />
                                   {row.cost?.isTds && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <input 
-                                        type="number" 
-                                        style={{ width: '50px' }} 
-                                        value={row.cost?.tdsPercent || ''} 
+                                      <input
+                                        type="number"
+                                        style={{ width: '50px' }}
+                                        value={row.cost?.tdsPercent || ''}
                                         onFocus={e => e.target.select()}
-                                        onChange={e => handleFieldChange(i, 'tdsPercent', e.target.value, 'cost')} 
+                                        onChange={e => handleFieldChange(i, 'tdsPercent', e.target.value, 'cost')}
                                       />
                                       <span style={{ fontSize: '11px' }}>%</span>
                                     </div>
@@ -1126,7 +1126,7 @@ const EditChargeModal = ({
 
                                           const branch = partyDetails?.branches?.[cost.branchIndex || 0] || partyDetails?.branchInfo?.[0] || {};
                                           const isGujarat = branch.gst?.startsWith('24') || branch.GST?.startsWith('24');
-                                          
+
                                           return {
                                             partyName,
                                             partyDetails,
@@ -1192,10 +1192,10 @@ const EditChargeModal = ({
                               </div>
                             </div>
                             <div className="ep-copy-row" style={{ display: 'flex', gap: '10px' }}>
-                               <button type="button" className="upload-btn" style={{ backgroundColor: '#10b981', color: '#fff' }} onClick={() => handleCopyToRevenue(i)}>
-                                 Copy to Revenue
-                               </button>
-                             </div>
+                              <button type="button" className="upload-btn" style={{ backgroundColor: '#10b981', color: '#fff' }} onClick={() => handleCopyToRevenue(i)}>
+                                Copy to Revenue
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>

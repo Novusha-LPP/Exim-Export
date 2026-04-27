@@ -5,24 +5,24 @@ import './charges.css';
 
 const extractFileName = (url) => {
   try {
-      if (!url) return "File";
-      const parts = url.split("/");
-      return decodeURIComponent(parts[parts.length - 1]);
+    if (!url) return "File";
+    const parts = url.split("/");
+    return decodeURIComponent(parts[parts.length - 1]);
   } catch (error) {
-      return "File";
+    return "File";
   }
 };
 
-const ChargesTable = ({ 
-  charges, 
-  activeTab, 
-  selectedIds, 
-  onSelectCharge, 
-  onSelectAll, 
+const ChargesTable = ({
+  charges,
+  activeTab,
+  selectedIds,
+  onSelectCharge,
+  onSelectAll,
   onOpenFileModal,
   onRemoveAttachment,
   onEditCharge,
-  readOnly 
+  readOnly
 }) => {
   const formatNumber = (num) => {
     if (num === null || num === undefined) return '0.00';
@@ -72,50 +72,50 @@ const ChargesTable = ({
       <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", alignItems: "center", justifyContent: "center" }}>
         {Array.isArray(urls) && urls.map((url, urlIdx) => (
           <Chip
-              key={urlIdx}
-              icon={<DescriptionIcon style={{ fontSize: "12px" }} />}
-              label={
-                <a 
-                  href={url} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  onClick={(e) => e.stopPropagation()} 
-                  style={{ color: 'inherit', textDecoration: 'none' }}
-                >
-                  {extractFileName(url)}
-                </a>
+            key={urlIdx}
+            icon={<DescriptionIcon style={{ fontSize: "12px" }} />}
+            label={
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{ color: 'inherit', textDecoration: 'none' }}
+              >
+                {extractFileName(url)}
+              </a>
+            }
+            size="small"
+            onDelete={readOnly ? undefined : (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              const newUrls = urls.filter((_, i) => i !== urlIdx);
+              onRemoveAttachment(ch, activeTab, newUrls);
+            }}
+            clickable
+            sx={{
+              maxWidth: "130px",
+              fontSize: "9px",
+              height: "18px",
+              backgroundColor: "#e3f2fd",
+              color: "#1565c0",
+              "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "0 4px" },
+              "& .MuiChip-deleteIcon": {
+                fontSize: "14px",
+                margin: "0 2px 0 -4px",
+                color: "#d32f2f !important",
+                opacity: 0.8,
+                "&:hover": { opacity: 1 }
               }
-              size="small"
-              onDelete={readOnly ? undefined : (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                const newUrls = urls.filter((_, i) => i !== urlIdx);
-                onRemoveAttachment(ch, activeTab, newUrls);
-              }}
-              clickable
-              sx={{
-                  maxWidth: "130px",
-                  fontSize: "9px",
-                  height: "18px",
-                  backgroundColor: "#e3f2fd",
-                  color: "#1565c0",
-                  "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "0 4px" },
-                  "& .MuiChip-deleteIcon": { 
-                    fontSize: "14px", 
-                    margin: "0 2px 0 -4px",
-                    color: "#d32f2f !important",
-                    opacity: 0.8,
-                    "&:hover": { opacity: 1 }
-                  }
-              }}
+            }}
           />
         ))}
-        <button 
-           type="button"
-           className="upload-btn" 
-           onClick={() => onOpenFileModal(ch)}
-           disabled={readOnly}
-           style={{ padding: "1px 4px", fontSize: "9px" }}
+        <button
+          type="button"
+          className="upload-btn"
+          onClick={() => onOpenFileModal(ch)}
+          disabled={readOnly}
+          style={{ padding: "1px 4px", fontSize: "9px" }}
         >
           {Array.isArray(urls) && urls.length > 0 ? '+' : '⇧'}
         </button>
@@ -141,17 +141,17 @@ const ChargesTable = ({
         <tbody>
           {charges.length === 0 ? (
             <tr>
-              <td colSpan="20" style={{ textAlign: 'center', padding: '20px', color: '#8aA0b0' }}>
+              <td colSpan="20" style={{ textAlign: 'center', padding: '40px', color: '#64748b', fontSize: '13px' }}>
                 No charges found. Add a charge to get started.
               </td>
             </tr>
           ) : charges.map((ch, idx) => {
             const isSelected = selectedIds.has(ch._id);
-            
+
             return (
-              <tr 
-                key={ch._id || idx} 
-                className={isSelected ? 'selected' : ''} 
+              <tr
+                key={ch._id || idx}
+                className={isSelected ? 'selected' : ''}
                 onClick={() => !readOnly && onSelectCharge(ch._id)}
                 onDoubleClick={() => !readOnly && onEditCharge(ch)}
               >
@@ -159,8 +159,8 @@ const ChargesTable = ({
                   <input type="checkbox" checked={isSelected} onChange={() => onSelectCharge(ch._id)} disabled={readOnly} />
                 </td>
                 <td style={{ textAlign: 'center' }}>{idx + 1}</td>
-                <td style={{ fontWeight: 'bold', color: '#1a3a5c', textAlign: 'left' }}>{ch.chargeHead}</td>
-                
+                <td style={{ fontWeight: 800, color: '#1e293b', textAlign: 'left' }}>{ch.chargeHead}</td>
+
                 {activeTab === 'particulars' && (
                   <>
                     <td>{ch.category}</td>
@@ -183,7 +183,7 @@ const ChargesTable = ({
                     <td className="number">{ch.revenue?.qty || 0}</td>
                     <td className="number">{formatNumber(ch.revenue?.rate)}</td>
                     <td className="number" style={{ fontWeight: 'bold' }}>{formatNumber(ch.revenue?.amount)}</td>
-                    <td className="number" style={{ fontWeight: 'bold', color: '#0a5080' }}>{formatNumber(ch.revenue?.amountINR)}</td>
+                    <td className="number" style={{ fontWeight: 'bold', color: '#059669' }}>{formatNumber(ch.revenue?.amountINR)}</td>
                     {renderAttachmentCell(ch, ch.revenue?.url)}
                   </>
                 )}
@@ -197,7 +197,7 @@ const ChargesTable = ({
                     <td className="number">{ch.cost?.qty || 0}</td>
                     <td className="number">{formatNumber(ch.cost?.rate)}</td>
                     <td className="number" style={{ fontWeight: 'bold' }}>{formatNumber(ch.cost?.amount)}</td>
-                    <td className="number" style={{ fontWeight: 'bold', color: '#6c4a30' }}>{formatNumber(ch.cost?.amountINR)}</td>
+                    <td className="number" style={{ fontWeight: 'bold', color: '#ea580c' }}>{formatNumber(ch.cost?.amountINR)}</td>
                     <td className="number" style={{ fontWeight: 'bold', color: '#d32f2f' }}>{formatNumber(ch.cost?.netPayable)}</td>
                     {renderAttachmentCell(ch, ch.cost?.url)}
                   </>

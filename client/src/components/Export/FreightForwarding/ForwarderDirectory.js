@@ -3,26 +3,26 @@ import axios from "axios";
 
 const THEME = {
   blue: "#2563eb",
-  border: "#e5e7eb",
-  text: "#111827",
-  textMuted: "#6b7280",
+  border: "#e2e8f0",
+  text: "#1e293b",
+  textMuted: "#64748b",
   white: "#ffffff",
-  bg: "#fafaff",
+  bg: "#fafaffff",
 };
 
 const s = {
-  wrapper: { padding: "20px" },
-  card: { background: "#fff", border: `1px solid ${THEME.border}`, borderRadius: 12, padding: "20px", marginBottom: "20px" },
-  row: { display: "flex", gap: "10px", marginBottom: "15px", alignItems: "flex-end" },
-  col: { flex: 1, display: "flex", flexDirection: "column" },
-  label: { fontSize: "12px", fontWeight: 700, color: THEME.textMuted, marginBottom: "5px" },
-  input: { height: "36px", border: `1px solid ${THEME.border}`, borderRadius: "6px", padding: "0 10px", fontSize: "13px" },
-  btn: { padding: "8px 16px", borderRadius: "6px", border: "none", fontWeight: 700, cursor: "pointer", fontSize: "13px" },
-  btnPrimary: { backgroundColor: THEME.blue, color: "#fff" },
-  btnDanger: { backgroundColor: "#ef4444", color: "#fff", padding: "4px 8px", fontSize: "11px" },
-  table: { width: "100%", borderCollapse: "collapse", marginTop: "10px" },
-  th: { textAlign: "left", padding: "10px", borderBottom: `1px solid ${THEME.border}`, color: THEME.textMuted, fontSize: "12px" },
-  td: { padding: "10px", borderBottom: `1px solid ${THEME.border}`, fontSize: "13px" },
+  wrapper: { padding: "0px" },
+  card: { background: "#fff", border: `1px solid ${THEME.border}`, borderRadius: 12, padding: "20px", marginBottom: "20px", boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
+  row: { display: "flex", gap: "12px", marginBottom: "15px", alignItems: "flex-end", flexWrap: 'wrap' },
+  col: { flex: 1, display: "flex", flexDirection: "column", minWidth: '200px' },
+  label: { fontSize: "11px", fontWeight: 800, color: THEME.textMuted, marginBottom: "6px", textTransform: 'uppercase', letterSpacing: '0.5px' },
+  input: { height: "32px", border: `1px solid ${THEME.border}`, borderRadius: "6px", padding: "0 12px", fontSize: "12px", backgroundColor: '#f9fafb' },
+  btn: { padding: "0 16px", height: '32px', borderRadius: "6px", border: "none", fontWeight: 700, cursor: "pointer", fontSize: "12px", transition: 'all 0.2s' },
+  btnPrimary: { backgroundColor: THEME.blue, color: "#fff", boxShadow: '0 2px 4px rgba(37,99,235,0.2)' },
+  btnDanger: { backgroundColor: "#ef4444", color: "#fff", padding: "0 10px", height: '24px', fontSize: '10px', fontWeight: 800 },
+  table: { width: "100%", borderCollapse: "collapse" },
+  th: { textAlign: "left", padding: "12px 10px", backgroundColor: "#19448aff", color: "#fff", fontSize: "12px", fontWeight: 700 },
+  td: { padding: "12px 10px", borderBottom: `1px solid #f1f5f9`, fontSize: "12px", color: '#334155' },
 };
 
 function ForwarderDirectory() {
@@ -73,7 +73,7 @@ function ForwarderDirectory() {
   return (
     <div style={s.wrapper}>
       <div style={s.card}>
-        <h3 style={{ margin: "0 0 15px 0" }}>Add New Forwarder</h3>
+        <h3 style={{ margin: "0 0 15px 0", fontSize: '16px', fontWeight: 800, color: '#1e293b' }}>Add New Forwarder</h3>
         <form onSubmit={handleAdd} style={s.row}>
           <div style={s.col}>
             <label style={s.label}>Forwarder Name *</label>
@@ -102,7 +102,7 @@ function ForwarderDirectory() {
               onChange={(e) => setFormData({ ...formData, contact_person: e.target.value.toUpperCase() })}
             />
           </div>
-          <div style={s.col}>
+          <div style={{ ...s.col, flex: 'none', minWidth: 'auto' }}>
             <button style={{ ...s.btn, ...s.btnPrimary }} disabled={loading}>
               {loading ? "Adding..." : "+ Add Forwarder"}
             </button>
@@ -110,8 +110,10 @@ function ForwarderDirectory() {
         </form>
       </div>
 
-      <div style={s.card}>
-        <h3 style={{ margin: "0 0 15px 0" }}>Forwarder List</h3>
+      <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: '15px 20px', borderBottom: '1px solid #f1f5f9' }}>
+           <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#1e293b' }}>Forwarder List</h3>
+        </div>
         <table style={s.table}>
           <thead>
             <tr>
@@ -136,7 +138,7 @@ function ForwarderDirectory() {
             ))}
             {!forwarders.length && (
               <tr>
-                <td colSpan={4} style={{ textAlign: "center", padding: "20px", color: THEME.textMuted }}>
+                <td colSpan={4} style={{ textAlign: "center", padding: "40px", color: THEME.textMuted, fontSize: '13px' }}>
                   No forwarders in directory.
                 </td>
               </tr>
