@@ -2,8 +2,11 @@ import express from 'express';
 import ExJobModel from '../../model/export/ExJobModel.mjs';
 import FreightEnquiryModel from '../../model/export/FreightEnquiryModel.mjs';
 import ChargeHeadModel from '../../model/export/chargesHead.mjs';
+import PurchaseBookEntryModel from '../../model/export/purchaseBookEntryModel.mjs';
+import PaymentRequestModel from '../../model/export/paymentRequestModel.mjs';
 import ShippingLine from '../../model/Directorties/ShippingLine.js';
 import Directory from '../../model/Directorties/Directory.js';
+import Transporter from '../../model/Directorties/Transporter.js';
 
 const router = express.Router();
 
@@ -25,7 +28,7 @@ router.get('/charge-heads', async (req, res) => {
 
 router.post('/charge-heads', async (req, res) => {
     try {
-        const { name, category, hsnCode } = req.body;
+        const { name, category, hsnCode, chargeType, isPbMandatory, tdsCategory } = req.body;
 
         // Check dupe (case insensitive)
         const existing = await ChargeHeadModel.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
@@ -33,7 +36,7 @@ router.post('/charge-heads', async (req, res) => {
             return res.status(409).json({ success: false, message: "Charge head already exists" });
         }
 
-        const newHead = new ChargeHeadModel({ name, category, hsnCode, isSystem: false });
+        const newHead = new ChargeHeadModel({ name, category, hsnCode, chargeType, isPbMandatory, tdsCategory, isSystem: false });
         await newHead.save();
         res.json({ success: true, data: newHead });
     } catch (error) {
@@ -75,7 +78,7 @@ router.post('/charge-heads/seed', async (req, res) => {
 router.put('/charge-heads/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, category, isActive, hsnCode } = req.body;
+        const { name, category, isActive, hsnCode, chargeType, isPbMandatory, tdsCategory } = req.body;
 
         // Optional: check dupe name if name is provided
         if (name) {
@@ -87,6 +90,9 @@ router.put('/charge-heads/:id', async (req, res) => {
 
         const updateObj = { name, category, isActive };
         if (hsnCode !== undefined) updateObj.hsnCode = hsnCode;
+        if (chargeType !== undefined) updateObj.chargeType = chargeType;
+        if (isPbMandatory !== undefined) updateObj.isPbMandatory = isPbMandatory;
+        if (tdsCategory !== undefined) updateObj.tdsCategory = tdsCategory;
 
         const updated = await ChargeHeadModel.findByIdAndUpdate(
             id,
@@ -130,16 +136,15 @@ router.get('/get-shipping-lines', async (req, res) => {
 
 router.get('/get-suppliers', async (req, res) => {
     try {
-        // Map directories of type Vendor/Transporter to suppliers
         const items = await Directory.find({ 
-            "generalInfo.entityType": { $in: ["Vendor", "Transporter"] } 
+            "generalInfo.entityType": { $in: ["Vendor"] } 
         }).sort({ organization: 1 });
         
-        // Map to format chargesGrid expects
         const mapped = items.map(i => ({
             name: i.organization,
-            city: i.branches?.[0]?.city || '',
-            branches: i.branches || []
+            city: i.branchInfo?.[0]?.city || i.address?.city || '',
+            branches: i.branchInfo?.map(b => ({ ...b, branch_no: b.branchCode, branchName: b.branchName, city: b.city, gst: b.gstNo })) || [],
+            tds_percent: i.accountCreditInfo?.tds_percent || 0
         }));
         res.json(mapped);
     } catch (error) {
@@ -149,19 +154,46 @@ router.get('/get-suppliers', async (req, res) => {
 
 router.get('/organization', async (req, res) => {
     try {
-        // Map directories of type Exporter/Importer to organizations
         const items = await Directory.find({ 
             "generalInfo.entityType": { $in: ["Exporter", "Importer"] } 
         }).sort({ organization: 1 });
         
         const mapped = items.map(i => ({
             name: i.organization,
-            city: i.branches?.[0]?.city || '',
-            branches: i.branches || []
+            city: i.branchInfo?.[0]?.city || i.address?.city || '',
+            branches: i.branchInfo?.map(b => ({ ...b, branch_no: b.branchCode, branchName: b.branchName, city: b.city, gst: b.gstNo })) || [],
+            tds_percent: i.accountCreditInfo?.tds_percent || 0
         }));
         res.json({ success: true, organizations: mapped });
     } catch (error) {
         res.status(500).json({ success: false, organizations: [] });
+    }
+});
+
+router.get('/get-cfs-list', async (req, res) => {
+    try {
+        const items = await Directory.find({ 
+            "generalInfo.entityType": { $in: ["CFS", "Warehouse"] } 
+        }).sort({ organization: 1 });
+        
+        const mapped = items.map(i => ({
+            name: i.organization,
+            city: i.branchInfo?.[0]?.city || i.address?.city || '',
+            branches: i.branchInfo?.map(b => ({ ...b, branch_no: b.branchCode, branchName: b.branchName, city: b.city, gst: b.gstNo })) || [],
+            tds_percent: i.accountCreditInfo?.tds_percent || 0
+        }));
+        res.json(mapped);
+    } catch (error) {
+        res.status(500).json([]);
+    }
+});
+
+router.get('/get-transporters', async (req, res) => {
+    try {
+        const items = await Transporter.find().sort({ name: 1 });
+        res.json(items);
+    } catch (error) {
+        res.status(500).json([]);
     }
 });
 
@@ -179,6 +211,119 @@ router.get('/charges', async (req, res) => {
 
         res.json({ success: true, data: record.charges || [] });
     } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.get('/get-payment-request-details/:requestNo', async (req, res) => {
+    try {
+        const { requestNo } = req.params;
+        if (!requestNo) {
+            return res.status(400).json({ success: false, message: 'requestNo required' });
+        }
+
+        const purchaseEntry = await PurchaseBookEntryModel.findOne({ entryNo: requestNo }).lean();
+        if (purchaseEntry) {
+            const enriched = { ...purchaseEntry };
+
+            if (purchaseEntry.chargeRef && purchaseEntry.jobRef) {
+                try {
+                    const job = await ExJobModel.findById(purchaseEntry.jobRef).lean();
+                    if (job) {
+                        const charge = job.charges?.find(c => c._id?.toString() === purchaseEntry.chargeRef);
+                        if (charge) {
+                            enriched.url = charge.cost?.url || [];
+                            enriched.chargeHead = charge.chargeHead || '';
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error enriching purchase entry:', error);
+                }
+            }
+
+            enriched.address = [
+                purchaseEntry.address1,
+                purchaseEntry.address2,
+                purchaseEntry.address3,
+                purchaseEntry.state,
+                purchaseEntry.country,
+                purchaseEntry.pinCode
+            ].filter(Boolean).join(', ');
+            enriched.gstin = purchaseEntry.gstinNo || '';
+            enriched.pan = purchaseEntry.pan || (purchaseEntry.gstinNo ? purchaseEntry.gstinNo.substring(2, 12) : '');
+
+            return res.json(enriched);
+        }
+
+        const paymentRequest = await PaymentRequestModel.findOne({ requestNo }).lean();
+        if (paymentRequest) {
+            const enriched = { ...paymentRequest };
+
+            if (paymentRequest.chargeRef && paymentRequest.jobRef) {
+                try {
+                    const job = await ExJobModel.findById(paymentRequest.jobRef).lean();
+                    if (job) {
+                        const charge = job.charges?.find(c => c._id?.toString() === paymentRequest.chargeRef);
+                        if (charge) {
+                            const cost = charge.cost || {};
+                            enriched.chargeHead = charge.chargeHead || '';
+                            enriched.category = charge.category || '';
+                            enriched.invoiceNo = charge.invoice_number || cost.invoiceNo || '';
+                            enriched.invoiceDate = charge.invoice_date || cost.invoiceDate || '';
+                            enriched.description = cost.chargeDescription || charge.chargeHead || '';
+                            enriched.url = cost.url || [];
+                            enriched.isGst = cost.isGst || false;
+                            enriched.gstPercent = cost.gstRate || 18;
+                            enriched.taxableValue = cost.basicAmount || 0;
+                            enriched.gstAmount = cost.gstAmount || 0;
+                            enriched.cgstAmt = cost.cgst || 0;
+                            enriched.sgstAmt = cost.sgst || 0;
+                            enriched.igstAmt = cost.igst || 0;
+                            enriched.isTds = cost.isTds || false;
+                            enriched.tdsPercent = cost.tdsPercent || 0;
+                            enriched.tdsAmount = enriched.tdsAmount || cost.tdsAmount || 0;
+                            enriched.netPayable = cost.netPayable || paymentRequest.amount || 0;
+                            enriched.partyName = cost.partyName || paymentRequest.paymentTo || '';
+                            enriched.partyType = cost.partyType || '';
+                        }
+
+                        enriched.jobNo = enriched.jobNo || job.job_no || '';
+                    }
+                } catch (error) {
+                    console.error('Error enriching payment request:', error);
+                }
+            }
+
+            if (enriched.paymentTo) {
+                try {
+                    const escaped = enriched.paymentTo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const supplier = await Directory.findOne({
+                        organization: { $regex: new RegExp(`^${escaped}$`, 'i') }
+                    }).lean();
+
+                    if (supplier) {
+                        const branch = supplier.branchInfo?.[0] || {};
+                        enriched.address = [
+                            branch.address,
+                            branch.city,
+                            branch.state,
+                            branch.country,
+                            branch.pinCode ? `- ${branch.pinCode}` : ''
+                        ].filter(Boolean).join(', ');
+                        enriched.gstin = branch.gst || supplier.gstin || '';
+                        enriched.pan = supplier.pan || enriched.gstin?.substring(2, 12) || '';
+                    }
+                } catch (error) {
+                    console.error('Directory lookup error:', error);
+                }
+            }
+
+            return res.json(enriched);
+        }
+
+        return res.status(404).json({ success: false, message: 'Request details not found' });
+    } catch (error) {
+        console.error('Request details fetch error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

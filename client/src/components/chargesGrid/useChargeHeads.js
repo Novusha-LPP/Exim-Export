@@ -23,11 +23,13 @@ export const useChargeHeads = () => {
         }
     }, []);
 
-    const addChargeHead = async (name, category, hsnCode) => {
+    const addChargeHead = async (name, category, hsnCode, chargeType, isPbMandatory, tdsCategory) => {
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_STRING}/charge-heads`, { name, category, hsnCode });
+            const res = await axios.post(`${import.meta.env.VITE_API_STRING}/charge-heads`, { 
+                name, category, hsnCode, chargeType, isPbMandatory, tdsCategory 
+            });
             if (res.data.success) {
-                await fetchChargeHeads(); // refetch after adding
+                await fetchChargeHeads();
                 return { success: true, data: res.data.data };
             }
         } catch (err) {
@@ -35,9 +37,11 @@ export const useChargeHeads = () => {
         }
     };
 
-    const updateChargeHead = async (id, name, category, hsnCode) => {
+    const updateChargeHead = async (id, name, category, hsnCode, chargeType, isPbMandatory, tdsCategory) => {
         try {
-            const res = await axios.put(`${import.meta.env.VITE_API_STRING}/charge-heads/${id}`, { name, category, hsnCode });
+            const res = await axios.put(`${import.meta.env.VITE_API_STRING}/charge-heads/${id}`, { 
+                name, category, hsnCode, chargeType, isPbMandatory, tdsCategory 
+            });
             if (res.data.success) {
                 await fetchChargeHeads();
                 return { success: true, data: res.data.data };

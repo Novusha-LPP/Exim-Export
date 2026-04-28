@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './charges.css';
 
-const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, onSuccess }) => {
+const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplayNumber, jobYear, onSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [apiKeys, setApiKeys] = useState([]);
     const [selectedKey, setSelectedKey] = useState(null);
@@ -35,9 +35,11 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, o
         "TDS": '',
         "Total": '',
         "Status": '',
+        "Charge Head Category": '',
+        "TDS Category": '',
         "chargeRef": '',
         "jobRef": '',
-        "apiKeyName": '' // To track which key name is selected
+        "apiKeyName": ''
     });
 
     useEffect(() => {
@@ -45,13 +47,10 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, o
             try {
                 const response = await axios.get(`${import.meta.env.VITE_API_STRING}/admin/api-keys`, { withCredentials: true });
                 setApiKeys(response.data || []);
-                // Default to the first active key if available
                 if (response.data?.length > 0) {
-                    const activeKey = response.data.find(k => k.isActive);
-                    if (activeKey) {
-                        setSelectedKey(activeKey);
-                        setFormData(prev => ({ ...prev, apiKeyName: activeKey.name }));
-                    }
+                    const activeKey = response.data.find(k => k.isActive) || response.data[0];
+                    setSelectedKey(activeKey);
+                    setFormData(prev => ({ ...prev, apiKeyName: activeKey.name }));
                 }
             } catch (error) {
                 console.error("Error fetching API keys:", error);
@@ -64,66 +63,103 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, o
         const fetchNextSequence = async () => {
             if (isOpen && initialData) {
                 const party = initialData.partyDetails;
-                const branch = initialData.branch || party?.branches?.[initialData.branchIndex || 0] || party?.branchInfo?.[0] || {};
-                const jobNum = initialData.jobDisplayNumber || initialData.jobNumber || jobNumber || '';
+                const branchIndex = initialData.branchIndex || 0;
+                const branch = party?.branches?.[branchIndex] || {};
+                const jobNum = initialData.jobDisplayNumber || jobDisplayNumber || initialData.jobNumber || jobNumber || '';
 
-                // Fetch next sequence from backend using canonical job reference
                 let finalEntryNo = `PB/01/${jobNum}`;
+                let updatedJobNum = jobNum;
                 try {
                     const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
-                    const yearParam = jobYear ? `&year=${jobYear}` : '';
                     const response = await axios.get(
-                        `${import.meta.env.VITE_API_STRING}/tally/next-sequence?type=purchase&jobNo=${jobNum}${yearParam}`,
-                        { headers: { 'x-api-key': API_KEY } }
+                        `${import.meta.env.VITE_API_STRING}/tally/next-sequence`,
+                        {
+                            params: {
+                                type: 'purchase',
+                                jobNo: jobNum,
+                                year: jobYear,
+                                jobId: initialData.jobId
+                            },
+                            headers: { 'x-api-key': API_KEY },
+                            withCredentials: true
+                        }
                     );
-                    if (response.data.success && response.data.fullNo) {
-                        finalEntryNo = response.data.fullNo;
+                    if (response.data.success) {
+                        if (response.data.fullNo) finalEntryNo = response.data.fullNo;
+                        if (response.data.jobNo) updatedJobNum = response.data.jobNo;
                     }
                 } catch (error) {
                     console.error("Error fetching sequence:", error);
                 }
 
+                const isReimbursement = (initialData.chargeType === 'Reimbursement' || initialData.category === 'Reimbursement');
+
                 setFormData(prev => ({
                     ...prev,
                     "Entry No": finalEntryNo,
-                    "Job No": jobNum,
+                    "Job No": updatedJobNum,
                     "Supplier Inv No": initialData.invoice_number || '',
                     "Supplier Inv Date": initialData.invoice_date || '',
                     "Supplier Name": initialData.partyName || '',
-                    "Address 1": branch.address || branch.Address || branch.addr || '',
+                    "Address 1": branch.address || branch.Address || '',
                     "Address 2": branch.city || branch.City || '',
                     "Address 3": branch.state || branch.State || branch.city || '',
                     "State": branch.state || branch.State || '',
                     "Country": branch.country || branch.Country || 'India',
-                    "Pin Code": branch.pincode || branch.Pincode || branch.postal_code || branch.pinCode || '',
-                    "GSTIN No": branch.gst || branch.GST || branch.gstin || '',
+                    "Pin Code": branch.pincode || branch.Pincode || branch.postal_code || '',
+                    "GSTIN NO": branch.gst || branch.GST || '',
                     "PAN": branch.pan || branch.PAN || party?.pan || '',
-                    "CIN": party?.cin || party?.CIN || party?.cin_no || '',
-                    "Credit Terms": party?.credit_terms || party?.CreditTerms || initialData.creditTerms || '',
-                    "Description of Services": initialData.chargeHead || initialData.description || '',
-                    "Taxable Value": initialData.basicAmount ? Number(initialData.basicAmount).toFixed(2) : (initialData.amount ? Number(initialData.amount).toFixed(2) : ''),
-                    "GST%": initialData.gstRate || '',
-                    "CGST": (initialData.cgst > 0) ? Number(initialData.cgst).toFixed(2) : '',
-                    "SGST": (initialData.sgst > 0) ? Number(initialData.sgst).toFixed(2) : '',
-                    "IGST": (initialData.igst > 0) ? Number(initialData.igst).toFixed(2) : '',
-                    "TDS": initialData.tdsAmount ? Number(initialData.tdsAmount).toFixed(2) : '',
-                    "Total": initialData.totalAmount ? Number(initialData.totalAmount).toFixed(2) : (initialData.netPayable ? Number(initialData.netPayable).toFixed(2) : ''),
+                    "CIN": party?.cin || party?.CIN || '',
+                    "Place of Supply": branch.state || branch.State || '',
+                    "Credit Terms": party?.credit_terms || party?.CreditTerms || '',
+                    "Description of Services": initialData.chargeHead || '',
                     "SAC": initialData.cthNo || '',
-                    "Status": '',
+                    "Taxable Value": initialData.basicAmount ? Number(initialData.basicAmount).toFixed(2) : (initialData.amount ? Number(initialData.amount).toFixed(2) : ''),
+                    "GST%": (initialData.gstAmount > 0) ? (initialData.gstRate || '18') : '',
+                    "CGST": (branch.gst?.startsWith("24") || (branch.GST?.startsWith("24"))) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
+                    "SGST": (branch.gst?.startsWith("24") || (branch.GST?.startsWith("24"))) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
+                    "IGST": (branch.gst?.startsWith("24") || (branch.GST?.startsWith("24"))) ? '' : (initialData.gstAmount > 0 ? Number(initialData.gstAmount).toFixed(2) : ''),
+                    "TDS": initialData.tdsAmount ? Number(initialData.tdsAmount).toFixed(2) : '',
+                    "Total": initialData.netPayable ? Number(initialData.netPayable).toFixed(2) : (initialData.totalAmount ? Number(initialData.totalAmount).toFixed(2) : ''),
+                    "Charge Head Category": initialData.chargeType || initialData.category || '',
+                    "TDS Category": initialData.tdsCategory || '',
                     "chargeRef": initialData.chargeId || '',
                     "jobRef": initialData.jobId || ''
                 }));
             }
         };
 
-        fetchNextSequence();
-    }, [isOpen, initialData, jobNumber, selectedKey]);
+        if (selectedKey) fetchNextSequence();
+    }, [isOpen, initialData, jobNumber, jobDisplayNumber, jobYear, selectedKey]);
 
     if (!isOpen) return null;
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => {
+            const updated = { ...prev, [name]: value };
+            
+            // IF GST NO STARTS WITH 24 AND ITS A MARGIN CHARGE (or any taxable charge)
+            // WE WILL SHOW GST AS CGST AND SGST 18 PERCENT DEVIDE BY 2 EACH 9%
+            // BUT IF IT IS EMPTY OR NOT STARTS WITH 24 THEN SHOW GST IN ONE FIELD ONLY WHICH IS IGST
+            if (name === "GSTIN NO" || name === "Taxable Value" || name === "GST%") {
+                const gstin = updated["GSTIN NO"] || "";
+                const taxable = parseFloat(updated["Taxable Value"]) || 0;
+                const gstRate = parseFloat(updated["GST%"]) || 0;
+                const totalGst = Number((taxable * (gstRate / 100)).toFixed(2));
+                
+                if (gstin.trim().startsWith("24")) {
+                    updated["CGST"] = totalGst > 0 ? (totalGst / 2).toFixed(2) : "";
+                    updated["SGST"] = totalGst > 0 ? (totalGst / 2).toFixed(2) : "";
+                    updated["IGST"] = "";
+                } else {
+                    updated["CGST"] = "";
+                    updated["SGST"] = "";
+                    updated["IGST"] = totalGst > 0 ? totalGst.toFixed(2) : "";
+                }
+            }
+            return updated;
+        });
     };
 
     const handleSubmit = async (e) => {
@@ -131,16 +167,14 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, o
         setLoading(true);
         try {
             const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
+            const { apiKeyName: _unused, ...tallyData } = formData;
 
-            // Prepare clean data for Tally (removing internal fields)
-            const { apiKeyName, ...tallyData } = formData;
-
-            // Fixed URL: import.meta.env.VITE_API_STRING already contains '/api'
             const response = await axios.post(
                 `${import.meta.env.VITE_API_STRING}/tally/purchase-entry`,
                 tallyData,
                 {
-                    headers: { 'x-api-key': API_KEY }
+                    headers: { 'x-api-key': API_KEY },
+                    withCredentials: true
                 }
             );
 
@@ -159,35 +193,35 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, o
         }
     };
 
-
     return (
-        <div className="modal-overlay active" style={{ zIndex: 1100 }}>
+        <div className="charge-modal-overlay active" style={{ zIndex: 1100 }}>
             <div className="edit-charge-modal" style={{ width: '1000px', maxWidth: '95vw' }}>
                 <div className="modal-title">Purchase Book Entry</div>
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
-                        {/* API Key Selection (Admin Only in UI) */}
-                        <div className="ep-row" style={{ marginBottom: '20px', borderBottom: '1px solid #eee', pb: '10px' }}>
-                            <span className="ep-label" style={{ fontWeight: 800, color: '#1a237e' }}>Integration Key</span>
-                            <select
-                                name="apiKeyName"
-                                className="ep-select"
-                                style={{ width: '300px', fontWeight: 600 }}
-                                value={formData.apiKeyName}
-                                onChange={(e) => {
-                                    const keyName = e.target.value;
-                                    const keyObj = apiKeys.find(k => k.name === keyName);
-                                    if (keyObj) {
-                                        setSelectedKey(keyObj);
-                                        setFormData(prev => ({ ...prev, apiKeyName: keyName }));
-                                    }
-                                }}
-                            >
-                                {apiKeys.map(k => (
-                                    <option key={k._id} value={k.name}>{k.name} {k.isActive ? '' : '(Inactive)'}</option>
-                                ))}
-                            </select>
-                        </div>
+                        {apiKeys.length > 0 && (
+                            <div className="ep-row" style={{ marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+                                <span className="ep-label" style={{ fontWeight: 800, color: '#1a237e' }}>Integration Key</span>
+                                <select
+                                    name="apiKeyName"
+                                    className="ep-select"
+                                    style={{ width: '300px', fontWeight: 600 }}
+                                    value={formData.apiKeyName}
+                                    onChange={(e) => {
+                                        const keyName = e.target.value;
+                                        const keyObj = apiKeys.find(k => k.name === keyName);
+                                        if (keyObj) {
+                                            setSelectedKey(keyObj);
+                                            setFormData(prev => ({ ...prev, apiKeyName: keyName }));
+                                        }
+                                    }}
+                                >
+                                    {apiKeys.map(k => (
+                                        <option key={k._id} value={k.name}>{k.name} {k.isActive ? '' : '(Inactive)'}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         <div className="ep-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px 20px', marginRight: '30px' }}>
                             <div className="ep-row">
                                 <span className="ep-label">Entry No</span>

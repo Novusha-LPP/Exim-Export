@@ -31,44 +31,44 @@ const ChargesTable = ({
 
   const renderParticularsHeaders = () => (
     <>
-      <th>Category</th>
-      <th>Charge Description</th>
-      <th>Remarks</th>
-      <th style={{ width: '100px' }}>Attach</th>
+      <th style={{ width: '120px', textAlign: 'left' }}>Category</th>
+      <th style={{ textAlign: 'left' }}>Charge Description</th>
+      <th style={{ width: '200px', textAlign: 'left' }}>Remarks</th>
+      <th style={{ width: '100px', textAlign: 'center' }}>Attach</th>
     </>
   );
 
   const renderRevenueHeaders = () => (
     <>
-      <th style={{ width: '120px' }}>Receivable Party</th>
-      <th style={{ width: '80px' }}>Basis</th>
-      <th style={{ width: '40px' }}>Curr.</th>
-      <th style={{ width: '60px' }}>Ex. Rate</th>
-      <th style={{ width: '50px' }}>Qty</th>
-      <th style={{ width: '80px' }}>Rate</th>
-      <th style={{ width: '95px' }}>Total Amount</th>
-      <th style={{ width: '95px' }}>Total Amt (INR)</th>
-      <th style={{ width: '180px' }}>Attach</th>
+      <th style={{ width: '150px', textAlign: 'left' }}>Receivable Party</th>
+      <th style={{ width: '80px', textAlign: 'center' }}>Basis</th>
+      <th style={{ width: '50px', textAlign: 'center' }}>Curr.</th>
+      <th style={{ width: '70px', textAlign: 'right' }}>Ex. Rate</th>
+      <th style={{ width: '50px', textAlign: 'center' }}>Qty</th>
+      <th style={{ width: '80px', textAlign: 'right' }}>Rate</th>
+      <th style={{ width: '100px', textAlign: 'right' }}>Total Amount</th>
+      <th style={{ width: '100px', textAlign: 'right' }}>Total Amt (INR)</th>
+      <th style={{ width: '150px', textAlign: 'center' }}>Attach</th>
     </>
   );
 
   const renderCostHeaders = () => (
     <>
-      <th style={{ width: '120px' }}>Payable Party</th>
-      <th style={{ width: '80px' }}>Basis</th>
-      <th style={{ width: '40px' }}>Curr.</th>
-      <th style={{ width: '60px' }}>Ex. Rate</th>
-      <th style={{ width: '50px' }}>Qty</th>
-      <th style={{ width: '80px' }}>Rate</th>
-      <th style={{ width: '95px' }}>Total Amount</th>
-      <th style={{ width: '95px' }}>Total Amt (INR)</th>
-      <th style={{ width: '95px' }}>Net Payable</th>
-      <th style={{ width: '180px' }}>Attach</th>
+      <th style={{ width: '150px', textAlign: 'left' }}>Payable Party</th>
+      <th style={{ width: '80px', textAlign: 'center' }}>Basis</th>
+      <th style={{ width: '50px', textAlign: 'center' }}>Curr.</th>
+      <th style={{ width: '70px', textAlign: 'right' }}>Ex. Rate</th>
+      <th style={{ width: '50px', textAlign: 'center' }}>Qty</th>
+      <th style={{ width: '80px', textAlign: 'right' }}>Rate</th>
+      <th style={{ width: '100px', textAlign: 'right' }}>Total Amount</th>
+      <th style={{ width: '100px', textAlign: 'right' }}>Total Amt (INR)</th>
+      <th style={{ width: '100px', textAlign: 'right' }}>Net Payable</th>
+      <th style={{ width: '150px', textAlign: 'center' }}>Attach</th>
     </>
   );
 
   const renderAttachmentCell = (ch, urls) => (
-    <td className="upload-cell" onClick={(e) => e.stopPropagation()}>
+    <td className="upload-cell align-center" onClick={(e) => e.stopPropagation()}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", alignItems: "center", justifyContent: "center" }}>
         {Array.isArray(urls) && urls.map((url, urlIdx) => (
           <Chip
@@ -128,11 +128,11 @@ const ChargesTable = ({
       <table className="main-grid">
         <thead>
           <tr className="header">
-            <th style={{ width: '30px', textAlign: 'center' }}>
+            <th style={{ width: '35px', textAlign: 'center' }}>
               <input type="checkbox" onChange={onSelectAll} disabled={readOnly} />
             </th>
-            <th style={{ width: '30px', textAlign: 'center' }}>No.</th>
-            <th style={{ width: '180px', textAlign: 'left' }}>Charge Item</th>
+            <th style={{ width: '35px', textAlign: 'center' }}>No.</th>
+            <th style={{ width: '220px', textAlign: 'left' }}>Charge Item</th>
             {activeTab === 'particulars' && renderParticularsHeaders()}
             {activeTab === 'revenue' && renderRevenueHeaders()}
             {activeTab === 'cost' && renderCostHeaders()}
@@ -155,19 +155,43 @@ const ChargesTable = ({
                 onClick={() => !readOnly && onSelectCharge(ch._id)}
                 onDoubleClick={() => !readOnly && onEditCharge(ch)}
               >
-                <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                <td className="align-center" onClick={(e) => e.stopPropagation()}>
                   <input type="checkbox" checked={isSelected} onChange={() => onSelectCharge(ch._id)} disabled={readOnly} />
                 </td>
-                <td style={{ textAlign: 'center' }}>{idx + 1}</td>
-                <td style={{ fontWeight: 800, color: '#1e293b', textAlign: 'left' }}>{ch.chargeHead}</td>
+                <td className="align-center">{idx + 1}</td>
+                <td className="align-left">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontWeight: 800, color: '#1e293b' }}>{ch.chargeHead}</span>
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {ch.chargeType && (
+                        <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', background: ch.chargeType === 'Margin' ? '#e0f2fe' : '#fef3c7', color: ch.chargeType === 'Margin' ? '#0369a1' : '#b45309', fontWeight: 'bold' }}>
+                          {ch.chargeType}
+                        </span>
+                      )}
+                      {ch.isPbMandatory && <span style={{ fontSize: '8px', color: '#d32f2f', fontWeight: 'bold', border: '1px solid #d32f2f', padding: '0 4px', borderRadius: '2px' }}>MANDATORY</span>}
+                      {ch.purchase_book_no && (
+                        <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', background: '#e3f2fd', color: '#1565c0', border: '1px solid #bbdefb' }}>
+                          PB: {ch.purchase_book_no}
+                        </span>
+                      )}
+                      {ch.payment_request_no && (
+                        <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', background: '#ffebee', color: '#c62828', border: '1px solid #ffcdd2' }}>
+                          PR: {ch.payment_request_no}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </td>
 
                 {activeTab === 'particulars' && (
                   <>
-                    <td>{ch.category}</td>
-                    <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ch.cost?.chargeDescription || ch.revenue?.chargeDescription || ''}>
+                    <td className="align-left" style={{ fontSize: '11px', fontWeight: 'bold', color: ch.chargeType === 'Margin' ? '#0369a1' : '#b45309' }}>
+                      {ch.chargeType || ch.category || '-'}
+                    </td>
+                    <td className="align-left" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ch.cost?.chargeDescription || ch.revenue?.chargeDescription || ''}>
                       {ch.cost?.chargeDescription || ch.revenue?.chargeDescription || ''}
                     </td>
-                    <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ch.remark || ''}>
+                    <td className="align-left" style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ch.remark || ''}>
                       {ch.remark || ''}
                     </td>
                     {renderAttachmentCell(ch, ch.revenue?.url)}
@@ -176,11 +200,11 @@ const ChargesTable = ({
 
                 {activeTab === 'revenue' && (
                   <>
-                    <td style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.revenue?.partyName || '-'}</td>
-                    <td>{ch.revenue?.basis || '-'}</td>
-                    <td>{ch.revenue?.currency || 'INR'}</td>
+                    <td className="align-left" style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.revenue?.partyName || '-'}</td>
+                    <td className="align-center">{ch.revenue?.basis || '-'}</td>
+                    <td className="align-center">{ch.revenue?.currency || 'INR'}</td>
                     <td className="number">{formatNumber(ch.revenue?.exchangeRate)}</td>
-                    <td className="number">{ch.revenue?.qty || 0}</td>
+                    <td className="align-center">{ch.revenue?.qty || 0}</td>
                     <td className="number">{formatNumber(ch.revenue?.rate)}</td>
                     <td className="number" style={{ fontWeight: 'bold' }}>{formatNumber(ch.revenue?.amount)}</td>
                     <td className="number" style={{ fontWeight: 'bold', color: '#059669' }}>{formatNumber(ch.revenue?.amountINR)}</td>
@@ -190,11 +214,11 @@ const ChargesTable = ({
 
                 {activeTab === 'cost' && (
                   <>
-                    <td style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.cost?.partyName || '-'}</td>
-                    <td>{ch.cost?.basis || '-'}</td>
-                    <td>{ch.cost?.currency || 'INR'}</td>
+                    <td className="align-left" style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.cost?.partyName || '-'}</td>
+                    <td className="align-center">{ch.cost?.basis || '-'}</td>
+                    <td className="align-center">{ch.cost?.currency || 'INR'}</td>
                     <td className="number">{formatNumber(ch.cost?.exchangeRate)}</td>
-                    <td className="number">{ch.cost?.qty || 0}</td>
+                    <td className="align-center">{ch.cost?.qty || 0}</td>
                     <td className="number">{formatNumber(ch.cost?.rate)}</td>
                     <td className="number" style={{ fontWeight: 'bold' }}>{formatNumber(ch.cost?.amount)}</td>
                     <td className="number" style={{ fontWeight: 'bold', color: '#ea580c' }}>{formatNumber(ch.cost?.amountINR)}</td>

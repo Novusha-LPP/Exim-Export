@@ -708,6 +708,9 @@ router.get("/exports/:status?", async (req, res) => {
       filter.$and.push({ isGeneralJob: { $ne: true } });
     }
 
+    // Exclude Freight Forwarding jobs (FF/) from Export module
+    filter.$and.push({ job_no: { $not: /^FF\//i } });
+
     // Status filtering logic with job tracking consideration
     // Job is considered "completed" if:
     // 1. Explicit status is "completed", OR

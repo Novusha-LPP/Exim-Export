@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import './charges.css';
+import { UserContext } from '../../contexts/UserContext';
 
-const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear, onSuccess }) => {
+const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplayNumber, jobYear, onSuccess }) => {
+    const { user } = useContext(UserContext);
     const [loading, setLoading] = useState(false);
     const [apiKeys, setApiKeys] = useState([]);
     const [selectedKey, setSelectedKey] = useState(null);
@@ -22,14 +24,14 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
         "Transfer Mode": 'Online',
         "Beneficiary Code": '',
         "Status": '',
+        "Requested By": '',
         "jobNo": '',
         "chargeRef": '',
         "jobRef": '',
-        "apiKeyName": '',
-        "Gross Amount": '',
-        "TDS Amount": '',
-        "TDS Category": 'U/S N/A 0.00 %'
+        "apiKeyName": ''
     });
+
+    const [errorPopup, setErrorPopup] = useState({ isOpen: false, messages: [] });
 
     useEffect(() => {
         const fetchApiKeys = async () => {
@@ -37,11 +39,9 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
                 const response = await axios.get(`${import.meta.env.VITE_API_STRING}/admin/api-keys`, { withCredentials: true });
                 setApiKeys(response.data || []);
                 if (response.data?.length > 0) {
-                    const activeKey = response.data.find(k => k.isActive);
-                    if (activeKey) {
-                        setSelectedKey(activeKey);
-                        setFormData(prev => ({ ...prev, apiKeyName: activeKey.name }));
-                    }
+                    const activeKey = response.data.find(k => k.isActive) || response.data[0];
+                    setSelectedKey(activeKey);
+                    setFormData(prev => ({ ...prev, apiKeyName: activeKey.name }));
                 }
             } catch (error) {
                 console.error("Error fetching API keys:", error);
@@ -50,24 +50,31 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
         if (isOpen) fetchApiKeys();
     }, [isOpen]);
 
-
     useEffect(() => {
         const fetchNextSequence = async () => {
             if (isOpen && initialData) {
-                // Generate request number using canonical job reference (e.g. IMP/24-25/0001)
-                const jobRefStr = initialData.jobDisplayNumber || initialData.jobNumber || jobNumber || '';
+                const jobRefStr = initialData.jobDisplayNumber || jobDisplayNumber || initialData.jobNumber || jobNumber || '';
 
-                // Fetch next sequence from backend using canonical job identifier
-                let finalRequestNo = `R1/01/${jobRefStr}`;
+                let finalRequestNo = `R01/${jobRefStr}`;
+                let updatedJobNo = jobRefStr;
                 try {
                     const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
-                    const yearParam = jobYear ? `&year=${jobYear}` : '';
                     const response = await axios.get(
-                        `${import.meta.env.VITE_API_STRING}/tally/next-sequence?type=payment&jobNo=${jobRefStr}${yearParam}`,
-                        { headers: { 'x-api-key': API_KEY } }
+                        `${import.meta.env.VITE_API_STRING}/tally/next-sequence`,
+                        {
+                            params: {
+                                type: 'payment',
+                                jobNo: jobRefStr,
+                                year: jobYear,
+                                jobId: initialData.jobId
+                            },
+                            headers: { 'x-api-key': API_KEY },
+                            withCredentials: true
+                        }
                     );
-                    if (response.data.success && response.data.fullNo) {
-                        finalRequestNo = response.data.fullNo;
+                    if (response.data.success) {
+                        if (response.data.fullNo) finalRequestNo = response.data.fullNo;
+                        if (response.data.jobNo) updatedJobNo = response.data.jobNo;
                     }
                 } catch (error) {
                     console.error("Error fetching sequence:", error);
@@ -82,24 +89,21 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
                     ...prev,
                     "Request No": finalRequestNo,
                     "Payment To": initialData.partyName || '',
-                    "Amount": initialData.netPayable || '',
+                    "Amount": initialData.netPayable ? Math.round(initialData.netPayable) : '',
                     "Against Bill": initialData.chargeHead || '',
                     "Account No": account.accountNo || '',
                     "Bank Name": account.bankName || '',
                     "IFSC Code": account.ifsc || '',
                     "Status": '',
-                    "jobNo": jobRefStr,
+                    "jobNo": updatedJobNo,
                     "chargeRef": initialData.chargeId || '',
-                    "jobRef": initialData.jobId || '',
-                    "Gross Amount": initialData.basicAmount || initialData.amount || '',
-                    "TDS Amount": initialData.tdsAmount || 0,
-                    "TDS Category": initialData.tdsCategory || 'U/S N/A 0.00 %'
+                    "jobRef": initialData.jobId || ''
                 }));
             }
         };
 
-        fetchNextSequence();
-    }, [isOpen, initialData, jobNumber, jobYear, selectedKey]);
+        if (selectedKey) fetchNextSequence();
+    }, [isOpen, initialData, jobNumber, jobDisplayNumber, jobYear, selectedKey]);
 
     if (!isOpen) return null;
 
@@ -110,19 +114,42 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
 
     const handleSubmit = async (e) => {
         if (e && e.preventDefault) e.preventDefault();
+
+        const requiredFields = [
+            "Request No",
+            "Request Date",
+            "Payment To",
+            "Against Bill",
+            "Amount",
+            "Transfer Mode",
+            "Transaction Type"
+        ];
+
+        if (formData["Transfer Mode"] === 'Online') {
+            requiredFields.push("Account No", "IFSC Code", "Bank Name");
+        }
+
+        const missingFields = requiredFields.filter(field => !formData[field] || formData[field].toString().trim() === '');
+
+        if (missingFields.length > 0) {
+            setErrorPopup({ isOpen: true, messages: missingFields });
+            return;
+        }
+
         setLoading(true);
         try {
             const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
+            const { apiKeyName: _unused, ...tallyData } = {
+                ...formData,
+                "Requested By": user ? `${user.first_name} ${user.last_name}` : (localStorage.getItem("username") || "Unknown")
+            };
 
-            // Prepare clean data for Tally (removing internal fields)
-            const { apiKeyName, ...tallyData } = formData;
-
-            // Fixed URL: import.meta.env.VITE_API_STRING already contains '/api'
             const response = await axios.post(
                 `${import.meta.env.VITE_API_STRING}/tally/payment-request`,
                 tallyData,
                 {
-                    headers: { 'x-api-key': API_KEY }
+                    headers: { 'x-api-key': API_KEY },
+                    withCredentials: true
                 }
             );
 
@@ -141,97 +168,102 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
         }
     };
 
-
     return (
-        <div className="modal-overlay active" style={{ zIndex: 1100 }}>
+        <div className="charge-modal-overlay active" style={{ zIndex: 1100 }}>
             <div className="edit-charge-modal" style={{ width: '800px' }}>
                 <div className="modal-title">Request Payment</div>
                 <form>
                     <div className="modal-body">
-                        {/* API Key Selection (Admin Only in UI) */}
-                        <div className="ep-row" style={{ marginBottom: '20px', borderBottom: '1px solid #eee', pb: '10px' }}>
-                            <span className="ep-label" style={{ fontWeight: 800, color: '#d32f2f' }}>Integration Key</span>
-                            <select 
-                                name="apiKeyName" 
-                                className="ep-select" 
-                                style={{ width: '300px', fontWeight: 600 }} 
-                                value={formData.apiKeyName} 
-                                onChange={(e) => {
-                                    const keyName = e.target.value;
-                                    const keyObj = apiKeys.find(k => k.name === keyName);
-                                    if (keyObj) {
-                                        setSelectedKey(keyObj);
-                                        setFormData(prev => ({ ...prev, apiKeyName: keyName }));
-                                    }
-                                }}
-                            >
-                                {apiKeys.map(k => (
-                                    <option key={k._id} value={k.name}>{k.name} {k.isActive ? '' : '(Inactive)'}</option>
-                                ))}
-                            </select>
-                        </div>
+                        {apiKeys.length > 0 && (
+                            <div className="ep-row" style={{ marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+                                <span className="ep-label" style={{ fontWeight: 800, color: '#d32f2f' }}>Integration Key</span>
+                                <select 
+                                    name="apiKeyName" 
+                                    className="ep-select" 
+                                    style={{ width: '300px', fontWeight: 600 }} 
+                                    value={formData.apiKeyName} 
+                                    onChange={(e) => {
+                                        const keyName = e.target.value;
+                                        const keyObj = apiKeys.find(k => k.name === keyName);
+                                        if (keyObj) {
+                                            setSelectedKey(keyObj);
+                                            setFormData(prev => ({ ...prev, apiKeyName: keyName }));
+                                        }
+                                    }}
+                                >
+                                    {apiKeys.map(k => (
+                                        <option key={k._id} value={k.name}>{k.name} {k.isActive ? '' : '(Inactive)'}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         <div className="ep-grid" style={{ gridTemplateColumns: '1fr 1fr 30px', gap: '10px 20px', marginRight: '10px' }}>
                             <div className="ep-row">
-                                <span className="ep-label">Request No</span>
+                                <span className="ep-label">Request No <span style={{ color: 'red' }}>*</span></span>
                                 <input type="text" name="Request No" className="ep-desc-input" value={formData["Request No"]} onChange={handleInputChange} />
                             </div>
                             <div className="ep-row">
-                                <span className="ep-label">Request Date</span>
+                                <span className="ep-label">Request Date <span style={{ color: 'red' }}>*</span></span>
                                 <input type="date" name="Request Date" className="ep-desc-input" value={formData["Request Date"]} onChange={handleInputChange} />
                             </div>
                             <div /> {/* Spacer */}
                             <div className="ep-row">
                                 <span className="ep-label">Bank From</span>
                                 <select name="Bank From" className="ep-select" value={formData["Bank From"]} onChange={handleInputChange}>
-                                    <option value="">Select Bank</option>
-                                    <option value="HDFC">HDFC Bank</option>
-                                    <option value="ICICI">ICICI Bank</option>
-                                    <option value="SBI">SBI Bank</option>
+                                    <option value="">SELECT BANK</option>
+                                    <option value="HDFC BANK">HDFC BANK</option>
+                                    <option value="ICICI BANK">ICICI BANK</option>
+                                    <option value="SBI BANK">SBI BANK</option>
+                                    <option value="KOTAK BANK">KOTAK BANK</option>
+                                    <option value="IDBI BANK">IDBI BANK</option>
+                                    <option value="SOUTH INDIAN BANK">SOUTH INDIAN BANK</option>
                                 </select>
                             </div>
                             <div className="ep-row">
-                                <span className="ep-label">Payment to</span>
+                                <span className="ep-label">Payment to <span style={{ color: 'red' }}>*</span></span>
                                 <input type="text" name="Payment To" className="ep-desc-input" value={formData["Payment To"]} onChange={handleInputChange} />
                             </div>
                             <div /> {/* Spacer */}
                             <div className="ep-row">
-                                <span className="ep-label">Against Bill</span>
+                                <span className="ep-label">Against Bill <span style={{ color: 'red' }}>*</span></span>
                                 <input type="text" name="Against Bill" className="ep-desc-input" value={formData["Against Bill"]} onChange={handleInputChange} />
                             </div>
                             <div className="ep-row">
-                                <span className="ep-label">Amount</span>
+                                <span className="ep-label">Amount <span style={{ color: 'red' }}>*</span></span>
                                 <input type="number" name="Amount" className="ep-desc-input" value={formData["Amount"]} onChange={handleInputChange} />
                             </div>
                             <div /> {/* Spacer */}
                             <div className="ep-row">
-                                <span className="ep-label">Transfer Mode</span>
+                                <span className="ep-label">Transfer Mode <span style={{ color: 'red' }}>*</span></span>
                                 <select name="Transfer Mode" className="ep-select" value={formData["Transfer Mode"]} onChange={handleInputChange}>
                                     <option value="Online">Online</option>
                                     <option value="Offline">Offline</option>
                                 </select>
                             </div>
                             <div className="ep-row">
-                                <span className="ep-label">A/c No</span>
+                                <span className="ep-label">A/c No {formData["Transfer Mode"] === 'Online' && <span style={{ color: 'red' }}>*</span>}</span>
                                 <input type="text" name="Account No" className="ep-desc-input" value={formData["Account No"]} onChange={handleInputChange} />
                             </div>
                             <div /> {/* Spacer */}
                             <div className="ep-row">
-                                <span className="ep-label">IFS Code</span>
+                                <span className="ep-label">IFS Code {formData["Transfer Mode"] === 'Online' && <span style={{ color: 'red' }}>*</span>}</span>
                                 <input type="text" name="IFSC Code" className="ep-desc-input" value={formData["IFSC Code"]} onChange={handleInputChange} />
                             </div>
                             <div className="ep-row">
-                                <span className="ep-label">Bank Name</span>
+                                <span className="ep-label">Bank Name {formData["Transfer Mode"] === 'Online' && <span style={{ color: 'red' }}>*</span>}</span>
                                 <input type="text" name="Bank Name" className="ep-desc-input" value={formData["Bank Name"]} onChange={handleInputChange} />
                             </div>
                             <div /> {/* Spacer */}
                             <div className="ep-row">
-                                <span className="ep-label">Transaction Type</span>
+                                <span className="ep-label">Transaction Type <span style={{ color: 'red' }}>*</span></span>
                                 <select name="Transaction Type" className="ep-select" value={formData["Transaction Type"]} onChange={handleInputChange}>
                                     <option value="NEFT">NEFT</option>
                                     <option value="RTGS">RTGS</option>
                                     <option value="IMPS">IMPS</option>
                                     <option value="CHEQUE">CHEQUE</option>
+                                    <option value="DEMAND DRAFT">DEMAND DRAFT</option>
                                     <option value="CASH">CASH</option>
+                                    <option value="ODEX">ODEX</option>
                                 </select>
                             </div>
                             <div className="ep-row">
@@ -239,7 +271,7 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
                                 <input type="text" name="Beneficiary Code" className="ep-desc-input" value={formData["Beneficiary Code"]} onChange={handleInputChange} />
                             </div>
                             <div /> {/* Spacer */}
-                            {formData["Transaction Type"] === 'CHEQUE' && (
+                             {['CHEQUE', 'DEMAND DRAFT'].includes(formData["Transaction Type"]) && (
                                 <>
                                     <div className="ep-row">
                                         <span className="ep-label">Instrument No</span>
@@ -261,6 +293,36 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobYear,
                     </div>
                 </form>
             </div>
+
+            {errorPopup.isOpen && (
+                <div className="charge-modal-overlay active" style={{ zIndex: 1200 }}>
+                    <div className="edit-charge-modal" style={{ width: '400px' }}>
+                        <div className="modal-title" style={{ background: 'linear-gradient(to bottom, #d32f2f, #b71c1c)' }}>
+                            Validation Error
+                        </div>
+                        <div className="modal-body">
+                            <div style={{ color: '#333', marginBottom: '10px', fontWeight: 'bold' }}>
+                                Please fill in the following mandatory fields:
+                            </div>
+                            <ul style={{ color: '#d32f2f', paddingLeft: '20px', margin: 0 }}>
+                                {errorPopup.messages.map((msg, i) => (
+                                    <li key={i} style={{ marginBottom: '4px' }}>{msg}</li>
+                                ))}
+                            </ul>
+                        </div>
+                        <div className="modal-footer" style={{ justifyContent: 'center' }}>
+                            <button 
+                                type="button" 
+                                className="btn" 
+                                onClick={() => setErrorPopup({ isOpen: false, messages: [] })}
+                                style={{ background: 'linear-gradient(to bottom, #7fa8d0, #5580a8)', color: 'white' }}
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -84,6 +84,10 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         // 1. Exclude General Jobs from Operation Module
         filter.$and.push({ isGeneralJob: { $ne: true } });
 
+        // EXCLUDE Freight Forwarding Jobs (FF/) from Operation Module
+        filter.$and.push({ job_no: { $not: /^FF\//i } });
+
+
         // 2. Handle main document status
         if (normalizedStatus === "cancelled") {
             filter.$and.push({

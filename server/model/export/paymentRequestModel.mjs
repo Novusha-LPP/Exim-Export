@@ -6,6 +6,7 @@ const paymentRequestSchema = new mongoose.Schema({
     jobNo: { type: String, index: true },
     chargeRef: { type: String, index: true },
     jobRef: { type: String, index: true },
+    importer: { type: String },
     bankFrom: { type: String },
     paymentTo: { type: String, index: true },
     againstBill: { type: String },
@@ -21,6 +22,7 @@ const paymentRequestSchema = new mongoose.Schema({
     instrumentDate: { type: String },
     transferMode: { type: String, default: 'Online' },
     beneficiaryCode: { type: String },
+    requestedBy: { type: String },
     status: { type: String, default: '' },
     createdAt: { type: Date, default: Date.now }
 

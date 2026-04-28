@@ -564,7 +564,10 @@ const chargeSchema = new Schema(
   {
     chargeHead: { type: String },
     category: { type: String },
+    chargeType: { type: String, enum: ['Margin', 'Reimbursement'], default: 'Margin' },
     hsnCode: { type: String, trim: true },
+    tdsCategory: { type: String, trim: true },
+    isPbMandatory: { type: Boolean, default: false },
 
     // Top-level fields
     invoice_number: { type: String, trim: true },

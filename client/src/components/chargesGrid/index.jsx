@@ -13,6 +13,7 @@ const ChargesGrid = ({
   parentId,
   parentModule,
   readOnly = false,
+  isEditable = true,
   initialTab = 'particulars',
   hideTabs = false,
   shippingLineAirline = '',
@@ -28,6 +29,7 @@ const ChargesGrid = ({
   cthNo = '',
   onChargesCountChange = () => {}
 }) => {
+  const finalReadOnly = readOnly || !isEditable;
   const { charges, loading, error, addChargesBulk, updateCharge, deleteCharge } = useCharges(parentId, parentModule);
 
   React.useEffect(() => {
@@ -79,9 +81,15 @@ const ChargesGrid = ({
         parentModule,
         chargeHead: finalName,
         category: head.category,
+        chargeType: head.chargeType || 'Margin',
+        isPbMandatory: head.isPbMandatory || false,
         hsnCode: head.hsnCode || '',
+        tdsCategory: head.tdsCategory || '',
         revenue: {},
-        cost: {},
+        cost: {
+          isTds: !!head.tdsCategory,
+          tdsCategory: head.tdsCategory || ''
+        },
         copyToCost: true
       };
     });
@@ -154,7 +162,7 @@ const ChargesGrid = ({
     await updateCharge(charge._id, updateData);
   };
 
-  const isDeleteDisabled = selectedIds.size === 0 || readOnly;
+  const isDeleteDisabled = selectedIds.size === 0 || finalReadOnly;
 
   return (
     <div className="charges-comp-wrapper">
@@ -165,7 +173,7 @@ const ChargesGrid = ({
       <Toolbar
         onAddCharge={() => setIsAddOpen(true)}
         onDeleteSelected={handleDeleteSelected}
-        readOnly={readOnly}
+        readOnly={finalReadOnly}
         isDeleteDisabled={isDeleteDisabled}
       />
 
@@ -180,7 +188,7 @@ const ChargesGrid = ({
           onOpenFileModal={(charge) => setFileModalCharge({ charge, tab: activeTab })}
           onRemoveAttachment={handleRemoveAttachment}
           onEditCharge={(charge) => setEditingCharges([charge])}
-          readOnly={readOnly}
+          readOnly={finalReadOnly}
         />
       </div>
 
