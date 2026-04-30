@@ -421,8 +421,8 @@ export function generateSBFlatFile(job) {
 
     const iec = clean(job.ieCode || "");
     const gid = clean(job.gstin || iec);
-    const mawb = clean(job.mbl_no || job.masterblno || "");
-    const hawb = clean(job.hbl_no || job.houseblno || "");
+    const mawb = clean(job.mbl_no || "");
+    const hawb = clean(job.hbl_no || "");
 
     // Clean and uppercase the nature of cargo
     const noc = clean(job.nature_of_cargo || "").toUpperCase();

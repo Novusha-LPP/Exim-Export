@@ -217,6 +217,8 @@ const drawbackDetailsSchema = new Schema(
     drawback_scroll_no: { type: String, trim: true },
     rosctl_scroll_no: { type: String, trim: true },
     rosctl_scroll_date: { type: String, trim: true },
+    manualQuantity: { type: Boolean, default: false },
+    manualUnit: { type: Boolean, default: false },
 
   },
   { _id: true },
@@ -838,9 +840,7 @@ const exportJobSchema = new mongoose.Schema(
     sample_accompanied: { type: Boolean, default: false },
     factory_address: { type: String, trim: true },
     warehouse_code: { type: String, trim: true },
-    stuffing_seal_type: { type: String, trim: true },
-    stuffing_seal_no: { type: String, trim: true },
-    stuffing_agency_name: { type: String, trim: true },
+
 
     total_no_of_pkgs: { type: String, trim: true },
     package_unit: { type: String, trim: true },
@@ -892,7 +892,6 @@ const exportJobSchema = new mongoose.Schema(
     // Banking Information - Removed duplicate bank_name
     bank_account_number: { type: String, trim: true },
     bank_ifsc_code: { type: String, trim: true },
-    bank_swift_code: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Consignee/Importer Information
     consignees: [
@@ -917,11 +916,7 @@ const exportJobSchema = new mongoose.Schema(
     ////////////////////////////////////////////////// Containers Information
     operations: [exportOperationSchema], // ✅ CORRECT - works directly
 
-    // Removed duplicate container_count
-    stuffing_date: { type: String, trim: true },
-    stuffing_supervisor: { type: String, trim: true },
-    stuffing_remarks: { type: String, trim: true },
-    cfs: { type: String, trim: true },
+
 
     ////////////////////////////////////////////////// Charges and Financial
     remarks: { type: String, trim: true },
@@ -1020,10 +1015,9 @@ const exportJobSchema = new mongoose.Schema(
         default: false,
       },
 
-      // This will reference the main stuffing_seal_no
       sealNumber: {
         type: String,
-        ref: "stuffing_seal_no", // Indicates this references another field
+        trim: true,
       },
 
       // Documents for Annex C1
@@ -1061,20 +1055,6 @@ const exportJobSchema = new mongoose.Schema(
     // Charges and Billing
     charges: [chargeSchema],
 
-    // Payment Requests
-    // AR/AP Invoices
-    arInvoices: [
-      {
-        date: Date,
-        billNo: String,
-        type: String,
-        organization: { type: String, ref: "Directory" },
-        currency: { type: String, ref: "Currency" },
-        amount: Number,
-        balance: Number,
-        vendorBillNo: String,
-      },
-    ],
 
     // eSanchit Documents
     eSanchitDocuments: [eSanchitDocumentSchema],
@@ -1112,21 +1092,7 @@ const exportJobSchema = new mongoose.Schema(
     // System Fields
     createdBy: { type: String },
     updatedBy: String,
-    ar_invoices: [arInvoiceSchema],
-    total_ar_amount: { type: Number, default: 0 },
-    outstanding_balance: { type: Number, default: 0 },
-    ar_default_currency: { type: String, trim: true },
-    ar_payment_terms_days: { type: Number, default: 30 },
-    ar_last_updated: { type: Date },
-    ar_notes: { type: String, trim: true },
 
-    // Add these fields to your main exportJobSchema:
-    ap_invoices: [apInvoiceSchema],
-    total_ap_amount: { type: Number, default: 0 },
-    ap_outstanding_balance: { type: Number, default: 0 },
-    ap_default_currency: { type: String, trim: true },
-    ap_payment_terms_days: { type: Number, default: 30 },
-    ap_notes: { type: String, trim: true },
     // Add to main exportJobSchema:
     charges: [chargeSchema],
     // Export Checklist Additional Fields - Missing Fields Added
@@ -1135,8 +1101,6 @@ const exportJobSchema = new mongoose.Schema(
       default: "SURAJ FORWARDERS & SHIPPING AGENCIES",
       trim: true,
     },
-    masterblno: { type: String, trim: true }, // Master BL Number
-    houseblno: { type: String, trim: true }, // House BL Number
     icegateId: { type: String, trim: true, default: "RAJANSFPL" },
     isLocked: { type: Boolean, default: false },
     isGeneralJob: { type: Boolean, default: false },
@@ -1168,12 +1132,6 @@ exportJobSchema.pre("save", function (next) {
     if (!this.operations[0].statusDetails || this.operations[0].statusDetails.length === 0) {
       this.operations[0].statusDetails = [{}];
     }
-  }
-
-  // Sync stuffing_seal_no with annexC1Details
-  if (this.stuffing_seal_no) {
-    this.annexC1Details = this.annexC1Details || {};
-    this.annexC1Details.sealNumber = this.stuffing_seal_no;
   }
 
   next();
@@ -1246,22 +1204,8 @@ exportJobSchema.statics.findByStatus = function (status) {
   return this.find({ status: status });
 };
 
-// Virtual population for sealNumber
-exportJobSchema.virtual("annexC1Details.virtualSealNumber").get(function () {
-  return this.stuffing_seal_no;
-});
 
-exportJobSchema.virtual("annexC1Details.virtualSealType").get(function () {
-  return this.stuffing_seal_type;
-});
-
-// Pre-save to keep them in sync
 exportJobSchema.pre("save", function (next) {
-  // Always sync the seal number from main to annex C1
-  if (this.stuffing_seal_no) {
-    this.annexC1Details.sealNumber = this.stuffing_seal_no;
-  }
-
   // 0. Sync dates from operations to milestones to ensure automated status updates
   // Priorities: Date fields are now EXCEPTIONAL and are the absolute source of truth
   const op0Status = (this.operations && this.operations[0] && this.operations[0].statusDetails && this.operations[0].statusDetails[0]);
@@ -1442,12 +1386,7 @@ exportJobSchema.pre("save", function (next) {
 
 // Static method to find by seal number
 exportJobSchema.statics.findBySealNumber = function (sealNo) {
-  return this.findOne({
-    $or: [
-      { stuffing_seal_no: sealNo },
-      { "annexC1Details.sealNumber": sealNo },
-    ],
-  });
+  return this.findOne({ "annexC1Details.sealNumber": sealNo });
 };
 // Create and export the model
 const ExJobModel = mongoose.model("ExportJob", exportJobSchema);

@@ -2,8 +2,6 @@
 import React, { useState } from "react";
 import { Box, Tabs, Tab, Typography, Divider } from "@mui/material";
 import ShipmentMainTab from "./ShipmentMaintab";
-import StuffingDetailsTab from "./StuffingDetailsTab";
-import ShippingBillPrintingTab from "./ShippingBillPrintingTab";
 import AnnexC1DetailsTab from "./AnnexC1DetailsTab";
 // Tab Panel Component
 function ShipmentTabPanel(props) {
@@ -69,25 +67,7 @@ const ShipmentTab = ({ formik, directories, params, onUpdate, isEditable = true 
             isEditable={isEditable}
           />
         </ShipmentTabPanel>
-  
-        {/* {(formik.values.consignmentType || "").toUpperCase() !== "AIR" && (
-          <ShipmentTabPanel value={activeSubTab} index={1}>
-            <StuffingDetailsTab
-              formik={formik}
-              directories={directories}
-              params={params}
-            />
-          </ShipmentTabPanel>
-        )} */}
-  
-        {/* <ShipmentTabPanel value={activeSubTab} index={2}>
-          <ShippingBillPrintingTab 
-            formik={formik} 
-            directories={directories} 
-            params={params}
-          />
-        </ShipmentTabPanel>
-         */}
+
         {(formik.values.consignmentType || "").toUpperCase() !== "AIR" &&
           formik.values.annexure_c_details && (
             <ShipmentTabPanel value={activeSubTab} index={1}>

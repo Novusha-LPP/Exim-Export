@@ -3,9 +3,10 @@ import mongoose from "mongoose";
 const forwarderSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true },
     contact_person: { type: String },
     phone: { type: String },
+    mobile_no: { type: String },
   },
   { timestamps: true }
 );

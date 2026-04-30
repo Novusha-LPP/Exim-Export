@@ -258,16 +258,23 @@ const ExportChecklistGenerator = ({
           const label = line.substring(0, colonIndex + 2);
           const value = line.substring(colonIndex + 2);
 
-          // Render Label in Bold
           pdf.setFont("helvetica", "bold");
-          pdf.text(label, leftColX, exporterY);
-
-          // Render Value in Bold
           const labelWidth = pdf.getTextWidth(label);
-          pdf.setFont("helvetica", "bold");
-          const splitValue = pdf.splitTextToSize(value, 250 - labelWidth);
-          pdf.text(splitValue, leftColX + labelWidth, exporterY);
-          exporterY += Math.max(splitValue.length * 9, 9);
+
+          if (labelWidth < 200) {
+            // Render Label in Bold
+            pdf.text(label, leftColX, exporterY);
+
+            // Render Value in Bold
+            const splitValue = pdf.splitTextToSize(value, 250 - labelWidth);
+            pdf.text(splitValue, leftColX + labelWidth, exporterY);
+            exporterY += Math.max(splitValue.length * 9, 9);
+          } else {
+            // Label is too long, treat as normal text to prevent negative width
+            const splitLines = pdf.splitTextToSize(line, 250);
+            pdf.text(splitLines, leftColX, exporterY);
+            exporterY += splitLines.length * 9;
+          }
         } else {
           pdf.setFont("helvetica", "bold");
           const splitLines = pdf.splitTextToSize(line, 250);

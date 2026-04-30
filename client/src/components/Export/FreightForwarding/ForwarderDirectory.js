@@ -27,7 +27,7 @@ const s = {
 
 function ForwarderDirectory() {
   const [forwarders, setForwarders] = useState([]);
-  const [formData, setFormData] = useState({ name: "", email: "", contact_person: "", phone: "" });
+  const [formData, setFormData] = useState({ name: "", email: "", contact_person: "", phone: "", mobile_no: "" });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -51,7 +51,7 @@ function ForwarderDirectory() {
       const res = await axios.post(`${import.meta.env.VITE_API_STRING}/forwarders`, formData);
       if (res.data.success) {
         setForwarders([...forwarders, res.data.data]);
-        setFormData({ name: "", email: "", contact_person: "", phone: "" });
+        setFormData({ name: "", email: "", contact_person: "", phone: "", mobile_no: "" });
       }
     } catch (err) {
       alert("Error adding forwarder. Email might be duplicate.");
@@ -88,10 +88,19 @@ function ForwarderDirectory() {
             <label style={s.label}>Email Address *</label>
             <input
               style={s.input}
-              type="email"
+              type="text"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value.toLowerCase() })}
-              placeholder="rates@forwarder.com"
+              placeholder="e.g. rates@fwd.com, info@fwd.com"
+            />
+          </div>
+          <div style={s.col}>
+            <label style={s.label}>Mobile No</label>
+            <input
+              style={s.input}
+              value={formData.mobile_no}
+              onChange={(e) => setFormData({ ...formData, mobile_no: e.target.value })}
+              placeholder="Mobile No"
             />
           </div>
           <div style={s.col}>
@@ -119,6 +128,7 @@ function ForwarderDirectory() {
             <tr>
               <th style={s.th}>Forwarder Name</th>
               <th style={s.th}>Email</th>
+              <th style={s.th}>Mobile No</th>
               <th style={s.th}>Contact Person</th>
               <th style={s.th}>Actions</th>
             </tr>
@@ -128,6 +138,7 @@ function ForwarderDirectory() {
               <tr key={f._id}>
                 <td style={s.td}>{f.name}</td>
                 <td style={s.td}>{f.email}</td>
+                <td style={s.td}>{f.mobile_no || "-"}</td>
                 <td style={s.td}>{f.contact_person || "-"}</td>
                 <td style={s.td}>
                   <button onClick={() => handleDelete(f._id)} style={{ ...s.btn, ...s.btnDanger }}>
@@ -138,7 +149,7 @@ function ForwarderDirectory() {
             ))}
             {!forwarders.length && (
               <tr>
-                <td colSpan={4} style={{ textAlign: "center", padding: "40px", color: THEME.textMuted, fontSize: '13px' }}>
+                <td colSpan={5} style={{ textAlign: "center", padding: "40px", color: THEME.textMuted, fontSize: '13px' }}>
                   No forwarders in directory.
                 </td>
               </tr>

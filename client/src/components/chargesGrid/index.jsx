@@ -21,6 +21,7 @@ const ChargesGrid = ({
   jobNumber = '',
   jobDisplayNumber = '',
   jobYear = '',
+  jobDate = '',
   invoiceNumber = '',
   invoiceDate = '',
   invoiceValue = '',
@@ -85,8 +86,11 @@ const ChargesGrid = ({
         isPbMandatory: head.isPbMandatory || false,
         hsnCode: head.hsnCode || '',
         tdsCategory: head.tdsCategory || '',
-        revenue: {},
+        revenue: {
+          partyType: 'Customer'
+        },
         cost: {
+          partyType: 'Others',
           isTds: !!head.tdsCategory,
           tdsCategory: head.tdsCategory || ''
         },
@@ -210,6 +214,7 @@ const ChargesGrid = ({
         jobNumber={jobNumber}
         jobDisplayNumber={jobDisplayNumber}
         jobYear={jobYear}
+        jobDate={jobDate}
         jobInvoiceNumber={invoiceNumber}
         jobInvoiceDate={invoiceDate}
         jobInvoiceValue={invoiceValue}

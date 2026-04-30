@@ -43,6 +43,7 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
           jobNumber={jobNo}
           jobDisplayNumber={jobNo}
           jobYear={jobYear}
+          jobDate={jobData.job_date || jobData.jobDate || ""}
           shippingLineAirline={shippingLine}
           exporterName={exporterName}
           invoiceNumber={firstInvoice.invoiceNumber || ""}
