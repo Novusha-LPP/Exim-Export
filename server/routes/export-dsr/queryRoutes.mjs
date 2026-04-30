@@ -2,11 +2,12 @@ import express from "express";
 import QueryModel from "../../model/export/QueryModel.mjs";
 import ExportJobModel from "../../model/export/ExJobModel.mjs";
 import UserModel from "../../model/userModel.mjs";
+import auditMiddleware from "../../middleware/auditTrail.mjs";
 
 const router = express.Router();
 
 // ─── CREATE A NEW QUERY ─────────────────────────────────────────────────────
-router.post("/api/queries", async (req, res) => {
+router.post("/api/queries", auditMiddleware("Query"), async (req, res) => {
   try {
     const {
       job_no,
@@ -270,7 +271,7 @@ router.post("/api/queries/jobs-status", async (req, res) => {
 });
 
 // ─── MARK QUERIES AS SEEN (must come BEFORE /:id routes) ──────────────────
-router.put("/api/queries/mark-seen", async (req, res) => {
+router.put("/api/queries/mark-seen", auditMiddleware("Query"), async (req, res) => {
   try {
     const { targetModule, raisedFromModule, queryIds } = req.body;
 
@@ -312,7 +313,7 @@ router.get("/api/queries/:id", async (req, res) => {
 });
 
 // ─── ADD REPLY TO A QUERY ─────────────────────────────────────────────────────
-router.post("/api/queries/:id/reply", async (req, res) => {
+router.post("/api/queries/:id/reply", auditMiddleware("Query"), async (req, res) => {
   try {
     const { message, repliedBy, repliedByName, fromModule } = req.body;
 
@@ -348,7 +349,7 @@ router.post("/api/queries/:id/reply", async (req, res) => {
 });
 
 // ─── RESOLVE A QUERY ──────────────────────────────────────────────────────────
-router.put("/api/queries/:id/resolve", async (req, res) => {
+router.put("/api/queries/:id/resolve", auditMiddleware("Query"), async (req, res) => {
   try {
     const { resolvedBy, resolvedByName, resolutionNote } = req.body;
 
@@ -377,7 +378,7 @@ router.put("/api/queries/:id/resolve", async (req, res) => {
 });
 
 // ─── REJECT A QUERY ──────────────────────────────────────────────────────────
-router.put("/api/queries/:id/reject", async (req, res) => {
+router.put("/api/queries/:id/reject", auditMiddleware("Query"), async (req, res) => {
   try {
     const { resolvedBy, resolvedByName, resolutionNote } = req.body;
 

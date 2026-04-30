@@ -4,12 +4,14 @@ import { getOrCreateUserId } from "../utils/userIdManager.mjs";
 import ExJobModel from "../model/export/ExJobModel.mjs";
 import Directory from "../model/Directorties/Directory.js";
 import UserModel from "../model/userModel.mjs";
+import QueryModel from "../model/export/QueryModel.mjs";
 
 const documentTypeToModel = {
   Job: ExJobModel,
   ExportJob: ExJobModel,
   Directory: Directory,
   User: UserModel,
+  Query: QueryModel,
 };
 /**
  * Audit Trail Middleware

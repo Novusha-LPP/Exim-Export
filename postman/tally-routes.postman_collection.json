@@ -1,0 +1,318 @@
+{
+  "info": {
+    "_postman_id": "9cbf769a-f16a-43ba-a6a5-5de19db27a20",
+    "name": "Exim Export Tally Routes",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Postman collection for the Tally integration routes mounted at /api/tally."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://eximbot.alvision.in/export"
+    },
+    {
+      "key": "apiKey",
+      "value": "0dda65be728134c2e6bceee602d753edc0f3335cac1e08a15e03e57673769367"
+    },
+    {
+      "key": "jobNo",
+      "value": "GIM/SEA/00043/26-27"
+    },
+    {
+      "key": "entryNo",
+      "value": "PB/04/GIM/SEA/00043/26-27"
+    },
+    {
+      "key": "requestNo",
+      "value": "R1/01/GIM/SEA/00043/26-27"
+    },
+    {
+      "key": "jobRef",
+      "value": "680f4c3ba111111111111111"
+    },
+    {
+      "key": "chargeRef",
+      "value": "680f4c3ba222222222222222"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Tally Test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tally/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tally",
+                "test"
+              ]
+            },
+            "description": "Simple connectivity check. No auth required."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sequence",
+      "item": [
+        {
+          "name": "Next Sequence - Purchase",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tally/next-sequence?type=purchase&jobNo={{jobNo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tally",
+                "next-sequence"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "purchase"
+                },
+                {
+                  "key": "jobNo",
+                  "value": "{{jobNo}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Next Sequence - Payment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tally/next-sequence?type=payment&jobNo={{jobNo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tally",
+                "next-sequence"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "payment"
+                },
+                {
+                  "key": "jobNo",
+                  "value": "{{jobNo}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Job Data",
+      "item": [
+        {
+          "name": "Get Job Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tally/job-data?job_number={{jobNo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tally",
+                "job-data"
+              ],
+              "query": [
+                {
+                  "key": "job_number",
+                  "value": "{{jobNo}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Purchase Entry",
+      "item": [
+        {
+          "name": "Create Purchase Entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Entry No\": \"{{entryNo}}\",\n  \"Entry Date\": \"2026-04-28\",\n  \"Supplier Inv No\": \"INV-001\",\n  \"Supplier Inv Date\": \"2026-04-28\",\n  \"Job No\": \"{{jobNo}}\",\n  \"Supplier Name\": \"ABC Logistics Pvt Ltd\",\n  \"Address 1\": \"Warehouse Road\",\n  \"Address 2\": \"Ahmedabad\",\n  \"Address 3\": \"Gujarat\",\n  \"State\": \"Gujarat\",\n  \"Country\": \"India\",\n  \"Pin Code\": \"380001\",\n  \"Registration Type\": \"Regular\",\n  \"GSTIN No\": \"24ABCDE1234F1Z5\",\n  \"PAN\": \"ABCDE1234F\",\n  \"CIN\": \"U00000GJ2026PTC000001\",\n  \"Place of Supply\": \"Gujarat\",\n  \"Credit Terms\": \"Immediate\",\n  \"Description of Services\": \"Customs Duty\",\n  \"SAC\": \"9965\",\n  \"Taxable Value\": 11600,\n  \"GST%\": 18,\n  \"CGST\": 0,\n  \"SGST\": 0,\n  \"IGST\": 1800,\n  \"TDS\": 200,\n  \"Total\": 11400,\n  \"Status\": \"Active\",\n  \"chargeRef\": \"{{chargeRef}}\",\n  \"jobRef\": \"{{jobRef}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tally/purchase-entry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tally",
+                "purchase-entry"
+              ]
+            },
+            "description": "Creates a purchase book entry. Accepts the human-readable keys used by the UI."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Purchase Entry",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tally/purchase-entry?entry_no={{entryNo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tally",
+                "purchase-entry"
+              ],
+              "query": [
+                {
+                  "key": "entry_no",
+                  "value": "{{entryNo}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payment Request",
+      "item": [
+        {
+          "name": "Create Payment Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Request No\": \"{{requestNo}}\",\n  \"Request Date\": \"2026-04-28\",\n  \"Bank From\": \"HDFC Bank\",\n  \"Payment To\": \"ABC Logistics Pvt Ltd\",\n  \"Against Bill\": \"INV-001\",\n  \"Amount\": 11400,\n  \"Transaction Type\": \"NEFT\",\n  \"Account No\": \"123456789012\",\n  \"IFSC Code\": \"HDFC0001234\",\n  \"Bank Name\": \"HDFC Bank\",\n  \"Job No\": \"{{jobNo}}\",\n  \"Instrument No\": \"\",\n  \"Instrument Date\": \"\",\n  \"Transfer Mode\": \"Online\",\n  \"Beneficiary Code\": \"BEN001\",\n  \"Gross Amount\": 11600,\n  \"TDS Amount\": 200,\n  \"TDS Category\": \"U/S 194C 2.00 %\",\n  \"Status\": \"Requested\",\n  \"chargeRef\": \"{{chargeRef}}\",\n  \"jobRef\": \"{{jobRef}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tally/payment-request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tally",
+                "payment-request"
+              ]
+            },
+            "description": "Creates a payment request. Accepts the same readable keys the frontend submits."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payment Request",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tally/payment-request?request_no={{requestNo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tally",
+                "payment-request"
+              ],
+              "query": [
+                {
+                  "key": "request_no",
+                  "value": "{{requestNo}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

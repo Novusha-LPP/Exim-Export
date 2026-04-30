@@ -141,23 +141,18 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 ]
             });
         } else if (normalizedStatus === "pending") {
-            // For standard "Pending", exclude rows that have billingDocsSentDt or handoverForwardingNoteDate.
+            // Pending shows jobs that have NOT reached Rail/Road reach and NOT yet billed
             filter.$and.push({
-                $and: [
-                    // Billing docs not sent OR no status details yet
-                    {
-                        $or: [
-                            { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
-                            { "operations.statusDetails": { $size: 0 } }
-                        ]
-                    },
-                    // AND Not handed over yet (only checking date)
-                    {
-                        $or: [
-                            { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
-                            { "operations.statusDetails": { $size: 0 } }
-                        ]
-                    }
+                $or: [
+                    { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+                    { "operations.statusDetails": { $size: 0 } }
+                ]
+            });
+            filter.$and.push({
+                $or: [
+                    { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
+                    { "operations.statusDetails": { $size: 0 } }
                 ]
             });
         } else if (normalizedStatus === "booking pending") {
@@ -175,15 +170,19 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             filter.$and.push({
                 "operations.statusDetails.leoDate": { $exists: true, $nin: [null, ""] },
                 $or: [
-                    { "operations.statusDetails.handoverForwardingNoteDate": { $exists: false } },
-                    { "operations.statusDetails.handoverForwardingNoteDate": null },
-                    { "operations.statusDetails.handoverForwardingNoteDate": "" },
+                    { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
                     { "operations.statusDetails": { $size: 0 } }
                 ]
             });
         } else if (normalizedStatus === "billing pending" || normalizedStatus === "op completed") {
             filter.$and.push({
-                "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] },
+                $or: [
+                    { "operations.statusDetails.railOutReachedDate": { $exists: true, $nin: [null, ""] } },
+                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: true, $nin: [null, ""] } }
+                ]
+            });
+            filter.$and.push({
                 $or: [
                     { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
                     { "operations.statusDetails.billingDocsSentDt": null },

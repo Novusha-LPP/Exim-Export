@@ -157,14 +157,12 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
       sample_accompanied: false,
       factory_address: "",
       warehouse_code: "",
-      stuffing_seal_type: "",
-      stuffing_seal_no: "",
-      stuffing_agency_name: "",
+
       // Boolean Control Fields
       buyer_other_than_consignee: false,
       vgm_done: false,
       form13_done: false,
-      shipping_bill_done: false,
+
       financial_lock: false,
       operational_lock: false,
       send_for_billing: false,
@@ -210,7 +208,6 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
       // Banking Information
       bank_account_number: "",
       bank_ifsc_code: "",
-      bank_swift_code: "",
       bank_dealer: "",
       ac_number: "",
 
@@ -398,19 +395,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
       charges: [],
       fines: [],
 
-      // AR Invoices
-      arInvoices: [
-        {
-          date: "",
-          billNo: "",
-          type: "INV",
-          organization: "",
-          currency: "INR",
-          amount: 0,
-          balance: 0,
-          vendorBillNo: "",
-        },
-      ],
+
 
       // eSanchit Documents
       eSanchitDocuments: [
@@ -712,17 +697,11 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
 
       operations: [],
 
-      // Stuffing Details
-      stuffing_date: "",
-      stuffing_supervisor: "",
-      stuffing_remarks: "",
-      cfs: "",
+
 
       // CHA Details
       cha: "",
       icegateId: "RAJANSFPL",
-      masterblno: "",
-      houseblno: "",
 
       // System Fields
       updatedBy: "",
@@ -766,11 +745,15 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
           drawbackDetails: (values.drawbackDetails || []).map((dbk, i) => {
             const product = values.products?.[i];
             if (product) {
+              const pQty = parseFloat(product.socQuantity || product.quantity || 0);
+              const pUnit = product.socunit || product.qtyUnit || "";
+              const qty = dbk.manualQuantity ? (dbk.quantity || 0) : pQty;
+              const unit = dbk.manualUnit ? (dbk.unit || "") : pUnit;
               return {
                 ...dbk,
-                quantity: product.quantity || 0,
-                unit: product.qtyUnit || "",
-                dbkCapunit: product.qtyUnit || "",
+                quantity: qty,
+                unit: unit,
+                dbkCapunit: unit,
               };
             }
             return dbk;
@@ -782,8 +765,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
           })),
           annexC1Details: {
             ...values.annexC1Details,
-            sealNumber:
-              values.stuffing_seal_no || values.annexC1Details?.sealNumber,
+            sealNumber: values.annexC1Details?.sealNumber,
           },
           invoices: syncAllProductsDrawbackAndRodtep(values.invoices, Number(values.exchange_rate) || 1),
           updatedAt: new Date(),
@@ -922,16 +904,14 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         sample_accompanied: safeValue(data.sample_accompanied, false),
         factory_address: safeValue(data.factory_address),
         warehouse_code: safeValue(data.warehouse_code),
-        stuffing_seal_type: safeValue(data.stuffing_seal_type),
-        stuffing_seal_no: safeValue(data.stuffing_seal_no),
-        stuffing_agency_name: safeValue(data.stuffing_agency_name),
+
         buyer_other_than_consignee: safeValue(
           data.buyer_other_than_consignee,
           false,
         ),
         vgm_done: safeValue(data.vgm_done, false),
         form13_done: safeValue(data.form13_done, false),
-        shipping_bill_done: safeValue(data.shipping_bill_done, false),
+
         financial_lock: safeValue(data.financial_lock, false),
         operational_lock: safeValue(data.operational_lock, false),
         send_for_billing: safeValue(data.send_for_billing, false),
@@ -953,7 +933,6 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         ad_code: safeValue(data.ad_code),
         bank_account_number: safeValue(data.bank_account_number),
         bank_ifsc_code: safeValue(data.bank_ifsc_code),
-        bank_swift_code: safeValue(data.bank_swift_code),
         consignees: safeValue(data.consignees, [emptyConsignee]),
         port_of_loading: safeValue(data.port_of_loading),
         port_of_discharge: safeValue(data.port_of_discharge),
@@ -1025,9 +1004,8 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         ),
         annex_seal_number: safeValue(
           data.annex_seal_number ||
-          data.annexC1Details?.sealNumber ||
-          data.stuffing_seal_no,
-        ), // Reference stuffing_seal_no
+          data.annexC1Details?.sealNumber,
+        ),
         annex_designation: safeValue(
           data.annex_designation || data.annexC1Details?.designation,
         ),
@@ -1072,10 +1050,9 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
             false,
           ),
           sealNumber: safeValue(
-            data.stuffing_seal_no ||
             data.annex_seal_number ||
             data.annexC1Details?.sealNumber,
-          ), // Sync from main seal number
+          ),
           documents: safeValue(
             data.annex_c1_documents || data.annexC1Details?.documents,
             [],
@@ -1109,7 +1086,6 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         isLocked: safeValue(data.isLocked, false),
         charges: safeValue(data.charges, []),
         fines: safeValue(data.fines, []),
-        arInvoices: safeValue(data.arInvoices, []),
         eSanchitDocuments: safeValue(data.eSanchitDocuments, []),
         products: safeValue(data.products, []).map((product) => ({
           ...product,
@@ -1152,9 +1128,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
           percentageOfFobValue: d.percentageOfFobValue || "1.5% of FOB Value",
         })),
         documents: safeValue(data.documents, {}),
-        stuffing_date: formatDate(safeValue(data.stuffing_date)),
-        stuffing_supervisor: safeValue(data.stuffing_supervisor),
-        stuffing_remarks: safeValue(data.stuffing_remarks),
+
         operations: safeArray(data.operations).map((operation) => {
           // Normalization: Fix for corrupted data where MongoDB dot-notation created objects with key "0" instead of arrays
           const op = operation["0"] ? { ...operation, ...operation["0"] } : operation;
@@ -1188,10 +1162,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
             })),
           };
         }),
-        cfs: safeValue(data.cfs),
         cha: safeValue(data.cha),
-        masterblno: safeValue(data.masterblno),
-        houseblno: safeValue(data.houseblno),
         icegateId: safeValue(data.icegateId, "RAJANSFPL"),
         createdBy: safeValue(data.createdBy),
         updatedBy: safeValue(data.updatedBy),

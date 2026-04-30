@@ -11,7 +11,7 @@ import { generatePurchaseBookPDF } from '../../utils/purchaseBookPrint';
 import logo from '../../assets/images/logo.jpg';
 import PrintIcon from '@mui/icons-material/Print';
 import { IconButton } from '@mui/material';
-
+import { currencyList } from '../../utils/masterList';
 const EditChargeModal = ({ 
   isOpen, 
   onClose, 
@@ -43,6 +43,7 @@ const EditChargeModal = ({
   const [transporters, setTransporters] = useState([]);
   const [activeDropdown, setActiveDropdown] = useState({ index: null, section: null }); // Track which row/section has open dropdown
   const [paymentDetailsAudit, setPaymentDetailsAudit] = useState({});
+  const [rateMap, setRateMap] = useState({});
   const dropdownRef = useRef(null);
   const modalRef = useRef(null);
 
@@ -145,6 +146,40 @@ const EditChargeModal = ({
     }
   }, [isOpen, selectedCharges]);
 
+  // Fetch currency rates based on invoiceDate or current date
+  useEffect(() => {
+    const fetchRates = async () => {
+      try {
+        const getJobDateFormatted = (dateStr) => {
+          if (!dateStr) return "";
+          const parts = dateStr.split("-");
+          if (parts.length === 3 && parts[0].length === 4) {
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+          }
+          return dateStr;
+        };
+        // Use jobInvoiceDate if available, else current date
+        const dateStr = getJobDateFormatted(jobInvoiceDate || new Date().toISOString().split('T')[0]);
+        if (!dateStr) return;
+        
+        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`);
+        const json = res.data;
+        if (json?.success && json?.data) {
+          const map = {};
+          (json.data.exchange_rates || []).forEach((r) => {
+            if (r.currency_code && typeof r.export_rate === "number") {
+              map[r.currency_code.toUpperCase()] = r.export_rate;
+            }
+          });
+          setRateMap(map);
+        }
+      } catch (err) {
+        console.error("Failed to fetch rates", err);
+      }
+    };
+    if (isOpen) fetchRates();
+  }, [isOpen, jobInvoiceDate]);
+
   if (!isOpen) return null;
 
   const extractFileName = (url) => {
@@ -170,6 +205,15 @@ const EditChargeModal = ({
         updated[index][otherSection][field] = value;
       }
       
+      if (field === 'currency') {
+        const newCurrency = value?.toUpperCase();
+        if (newCurrency && newCurrency !== 'INR' && rateMap[newCurrency]) {
+          updated[index][section].exchangeRate = rateMap[newCurrency];
+        } else if (newCurrency === 'INR') {
+          updated[index][section].exchangeRate = 1;
+        }
+      }
+
       // Auto-populate TDS if selecting a shipping line or CFS or transporter
       if (section === 'cost' && field === 'partyName') {
         const allParties = [...shippingLines, ...cfsList, ...transporters];
@@ -223,10 +267,14 @@ const EditChargeModal = ({
         let basic = 0;
         let gstAmount = 0;
         let totalAmount = 0;
+        let foreignAmount = 0;
+
+        const inrRate = Number((rate * exRate).toFixed(2));
 
         if (chargeType === 'Reimbursement') {
           // REIMBURSEMENT: Back-calculation (Rate is Total Inclusive)
-          totalAmount = Number((qty * rate).toFixed(2));
+          foreignAmount = Number((qty * rate).toFixed(2));
+          totalAmount = Number((qty * inrRate).toFixed(2));
           if (isGst) {
             basic = Number((totalAmount / (1 + (gstRate / 100))).toFixed(2));
             gstAmount = Number((totalAmount - basic).toFixed(2));
@@ -236,7 +284,8 @@ const EditChargeModal = ({
           }
         } else {
           // MARGIN: Normal calculation (Rate is Basic Exclusive)
-          basic = Number((qty * rate).toFixed(2));
+          foreignAmount = Number((qty * rate).toFixed(2));
+          basic = Number((qty * inrRate).toFixed(2));
           if (isGst) {
             gstAmount = Number((basic * (gstRate / 100)).toFixed(2));
           } else {
@@ -247,8 +296,8 @@ const EditChargeModal = ({
 
         sectionRef.basicAmount = basic;
         sectionRef.gstAmount = gstAmount;
-        sectionRef.amount = totalAmount;
-        sectionRef.amountINR = Number((totalAmount * exRate).toFixed(2));
+        sectionRef.amount = foreignAmount;
+        sectionRef.amountINR = totalAmount;
 
         // GST Split Logic
         const partyName = sectionRef.partyName;
@@ -580,17 +629,23 @@ const EditChargeModal = ({
                               </div>
                               <div className="ep-row">
                                 <span className="ep-label">RECEIVABLE TYPE</span>
-                                <select className="ep-select" value={row.revenue?.partyType || ''} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'revenue')}>
+                                <select className="ep-select" value={row.revenue?.partyType || 'Customer'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'revenue')}>
                                   <option>Customer</option><option>Agent</option><option>Carrier</option>
                                 </select>
                               </div>
                               <div className="ep-row">
                                 <span className="ep-label">RATE</span>
                                 <div className="ep-inline">
-                                  <input type="number" step="0.01" value={row.revenue?.rate ?? 0.00} onChange={e => handleFieldChange(i, 'rate', e.target.value, 'revenue')} />
+                                  <input type="number" step="0.01" value={row.revenue?.rate === 0 || row.revenue?.rate === "0" ? '' : (row.revenue?.rate ?? '')} onChange={e => handleFieldChange(i, 'rate', e.target.value, 'revenue')} />
                                   <select value={row.revenue?.currency || 'INR'} onChange={e => handleFieldChange(i, 'currency', e.target.value, 'revenue')}>
-                                    <option>INR</option><option>USD</option><option>EUR</option>
+                                    {currencyList.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                                   </select>
+                                  {row.revenue?.currency && row.revenue.currency !== 'INR' && (
+                                    <>
+                                      <span style={{ fontSize: '10px', marginLeft: '8px', color: '#64748b', fontWeight: 'bold' }}>EX. RATE</span>
+                                      <input type="number" step="0.01" style={{ width: '60px', marginLeft: '4px' }} value={row.revenue?.exchangeRate ?? 1} onChange={e => handleFieldChange(i, 'exchangeRate', e.target.value, 'revenue')} />
+                                    </>
+                                  )}
                                 </div>
                               </div>
                               <div className="ep-row">
@@ -796,17 +851,23 @@ const EditChargeModal = ({
                               </div>
                               <div className="ep-row">
                                 <span className="ep-label">PAYABLE TYPE</span>
-                                <select className="ep-select" value={row.cost?.partyType || ''} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'cost')}>
+                                <select className="ep-select" value={row.cost?.partyType || 'Others'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'cost')}>
                                   <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option><option>CFS</option>
                                 </select>
                               </div>
                               <div className="ep-row">
                                 <span className="ep-label">RATE</span>
                                 <div className="ep-inline">
-                                  <input type="number" step="0.01" value={row.cost?.rate ?? 0.00} onChange={e => handleFieldChange(i, 'rate', e.target.value, 'cost')} />
+                                  <input type="number" step="0.01" value={row.cost?.rate === 0 || row.cost?.rate === "0" ? '' : (row.cost?.rate ?? '')} onChange={e => handleFieldChange(i, 'rate', e.target.value, 'cost')} />
                                   <select value={row.cost?.currency || 'INR'} onChange={e => handleFieldChange(i, 'currency', e.target.value, 'cost')}>
-                                    <option>INR</option><option>USD</option><option>EUR</option>
+                                    {currencyList.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                                   </select>
+                                  {row.cost?.currency && row.cost.currency !== 'INR' && (
+                                    <>
+                                      <span style={{ fontSize: '10px', marginLeft: '8px', color: '#64748b', fontWeight: 'bold' }}>EX. RATE</span>
+                                      <input type="number" step="0.01" style={{ width: '60px', marginLeft: '4px' }} value={row.cost?.exchangeRate ?? 1} onChange={e => handleFieldChange(i, 'exchangeRate', e.target.value, 'cost')} />
+                                    </>
+                                  )}
                                 </div>
                               </div>
                               <div className="ep-row">

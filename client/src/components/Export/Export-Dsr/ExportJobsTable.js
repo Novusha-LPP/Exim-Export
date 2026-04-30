@@ -2355,6 +2355,42 @@ const ExportJobsTable = () => {
                 <MenuItem disabled value="" sx={{ fontSize: "12px" }}>
                   <em>All Detailed Status</em>
                 </MenuItem>
+                <MenuItem
+                  sx={{
+                    justifyContent: "space-between",
+                    backgroundColor: "#f8fafc",
+                    borderBottom: "1px solid #e2e8f0",
+                    "&:hover": { backgroundColor: "#f1f5f9" },
+                    py: 1,
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 1,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDetailedStatus([
+                        "Pending", "SB Filed", "L.E.O", "Container HO", "File Handover to IATA", "Rail Out", "Departure", "Billing Pending", "Billing Done"
+                      ]);
+                      setPage(1);
+                    }}
+                    style={{ background: "none", border: "none", color: "#2563eb", fontSize: "11px", fontWeight: "800", cursor: "pointer", padding: "4px 8px" }}
+                  >
+                    Select All
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDetailedStatus([]);
+                      setPage(1);
+                    }}
+                    style={{ background: "none", border: "none", color: "#ef4444", fontSize: "11px", fontWeight: "800", cursor: "pointer", padding: "4px 8px" }}
+                  >
+                    Clear All
+                  </button>
+                </MenuItem>
                 {[
                   "Pending",
                   "SB Filed",
@@ -2505,13 +2541,13 @@ const ExportJobsTable = () => {
             <table style={s.table}>
               <colgroup>
                 <col style={{ minWidth: "175px" }} />
-                <col style={{ minWidth: "200px" }} />
+                <col style={{ minWidth: "180px" }} />
                 <col style={{ minWidth: "110px" }} />
                 <col style={{ minWidth: "100px" }} />
-                <col style={{ minWidth: "90px" }} />
+                <col style={{ minWidth: "130px" }} />
+                <col style={{ minWidth: "130px" }} />
                 <col style={{ minWidth: "160px" }} />
-                <col style={{ minWidth: "160px" }} />
-                <col style={{ minWidth: "125px" }} />
+                <col style={{ minWidth: "80px" }} />
                 <col style={{ minWidth: "85px" }} />
               </colgroup>
               <thead>
@@ -2536,13 +2572,13 @@ const ExportJobsTable = () => {
                       </span>
                     )}
                   </th>
-                  <th style={{ ...s.th, width: "20%", minWidth: "180px" }}>Exporter</th>
+                  <th style={{ ...s.th, width: "18%", minWidth: "170px" }}>Exporter</th>
                   <th style={{ ...s.th, width: "10%", minWidth: "95px" }}>Invoice</th>
                   <th style={{ ...s.th, width: "8%", minWidth: "65px" }}>SB No</th>
-                  <th style={{ ...s.th, width: "12%", minWidth: "140px" }}>Port</th>
-                  <th style={{ ...s.th, width: "10%", minWidth: "110px" }}>Container</th>
+                  <th style={{ ...s.th, width: "16%", minWidth: "150px" }}>Port</th>
+                  <th style={{ ...s.th, width: "8%", minWidth: "100px" }}>Container</th>
                   <th style={{ ...s.th, width: "10%", minWidth: "110px" }}>Handover</th>
-                  <th style={{ ...s.th, width: "6%", minWidth: "65px" }}>Docs</th>
+                  <th style={{ ...s.th, width: "4%", minWidth: "60px" }}>Docs</th>
                   <th style={{ ...s.th, width: "5%", minWidth: "65px", textAlign: "center" }}>Status</th>
                 </tr>
               </thead>
@@ -2879,7 +2915,8 @@ const ExportJobsTable = () => {
                                 <Tooltip title={job.sb_no && job.sb_date && job.custom_house ? "Click to track SB on ICEGATE" : ""}>
                                   <div
                                     style={{
-                                      fontWeight: "600",
+                                      fontWeight: "800",
+                                      fontSize: "13px",
                                       color: job.sb_no && job.sb_date && job.custom_house ? "#2563eb" : "#b91c1c",
                                       marginBottom: "2px",
                                       cursor: job.sb_no && job.sb_date && job.custom_house ? "pointer" : "default",

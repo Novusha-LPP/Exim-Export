@@ -30,6 +30,8 @@ const getDefaultDrawback = (idx = 1) => ({
   drawback_scroll_date: "",
   rosctl_scroll_no: "",
   rosctl_scroll_date: "",
+  manualQuantity: false,
+  manualUnit: false,
 });
 
 const getJobDateFormatted = (jobDate) => {
@@ -123,8 +125,8 @@ const DrawbackTab = ({
       let hasChanges = false;
       const currentDbk = product.drawbackDetails || [];
       const updatedDbk = currentDbk.map((item) => {
-        const pQty = parseFloat(product.socQuantity) || 0;
-        const pUnit = product.socunit || "";
+        const pQty = parseFloat(product.socQuantity || product.quantity || 0);
+        const pUnit = product.socunit || product.qtyUnit || "";
 
         const currentFob = parseFloat(item.fobValue) || 0;
         const rate = parseFloat(item.dbkRate) || 0;
@@ -132,14 +134,16 @@ const DrawbackTab = ({
         let newItem = { ...item };
         let changedLocal = false;
 
-        // Sync quantity/unit with SQC values if they differ
+        // Sync quantity/unit with SQC values if they differ and NOT manually overridden
         const isQtyDiff = Math.abs((parseFloat(item.quantity) || 0) - pQty) > 0.001;
         const isUnitDiff = item.unit !== pUnit;
-
-        if (isQtyDiff || isUnitDiff) {
-          newItem.quantity = pQty;
-          newItem.unit = pUnit;
-          newItem.dbkCapunit = pUnit;
+        
+        if ((isQtyDiff && !item.manualQuantity) || (isUnitDiff && !item.manualUnit)) {
+          if (!item.manualQuantity) newItem.quantity = pQty;
+          if (!item.manualUnit) {
+            newItem.unit = pUnit;
+            newItem.dbkCapunit = pUnit;
+          }
           changedLocal = true;
         }
 
@@ -200,6 +204,8 @@ const DrawbackTab = ({
     currentDbk[rowIndex].quantity = parseFloat(product.socQuantity) || 0;
     currentDbk[rowIndex].unit = item.unit || product.socunit || "";
     currentDbk[rowIndex].dbkCapunit = item.unit || product.socunit || "";
+    currentDbk[rowIndex].manualQuantity = false;
+    currentDbk[rowIndex].manualUnit = !!item.unit;
 
     const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
     const fobInr = calculateProductFobINR(
@@ -322,6 +328,14 @@ const DrawbackTab = ({
       if (field === "dbkRate") {
         currentDbk[rowIndex].percentageOfFobValue = `${value}% of FOB Value`;
       }
+      if (field === "quantity") {
+        currentDbk[rowIndex].manualQuantity = true;
+      }
+    }
+    
+    if (field === "unit") {
+      currentDbk[rowIndex].manualUnit = true;
+      currentDbk[rowIndex].dbkCapunit = value;
     }
 
     if (field === "slRate" || field === "ctlRate" || field === "slCap" || field === "ctlCap" || field === "fobValue" || field === "quantity") {
@@ -381,6 +395,8 @@ const DrawbackTab = ({
         currentDbk[rowIndex].quantity = parseFloat(product.socQuantity) || 0;
         currentDbk[rowIndex].unit = item.unit || product.socunit || "";
         currentDbk[rowIndex].dbkCapunit = item.unit || product.socunit || "";
+        currentDbk[rowIndex].manualQuantity = false;
+        currentDbk[rowIndex].manualUnit = !!item.unit;
 
         // Pull FOB Value (INR) using standardized calculation
         const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;

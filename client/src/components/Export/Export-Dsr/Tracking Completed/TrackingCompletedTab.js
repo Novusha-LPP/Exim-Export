@@ -211,10 +211,7 @@ const TrackingCompletedTab = ({ formik, directories, params, isAdmin, isEditable
       {/* REST OF JSX REMAINS IDENTICAL - Milestones table, right panel, etc. */}
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 2fr) 280px",
-          columnGap: 10,
-          alignItems: "flex-start",
+          display: "block",
         }}
       >
         {/* Milestones table - SAME AS BEFORE */}
@@ -457,135 +454,7 @@ const TrackingCompletedTab = ({ formik, directories, params, isAdmin, isEditable
           </div>
         </div>
 
-        {/* Right panel */}
-        <div
-          style={{
-            background: "#ffffff",
-            borderRadius: 4,
-            border: "1px solid #d0d7e2",
-            padding: 8,
-            boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
-          }}
-        >
-          <div
-            style={{
-              fontWeight: 600,
-              borderBottom: "1px solid #e1e7f0",
-              paddingBottom: 4,
-              marginBottom: 6,
-              color: "#2563eb",
-            }}
-          >
-            Milestone: {allMilestones[selectedIndex]?.milestoneName || "None"}
-          </div>
 
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ marginBottom: 3, fontWeight: 500 }}>Remarks</div>
-            <textarea
-              rows={4}
-              style={{
-                width: "100%",
-                fontSize: 11,
-                padding: "4px 6px",
-                borderRadius: 3,
-                border: "1px solid #c4cdd7",
-                resize: "vertical",
-              }}
-              value={allMilestones[selectedIndex]?.remarks || ""}
-              onChange={(e) =>
-                handleMilestoneChange(selectedIndex, {
-                  remarks: e.target.value,
-                })
-              }
-              placeholder="Enter milestone-specific remarks..."
-            />
-          </div>
-
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ marginBottom: 3, fontWeight: 500 }}>
-              Upload Documents Link
-            </div>
-            <input
-              type="text"
-              style={{
-                width: "100%",
-                fontSize: 11,
-                padding: "4px 6px",
-                borderRadius: 3,
-                border: "1px solid #c4cdd7",
-              }}
-              value={allMilestones[selectedIndex]?.documentLink || ""}
-              onChange={(e) =>
-                handleMilestoneChange(selectedIndex, {
-                  documentLink: e.target.value,
-                })
-              }
-              placeholder="https://..."
-            />
-          </div>
-
-          <div>
-            <div style={{ marginBottom: 3, fontWeight: 500 }}>Handled By</div>
-            <select
-              style={{
-                width: "100%",
-                fontSize: 11,
-                padding: "4px 6px",
-                borderRadius: 3,
-                border: "1px solid #c4cdd7",
-                background: "#ffffff",
-              }}
-              value={allMilestones[selectedIndex]?.completedBy || ""}
-              onChange={(e) =>
-                handleMilestoneChange(selectedIndex, {
-                  completedBy: e.target.value,
-                })
-              }
-            >
-              <option value="">Select User</option>
-              {exportJobsUsers?.map((u) => (
-                <option key={u.id} value={u.username}>
-                  {u.fullName}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div
-            style={{
-              marginTop: 15,
-              paddingTop: 10,
-              borderTop: "1px dashed #d0d7e2",
-            }}
-          >
-            <div
-              style={{
-                fontWeight: 600,
-                fontSize: 11,
-                marginBottom: 5,
-                color: "#64748b",
-              }}
-            >
-              Global Job Remarks
-            </div>
-            <textarea
-              rows={2}
-              style={{
-                width: "100%",
-                fontSize: 10,
-                padding: "4px 6px",
-                borderRadius: 3,
-                border: "1px solid #e2e8f0",
-                resize: "none",
-                background: "#f8fafc",
-              }}
-              value={formik.values.milestoneremarks || ""}
-              onChange={(e) =>
-                handleFieldChange("milestoneremarks", e.target.value)
-              }
-            />
-          </div>
-        </div>
       </div>
     </div>
     </fieldset>

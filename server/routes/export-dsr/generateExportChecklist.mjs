@@ -159,7 +159,7 @@ export const generateExportChecklist = async (jobNumber) => {
       170,
       18,
       "Master BL No.",
-      exportJob.masterblno,
+      exportJob.mbl_no,
       6,
       5
     );
@@ -208,7 +208,7 @@ export const generateExportChecklist = async (jobNumber) => {
     );
     yPos += 20;
 
-    drawFieldBox(10, yPos, 200, 18, "House BL No.", exportJob.houseblno, 6, 5);
+    drawFieldBox(10, yPos, 200, 18, "House BL No.", exportJob.hbl_no, 6, 5);
     drawFieldBox(215, yPos, 120, 18, "Invoice Details", "Invoice 1 / 1", 6, 5);
     drawFieldBox(
       340,
@@ -376,7 +376,7 @@ export const generateExportChecklist = async (jobNumber) => {
       });
       yPos += 10;
     });
-    
+
     let totalDbk = 0;
     dbkData.forEach((item) => {
       totalDbk += parseFloat(item.dbkAmount || 0);

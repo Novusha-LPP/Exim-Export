@@ -101,16 +101,19 @@ export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
       if (Array.isArray(newDbkDetails)) {
         newDbkDetails = newDbkDetails.map(item => {
           let newItem = { ...item };
-          newItem.quantity = pQty;
-          newItem.unit = pUnit;
-          newItem.dbkCapunit = pUnit;
+          const qty = item.manualQuantity ? (item.quantity || 0) : pQty;
+          const unit = item.manualUnit ? (item.unit || "") : pUnit;
+
+          newItem.quantity = qty;
+          newItem.unit = unit;
+          newItem.dbkCapunit = unit;
           newItem.fobValue = fobAmountInr.toFixed(2);
 
-          newItem.dbkAmount = calculateDbkAmount(fobAmountInr, pQty, parseFloat(newItem.dbkRate || 0), parseFloat(newItem.dbkCap || 0));
+          newItem.dbkAmount = calculateDbkAmount(fobAmountInr, qty, parseFloat(newItem.dbkRate || 0), parseFloat(newItem.dbkCap || 0));
 
           if (newItem.showRosctl) {
             newItem.rosctlAmount = calculateRosctlAmount(
-              fobAmountInr, pQty,
+              fobAmountInr, qty,
               parseFloat(newItem.slRate || 0), parseFloat(newItem.ctlRate || 0),
               parseFloat(newItem.slCap || 0), parseFloat(newItem.ctlCap || 0)
             );
