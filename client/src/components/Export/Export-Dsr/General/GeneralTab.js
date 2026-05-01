@@ -444,6 +444,7 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
   function handleIsBuyerToggle() {
     const isBuyer = !formik.values.isBuyer;
     handleFieldChange("isBuyer", isBuyer);
+    handleFieldChange("buyer_other_than_consignee", isBuyer);
 
     // If isBuyer is checked, copy exporter details to buyer details
     if (isBuyer) {

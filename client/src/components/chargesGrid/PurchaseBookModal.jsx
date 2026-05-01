@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { formatDate } from '../../utils/dateUtils';
 import './charges.css';
 
 const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplayNumber, jobYear, onSuccess }) => {
@@ -104,7 +105,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     "Entry No": finalEntryNo,
                     "Job No": updatedJobNum,
                     "Supplier Inv No": initialData.invoice_number || '',
-                    "Supplier Inv Date": initialData.invoice_date || '',
+                    "Supplier Inv Date": formatDate(initialData.invoice_date, 'yyyy-MM-dd') || '',
                     "Supplier Name": initialData.partyName || '',
                     "Address 1": branch.address || branch.Address || '',
                     "Address 2": branch.city || branch.City || '',
@@ -175,10 +176,17 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
         try {
             const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
             const { apiKeyName: _unused, ...tallyData } = formData;
-
+            
+            // Format dates to dd-mm-yyyy for saving
+            const submissionData = {
+                ...tallyData,
+                "Entry Date": formatDate(tallyData["Entry Date"], 'dd-MM-yyyy'),
+                "Supplier Inv Date": formatDate(tallyData["Supplier Inv Date"], 'dd-MM-yyyy')
+            };
+            
             const response = await axios.post(
                 `${import.meta.env.VITE_API_STRING}/tally/purchase-entry`,
-                tallyData,
+                submissionData,
                 {
                     headers: { 'x-api-key': API_KEY },
                     withCredentials: true

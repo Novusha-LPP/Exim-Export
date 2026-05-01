@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import './charges.css';
 import { UserContext } from '../../contexts/UserContext';
+import { formatDate } from '../../utils/dateUtils';
 
 const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplayNumber, jobYear, onSuccess }) => {
     const { user } = useContext(UserContext);
@@ -44,7 +45,11 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobDispl
                     setFormData(prev => ({ ...prev, apiKeyName: activeKey.name }));
                 }
             } catch (error) {
-                console.error("Error fetching API keys:", error);
+                if (error.response?.status === 403) {
+                    console.warn("User does not have admin permissions to fetch API keys. Skipping.");
+                } else {
+                    console.error("Error fetching API keys:", error);
+                }
             }
         };
         if (isOpen) fetchApiKeys();
@@ -88,12 +93,14 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobDispl
                 setFormData(prev => ({
                     ...prev,
                     "Request No": finalRequestNo,
+                    "Request Date": formatDate(initialData.requestDate || new Date().toISOString(), 'yyyy-MM-dd'),
                     "Payment To": initialData.partyName || '',
                     "Amount": initialData.netPayable ? Math.round(initialData.netPayable) : '',
                     "Against Bill": initialData.chargeHead || '',
                     "Account No": account.accountNo || '',
                     "Bank Name": account.bankName || '',
                     "IFSC Code": account.ifsc || '',
+                    "Instrument Date": formatDate(initialData.instrumentDate, 'yyyy-MM-dd') || '',
                     "Status": '',
                     "jobNo": updatedJobNo,
                     "chargeRef": initialData.chargeId || '',
@@ -141,6 +148,8 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobDispl
             const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
             const { apiKeyName: _unused, ...tallyData } = {
                 ...formData,
+                "Request Date": formatDate(formData["Request Date"], 'dd-MM-yyyy'),
+                "Instrument Date": formatDate(formData["Instrument Date"], 'dd-MM-yyyy'),
                 "Requested By": user ? `${user.first_name} ${user.last_name}` : (localStorage.getItem("username") || "Unknown")
             };
 

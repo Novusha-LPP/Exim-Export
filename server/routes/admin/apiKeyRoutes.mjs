@@ -2,7 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import ApiKeyModel from "../../model/apiKeyModel.mjs";
 import UserModel from "../../model/userModel.mjs";
-import { requireAdmin } from "../../middleware/adminAuth.mjs";
+import { requireAdmin, requireAuth } from "../../middleware/adminAuth.mjs";
 import crypto from "crypto";
 
 const router = express.Router();
@@ -10,7 +10,7 @@ const router = express.Router();
 /**
  * @api {get} /api/admin/api-keys List all API keys (Admin only)
  */
-router.get("/api/admin/api-keys", requireAdmin, async (req, res) => {
+router.get("/api/admin/api-keys", requireAuth, async (req, res) => {
   try {
     // Return all keys (Admin only can access this route)
     let keys = await ApiKeyModel.find().lean();

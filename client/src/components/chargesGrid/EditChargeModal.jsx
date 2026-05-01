@@ -12,6 +12,7 @@ import logo from '../../assets/images/logo.jpg';
 import PrintIcon from '@mui/icons-material/Print';
 import { IconButton } from '@mui/material';
 import { currencyList } from '../../utils/masterList';
+import { formatDate } from '../../utils/dateUtils';
 const EditChargeModal = ({ 
   isOpen, 
   onClose, 
@@ -128,7 +129,7 @@ const EditChargeModal = ({
       const initialData = JSON.parse(JSON.stringify(selectedCharges)).map(charge => ({
         ...charge,
         invoice_number: charge.invoice_number || '',
-        invoice_date: charge.invoice_date || '',
+        invoice_date: formatDate(charge.invoice_date, 'yyyy-MM-dd') || '',
         payment_request_no: charge.payment_request_no || '',
         payment_request_status: charge.payment_request_status || '',
         revenue: {
@@ -368,7 +369,11 @@ const EditChargeModal = ({
   };
 
   const handleSave = (shouldClose = true) => {
-    onSave(formData, shouldClose);
+    const formattedData = formData.map(charge => ({
+      ...charge,
+      invoice_date: formatDate(charge.invoice_date, 'dd-MM-yyyy')
+    }));
+    onSave(formattedData, shouldClose);
   };
 
   const togglePanel = (idx, panel) => {

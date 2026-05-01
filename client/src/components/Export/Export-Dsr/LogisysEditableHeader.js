@@ -5,10 +5,12 @@ import { UserContext } from "../../../contexts/UserContext";
 import DateInput from "../../common/DateInput.js";
 import AutocompleteSelect from "../../common/AutocompleteSelect.js";
 import CustomHouseDropdown from "../../common/CustomHouseDropdown.js";
-import { Menu, MenuItem, IconButton, Tooltip, Autocomplete, TextField, CircularProgress } from "@mui/material";
+import { Menu, MenuItem, IconButton, Tooltip, Autocomplete, TextField, CircularProgress, Button } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import * as xlsx from "xlsx";
 import ExportChecklistGenerator from "./StandardDocuments/ExportChecklistGenerator";
 import ConsignmentNoteGenerator from "./StandardDocuments/ConsignmentNoteGenerator";
 import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
@@ -492,6 +494,206 @@ const LogisysEditableHeader = ({
 
   const [snackbar, setSnackbar] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
+  const openMenu = Boolean(anchorEl);
+  const productExcelInputRef = React.useRef(null);
+
+  const handleProductExcelUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = event.target.result;
+        const workbook = xlsx.read(data, { type: "binary" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = xlsx.utils.sheet_to_json(worksheet);
+
+        if (jsonData.length === 0) {
+          alert("Excel file is empty or invalid.");
+          return;
+        }
+
+        // Simple mapping based on common names
+        const findVal = (row, keys) => {
+          const key = Object.keys(row).find(k =>
+            keys.some(v => k.toLowerCase().replace(/[\s_]/g, "").includes(v.toLowerCase()))
+          );
+          return key ? row[key] : "";
+        };
+
+        const normalizeEximScheme = (val) => {
+          const s = String(val || "").trim();
+          if (!s) return "";
+          const mapping = {
+            "03": "03 - ADVANCE LICENCE",
+            "19": "19 - DRAWBACK (DBK)",
+            "21": "21 (EOU/EPZ/SEZ/EHTP/STP)",
+            "43": "43 - DRAWBACK AND ZERO DUTY PECG",
+            "50": "50 - EPCG AND ADVANCE LICENSE",
+            "60": "60 - DRAWBACK AND ROSCTL",
+            "61": "61 - EPCG, DRAWBACK AND ROSCTL",
+            "99": "99 - NFEI"
+          };
+          if (mapping[s]) return mapping[s];
+          if (s.includes(" - ")) return s;
+          const key = Object.keys(mapping).find(k => s.startsWith(k));
+          return key ? mapping[key] : s;
+        };
+
+        const newProducts = jsonData.map((row, index) => {
+          const findValRow = (keys) => {
+            const key = Object.keys(row).find(k =>
+              keys.some(v => k.toLowerCase().replace(/[\s_]/g, "").includes(v.toLowerCase()))
+            );
+            return key ? row[key] : "";
+          };
+
+          const desc = findValRow(["product desc", "desc", "product", "item"]);
+          const ritc = findValRow(["ritc", "hsn", "tariff"]);
+          const qty = findValRow(["quantity", "qty"]);
+          const unit = findValRow(["unit", "uom", "pkg"]);
+          const sqcQty = findValRow(["sqc qty", "sqcqty", "socqty", "sqc_quantity"]);
+          const sqcUnit = findValRow(["sqc unit", "sqcunit", "socunit"]);
+          const amt = findValRow(["amt", "amount", "value", "prodval", "product_amount"]);
+          const exim = findValRow(["exim sche", "exim", "scheme"]);
+          const pta = findValRow(["ptafta co", "pta", "fta", "pta_fta"]);
+          const district = findValRow(["origin dist", "district", "origin_district"]);
+          const state = findValRow(["sourcesta", "source_state", "state", "origin_state"]);
+          const endUse = findValRow(["end use", "enduse"]);
+          const igstPayS = findValRow(["igst pay s", "igst_pay_s", "igststatus"]);
+          const rewardIte = findValRow(["reward ite", "reward", "reward_item"]);
+          const rodtepSta = findValRow(["rodtep sta", "rodtep", "rodtep_status"]);
+          const manufacturer = findValRow(["manufactu", "manufacturer_name"]);
+          const transitCnt = findValRow(["transitcnt", "transit_country"]);
+          const dbkSrNo = findValRow(["dbk sr no", "dbksrno"]);
+          const dbkQty = findValRow(["dbk qty", "dbkqty"]);
+          const price = findValRow(["price", "rate", "unitprice"]);
+
+          // Calculate amount if missing but price and qty are available
+          let finalAmount = String(amt || "0");
+          if ((!amt || amt === "0") && price && qty) {
+            const p = parseFloat(price);
+            const q = parseFloat(qty);
+            if (!isNaN(p) && !isNaN(q)) {
+              finalAmount = (p * q).toFixed(4);
+            }
+          }
+
+          return {
+            serialNumber: (index + 1).toString(),
+            description: String(desc || "").toUpperCase(),
+            ritc: String(ritc || "").toUpperCase(),
+            quantity: String(qty || "1"),
+            qtyUnit: String(unit || "NOS").toUpperCase(),
+            socQuantity: String(sqcQty || "0"),
+            socunit: String(sqcUnit || "").toUpperCase(),
+            unitPrice: String(price || "0"),
+            amount: finalAmount,
+            eximCode: normalizeEximScheme(exim),
+            ptaFtaInfo: String(pta || ""),
+            originDistrict: String(district || ""),
+            originState: String(state || ""),
+            endUse: String(endUse || ""),
+            rewardItem: String(rewardIte || "").toUpperCase() === "YES" || String(rewardIte || "").toUpperCase() === "Y",
+            rodtepInfo: {
+              claim: (String(rodtepSta || "").toUpperCase() === "YES" || String(rodtepSta || "").toUpperCase() === "Y") ? "Yes" : "No",
+              amountINR: "0",
+              quantity: "0",
+              ratePercent: "0",
+              capValue: "0",
+              capValuePerUnits: "0",
+              unit: "",
+              capUnit: "",
+              isCapUnitManual: false
+            },
+            igstCompensationCess: {
+              igstPaymentStatus: String(igstPayS || "LUT").toUpperCase(),
+              taxableValueINR: "0",
+              igstRate: "0",
+              igstAmountINR: "0"
+            },
+            otherDetails: {
+              manufacturer: {
+                name: String(manufacturer || ""),
+                sourceState: String(state || ""),
+                transitCountry: String(transitCnt || ""),
+              }
+            },
+            drawbackDetails: [
+              {
+                serialNumber: "1",
+                dbkitem: !!dbkSrNo,
+                dbkSrNo: String(dbkSrNo || ""),
+                quantity: parseFloat(dbkQty || sqcQty || qty || 0),
+                unit: String(sqcUnit || unit || ""),
+                dbkUnder: "Actual",
+                dbkDescription: "",
+                dbkRate: 0,
+                dbkCap: 0,
+                dbkAmount: 0,
+              }
+            ],
+            pmvInfo: {
+              currency: "INR",
+              calculationMethod: "percentage",
+              percentage: "110",
+              pmvPerUnit: "0",
+              totalPMV: "0"
+            },
+            rosctlInfo: {
+              claim: "No",
+              amountINR: "0"
+            },
+            epcgDetails: {
+              isEpcgItem: false,
+              epcgItems: [],
+              epcg_reg_obj: [{ licRefNo: "", regnNo: "", licDate: "" }]
+            },
+            deecDetails: {
+              isDeecItem: false,
+              deecItems: [],
+              deec_reg_obj: [{ licRefNo: "", regnNo: "", licDate: "" }]
+            }
+          };
+        });
+
+        // Update formik invoices
+        let currentInvoices = [...(formik.values.invoices || [])];
+        if (currentInvoices.length === 0) {
+          currentInvoices.push({
+            invoiceNumber: "INV-1",
+            invoiceDate: new Date().toISOString().split('T')[0],
+            products: []
+          });
+        }
+
+        // Add to first invoice
+        const targetInvoice = { ...currentInvoices[0] };
+        targetInvoice.products = [...(targetInvoice.products || []), ...newProducts];
+
+        // Recalculate total product value for the invoice
+        targetInvoice.productValue = targetInvoice.products.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
+        targetInvoice.invoiceValue = targetInvoice.productValue;
+
+        currentInvoices[0] = targetInvoice;
+        formik.setFieldValue("invoices", currentInvoices);
+
+        // Also update top-level products if they exist (for backward compatibility)
+        if (formik.values.products) {
+          formik.setFieldValue("products", [...(formik.values.products || []), ...newProducts]);
+        }
+
+        alert(`${newProducts.length} products added successfully to the first invoice. Click "Update" to save.`);
+      } catch (err) {
+        console.error("Error parsing product excel:", err);
+        alert("Error parsing file. Please check format.");
+      }
+      e.target.value = null;
+    };
+    reader.readAsBinaryString(file);
+  };
   const { user } = useContext(UserContext);
   const isNewJob = !formik.values.job_no;
 
@@ -923,6 +1125,37 @@ const LogisysEditableHeader = ({
 
         {/* Documents, VGM Button and Checkboxes */}
         <div style={{ flex: "0 0 auto", display: "flex", gap: 10, alignItems: "center" }}>
+          {isEditable && (
+            <>
+              <input
+                type="file"
+                accept=".xlsx, .xls, .csv"
+                ref={productExcelInputRef}
+                style={{ display: "none" }}
+                onChange={handleProductExcelUpload}
+              />
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<CloudUploadIcon />}
+                onClick={() => productExcelInputRef.current.click()}
+                sx={{
+                  textTransform: "none",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  borderColor: "#2563eb",
+                  color: "#2563eb",
+                  "&:hover": {
+                    borderColor: "#1d4ed8",
+                    backgroundColor: "#eff6ff",
+                  },
+                }}
+              >
+                Excel
+              </Button>
+            </>
+          )}
+
           <button
             style={{
               background: "#fff",
@@ -1011,9 +1244,6 @@ const LogisysEditableHeader = ({
                 style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
               />
               SHIPPING BILL
-              {formik.values.shipping_bill_done && formik.values.shipping_bill_done_date && (
-                <span style={{ fontSize: 9, color: "#059669", marginLeft: 2 }}>({formik.values.shipping_bill_done_date})</span>
-              )}
             </label>
 
             <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: isEditable ? "pointer" : "default", fontSize: 11, fontWeight: 700, color: "#2563eb", opacity: isEditable ? 1 : 0.8 }}>

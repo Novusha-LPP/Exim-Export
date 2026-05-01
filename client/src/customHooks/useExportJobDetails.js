@@ -159,9 +159,16 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
       warehouse_code: "",
 
       // Boolean Control Fields
+      isBuyer: false,
       buyer_other_than_consignee: false,
       vgm_done: false,
+      vgm_date: "",
       form13_done: false,
+      form13_date: "",
+      shipping_bill_done: false,
+      shipping_bill_done_date: "",
+      freight_done: false,
+      freight_enquiry_id: "",
 
       financial_lock: false,
       operational_lock: false,
@@ -909,12 +916,16 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         factory_address: safeValue(data.factory_address),
         warehouse_code: safeValue(data.warehouse_code),
 
-        buyer_other_than_consignee: safeValue(
-          data.buyer_other_than_consignee,
-          false,
-        ),
+        isBuyer: safeValue(data.isBuyer, false),
+        buyer_other_than_consignee: safeValue(data.buyer_other_than_consignee, false),
         vgm_done: safeValue(data.vgm_done, false),
+        vgm_date: formatDate(safeValue(data.vgm_date)),
         form13_done: safeValue(data.form13_done, false),
+        form13_date: formatDate(safeValue(data.form13_date)),
+        shipping_bill_done: safeValue(data.shipping_bill_done, false),
+        shipping_bill_done_date: formatDate(safeValue(data.shipping_bill_done_date)),
+        freight_done: safeValue(data.freight_done, false),
+        freight_enquiry_id: safeValue(data.freight_enquiry_id),
 
         financial_lock: safeValue(data.financial_lock, false),
         operational_lock: safeValue(data.operational_lock, false),

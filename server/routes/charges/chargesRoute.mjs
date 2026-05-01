@@ -215,9 +215,10 @@ router.get('/charges', async (req, res) => {
     }
 });
 
-router.get('/get-payment-request-details/:requestNo', async (req, res) => {
+router.get('/get-payment-request-details/:requestNo(*)', async (req, res) => {
     try {
-        const { requestNo } = req.params;
+        const raw = req.params.requestNo || "";
+        const requestNo = decodeURIComponent(raw);
         if (!requestNo) {
             return res.status(400).json({ success: false, message: 'requestNo required' });
         }
