@@ -141,12 +141,40 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 ]
             });
         } else if (normalizedStatus === "pending") {
-            // Pending shows jobs that have NOT reached Rail/Road reach and NOT yet billed
+            // Pending shows jobs that have NOT reached their completion milestone and NOT yet billed
             filter.$and.push({
                 $or: [
-                    { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
-                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
-                    { "operations.statusDetails": { $size: 0 } }
+                    // For FCL: Pending if Rail/Road reach date is missing
+                    {
+                        $and: [
+                            { consignmentType: { $ne: "LCL" } },
+                            { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+                            {
+                                $or: [
+                                    { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+                                    { "operations.statusDetails": { $size: 0 } }
+                                ]
+                            }
+                        ]
+                    },
+                    // For Air/LCL: Pending if Handover date is missing
+                    {
+                        $and: [
+                            {
+                                $or: [
+                                    { consignmentType: "LCL" },
+                                    { job_no: { $regex: "/AIR/", $options: "i" } }
+                                ]
+                            },
+                            {
+                                $or: [
+                                    { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
+                                    { "operations.statusDetails": { $size: 0 } }
+                                ]
+                            }
+                        ]
+                    }
                 ]
             });
             filter.$and.push({
@@ -170,16 +198,67 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             filter.$and.push({
                 "operations.statusDetails.leoDate": { $exists: true, $nin: [null, ""] },
                 $or: [
-                    { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
-                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
-                    { "operations.statusDetails": { $size: 0 } }
+                    // FCL: Handover pending if Rail/Road reach is missing
+                    {
+                        $and: [
+                            { consignmentType: { $ne: "LCL" } },
+                            { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+                            {
+                                $or: [
+                                    { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+                                    { "operations.statusDetails": { $size: 0 } }
+                                ]
+                            }
+                        ]
+                    },
+                    // Air/LCL: Handover pending if handover date is missing
+                    {
+                        $and: [
+                            {
+                                $or: [
+                                    { consignmentType: "LCL" },
+                                    { job_no: { $regex: "/AIR/", $options: "i" } }
+                                ]
+                            },
+                            {
+                                $or: [
+                                    { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
+                                    { "operations.statusDetails": { $size: 0 } }
+                                ]
+                            }
+                        ]
+                    }
                 ]
             });
         } else if (normalizedStatus === "billing pending" || normalizedStatus === "op completed") {
             filter.$and.push({
                 $or: [
-                    { "operations.statusDetails.railOutReachedDate": { $exists: true, $nin: [null, ""] } },
-                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: true, $nin: [null, ""] } }
+                    // FCL jobs completed with Rail/Road reached
+                    {
+                        $and: [
+                            { consignmentType: { $ne: "LCL" } },
+                            { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+                            {
+                                $or: [
+                                    { "operations.statusDetails.railOutReachedDate": { $exists: true, $nin: [null, ""] } },
+                                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: true, $nin: [null, ""] } }
+                                ]
+                            }
+                        ]
+                    },
+                    // Air/LCL jobs completed with Handover date
+                    {
+                        $and: [
+                            {
+                                $or: [
+                                    { consignmentType: "LCL" },
+                                    { job_no: { $regex: "/AIR/", $options: "i" } }
+                                ]
+                            },
+                            { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } }
+                        ]
+                    }
                 ]
             });
             filter.$and.push({
@@ -316,7 +395,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         const selectProjection = {
             job_no: 1, custom_house: 1, job_date: 1, consignmentType: 1, job_owner: 1,
             exporter: 1, exporter_ref_no: 1, exporter_branch_name: 1, "consignees.consignee_name": 1, "buyerThirdPartyInfo.buyer.name": 1,
-            ieCode: 1, panNo: 1, exporter_gstin: 1, adCode: 1,
+            ieCode: 1, panNo: 1, gstin: 1, adCode: 1,
             "invoices.invoiceNumber": 1, "invoices.invoiceDate": 1, "invoices.termsOfInvoice": 1,
             "invoices.currency": 1, "invoices.invoiceValue": 1, "invoices.consigneeName": 1,
             "invoices.invoice_no": 1, "invoices.invoice_date": 1, "invoices.invValue": 1,
@@ -327,7 +406,9 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             "eSanchitDocuments.fileUrl": 1, "eSanchitDocuments.documentType": 1, "eSanchitDocuments.icegateFilename": 1,
             isLocked: 1, operational_lock: 1, branch_code: 1, transportMode: 1, movement_type: 1, port_of_loading: 1,
             "operations.statusDetails.containerPlacementDate": 1, "operations.statusDetails.handoverForwardingNoteDate": 1,
+            "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": 1,
             "operations.statusDetails.railOutReachedDate": 1, "operations.statusDetails.leoDate": 1,
+            "operations.statusDetails.railRoad": 1,
             "operations.statusDetails.leoUpload": 1,
             "operations.statusDetails.booking_copy": 1,
             "operations.statusDetails.bookingUpload": 1,

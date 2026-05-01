@@ -92,8 +92,8 @@ export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
     if (!inv.products || !Array.isArray(inv.products)) return inv;
 
     const updatedProducts = inv.products.map((product) => {
-      const pQty = parseFloat(product.socQuantity || product.quantity) || 0;
-      const pUnit = product.socunit || product.qtyUnit || "";
+      const pQty = product.isSqcQuantityManual ? (parseFloat(product.socQuantity) || 0) : (parseFloat(product.socQuantity || product.quantity) || 0);
+      const pUnit = product.isSqcUnitManual ? (product.socunit || "") : (product.socunit || product.qtyUnit || "");
       const fobAmountInr = calculateProductFobINR(product, inv, exchange_rate);
 
       // Re-map Drawback & RoSCTL Details completely
@@ -147,7 +147,9 @@ export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
         newRodtepInfo = { ...newRodtepInfo };
         newRodtepInfo.quantity = pQty;
         newRodtepInfo.unit = pUnit;
-        newRodtepInfo.rodtepCapunit = pUnit;
+        if (!newRodtepInfo.isCapUnitManual) {
+          newRodtepInfo.capUnit = pUnit;
+        }
         newRodtepInfo.fobValue = fobAmountInr.toFixed(2);
 
         newRodtepInfo.amountINR = calculateRodtepAmount(

@@ -327,7 +327,7 @@ function validateJobData(job) {
     if (!job.gross_weight_kg) errors.push("Gross Weight is missing.");
     if (!job.net_weight_kg) errors.push("Net Weight is missing.");
     if (!job.total_no_of_pkgs) errors.push("Total Packages count is missing.");
-    if (!job.gstin && !job.exporter_gstin) errors.push("GSTIN is missing.");
+    if (!job.gstin) errors.push("GSTIN is missing.");
 
     if (!job.invoices || job.invoices.length === 0) {
         errors.push("At least one Invoice is required.");

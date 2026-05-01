@@ -125,8 +125,8 @@ const DrawbackTab = ({
       let hasChanges = false;
       const currentDbk = product.drawbackDetails || [];
       const updatedDbk = currentDbk.map((item) => {
-        const pQty = parseFloat(product.socQuantity || product.quantity || 0);
-        const pUnit = product.socunit || product.qtyUnit || "";
+        const pQty = product.isSqcQuantityManual ? (parseFloat(product.socQuantity) || 0) : (parseFloat(product.socQuantity || product.quantity || 0));
+        const pUnit = product.isSqcUnitManual ? (product.socunit || "") : (product.socunit || product.qtyUnit || "");
 
         const currentFob = parseFloat(item.fobValue) || 0;
         const rate = parseFloat(item.dbkRate) || 0;

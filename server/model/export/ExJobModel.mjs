@@ -233,6 +233,8 @@ const productDetailsSchema = new Schema(
     qtyUnit: { type: String },
     socQuantity: { type: String, default: "0" },
     socunit: { type: String },
+    isSqcQuantityManual: { type: Boolean, default: false },
+    isSqcUnitManual: { type: Boolean, default: false },
     unitPrice: { type: String },
     priceUnit: { type: String },
     per: { type: String },
@@ -270,8 +272,10 @@ const productDetailsSchema = new Schema(
     igstCompensationCess: {
       igstPaymentStatus: { type: String, trim: true, default: "LUT" },
       taxableValueINR: { type: String, default: "0" },
+      isTaxableValueManual: { type: Boolean, default: false },
       igstRate: { type: String, default: "0" },
       igstAmountINR: { type: String, default: "0" },
+      isIgstManual: { type: Boolean, default: false },
       compensationCessRate: { type: String, default: "0" },
       compensationCessAmountINR: { type: String, default: "0" },
     },
@@ -286,6 +290,7 @@ const productDetailsSchema = new Schema(
       amountINR: { type: String, default: "0" },
       unit: { type: String, trim: true }, // Added unit if needed
       capUnit: { type: String, trim: true }, // Added capUnit if needed
+      isCapUnitManual: { type: Boolean, default: false },
     },
 
     // --- ROSCTL Info (Grouped) ---
@@ -885,7 +890,6 @@ const exportJobSchema = new mongoose.Schema(
     // Regulatory Information
     ieCode: { type: String, trim: true }, // Import Export Code
     exporter_pan: { type: String, trim: true },
-    exporter_gstin: { type: String, trim: true },
     exporter_tan: { type: String, trim: true },
     ad_code: { type: String, trim: true }, // Authorized Dealer Code
 

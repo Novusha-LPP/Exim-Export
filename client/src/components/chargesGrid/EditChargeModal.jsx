@@ -133,10 +133,13 @@ const EditChargeModal = ({
         payment_request_status: charge.payment_request_status || '',
         revenue: {
           ...(charge.revenue || {}),
+          partyType: charge.revenue?.partyType || 'Customer',
+          partyName: charge.revenue?.partyName || (charge.revenue?.partyType === 'Customer' || !charge.revenue?.partyType ? exporterName : ''),
           isGst: (charge.revenue && charge.revenue.isGst !== undefined) ? charge.revenue.isGst : true
         },
         cost: {
           ...(charge.cost || {}),
+          partyType: charge.cost?.partyType || 'Others',
           isGst: (charge.cost && charge.cost.isGst !== undefined) ? charge.cost.isGst : true
         }
       }));
@@ -326,7 +329,7 @@ const EditChargeModal = ({
 
         // Net Payable: Total Amount - TDS (Maintain precision as per design)
         const tentativeNet = totalAmount - sectionRef.tdsAmount;
-        sectionRef.netPayable = Number(tentativeNet.toFixed(2));
+        sectionRef.netPayable = Math.round(tentativeNet);
       }
     });
     
@@ -721,7 +724,7 @@ const EditChargeModal = ({
                                 <span className="ep-label">INCLUDE GST?</span>
                                 <div className="ep-inline">
                                   <input type="checkbox" checked={row.revenue?.isGst !== false} onChange={e => handleFieldChange(i, 'isGst', e.target.checked, 'revenue')} />
-                                  {row.revenue?.isGst !== false && (
+                                  {row.chargeType !== 'Reimbursement' && row.revenue?.isGst !== false && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                       <input type="number" style={{ width: '50px' }} value={row.revenue?.gstRate ?? 18} onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'revenue')} />
                                       <span style={{ fontSize: '11px' }}>%</span>
@@ -729,6 +732,23 @@ const EditChargeModal = ({
                                   )}
                                 </div>
                               </div>
+                              {row.chargeType !== 'Reimbursement' && (
+                                <>
+                                  <div className="ep-row">
+                                    <span className="ep-label">BASIC AMOUNT</span>
+                                    <div className="ep-inline">
+                                      <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.basicAmount)} />
+                                    </div>
+                                  </div>
+                                  <div className="ep-row">
+                                    <span className="ep-label">GST AMOUNT</span>
+                                    <div className="ep-inline">
+                                      <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.gstAmount)} />
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+
                               <div className="ep-row">
                                 <span className="ep-label">APPLY TDS?</span>
                                 <div className="ep-inline">
@@ -937,7 +957,7 @@ const EditChargeModal = ({
                                 <span className="ep-label">INCLUDE GST?</span>
                                 <div className="ep-inline">
                                   <input type="checkbox" checked={row.cost?.isGst !== false} onChange={e => handleFieldChange(i, 'isGst', e.target.checked, 'cost')} />
-                                  {row.cost?.isGst !== false && (
+                                  {row.chargeType !== 'Reimbursement' && row.cost?.isGst !== false && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                       <input type="number" style={{ width: '50px' }} value={row.cost?.gstRate ?? 18} onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'cost')} />
                                       <span style={{ fontSize: '11px' }}>%</span>
@@ -945,18 +965,22 @@ const EditChargeModal = ({
                                   )}
                                 </div>
                               </div>
-                              <div className="ep-row">
-                                <span className="ep-label">BASIC AMOUNT</span>
-                                <div className="ep-inline">
-                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.cost?.basicAmount)} />
-                                </div>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">GST AMOUNT</span>
-                                <div className="ep-inline">
-                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.cost?.gstAmount)} />
-                                </div>
-                              </div>
+                              {row.chargeType !== 'Reimbursement' && (
+                                <>
+                                  <div className="ep-row">
+                                    <span className="ep-label">BASIC AMOUNT</span>
+                                    <div className="ep-inline">
+                                      <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.cost?.basicAmount)} />
+                                    </div>
+                                  </div>
+                                  <div className="ep-row">
+                                    <span className="ep-label">GST AMOUNT</span>
+                                    <div className="ep-inline">
+                                      <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.cost?.gstAmount)} />
+                                    </div>
+                                  </div>
+                                </>
+                              )}
                               <div className="ep-row">
                                 <span className="ep-label">APPLY TDS?</span>
                                 <div className="ep-inline">

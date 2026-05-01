@@ -793,7 +793,6 @@ function useExportExcelUpload(inputRef, onSuccess) {
                 "exportername": "exporter",
                 "exporter_address": "exporter_address",
                 "exporter_type": "exporter_type",
-                "exporter_gstin": "exporter_gstin",
                 "gstin": "gstin",
                 "exporter_pan": "exporter_pan",
                 "exporter_state": "exporter_state",

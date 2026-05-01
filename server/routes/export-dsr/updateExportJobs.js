@@ -7,6 +7,28 @@ import UserModel from "../../model/userModel.mjs";
 
 const router = express.Router();
 
+// GET /api/job-numbers-search - Search for job numbers for 'Copy From' feature
+router.get("/job-numbers-search", async (req, res) => {
+  try {
+    const { q = "" } = req.query;
+    const filter = {};
+    if (q) {
+      filter.job_no = { $regex: q, $options: "i" };
+    }
+
+    const jobs = await ExJobModel.find(filter)
+      .select("job_no")
+      .limit(20)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({ success: true, data: jobs.map(j => j.job_no) });
+  } catch (error) {
+    console.error("Error searching job numbers:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // GET /api/dashboard-stats - Get dashboard statistics
 router.get("/dashboard-stats", async (req, res) => {
   try {
@@ -341,7 +363,33 @@ router.get("/global-search-jobs", async (req, res) => {
         });
       } else if (statusLower === "op completed" || statusLower === "billing pending") {
         filter.$and.push({
-          "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] },
+          $or: [
+            // FCL jobs completed with Rail/Road reached
+            {
+              $and: [
+                { consignmentType: { $ne: "LCL" } },
+                { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+                {
+                  $or: [
+                    { "operations.statusDetails.railOutReachedDate": { $exists: true, $nin: [null, ""] } },
+                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: true, $nin: [null, ""] } }
+                  ]
+                }
+              ]
+            },
+            // Air/LCL jobs completed with Handover date
+            {
+              $and: [
+                {
+                  $or: [
+                    { consignmentType: "LCL" },
+                    { job_no: { $regex: "/AIR/", $options: "i" } }
+                  ]
+                },
+                { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } }
+              ]
+            }
+          ],
           $or: [
             { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
             { "operations.statusDetails.billingDocsSentDt": null },
@@ -387,10 +435,37 @@ router.get("/global-search-jobs", async (req, res) => {
           ],
           "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
           $or: [
-            { "operations.statusDetails.handoverForwardingNoteDate": { $exists: false } },
-            { "operations.statusDetails.handoverForwardingNoteDate": null },
-            { "operations.statusDetails.handoverForwardingNoteDate": "" },
-            { "operations.statusDetails": { $size: 0 } }
+            // FCL: Handover pending if Rail/Road reach is missing
+            {
+              $and: [
+                { consignmentType: { $ne: "LCL" } },
+                { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+                {
+                  $or: [
+                    { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+                    { "operations.statusDetails": { $size: 0 } }
+                  ]
+                }
+              ]
+            },
+            // Air/LCL: Handover pending if handover date is missing
+            {
+              $and: [
+                {
+                  $or: [
+                    { consignmentType: "LCL" },
+                    { job_no: { $regex: "/AIR/", $options: "i" } }
+                  ]
+                },
+                {
+                  $or: [
+                    { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
+                    { "operations.statusDetails": { $size: 0 } }
+                  ]
+                }
+              ]
+            }
           ]
         });
       }
@@ -531,7 +606,7 @@ router.get("/global-search-jobs", async (req, res) => {
           "buyerThirdPartyInfo.buyer.name": 1,
           ieCode: 1,
           panNo: 1,
-          exporter_gstin: 1,
+          gstin: 1,
           adCode: 1,
           "invoices.invoiceNumber": 1,
           "invoices.invoiceDate": 1,
@@ -799,10 +874,37 @@ router.get("/exports/:status?", async (req, res) => {
           ],
           "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
           $or: [
-            { "operations.statusDetails.handoverForwardingNoteDate": { $exists: false } },
-            { "operations.statusDetails.handoverForwardingNoteDate": null },
-            { "operations.statusDetails.handoverForwardingNoteDate": "" },
-            { "operations.statusDetails": { $size: 0 } }
+            // FCL: Handover pending if Rail/Road reach is missing
+            {
+              $and: [
+                { consignmentType: { $ne: "LCL" } },
+                { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+                {
+                  $or: [
+                    { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+                    { "operations.statusDetails": { $size: 0 } }
+                  ]
+                }
+              ]
+            },
+            // Air/LCL: Handover pending if handover date is missing
+            {
+              $and: [
+                {
+                  $or: [
+                    { consignmentType: "LCL" },
+                    { job_no: { $regex: "/AIR/", $options: "i" } }
+                  ]
+                },
+                {
+                  $or: [
+                    { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
+                    { "operations.statusDetails": { $size: 0 } }
+                  ]
+                }
+              ]
+            }
           ]
         });
       } else if (statusLower === "billing pending") {
@@ -818,7 +920,33 @@ router.get("/exports/:status?", async (req, res) => {
             },
             { detailedStatus: { $ne: "Billing Done" } },
           ],
-          "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
+          $or: [
+            // FCL jobs completed with Rail/Road reached
+            {
+              $and: [
+                { consignmentType: { $ne: "LCL" } },
+                { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+                {
+                  $or: [
+                    { "operations.statusDetails.railOutReachedDate": { $exists: true, $nin: [null, ""] } },
+                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: true, $nin: [null, ""] } }
+                  ]
+                }
+              ]
+            },
+            // Air/LCL jobs completed with Handover date
+            {
+              $and: [
+                {
+                  $or: [
+                    { consignmentType: "LCL" },
+                    { job_no: { $regex: "/AIR/", $options: "i" } }
+                  ]
+                },
+                { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } }
+              ]
+            }
+          ],
           $or: [
             { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
             { "operations.statusDetails.billingDocsSentDt": null },
@@ -1005,7 +1133,7 @@ router.get("/exports/:status?", async (req, res) => {
       "buyerThirdPartyInfo.buyer.name": 1,
       ieCode: 1,
       panNo: 1,
-      exporter_gstin: 1,
+      gstin: 1,
       adCode: 1,
       "invoices.invoiceNumber": 1,
       "invoices.invoiceDate": 1,
@@ -1053,6 +1181,7 @@ router.get("/exports/:status?", async (req, res) => {
       "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": 1,
       "operations.statusDetails.railOutReachedDate": 1,
       "operations.statusDetails.leoDate": 1,
+      "operations.statusDetails.railRoad": 1,
       "operations.statusDetails.leoUpload": 1,
       "operations.statusDetails.booking_copy": 1,
       "operations.statusDetails.forwardingNoteDocUpload": 1,
@@ -1466,7 +1595,7 @@ router.post("/create-general-job", auditMiddleware("Job"), async (req, res) => {
       branch_code = BRANCH_MAP[requester.selected_branches[0].toUpperCase()] || requester.selected_branches[0];
     }
 
-    const { exporter, exporter_address, exporter_gstin, panNo } = req.body;
+    const { exporter, exporter_address, gstin, panNo } = req.body;
 
     const newJobData = {
       job_no,
@@ -1476,7 +1605,7 @@ router.post("/create-general-job", auditMiddleware("Job"), async (req, res) => {
       status: "Pending",
       exporter: exporter || "GENERAL JOB",
       exporter_address: exporter_address || "",
-      exporter_gstin: exporter_gstin || "",
+      gstin: gstin || "",
       panNo: panNo || "",
       branch_code: branch_code || "GEN",
       custom_house: "GEN",

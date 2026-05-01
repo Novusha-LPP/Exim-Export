@@ -197,7 +197,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
           </tr>
           <tr>
             <td colspan="3" style="border: 1px solid black; vertical-align: middle; padding: 1px 5px 4px 5px; font-size: 12px;">
-              NAME IN INVOICE GSTIN NO : ${exportJob.exporter_gstin || ""}
+              NAME IN INVOICE GSTIN NO : ${exportJob.gstin || ""}
             </td>
           </tr>
         </table>
@@ -446,7 +446,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       boxY += rowH;
 
       boxY += drawContentBox(boxY, [{ width: contentWidth, text: `EXPORTER NAME : ${exportJob.exporter || ""}`, fontSize: 10 * rowScale, style: "bold" }], rowH + 1);
-      boxY += drawContentBox(boxY, [{ width: contentWidth, text: `NAME IN INVOICE GSTIN NO : ${exportJob.exporter_gstin || ""}`, fontSize: 8 * rowScale }], rowH);
+      boxY += drawContentBox(boxY, [{ width: contentWidth, text: `NAME IN INVOICE GSTIN NO : ${exportJob.gstin || ""}`, fontSize: 8 * rowScale }], rowH);
       boxY += 2;
 
       const tableHeaders = ["Sr.\nNo.", "CONTAINER NO.", "TYPE", "SIZE", "TARE WT.", "NO. OF\nPACKAGES", "COMMODITY NAME", "COMMODITY\nHSN CODE", "CARGO WT\n(In MTS)", "VGM", "HAZARDOUS", "VALUE/FOB", "LEO DT", "SEAL NO."];

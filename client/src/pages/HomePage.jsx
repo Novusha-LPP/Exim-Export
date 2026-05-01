@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Box from "@mui/material/Box";
 import CssBaseline from "@mui/material/CssBaseline";
 import Toolbar from "@mui/material/Toolbar";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, Outlet } from "react-router-dom";
 import { TabValueContext } from "../contexts/TabValueContext.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 // Home
@@ -19,6 +19,11 @@ import EximOperationModule from "../components/Export/Export-Dsr/EximOperationMo
 import ExportChargesModule from "../components/Export/Export-Dsr/ExportChargesModule.js";
 import ExportBillingPage from "../components/Export/Export-Billing/ExportBillingPage.jsx";
 import FreightForwardingModule from "../components/Export/FreightForwarding/FreightForwardingModule.js";
+import { AnalyticsProvider } from "../components/Export/Export-Dsr/analytics/AnalyticsContext.js";
+// import AnalyticsLayout from "../components/Export/Export-Dsr/analytics/AnalyticsLayout.js"; // Removed
+// import OverviewDashboard from "../components/Export/Export-Dsr/analytics/OverviewDashboard.js"; // Removed
+import CombinedDashboard from "../components/Export/Export-Dsr/analytics/CombinedDashboard.js";
+import GenericPulseTV from "../components/Export/Export-Dsr/analytics/GenericPulseTV.js";
 
 // import auditrail
 import AllUsersPage from "./AllUsersPage.js";
@@ -208,6 +213,24 @@ function HomePage() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Pulse Module - Standardized as an assignable module */}
+            <Route
+              path="/pulse"
+              element={
+                <ProtectedRoute requiredModule="Pulse">
+                  <AnalyticsProvider>
+                    <Outlet />
+                  </AnalyticsProvider>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<CombinedDashboard />} />
+              <Route path="combined" element={<CombinedDashboard />} />
+              <Route path="operations" element={<GenericPulseTV metric="ops" title="OPERATIONS" />} />
+              <Route path="billing" element={<GenericPulseTV metric="billing" title="BILLING" />} />
+              <Route path="handover" element={<GenericPulseTV metric="handover" title="HANDOVER" />} />
+            </Route>
 
             <Route
               path="/export-audit-trail"

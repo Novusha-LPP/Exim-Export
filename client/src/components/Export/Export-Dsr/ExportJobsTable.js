@@ -717,7 +717,7 @@ const ExportJobsTable = () => {
   const [generalJobForm, setGeneralJobForm] = useState({
     exporter: "",
     exporter_address: "",
-    exporter_gstin: "",
+    gstin: "",
     panNo: ""
   });
   const [organizations, setOrganizations] = useState([]);
@@ -1310,7 +1310,7 @@ const ExportJobsTable = () => {
     setGeneralJobForm({
       exporter: "",
       exporter_address: "",
-      exporter_gstin: "",
+      gstin: "",
       panNo: ""
     });
     setGeneralJobModalOpen(true);
@@ -1362,7 +1362,7 @@ const ExportJobsTable = () => {
     setGeneralJobForm({
       exporter: org.organization.toUpperCase(),
       exporter_address: address.toUpperCase(),
-      exporter_gstin: gstin.toUpperCase(),
+      gstin: gstin.toUpperCase(),
       panNo: panNo.toUpperCase()
     });
     setShowOrgDropdown(false);
@@ -4440,8 +4440,8 @@ const ExportJobsTable = () => {
                   fullWidth
                   variant="outlined"
                   size="small"
-                  value={generalJobForm.exporter_gstin}
-                  onChange={(e) => setGeneralJobForm(prev => ({ ...prev, exporter_gstin: e.target.value.toUpperCase() }))}
+                  value={generalJobForm.gstin}
+                  onChange={(e) => setGeneralJobForm(prev => ({ ...prev, gstin: e.target.value.toUpperCase() }))}
                   inputProps={{ style: { fontSize: '12px', fontWeight: '600' } }}
                 />
               </Box>

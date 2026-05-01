@@ -1189,7 +1189,7 @@ function ProductRow({
             handleProductChange(index, "rodtepInfo.capValuePerUnits", cap);
           }
 
-          if (uqc && uqc !== currentUqc) {
+          if (uqc && uqc !== currentUqc && !product.rodtepInfo?.isCapUnitManual) {
             handleProductChange(index, "rodtepInfo.capUnit", uqc);
           }
         }
@@ -1272,41 +1272,38 @@ function ProductRow({
 
     if (status === "Export Against Payment") {
       const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
-      const taxableValue =
-        (parseFloat(product.amount) || 0) * invoiceExchangeRate;
-
-      const isTaxableManual =
-        product.igstCompensationCess?.isTaxableValueManual;
-
-      if (
-        !isTaxableManual &&
-        Math.abs(
-          (product.igstCompensationCess?.taxableValueINR || 0) - taxableValue,
-        ) > 0.01
-      ) {
-        handleProductChange(
-          index,
-          "igstCompensationCess.taxableValueINR",
-          parseFloat(taxableValue.toFixed(2)),
-        );
-      }
+      const autoTaxableValue = parseFloat(((parseFloat(product.amount) || 0) * invoiceExchangeRate).toFixed(2));
+      const isTaxableManual = !!product.igstCompensationCess?.isTaxableValueManual;
+      
+      // Use the manual value from state if present, otherwise use the auto-calculated one
+      const effectiveTaxableValue = isTaxableManual 
+        ? (parseFloat(product.igstCompensationCess?.taxableValueINR) || 0)
+        : autoTaxableValue;
 
       const rateValue = parseFloat(product.igstCompensationCess?.igstRate) || 0;
-      const igstAmount = (taxableValue * rateValue) / 100;
+      const expectedIgstAmount = parseFloat(((effectiveTaxableValue * rateValue) / 100).toFixed(2));
+      const isIgstManual = !!product.igstCompensationCess?.isIgstManual;
 
-      const isManual = product.igstCompensationCess?.isIgstManual;
+      let updates = {};
+      let hasUpdates = false;
 
-      if (
-        !isManual &&
-        Math.abs(
-          (product.igstCompensationCess?.igstAmountINR || 0) - igstAmount,
-        ) > 0.01
-      ) {
-        handleProductChange(
-          index,
-          "igstCompensationCess.igstAmountINR",
-          parseFloat(igstAmount.toFixed(2)),
-        );
+      // 1. Sync Taxable Value if not manual
+      if (!isTaxableManual && Math.abs((product.igstCompensationCess?.taxableValueINR || 0) - autoTaxableValue) > 0.01) {
+        updates.taxableValueINR = autoTaxableValue;
+        hasUpdates = true;
+      }
+
+      // 2. Sync IGST Amount if not manual
+      if (!isIgstManual && Math.abs((product.igstCompensationCess?.igstAmountINR || 0) - expectedIgstAmount) > 0.01) {
+        updates.igstAmountINR = expectedIgstAmount;
+        hasUpdates = true;
+      }
+
+      if (hasUpdates) {
+        handleProductChange(index, "igstCompensationCess", {
+          ...product.igstCompensationCess,
+          ...updates
+        });
       }
     }
   }, [
@@ -1318,6 +1315,7 @@ function ProductRow({
     product.igstCompensationCess?.igstRate,
     product.igstCompensationCess?.isIgstManual,
     product.igstCompensationCess?.isTaxableValueManual,
+    product.igstCompensationCess?.taxableValueINR, // Added this as a dependency!
   ]);
 
   return (
@@ -1824,13 +1822,26 @@ function ProductRow({
                   : {}),
               }}
               value={product.igstCompensationCess?.igstRate ?? ""}
-              onChange={(e) =>
+              onChange={(e) => {
+                const newRate = parseFloat(e.target.value) || 0;
+                const taxableVal = parseFloat(product.igstCompensationCess?.taxableValueINR) || 0;
+                
+                let newIgstInfo = {
+                  ...product.igstCompensationCess,
+                  igstRate: newRate
+                };
+
+                // Calculate new IGST amount if it is not overridden manually
+                if (!product.igstCompensationCess?.isIgstManual) {
+                  newIgstInfo.igstAmountINR = parseFloat(((taxableVal * newRate) / 100).toFixed(2));
+                }
+
                 handleProductChange(
                   index,
-                  "igstCompensationCess.igstRate",
-                  parseFloat(e.target.value),
-                )
-              }
+                  "igstCompensationCess",
+                  newIgstInfo
+                );
+              }}
               disabled={
                 product.igstCompensationCess?.igstPaymentStatus !==
                 "Export Against Payment"
@@ -1923,13 +1934,26 @@ function ProductRow({
               type="number"
               value={product.igstCompensationCess?.taxableValueINR || ""}
               placeholder="0.00"
-              onChange={(e) =>
+              onChange={(e) => {
+                const newTaxableVal = parseFloat(e.target.value) || 0;
+                const rate = parseFloat(product.igstCompensationCess?.igstRate) || 0;
+                
+                let newIgstInfo = {
+                  ...product.igstCompensationCess,
+                  taxableValueINR: newTaxableVal
+                };
+
+                // Calculate new IGST amount if it is not overridden manually
+                if (!product.igstCompensationCess?.isIgstManual) {
+                  newIgstInfo.igstAmountINR = parseFloat(((newTaxableVal * rate) / 100).toFixed(2));
+                }
+
                 handleProductChange(
                   index,
-                  "igstCompensationCess.taxableValueINR",
-                  parseFloat(e.target.value),
-                )
-              }
+                  "igstCompensationCess",
+                  newIgstInfo
+                );
+              }}
               disabled={
                 product.igstCompensationCess?.igstPaymentStatus !==
                 "Export Under Bond – Not Paid" &&
@@ -1970,13 +1994,25 @@ function ProductRow({
                       checked={
                         product.igstCompensationCess?.isIgstManual || false
                       }
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        let newIgstInfo = {
+                          ...product.igstCompensationCess,
+                          isIgstManual: checked
+                        };
+                        
+                        if (!checked) {
+                          const taxableVal = parseFloat(product.igstCompensationCess?.taxableValueINR) || 0;
+                          const rate = parseFloat(product.igstCompensationCess?.igstRate) || 0;
+                          newIgstInfo.igstAmountINR = parseFloat(((taxableVal * rate) / 100).toFixed(2));
+                        }
+                        
                         handleProductChange(
                           index,
-                          "igstCompensationCess.isIgstManual",
-                          e.target.checked,
-                        )
-                      }
+                          "igstCompensationCess",
+                          newIgstInfo
+                        );
+                      }}
                     />
                     MANUAL
                   </label>
@@ -2161,7 +2197,7 @@ function ProductRow({
             unitOptions={unitCodes}
             placeholder="Cap Unit"
             onSelect={(val) => handleUnitChange(index, "capUnit", val)}
-            disabled={true}
+            disabled={product.rodtepInfo?.claim === "Not Applicable"}
           />
         </div>
 
@@ -2439,6 +2475,12 @@ const ProductGeneralTab = ({
         `invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.${unitField}`,
         unitValue,
       );
+      if (unitField === "capUnit") {
+        formik.setFieldValue(
+          `invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.isCapUnitManual`,
+          true,
+        );
+      }
     },
     [formik.setFieldValue, selectedInvoiceIndex],
   );
@@ -2448,8 +2490,8 @@ const ProductGeneralTab = ({
     const currentProducts = products || [];
     let changed = false;
     const updatedProducts = currentProducts.map((prod) => {
-      const sqcUnit = (prod.socunit || "").trim();
-      const sqcQty = parseFloat(prod.socQuantity) || 0;
+      const sqcUnit = prod.isSqcUnitManual ? (prod.socunit || "").trim() : (prod.socunit || prod.qtyUnit || "").trim();
+      const sqcQty = prod.isSqcQuantityManual ? (parseFloat(prod.socQuantity) || 0) : (parseFloat(prod.socQuantity || prod.quantity) || 0);
 
       const currentRodtep = prod.rodtepInfo || {};
       const currentRodtepUnit = (currentRodtep.unit || "").trim();
@@ -2566,6 +2608,8 @@ const ProductGeneralTab = ({
     serializedPmvInputs, // Safe tracker for product inputs to cleanly auto-trigger computation initially and dynamically
   ]);
 
+
+
   return (
     <div style={styles.page}>
       <div style={styles.sectionTitle}>Product General Information</div>
@@ -2587,8 +2631,8 @@ const ProductGeneralTab = ({
                 "Unit",
                 "Amount",
                 "Unit",
-              ].map((h) => (
-                <th key={h} style={styles.th}>
+              ].map((h, idx) => (
+                <th key={idx} style={styles.th}>
                   {h}
                 </th>
               ))}

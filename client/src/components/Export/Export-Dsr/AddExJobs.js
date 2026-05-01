@@ -1230,7 +1230,6 @@ const AddExJobs = ({ onJobCreated }) => {
       ieCode: toUpper(displayValue), // 👈 match state + input
       panNo: toUpper(panNo),
       gstin: toUpper(gstin),
-      exporter_gstin: toUpper(gstin),
     }));
 
     setShowDropdown(false);

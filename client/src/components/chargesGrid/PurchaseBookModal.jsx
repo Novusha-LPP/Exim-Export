@@ -4,6 +4,7 @@ import './charges.css';
 
 const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplayNumber, jobYear, onSuccess }) => {
     const [loading, setLoading] = useState(false);
+    const isReimbursement = initialData ? (initialData.chargeType === 'Reimbursement' || initialData.category === 'Reimbursement') : false;
     const [apiKeys, setApiKeys] = useState([]);
     const [selectedKey, setSelectedKey] = useState(null);
     const [formData, setFormData] = useState({
@@ -70,29 +71,33 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                 let finalEntryNo = `PB/01/${jobNum}`;
                 let updatedJobNum = jobNum;
                 try {
-                    const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
-                    const response = await axios.get(
-                        `${import.meta.env.VITE_API_STRING}/tally/next-sequence`,
-                        {
-                            params: {
-                                type: 'purchase',
-                                jobNo: jobNum,
-                                year: jobYear,
-                                jobId: initialData.jobId
-                            },
-                            headers: { 'x-api-key': API_KEY },
-                            withCredentials: true
+                    const API_KEY = selectedKey?.key;
+                    if (!API_KEY) {
+                        console.warn("No API key selected, skipping sequence fetch");
+                    } else {
+                        const response = await axios.get(
+                            `${import.meta.env.VITE_API_STRING}/tally/next-sequence`,
+                            {
+                                params: {
+                                    type: 'purchase',
+                                    jobNo: jobNum,
+                                    year: jobYear,
+                                    jobId: initialData.jobId
+                                },
+                                headers: { 'x-api-key': API_KEY },
+                                withCredentials: true
+                            }
+                        );
+                        if (response.data.success) {
+                            if (response.data.fullNo) finalEntryNo = response.data.fullNo;
+                            if (response.data.jobNo) updatedJobNum = response.data.jobNo;
                         }
-                    );
-                    if (response.data.success) {
-                        if (response.data.fullNo) finalEntryNo = response.data.fullNo;
-                        if (response.data.jobNo) updatedJobNum = response.data.jobNo;
                     }
                 } catch (error) {
                     console.error("Error fetching sequence:", error);
                 }
 
-                const isReimbursement = (initialData.chargeType === 'Reimbursement' || initialData.category === 'Reimbursement');
+
 
                 setFormData(prev => ({
                     ...prev,
@@ -120,7 +125,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     "SGST": (branch.gst?.startsWith("24") || (branch.GST?.startsWith("24"))) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
                     "IGST": (branch.gst?.startsWith("24") || (branch.GST?.startsWith("24"))) ? '' : (initialData.gstAmount > 0 ? Number(initialData.gstAmount).toFixed(2) : ''),
                     "TDS": initialData.tdsAmount ? Number(initialData.tdsAmount).toFixed(2) : '',
-                    "Total": initialData.netPayable ? Number(initialData.netPayable).toFixed(2) : (initialData.totalAmount ? Number(initialData.totalAmount).toFixed(2) : ''),
+                    "Total": initialData.netPayable ? Math.round(initialData.netPayable) : (initialData.totalAmount ? Math.round(initialData.totalAmount) : ''),
                     "Charge Head Category": initialData.chargeType || initialData.category || '',
                     "TDS Category": initialData.tdsCategory || '',
                     "chargeRef": initialData.chargeId || '',
@@ -129,7 +134,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
             }
         };
 
-        if (selectedKey) fetchNextSequence();
+        if (isOpen) fetchNextSequence();
     }, [isOpen, initialData, jobNumber, jobDisplayNumber, jobYear, selectedKey]);
 
     if (!isOpen) return null;
@@ -142,11 +147,12 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
             // IF GST NO STARTS WITH 24 AND ITS A MARGIN CHARGE (or any taxable charge)
             // WE WILL SHOW GST AS CGST AND SGST 18 PERCENT DEVIDE BY 2 EACH 9%
             // BUT IF IT IS EMPTY OR NOT STARTS WITH 24 THEN SHOW GST IN ONE FIELD ONLY WHICH IS IGST
-            if (name === "GSTIN NO" || name === "Taxable Value" || name === "GST%") {
+            if (name === "GSTIN NO" || name === "Taxable Value" || name === "GST%" || name === "TDS") {
                 const gstin = updated["GSTIN NO"] || "";
                 const taxable = parseFloat(updated["Taxable Value"]) || 0;
                 const gstRate = parseFloat(updated["GST%"]) || 0;
                 const totalGst = Number((taxable * (gstRate / 100)).toFixed(2));
+                const tds = parseFloat(updated["TDS"]) || 0;
                 
                 if (gstin.trim().startsWith("24")) {
                     updated["CGST"] = totalGst > 0 ? (totalGst / 2).toFixed(2) : "";
@@ -157,6 +163,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     updated["SGST"] = "";
                     updated["IGST"] = totalGst > 0 ? totalGst.toFixed(2) : "";
                 }
+                updated["Total"] = Math.round(taxable + totalGst - tds);
             }
             return updated;
         });
@@ -314,22 +321,26 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                                 <span className="ep-label">Taxable Value</span>
                                 <input type="number" name="Taxable Value" className="ep-desc-input" value={formData["Taxable Value"]} onChange={handleInputChange} />
                             </div>
-                            <div className="ep-row">
-                                <span className="ep-label">GST%</span>
-                                <input type="number" name="GST%" className="ep-desc-input" value={formData["GST%"]} onChange={handleInputChange} />
-                            </div>
-                            <div className="ep-row">
-                                <span className="ep-label">CGST</span>
-                                <input type="number" name="CGST" className="ep-desc-input" value={formData["CGST"]} onChange={handleInputChange} />
-                            </div>
-                            <div className="ep-row">
-                                <span className="ep-label">SGST</span>
-                                <input type="number" name="SGST" className="ep-desc-input" value={formData["SGST"]} onChange={handleInputChange} />
-                            </div>
-                            <div className="ep-row">
-                                <span className="ep-label">IGST</span>
-                                <input type="number" name="IGST" className="ep-desc-input" value={formData["IGST"]} onChange={handleInputChange} />
-                            </div>
+                            {!isReimbursement && (
+                                <>
+                                    <div className="ep-row">
+                                        <span className="ep-label">GST%</span>
+                                        <input type="number" name="GST%" className="ep-desc-input" value={formData["GST%"]} onChange={handleInputChange} />
+                                    </div>
+                                    <div className="ep-row">
+                                        <span className="ep-label">CGST</span>
+                                        <input type="number" name="CGST" className="ep-desc-input" value={formData["CGST"]} onChange={handleInputChange} />
+                                    </div>
+                                    <div className="ep-row">
+                                        <span className="ep-label">SGST</span>
+                                        <input type="number" name="SGST" className="ep-desc-input" value={formData["SGST"]} onChange={handleInputChange} />
+                                    </div>
+                                    <div className="ep-row">
+                                        <span className="ep-label">IGST</span>
+                                        <input type="number" name="IGST" className="ep-desc-input" value={formData["IGST"]} onChange={handleInputChange} />
+                                    </div>
+                                </>
+                            )}
                             <div className="ep-row">
                                 <span className="ep-label">TDS</span>
                                 <input type="number" name="TDS" className="ep-desc-input" value={formData["TDS"]} onChange={handleInputChange} />

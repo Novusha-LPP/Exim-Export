@@ -11,6 +11,8 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
 import HistoryIcon from '@mui/icons-material/History';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import InsightsIcon from '@mui/icons-material/Insights';
+import TvIcon from '@mui/icons-material/Tv';
 import { UserContext } from "../../contexts/UserContext";
 import CurrencyRateDialog from "./CurrencyRateDialog.js"; // Import the dialog
 import axios from "axios";
@@ -104,6 +106,8 @@ function Sidebar() {
           </ListItemButton>
         </Tooltip>
       )}
+
+      {/* Analytics and Pulse removed from sidebar per user request */}
 
       {/* NEW: Currency Exchange Rates Icon */}
       <Tooltip title="Currency Exchange Rates" enterDelay={0} placement="right">

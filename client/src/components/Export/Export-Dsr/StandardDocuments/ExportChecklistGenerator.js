@@ -1389,8 +1389,8 @@ const ExportChecklistGenerator = ({
 
         // Exporter Details - BUILD FROM MULTIPLE FIELDS
         exporterIec: exportJob.ieCode ? `IEC: ${exportJob.ieCode}` : "",
-        exporterGstinFull: exportJob.exporter_gstin
-          ? `GSTIN: ${exportJob.exporter_gstin}`
+        exporterGstinFull: exportJob.gstin
+          ? `GSTIN: ${exportJob.gstin}`
           : "",
         exporterPan: exportJob.exporter_pan
           ? `PAN No: ${exportJob.exporter_pan}`

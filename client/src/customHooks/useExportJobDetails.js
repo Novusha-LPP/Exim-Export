@@ -201,7 +201,6 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
       // Regulatory Information
       ieCode: "",
       exporter_pan: "",
-      exporter_gstin: "",
       exporter_tan: "",
       ad_code: "",
 
@@ -462,6 +461,8 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
           qtyUnit: "",
           socQuantity: "",
           socunit: "",
+          isSqcQuantityManual: false,
+          isSqcUnitManual: false,
           unitPrice: "",
           priceUnit: "",
           per: "",
@@ -494,8 +495,10 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
           igstCompensationCess: {
             igstPaymentStatus: "",
             taxableValueINR: "0",
+            isTaxableValueManual: false,
             igstRate: "0",
             igstAmountINR: "0",
+            isIgstManual: false,
             compensationCessRate: "0",
             compensationCessAmountINR: "0",
           },
@@ -509,6 +512,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
             amountINR: "0",
             unit: "",
             capUnit: "",
+            isCapUnitManual: false,
           },
 
           cessExpDuty: {
@@ -745,8 +749,8 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
           drawbackDetails: (values.drawbackDetails || []).map((dbk, i) => {
             const product = values.products?.[i];
             if (product) {
-              const pQty = parseFloat(product.socQuantity || product.quantity || 0);
-              const pUnit = product.socunit || product.qtyUnit || "";
+              const pQty = product.isSqcQuantityManual ? (parseFloat(product.socQuantity) || 0) : (parseFloat(product.socQuantity || product.quantity || 0));
+              const pUnit = product.isSqcUnitManual ? (product.socunit || "") : (product.socunit || product.qtyUnit || "");
               const qty = dbk.manualQuantity ? (dbk.quantity || 0) : pQty;
               const unit = dbk.manualUnit ? (dbk.unit || "") : pUnit;
               return {
@@ -928,7 +932,6 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         branch_code: safeValue(data.branch_code),
         ieCode: safeValue(data.ieCode),
         exporter_pan: safeValue(data.exporter_pan),
-        exporter_gstin: safeValue(data.exporter_gstin),
         exporter_tan: safeValue(data.exporter_tan),
         ad_code: safeValue(data.ad_code),
         bank_account_number: safeValue(data.bank_account_number),
@@ -967,6 +970,10 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
               deecItems: [],
               deec_reg_obj: [getDefaultRegItem()],
             }),
+            rodtepInfo: {
+              ...prod.rodtepInfo,
+              isCapUnitManual: prod.rodtepInfo?.isCapUnitManual || false,
+            },
           })),
         })),
         buyerThirdPartyInfo: safeValue(data.buyerThirdPartyInfo, {}),

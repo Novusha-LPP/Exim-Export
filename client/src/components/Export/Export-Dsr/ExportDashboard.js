@@ -304,6 +304,24 @@ const ExportDashboard = () => {
           </button>
 
           <button
+            className="dash-btn"
+            onClick={() => navigate("/export-analytics")}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "7px 14px",
+              backgroundColor: "#f8fafc",
+              color: THEME.blue,
+              border: `1px solid ${THEME.blue}`,
+              borderRadius: 8,
+              cursor: "pointer",
+              fontSize: 12, fontWeight: 700,
+              transition: "all 0.15s",
+            }}
+          >
+            Operational Analytics
+          </button>
+
+          <button
             id="dashboard-upload-btn"
             className="dash-btn"
             onClick={() => !uploadLoading && inputRef.current?.click()}

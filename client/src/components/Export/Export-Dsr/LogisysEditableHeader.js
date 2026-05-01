@@ -5,7 +5,7 @@ import { UserContext } from "../../../contexts/UserContext";
 import DateInput from "../../common/DateInput.js";
 import AutocompleteSelect from "../../common/AutocompleteSelect.js";
 import CustomHouseDropdown from "../../common/CustomHouseDropdown.js";
-import { Menu, MenuItem, IconButton, Tooltip } from "@mui/material";
+import { Menu, MenuItem, IconButton, Tooltip, Autocomplete, TextField, CircularProgress } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
@@ -358,6 +358,89 @@ const LogisysEditableHeader = ({
   // removed local isEditable state
 
   const [hasShownJobNoWarning, setHasShownJobNoWarning] = useState(false);
+  const [searchJobOpen, setSearchJobOpen] = useState(false);
+  const [searchJobOptions, setSearchJobOptions] = useState([]);
+  const [searchJobLoading, setSearchJobLoading] = useState(false);
+  const [searchJobInputValue, setSearchJobInputValue] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    if (!searchJobOpen) {
+      return undefined;
+    }
+
+    (async () => {
+      setSearchJobLoading(true);
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/job-numbers-search?q=${searchJobInputValue}`);
+        if (active) {
+          setSearchJobOptions(response.data.data || []);
+        }
+      } catch (err) {
+        console.error("Error searching job numbers:", err);
+      } finally {
+        setSearchJobLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [searchJobInputValue, searchJobOpen]);
+
+  const handleCopyFromJob = async (selectedJobNo) => {
+    if (!selectedJobNo) return;
+
+    if (window.confirm(`⚠️ DO YOU WANT TO COPY THIS JOB DATA (${selectedJobNo}) IN THIS JOB? \n\nThis will overwrite all fields except the Job Number and identifiers.`)) {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/get-export-job/${encodeURIComponent(selectedJobNo)}`);
+        const sourceData = response.data;
+
+        if (sourceData) {
+          // Fields to exclude from copying (top level)
+          const excludeFields = [
+            "_id", "id", "job_no", "jobNumber", "createdAt", "updatedAt", "__v",
+            "isLocked", "lockedBy", "lockedAt", "operational_lock"
+          ];
+
+          // Helper to recursively strip IDs and excluded fields
+          const cleanData = (obj) => {
+            if (Array.isArray(obj)) {
+              return obj.map(item => cleanData(item));
+            } else if (obj !== null && typeof obj === 'object') {
+              const cleaned = {};
+              Object.keys(obj).forEach(key => {
+                if (!excludeFields.includes(key)) {
+                  cleaned[key] = cleanData(obj[key]);
+                }
+              });
+              return cleaned;
+            }
+            return obj;
+          };
+
+          const newData = cleanData(sourceData);
+
+          // Maintain current job identifiers
+          const currentJobNo = formik.values.job_no;
+          const currentYear = formik.values.year;
+
+          formik.setValues({
+            ...formik.values,
+            ...newData,
+            job_no: currentJobNo,
+            year: currentYear
+          });
+
+          alert("Job data copied successfully!");
+        }
+      } catch (err) {
+        console.error("Error copying job data:", err);
+        alert("Error fetching source job data.");
+      }
+    }
+  };
 
   // Reset warning show state when job is locked
   useEffect(() => {
@@ -791,6 +874,52 @@ const LogisysEditableHeader = ({
             <option value="SURAJAMD">SURAJAMD</option>
           </select>
         </div>
+
+        {/* Copy From Job */}
+        {isEditable && (
+          <div style={{ flex: "0 0 auto", minWidth: 150 }}>
+            <div style={{ ...styles.label, color: "#d32f2f", fontWeight: "bold" }}>Copy From Job</div>
+            <Autocomplete
+              size="small"
+              open={searchJobOpen}
+              onOpen={() => setSearchJobOpen(true)}
+              onClose={() => setSearchJobOpen(false)}
+              isOptionEqualToValue={(option, value) => option === value}
+              getOptionLabel={(option) => option}
+              options={searchJobOptions}
+              loading={searchJobLoading}
+              onInputChange={(event, newInputValue) => {
+                setSearchJobInputValue(newInputValue);
+              }}
+              onChange={(event, newValue) => {
+                handleCopyFromJob(newValue);
+              }}
+              renderOption={(props, option) => (
+                <li {...props} style={{ fontSize: 11, padding: '4px 8px', minHeight: 'auto' }}>
+                  {option}
+                </li>
+              )}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Search Job No..."
+                  variant="outlined"
+                  size="small"
+                  InputProps={{
+                    ...params.InputProps,
+                    style: { height: 24, fontSize: 11, padding: '0 8px' },
+                    endAdornment: (
+                      <React.Fragment>
+                        {searchJobLoading ? <CircularProgress color="inherit" size={14} /> : null}
+                        {params.InputProps.endAdornment}
+                      </React.Fragment>
+                    ),
+                  }}
+                />
+              )}
+            />
+          </div>
+        )}
 
         {/* Documents, VGM Button and Checkboxes */}
         <div style={{ flex: "0 0 auto", display: "flex", gap: 10, alignItems: "center" }}>

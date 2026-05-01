@@ -449,13 +449,11 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
     if (isBuyer) {
       formik.setFieldValue("buyer_name", getVal("exporter"));
       formik.setFieldValue("buyer_address", getVal("exporter_address"));
-      formik.setFieldValue("buyer_gstin", getVal("gstin"));
       formik.setFieldValue("buyer_state", getVal("state"));
     } else {
       // Clear buyer details when unchecked
       formik.setFieldValue("buyer_name", "");
       formik.setFieldValue("buyer_address", "");
-      formik.setFieldValue("buyer_gstin", "");
       formik.setFieldValue("buyer_state", "");
     }
   }
@@ -662,392 +660,392 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
     <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
       <div
         style={{
-        background: "#fafaffff",
-        borderRadius: 8,
-        padding: 15,
-        border: "1.5px solid #e2e8f0",
-        margin: "10px 0",
-      }}
-    >
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-        {/* Left: Exporter & Bank */}
-        <div
-          style={{
-            flex: 1,
-            minWidth: 295,
-            background: "#fff",
-            borderRadius: 6,
-            border: "1px solid #e3e7ee",
-            padding: 14,
-            marginBottom: 8,
-          }}
-        >
-          <div style={{ fontWeight: 700, color: "#2366b3", marginBottom: 8 }}>
-            Exporter & Bank
-          </div>
-          {exporterInputField()}
-          {branchSelectField()}
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 11, color: "#666", marginBottom: 1 }}>Exporter Type</div>
-            <AutocompleteSelect
-              name="exporter_type"
-              value={getVal("exporter_type")}
-              options={[
-                { value: "", label: "-- SELECT --" },
-                {
-                  value: "MANUFACTURER EXPORTER",
-                  label: "MANUFACTURER EXPORTER",
-                },
-                { value: "MERCHANT EXPORTER", label: "MERCHANT EXPORTER" },
-                { value: "MARCHANT EXPORTER", label: "MARCHANT EXPORTER" },
-                { value: "SERVICE EXPORTER", label: "SERVICE EXPORTER" },
-              ]}
-              onChange={(e) => {
-                const val = e.target.value;
-                handleFieldChange("exporter_type", val);
-                updateDirectoryExporterType(getVal("exporter"), val);
-              }}
-              placeholder="Select Exporter Type"
-            />
-          </div>
-          {field("Address", "exporter_address")}
-          <div style={{ display: "flex", gap: 10, width: "100%" }}>
-            <div style={{ flex: 1, marginBottom: 8 }}>
-              <div style={{ fontSize: 11, color: "#666", marginBottom: 1 }}>Branch S/No</div>
-              <input
-                name="branch_sno"
-                value={getVal("branch_sno")}
-                onChange={(e) => {
-                  const val = toUpperVal(e);
-                  handleFieldChange("branch_sno", val);
-
-                  // Auto sync dropdown index
-                  if (exporterDetails && exporterDetails.branchInfo) {
-                    const matchIdx = exporterDetails.branchInfo.findIndex(b => toUpper(b.branchCode) === val);
-                    if (matchIdx !== -1 && matchIdx !== formik.values.branch_index) {
-                      handleFieldChange("branch_index", matchIdx);
-                    }
-                  }
-                }}
-                style={{
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 4,
-                  fontSize: 11,
-                  padding: "2px 7px",
-                  height: 24,
-                  width: "100%",
-                  boxSizing: "border-box",
-                  background: "#fafaffff",
-                  outline: "none",
-                  fontWeight: 500,
-                }}
-              />
-            </div>
-            {field("State", "state")}
-            {field("IE Code No", "ieCode")}
-          </div>
-          {field("GSTIN", "gstin")}
-
-          <div
-            style={{
-              fontWeight: 700,
-              color: "#a37035",
-              margin: "10px 0 8px 0",
-            }}
-          >
-            Bank Details
-          </div>
-          {bankSelectField()}
-          {bankInputField()}
-          <div style={{ display: "flex", gap: 10 }}>
-            {field("A/C Number", "ac_number")}
-            {field("AD Code", "ad_code")}
-          </div>
-
-          {/* Add the isBuyer checkbox here - right after the GSTIN field */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              margin: "8px 0 12px 0",
-            }}
-          >
-            <input
-              type="checkbox"
-              id="isBuyer"
-              name="isBuyer"
-              checked={formik.values.isBuyer || false}
-              onChange={handleIsBuyerToggle}
-              style={{
-                marginRight: "6px",
-                cursor: "pointer",
-              }}
-            />
-            <label
-              htmlFor="isBuyer"
-              style={{
-                fontSize: "13px",
-                color: "#555",
-                cursor: "pointer",
-                userSelect: "none",
-              }}
-            >
-              Buyer Other Than Consignee
-            </label>
-          </div>
-        </div>
-        {/* Right: Reference Details */}
-        <div
-          style={{
-            flex: 1,
-            minWidth: 295,
-            background: "#fff",
-            borderRadius: 6,
-            border: "1px solid #e3e7ee",
-            padding: 14,
-            marginBottom: 8,
-          }}
-        >
-          <div style={{ fontWeight: 700, color: "#2366b3", marginBottom: 8 }}>
-            Reference Details
-          </div>
-          {field("Exporter Ref No.", "exporter_ref_no")}
-          <div style={{ display: "flex", gap: 10 }}>
-            {field("SB Number", "sb_no")}
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, color: "#666" }}>SB Date</div>
-              <DateInput
-                name="sb_date"
-                value={formik.values["sb_date"] || ""}
-                onChange={(e) => handleFieldChange("sb_date", e.target.value)}
-                style={{
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 4,
-                  fontSize: 11,
-                  padding: "2px 7px",
-                  height: 24,
-                  width: "100%",
-                  marginBottom: 3,
-                  boxSizing: "border-box",
-                  background: "#fafaffff",
-                  outline: "none",
-                  fontWeight: 500,
-                }}
-              />
-            </div>
-          </div>
-          {field("RBI App. No & Date", "rbi_app_no")}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <label style={{ fontSize: 11, color: "#666", marginBottom: 0 }}>
-              <input
-                type="checkbox"
-                checked={formik.values["gr_waived"] || false}
-                onChange={(e) =>
-                  handleFieldChange("gr_waived", e.target.checked)
-                }
-                style={{ marginRight: 6 }}
-              />
-              GR Waived
-            </label>
-            {field("GR No", "gr_no")}
-          </div>
-          {field("RBI Waiver No", "rbi_waiver_no")}
-        </div>
-      </div>
-      {/* Consignee - Below both sections in a row */}
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 6,
-          border: "1px solid #dfe6ee",
-          padding: "10px 14px",
-          marginTop: 10,
+          background: "#fafaffff",
+          borderRadius: 8,
+          padding: 15,
+          border: "1.5px solid #e2e8f0",
+          margin: "10px 0",
         }}
       >
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+          {/* Left: Exporter & Bank */}
+          <div
+            style={{
+              flex: 1,
+              minWidth: 295,
+              background: "#fff",
+              borderRadius: 6,
+              border: "1px solid #e3e7ee",
+              padding: 14,
+              marginBottom: 8,
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "#2366b3", marginBottom: 8 }}>
+              Exporter & Bank
+            </div>
+            {exporterInputField()}
+            {branchSelectField()}
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: "#666", marginBottom: 1 }}>Exporter Type</div>
+              <AutocompleteSelect
+                name="exporter_type"
+                value={getVal("exporter_type")}
+                options={[
+                  { value: "", label: "-- SELECT --" },
+                  {
+                    value: "MANUFACTURER EXPORTER",
+                    label: "MANUFACTURER EXPORTER",
+                  },
+                  { value: "MERCHANT EXPORTER", label: "MERCHANT EXPORTER" },
+                  { value: "MARCHANT EXPORTER", label: "MARCHANT EXPORTER" },
+                  { value: "SERVICE EXPORTER", label: "SERVICE EXPORTER" },
+                ]}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  handleFieldChange("exporter_type", val);
+                  updateDirectoryExporterType(getVal("exporter"), val);
+                }}
+                placeholder="Select Exporter Type"
+              />
+            </div>
+            {field("Address", "exporter_address")}
+            <div style={{ display: "flex", gap: 10, width: "100%" }}>
+              <div style={{ flex: 1, marginBottom: 8 }}>
+                <div style={{ fontSize: 11, color: "#666", marginBottom: 1 }}>Branch S/No</div>
+                <input
+                  name="branch_sno"
+                  value={getVal("branch_sno")}
+                  onChange={(e) => {
+                    const val = toUpperVal(e);
+                    handleFieldChange("branch_sno", val);
+
+                    // Auto sync dropdown index
+                    if (exporterDetails && exporterDetails.branchInfo) {
+                      const matchIdx = exporterDetails.branchInfo.findIndex(b => toUpper(b.branchCode) === val);
+                      if (matchIdx !== -1 && matchIdx !== formik.values.branch_index) {
+                        handleFieldChange("branch_index", matchIdx);
+                      }
+                    }
+                  }}
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                    fontSize: 11,
+                    padding: "2px 7px",
+                    height: 24,
+                    width: "100%",
+                    boxSizing: "border-box",
+                    background: "#fafaffff",
+                    outline: "none",
+                    fontWeight: 500,
+                  }}
+                />
+              </div>
+              {field("State", "state")}
+              {field("IE Code No", "ieCode")}
+            </div>
+            {field("GSTIN", "gstin")}
+
+            <div
+              style={{
+                fontWeight: 700,
+                color: "#a37035",
+                margin: "10px 0 8px 0",
+              }}
+            >
+              Bank Details
+            </div>
+            {bankSelectField()}
+            {bankInputField()}
+            <div style={{ display: "flex", gap: 10 }}>
+              {field("A/C Number", "ac_number")}
+              {field("AD Code", "ad_code")}
+            </div>
+
+            {/* Add the isBuyer checkbox here - right after the GSTIN field */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                margin: "8px 0 12px 0",
+              }}
+            >
+              <input
+                type="checkbox"
+                id="isBuyer"
+                name="isBuyer"
+                checked={formik.values.isBuyer || false}
+                onChange={handleIsBuyerToggle}
+                style={{
+                  marginRight: "6px",
+                  cursor: "pointer",
+                }}
+              />
+              <label
+                htmlFor="isBuyer"
+                style={{
+                  fontSize: "13px",
+                  color: "#555",
+                  cursor: "pointer",
+                  userSelect: "none",
+                }}
+              >
+                Buyer Other Than Consignee
+              </label>
+            </div>
+          </div>
+          {/* Right: Reference Details */}
+          <div
+            style={{
+              flex: 1,
+              minWidth: 295,
+              background: "#fff",
+              borderRadius: 6,
+              border: "1px solid #e3e7ee",
+              padding: 14,
+              marginBottom: 8,
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "#2366b3", marginBottom: 8 }}>
+              Reference Details
+            </div>
+            {field("Exporter Ref No.", "exporter_ref_no")}
+            <div style={{ display: "flex", gap: 10 }}>
+              {field("SB Number", "sb_no")}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: "#666" }}>SB Date</div>
+                <DateInput
+                  name="sb_date"
+                  value={formik.values["sb_date"] || ""}
+                  onChange={(e) => handleFieldChange("sb_date", e.target.value)}
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                    fontSize: 11,
+                    padding: "2px 7px",
+                    height: 24,
+                    width: "100%",
+                    marginBottom: 3,
+                    boxSizing: "border-box",
+                    background: "#fafaffff",
+                    outline: "none",
+                    fontWeight: 500,
+                  }}
+                />
+              </div>
+            </div>
+            {field("RBI App. No & Date", "rbi_app_no")}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <label style={{ fontSize: 11, color: "#666", marginBottom: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={formik.values["gr_waived"] || false}
+                  onChange={(e) =>
+                    handleFieldChange("gr_waived", e.target.checked)
+                  }
+                  style={{ marginRight: 6 }}
+                />
+                GR Waived
+              </label>
+              {field("GR No", "gr_no")}
+            </div>
+            {field("RBI Waiver No", "rbi_waiver_no")}
+          </div>
+        </div>
+        {/* Consignee - Below both sections in a row */}
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 5,
+            background: "#fff",
+            borderRadius: 6,
+            border: "1px solid #dfe6ee",
+            padding: "10px 14px",
+            marginTop: 10,
           }}
         >
-          <div style={{ fontWeight: 600, fontSize: 14, color: "#14492c" }}>
-            Consignee Details
-          </div>
-          <button
-            onClick={handleAddConsignee}
+          <div
             style={{
-              background: "#e7f8e7",
-              color: "#0a7921",
-              border: "1px solid #8ddd8d",
-              borderRadius: 4,
-              padding: "2px 10px",
-              fontWeight: 600,
-              fontSize: 11,
-              cursor: "pointer",
-              height: 22,
               display: "flex",
               alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 5,
             }}
-            type="button"
           >
-            + New
-          </button>
-        </div>
-        {consignees.map((consignee, idx) => (
-          <div key={idx} style={{ display: "flex", gap: 10, marginBottom: 5 }}>
-            <div style={{ flex: 1, position: "relative" }} ref={menuRef}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: "#14492c" }}>
+              Consignee Details
+            </div>
+            <button
+              onClick={handleAddConsignee}
+              style={{
+                background: "#e7f8e7",
+                color: "#0a7921",
+                border: "1px solid #8ddd8d",
+                borderRadius: 4,
+                padding: "2px 10px",
+                fontWeight: 600,
+                fontSize: 11,
+                cursor: "pointer",
+                height: 22,
+                display: "flex",
+                alignItems: "center",
+              }}
+              type="button"
+            >
+              + New
+            </button>
+          </div>
+          {consignees.map((consignee, idx) => (
+            <div key={idx} style={{ display: "flex", gap: 10, marginBottom: 5 }}>
+              <div style={{ flex: 1, position: "relative" }} ref={menuRef}>
+                <input
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                    fontSize: 11,
+                    padding: "2px 7px",
+                    width: "100%",
+                    boxSizing: "border-box",
+                    height: 24,
+                    background: "#fafaffff",
+                    outline: "none",
+                    fontWeight: 500,
+                  }}
+                  value={toUpper(consignee.consignee_name)}
+                  placeholder="Consignee Name"
+                  onChange={(e) => handleConsigneeNameChange(idx, e)}
+                  onFocus={() => {
+                    setFilteredConsignees(consigneeList);
+                    setActiveIdx(idx);
+                    setShowMenu(true);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Tab") {
+                      if (activeIdx === idx && showMenu) {
+                        if (
+                          keyboardActive >= 0 &&
+                          filteredConsignees[keyboardActive]
+                        ) {
+                          handleSelectConsignee(
+                            idx,
+                            filteredConsignees[keyboardActive],
+                          );
+                        } else if (filteredConsignees.length === 1) {
+                          handleSelectConsignee(idx, filteredConsignees[0]);
+                        } else {
+                          setShowMenu(false);
+                        }
+                      }
+                      const val = toUpper(consignee.consignee_name).trim();
+                      if (val !== toUpper(consignee.consignee_name)) {
+                        handleConsigneeChange(idx, "consignee_name", val);
+                      }
+                      return;
+                    }
+
+                    if (activeIdx !== idx || !showMenu) return;
+                    if (e.key === "ArrowDown") {
+                      setKeyboardActive((a) =>
+                        Math.min(filteredConsignees.length - 1, a + 1),
+                      );
+                    } else if (e.key === "ArrowUp") {
+                      setKeyboardActive((a) => Math.max(0, a - 1));
+                    } else if (e.key === "Enter" && keyboardActive >= 0) {
+                      e.preventDefault();
+                      handleSelectConsignee(
+                        idx,
+                        filteredConsignees[keyboardActive],
+                      );
+                    } else if (e.key === "Escape") {
+                      setShowMenu(false);
+                    }
+                  }}
+                />
+                {showMenu &&
+                  activeIdx === idx &&
+                  filteredConsignees.length > 0 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        right: 0,
+                        top: "100%",
+                        background: "#fff",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 3,
+                        zIndex: 20,
+                        maxHeight: 150,
+                        overflow: "auto",
+                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                      }}
+                    >
+                      {filteredConsignees.map((c, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            padding: "4px 8px",
+                            cursor: "pointer",
+                            fontSize: 12,
+                            background: keyboardActive === i ? "#e5edff" : "#fff",
+                            fontWeight: keyboardActive === i ? 600 : 400,
+                          }}
+                          onMouseDown={() => handleSelectConsignee(idx, c)}
+                          onMouseEnter={() => setKeyboardActive(i)}
+                        >
+                          {toUpper(c.consignee_name)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+              </div>
               <input
                 style={{
                   border: "1px solid #cbd5e1",
                   borderRadius: 4,
                   fontSize: 11,
                   padding: "2px 7px",
-                  width: "100%",
-                  boxSizing: "border-box",
+                  flex: 2,
                   height: 24,
+                  width: "100%",
                   background: "#fafaffff",
                   outline: "none",
                   fontWeight: 500,
+                  boxSizing: "border-box",
                 }}
-                value={toUpper(consignee.consignee_name)}
-                placeholder="Consignee Name"
-                onChange={(e) => handleConsigneeNameChange(idx, e)}
-                onFocus={() => {
-                  setFilteredConsignees(consigneeList);
-                  setActiveIdx(idx);
-                  setShowMenu(true);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Tab") {
-                    if (activeIdx === idx && showMenu) {
-                      if (
-                        keyboardActive >= 0 &&
-                        filteredConsignees[keyboardActive]
-                      ) {
-                        handleSelectConsignee(
-                          idx,
-                          filteredConsignees[keyboardActive],
-                        );
-                      } else if (filteredConsignees.length === 1) {
-                        handleSelectConsignee(idx, filteredConsignees[0]);
-                      } else {
-                        setShowMenu(false);
-                      }
-                    }
-                    const val = toUpper(consignee.consignee_name).trim();
-                    if (val !== toUpper(consignee.consignee_name)) {
-                      handleConsigneeChange(idx, "consignee_name", val);
-                    }
-                    return;
-                  }
-
-                  if (activeIdx !== idx || !showMenu) return;
-                  if (e.key === "ArrowDown") {
-                    setKeyboardActive((a) =>
-                      Math.min(filteredConsignees.length - 1, a + 1),
-                    );
-                  } else if (e.key === "ArrowUp") {
-                    setKeyboardActive((a) => Math.max(0, a - 1));
-                  } else if (e.key === "Enter" && keyboardActive >= 0) {
-                    e.preventDefault();
-                    handleSelectConsignee(
-                      idx,
-                      filteredConsignees[keyboardActive],
-                    );
-                  } else if (e.key === "Escape") {
-                    setShowMenu(false);
-                  }
-                }}
+                value={toUpper(consignee.consignee_address)}
+                placeholder="Consignee Address"
+                onChange={(e) =>
+                  handleConsigneeChange(idx, "consignee_address", toUpperVal(e))
+                }
               />
-              {showMenu &&
-                activeIdx === idx &&
-                filteredConsignees.length > 0 && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      right: 0,
-                      top: "100%",
-                      background: "#fff",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: 3,
-                      zIndex: 20,
-                      maxHeight: 150,
-                      overflow: "auto",
-                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                    }}
-                  >
-                    {filteredConsignees.map((c, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          padding: "4px 8px",
-                          cursor: "pointer",
-                          fontSize: 12,
-                          background: keyboardActive === i ? "#e5edff" : "#fff",
-                          fontWeight: keyboardActive === i ? 600 : 400,
-                        }}
-                        onMouseDown={() => handleSelectConsignee(idx, c)}
-                        onMouseEnter={() => setKeyboardActive(i)}
-                      >
-                        {toUpper(c.consignee_name)}
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <ConsigneeCountryAutocomplete
+                value={consignee.consignee_country || ""}
+                onChange={(val) =>
+                  handleConsigneeChange(idx, "consignee_country", val)
+                }
+              />
+              <button
+                type="button"
+                onClick={() => handleRemoveConsignee(idx)}
+                style={{
+                  background: "#ffeaea",
+                  border: "1px solid #ff5555",
+                  color: "#c40000",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                  fontSize: 18,
+                  width: 24,
+                  height: 24,
+                  padding: 0,
+                  marginLeft: 5,
+                }}
+                title="Remove consignee"
+              >
+                ×
+              </button>
             </div>
-            <input
-              style={{
-                border: "1px solid #cbd5e1",
-                borderRadius: 4,
-                fontSize: 11,
-                padding: "2px 7px",
-                flex: 2,
-                height: 24,
-                width: "100%",
-                background: "#fafaffff",
-                outline: "none",
-                fontWeight: 500,
-                boxSizing: "border-box",
-              }}
-              value={toUpper(consignee.consignee_address)}
-              placeholder="Consignee Address"
-              onChange={(e) =>
-                handleConsigneeChange(idx, "consignee_address", toUpperVal(e))
-              }
-            />
-            <ConsigneeCountryAutocomplete
-              value={consignee.consignee_country || ""}
-              onChange={(val) =>
-                handleConsigneeChange(idx, "consignee_country", val)
-              }
-            />
-            <button
-              type="button"
-              onClick={() => handleRemoveConsignee(idx)}
-              style={{
-                background: "#ffeaea",
-                border: "1px solid #ff5555",
-                color: "#c40000",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontWeight: 700,
-                fontSize: 18,
-                width: 24,
-                height: 24,
-                padding: 0,
-                marginLeft: 5,
-              }}
-              title="Remove consignee"
-            >
-              ×
-            </button>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
     </fieldset>
   );
 };

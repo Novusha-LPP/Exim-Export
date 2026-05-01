@@ -24,7 +24,8 @@ const allModules = [
   "Freight Forwarding",
   "Directories",
   "Open Points",
-  "Export - Reports"
+  "Export - Reports",
+  "Pulse"
 ];
 
 function not(a, b) {

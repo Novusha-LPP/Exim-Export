@@ -11,4 +11,5 @@ export const moduleCategories = {
   "Export - Audit Trail": "Export",
   "Open Points": "Management",
   "Export - Reports": "Export",
+  "Pulse": "Export",
 };

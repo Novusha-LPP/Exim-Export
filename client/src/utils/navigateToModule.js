@@ -42,6 +42,8 @@ export const navigateToModule = (module, navigate) => {
       return navigate("/screen6");
     case "Open Points":
       return navigate("/open-points");
+    case "Pulse":
+      return navigate("/pulse/combined");
     default:
       return navigate("/home");
   }

@@ -175,9 +175,16 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
       const qUnit = (current.qtyUnit || "").toUpperCase();
       const sUnit = (current.socunit || "").toUpperCase();
 
+      if (field === "socunit") {
+        current.isSqcUnitManual = true;
+      }
+      if (field === "socQuantity") {
+        current.isSqcQuantityManual = true;
+      }
+
       if (field === "quantity" || field === "qtyUnit" || field === "socunit") {
         const val = parseFloat(current.quantity);
-        if (!isNaN(val)) {
+        if (!isNaN(val) && !current.isSqcQuantityManual) {
           if (qUnit === sUnit && qUnit !== "") {
             current.socQuantity = formatSocQty(val);
           } else if (qUnit === "MTS" && sUnit === "KGS") {
@@ -258,9 +265,10 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
         if (!matched) {
           matched = unitCodes.find((c) => c.startsWith(u) || u.startsWith(c));
         }
-        if (matched) {
+        // Only set default unit if not manually overridden
+        if (matched && !current.isSqcUnitManual) {
           current.socunit = matched;
-        } else {
+        } else if (!current.isSqcUnitManual) {
           current.socunit = u; // fallback
         }
 
