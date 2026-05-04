@@ -149,7 +149,8 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     "CIN": party?.cin || party?.CIN || '',
                     "Place of Supply": branch.state || branch.State || '',
                     "Credit Terms": party?.credit_terms || party?.CreditTerms || '',
-                    "Description of Services": initialData.chargeHead || '',
+                    "Description of Services": initialData.partyName ? `NEW ${initialData.partyName}` : '',
+                    "Charge Heading": initialData.chargeHead || '',
                     "SAC": initialData.cthNo || '',
                     "Taxable Value": initialData.basicAmount ? Number(initialData.basicAmount).toFixed(2) : (initialData.amount ? Number(initialData.amount).toFixed(2) : ''),
                     "GST%": (initialData.gstAmount > 0) ? (initialData.gstRate || '18') : '',
@@ -351,6 +352,10 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                             <div className="ep-row">
                                 <span className="ep-label">Description of Services</span>
                                 <input type="text" name="Description of Services" className="ep-desc-input" value={formData["Description of Services"]} onChange={handleInputChange} />
+                            </div>
+                            <div className="ep-row">
+                                <span className="ep-label">Charge Heading</span>
+                                <input type="text" name="Charge Heading" className="ep-desc-input" value={formData["Charge Heading"]} onChange={handleInputChange} />
                             </div>
                             <div className="ep-row">
                                 <span className="ep-label">SAC</span>
