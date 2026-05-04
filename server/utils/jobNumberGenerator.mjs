@@ -48,8 +48,8 @@ async function initializeCounter(branch, year) {
             baseBranch = branch.replace('-SEA', '');
         }
 
-        const regexPrefix = isAirCounter ? `^${baseBranch}/AIR/EXP/`
-            : isSeaCounter ? `^${baseBranch}/SEA/EXP/`
+        const regexPrefix = isAirCounter ? `^${baseBranch}/EXP/AIR/`
+            : isSeaCounter ? `^${baseBranch}/EXP/SEA/`
                 : `^${baseBranch}/EXP/`;
 
         // Find highest sequence in existing jobs
@@ -66,7 +66,7 @@ async function initializeCounter(branch, year) {
             if (!job.job_no) continue;
             const parts = job.job_no.split('/');
             // Look for the numeric part in the middle (index 1 usually, but allow search)
-            // Usually BRANCH/SEQ/YEAR -> index 1
+            // Usually BRANCH/EXP/MODE/SEQ/YEAR -> index 3
             if (parts.length >= 3) {
                 const seqPart = parts.find(p => /^\d{3,}$/.test(p)); // heuristic: at least 3 digits
                 if (seqPart) {

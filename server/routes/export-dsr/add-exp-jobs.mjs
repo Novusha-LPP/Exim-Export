@@ -58,9 +58,9 @@ router.post(
         const isSea = (transportMode && transportMode.toUpperCase() === 'SEA') || (req.body.consignmentType && ['FCL', 'LCL'].includes(req.body.consignmentType?.toUpperCase() || '')) || !isAir;
 
         if (isAir) {
-          newJobNo = `${branch_code}/AIR/EXP/${sequenceStr}/${yearFormat}`;
+          newJobNo = `${branch_code}/EXP/AIR/${sequenceStr}/${yearFormat}`;
         } else if (isSea) {
-          newJobNo = `${branch_code}/SEA/EXP/${sequenceStr}/${yearFormat}`;
+          newJobNo = `${branch_code}/EXP/SEA/${sequenceStr}/${yearFormat}`;
         } else {
           newJobNo = `${branch_code}/EXP/${sequenceStr}/${yearFormat}`;
         }
@@ -97,9 +97,9 @@ router.post(
         const nextSequenceStr = await getNextJobSequence(branchSeqArg, yearFormat);
 
         if (isAir) {
-          newJobNo = `${branch_code}/AIR/EXP/${nextSequenceStr}/${yearFormat}`;
+          newJobNo = `${branch_code}/EXP/AIR/${nextSequenceStr}/${yearFormat}`;
         } else if (isSea) {
-          newJobNo = `${branch_code}/SEA/EXP/${nextSequenceStr}/${yearFormat}`;
+          newJobNo = `${branch_code}/EXP/SEA/${nextSequenceStr}/${yearFormat}`;
         } else {
           newJobNo = `${branch_code}/EXP/${nextSequenceStr}/${yearFormat}`;
         }
@@ -217,9 +217,9 @@ router.post(
         const isSea = (transportMode && transportMode.toUpperCase() === 'SEA') || (req.body.consignmentType && ['FCL', 'LCL'].includes(req.body.consignmentType?.toUpperCase() || '')) || !isAir;
 
         if (isAir) {
-          newJobNo = `${branch_code}/AIR/EXP/${sequenceStr}/${year}`;
+          newJobNo = `${branch_code}/EXP/AIR/${sequenceStr}/${year}`;
         } else if (isSea) {
-          newJobNo = `${branch_code}/SEA/EXP/${sequenceStr}/${year}`;
+          newJobNo = `${branch_code}/EXP/SEA/${sequenceStr}/${year}`;
         } else {
           newJobNo = `${branch_code}/EXP/${sequenceStr}/${year}`;
         }
@@ -249,9 +249,9 @@ router.post(
         const nextSequenceStr = await getNextJobSequence(branchSeqArg, year);
 
         if (isAir) {
-          newJobNo = `${branch_code}/AIR/EXP/${nextSequenceStr}/${year}`;
+          newJobNo = `${branch_code}/EXP/AIR/${nextSequenceStr}/${year}`;
         } else if (isSea) {
-          newJobNo = `${branch_code}/SEA/EXP/${nextSequenceStr}/${year}`;
+          newJobNo = `${branch_code}/EXP/SEA/${nextSequenceStr}/${year}`;
         } else {
           newJobNo = `${branch_code}/EXP/${nextSequenceStr}/${year}`;
         }

@@ -21,7 +21,7 @@ async function sync() {
             const isSea = branch.endsWith('-SEA');
             const baseBranch = branch.replace(/-AIR|-SEA/i, '');
 
-            const regexPrefix = isAir ? `^${baseBranch}/AIR/EXP/` : `^${baseBranch}/SEA/EXP/`;
+            const regexPrefix = isAir ? `^${baseBranch}/EXP/AIR/` : `^${baseBranch}/EXP/SEA/`;
 
             // Find the highest sequence number for this branch/year
             const jobs = await ExJobModel.find({

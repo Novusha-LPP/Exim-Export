@@ -569,6 +569,8 @@ const LogisysEditableHeader = ({
           const dbkSrNo = findValRow(["dbk sr no", "dbksrno", "dbksrnc", "dbk_sr"]);
           const dbkQty = findValRow(["dbk qty", "dbkqty"]);
           const price = findValRow(["price", "rate", "unitprice"]);
+          const per = findValRow(["per", "per_qty"]);
+          const pUnit = findValRow(["per unit", "price unit", "per_unit", "price_unit"]);
 
           // Calculate amount if missing but price and qty are available
           let finalAmount = String(amt || "0");
@@ -589,6 +591,8 @@ const LogisysEditableHeader = ({
             socQuantity: String(sqcQty || "0"),
             socunit: String(sqcUnit || "").toUpperCase(),
             unitPrice: String(price || "0"),
+            per: String(per || "1"),
+            priceUnit: String(pUnit || unit || "NOS").toUpperCase(),
             amount: finalAmount,
             eximCode: normalizeEximScheme(exim),
             ptaFtaInfo: (() => {
@@ -633,8 +637,8 @@ const LogisysEditableHeader = ({
                 serialNumber: "1",
                 dbkitem: !!dbkSrNo,
                 dbkSrNo: String(dbkSrNo || ""),
-                quantity: parseFloat(dbkQty || sqcQty || qty || 0),
-                unit: String(sqcUnit || unit || ""),
+                quantity: parseFloat(dbkQty || qty || sqcQty || 0) || 0,
+                unit: String(unit || sqcUnit || "").toUpperCase(),
                 dbkUnder: "Actual",
                 dbkDescription: "",
                 dbkRate: 0,

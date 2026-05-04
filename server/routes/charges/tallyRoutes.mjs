@@ -128,10 +128,12 @@ router.get("/next-sequence", authApiKey, async (req, res) => {
         const nextIndex = (count + 1).toString().padStart(2, '0');
         let fullNo = `${prefix}/${nextIndex}/${jobNo}`;
 
-        // If jobNo has 5 parts (BRANCH/MODE/EXP/SERIAL/YEAR), rearrange for PB/R
-        // Requested: PB/01/AMD/EXP/SEA/00147/26-27
         const parts = jobNo.split('/');
-        if (parts.length === 5 && parts[2].toUpperCase() === 'EXP') {
+        if (parts.length === 5 && parts[1].toUpperCase() === 'EXP') {
+            // Already in BRANCH/EXP/MODE/SERIAL/YEAR format
+            fullNo = `${prefix}/${nextIndex}/${jobNo}`.toUpperCase();
+        } else if (parts.length === 5 && parts[2].toUpperCase() === 'EXP') {
+            // In OLD format: BRANCH/MODE/EXP/SERIAL/YEAR
             fullNo = `${prefix}/${nextIndex}/${parts[0]}/${parts[2]}/${parts[1]}/${parts[3]}/${parts[4]}`.toUpperCase();
         }
 
