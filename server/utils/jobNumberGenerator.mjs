@@ -48,9 +48,9 @@ async function initializeCounter(branch, year) {
             baseBranch = branch.replace('-SEA', '');
         }
 
-        const regexPrefix = isAirCounter ? `^${baseBranch}/AIR/`
-            : isSeaCounter ? `^${baseBranch}/SEA/`
-                : `^${baseBranch}/[^/]+/`;
+        const regexPrefix = isAirCounter ? `^${baseBranch}/AIR/EXP/`
+            : isSeaCounter ? `^${baseBranch}/SEA/EXP/`
+                : `^${baseBranch}/EXP/`;
 
         // Find highest sequence in existing jobs
         const filter = {
