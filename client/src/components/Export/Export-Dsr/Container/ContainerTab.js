@@ -173,6 +173,7 @@ function ContainerTab({ formik, isEditable = true }) {
         weighmentDateTime: "",
         weighmentVehicleNo: "",
         weighmentTareWeight: 0, // This is Cargo Tare Wt in DB
+        weighmentTransporterName: "",
         weighmentAddress: "",
         weighmentImages: [],
       }]);
@@ -321,6 +322,7 @@ function ContainerTab({ formik, isEditable = true }) {
       weighmentDateTime: "",
       weighmentVehicleNo: "",
       weighmentTareWeight: 0,
+      weighmentTransporterName: "",
       weighmentAddress: "",
       weighmentImages: [],
     });

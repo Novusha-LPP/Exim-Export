@@ -58,11 +58,11 @@ router.post(
         const isSea = (transportMode && transportMode.toUpperCase() === 'SEA') || (req.body.consignmentType && ['FCL', 'LCL'].includes(req.body.consignmentType?.toUpperCase() || '')) || !isAir;
 
         if (isAir) {
-          newJobNo = `${branch_code}/AIR/${sequenceStr}/${yearFormat}`;
+          newJobNo = `${branch_code}/AIR/EXP/${sequenceStr}/${yearFormat}`;
         } else if (isSea) {
-          newJobNo = `${branch_code}/SEA/${sequenceStr}/${yearFormat}`;
+          newJobNo = `${branch_code}/SEA/EXP/${sequenceStr}/${yearFormat}`;
         } else {
-          newJobNo = `${branch_code}/${sequenceStr}/${yearFormat}`;
+          newJobNo = `${branch_code}/EXP/${sequenceStr}/${yearFormat}`;
         }
 
         // Check for duplicates (only within the same job type)
@@ -97,11 +97,11 @@ router.post(
         const nextSequenceStr = await getNextJobSequence(branchSeqArg, yearFormat);
 
         if (isAir) {
-          newJobNo = `${branch_code}/AIR/${nextSequenceStr}/${yearFormat}`;
+          newJobNo = `${branch_code}/AIR/EXP/${nextSequenceStr}/${yearFormat}`;
         } else if (isSea) {
-          newJobNo = `${branch_code}/SEA/${nextSequenceStr}/${yearFormat}`;
+          newJobNo = `${branch_code}/SEA/EXP/${nextSequenceStr}/${yearFormat}`;
         } else {
-          newJobNo = `${branch_code}/${nextSequenceStr}/${yearFormat}`;
+          newJobNo = `${branch_code}/EXP/${nextSequenceStr}/${yearFormat}`;
         }
       }
 
@@ -217,11 +217,11 @@ router.post(
         const isSea = (transportMode && transportMode.toUpperCase() === 'SEA') || (req.body.consignmentType && ['FCL', 'LCL'].includes(req.body.consignmentType?.toUpperCase() || '')) || !isAir;
 
         if (isAir) {
-          newJobNo = `${branch_code}/AIR/${sequenceStr}/${year}`;
+          newJobNo = `${branch_code}/AIR/EXP/${sequenceStr}/${year}`;
         } else if (isSea) {
-          newJobNo = `${branch_code}/SEA/${sequenceStr}/${year}`;
+          newJobNo = `${branch_code}/SEA/EXP/${sequenceStr}/${year}`;
         } else {
-          newJobNo = `${branch_code}/${sequenceStr}/${year}`;
+          newJobNo = `${branch_code}/EXP/${sequenceStr}/${year}`;
         }
 
         const existingJob = await ExportJobModel.findOne({
@@ -249,11 +249,11 @@ router.post(
         const nextSequenceStr = await getNextJobSequence(branchSeqArg, year);
 
         if (isAir) {
-          newJobNo = `${branch_code}/AIR/${nextSequenceStr}/${year}`;
+          newJobNo = `${branch_code}/AIR/EXP/${nextSequenceStr}/${year}`;
         } else if (isSea) {
-          newJobNo = `${branch_code}/SEA/${nextSequenceStr}/${year}`;
+          newJobNo = `${branch_code}/SEA/EXP/${nextSequenceStr}/${year}`;
         } else {
-          newJobNo = `${branch_code}/${nextSequenceStr}/${year}`;
+          newJobNo = `${branch_code}/EXP/${nextSequenceStr}/${year}`;
         }
       }
 

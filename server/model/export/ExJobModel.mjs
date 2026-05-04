@@ -452,6 +452,7 @@ const containerDetailsSchema = new Schema(
     images: [String],
     // Weighment Details
     weighBridgeName: { type: String, trim: true },
+    weighmentTransporterName: { type: String, trim: true },
     weighmentRegNo: { type: String, trim: true },
     weighmentDateTime: { type: String, trim: true },
     weighmentVehicleNo: { type: String, trim: true },
@@ -1215,12 +1216,19 @@ exportJobSchema.pre("save", function (next) {
   const op0Status = (this.operations && this.operations[0] && this.operations[0].statusDetails && this.operations[0].statusDetails[0]);
   const isAirJob = (this.job_no && String(this.job_no).toUpperCase().includes('/AIR/'));
 
+  const isFCL = this.consignmentType === "FCL";
+  const handoverDate = op0Status ? op0Status.handoverForwardingNoteDate : null;
+  const railOutDate = op0Status ? op0Status.railOutReachedDate : null;
+
   const syncMap = [
     { date: this.sb_date, name: "SB Filed" },
     { date: op0Status ? op0Status.leoDate : null, name: "L.E.O" },
-    { date: op0Status ? op0Status.handoverForwardingNoteDate : null, name: isAirJob ? "File Handover to IATA" : "Container HO" },
-    { date: op0Status ? op0Status.handoverForwardingNoteDate : null, name: "Billing Pending" },
-    { date: op0Status ? op0Status.railOutReachedDate : null, name: isAirJob ? "Departure" : "Rail Out" },
+    { date: handoverDate, name: isAirJob ? "File Handover to IATA" : "Container HO" },
+    { 
+      date: (isAirJob || !isFCL) ? handoverDate : (handoverDate && railOutDate ? handoverDate : null), 
+      name: "Billing Pending" 
+    },
+    { date: railOutDate, name: isAirJob ? "Departure" : "Rail Out" },
     { date: op0Status ? op0Status.billingDocsSentDt : null, name: "Billing Done" },
   ];
 

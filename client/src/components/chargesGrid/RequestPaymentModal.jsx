@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import './charges.css';
 import { UserContext } from '../../contexts/UserContext';
+import { formatDate } from '../../utils/dateUtils';
 
 const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplayNumber, jobYear, onSuccess }) => {
     const { user } = useContext(UserContext);
@@ -44,7 +45,11 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobDispl
                     setFormData(prev => ({ ...prev, apiKeyName: activeKey.name }));
                 }
             } catch (error) {
-                console.error("Error fetching API keys:", error);
+                if (error.response?.status === 403) {
+                    console.warn("User does not have admin permissions to fetch API keys. Skipping.");
+                } else {
+                    console.error("Error fetching API keys:", error);
+                }
             }
         };
         if (isOpen) fetchApiKeys();
@@ -80,20 +85,52 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobDispl
                     console.error("Error fetching sequence:", error);
                 }
 
-                const party = initialData.partyDetails;
+                let party = initialData.partyDetails;
+
+                // ALWAYS fetch directories and look up by name to ensure we have complete branch data
+                if (initialData.partyName) {
+                    try {
+                        const [slRes, supRes, orgRes, cfsRes, transRes, termRes] = await Promise.all([
+                            axios.get(`${import.meta.env.VITE_API_STRING}/get-shipping-lines`),
+                            axios.get(`${import.meta.env.VITE_API_STRING}/get-suppliers`),
+                            axios.get(`${import.meta.env.VITE_API_STRING}/organization`),
+                            axios.get(`${import.meta.env.VITE_API_STRING}/get-cfs-list`),
+                            axios.get(`${import.meta.env.VITE_API_STRING}/get-transporters`),
+                            axios.get(`${import.meta.env.VITE_API_STRING}/get-terminal-codes`)
+                        ]);
+                        const allParties = [
+                            ...(slRes.data || []),
+                            ...(supRes.data || []),
+                            ...(orgRes.data?.organizations || []),
+                            ...(cfsRes.data || []),
+                            ...(transRes.data || []),
+                            ...(termRes.data || [])
+                        ];
+                        const normalize = (str) => (str || '').toString().replace(/[^a-z0-9]/gi, '').toUpperCase();
+                        const targetNorm = normalize(initialData.partyName);
+                        const allMatches = allParties.filter(p => normalize(p.name || p.organization) === targetNorm);
+                        const freshParty = allMatches.find(p => (p.branches?.length > 0 && p.branches[0]?.gst) || (p.branchInfo?.length > 0 && p.branchInfo[0]?.gstNo)) || allMatches[0];
+                        if (freshParty) party = freshParty;
+                    } catch (err) {
+                        console.error("Party directory fetch failed:", err);
+                    }
+                }
+
                 const branchIndex = initialData.branchIndex || 0;
-                const branch = party?.branches?.[branchIndex];
-                const account = branch?.accounts?.[0] || {};
+                const branch = party?.branches?.[branchIndex] || party?.branchInfo?.[branchIndex];
+                const account = branch?.accounts?.[0] || party?.bankDetails?.[0] || {};
 
                 setFormData(prev => ({
                     ...prev,
                     "Request No": finalRequestNo,
+                    "Request Date": formatDate(initialData.requestDate || new Date().toISOString(), 'yyyy-MM-dd'),
                     "Payment To": initialData.partyName || '',
                     "Amount": initialData.netPayable ? Math.round(initialData.netPayable) : '',
                     "Against Bill": initialData.chargeHead || '',
-                    "Account No": account.accountNo || '',
-                    "Bank Name": account.bankName || '',
-                    "IFSC Code": account.ifsc || '',
+                    "Account No": account.accountNo || account.accountNumber || '',
+                    "Bank Name": account.bankName || account.entityName || '',
+                    "IFSC Code": account.ifsc || account.ifscCode || '',
+                    "Instrument Date": formatDate(initialData.instrumentDate, 'yyyy-MM-dd') || '',
                     "Status": '',
                     "jobNo": updatedJobNo,
                     "chargeRef": initialData.chargeId || '',
@@ -141,6 +178,8 @@ const RequestPaymentModal = ({ isOpen, onClose, initialData, jobNumber, jobDispl
             const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
             const { apiKeyName: _unused, ...tallyData } = {
                 ...formData,
+                "Request Date": formatDate(formData["Request Date"], 'dd-MM-yyyy'),
+                "Instrument Date": formatDate(formData["Instrument Date"], 'dd-MM-yyyy'),
                 "Requested By": user ? `${user.first_name} ${user.last_name}` : (localStorage.getItem("username") || "Unknown")
             };
 

@@ -926,6 +926,7 @@ router.get("/exports/:status?", async (req, res) => {
               $and: [
                 { consignmentType: { $ne: "LCL" } },
                 { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+                { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
                 {
                   $or: [
                     { "operations.statusDetails.railOutReachedDate": { $exists: true, $nin: [null, ""] } },
@@ -1863,6 +1864,10 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
     // Force Mongoose to run pre-save hook calculation for milestones and status
     updatedExportJob.markModified("milestones");
     updatedExportJob.markModified("detailedStatus");
+    updatedExportJob.markModified("vgm_done");
+    updatedExportJob.markModified("form13_done");
+    updatedExportJob.markModified("shipping_bill_done");
+    updatedExportJob.markModified("isBuyer");
     await updatedExportJob.save();
 
     res.json({
@@ -1913,6 +1918,10 @@ router.patch(
       // Force Pre-Save calculations for milestones and detailedStatus
       updatedExportJob.markModified("milestones");
       updatedExportJob.markModified("detailedStatus");
+      updatedExportJob.markModified("vgm_done");
+      updatedExportJob.markModified("form13_done");
+      updatedExportJob.markModified("shipping_bill_done");
+      updatedExportJob.markModified("isBuyer");
       await updatedExportJob.save();
 
       res.json({

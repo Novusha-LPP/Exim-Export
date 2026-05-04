@@ -7,6 +7,7 @@ import PaymentRequestModel from '../../model/export/paymentRequestModel.mjs';
 import ShippingLine from '../../model/Directorties/ShippingLine.js';
 import Directory from '../../model/Directorties/Directory.js';
 import Transporter from '../../model/Directorties/Transporter.js';
+import TerminalCode from '../../model/Directorties/TerminalCode.js';
 
 const router = express.Router();
 
@@ -128,7 +129,15 @@ router.delete('/charge-heads/:id', async (req, res) => {
 router.get('/get-shipping-lines', async (req, res) => {
     try {
         const items = await ShippingLine.find().sort({ name: 1 });
-        res.json(items);
+        const mapped = items.map(i => {
+            const obj = i.toObject();
+            return {
+                ...obj,
+                name: obj.name,
+                branches: obj.branches || []
+            };
+        });
+        res.json(mapped);
     } catch (error) {
         res.status(500).json([]);
     }
@@ -144,6 +153,7 @@ router.get('/get-suppliers', async (req, res) => {
             name: i.organization,
             city: i.branchInfo?.[0]?.city || i.address?.city || '',
             branches: i.branchInfo?.map(b => ({ ...b, branch_no: b.branchCode, branchName: b.branchName, city: b.city, gst: b.gstNo })) || [],
+            pan: i.registrationDetails?.panNo || '',
             tds_percent: i.accountCreditInfo?.tds_percent || 0
         }));
         res.json(mapped);
@@ -162,6 +172,7 @@ router.get('/organization', async (req, res) => {
             name: i.organization,
             city: i.branchInfo?.[0]?.city || i.address?.city || '',
             branches: i.branchInfo?.map(b => ({ ...b, branch_no: b.branchCode, branchName: b.branchName, city: b.city, gst: b.gstNo })) || [],
+            pan: i.registrationDetails?.panNo || '',
             tds_percent: i.accountCreditInfo?.tds_percent || 0
         }));
         res.json({ success: true, organizations: mapped });
@@ -180,6 +191,7 @@ router.get('/get-cfs-list', async (req, res) => {
             name: i.organization,
             city: i.branchInfo?.[0]?.city || i.address?.city || '',
             branches: i.branchInfo?.map(b => ({ ...b, branch_no: b.branchCode, branchName: b.branchName, city: b.city, gst: b.gstNo })) || [],
+            pan: i.registrationDetails?.panNo || '',
             tds_percent: i.accountCreditInfo?.tds_percent || 0
         }));
         res.json(mapped);
@@ -191,7 +203,32 @@ router.get('/get-cfs-list', async (req, res) => {
 router.get('/get-transporters', async (req, res) => {
     try {
         const items = await Transporter.find().sort({ name: 1 });
-        res.json(items);
+        const mapped = items.map(i => {
+            const obj = i.toObject();
+            return {
+                ...obj,
+                name: obj.name,
+                branches: obj.branches || []
+            };
+        });
+        res.json(mapped);
+    } catch (error) {
+        res.status(500).json([]);
+    }
+});
+
+router.get('/get-terminal-codes', async (req, res) => {
+    try {
+        const items = await TerminalCode.find().sort({ name: 1 });
+        const mapped = items.map(i => {
+            const obj = i.toObject();
+            return {
+                ...obj,
+                name: obj.name,
+                branches: obj.branches || []
+            };
+        });
+        res.json(mapped);
     } catch (error) {
         res.status(500).json([]);
     }
@@ -215,9 +252,10 @@ router.get('/charges', async (req, res) => {
     }
 });
 
-router.get('/get-payment-request-details/:requestNo', async (req, res) => {
+router.get('/get-payment-request-details/:requestNo(*)', async (req, res) => {
     try {
-        const { requestNo } = req.params;
+        const raw = req.params.requestNo || "";
+        const requestNo = decodeURIComponent(raw);
         if (!requestNo) {
             return res.status(400).json({ success: false, message: 'requestNo required' });
         }

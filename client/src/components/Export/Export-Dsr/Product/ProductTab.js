@@ -274,7 +274,7 @@ const ProductTab = ({ formik, directories, params, isEditable = true }) => {
               <Typography variant="body2" fontWeight="600">
                 Product
               </Typography>
-              <Box sx={{ display: "flex", gap: 0.5 }}>
+              <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mt: 0.5, maxHeight: "120px", overflowY: "auto", p: 0.5, border: products.length > 20 ? "1px solid #eee" : "none", borderRadius: 1 }}>
                 {products.map((product, index) => (
                   <Chip
                     key={index}
