@@ -42,6 +42,7 @@ const EditChargeModal = ({
   const [organizations, setOrganizations] = useState([]);
   const [cfsList, setCfsList] = useState([]);
   const [transporters, setTransporters] = useState([]);
+  const [terminalCodes, setTerminalCodes] = useState([]);
   const [activeDropdown, setActiveDropdown] = useState({ index: null, section: null }); // Track which row/section has open dropdown
   const [paymentDetailsAudit, setPaymentDetailsAudit] = useState({});
   const [rateMap, setRateMap] = useState({});
@@ -72,18 +73,20 @@ const EditChargeModal = ({
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
-        const [slRes, supRes, orgRes, cfsRes, transRes] = await Promise.all([
+        const [slRes, supRes, orgRes, cfsRes, transRes, termRes] = await Promise.all([
           axios.get(`${import.meta.env.VITE_API_STRING}/get-shipping-lines`),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-suppliers`),
           axios.get(`${import.meta.env.VITE_API_STRING}/organization`),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-cfs-list`),
-          axios.get(`${import.meta.env.VITE_API_STRING}/get-transporters`)
+          axios.get(`${import.meta.env.VITE_API_STRING}/get-transporters`),
+          axios.get(`${import.meta.env.VITE_API_STRING}/get-terminal-codes`)
         ]);
         setShippingLines(slRes.data);
         setSuppliers(supRes.data);
         setOrganizations(orgRes.data.organizations || []);
         setCfsList(cfsRes.data);
         setTransporters(transRes.data);
+        setTerminalCodes(termRes.data);
       } catch (error) {
         console.error("Error fetching master data:", error);
       }
@@ -185,6 +188,16 @@ const EditChargeModal = ({
   }, [isOpen, jobInvoiceDate]);
 
   if (!isOpen) return null;
+ 
+  const normalize = (str) => (str || '').toString().replace(/[^a-z0-9]/gi, '').toUpperCase();
+
+  // Smart party finder: when multiple entries share the same name across directories,
+  // prefer the one that has actual branch data (GST, address, etc.)
+  const smartFindParty = (list, name) => {
+    const targetNorm = normalize(name);
+    const allMatches = list.filter(p => normalize(p.name || p.organization) === targetNorm);
+    return allMatches.find(p => (p.branches?.length > 0 && p.branches[0]?.gst) || (p.branchInfo?.length > 0 && p.branchInfo[0]?.gstNo)) || allMatches[0];
+  };
 
   const extractFileName = (url) => {
     try {
@@ -220,8 +233,8 @@ const EditChargeModal = ({
 
       // Auto-populate TDS if selecting a shipping line or CFS or transporter
       if (section === 'cost' && field === 'partyName') {
-        const allParties = [...shippingLines, ...cfsList, ...transporters];
-        const matchedSL = allParties.find(sl => sl.name?.toUpperCase() === value?.toUpperCase());
+        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+        const matchedSL = smartFindParty(allParties, value);
         if (matchedSL && matchedSL.tds_percent > 0) {
           updated[index][section].isTds = true;
           updated[index][section].tdsPercent = matchedSL.tds_percent;
@@ -305,9 +318,10 @@ const EditChargeModal = ({
 
         // GST Split Logic
         const partyName = sectionRef.partyName;
-        const party = [...shippingLines, ...suppliers, ...cfsList, ...transporters].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
+        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+        const party = smartFindParty(allParties, partyName);
         const branchIndex = sectionRef.branchIndex || 0;
-        const gstin = party?.branches?.[branchIndex]?.gst || "";
+        const gstin = party?.branches?.[branchIndex]?.gst || party?.branchInfo?.[branchIndex]?.gstNo || "";
         
         if (gstin && gstin.startsWith("24")) {
           sectionRef.cgst = Number((gstAmount / 2).toFixed(2));
@@ -338,7 +352,7 @@ const EditChargeModal = ({
   };
 
   const handleSelectParty = (index, section, item) => {
-    handleFieldChange(index, 'partyName', item.name, section);
+    handleFieldChange(index, 'partyName', item.name || item.organization, section);
     // Initialize branch index and trigger recalc
     const updated = [...formData];
     updated[index][section].branchIndex = 0;
@@ -676,8 +690,8 @@ const EditChargeModal = ({
                                         .slice(0, 20)
                                         .map((item, idx) => (
                                           <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'revenue', item)}>
-                                            <span className="ep-item-name">{item.name}</span>
-                                            <span className="ep-item-sub">{item.city || 'Master Directory'}</span>
+                                            <span className="ep-item-name">{item.name || item.organization}</span>
+                                            <span className="ep-item-sub">{item.city || item.branches?.[0]?.city || item.branchInfo?.[0]?.city || 'Master Directory'}</span>
                                           </li>
                                         ))}
                                       {((row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines : 
@@ -708,7 +722,8 @@ const EditChargeModal = ({
                                 </button>
                               </div>
                               {(() => {
-                                const party = [...shippingLines, ...suppliers].find(p => p.name?.toUpperCase() === row.revenue?.partyName?.toUpperCase());
+                                const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+                                const party = smartFindParty(allParties, row.revenue?.partyName);
                                 if (party && party.branches?.length > 1) {
                                   return (
                                     <div className="ep-row">
@@ -876,8 +891,8 @@ const EditChargeModal = ({
                               </div>
                               <div className="ep-row">
                                 <span className="ep-label">PAYABLE TYPE</span>
-                                <select className="ep-select" value={row.cost?.partyType || 'Others'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'cost')}>
-                                  <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option><option>CFS</option>
+                                <select className="form-input" value={row.cost?.partyType || 'Others'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'cost')}>
+                                  <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option><option>CFS</option><option>Terminal</option>
                                 </select>
                               </div>
                               <div className="ep-row">
@@ -913,20 +928,22 @@ const EditChargeModal = ({
                                         row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
                                         row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
                                         row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations : 
-                                        row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList : [])
+                                        row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList : 
+                                        row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes : [])
                                         .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
                                         .slice(0, 20)
                                         .map((item, idx) => (
                                           <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'cost', item)}>
-                                            <span className="ep-item-name">{item.name}</span>
-                                            <span className="ep-item-sub">{item.city || 'Master Directory'}</span>
+                                            <span className="ep-item-name">{item.name || item.organization}</span>
+                                            <span className="ep-item-sub">{item.city || item.branches?.[0]?.city || item.branchInfo?.[0]?.city || 'Master Directory'}</span>
                                           </li>
                                         ))}
                                       {((row.cost?.partyType?.toUpperCase() === 'AGENT' || row.cost?.partyType?.toUpperCase() === 'OTHERS' ? shippingLines : 
                                         row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
                                         row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
                                         row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations : 
-                                        row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList : [])
+                                        row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList : 
+                                        row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes : [])
                                         .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
                                         .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>}
                                     </ul>
@@ -941,7 +958,8 @@ const EditChargeModal = ({
                                 </div>
                               </div>
                               {(() => {
-                                const party = [...shippingLines, ...suppliers, ...cfsList].find(p => p.name?.toUpperCase() === row.cost?.partyName?.toUpperCase());
+                                const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+                                const party = smartFindParty(allParties, row.cost?.partyName);
                                 if (party && party.branches?.length > 1) {
                                   return (
                                     <div className="ep-row">
@@ -1036,7 +1054,9 @@ const EditChargeModal = ({
                                       style={{ marginLeft: '10px' }}
                                       onClick={() => {
                                         const partyName = row.cost?.partyName;
-                                        const partyDetails = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
+                                        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+                                        const partyDetails = smartFindParty(allParties, partyName);
+
                                         setPurchaseBookData(() => {
                                           const cost = row.cost || {};
                                           return {
@@ -1077,7 +1097,9 @@ const EditChargeModal = ({
                                       style={{ marginLeft: '10px' }}
                                       onClick={() => {
                                         const partyName = row.cost?.partyName;
-                                        const partyDetails = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters].find(p => p.name?.toUpperCase() === partyName?.toUpperCase());
+                                        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+                                        const partyDetails = allParties.find(p => (p.name || p.organization)?.trim().toUpperCase() === partyName?.trim().toUpperCase());
+
                                         setPaymentRequestData({
                                           partyName,
                                           partyDetails,

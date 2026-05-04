@@ -22,7 +22,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
         "Country": '',
         "Pin Code": '',
         "Registration Type": 'Regular',
-        "GSTIN No": '',
+        "GSTIN NO": '',
         "PAN": '',
         "CIN": '',
         "Place of Supply": '',
@@ -64,9 +64,42 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
     useEffect(() => {
         const fetchNextSequence = async () => {
             if (isOpen && initialData) {
-                const party = initialData.partyDetails;
+                let party = initialData.partyDetails;
+
+                // ALWAYS fetch directories and look up by name to ensure we have complete branch data
+                if (initialData.partyName) {
+                    try {
+                        const [slRes, supRes, orgRes, cfsRes, transRes, termRes] = await Promise.all([
+                            axios.get(`${import.meta.env.VITE_API_STRING}/get-shipping-lines`),
+                            axios.get(`${import.meta.env.VITE_API_STRING}/get-suppliers`),
+                            axios.get(`${import.meta.env.VITE_API_STRING}/organization`),
+                            axios.get(`${import.meta.env.VITE_API_STRING}/get-cfs-list`),
+                            axios.get(`${import.meta.env.VITE_API_STRING}/get-transporters`),
+                            axios.get(`${import.meta.env.VITE_API_STRING}/get-terminal-codes`)
+                        ]);
+                        const allParties = [
+                            ...(slRes.data || []),
+                            ...(supRes.data || []),
+                            ...(orgRes.data?.organizations || []),
+                            ...(cfsRes.data || []),
+                            ...(transRes.data || []),
+                            ...(termRes.data || [])
+                        ];
+                        const normalize = (str) => (str || '').toString().replace(/[^a-z0-9]/gi, '').toUpperCase();
+                        const targetNorm = normalize(initialData.partyName);
+                        // Find ALL matches, then prefer one with actual branch data
+                        const allMatches = allParties.filter(p => normalize(p.name || p.organization) === targetNorm);
+                        const freshParty = allMatches.find(p => (p.branches?.length > 0 && p.branches[0]?.gst) || (p.branchInfo?.length > 0 && p.branchInfo[0]?.gstNo)) || allMatches[0];
+                        if (freshParty) {
+                            party = freshParty;
+                        }
+                    } catch (err) {
+                        console.error("Party directory fetch failed:", err);
+                    }
+                }
+
                 const branchIndex = initialData.branchIndex || 0;
-                const branch = party?.branches?.[branchIndex] || {};
+                const branch = (party?.branches?.[branchIndex] || party?.branchInfo?.[branchIndex] || {});
                 const jobNum = initialData.jobDisplayNumber || jobDisplayNumber || initialData.jobNumber || jobNumber || '';
 
                 let finalEntryNo = `PB/01/${jobNum}`;
@@ -98,8 +131,6 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     console.error("Error fetching sequence:", error);
                 }
 
-
-
                 setFormData(prev => ({
                     ...prev,
                     "Entry No": finalEntryNo,
@@ -107,14 +138,14 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     "Supplier Inv No": initialData.invoice_number || '',
                     "Supplier Inv Date": formatDate(initialData.invoice_date, 'yyyy-MM-dd') || '',
                     "Supplier Name": initialData.partyName || '',
-                    "Address 1": branch.address || branch.Address || '',
+                    "Address 1": branch.address || branch.addressLine || branch.Address || '',
                     "Address 2": branch.city || branch.City || '',
                     "Address 3": branch.state || branch.State || branch.city || '',
                     "State": branch.state || branch.State || '',
                     "Country": branch.country || branch.Country || 'India',
-                    "Pin Code": branch.pincode || branch.Pincode || branch.postal_code || '',
-                    "GSTIN NO": branch.gst || branch.GST || '',
-                    "PAN": branch.pan || branch.PAN || party?.pan || '',
+                    "Pin Code": branch.pincode || branch.Pincode || branch.postalCode || branch.postal_code || '',
+                    "GSTIN NO": branch.gst || branch.gstNo || branch.GST || '',
+                    "PAN": branch.pan || branch.PAN || branch.panNo || party?.pan || party?.panNo || party?.registrationDetails?.panNo || '',
                     "CIN": party?.cin || party?.CIN || '',
                     "Place of Supply": branch.state || branch.State || '',
                     "Credit Terms": party?.credit_terms || party?.CreditTerms || '',
@@ -122,9 +153,9 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     "SAC": initialData.cthNo || '',
                     "Taxable Value": initialData.basicAmount ? Number(initialData.basicAmount).toFixed(2) : (initialData.amount ? Number(initialData.amount).toFixed(2) : ''),
                     "GST%": (initialData.gstAmount > 0) ? (initialData.gstRate || '18') : '',
-                    "CGST": (branch.gst?.startsWith("24") || (branch.GST?.startsWith("24"))) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
-                    "SGST": (branch.gst?.startsWith("24") || (branch.GST?.startsWith("24"))) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
-                    "IGST": (branch.gst?.startsWith("24") || (branch.GST?.startsWith("24"))) ? '' : (initialData.gstAmount > 0 ? Number(initialData.gstAmount).toFixed(2) : ''),
+                    "CGST": (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
+                    "SGST": (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
+                    "IGST": (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? '' : (initialData.gstAmount > 0 ? Number(initialData.gstAmount).toFixed(2) : ''),
                     "TDS": initialData.tdsAmount ? Number(initialData.tdsAmount).toFixed(2) : '',
                     "Total": initialData.netPayable ? Math.round(initialData.netPayable) : (initialData.totalAmount ? Math.round(initialData.totalAmount) : ''),
                     "Charge Head Category": initialData.chargeType || initialData.category || '',
@@ -144,7 +175,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
         const { name, value } = e.target;
         setFormData(prev => {
             const updated = { ...prev, [name]: value };
-            
+
             // IF GST NO STARTS WITH 24 AND ITS A MARGIN CHARGE (or any taxable charge)
             // WE WILL SHOW GST AS CGST AND SGST 18 PERCENT DEVIDE BY 2 EACH 9%
             // BUT IF IT IS EMPTY OR NOT STARTS WITH 24 THEN SHOW GST IN ONE FIELD ONLY WHICH IS IGST
@@ -154,7 +185,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                 const gstRate = parseFloat(updated["GST%"]) || 0;
                 const totalGst = Number((taxable * (gstRate / 100)).toFixed(2));
                 const tds = parseFloat(updated["TDS"]) || 0;
-                
+
                 if (gstin.trim().startsWith("24")) {
                     updated["CGST"] = totalGst > 0 ? (totalGst / 2).toFixed(2) : "";
                     updated["SGST"] = totalGst > 0 ? (totalGst / 2).toFixed(2) : "";
@@ -176,14 +207,14 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
         try {
             const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
             const { apiKeyName: _unused, ...tallyData } = formData;
-            
+
             // Format dates to dd-mm-yyyy for saving
             const submissionData = {
                 ...tallyData,
                 "Entry Date": formatDate(tallyData["Entry Date"], 'dd-MM-yyyy'),
                 "Supplier Inv Date": formatDate(tallyData["Supplier Inv Date"], 'dd-MM-yyyy')
             };
-            
+
             const response = await axios.post(
                 `${import.meta.env.VITE_API_STRING}/tally/purchase-entry`,
                 submissionData,
@@ -298,8 +329,8 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                                 </select>
                             </div>
                             <div className="ep-row">
-                                <span className="ep-label">GSTIN No</span>
-                                <input type="text" name="GSTIN No" className="ep-desc-input" value={formData["GSTIN No"]} onChange={handleInputChange} />
+                                <span className="ep-label">GSTIN NO</span>
+                                <input type="text" name="GSTIN NO" className="ep-desc-input" value={formData["GSTIN NO"]} onChange={handleInputChange} />
                             </div>
                             <div className="ep-row">
                                 <span className="ep-label">PAN</span>

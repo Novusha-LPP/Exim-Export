@@ -107,7 +107,7 @@ const mapPurchaseEntryData = (data) => ({
     country: data["Country"] || data.country,
     pinCode: data["Pin Code"] || data.pinCode,
     registrationType: data["Registration Type"] || data.registrationType,
-    gstinNo: data["GSTIN No"] || data.gstinNo,
+    gstinNo: data["GSTIN NO"] || data["GSTIN No"] || data.gstinNo,
     pan: data["PAN"] || data.pan,
     cin: data["CIN"] || data.cin,
     placeOfSupply: data["Place of Supply"] || data.placeOfSupply,
@@ -130,7 +130,7 @@ router.post("/purchase-entry", authApiKey, async (req, res) => {
     try {
         const data = mapPurchaseEntryData(req.body);
         const entry = await PurchaseBookEntryModel.create(data);
-        res.status(201).json({ success: true, id: entry._id, "Entry No": entry.entryNo });
+        res.status(201).json({ success: true, "Entry No": entry.entryNo });
     } catch (error) {
         if (error.code === 11000) return res.status(400).json({ error: "Duplicate entry." });
         res.status(500).send({ error: "Internal Server Error" });
@@ -201,7 +201,7 @@ router.post("/payment-request", authApiKey, async (req, res) => {
     try {
         const data = mapPaymentRequestData(req.body);
         const request = await PaymentRequestModel.create(data);
-        res.status(201).json({ success: true, id: request._id, "Request No": request.requestNo });
+        res.status(201).json({ success: true, "Request No": request.requestNo });
     } catch (error) {
         if (error.code === 11000) return res.status(400).json({ error: "Duplicate." });
         res.status(500).send({ error: "Internal Server Error" });
@@ -235,7 +235,7 @@ router.get("/payment-request", authApiKey, async (req, res) => {
                         enriched.invoiceDate = charge.invoice_date || cost.invoiceDate || "";
                         enriched.description = cost.chargeDescription || charge.chargeHead || "";
                         enriched.url = cost.url || [];
-                        
+
                         // GST details
                         enriched.isGst = cost.isGst || false;
                         enriched.gstPercent = cost.gstRate || 18;
@@ -244,13 +244,13 @@ router.get("/payment-request", authApiKey, async (req, res) => {
                         enriched.cgstAmt = cost.cgst || 0;
                         enriched.sgstAmt = cost.sgst || 0;
                         enriched.igstAmt = cost.igst || 0;
-                        
+
                         // TDS details
                         enriched.isTds = cost.isTds || false;
                         enriched.tdsPercent = cost.tdsPercent || 0;
                         enriched.tdsAmount = enriched.tdsAmount || cost.tdsAmount || 0;
                         enriched.netPayable = cost.netPayable || request.amount || 0;
-                        
+
                         // Party details
                         enriched.partyName = cost.partyName || request.paymentTo || "";
                         enriched.partyType = cost.partyType || "";
