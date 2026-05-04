@@ -516,12 +516,7 @@ const LogisysEditableHeader = ({
         }
 
         // Simple mapping based on common names
-        const findVal = (row, keys) => {
-          const key = Object.keys(row).find(k =>
-            keys.some(v => k.toLowerCase().replace(/[\s_]/g, "").includes(v.toLowerCase()))
-          );
-          return key ? row[key] : "";
-        };
+
 
         const normalizeEximScheme = (val) => {
           const s = String(val || "").trim();
@@ -544,9 +539,13 @@ const LogisysEditableHeader = ({
 
         const newProducts = jsonData.map((row, index) => {
           const findValRow = (keys) => {
-            const key = Object.keys(row).find(k =>
-              keys.some(v => k.toLowerCase().replace(/[\s_]/g, "").includes(v.toLowerCase()))
-            );
+            const key = Object.keys(row).find(k => {
+              const normK = k.toLowerCase().replace(/[^a-z0-9]/g, "");
+              return keys.some(v => {
+                const normV = v.toLowerCase().replace(/[^a-z0-9]/g, "");
+                return normK.includes(normV);
+              });
+            });
             return key ? row[key] : "";
           };
 
@@ -567,7 +566,7 @@ const LogisysEditableHeader = ({
           const rodtepSta = findValRow(["rodtep sta", "rodtep", "rodtep_status"]);
           const manufacturer = findValRow(["manufactu", "manufacturer_name"]);
           const transitCnt = findValRow(["transitcnt", "transit_country"]);
-          const dbkSrNo = findValRow(["dbk sr no", "dbksrno"]);
+          const dbkSrNo = findValRow(["dbk sr no", "dbksrno", "dbksrnc", "dbk_sr"]);
           const dbkQty = findValRow(["dbk qty", "dbkqty"]);
           const price = findValRow(["price", "rate", "unitprice"]);
 
@@ -592,10 +591,18 @@ const LogisysEditableHeader = ({
             unitPrice: String(price || "0"),
             amount: finalAmount,
             eximCode: normalizeEximScheme(exim),
-            ptaFtaInfo: String(pta || ""),
+            ptaFtaInfo: (() => {
+              const s = String(pta || "").trim().toUpperCase();
+              if (s === "NCPTI") return "NCPTI - PREFERENTIAL TRADE BENEFIT NOT CLAIMED AT IMPORTING COUNTRY";
+              return s;
+            })(),
             originDistrict: String(district || ""),
             originState: String(state || ""),
-            endUse: String(endUse || ""),
+            endUse: (() => {
+              const s = String(endUse || "").trim().toUpperCase();
+              if (s === "GNX200") return "GNX200 - GENERIC -FOR COMMERCIAL ASSEMBLY OR PROCESSING (FOR MANUFACTURE/ACTUAL USE)";
+              return s;
+            })(),
             rewardItem: String(rewardIte || "").toUpperCase() === "YES" || String(rewardIte || "").toUpperCase() === "Y",
             rodtepInfo: {
               claim: (String(rodtepSta || "").toUpperCase() === "YES" || String(rodtepSta || "").toUpperCase() === "Y") ? "Yes" : "No",

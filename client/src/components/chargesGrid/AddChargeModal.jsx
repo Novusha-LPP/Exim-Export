@@ -180,7 +180,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
                         />
                        </div>
                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', fontSize: '11px' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#d32f2f', fontWeight: 'bold' }}>
                                 <input type="checkbox" checked={editIsPbMandatory} onChange={e => setEditIsPbMandatory(e.target.checked)} /> PB Mandatory
                             </label>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -272,9 +272,9 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
               />
             </div>
             <div style={{ display: 'flex', gap: '20px', alignItems: 'center', fontSize: '12px', background: '#fff', padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: '#d32f2f' }}>
                   <input type="checkbox" checked={customIsPbMandatory} onChange={e => setCustomIsPbMandatory(e.target.checked)} /> 
-                  <span style={{ fontWeight: 600 }}>PB Mandatory?</span>
+                  <span style={{ fontWeight: 800 }}>PB Mandatory?</span>
                </label>
                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span>Default Category:</span>
