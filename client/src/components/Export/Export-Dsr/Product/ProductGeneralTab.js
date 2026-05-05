@@ -2457,6 +2457,47 @@ const ProductGeneralTab = ({
           );
         }
       }
+
+      // Sync IGST fields if amount changes
+      if (field === "amount" || field === "quantity" || field === "unitPrice") {
+        const prod = products[index];
+        const status = prod.igstCompensationCess?.igstPaymentStatus;
+
+        if (status === "Export Against Payment") {
+          const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+          // Determine the new amount to use for calculation
+          const effectiveAmount = field === "amount" ? parseFloat(value) || 0 : parseFloat(prod.amount) || 0;
+          const autoTaxableValue = parseFloat((effectiveAmount * invoiceExchangeRate).toFixed(2));
+          
+          const isTaxableManual = !!prod.igstCompensationCess?.isTaxableValueManual;
+          const isIgstManual = !!prod.igstCompensationCess?.isIgstManual;
+          const igstRate = parseFloat(prod.igstCompensationCess?.igstRate) || 0;
+
+          if (!isTaxableManual) {
+            formik.setFieldValue(
+              `invoices[${selectedInvoiceIndex}].products[${index}].igstCompensationCess.taxableValueINR`,
+              autoTaxableValue
+            );
+            
+            // If taxable value is auto-updated, and IGST amount is not manual, update IGST amount too
+            if (!isIgstManual) {
+              const newIgstAmt = parseFloat(((autoTaxableValue * igstRate) / 100).toFixed(2));
+              formik.setFieldValue(
+                `invoices[${selectedInvoiceIndex}].products[${index}].igstCompensationCess.igstAmountINR`,
+                newIgstAmt
+              );
+            }
+          } else if (!isIgstManual) {
+            // If taxable value is manual but IGST amount is not, still sync IGST amount with manual taxable value
+            const manualTaxableValue = parseFloat(prod.igstCompensationCess?.taxableValueINR) || 0;
+            const newIgstAmt = parseFloat(((manualTaxableValue * igstRate) / 100).toFixed(2));
+            formik.setFieldValue(
+              `invoices[${selectedInvoiceIndex}].products[${index}].igstCompensationCess.igstAmountINR`,
+              newIgstAmt
+            );
+          }
+        }
+      }
     },
     [
       formik.setFieldValue,

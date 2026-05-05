@@ -300,12 +300,12 @@ const gstnTypCode = (g) => {
     return "OTH";
 };
 
-// FIX 44: unit indicator — metric vs count/set
-const getUnitIndicator = (unit) => {
-    const u = (unit || "").toUpperCase();
-    if (["KGS", "KG", "MTS", "MT"].includes(u)) return "M";
-    if (["NOS", "NO", "PCS", "PIECES", "SET", "SETS", "UNT", "UNIT", "UNITS"].includes(u)) return "N";
-    return "M";
+// FIX 44: Licence item type indicator — Imported (M) vs Indigenous (N)
+const getLicenceItemType = (type) => {
+    const t = (type || "").toUpperCase();
+    if (t === "IMPORTED") return "M";
+    if (t === "INDIGENOUS") return "N";
+    return "N"; // Default to Indigenous
 };
 
 const sanitizeField = (f) =>
@@ -763,7 +763,7 @@ export function generateSBFlatFile(job) {
                                 clean(deec.itemSnoPartE || "1"), clean(item.itemSnoPartC || "1"),
                                 parseFloat(item.quantity || 0).toFixed(3),
                                 parseFloat(deec.exportQtyUnderLicence || 0).toFixed(3),
-                                getUnitIndicator(item.unit),
+                                getLicenceItemType(item.itemType),
                                 "", "", "",
                             );
                         });
@@ -783,7 +783,7 @@ export function generateSBFlatFile(job) {
                                 clean(epcg.itemSnoPartE || "1"), clean(item.itemSnoPartC || "1"),
                                 parseFloat(item.quantity || 0).toFixed(3),
                                 parseFloat(epcg.exportQtyUnderLicence || 0).toFixed(3),
-                                getUnitIndicator(item.unit),
+                                getLicenceItemType(item.itemType),
                                 "", "", "",
                             );
                         });
@@ -791,6 +791,55 @@ export function generateSBFlatFile(job) {
                 }
             });
         });
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // <TABLE>THIRDPARTY
+    // ══════════════════════════════════════════════════════════════════════════
+    const thirdPartyRows = [];
+    invs.forEach((inv, ii) => {
+        (inv.products || []).forEach((p, pi) => {
+            const tp = p.otherDetails?.thirdParty;
+            if (p.otherDetails?.isThirdPartyExport && tp) {
+                const tpName = trunc(clean(tp.name || ""), 70);
+                const tpAddr = clean(tp.address || "");
+                const tpPinMatch = tpAddr.match(/,?\s*(\d{6})\s*$/);
+                const tpPin = clean(tp.pin || (tpPinMatch ? tpPinMatch[1] : ""));
+                let tpAddrRaw = tpPinMatch ? tpAddr.replace(/,?\s*\d{6}\s*$/, "").trim() : tpAddr;
+
+                let tpCity = clean(tp.city || "");
+                if (!tpCity) {
+                    const parts = tpAddrRaw.split(",");
+                    tpCity = clean(parts[parts.length - 1]);
+                    // Strip the city from the address to avoid duplication in flat file chunks
+                    if (tpCity && tpAddrRaw.endsWith(tpCity)) {
+                        tpAddrRaw = tpAddrRaw.slice(0, tpAddrRaw.lastIndexOf(tpCity)).replace(/,?\s*$/, "").trim();
+                    }
+                }
+
+                const tpL = split35(tpAddrRaw);
+                const tpAddr1 = tpL[0];
+                const tpAddr2 = tpL[1];
+
+                thirdPartyRows.push(row(PD,
+                    String(ii + 1), String(pi + 1),
+                    clean(tp.ieCode || ""),
+                    String(tp.branchSrNo || 0),
+                    tpName,
+                    tpAddr1,
+                    tpAddr2,
+                    tpCity,
+                    tpPin,
+                    gstnTypCode(tp.regnNo),
+                    clean(tp.regnNo || ""),
+                ));
+            }
+        });
+    });
+
+    if (thirdPartyRows.length > 0) {
+        out += `<TABLE>THIRDPARTY${RS}`;
+        thirdPartyRows.forEach(r => out += r);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

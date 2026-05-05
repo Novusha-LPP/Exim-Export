@@ -680,6 +680,61 @@ const ExportChecklistGenerator = ({
     return yPos + 5;
   };
 
+  // Render Third Party Details Table
+  const renderThirdPartyDetails = (pdf, helpers, data, startY = 80) => {
+    const { drawLine, leftX, rightX } = helpers;
+    let yPos = startY;
+
+    if (data.thirdPartyRows && data.thirdPartyRows.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("THIRD PARTY DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
+
+      const tpHeaders = [
+        "Inv Sr",
+        "Item Sr",
+        "IE Code",
+        "Branch",
+        "Name",
+        "Registration ID"
+      ];
+
+      pdf.autoTable({
+        head: [tpHeaders],
+        body: data.thirdPartyRows.map((row) => [
+          row.invSr,
+          row.itemSr,
+          row.ieCode,
+          row.branch,
+          row.name,
+          row.regnId
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+          fontStyle: "bold",
+          textColor: 0,
+        },
+        headStyles: {
+          fillColor: [180, 180, 180],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: 8.5,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
+
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
+
+    return yPos;
+  };
+
   // Update the renderPage2 function to remove ITEM DETAILS and keep only DBK, VESSEL, CONTAINER details
   const renderPage2 = (pdf, helpers, data, startY = 80) => {
     const { drawLine, drawField, leftX, rightX } = helpers;
@@ -2057,6 +2112,33 @@ const ExportChecklistGenerator = ({
           return rows;
         })(),
 
+        // Third Party Details - Aggregate from all products
+        thirdPartyRows: (() => {
+          const tpRows = [];
+          allProducts?.forEach((product, prodIdx) => {
+            const tp = product.otherDetails?.thirdParty;
+            if (product.otherDetails?.isThirdPartyExport && tp) {
+              // Find which invoice this product belongs to
+              let invSr = "1";
+              exportJob.invoices?.forEach((inv, ii) => {
+                if (inv.products?.some(p => p.serialNumber === product.serialNumber)) {
+                  invSr = (ii + 1).toString();
+                }
+              });
+
+              tpRows.push({
+                invSr: invSr,
+                itemSr: product.serialNumber || (prodIdx + 1).toString(),
+                ieCode: tp.ieCode || "",
+                branch: tp.branchSrNo || "0",
+                name: tp.name || "",
+                regnId: tp.regnNo || ""
+              });
+            }
+          });
+          return tpRows;
+        })(),
+
         // End Use Information - One row per invoice × product
         endUseData: (() => {
           const endUseRows = [];
@@ -2230,6 +2312,9 @@ const ExportChecklistGenerator = ({
 
       yPos = ensureSpace(100, yPos);
       yPos = renderItemDetailsPage(pdf, helpers, data, yPos);
+
+      yPos = ensureSpace(80, yPos);
+      yPos = renderThirdPartyDetails(pdf, helpers, data, yPos);
 
       yPos = ensureSpace(80, yPos);
       yPos = renderPage2(pdf, helpers, data, yPos);

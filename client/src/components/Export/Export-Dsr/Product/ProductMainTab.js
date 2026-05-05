@@ -164,6 +164,32 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
     return (qty * rate) / per;
   }, []);
 
+  const syncProductIGST = useCallback((prod, updatedInvoices) => {
+    const status = prod.igstCompensationCess?.igstPaymentStatus;
+    if (status === "Export Against Payment") {
+      const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+      const amount = parseFloat(prod.amount) || 0;
+      const autoTaxableValue = parseFloat((amount * invoiceExchangeRate).toFixed(2));
+      
+      const isTaxableManual = !!prod.igstCompensationCess?.isTaxableValueManual;
+      const isIgstManual = !!prod.igstCompensationCess?.isIgstManual;
+      const igstRate = parseFloat(prod.igstCompensationCess?.igstRate) || 0;
+
+      if (!prod.igstCompensationCess) prod.igstCompensationCess = {};
+
+      if (!isTaxableManual) {
+        prod.igstCompensationCess.taxableValueINR = autoTaxableValue;
+        if (!isIgstManual) {
+          prod.igstCompensationCess.igstAmountINR = parseFloat(((autoTaxableValue * igstRate) / 100).toFixed(2));
+        }
+      } else if (!isIgstManual) {
+        const manualTaxableValue = parseFloat(prod.igstCompensationCess.taxableValueINR) || 0;
+        prod.igstCompensationCess.igstAmountINR = parseFloat(((manualTaxableValue * igstRate) / 100).toFixed(2));
+      }
+    }
+    return prod;
+  }, [formik.values.exchange_rate]);
+
   const handleProductFieldChange = useCallback(
     (idx, field, rawValue, { autoRecalc = false } = {}) => {
       const updated = [...products];
@@ -243,10 +269,10 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
         current.perUnit = rawValue;
       }
 
-      updated[idx] = current;
+      updated[idx] = syncProductIGST(current);
       setProducts(updated);
     },
-    [products, setProducts, recalcAmount],
+    [products, setProducts, recalcAmount, syncProductIGST],
   );
 
   const handleRITCChange = useCallback(
@@ -401,10 +427,10 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
         current.rodtepInfo.quantity = parseFloat(current.socQuantity) || 0;
       }
 
-      updated[idx] = current;
+      updated[idx] = syncProductIGST(current);
       setProducts(updated);
     },
-    [products, setProducts],
+    [products, setProducts, syncProductIGST],
   );
 
   const addNewProduct = useCallback(() => {
@@ -445,13 +471,22 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
       delete clone._id;
       
       next.splice(idx + 1, 0, clone);
+      
+      // Reset manual flags so the copy starts with auto-calculation
+      if (next[idx + 1].igstCompensationCess) {
+        next[idx + 1].igstCompensationCess.isTaxableValueManual = false;
+        next[idx + 1].igstCompensationCess.isIgstManual = false;
+      }
+
+      next[idx + 1] = syncProductIGST(next[idx + 1]);
+
       const resequenced = next.map((p, i) => ({
         ...p,
         serialNumber: i + 1,
       }));
       setProducts(resequenced);
     },
-    [products, setProducts],
+    [products, setProducts, syncProductIGST],
   );
 
 

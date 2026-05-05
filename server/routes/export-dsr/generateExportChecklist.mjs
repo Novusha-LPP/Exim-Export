@@ -279,7 +279,10 @@ export const generateExportChecklist = async (jobNumber) => {
     }
     yPos += 40;
 
-    const productList = exportJob.products || [];
+    const productList = [];
+    (exportJob.invoices || []).forEach(inv => {
+      if (inv.products) productList.push(...inv.products);
+    });
     productList.forEach((item, index) => {
       doc.fontSize(5.5).font("Helvetica");
       const itemData = [
@@ -320,7 +323,52 @@ export const generateExportChecklist = async (jobNumber) => {
     drawFieldBox(455, yPos, 45, 15, "Total RoDTEP", totalRodtep.toFixed(2), 6, 5);
     drawFieldBox(500, yPos, 45, 15, "Total PMV", exportJob.totalPmv, 6, 5);
     drawFieldBox(545, yPos, 40, 15, "Total IGST", exportJob.totalIgst, 6, 5);
-    yPos += 20;
+    yPos += 25;
+
+    // ==================== THIRD PARTY DETAILS ====================
+    const thirdPartyItems = productList.filter(p => p.otherDetails?.isThirdPartyExport && p.otherDetails?.thirdParty);
+    if (thirdPartyItems.length > 0) {
+      if (yPos > 750) { doc.addPage(); drawHeader(2); yPos = 55; }
+      yPos = drawSectionHeader(yPos, "THIRD PARTY DETAILS");
+
+      const tpHeaders = ["Inv Sr", "Item Sr", "IE Code", "Branch", "Name", "Registration ID"];
+      const tpX = [10, 40, 70, 130, 180, 450];
+      const tpWidths = [30, 30, 60, 50, 270, 135];
+
+      doc.fontSize(5.5).font("Helvetica-Bold");
+      tpHeaders.forEach((header, i) => {
+        doc.rect(tpX[i], yPos, tpWidths[i], 12).stroke();
+        doc.text(header, tpX[i] + 1, yPos + 2, { width: tpWidths[i] - 2 });
+      });
+      yPos += 12;
+
+      thirdPartyItems.forEach((item, index) => {
+        if (yPos > 800) { doc.addPage(); drawHeader(2); yPos = 55; }
+        // Find invoice index
+        let invSr = "1";
+        exportJob.invoices?.forEach((inv, ii) => {
+          if (inv.products?.some(p => p._id === item._id)) invSr = (ii + 1).toString();
+        });
+
+        const tp = item.otherDetails.thirdParty;
+        const tpRow = [
+          invSr,
+          (productList.indexOf(item) + 1).toString(),
+          tp.ieCode,
+          tp.branchSrNo || "0",
+          tp.name,
+          tp.regnNo
+        ];
+
+        doc.fontSize(5.5).font("Helvetica");
+        tpRow.forEach((data, i) => {
+          doc.rect(tpX[i], yPos, tpWidths[i], 10).stroke();
+          doc.text(data || "", tpX[i] + 1, yPos + 2, { width: tpWidths[i] - 2 });
+        });
+        yPos += 10;
+      });
+      yPos += 20;
+    }
 
     // ==================== PAGE 3 ====================
     doc.addPage();
