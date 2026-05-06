@@ -350,6 +350,32 @@ function BillingDetailsDialog({ open, onClose, row, requestNo, workMode, activeT
     }
   };
 
+  const getD = (details) => {
+    if (!details) return {};
+    const d = details;
+    return {
+      entryDate: d["Entry Date"] || d.entryDate || d.requestDate || d.createdAt,
+      jobNo: d["Job No"] || d.jobNo || row.job_no,
+      supplierName: d["Supplier Name"] || d.supplierName || d.paymentTo || d.partyName,
+      address: [d["Address 1"], d["Address 2"], d["Address 3"]].filter(Boolean).join(", ") || d.address || "-",
+      gstin: d["GSTIN No"] || d.gstin || d.gstinNo,
+      pan: d.pan || (d["GSTIN No"] ? d["GSTIN No"].substring(2, 12) : ""),
+      supplierInvNo: d["Supplier Inv NO"] || d.supplierInvNo || d.againstBill || d.invoiceNo,
+      supplierInvDate: d["Supplier Inv Date"] || d.supplierInvDate || d.invoiceDate,
+      description: d["Description of Services"] || d.descriptionOfServices || d.description || d.chargeHead || "-",
+      sac: d["SAC / HSN"] || d.sac || d.sacCode || d.hsnCode || "N/A",
+      taxableValue: d["Taxable Value"] || d.taxableValue || d.grossAmount || 0,
+      cgst: d["CGST"] || d.cgstAmt || d.cgst || 0,
+      sgst: d["SGST"] || d.sgstAmt || d.sgst || 0,
+      igst: d["IGST"] || d.igstAmt || d.igst || 0,
+      tds: d["TDS"] || d.tdsAmount || d.tds || 0,
+      total: d["Total Amount"] || d.netPayable || d.total || d.amount || 0,
+      entryBy: d["Entry By"] || d.entryBy || d.username || "Tally System",
+      againstBill: d["Against Bill"] || d.againstBill || d.supplierName || "-",
+      gstPercent: d["GST Details"] || d.gstPercent || 18,
+    };
+  };
+
   useEffect(() => {
     if (open) {
       setRejectReason("");
@@ -449,74 +475,79 @@ function BillingDetailsDialog({ open, onClose, row, requestNo, workMode, activeT
                .attachment-box { background: #e3f2fd; border: 1px solid #bbdefb; padding: 10px; margin: 10px; border-radius: 4px; }
              `}</style>
             <table className="detail-table">
-              <tbody>
-                <tr>
-                  <td className="label">Entry Date</td>
-                  <td className="value">{formatDate(details.requestDate || details.entryDate || details.createdAt)}</td>
-                </tr>
-                <tr>
-                  <td className="label">Job No</td>
-                  <td className="value" style={{ fontWeight: 700 }}>{details.jobNo || row.job_no}</td>
-                </tr>
-                <tr>
-                  <td className="label">Supplier Name</td>
-                  <td className="value blue-link">{details.supplierName || details.paymentTo || details.partyName || "-"}</td>
-                </tr>
-                <tr>
-                  <td className="label">Supplier Address</td>
-                  <td className="value" style={{ fontSize: '11px', lineHeight: 1.4 }}>{details.address || "-"}</td>
-                </tr>
-                <tr>
-                  <td className="label">GSTIN & PAN</td>
-                  <td className="value">
-                    {(details.gstin || details.gstinNo) && <Box component="span">GSTIN: {details.gstin || details.gstinNo} | </Box>}
-                    {details.pan && <Box component="span">PAN: <Box component="span" sx={{ bgcolor: '#fff9c4', px: 0.5 }}>{details.pan}</Box></Box>}
-                    {!(details.gstin || details.gstinNo) && !details.pan && "-"}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="label">Supplier Inv No & Date</td>
-                  <td className="value" style={{ fontWeight: 700 }}>
-                    {details.supplierInvNo || details.againstBill || details.invoiceNo || "-"} / {formatDate(details.supplierInvDate || details.invoiceDate) || "-"}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="label">Description of Services</td>
-                  <td className="value">{details.descriptionOfServices || details.description || details.chargeHead || details.paymentTo || "-"}</td>
-                </tr>
-                <tr>
-                  <td className="label">SAC / HSN</td>
-                  <td className="value">{details.sac || details.sacCode || details.hsnCode || "N/A"}</td>
-                </tr>
-                <tr>
-                  <td className="label">Taxable Value</td>
-                  <td className="value amount">₹ {Number(details.taxableValue || details.grossAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                </tr>
-                <tr>
-                  <td className="label">GST Details ({details.gstPercent || 18}%)</td>
-                  <td className="value">
-                    CGST: {Number(details.cgstAmt || details.cgst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} | SGST: {Number(details.sgstAmt || details.sgst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} | IGST: {Number(details.igstAmt || details.igst || 0).toFixed(2)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="label">TDS Deduction</td>
-                  <td className="value red-amount">
-                    ₹ -{Number(details.tdsAmount || details.tds || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="label">Total Payable</td>
-                  <td className="value total-amount">₹ {Number(details.netPayable || details.total || details.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                </tr>
-                <tr>
-                  <td className="label">Entry By</td>
-                  <td className="value">{details.entryBy || details.username || "Tally System"}</td>
-                </tr>
-                <tr>
-                  <td className="label">Against Bill</td>
-                  <td className="value">{details.againstBill || details.supplierName || details.paymentTo || "-"}</td>
-                </tr>
-              </tbody>
+              {(() => {
+                const d = getD(details);
+                return (
+                  <tbody>
+                    <tr>
+                      <td className="label">Entry Date</td>
+                      <td className="value">{formatDate(d.entryDate)}</td>
+                    </tr>
+                    <tr>
+                      <td className="label">Job No</td>
+                      <td className="value" style={{ fontWeight: 700 }}>{d.jobNo}</td>
+                    </tr>
+                    <tr>
+                      <td className="label">Supplier Name</td>
+                      <td className="value blue-link">{d.supplierName}</td>
+                    </tr>
+                    <tr>
+                      <td className="label">Supplier Address</td>
+                      <td className="value" style={{ fontSize: '11px', lineHeight: 1.4 }}>{d.address}</td>
+                    </tr>
+                    <tr>
+                      <td className="label">GSTIN & PAN</td>
+                      <td className="value">
+                        {d.gstin && <Box component="span">GSTIN: {d.gstin} | </Box>}
+                        {d.pan && <Box component="span">PAN: <Box component="span" sx={{ bgcolor: '#fff9c4', px: 0.5 }}>{d.pan}</Box></Box>}
+                        {!d.gstin && !d.pan && "-"}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="label">Supplier Inv No & Date</td>
+                      <td className="value" style={{ fontWeight: 700 }}>
+                        {d.supplierInvNo || "-"} / {formatDate(d.supplierInvDate) || "-"}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="label">Description of Services</td>
+                      <td className="value">{d.description}</td>
+                    </tr>
+                    <tr>
+                      <td className="label">SAC / HSN</td>
+                      <td className="value">{d.sac}</td>
+                    </tr>
+                    <tr>
+                      <td className="label">Taxable Value</td>
+                      <td className="value amount">₹ {Number(d.taxableValue).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr>
+                      <td className="label">GST Details ({d.gstPercent}%)</td>
+                      <td className="value">
+                        CGST: {Number(d.cgst).toLocaleString('en-IN', { minimumFractionDigits: 2 })} | SGST: {Number(d.sgst).toLocaleString('en-IN', { minimumFractionDigits: 2 })} | IGST: {Number(d.igst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="label">TDS Deduction</td>
+                      <td className="value red-amount">
+                        ₹ -{Number(d.tds).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="label">Total Payable</td>
+                      <td className="value total-amount">₹ {Number(d.total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr>
+                      <td className="label">Entry By</td>
+                      <td className="value">{d.entryBy}</td>
+                    </tr>
+                    <tr>
+                      <td className="label">Against Bill</td>
+                      <td className="value">{d.againstBill}</td>
+                    </tr>
+                  </tbody>
+                );
+              })()}
             </table>
 
             {details.url && details.url.length > 0 && (
@@ -747,9 +778,10 @@ function ExportBillingPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedYear, setSelectedYear] = useState(getCurrentFinancialYear());
-  const [years, setYears] = useState([]);
+  const [years, setYears] = useState([getCurrentFinancialYear()]);
   const [exporters, setExporters] = useState([]);
   const [selectedExporter, setSelectedExporter] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -833,6 +865,7 @@ function ExportBillingPage() {
           limit,
           search: debouncedSearch,
           exporter: selectedExporter || "",
+          branch: selectedBranch || "",
           year: selectedYear || "",
           unresolvedOnly: showUnresolvedOnly,
         },
@@ -859,6 +892,7 @@ function ExportBillingPage() {
     page,
     debouncedSearch,
     selectedExporter,
+    selectedBranch,
     selectedYear,
     showUnresolvedOnly,
     user?.username,
@@ -1386,6 +1420,26 @@ function ExportBillingPage() {
                 />
               )}
             />
+
+            <TextField
+              select
+              size="small"
+              value={selectedBranch}
+              onChange={(e) => {
+                setSelectedBranch(e.target.value);
+                setPage(1);
+              }}
+              sx={{ width: 110 }}
+              InputProps={{ sx: { height: 28, fontSize: '11px', backgroundColor: '#f9fafb' } }}
+              SelectProps={{ displayEmpty: true }}
+            >
+              <MenuItem value="" sx={{ fontSize: '11px' }}>All Branches</MenuItem>
+              {["AMD", "GIM", "BRD", "HAZ", "COK"].map((br) => (
+                <MenuItem key={br} value={br} sx={{ fontSize: '11px' }}>
+                  {br}
+                </MenuItem>
+              ))}
+            </TextField>
 
             <TextField
               select

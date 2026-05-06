@@ -502,7 +502,7 @@ const LogisysEditableHeader = ({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const data = event.target.result;
         const workbook = xlsx.read(data, { type: "binary" });
@@ -513,6 +513,26 @@ const LogisysEditableHeader = ({
         if (jsonData.length === 0) {
           alert("Excel file is empty or invalid.");
           return;
+        }
+
+        // Fetch active districts to map state from district code
+        let districtStateMap = {};
+        let districtFullMap = {};
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_STRING}/districts/?status=Active&limit=1000`);
+          if (res.ok) {
+            const resData = await res.json();
+            const allDistricts = Array.isArray(resData?.data) ? resData.data : [];
+            allDistricts.forEach(d => {
+              if (d.districtCode) {
+                const code = d.districtCode.toUpperCase();
+                districtStateMap[code] = d.stateName ? d.stateName.toUpperCase() : "";
+                districtFullMap[code] = `${d.districtCode} - ${d.districtName ? d.districtName.toUpperCase() : ""}`;
+              }
+            });
+          }
+        } catch (err) {
+          console.error("Failed to fetch districts for state mapping", err);
         }
 
         // Simple mapping based on common names
@@ -535,6 +555,20 @@ const LogisysEditableHeader = ({
           if (s.includes(" - ")) return s;
           const key = Object.keys(mapping).find(k => s.startsWith(k));
           return key ? mapping[key] : s;
+        };
+
+        const normalizeIgstPaymentStatus = (val) => {
+          const s = String(val || "").trim().toUpperCase();
+          if (!s || s === "LUT" || s.includes("BOND") || s.includes("NOT PAID")) {
+            return "Export Under Bond – Not Paid";
+          }
+          if (s.includes("PAYMENT") || s.includes("PAID")) {
+            return "Export Against Payment";
+          }
+          if (s.includes("NOT APPLICABLE")) {
+            return "Not Applicable";
+          }
+          return "Export Under Bond – Not Paid"; // default
         };
 
         const newProducts = jsonData.map((row, index) => {
@@ -593,6 +627,7 @@ const LogisysEditableHeader = ({
             unitPrice: String(price || "0"),
             per: String(per || "1"),
             priceUnit: String(pUnit || unit || "NOS").toUpperCase(),
+            perUnit: String(pUnit || unit || "NOS").toUpperCase(),
             amount: finalAmount,
             eximCode: normalizeEximScheme(exim),
             ptaFtaInfo: (() => {
@@ -600,8 +635,19 @@ const LogisysEditableHeader = ({
               if (s === "NCPTI") return "NCPTI - PREFERENTIAL TRADE BENEFIT NOT CLAIMED AT IMPORTING COUNTRY";
               return s;
             })(),
-            originDistrict: String(district || ""),
-            originState: String(state || ""),
+            originDistrict: (() => {
+              let s = String(district || "").toUpperCase().trim();
+              if (s && districtFullMap[s]) return districtFullMap[s];
+              return s;
+            })(),
+            originState: (() => {
+              let s = String(state || "");
+              if (!s && district) {
+                const mappedState = districtStateMap[String(district).toUpperCase().trim()];
+                if (mappedState) return mappedState;
+              }
+              return s;
+            })(),
             endUse: (() => {
               const s = String(endUse || "").trim().toUpperCase();
               if (s === "GNX200") return "GNX200 - GENERIC -FOR COMMERCIAL ASSEMBLY OR PROCESSING (FOR MANUFACTURE/ACTUAL USE)";
@@ -611,16 +657,16 @@ const LogisysEditableHeader = ({
             rodtepInfo: {
               claim: (String(rodtepSta || "").toUpperCase() === "YES" || String(rodtepSta || "").toUpperCase() === "Y") ? "Yes" : "No",
               amountINR: "0",
-              quantity: "0",
+              quantity: String(sqcQty || qty || "0"),
               ratePercent: "0",
               capValue: "0",
-              capValuePerUnits: "0",
-              unit: "",
-              capUnit: "",
+              capValuePerUnits: String(qty || "1"),
+              unit: String(sqcUnit || unit || "NOS").toUpperCase(),
+              capUnit: String(unit || "NOS").toUpperCase(),
               isCapUnitManual: false
             },
             igstCompensationCess: {
-              igstPaymentStatus: String(igstPayS || "LUT").toUpperCase(),
+              igstPaymentStatus: normalizeIgstPaymentStatus(igstPayS),
               taxableValueINR: "0",
               igstRate: "0",
               igstAmountINR: "0"

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import importDbConnection from "../importDB.js";
 
 const shippingLineSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, unique: true, uppercase: true },
@@ -31,5 +32,5 @@ const shippingLineSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now },
 });
 
-const ShippingLineModel = mongoose.model("ShippingLine", shippingLineSchema);
+const ShippingLineModel = importDbConnection.model("shippinglinesimp", shippingLineSchema, "shippinglinesimp");
 export default ShippingLineModel;

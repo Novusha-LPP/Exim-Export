@@ -218,6 +218,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       exporter = "",
       year = "",
       unresolvedOnly = "false",
+      branch = "",
     } = req.query;
 
     const normalizedWorkMode = String(workMode).trim().toLowerCase();
@@ -236,6 +237,9 @@ router.get("/api/export-billing-jobs", async (req, res) => {
 
     if (exporter) {
       baseFilter.$and.push({ exporter: { $regex: escapeRegex(String(exporter).trim()), $options: "i" } });
+    }
+    if (branch) {
+      baseFilter.$and.push({ branch_code: String(branch).trim() });
     }
 
     if (search) {

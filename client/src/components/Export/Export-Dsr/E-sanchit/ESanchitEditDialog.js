@@ -498,7 +498,6 @@ const ESanchitEditDialog = ({
   const level = safeDoc.documentLevel || "Invoice";
 
   const disableInvSrNo = level === "Job" || level === "Item";
-  const disableItemSrNo = level === "Job" || level === "Invoice";
 
   const handleFieldChange = (field, value) => {
     setDoc((prev) => ({ ...(prev || {}), [field]: value }));
@@ -603,6 +602,26 @@ const ESanchitEditDialog = ({
       handleBeneficiaryPartyChange("pinCode", "");
     }
   }, [open, jobData, organizations, consigneeList]);
+  
+  // Auto-populate Inv. Sr. No. and Doc details for single invoice
+  useEffect(() => {
+    if (!open || !jobData?.invoices || jobData.invoices.length !== 1) return;
+    
+    const inv = jobData.invoices[0];
+    const isNew = !safeDoc.invSerialNo && !safeDoc.documentReferenceNo;
+    
+    if (isNew) {
+      setDoc(prev => ({
+        ...prev,
+        invSerialNo: "1",
+        documentReferenceNo: toUpper(inv.invoiceNumber || ""),
+        dateOfIssue: inv.invoiceDate || ""
+      }));
+    } else if (safeDoc.invSerialNo !== "1") {
+      // Force it to 1 if it's a single invoice job
+      handleFieldChange("invSerialNo", "1");
+    }
+  }, [open, jobData?.invoices]);
 
   const onSelectIssuingParty = (e) => {
     const val = toUpper(e.target.value);
@@ -695,12 +714,45 @@ const ESanchitEditDialog = ({
                   <option value="Item">Item</option>
                 </select>
               </div>
-              <Field
-                label="Inv. Sr. No."
-                value={safeDoc.invSerialNo}
-                onChange={(v) => handleFieldChange("invSerialNo", v)}
-                disabled={disableInvSrNo}
-              />
+              
+              {jobData?.invoices?.length > 1 ? (
+                <div style={s.fieldGroup}>
+                  <span style={s.label}>Inv. Sr. No.</span>
+                  <select
+                    style={s.select}
+                    value={safeDoc.invSerialNo || ""}
+                    onChange={(e) => {
+                      const sNo = e.target.value;
+                      const inv = jobData.invoices[parseInt(sNo) - 1];
+                      if (inv) {
+                        setDoc(prev => ({
+                          ...prev,
+                          invSerialNo: sNo,
+                          documentReferenceNo: toUpper(inv.invoiceNumber || ""),
+                          dateOfIssue: inv.invoiceDate || ""
+                        }));
+                      } else {
+                        handleFieldChange("invSerialNo", sNo);
+                      }
+                    }}
+                    disabled={disableInvSrNo}
+                  >
+                    <option value="">Select Invoice...</option>
+                    {jobData.invoices.map((inv, idx) => (
+                      <option key={idx} value={String(idx + 1)}>
+                        {idx + 1} - {inv.invoiceNumber}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <Field
+                  label="Inv. Sr. No."
+                  value={safeDoc.invSerialNo}
+                  onChange={(v) => handleFieldChange("invSerialNo", v)}
+                  disabled={disableInvSrNo || jobData?.invoices?.length === 1}
+                />
+              )}
               <Field
                 label="IRN (Image Ref)"
                 value={safeDoc.irn}
@@ -741,23 +793,7 @@ const ESanchitEditDialog = ({
             </div>
 
             <div style={s.col}>
-              <div style={s.fieldGroup}>
-                <span style={s.label}>Scope</span>
-                <select
-                  style={s.select}
-                  value={safeDoc.scope || "This job only"}
-                  onChange={(e) => handleFieldChange("scope", e.target.value)}
-                >
-                  <option value="This job only">This job only</option>
-                  <option value="Multiple jobs">Multiple jobs</option>
-                </select>
-              </div>
-              <Field
-                label="Item Sr. No."
-                value={safeDoc.itemSerialNo}
-                onChange={(v) => handleFieldChange("itemSerialNo", v)}
-                disabled={disableItemSrNo}
-              />
+
               <div style={s.fieldGroup}>
                 <span style={s.label}>Document Type</span>
                 <select
@@ -786,11 +822,7 @@ const ESanchitEditDialog = ({
                   <option value="271000">271000-Packing List</option>
                 </select>
               </div>
-              <Field
-                label="Other ICEGATE ID"
-                value={safeDoc.icegateId}
-                onChange={(v) => handleFieldChange("icegateId", v)}
-              />
+
               <Field
                 label="File Type"
                 value="PDF"
@@ -802,16 +834,7 @@ const ESanchitEditDialog = ({
                 value={safeDoc.placeOfIssue}
                 onChange={(v) => handleFieldChange("placeOfIssue", v)}
               />
-              <div style={s.fieldGroup}>
-                <span style={s.label}>Expiry Date</span>
-                <DateInput
-                  style={s.input}
-                  value={safeDoc.expiryDate || ""}
-                  onChange={(e) =>
-                    handleFieldChange("expiryDate", e.target.value)
-                  }
-                />
-              </div>
+
             </div>
           </div>
 

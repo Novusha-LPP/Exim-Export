@@ -67,8 +67,14 @@ export const calculateProductFobINR = (
 export const calculateDbkAmount = (fob, qty, rate, cap) => {
   const a = (fob * rate) / 100;
   const b = qty * cap;
-  if (cap > 0) return Math.min(a, b).toFixed(2);
-  return a.toFixed(2);
+  let calcAmt = 0;
+  if (cap > 0) {
+    calcAmt = Math.min(a, b);
+  } else {
+    calcAmt = a;
+  }
+  if (calcAmt < 50) return "0.00";
+  return calcAmt.toFixed(2);
 };
 
 export const calculateRosctlAmount = (fob, qty, slRate, ctlRate, slCap, ctlCap) => {

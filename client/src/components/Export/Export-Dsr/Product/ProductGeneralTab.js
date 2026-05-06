@@ -1147,9 +1147,7 @@ function ProductRow({
       const eximCode = product.eximCode || "";
       const useReApi = eximCode.includes("03");
 
-      const ritcToSearch = product.ritc.toString().startsWith("0")
-        ? product.ritc.toString().slice(1)
-        : product.ritc.toString();
+      const ritcToSearch = product.ritc.toString();
 
       const endpoint = useReApi
         ? `${apiBase}/getRodtep_RE?tariff_item=${ritcToSearch}`

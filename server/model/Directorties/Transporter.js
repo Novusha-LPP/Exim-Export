@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import importDbConnection from "../importDB.js";
 
 const transporterSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, unique: true, uppercase: true },
@@ -31,5 +32,5 @@ const transporterSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now },
 });
 
-const TransporterModel = mongoose.model("Transporter", transporterSchema);
+const TransporterModel = importDbConnection.model("transportersimp", transporterSchema, "transportersimp");
 export default TransporterModel;
