@@ -809,7 +809,7 @@ router.post("/api/jobs/add-job", async (req, res) => {
                                 quantity: parseFloat(p.drawbackDetails?.quantity) || 0,
                                 unit: p.drawbackDetails?.unit || "",
                                 dbkUnder: p.drawbackDetails?.dbkUnder === "A" ? "Actual" : "Provisional",
-                                dbkAmount: parseFloat(p.drawbackDetails?.dbkAmount) || 0
+                                dbkAmount: (parseFloat(p.drawbackDetails?.dbkAmount) || 0) < 50 ? 0 : (parseFloat(p.drawbackDetails?.dbkAmount) || 0)
                             }],
 
                             // EPCG Details (from XML)

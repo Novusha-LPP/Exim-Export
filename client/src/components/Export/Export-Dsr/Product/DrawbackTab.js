@@ -534,10 +534,17 @@ const DrawbackTab = ({
     const a = (fob * rate) / 100;
     const b = qty * cap;
 
+    let calcAmt = 0;
     if (cap > 0) {
-      return Math.min(a, b).toFixed(2);
+      calcAmt = Math.min(a, b);
+    } else {
+      calcAmt = a;
     }
-    return a.toFixed(2);
+
+    if (calcAmt < 50) {
+      return "0.00";
+    }
+    return calcAmt.toFixed(2);
   };
 
   const calculateRosctlAmount = (item) => {
@@ -795,6 +802,12 @@ const DrawbackTab = ({
                           e.target.value
                         )
                       }
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        if (val < 50) {
+                          handleDrawbackFieldChange(idx, "dbkAmount", "0.00");
+                        }
+                      }}
                     />
                   </td>
 

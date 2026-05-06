@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import importDbConnection from "../importDB.js";
 
 const terminalCodeSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, unique: true, uppercase: true },
@@ -31,5 +32,5 @@ const terminalCodeSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now },
 });
 
-const TerminalCodeModel = mongoose.model("TerminalCode", terminalCodeSchema);
+const TerminalCodeModel = importDbConnection.model("cfssimp", terminalCodeSchema, "cfssimp");
 export default TerminalCodeModel;
