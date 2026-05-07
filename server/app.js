@@ -88,6 +88,7 @@ import testDsrEmailRoute from "./routes/export-dsr/testDsrEmail.mjs"; // Import 
 import apiKeyRoutes from "./routes/admin/apiKeyRoutes.mjs";
 import freightEnquiryRoutes from "./routes/export-dsr/freightEnquiryRoutes.mjs";
 import forwarderRoutes from "./routes/export-dsr/forwarderRoutes.mjs";
+import getHistoricalFreight from "./routes/export-dsr/getHistoricalFreight.mjs";
 
 // Report Routes
 import monthlyContainersReport from "./routes/report/monthlyContainers.mjs";
@@ -95,6 +96,7 @@ import billingPendingReport from "./routes/report/getBillingPendingReport.mjs";
 import fineReport from "./routes/report/getFineReport.mjs";
 import exporterReport from "./routes/report/getExporterReport.mjs";
 import exportClearanceReport from "./routes/report/exportClearanceMonthly.mjs";
+import tdsPayableRegister from "./routes/report/tdsPayableRegister.mjs";
 
 // REMOVED: Dangerous exception handlers that caused 3.1M log storm
 // Exception handlers are now in ./exceptionHandlers.js with:
@@ -243,8 +245,9 @@ app.use(exportAnalyticsRoutes);
 app.use(queryRoutes);
 app.use(testDsrEmailRoute);
 app.use(apiKeyRoutes);
-app.use("/api", freightEnquiryRoutes);
 app.use("/api", forwarderRoutes);
+app.use("/api", freightEnquiryRoutes);
+app.use(getHistoricalFreight);
 
 // Report Routes
 app.use(monthlyContainersReport);
@@ -252,6 +255,7 @@ app.use(billingPendingReport);
 app.use(fineReport);
 app.use(exporterReport);
 app.use(exportClearanceReport);
+app.use(tdsPayableRegister);
 
 // s3 route
 

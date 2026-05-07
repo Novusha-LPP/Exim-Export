@@ -149,17 +149,21 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     "CIN": party?.cin || party?.CIN || '',
                     "Place of Supply": branch.state || branch.State || '',
                     "Credit Terms": party?.credit_terms || party?.CreditTerms || '',
-                    "Description of Services": initialData.partyName ? `NEW ${initialData.partyName}` : '',
-                    "Charge Heading": initialData.chargeHead || '',
+                    "Description of Services": !isReimbursement 
+                        ? `${initialData.name || initialData.chargeHead || ''} - E` 
+                        : (initialData.partyName ? `NEW ${initialData.partyName}` : ''),
+                    "Charge Heading": initialData.name || initialData.chargeHead || '',
                     "SAC": initialData.cthNo || '',
-                    "Taxable Value": initialData.basicAmount ? Number(initialData.basicAmount).toFixed(2) : (initialData.amount ? Number(initialData.amount).toFixed(2) : ''),
-                    "GST%": (initialData.gstAmount > 0) ? (initialData.gstRate || '18') : '',
-                    "CGST": (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
-                    "SGST": (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
-                    "IGST": (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? '' : (initialData.gstAmount > 0 ? Number(initialData.gstAmount).toFixed(2) : ''),
+                    "Taxable Value": isReimbursement 
+                        ? (initialData.totalAmount || initialData.amountINR || initialData.netPayable || initialData.amount || '').toString()
+                        : (initialData.basicAmount ? Number(initialData.basicAmount).toFixed(2) : (initialData.amount ? Number(initialData.amount).toFixed(2) : '')),
+                    "GST%": !isReimbursement && (initialData.gstAmount > 0) ? (initialData.gstRate || '18') : '',
+                    "CGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
+                    "SGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
+                    "IGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? '' : (!isReimbursement && initialData.gstAmount > 0 ? Number(initialData.gstAmount).toFixed(2) : ''),
                     "TDS": initialData.tdsAmount ? Number(initialData.tdsAmount).toFixed(2) : '',
                     "Total": initialData.netPayable ? Math.round(initialData.netPayable) : (initialData.totalAmount ? Math.round(initialData.totalAmount) : ''),
-                    "Charge Head Category": initialData.chargeType || initialData.category || '',
+                    "Charge Head Category": initialData.chargeType || '',
                     "TDS Category": initialData.tdsCategory || '',
                     "chargeRef": initialData.chargeId || '',
                     "jobRef": initialData.jobId || ''
@@ -183,8 +187,8 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
             if (name === "GSTIN NO" || name === "Taxable Value" || name === "GST%" || name === "TDS") {
                 const gstin = updated["GSTIN NO"] || "";
                 const taxable = parseFloat(updated["Taxable Value"]) || 0;
-                const gstRate = parseFloat(updated["GST%"]) || 0;
-                const totalGst = Number((taxable * (gstRate / 100)).toFixed(2));
+                const gstRate = !isReimbursement ? (parseFloat(updated["GST%"]) || 0) : 0;
+                const totalGst = !isReimbursement ? Number((taxable * (gstRate / 100)).toFixed(2)) : 0;
                 const tds = parseFloat(updated["TDS"]) || 0;
 
                 if (gstin.trim().startsWith("24")) {

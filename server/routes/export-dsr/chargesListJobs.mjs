@@ -76,7 +76,7 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
                     // Bypass restrictions for FF and GEN jobs
                     filter.$and.push({
                         $or: [
-                            { job_no: { $regex: "^(FF|GEN)/", $options: "i" } },
+                            { job_no: { $regex: "^(FF|GEN)", $options: "i" } },
                             { $and: restrictions }
                         ]
                     });
@@ -102,10 +102,10 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             filter.$and.push({ isGeneralJob: true });
             filter.$and.push({ job_no: { $regex: "^GEN/", $options: "i" } });
         } else if (normalizedStatus === "freight-forwarding" || normalizedStatus === "freight forwarding") {
-            filter.$and.push({ job_no: { $regex: "^FF/", $options: "i" } });
+            filter.$and.push({ job_no: { $regex: "^FF", $options: "i" } });
         } else {
             // Pending/Completed Tabs: Exclude both GEN and FF jobs
-            filter.$and.push({ job_no: { $regex: "^(?!GEN/|FF/).*", $options: "i" } });
+            filter.$and.push({ job_no: { $regex: "^(?!GEN|FF).*", $options: "i" } });
             filter.$and.push({ isGeneralJob: { $ne: true } });
         }
 

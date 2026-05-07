@@ -37,6 +37,7 @@ import Feedback from "../components/home/FeedBack.js";
 import ReportTabs from "../components/Report/ReportTabs.js";
 import MonthlyContainers from "../components/Report/monthlyContainers.js";
 import DetailedReport from "../components/Report/DetailedReport.js";
+import BillingReportsUtility from "../components/Report/BillingReportsUtility.js";
 import OpenPointsHome from "../components/open-points/OpenPointsHome.js";
 import ProjectWorkspace from "../components/open-points/ProjectWorkspace.js";
 import AnalyticsDashboard from "../components/open-points/AnalyticsDashboard.js";
@@ -299,6 +300,14 @@ function HomePage() {
               element={
                 <ProtectedRoute requiredModule="Export - Reports">
                   <DetailedReport />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/report/billing"
+              element={
+                <ProtectedRoute requiredModule="Export - Reports">
+                  <BillingReportsUtility />
                 </ProtectedRoute>
               }
             />

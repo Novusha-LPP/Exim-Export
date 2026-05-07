@@ -182,7 +182,8 @@ const mapPurchaseEntryData = (data) => ({
     total: data["Total"] || data.total,
     chargeRef: data.chargeRef,
     jobRef: data.jobRef,
-    status: data["Status"] || data.status || ''
+    status: data["Status"] || data.status || '',
+    chargeHeadCategory: data["Charge Head Category"] || data.chargeHeadCategory || ''
 });
 
 router.post("/purchase-entry", authApiKey, async (req, res) => {
@@ -212,7 +213,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     { "charges.$": 1 }
                 ).lean();
                 if (job && job.charges && job.charges[0]) {
-                    chargeCategory = job.charges[0].category;
+                    chargeCategory = job.charges[0].chargeType || job.charges[0].category;
                 }
             } catch (err) {
                 console.error("Error fetching fallback category for purchase entry:", err);
@@ -238,8 +239,8 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "CIN": entry.cin,
             "Place of Supply": entry.placeOfSupply,
             "Credit Terms": entry.creditTerms,
-            "Description of Services": entry.supplierName ? `NEW ${entry.supplierName}` : "",
-            "Charge Heading": entry.descriptionOfServices || "",
+            "Description of Services": entry.descriptionOfServices || (entry.supplierName ? `NEW ${entry.supplierName}` : ""),
+            "Charge Heading": entry.chargeHeading || "",
             "SAC": entry.sac,
             "Taxable Value": entry.taxableValue,
             "GST%": entry.gstPercent,
@@ -253,6 +254,16 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "TDS Category": entry.tdsCategory || '94C',
             "Status": entry.status
         };
+
+        // SAFETY: If it's a reimbursement, zero out GST fields for Tally even if saved in DB
+        if (formattedData["Charge Head Category"] === "Reimbursement") {
+            formattedData["GST%"] = "";
+            formattedData["CGST"] = "";
+            formattedData["SGST"] = "";
+            formattedData["IGST"] = "";
+            // For reimbursements, the full amount is considered taxable/total
+            formattedData["Taxable Value"] = formattedData["Total"];
+        }
 
         // Include Job Details
         const job_number = entry.jobNo;

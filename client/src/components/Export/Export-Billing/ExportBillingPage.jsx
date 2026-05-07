@@ -27,6 +27,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 import CloseIcon from "@mui/icons-material/Close";
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -1317,6 +1318,28 @@ function ExportBillingPage() {
             <ToggleButton value="payment">PAYMENT</ToggleButton>
             <ToggleButton value="purchase-book">PURCHASE BOOK</ToggleButton>
           </ToggleButtonGroup>
+
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AssessmentIcon sx={{ fontSize: '16px' }} />}
+            onClick={() => navigate("/report/billing")}
+            sx={{
+              fontWeight: 700,
+              textTransform: "none",
+              borderRadius: "4px",
+              height: 28,
+              fontSize: '11px',
+              color: "#1a237e",
+              borderColor: "#1a237e",
+              "&:hover": { 
+                borderColor: "#0d47a1", 
+                backgroundColor: "rgba(26, 35, 126, 0.04)" 
+              }
+            }}
+          >
+            REPORTS HUB
+          </Button>
 
           {activeTab === "general-jobs" && (
             <Button

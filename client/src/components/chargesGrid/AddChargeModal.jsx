@@ -194,10 +194,10 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
                                 <span>TDS:</span>
                                 <select value={editTdsCategory} onChange={e => setEditTdsCategory(e.target.value)} style={{ padding: '2px 4px' }}>
                                     <option value="">None</option>
-                                    <option value="94C">94C</option>
-                                    <option value="94J">94J</option>
-                                    <option value="94I">94I</option>
-                                    <option value="94H">94H</option>
+                                    <option value="TDS ON CONTRACT 94C">TDS ON CONTRACT 94C</option>
+                                    <option value="TDS ON PROFESSIONAL FEES 94J">TDS ON PROFESSIONAL FEES 94J</option>
+                                    <option value="TDS ON RENT 94I">TDS ON RENT 94I</option>
+                                    <option value="TDS ON COMMISSION 94H">TDS ON COMMISSION 94H</option>
                                 </select>
                             </div>
                             <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
@@ -287,10 +287,10 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
                   <span>Default TDS:</span>
                   <select value={customTdsCategory} onChange={e => setCustomTdsCategory(e.target.value)} style={{ padding: '2px 4px' }}>
                     <option value="">None</option>
-                    <option value="94C">94C</option>
-                    <option value="94J">94J</option>
-                    <option value="94I">94I</option>
-                    <option value="94H">94H</option>
+                    <option value="TDS ON CONTRACT 94C">TDS ON CONTRACT 94C</option>
+                    <option value="TDS ON PROFESSIONAL FEES 94J">TDS ON PROFESSIONAL FEES 94J</option>
+                    <option value="TDS ON RENT 94I">TDS ON RENT 94I</option>
+                    <option value="TDS ON COMMISSION 94H">TDS ON COMMISSION 94H</option>
                   </select>
                </div>
                <button type="button" className="add-custom-btn" onClick={handleAddCustom} style={{ marginLeft: 'auto', background: '#16a34a', color: '#fff', border: 'none' }}>Add to Master</button>

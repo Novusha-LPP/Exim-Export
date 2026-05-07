@@ -35,17 +35,26 @@ router.post("/freight-enquiries", async (req, res) => {
     else if (shipment_type === "Import-Air") typeCode = "IMP/AIR";
     else if (shipment_type === "Export-Air") typeCode = "EXP/AIR";
 
-    const lastEnquiry = await FreightEnquiryModel.findOne({ shipment_type }).sort({ createdAt: -1 });
-    let nextNo = 1;
-    if (lastEnquiry && lastEnquiry.enquiry_no) {
-      const parts = lastEnquiry.enquiry_no.split("/");
-      // Look for the 4-digit numeric sequence part
-      const seqPart = parts.find(p => p.length === 4 && /^\d+$/.test(p));
-      const lastNo = seqPart ? parseInt(seqPart) : 0;
-      if (!isNaN(lastNo)) nextNo = lastNo + 1;
-    }
     const currentFY = getCurrentFinancialYear();
-    const enquiry_no = `FF/${typeCode}/${nextNo.toString().padStart(4, "0")}/${currentFY}`;
+    
+    // Helper to generate sequential numbers for different series
+    const getNextNo = async (field, prefix) => {
+      const lastEntry = await FreightEnquiryModel.findOne({ 
+        shipment_type,
+        [field]: { $exists: true, $ne: null }
+      }).sort({ [field]: -1 });
+
+      let nextNo = 1;
+      if (lastEntry && lastEntry[field]) {
+        const parts = lastEntry[field].split("/");
+        const seqPart = parts.find(p => p.length === 4 && /^\d+$/.test(p));
+        const lastNo = seqPart ? parseInt(seqPart) : 0;
+        if (!isNaN(lastNo)) nextNo = lastNo + 1;
+      }
+      return `${prefix}/${typeCode}/${nextNo.toString().padStart(4, "0")}/${currentFY}`;
+    };
+
+    const enquiry_no = await getNextNo("enquiry_no", "FF");
 
     const newEnquiry = new FreightEnquiryModel({
       ...req.body,
@@ -132,19 +141,59 @@ router.post("/freight-enquiries/:id/rates", async (req, res) => {
 // Update enquiry details
 router.put("/freight-enquiries/:id", async (req, res) => {
   try {
+    const existing = await FreightEnquiryModel.findById(req.params.id);
+    if (!existing) return res.status(404).json({ success: false, message: "Enquiry not found" });
+
+    const updates = { ...req.body };
+    const shipment_type = existing.shipment_type;
+    const currentFY = getCurrentFinancialYear();
+
+    // Helper to generate sequential numbers (redundant if defined globally, but safe here)
+    const getNextNo = async (field, prefix) => {
+      let typeCode = "MISC";
+      if (shipment_type === "Import-Sea") typeCode = "IMP/SEA";
+      else if (shipment_type === "Export-Sea") typeCode = "EXP/SEA";
+      else if (shipment_type === "Import-Air") typeCode = "IMP/AIR";
+      else if (shipment_type === "Export-Air") typeCode = "EXP/AIR";
+
+      const lastEntry = await FreightEnquiryModel.findOne({ 
+        shipment_type,
+        [field]: { $exists: true, $ne: null }
+      }).sort({ [field]: -1 });
+
+      let nextNo = 1;
+      if (lastEntry && lastEntry[field]) {
+        const parts = lastEntry[field].split("/");
+        const seqPart = parts.find(p => p.length === 4 && /^\d+$/.test(p));
+        const lastNo = seqPart ? parseInt(seqPart) : 0;
+        if (!isNaN(lastNo)) nextNo = lastNo + 1;
+      }
+      return `${prefix}/${typeCode}/${nextNo.toString().padStart(4, "0")}/${currentFY}`;
+    };
+
+    // Generate Success No if status is becoming Converted
+    if (req.body.status === "Converted" && !existing.success_no) {
+      updates.success_no = await getNextNo("success_no", "FF-SUC");
+    }
+    // Generate Rejected No if status is becoming Rejected
+    if (req.body.status === "Rejected" && !existing.rejected_no) {
+      updates.rejected_no = await getNextNo("rejected_no", "FF-REJ");
+    }
+
     const updated = await FreightEnquiryModel.findByIdAndUpdate(
       req.params.id,
-      { $set: req.body },
+      { $set: updates },
       { new: true }
     ).lean();
 
     // AUTO-CONVERSION: Create an Export Job entry if status is Converted and it's an Export type
-    if (req.body.status === "Converted" && updated.enquiry_no && String(updated.shipment_type).startsWith("Export")) {
-      const existingJob = await ExJobModel.findOne({ job_no: updated.enquiry_no });
+    if (req.body.status === "Converted" && (updated.success_no || updated.enquiry_no) && String(updated.shipment_type).startsWith("Export")) {
+      const jobNo = updated.success_no || updated.enquiry_no;
+      const existingJob = await ExJobModel.findOne({ job_no: jobNo });
       if (!existingJob) {
         const newJob = new ExJobModel({
-          job_no: updated.enquiry_no,
-          jobNumber: updated.enquiry_no,
+          job_no: jobNo,
+          jobNumber: jobNo,
           year: String(new Date().getFullYear()).slice(-2) + "-" + String(new Date().getFullYear() + 1).slice(-2),
           job_date: updated.enquiry_date || new Date().toISOString().split("T")[0],
           exporter: updated.organization_name,

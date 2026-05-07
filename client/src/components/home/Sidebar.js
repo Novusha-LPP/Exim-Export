@@ -13,6 +13,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import InsightsIcon from '@mui/icons-material/Insights';
 import TvIcon from '@mui/icons-material/Tv';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import { UserContext } from "../../contexts/UserContext";
 import CurrencyRateDialog from "./CurrencyRateDialog.js"; // Import the dialog
 import axios from "axios";
@@ -108,6 +109,19 @@ function Sidebar() {
       )}
 
       {/* Analytics and Pulse removed from sidebar per user request */}
+      
+      <Tooltip title="Reports Hub" enterDelay={0} placement="right">
+        <ListItemButton
+          sx={{ textAlign: "left" }}
+          className="appbar-links"
+          aria-label="list-item"
+          onClick={() => navigate("/report/billing")}
+        >
+          <IconButton sx={{ color: "#ffffff9f" }} aria-label="icon">
+            <AssessmentIcon />
+          </IconButton>
+        </ListItemButton>
+      </Tooltip>
 
       {/* NEW: Currency Exchange Rates Icon */}
       <Tooltip title="Currency Exchange Rates" enterDelay={0} placement="right">

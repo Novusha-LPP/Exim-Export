@@ -297,7 +297,8 @@ function FreightForwardingModule() {
 
   const handleSuccessJobClick = (e, row) => {
     e.stopPropagation();
-    const encodedJobNo = encodeURIComponent(row.enquiry_no);
+    const jobNo = row.success_no || row.enquiry_no;
+    const encodedJobNo = encodeURIComponent(jobNo);
     navigate(`/export-charges/job/${encodedJobNo}`);
   };
 
@@ -398,7 +399,7 @@ function FreightForwardingModule() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ backgroundColor: "#19448aff", color: "#fff" }}>
-                    {["Enquiry No", "Date", "Organization", "Shipment", "Booking Info", "POL", "Destination", "Docs Upload", "Status"].map((h) => (
+                    {[activeTab === "Success" ? "Success No" : activeTab === "Rejected" ? "Rejected No" : "Enquiry No", "Date", "Organization", "Shipment", "Booking Info", "POL", "Destination", "Docs Upload", "Status"].map((h) => (
                       <th key={h} style={{ textAlign: h === "Docs Upload" ? "center" : "left", padding: "12px 10px", fontWeight: 700, fontSize: '12px' }}>
                         {h}
                       </th>
@@ -426,11 +427,11 @@ function FreightForwardingModule() {
                               onClick={(e) => handleSuccessJobClick(e, row)}
                               style={{ cursor: "pointer", textDecoration: "none", borderBottom: '1px dashed #2563eb' }}
                             >
-                              {row.enquiry_no}
+                              {row.success_no || row.enquiry_no}
                             </span>
                           ) : (
                             <span style={{ cursor: "pointer", textDecoration: "none", borderBottom: '1px dashed #2563eb' }}>
-                              {row.enquiry_no}
+                              {activeTab === "Rejected" ? (row.rejected_no || row.enquiry_no) : row.enquiry_no}
                             </span>
                           )}
                         </td>

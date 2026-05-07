@@ -522,6 +522,50 @@ const InvoiceFreightTab = ({ formik }) => {
     }, 800);
   };
 
+  const handleHistoricalFreight = async () => {
+    const pol = formik.values.port_of_loading;
+    const pod = formik.values.destination_port;
+    if (!pol || !pod) {
+      alert("Please fill Port of Loading and Destination Port first");
+      return;
+    }
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_STRING}/export-dsr/historical-freight?pol=${pol}&pod=${pod}`);
+      const json = await res.json();
+      if (json.success && json.data.length > 0) {
+        // Take the latest one
+        const hist = json.data[0];
+        let amount = Number(hist.amount);
+        let currency = hist.currency;
+        let exchangeRate = Number(hist.exchangeRate || 1);
+
+        if (currency !== "INR") {
+          // Convert to INR based on CURRENT exchange rate if available, otherwise use historic rate
+          const currentRate = rateMap[currency.toUpperCase()];
+          if (currentRate) {
+            amount = amount * currentRate;
+          } else {
+            amount = amount * exchangeRate;
+          }
+          currency = "INR";
+          exchangeRate = 1;
+        }
+
+        // Update formik via handleChange to ensure side effects (like clearing rate) happen
+        handleChange("freight", "currency", "INR");
+        handleChange("freight", "exchangeRate", 1);
+        handleChange("freight", "amount", amount.toFixed(2));
+        
+        alert(`Fetched historical freight from Job: ${hist.jobNo} (${hist.date}). Converted to INR.`);
+      } else {
+        alert("No historical freight found for this POL/POD in the last 2 months");
+      }
+    } catch (e) {
+      console.error("Failed to fetch historical freight", e);
+      alert("Error fetching historical freight");
+    }
+  };
+
   return (
     <div style={styles.page}>
       <div style={{ ...styles.card, padding: "16px", marginBottom: "16px" }}>
@@ -645,7 +689,32 @@ const InvoiceFreightTab = ({ formik }) => {
           return (
             <div key={row.key}>
               <div style={styles.row}>
-                <div style={styles.labelCell}>{row.label}</div>
+                <div style={{ ...styles.labelCell, display: 'flex', alignItems: 'center' }}>
+                  {row.label}
+                  {row.key === "freight" && !disabled && (
+                    <button
+                      type="button"
+                      onClick={handleHistoricalFreight}
+                      title="Fetch Historical Freight from last 2 months"
+                      style={{
+                        marginLeft: 6,
+                        padding: "1px 4px",
+                        fontSize: 10,
+                        cursor: "pointer",
+                        background: "#16408f",
+                        color: "white",
+                        border: "none",
+                        borderRadius: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: 16
+                      }}
+                    >
+                      HIST
+                    </button>
+                  )}
+                </div>
 
                 <div>
                   <select

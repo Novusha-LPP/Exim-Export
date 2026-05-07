@@ -24,7 +24,12 @@ router.get("/api/get-exjobs-overview/:year", async (req, res) => {
     const statusLower = status ? status.toLowerCase() : null;
 
     // Start building the match query
-    const matchQuery = { $and: [{ year: year }] };
+    const matchQuery = { 
+      $and: [
+        { year: year },
+        { job_no: { $not: /^FF/i } } // Exclude FF jobs from dashboard counts
+      ] 
+    };
 
     // Fetch user restrictions
     const requesterUsername = req.headers["username"] || req.headers["x-username"];

@@ -11,9 +11,9 @@ const router = express.Router();
 router.get("/job-numbers-search", async (req, res) => {
   try {
     const { q = "" } = req.query;
-    const filter = {};
+    const filter = { job_no: { $not: /^FF/i } };
     if (q) {
-      filter.job_no = { $regex: q, $options: "i" };
+      filter.$and = [{ job_no: { $regex: q, $options: "i" } }];
     }
 
     const jobs = await ExJobModel.find(filter)
@@ -312,6 +312,9 @@ router.get("/global-search-jobs", async (req, res) => {
     }
 
     if (jobOwner) filter.$and.push({ job_owner: { $regex: jobOwner, $options: "i" } });
+
+    // Exclude Freight Forwarding jobs (FF) from Export module global search
+    filter.$and.push({ job_no: { $not: /^FF/i } });
 
     // 2. Status filter
     // CRITICAL FIX: If there is a search query, we IGNORE the status filter to make it truly global across tabs
@@ -783,8 +786,8 @@ router.get("/exports/:status?", async (req, res) => {
       filter.$and.push({ isGeneralJob: { $ne: true } });
     }
 
-    // Exclude Freight Forwarding jobs (FF/) from Export module
-    filter.$and.push({ job_no: { $not: /^FF\//i } });
+    // Exclude Freight Forwarding jobs (FF) from Export module
+    filter.$and.push({ job_no: { $not: /^FF/i } });
 
     // Status filtering logic with job tracking consideration
     // Job is considered "completed" if:

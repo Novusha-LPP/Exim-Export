@@ -130,11 +130,17 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
           leoMonth: { $month: "$leoDateObj" },
         },
       },
-      {
+    ];
+
+    if (month !== "all") {
+      pipeline.push({
         $match: {
           leoMonth: monthInt,
         },
-      },
+      });
+    }
+
+    pipeline.push(...[
       {
         $addFields: {
           uniqueContainers: {
@@ -387,7 +393,7 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
           transport_mode: "$transportMode",
         },
       },
-    ];
+    ]);
 
     // apply grade filter at the top of pipeline if present
     if (grade) {

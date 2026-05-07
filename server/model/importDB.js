@@ -8,7 +8,7 @@ const IMPORT_DB_URI = (() => {
     return process.env.IMPORT_MONGODB_URI_PROD;
   if (process.env.NODE_ENV === "server")
     return process.env.IMPORT_MONGODB_URI_SERVER;
-  return process.env.IMPORT_MONGODB_URI_DEV;
+  return process.env.IMPORT_MONGODB_URI_PROD;
 })();
 
 if (!IMPORT_DB_URI) {
@@ -35,7 +35,7 @@ importDbConnection.on("connected", () => {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { }
   console.log("🟢 Import Database connected to:", dbHost);
 });
 

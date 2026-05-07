@@ -23,6 +23,59 @@ const s = {
 
 function CaptureRates({ enquiry, onUpdate, forwarders }) {
   const [showAdd, setShowAdd] = useState(false);
+
+  const handleHistoricalFreight = async () => {
+    try {
+      const pol = enquiry.port_of_loading;
+      const pod = enquiry.port_of_destination;
+
+      if (!pol || !pod) {
+        alert("Please ensure POL and POD are present in enquiry details");
+        return;
+      }
+
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/export-dsr/historical-freight`, {
+        params: { pol, pod }
+      });
+
+      if (res.data.success && res.data.data.length > 0) {
+        const hist = res.data.data[0]; 
+        let amount = Number(hist.amount);
+        let currency = hist.currency || "INR";
+        let exchangeRate = Number(hist.exchangeRate || 1);
+
+        if (currency !== "INR") {
+          amount = amount * exchangeRate;
+        }
+
+        const next = [...newRate.shipping_line_rates];
+        const idx = next.findIndex(r => r.charge_name === "Ocean Freight");
+        if (idx !== -1) {
+          next[idx].amount = Math.round(amount);
+          setNewRate({ ...newRate, shipping_line_rates: next });
+          alert(`Fetched historical freight: ₹${Math.round(amount)} (from Job ${hist.jobNo})`);
+        }
+      } else {
+        alert("No historical freight found for this POL/POD in last 2 months");
+      }
+    } catch (error) {
+      console.error("Error fetching historical freight:", error);
+      alert("Failed to fetch historical freight");
+    }
+  };
+
+  const handleAddCharge = (category) => {
+    const next = { ...newRate };
+    next[category].push({ charge_name: "", amount: 0 });
+    setNewRate(next);
+  };
+
+  const handleRemoveCharge = (category, index) => {
+    const next = { ...newRate };
+    next[category].splice(index, 1);
+    setNewRate(next);
+  };
+
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [selectedRateForQuote, setSelectedRateForQuote] = useState(null);
   const [newRate, setNewRate] = useState({
@@ -252,10 +305,28 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
               <div>
-                <div style={s.label}>Local/Agency Charges</div>
+                <div style={{ ...s.label, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Local/Agency Charges</span>
+                  <button 
+                    type="button" 
+                    onClick={() => handleAddCharge('base_rates')}
+                    style={{ fontSize: 10, padding: '2px 6px', cursor: 'pointer', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 3 }}
+                  >
+                    + Add
+                  </button>
+                </div>
                 {newRate.base_rates.map((item, idx) => (
-                  <div key={idx} style={{ display: "flex", gap: "10px", marginTop: "5px" }}>
-                    <div style={{ flex: 2, fontSize: "12px" }}>{item.charge_name}</div>
+                  <div key={idx} style={{ display: "flex", gap: "8px", marginTop: "5px", alignItems: 'center' }}>
+                    <input
+                      style={{ ...s.input, flex: 2, fontSize: "11px" }}
+                      value={item.charge_name}
+                      placeholder="Charge Name"
+                      onChange={(e) => {
+                        const next = [...newRate.base_rates];
+                        next[idx].charge_name = e.target.value;
+                        setNewRate({ ...newRate, base_rates: next });
+                      }}
+                    />
                     <input
                       type="number"
                       style={{ ...s.input, flex: 1 }}
@@ -266,14 +337,56 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
                         setNewRate({ ...newRate, base_rates: next });
                       }}
                     />
+                    <button 
+                      type="button"
+                      onClick={() => handleRemoveCharge('base_rates', idx)}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}
+                    >
+                      ×
+                    </button>
                   </div>
                 ))}
               </div>
               <div>
-                <div style={s.label}>Shipping Line Charges</div>
+                <div style={{ ...s.label, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Shipping Line Charges</span>
+                  <button 
+                    type="button" 
+                    onClick={() => handleAddCharge('shipping_line_rates')}
+                    style={{ fontSize: 10, padding: '2px 6px', cursor: 'pointer', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 3 }}
+                  >
+                    + Add
+                  </button>
+                </div>
                 {newRate.shipping_line_rates.map((item, idx) => (
-                  <div key={idx} style={{ display: "flex", gap: "10px", marginTop: "5px" }}>
-                    <div style={{ flex: 2, fontSize: "12px" }}>{item.charge_name}</div>
+                  <div key={idx} style={{ display: "flex", gap: "8px", marginTop: "5px", alignItems: 'center' }}>
+                    <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <input
+                          style={{ ...s.input, flex: 1, fontSize: "11px" }}
+                          value={item.charge_name}
+                          placeholder="Charge Name"
+                          onChange={(e) => {
+                            const next = [...newRate.shipping_line_rates];
+                            next[idx].charge_name = e.target.value;
+                            setNewRate({ ...newRate, shipping_line_rates: next });
+                          }}
+                        />
+                        {item.charge_name === "Ocean Freight" && (
+                          <button 
+                            type="button"
+                            onClick={handleHistoricalFreight}
+                            style={{ 
+                              fontSize: 9, padding: '1px 4px', cursor: 'pointer', 
+                              backgroundColor: '#e2e8f0', border: '1px solid #cbd5e1', borderRadius: 3,
+                              fontWeight: 700, color: '#475569'
+                            }}
+                          >
+                            HIST
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     <input
                       type="number"
                       style={{ ...s.input, flex: 1 }}
@@ -284,6 +397,13 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
                         setNewRate({ ...newRate, shipping_line_rates: next });
                       }}
                     />
+                    <button 
+                      type="button"
+                      onClick={() => handleRemoveCharge('shipping_line_rates', idx)}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}
+                    >
+                      ×
+                    </button>
                   </div>
                 ))}
               </div>

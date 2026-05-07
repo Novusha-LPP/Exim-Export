@@ -13,7 +13,7 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
     });
     
     // JUST-IN-TIME CREATION: If job not found, check if it's a converted Freight Enquiry
-    if (!job && String(jobNo).startsWith("FF/")) {
+    if (!job && String(jobNo).startsWith("FF")) {
       const enquiry = await FreightEnquiryModel.findOne({ 
         enquiry_no: jobNo, 
         status: "Converted" 

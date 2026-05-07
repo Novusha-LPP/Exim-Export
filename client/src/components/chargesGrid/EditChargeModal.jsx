@@ -10,17 +10,18 @@ import './charges.css';
 import { generatePurchaseBookPDF } from '../../utils/purchaseBookPrint';
 import logo from '../../assets/images/logo.jpg';
 import PrintIcon from '@mui/icons-material/Print';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { IconButton } from '@mui/material';
 import { currencyList } from '../../utils/masterList';
 import { formatDate } from '../../utils/dateUtils';
-const EditChargeModal = ({ 
-  isOpen, 
-  onClose, 
-  selectedCharges, 
-  onSave, 
+const EditChargeModal = ({
+  isOpen,
+  onClose,
+  selectedCharges,
+  onSave,
   updateCharge,
   parentId,
-  shippingLineAirline, 
+  shippingLineAirline,
   exporterName,
   jobNumber = '',
   jobDisplayNumber = '',
@@ -131,6 +132,8 @@ const EditChargeModal = ({
     if (isOpen) {
       const initialData = JSON.parse(JSON.stringify(selectedCharges)).map(charge => ({
         ...charge,
+        name: charge.name || charge.chargeHead || '',
+        chargeType: charge.chargeType || 'Margin',
         invoice_number: charge.invoice_number || '',
         invoice_date: formatDate(charge.invoice_date, 'yyyy-MM-dd') || '',
         payment_request_no: charge.payment_request_no || '',
@@ -168,7 +171,7 @@ const EditChargeModal = ({
         // Use jobInvoiceDate if available, else current date
         const dateStr = getJobDateFormatted(jobInvoiceDate || new Date().toISOString().split('T')[0]);
         if (!dateStr) return;
-        
+
         const res = await axios.get(`${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`);
         const json = res.data;
         if (json?.success && json?.data) {
@@ -188,7 +191,7 @@ const EditChargeModal = ({
   }, [isOpen, jobInvoiceDate]);
 
   if (!isOpen) return null;
- 
+
   const normalize = (str) => (str || '').toString().replace(/[^a-z0-9]/gi, '').toUpperCase();
 
   // Smart party finder: when multiple entries share the same name across directories,
@@ -201,11 +204,11 @@ const EditChargeModal = ({
 
   const extractFileName = (url) => {
     try {
-        if (!url) return "File";
-        const parts = url.split("/");
-        return decodeURIComponent(parts[parts.length - 1]);
+      if (!url) return "File";
+      const parts = url.split("/");
+      return decodeURIComponent(parts[parts.length - 1]);
     } catch (error) {
-        return "File";
+      return "File";
     }
   };
 
@@ -214,14 +217,14 @@ const EditChargeModal = ({
     if (section) {
       updated[index][section] = updated[index][section] || {};
       updated[index][section][field] = value;
-      
+
       // Synchronize 'url' (attachments) between revenue and cost
       if (field === 'url') {
         const otherSection = section === 'revenue' ? 'cost' : 'revenue';
         updated[index][otherSection] = updated[index][otherSection] || {};
         updated[index][otherSection][field] = value;
       }
-      
+
       if (field === 'currency') {
         const newCurrency = value?.toUpperCase();
         if (newCurrency && newCurrency !== 'INR' && rateMap[newCurrency]) {
@@ -250,7 +253,7 @@ const EditChargeModal = ({
       if (section === 'cost' && field === 'partyType' && (value === 'Exporter' || value === 'EXPORTER') && exporterName) {
         updated[index][section].partyName = exporterName;
       }
-      
+
       // Open dropdown when typing party name
       if (field === 'partyName') {
         setActiveDropdown({ index, section });
@@ -267,13 +270,13 @@ const EditChargeModal = ({
 
     // Calculation Logic
     const sectionsToCalc = section ? [section] : ['revenue', 'cost'];
-    
+
     sectionsToCalc.forEach(sec => {
       const fieldsToTriggerRecalc = ['qty', 'rate', 'isGst', 'gstRate', 'isTds', 'tdsPercent', 'exchangeRate', 'partyName', 'chargeType'];
       if (fieldsToTriggerRecalc.includes(field) || field === 'chargeType') {
         const sectionRef = updated[index][sec];
         if (!sectionRef) return;
-        
+
         const qty = parseFloat(sectionRef.qty) || 0;
         const rate = parseFloat(sectionRef.rate) || 0;
         const exRate = parseFloat(sectionRef.exchangeRate) || 1;
@@ -322,7 +325,7 @@ const EditChargeModal = ({
         const party = smartFindParty(allParties, partyName);
         const branchIndex = sectionRef.branchIndex || 0;
         const gstin = party?.branches?.[branchIndex]?.gst || party?.branchInfo?.[branchIndex]?.gstNo || "";
-        
+
         if (gstin && gstin.startsWith("24")) {
           sectionRef.cgst = Number((gstAmount / 2).toFixed(2));
           sectionRef.sgst = Number((gstAmount / 2).toFixed(2));
@@ -347,7 +350,7 @@ const EditChargeModal = ({
         sectionRef.netPayable = Math.round(tentativeNet);
       }
     });
-    
+
     setFormData(updated);
   };
 
@@ -366,7 +369,7 @@ const EditChargeModal = ({
     const updated = [...formData];
     const source = updated[index][fromSec];
     if (!source) return;
-    
+
     updated[index][toSec] = {
       ...updated[index][toSec],
       basis: source.basis,
@@ -383,6 +386,29 @@ const EditChargeModal = ({
   };
 
   const handleSave = (shouldClose = true) => {
+    // Validate mandatory fields
+    for (let i = 0; i < formData.length; i++) {
+      const charge = formData[i];
+      const chargeName = charge.name || charge.chargeHead || `Charge ${i + 1}`;
+
+      if (!charge.chargeType) {
+        alert(`Please select Category (Margin/Reimbursement) for ${chargeName}`);
+        return;
+      }
+      if (!charge.hsnCode) {
+        alert(`Please enter SAC / HSN for ${chargeName}`);
+        return;
+      }
+      if (!charge.invoice_number) {
+        alert(`Please enter Invoice Number for ${chargeName}`);
+        return;
+      }
+      if (!charge.invoice_date) {
+        alert(`Please enter Invoice Date for ${chargeName}`);
+        return;
+      }
+    }
+
     const formattedData = formData.map(charge => ({
       ...charge,
       invoice_date: formatDate(charge.invoice_date, 'dd-MM-yyyy')
@@ -411,135 +437,159 @@ const EditChargeModal = ({
             <div key={row._id || i} style={{ marginBottom: formData.length > 1 ? '30px' : '0' }}>
               <div className="form-section-new">
                 <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginRight: '30px', gap: '10px 20px' }}>
-                   <div className="form-row" style={{ gridColumn: 'span 2', alignItems: 'center' }}>
+                  <div className="form-row" style={{ gridColumn: 'span 2', alignItems: 'center' }}>
                     <span className="form-label" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                        CHARGE 
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <span style={{ fontSize: '10px', color: '#1565c0', fontWeight: 'bold', border: '1px solid currentColor', padding: '0 2px', borderRadius: '2px' }}>PB</span>
-                            {row.isPbMandatory && <span style={{ fontSize: '8px', color: '#d32f2f', fontWeight: 'bold' }}>MANDATORY</span>}
-                        </div>
+                      CHARGE
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <span style={{ fontSize: '10px', color: '#1565c0', fontWeight: 'bold', border: '1px solid currentColor', padding: '0 2px', borderRadius: '2px' }}>PB</span>
+                        {row.isPbMandatory && <span style={{ fontSize: '8px', color: '#d32f2f', fontWeight: 'bold' }}>MANDATORY</span>}
+                      </div>
                     </span>
                     <div className="form-input-search">
-                      <input type="text" readOnly className="form-input" style={{ background: '#f5f8fc', color: '#1a3a5c', fontWeight: 'bold' }} value={row.chargeHead || ''} />
+                      <input type="text" readOnly className="form-input" style={{ background: '#f5f8fc', color: '#1a3a5c', fontWeight: 'bold' }} value={row.name || row.chargeHead || ''} />
                       <button type="button" className="search-btn">🔍</button>
                     </div>
                   </div>
                   <div className="form-row" style={{ gridColumn: 'span 1' }}>
-                    <span className="form-label">CATEGORY</span>
+                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>CATEGORY <span style={{ color: 'red' }}>*</span></span>
                     <select className="form-input" value={row.chargeType || 'Margin'} onChange={e => handleFieldChange(i, 'chargeType', e.target.value)}>
                       <option value="Margin">Margin</option>
                       <option value="Reimbursement">Reimbursement</option>
                     </select>
                   </div>
                   <div className="form-row" style={{ gridColumn: 'span 1' }}>
-                    <span className="form-label">SAC / HSN</span>
-                    <input type="text" className="form-input" placeholder="Enter HSN Code" value={row.cthNo || ''} onChange={e => handleFieldChange(i, 'cthNo', e.target.value)} />
+                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>SAC / HSN <span style={{ color: 'red' }}>*</span></span>
+                    <input type="text" className="form-input" placeholder="Enter HSN Code" value={row.hsnCode || ''} onChange={e => handleFieldChange(i, 'hsnCode', e.target.value)} />
                   </div>
 
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
-                    <span className="form-label">INVOICE NUMBER</span>
+                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INVOICE NUMBER <span style={{ color: 'red' }}>*</span></span>
                     <input type="text" className="form-input" value={row.invoice_number || ''} onChange={e => handleFieldChange(i, 'invoice_number', e.target.value)} />
                   </div>
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
-                    <span className="form-label">INVOICE DATE</span>
+                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INVOICE DATE <span style={{ color: 'red' }}>*</span></span>
                     <input type="date" className="form-input" value={row.invoice_date || ''} onChange={e => handleFieldChange(i, 'invoice_date', e.target.value)} />
                   </div>
 
                   {/* Tally Numbers & Status Row */}
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
                     <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold' }}>PB No</span>
-                    <div className="ep-inline">
-                        <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', width: '60%' }} value={row.purchase_book_no || ''} />
-                        {!row.purchase_book_no && <span className="ep-status-pill" style={{ background: '#e2e3e5', color: '#383d41', fontSize: '10px', marginLeft: '10px', padding: '2px 8px', borderRadius: '10px' }}>Pending</span>}
-                        {row.purchase_book_no && (
-                            <IconButton 
-                                size="small" 
-                                color="primary" 
-                                onClick={async () => {
-                                    let data = paymentDetailsAudit[row.purchase_book_no];
-                                    if (!data) {
-                                        try {
-                                            const res = await axios.get(`${import.meta.env.VITE_API_STRING}/get-payment-request-details/${encodeURIComponent(row.purchase_book_no)}`);
-                                            data = res.data;
-                                            setPaymentDetailsAudit(prev => ({ ...prev, [row.purchase_book_no]: data }));
-                                        } catch (err) { console.error(err); alert('Could not fetch details'); return; }
-                                    }
-                                    generatePurchaseBookPDF(data, logo);
-                                }}
-                                style={{ marginLeft: '4px' }}
-                                title="Print Payment Advice"
-                            >
-                                <PrintIcon style={{ fontSize: '18px' }} />
-                            </IconButton>
-                        )}
-                        <span className="ep-status-pill" style={{ marginLeft: '10px', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: row.purchase_book_status ? '#e8f5e9' : '#f5f5f5', color: row.purchase_book_status === 'Active' ? '#2e7d32' : '#757575', border: '1px solid #ddd' }}>
-                            {row.purchase_book_status || 'PENDING'}
-                        </span>
+                    <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', width: '180px', margin: 0, fontWeight: 'bold' }} value={row.purchase_book_no || ''} />
+                      {row.purchase_book_no && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => {
+                              navigator.clipboard.writeText(row.purchase_book_no);
+                            }}
+                            title="Copy PB No"
+                            style={{ padding: '4px' }}
+                          >
+                            <ContentCopyIcon style={{ fontSize: '16px' }} />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={async () => {
+                              let data = paymentDetailsAudit[row.purchase_book_no];
+                              if (!data) {
+                                try {
+                                  const res = await axios.get(`${import.meta.env.VITE_API_STRING}/get-payment-request-details/${encodeURIComponent(row.purchase_book_no)}`);
+                                  data = res.data;
+                                  setPaymentDetailsAudit(prev => ({ ...prev, [row.purchase_book_no]: data }));
+                                } catch (err) { console.error(err); alert('Could not fetch details'); return; }
+                              }
+                              generatePurchaseBookPDF(data, logo);
+                            }}
+                            style={{ padding: '4px' }}
+                            title="Print Payment Advice"
+                          >
+                            <PrintIcon style={{ fontSize: '18px' }} />
+                          </IconButton>
+                        </div>
+                      )}
+                      <span className="ep-status-pill" style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: row.purchase_book_status ? '#e8f5e9' : '#f5f5f5', color: row.purchase_book_status === 'Active' ? '#2e7d32' : '#757575', border: '1px solid #ddd', whiteSpace: 'nowrap' }}>
+                        {row.purchase_book_status || 'PENDING'}
+                      </span>
                     </div>
                   </div>
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
                     <span className="form-label" style={{ color: '#d32f2f', fontWeight: 'bold' }}>PR NO</span>
-                    <div className="ep-inline" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
-                            <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', width: '60%' }} value={row.payment_request_no || ''} />
-                            {row.payment_request_no && (
-                                <IconButton 
-                                    size="small" 
-                                    color="error" 
-                                    onClick={async () => {
-                                        let data = paymentDetailsAudit[row.payment_request_no];
-                                        if (!data) {
-                                            try {
-                                                const res = await axios.get(`${import.meta.env.VITE_API_STRING}/get-payment-request-details/${encodeURIComponent(row.payment_request_no)}`);
-                                                data = res.data;
-                                                setPaymentDetailsAudit(prev => ({ ...prev, [row.payment_request_no]: data }));
-                                            } catch (err) { console.error(err); alert('Could not fetch details'); return; }
-                                        }
-                                        generatePurchaseBookPDF(data, logo);
-                                    }}
-                                    style={{ marginLeft: '4px' }}
-                                    title="Print Payment Advice"
-                                >
-                                    <PrintIcon style={{ fontSize: '18px' }} />
-                                </IconButton>
-                            )}
-                            <span className="ep-status-pill" style={{ 
-                                marginLeft: '10px', 
-                                fontSize: '11px', 
-                                padding: '2px 8px', 
-                                borderRadius: '10px', 
-                                background: (row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? '#e8f5e9' : '#fff3e0', 
-                                color: (row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? '#2e7d32' : '#ef6c00', 
-                                border: '1px solid #ffe0e0' 
-                            }}>
-                                {(row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? 'PAYMENT DONE' : (row.payment_request_status || 'PENDING')}
-                            </span>
+                    <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', width: '180px', margin: 0, fontWeight: 'bold' }} value={row.payment_request_no || ''} />
+                      {row.payment_request_no && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => {
+                              navigator.clipboard.writeText(row.payment_request_no);
+                              alert("PR No copied to clipboard!");
+                            }}
+                            title="Copy PR No"
+                            style={{ padding: '4px' }}
+                          >
+                            <ContentCopyIcon style={{ fontSize: '16px' }} />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={async () => {
+                              let data = paymentDetailsAudit[row.payment_request_no];
+                              if (!data) {
+                                try {
+                                  const res = await axios.get(`${import.meta.env.VITE_API_STRING}/get-payment-request-details/${encodeURIComponent(row.payment_request_no)}`);
+                                  data = res.data;
+                                  setPaymentDetailsAudit(prev => ({ ...prev, [row.payment_request_no]: data }));
+                                } catch (err) { console.error(err); alert('Could not fetch details'); return; }
+                              }
+                              generatePurchaseBookPDF(data, logo);
+                            }}
+                            style={{ padding: '4px' }}
+                            title="Print Payment Advice"
+                          >
+                            <PrintIcon style={{ fontSize: '18px' }} />
+                          </IconButton>
                         </div>
-                        {paymentDetailsAudit[row.payment_request_no]?.utrNumber && (
-                            <div style={{ fontSize: '10px', color: '#2e7d32', marginTop: '4px', fontWeight: '500', display: 'flex', flexDirection: 'column' }}>
-                                <span>UTR: {paymentDetailsAudit[row.payment_request_no].utrNumber}</span>
-                                <span style={{ opacity: 0.8 }}>By {paymentDetailsAudit[row.payment_request_no].utrAddedBy || 'Accounts'} on {new Date(paymentDetailsAudit[row.payment_request_no].utrAddedAt).toLocaleString('en-GB')}</span>
-                                {paymentDetailsAudit[row.payment_request_no].paymentReceiptUrl && (
-                                    <a 
-                                        href={paymentDetailsAudit[row.payment_request_no].paymentReceiptUrl} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        style={{ 
-                                            color: '#1565c0', 
-                                            textDecoration: 'underline', 
-                                            marginTop: '4px',
-                                            fontWeight: 'bold',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px'
-                                        }}
-                                    >
-                                        <DescriptionIcon style={{ fontSize: '12px' }} /> VIEW PAYMENT RECEIPT
-                                    </a>
-                                )}
-                            </div>
-                        )}
+                      )}
+                      <span className="ep-status-pill" style={{
+                        fontSize: '11px',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        background: (row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? '#e8f5e9' : '#fff3e0',
+                        color: (row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? '#2e7d32' : '#ef6c00',
+                        border: '1px solid #ffe0e0',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {(row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? 'PAYMENT DONE' : (row.payment_request_status || 'PENDING')}
+                      </span>
                     </div>
+                    {paymentDetailsAudit[row.payment_request_no]?.utrNumber && (
+                      <div style={{ fontSize: '10px', color: '#2e7d32', marginTop: '4px', fontWeight: '500', display: 'flex', flexDirection: 'column' }}>
+                        <span>UTR: {paymentDetailsAudit[row.payment_request_no].utrNumber}</span>
+                        <span style={{ opacity: 0.8 }}>By {paymentDetailsAudit[row.payment_request_no].utrAddedBy || 'Accounts'} on {new Date(paymentDetailsAudit[row.payment_request_no].utrAddedAt).toLocaleString('en-GB')}</span>
+                        {paymentDetailsAudit[row.payment_request_no].paymentReceiptUrl && (
+                          <a
+                            href={paymentDetailsAudit[row.payment_request_no].paymentReceiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              color: '#1565c0',
+                              textDecoration: 'underline',
+                              marginTop: '4px',
+                              fontWeight: 'bold',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <DescriptionIcon style={{ fontSize: '12px' }} /> VIEW PAYMENT RECEIPT
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="form-row" style={{ gridColumn: 'span 4' }}>
@@ -583,7 +633,7 @@ const EditChargeModal = ({
                         </button>
                       </td>
                     </tr>
-                    
+
                     {/* --- REVENUE EXPANDED --- */}
                     {panelOpen[i] === 'rev' && (
                       <tr className="expand-row">
@@ -594,34 +644,34 @@ const EditChargeModal = ({
                               <input type="text" className="ep-desc-input" value={row.revenue?.chargeDescription || ''} onChange={e => handleFieldChange(i, 'chargeDescription', e.target.value, 'revenue')} />
                             </div>
                             <div className="ep-desc-row">
-                                <span className="ep-label">ATTACHMENT</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
-                                    {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? (
-                                        row.revenue.url.map((url, urlIdx) => (
-                                            <Chip
-                                                key={urlIdx}
-                                                icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
-                                                label={extractFileName(url)}
-                                                size="small"
-                                                onDelete={() => {
-                                                    const newUrls = row.revenue.url.filter((_, i) => i !== urlIdx);
-                                                    handleFieldChange(i, 'url', newUrls, 'revenue');
-                                                }}
-                                                component="a"
-                                                href={url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                clickable
-                                                sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
-                                            />
-                                        ))
-                                    ) : (
-                                        <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>NO FILES ATTACHED</span>
-                                    )}
-                                    <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('revenue'); }}>
-                                        {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? 'EDIT FILES' : 'UPLOAD FILES'}
-                                    </button>
-                                </div>
+                              <span className="ep-label">ATTACHMENT</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
+                                {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? (
+                                  row.revenue.url.map((url, urlIdx) => (
+                                    <Chip
+                                      key={urlIdx}
+                                      icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
+                                      label={extractFileName(url)}
+                                      size="small"
+                                      onDelete={() => {
+                                        const newUrls = row.revenue.url.filter((_, i) => i !== urlIdx);
+                                        handleFieldChange(i, 'url', newUrls, 'revenue');
+                                      }}
+                                      component="a"
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      clickable
+                                      sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
+                                    />
+                                  ))
+                                ) : (
+                                  <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>NO FILES ATTACHED</span>
+                                )}
+                                <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('revenue'); }}>
+                                  {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? 'EDIT FILES' : 'UPLOAD FILES'}
+                                </button>
+                              </div>
                             </div>
                             <div className="ep-grid" style={{ marginRight: '30px' }}>
                               <div className="ep-row">
@@ -674,17 +724,17 @@ const EditChargeModal = ({
                                 <span className="ep-label">RECEIVABLE FROM</span>
                                 <div className="ep-search-container">
                                   <div className="ep-search-wrap">
-                                    <input 
-                                      type="text" 
-                                      value={row.revenue?.partyName || ''} 
-                                      onChange={e => handleFieldChange(i, 'partyName', e.target.value, 'revenue')} 
+                                    <input
+                                      type="text"
+                                      value={row.revenue?.partyName || ''}
+                                      onChange={e => handleFieldChange(i, 'partyName', e.target.value, 'revenue')}
                                       onFocus={() => setActiveDropdown({ index: i, section: 'revenue' })}
                                     />
                                     <button type="button" className="ep-search-btn">🔍</button>
                                   </div>
                                   {activeDropdown.index === i && activeDropdown.section === 'revenue' && (row.revenue?.partyName?.length >= 1 || activeDropdown.clicked) && (
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
-                                      {(row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines : 
+                                      {(row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
                                         row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations : [])
                                         .filter(item => !row.revenue?.partyName || item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase()))
                                         .slice(0, 20)
@@ -694,7 +744,7 @@ const EditChargeModal = ({
                                             <span className="ep-item-sub">{item.city || item.branches?.[0]?.city || item.branchInfo?.[0]?.city || 'Master Directory'}</span>
                                           </li>
                                         ))}
-                                      {((row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines : 
+                                      {((row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
                                         row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations : [])
                                         .filter(item => !row.revenue?.partyName || item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase()))
                                         .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>}
@@ -712,9 +762,9 @@ const EditChargeModal = ({
                               </div>
                               <div className="ep-row" style={{ marginTop: '5px' }}>
                                 <span className="ep-label"></span>
-                                <button 
-                                  type="button" 
-                                  className="action-btn" 
+                                <button
+                                  type="button"
+                                  className="action-btn"
                                   style={{ backgroundColor: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1', textTransform: 'none', height: '26px', fontSize: '10px' }}
                                   onClick={() => syncSection(i, 'revenue', 'cost')}
                                 >
@@ -779,10 +829,10 @@ const EditChargeModal = ({
                                       <span style={{ fontSize: '11px' }}>%</span>
                                       <select className="ep-select" style={{ width: '70px', marginLeft: '6px', fontSize: '10px' }} value={row.revenue?.tdsCategory || ''} onChange={e => handleFieldChange(i, 'tdsCategory', e.target.value, 'revenue')}>
                                         <option value="">--</option>
-                                        <option value="94C">94C</option>
-                                        <option value="94J">94J</option>
-                                        <option value="94I">94I</option>
-                                        <option value="94H">94H</option>
+                                        <option value="TDS ON CONTRACT 94C">TDS ON CONTRACT 94C</option>
+                                        <option value="TDS ON PROFESSIONAL FEES 94J">TDS ON PROFESSIONAL FEES 94J</option>
+                                        <option value="TDS ON RENT 94I">TDS ON RENT 94I</option>
+                                        <option value="TDS ON COMMISSION 94H">TDS ON COMMISSION 94H</option>
                                       </select>
                                     </div>
                                   )}
@@ -834,34 +884,34 @@ const EditChargeModal = ({
                               <input type="text" className="ep-desc-input" value={row.cost?.chargeDescription || ''} onChange={e => handleFieldChange(i, 'chargeDescription', e.target.value, 'cost')} />
                             </div>
                             <div className="ep-desc-row">
-                                <span className="ep-label">ATTACHMENT</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
-                                    {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? (
-                                        row.cost.url.map((url, urlIdx) => (
-                                            <Chip
-                                                key={urlIdx}
-                                                icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
-                                                label={extractFileName(url)}
-                                                size="small"
-                                                onDelete={() => {
-                                                    const newUrls = row.cost.url.filter((_, i) => i !== urlIdx);
-                                                    handleFieldChange(i, 'url', newUrls, 'cost');
-                                                }}
-                                                component="a"
-                                                href={url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                clickable
-                                                sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
-                                            />
-                                        ))
-                                    ) : (
-                                        <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>NO FILES ATTACHED</span>
-                                    )}
-                                    <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('cost'); }}>
-                                        {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? 'EDIT FILES' : 'UPLOAD FILES'}
-                                    </button>
-                                </div>
+                              <span className="ep-label">ATTACHMENT</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
+                                {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? (
+                                  row.cost.url.map((url, urlIdx) => (
+                                    <Chip
+                                      key={urlIdx}
+                                      icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
+                                      label={extractFileName(url)}
+                                      size="small"
+                                      onDelete={() => {
+                                        const newUrls = row.cost.url.filter((_, i) => i !== urlIdx);
+                                        handleFieldChange(i, 'url', newUrls, 'cost');
+                                      }}
+                                      component="a"
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      clickable
+                                      sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
+                                    />
+                                  ))
+                                ) : (
+                                  <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>NO FILES ATTACHED</span>
+                                )}
+                                <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('cost'); }}>
+                                  {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? 'EDIT FILES' : 'UPLOAD FILES'}
+                                </button>
+                              </div>
                             </div>
                             <div className="ep-grid" style={{ marginRight: '30px' }}>
                               <div className="ep-row">
@@ -914,22 +964,23 @@ const EditChargeModal = ({
                                 <span className="ep-label">PAYABLE TO</span>
                                 <div className="ep-search-container">
                                   <div className="ep-search-wrap">
-                                    <input 
-                                      type="text" 
-                                      value={row.cost?.partyName || ''} 
-                                      onChange={e => handleFieldChange(i, 'partyName', e.target.value, 'cost')} 
+                                    <input
+                                      type="text"
+                                      value={row.cost?.partyName || ''}
+                                      onChange={e => handleFieldChange(i, 'partyName', e.target.value, 'cost')}
                                       onFocus={() => setActiveDropdown({ index: i, section: 'cost' })}
                                     />
                                     <button type="button" className="ep-search-btn">🔍</button>
                                   </div>
                                   {activeDropdown.index === i && activeDropdown.section === 'cost' && (row.cost?.partyName?.length >= 1 || activeDropdown.clicked) && (
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
-                                      {(row.cost?.partyType?.toUpperCase() === 'AGENT' || row.cost?.partyType?.toUpperCase() === 'OTHERS' ? shippingLines : 
-                                        row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
-                                        row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
-                                        row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations : 
-                                        row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList : 
-                                        row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes : [])
+                                      {(row.cost?.partyType?.toUpperCase() === 'AGENT' ? shippingLines :
+                                        row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes] :
+                                          row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
+                                            row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
+                                              row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations :
+                                                row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList :
+                                                  row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes : [])
                                         .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
                                         .slice(0, 20)
                                         .map((item, idx) => (
@@ -938,12 +989,13 @@ const EditChargeModal = ({
                                             <span className="ep-item-sub">{item.city || item.branches?.[0]?.city || item.branchInfo?.[0]?.city || 'Master Directory'}</span>
                                           </li>
                                         ))}
-                                      {((row.cost?.partyType?.toUpperCase() === 'AGENT' || row.cost?.partyType?.toUpperCase() === 'OTHERS' ? shippingLines : 
-                                        row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
-                                        row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
-                                        row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations : 
-                                        row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList : 
-                                        row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes : [])
+                                      {((row.cost?.partyType?.toUpperCase() === 'AGENT' ? shippingLines :
+                                        row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes] :
+                                          row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
+                                            row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
+                                              row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations :
+                                                row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList :
+                                                  row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes : [])
                                         .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
                                         .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>}
                                     </ul>
@@ -1014,10 +1066,10 @@ const EditChargeModal = ({
                                       <span style={{ fontSize: '11px' }}>%</span>
                                       <select className="ep-select" style={{ width: '70px', marginLeft: '6px', fontSize: '10px' }} value={row.cost?.tdsCategory || ''} onChange={e => handleFieldChange(i, 'tdsCategory', e.target.value, 'cost')}>
                                         <option value="">--</option>
-                                        <option value="94C">94C</option>
-                                        <option value="94J">94J</option>
-                                        <option value="94I">94I</option>
-                                        <option value="94H">94H</option>
+                                        <option value="TDS ON CONTRACT 94C">TDS ON CONTRACT 94C</option>
+                                        <option value="TDS ON PROFESSIONAL FEES 94J">TDS ON PROFESSIONAL FEES 94J</option>
+                                        <option value="TDS ON RENT 94I">TDS ON RENT 94I</option>
+                                        <option value="TDS ON COMMISSION 94H">TDS ON COMMISSION 94H</option>
                                       </select>
                                     </div>
                                   )}
@@ -1033,9 +1085,9 @@ const EditChargeModal = ({
                                 <span className="ep-label" style={{ fontWeight: 'bold', color: '#d32f2f' }}>NET PAYABLE</span>
                                 <div className="ep-inline">
                                   <input type="number" readOnly className="ep-read" style={{ background: '#fff9f9', fontWeight: 'bold', color: '#d32f2f', border: '1px solid #ffcdd2' }} value={row.cost?.netPayable} />
-                                  <button 
-                                    type="button" 
-                                    className="action-btn" 
+                                  <button
+                                    type="button"
+                                    className="action-btn"
                                     style={{ backgroundColor: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1', textTransform: 'none', height: '26px', fontSize: '10px', marginLeft: '10px' }}
                                     onClick={() => syncSection(i, 'cost', 'revenue')}
                                   >
@@ -1048,8 +1100,8 @@ const EditChargeModal = ({
                                 <div className="ep-inline">
                                   {/* Conditionally show based on workMode or if already exists */}
                                   {(!row.purchase_book_no && (workMode === 'Purchase Book' || !row.payment_request_no)) && (
-                                    <button 
-                                      type="button" 
+                                    <button
+                                      type="button"
                                       className="action-btn action-btn-blue"
                                       style={{ marginLeft: '10px' }}
                                       onClick={() => {
@@ -1072,7 +1124,7 @@ const EditChargeModal = ({
                                             tdsAmount: cost.tdsAmount,
                                             netPayable: cost.netPayable,
                                             totalAmount: cost.amount,
-                                            chargeHead: row.chargeHead,
+                                            chargeHead: row.name || row.chargeHead,
                                             chargeType: row.chargeType,
                                             category: row.category,
                                             tdsCategory: cost.tdsCategory,
@@ -1091,8 +1143,8 @@ const EditChargeModal = ({
                                     </button>
                                   )}
                                   {(!row.payment_request_no && (workMode === 'Payment' || !row.purchase_book_no)) && (
-                                    <button 
-                                      type="button" 
+                                    <button
+                                      type="button"
                                       className="action-btn action-btn-red"
                                       style={{ marginLeft: '10px' }}
                                       onClick={() => {
@@ -1106,7 +1158,7 @@ const EditChargeModal = ({
                                           jobDisplayNumber,
                                           branchIndex: row.cost?.branchIndex || 0,
                                           netPayable: row.cost?.netPayable,
-                                          chargeHead: row.chargeHead,
+                                          chargeHead: row.name || row.chargeHead,
                                           chargeId: row._id,
                                           jobId: parentId
                                         });
@@ -1136,20 +1188,20 @@ const EditChargeModal = ({
       </div>
 
       {uploadIndex !== null && (
-        <FileUploadModal 
-            isOpen={true}
-            onClose={() => { setUploadIndex(null); setUploadSection(null); }}
-            chargeLabel={`${formData[uploadIndex]?.chargeHead} (${uploadSection})`}
-            initialUrls={formData[uploadIndex]?.[uploadSection]?.url || []}
-            onAttach={(urls) => {
-                handleFieldChange(uploadIndex, 'url', urls, uploadSection);
-                setUploadIndex(null);
-                setUploadSection(null);
-            }}
+        <FileUploadModal
+          isOpen={true}
+          onClose={() => { setUploadIndex(null); setUploadSection(null); }}
+          chargeLabel={`${formData[uploadIndex]?.chargeHead} (${uploadSection})`}
+          initialUrls={formData[uploadIndex]?.[uploadSection]?.url || []}
+          onAttach={(urls) => {
+            handleFieldChange(uploadIndex, 'url', urls, uploadSection);
+            setUploadIndex(null);
+            setUploadSection(null);
+          }}
         />
       )}
 
-      <RequestPaymentModal 
+      <RequestPaymentModal
         isOpen={paymentRequestData !== null}
         onClose={() => setPaymentRequestData(null)}
         initialData={paymentRequestData}
@@ -1167,16 +1219,16 @@ const EditChargeModal = ({
             setFormData(updated);
             // PERSIST IMMEDIATELY
             if (updateCharge && updated[activeIndex]._id) {
-              updateCharge(updated[activeIndex]._id, { 
-                payment_request_no: requestNo, 
-                payment_request_status: initialStatus 
+              updateCharge(updated[activeIndex]._id, {
+                payment_request_no: requestNo,
+                payment_request_status: initialStatus
               });
             }
           }
         }}
       />
 
-      <PurchaseBookModal 
+      <PurchaseBookModal
         isOpen={purchaseBookData !== null}
         onClose={() => setPurchaseBookData(null)}
         initialData={purchaseBookData}
@@ -1194,15 +1246,15 @@ const EditChargeModal = ({
             setFormData(updated);
             // PERSIST IMMEDIATELY
             if (updateCharge && updated[activeIndex]._id) {
-              updateCharge(updated[activeIndex]._id, { 
-                purchase_book_no: entryNo, 
-                purchase_book_status: initialStatus 
+              updateCharge(updated[activeIndex]._id, {
+                purchase_book_no: entryNo,
+                purchase_book_status: initialStatus
               });
             }
           }
         }}
       />
-    </div>,
+    </div >,
     document.body
   );
 };

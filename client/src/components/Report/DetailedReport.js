@@ -129,6 +129,7 @@ const DetailedReport = () => {
     { value: "10", label: "October" },
     { value: "11", label: "November" },
     { value: "12", label: "December" },
+    { value: "all", label: "Full Year" },
   ];
 
   const allowedCustomHouses = useMemo(() => {
@@ -195,11 +196,13 @@ const DetailedReport = () => {
   }, [year, month, gradeFilter, selectedBranch]); // ✅ Added gradeFilter dependency
 
   const handlePreviousMonth = () => {
+    if (month === "all") return;
     const prev = parseInt(month) - 1;
     setMonth(prev < 1 ? "12" : String(prev));
   };
 
   const handleNextMonth = () => {
+    if (month === "all") return;
     const next = parseInt(month) + 1;
     setMonth(next > 12 ? "1" : String(next));
   };
@@ -458,7 +461,7 @@ const DetailedReport = () => {
   const exportToPDF = async () => {
     const doc = new jsPDF('l', 'mm', 'a4');
     // Main report page
-    const monthName = months.find(m => m.value === month)?.label || 'Unknown';
+    const monthName = months.find(m => String(m.value) === String(month))?.label || 'Unknown';
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     const title = `Export Clearing Details of ${monthName}-${year}`;
@@ -1017,21 +1020,17 @@ const DetailedReport = () => {
 
       {/* Data Summary Card */}
       {processedData.length > 0 && (
-        <Card elevation={1} sx={{ marginBottom: 2, padding: 1 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-              Report Summary: {detailedRows.length} records found for {months.find(m => m.value === month)?.label} {year}
+        <Card elevation={1} sx={{ marginBottom: 2, padding: 1.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1a237e' }}>
+              Report Summary: {detailedRows.length} records found for {months.find(m => String(m.value) === String(month))?.label} {year}
             </Typography>
-            <Typography variant="body2" sx={{ color: '#666' }}>
+            <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1976d2', bgcolor: '#e3f2fd', px: 2, py: 0.5, borderRadius: 1 }}>
               Total TEUs: {
-                (() => {
-                  const totalTeus = detailedRows.reduce((sum, row) => {
-                    if (isLclJob(row)) return sum;
-                    return sum + (parseInt(row.teus) || 0);
-                  }, 0);
-
-                  return totalTeus;
-                })()
+                detailedRows.reduce((sum, row) => {
+                  if (isLclJob(row)) return sum;
+                  return sum + (parseInt(row.teus) || 0);
+                }, 0)
               }
             </Typography>
           </Box>
