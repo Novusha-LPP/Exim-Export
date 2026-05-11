@@ -90,11 +90,13 @@ const AutocompleteSelect = ({
             border: "1px solid #cbd5e1",
             borderRadius: 3,
             fontSize: 11,
-            background: disabled ? "#f1f5f9" : "#fff",
+            background: disabled ? "#fafaffff" : "#fafaffff",
             cursor: disabled ? "not-allowed" : "text",
             color: disabled ? "#94a3b8" : "#1e293b",
             boxSizing: "border-box",
             height: 24,
+            fontSize: 11,
+            padding: "2px 6px",
             textTransform: "uppercase",
             fontWeight: 500,
             outline: "none",
@@ -118,7 +120,7 @@ const AutocompleteSelect = ({
               if (open) {
                 if (active >= 0 && filtered[active]) {
                   handleSelect(filtered[active]);
-                } else if (filtered.length === 1) {
+                } else if (filtered.length > 0) {
                   handleSelect(filtered[0]);
                 } else {
                   setOpen(false);

@@ -1,9 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Alert } from "@mui/material";
+import FileUpload from "../../../gallery/FileUpload";
+import ImagePreview from "../../../gallery/ImagePreview";
 import DateInput from "../../../common/DateInput.js";
-import { states } from "../../../../utils/masterList";
-import { natureOfCargo } from "../../../../utils/masterList";
-import { unitCodes } from "../../../../utils/masterList";
+import { states, natureOfCargo, unitCodes, SHIPPING_LINES } from "../../../../utils/masterList";
 import { priorityFilter } from "../../../../utils/filterUtils";
 
 const apiBase = import.meta.env.VITE_API_STRING;
@@ -136,7 +136,7 @@ function useCompactCountryDropdown(fieldName, formik) {
       } catch {
         setOpts([]);
       }
-    }, 220);
+    }, 800);
     return () => clearTimeout(t);
   }, [open, query, isTyping]);
 
@@ -172,11 +172,11 @@ function useCompactCountryDropdown(fieldName, formik) {
     },
     select: (i) => {
       if (opts[i]) {
-        setQuery(toUpper(opts[i].countryName || opts[i].country_name));
-        formik.setFieldValue(
-          fieldName,
-          toUpper(opts[i].countryName || opts[i].country_name),
-        );
+        const cName = toUpper(opts[i].countryName || opts[i].country_name || "");
+        const cCode = toUpper(opts[i].countryCode || opts[i].country_code || "");
+        const val = cCode ? `${cName} (${cCode})` : cName;
+        setQuery(val);
+        formik.setFieldValue(fieldName, val);
         setOpen(false);
         setActive(-1);
         setIsTyping(false);
@@ -214,7 +214,7 @@ function CountryField({ label, fieldName, placeholder, formik }) {
               if (d.open) {
                 if (d.active >= 0 && d.opts[d.active]) {
                   d.select(d.active);
-                } else if (d.opts.length === 1) {
+                } else if (d.opts.length > 0) {
                   d.select(0);
                 } else {
                   d.setOpen(false);
@@ -289,29 +289,21 @@ function useGatewayPortDropdown(fieldName, formik) {
       return;
     }
 
-    const searchVal = isTyping ? (query || "").trim() : "";
-    const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
-      searchVal,
-    )}`;
+    const searchVal = isTyping ? (query || "").trim().toUpperCase() : "";
+    const staticOpts = [
+      { unece_code: "INMUN1", name: "MUNDRA" },
+      { unece_code: "INIXY1", name: "KANDLA" },
+      { unece_code: "INPAV1", name: "PIPAVAV" },
+      { unece_code: "INHZA1", name: "HAZIRA" },
+      { unece_code: "INNSA1", name: "NHAVA SHEVA" },
+      { unece_code: "INAMD4", name: "AHMEDABAD AIR PORT" }
+    ];
 
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        setOpts(
-          Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-              ? data
-              : [],
-        );
-      } catch {
-        setOpts([]);
-      }
-    }, 220);
-
-    return () => clearTimeout(t);
-  }, [open, query, apiBase, isTyping]);
+    const filtered = staticOpts.filter(opt =>
+      `${opt.unece_code} ${opt.name}`.toUpperCase().includes(searchVal)
+    );
+    setOpts(filtered);
+  }, [open, query, isTyping]);
 
   useEffect(() => {
     function close(e) {
@@ -403,7 +395,7 @@ function GatewayPortDropdownField({
               if (d.open) {
                 if (d.active >= 0 && filtered[d.active]) {
                   d.select(d.active);
-                } else if (filtered.length === 1) {
+                } else if (filtered.length > 0) {
                   d.select(0);
                 } else {
                   d.setOpen(false);
@@ -520,7 +512,7 @@ function NatureOfCargoDropdownField({
               if (open) {
                 if (active >= 0 && filtered[active]) {
                   handleSelect(active);
-                } else if (filtered.length === 1) {
+                } else if (filtered.length > 0) {
                   handleSelect(0);
                 } else {
                   setOpen(false);
@@ -624,7 +616,7 @@ function UnitDropdownField({
               if (open) {
                 if (active >= 0 && filtered[active]) {
                   handleSelect(active);
-                } else if (filtered.length === 1) {
+                } else if (filtered.length > 0) {
                   handleSelect(0);
                 } else {
                   setOpen(false);
@@ -709,7 +701,7 @@ function usePortDropdown(fieldName, formik, onSelect, endpoint) {
       } catch {
         setOpts([]);
       }
-    }, 220);
+    }, 800);
     return () => clearTimeout(t);
   }, [open, query, isTyping, apiBase, endpoint]);
 
@@ -734,10 +726,10 @@ function usePortDropdown(fieldName, formik, onSelect, endpoint) {
       const pName = sel.portName || sel.name || "";
       const pDetails = sel.uneceCode || "";
 
-      // Format: PNAME (UNECECODE)
+      // Format: (CODE) NAME
       let value = toUpper(pName);
       if (pDetails) {
-        value += ` (${toUpper(pDetails)})`;
+        value = `(${toUpper(pDetails)}) ${value}`;
       }
 
       setQuery(value);
@@ -807,7 +799,7 @@ function PortField({
               if (d.open) {
                 if (d.active >= 0 && d.opts[d.active]) {
                   d.select(d.active);
-                } else if (d.opts.length === 1) {
+                } else if (d.opts.length > 0) {
                   d.select(0);
                 } else {
                   d.setOpen(false);
@@ -849,7 +841,7 @@ function PortField({
                   onMouseDown={() => d.select(i)}
                   onMouseEnter={() => d.setActive(i)}
                 >
-                  {toUpper(pName)} {pDetails && `(${toUpper(pDetails)})`}
+                  {pDetails && `(${toUpper(pDetails)}) `}{toUpper(pName)}
                   {opt.country && (
                     <span
                       style={{ marginLeft: 8, color: "#668", fontWeight: 400 }}
@@ -933,7 +925,7 @@ function StateDropdownField({
               if (open) {
                 if (active >= 0 && filteredStates[active]) {
                   handleSelect(active);
-                } else if (filteredStates.length === 1) {
+                } else if (filteredStates.length > 0) {
                   handleSelect(0);
                 } else {
                   setOpen(false);
@@ -1004,31 +996,39 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
     const searchVal = isTyping ? (query || "").trim() : "";
     const isAir = transportMode === "AIR";
 
-    const url = isAir
-      ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-        searchVal,
-      )}`
-      : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-        searchVal,
-      )}`;
-
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        setOpts(
-          Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-              ? data
-              : [],
-        );
-      } catch {
-        setOpts([]);
-      }
-    }, 220);
-
-    return () => clearTimeout(t);
+    if (isAir) {
+      // Airlines still use the API
+      const url = `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(searchVal)}`;
+      const t = setTimeout(async () => {
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          setOpts(
+            Array.isArray(data?.data)
+              ? data.data
+              : Array.isArray(data)
+                ? data
+                : [],
+          );
+        } catch {
+          setOpts([]);
+        }
+      }, 220);
+      return () => clearTimeout(t);
+    } else {
+      // Sea shipping lines - use local SHIPPING_LINES master data
+      const needle = (searchVal || "").toUpperCase();
+      const mapped = SHIPPING_LINES
+        .map((sl) => ({ shippingLineCode: sl.value, shippingName: sl.label }))
+        .filter((sl) => {
+          if (!needle) return true;
+          return (
+            sl.shippingLineCode.toUpperCase().includes(needle) ||
+            sl.shippingName.toUpperCase().includes(needle)
+          );
+        });
+      setOpts(mapped);
+    }
   }, [open, query, transportMode, isTyping]);
 
   useEffect(() => {
@@ -1087,6 +1087,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
     onInputFocus: () => {
       setOpen(true);
       setActive(-1);
+      setIsTyping(false);
       keepOpen.current = true;
     },
     onInputBlur: () => {
@@ -1143,7 +1144,7 @@ function ShippingLineDropdownField({
                 if (d.active >= 0) {
                   const originalIndex = indexInOpts(d.active);
                   if (originalIndex >= 0) d.select(originalIndex);
-                } else if (filteredOpts.length === 1) {
+                } else if (filteredOpts.length > 0) {
                   const originalIndex = indexInOpts(0);
                   if (originalIndex >= 0) d.select(originalIndex);
                 } else {
@@ -1211,7 +1212,7 @@ function ShippingLineDropdownField({
   );
 }
 
-function ShipmentMainTab({ formik, onUpdate, directories }) {
+function ShipmentMainTab({ formik, onUpdate, directories, isEditable = true }) {
   const consignmentType = toUpper(formik.values.consignmentType || "");
   const isAir = consignmentType == "AIR";
 
@@ -1227,16 +1228,23 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
           (formik.values.exporter || "").toUpperCase(),
       );
 
-      if (dir && dir.branchInfo && dir.branchInfo.length > 0) {
-        // Use the first branch's state as default reference
-        const state = dir.branchInfo[0].state;
+      if (dir) {
+        // Auto-populate State of Origin
+        if (dir.branchInfo && dir.branchInfo.length > 0) {
+          const state = dir.branchInfo[0].state;
+          if (state && !formik.values.state_of_origin) {
+            formik.setFieldValue("state_of_origin", toUpper(state));
+          }
+        }
 
-        if (state && !formik.values.state_of_origin) {
-          formik.setFieldValue("state_of_origin", toUpper(state));
+        // Auto-populate AEO Code into Marks & Nos
+        const aeoCode = dir.registrationDetails?.aeoCode;
+        if (aeoCode && !formik.values.marks_nos) {
+          formik.setFieldValue("marks_nos", toUpper(aeoCode));
         }
       }
     }
-  }, [formik.values.exporter, directories, formik.values.state_of_origin]);
+  }, [formik.values.exporter, directories, formik.values.state_of_origin, formik.values.marks_nos]);
 
   useEffect(() => {
     if (isAir) {
@@ -1246,8 +1254,80 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
     }
   }, [isAir]);
 
+  // Ensure country names are formatted with their respective codes (e.g. "SRI LANKA (LK)")
+  useEffect(() => {
+    const processCountryFieldTimeout = setTimeout(async () => {
+      const processCountryField = async (fieldName) => {
+        const val = formik.values[fieldName];
+        if (!val || val.includes("(")) return;
+
+        try {
+          const res = await fetch(`${apiBase}/countries?search=${encodeURIComponent(val)}`);
+          const data = await res.json();
+          const found = (data?.data || []).find((c) => toUpper(c.countryName || c.country_name) === toUpper(val));
+          if (found && found.countryCode) {
+            formik.setFieldValue(fieldName, ` (${toUpper(found.countryCode)}) ${toUpper(found.countryName)}`);
+          }
+        } catch (err) {
+          console.error(`Error formatting ${fieldName}:`, err);
+        }
+      };
+
+      if (formik.values.discharge_country && !formik.values.discharge_country.includes("(")) {
+        await processCountryField("discharge_country");
+      }
+      if (formik.values.destination_country && !formik.values.destination_country.includes("(")) {
+        await processCountryField("destination_country");
+      }
+    }, 1000);
+
+    return () => clearTimeout(processCountryFieldTimeout);
+  }, [formik.values.discharge_country, formik.values.destination_country]);
+
+  // Ensure port names are formatted with their respective codes (e.g. "COLOMBO (LKCMB)")
+  useEffect(() => {
+    const processPortFieldTimeout = setTimeout(async () => {
+      const processPortField = async (fieldName) => {
+        const val = formik.values[fieldName];
+        if (!val || val.includes("(")) return;
+
+        try {
+          const fetchUrl = `${apiBase}/${isAir ? "airPorts" : "seaPorts"}?search=${encodeURIComponent(val)}`;
+          const res = await fetch(fetchUrl);
+          const data = await res.json();
+          const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+          const found = arr.find((p) => toUpper(p.portName || p.name) === toUpper(val));
+          if (found && found.uneceCode) {
+            formik.setFieldValue(fieldName, `(${toUpper(found.uneceCode)}) ${toUpper(found.portName || found.name)}`);
+          }
+        } catch (err) {
+          console.error(`Error formatting ${fieldName}:`, err);
+        }
+      };
+
+      if (formik.values.port_of_discharge && !formik.values.port_of_discharge.includes("(")) {
+        await processPortField("port_of_discharge");
+      }
+      if (formik.values.destination_port && !formik.values.destination_port.includes("(")) {
+        await processPortField("destination_port");
+      }
+    }, 1000);
+
+    return () => clearTimeout(processPortFieldTimeout);
+  }, [formik.values.port_of_discharge, formik.values.destination_port, isAir]);
+
 
   const saveTimeoutRef = useRef(null);
+
+  // Auto-sync No of Containers from Container tab
+  useEffect(() => {
+    if (!isAir && Number(formik.values.no_of_containers)) {
+      const containerCount = (formik.values.containers || []).length;
+      if (containerCount > 1 && formik.values.no_of_containers !== containerCount) {
+        formik.setFieldValue("no_of_containers", containerCount);
+      }
+    }
+  }, [formik.values.containers, isAir, formik.values.no_of_containers, formik.setFieldValue]);
 
   // Compact auto-save
   const autoSave = useCallback(
@@ -1262,8 +1342,12 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
     saveTimeoutRef.current = setTimeout(() => autoSave(formik.values), 1100);
   }
 
+  // Auto-sync No of Containers from Container tab
+
+
   return (
-    <div style={styles.page}>
+    <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
+      <div style={styles.page}>
       <div style={styles.row}>
         {/* Left: further split into two cols */}
         <div style={styles.col}>
@@ -1293,7 +1377,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                           (c) => (c.countryCode || "").toUpperCase() === country,
                         );
                         if (found) {
-                          country = toUpper(found.countryName);
+                          country = ` (${toUpper(found.countryCode)}) ${toUpper(found.countryName)}`;
                         }
                       } catch (err) {
                         console.error("Error fetching country name:", err);
@@ -1305,7 +1389,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                     const pDetails = opt.uneceCode || "";
                     let value = toUpper(pName);
                     if (pDetails) {
-                      value += ` (${toUpper(pDetails)})`;
+                      value = `(${toUpper(pDetails)}) ${value}`;
                     }
                     formik.setFieldValue("destination_port", value);
                   }}
@@ -1344,7 +1428,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                           (c) => (c.countryCode || "").toUpperCase() === country,
                         );
                         if (found) {
-                          country = toUpper(found.countryName);
+                          country = ` (${toUpper(found.countryCode)}) ${toUpper(found.countryName)}`;
                         }
                       } catch (err) {
                         console.error("Error fetching country name:", err);
@@ -1409,7 +1493,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
               </div>
             </div>
 
-            {/* Row 4: Voyage No | Flight/Sailing Date */}
+            {/* Row 4: Voyage No | Booking No */}
             <div style={styles.split}>
               <div style={styles.half}>
                 {!isAir && (
@@ -1430,6 +1514,25 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
               </div>
               <div style={styles.half}>
                 <div style={styles.field}>
+                  <div style={styles.label}>BOOKING NO</div>
+                  <input
+                    style={styles.input}
+                    value={toUpper(formik.values.booking_no || "")}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "booking_no",
+                        e.target.value.toUpperCase(),
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 5: Sailing Date | Booking Date */}
+            <div style={styles.split}>
+              <div style={styles.half}>
+                <div style={styles.field}>
                   <div style={styles.label}>
                     {isAir ? "FLIGHT DATE" : "SAILING DATE"}
                   </div>
@@ -1445,6 +1548,18 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                         isAir ? "flight_date" : "sailing_date",
                         e.target.value,
                       )
+                    }
+                  />
+                </div>
+              </div>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>BOOKING DATE</div>
+                  <DateInput
+                    style={styles.input}
+                    value={formik.values.booking_date || ""}
+                    onChange={(e) =>
+                      handleFieldChange("booking_date", e.target.value)
                     }
                   />
                 </div>
@@ -1536,6 +1651,98 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                     }
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Row 8: Forwarder | Cut off Date */}
+            <div style={styles.split}>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>FORWARDER</div>
+                  <input
+                    style={styles.input}
+                    placeholder="ENTER FORWARDER"
+                    value={toUpper(formik.values.forwarder || "")}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "forwarder",
+                        e.target.value.toUpperCase(),
+                      )
+                    }
+                  />
+                </div>
+              </div>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>CUT OFF DATE</div>
+                  <DateInput
+                    style={styles.input}
+                    value={formik.values.cut_off_date || ""}
+                    onChange={(e) =>
+                      handleFieldChange("cut_off_date", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 9: Pickup Loc | Drop Loc */}
+            <div style={styles.split}>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>PICKUP LOC.</div>
+                  <input
+                    style={styles.input}
+                    placeholder="ENTER PICKUP LOCATION"
+                    value={toUpper(formik.values.pickup_loc || "")}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "pickup_loc",
+                        e.target.value.toUpperCase(),
+                      )
+                    }
+                  />
+                </div>
+              </div>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>DROP LOC.</div>
+                  <input
+                    style={styles.input}
+                    placeholder="ENTER DROP LOCATION"
+                    value={toUpper(formik.values.drop_loc || "")}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "drop_loc",
+                        e.target.value.toUpperCase(),
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 10: Booking Copy Upload */}
+            <div style={{ marginTop: 10, padding: 10, background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+              <div style={styles.label}>BOOKING COPY UPLOAD</div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 5 }}>
+                <FileUpload
+                  bucketPath="booking_copy_uploads"
+                  multiple={true}
+                  acceptedFileTypes={[".pdf", ".jpg", ".png", ".jpeg"]}
+                  onFilesUploaded={(newUrls) => {
+                    const current = formik.values.booking_copy || [];
+                    handleFieldChange("booking_copy", [...current, ...newUrls]);
+                  }}
+                />
+                <ImagePreview
+                  images={formik.values.booking_copy || []}
+                  onDeleteImage={(idx) => {
+                    const current = formik.values.booking_copy || [];
+                    const updated = current.filter((_, i) => i !== idx);
+                    handleFieldChange("booking_copy", updated);
+                  }}
+                />
               </div>
             </div>
 
@@ -1657,24 +1864,48 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
         <div style={styles.col}>
           <div style={styles.card}>
             <div style={styles.sectionTitle}>CARGO & WEIGHT DETAILS</div>
-            <NatureOfCargoDropdownField
-              label="NATURE OF CARGO"
-              fieldName="nature_of_cargo"
-              formik={formik}
-              natureOptions={natureOfCargo}
-              placeholder="enter nature of cargo"
-            />
+            <div style={styles.split}>
+              <div style={styles.half}>
+                <NatureOfCargoDropdownField
+                  label="NATURE OF CARGO"
+                  fieldName="nature_of_cargo"
+                  formik={formik}
+                  natureOptions={natureOfCargo}
+                  placeholder="enter nature of cargo"
+                />
+              </div>
+              <div style={styles.half}>
+                <div style={styles.field}>
+                  <div style={styles.label}>SEAL TYPE</div>
+                  <select
+                    style={{ ...styles.input, cursor: "pointer" }}
+                    value={(
+                      typeof formik.values.stuffing_seal_type === "string"
+                        ? formik.values.stuffing_seal_type
+                        : ""
+                    ).toUpperCase()}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "stuffing_seal_type",
+                        e.target.value.toUpperCase(),
+                      )
+                    }
+                  >
+                    <option value="">SELECT SEAL TYPE</option>
+                    <option value="SELF SEAL">SELF SEAL</option>
+                    <option value="AGENT SEAL">AGENT SEAL</option>
+                    <option value="WAREHOUSE">WAREHOUSE</option>
+                  </select>
+                </div>
+              </div>
+            </div>
             <div style={styles.split}>
               <div style={styles.half}>
                 <div style={styles.label}>TOTAL NO. OF PKGS</div>
                 <input
                   style={styles.input}
                   type="number"
-                  value={
-                    Number(formik.values.total_no_of_pkgs) === 0
-                      ? ""
-                      : formik.values.total_no_of_pkgs || ""
-                  }
+                  value={formik.values.total_no_of_pkgs ?? ""}
                   onChange={(e) =>
                     handleFieldChange("total_no_of_pkgs", e.target.value)
                   }
@@ -1696,11 +1927,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   <input
                     style={styles.input}
                     type="number"
-                    value={
-                      Number(formik.values.loose_pkgs) === 0
-                        ? ""
-                        : formik.values.loose_pkgs || ""
-                    }
+                    value={formik.values.loose_pkgs ?? ""}
                     onChange={(e) =>
                       handleFieldChange("loose_pkgs", e.target.value)
                     }
@@ -1712,11 +1939,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   <input
                     style={styles.input}
                     type="number"
-                    value={
-                      Number(formik.values.no_of_containers) === 0
-                        ? ""
-                        : formik.values.no_of_containers || ""
-                    }
+                    value={formik.values.no_of_containers ?? ""}
                     onChange={(e) =>
                       handleFieldChange("no_of_containers", e.target.value)
                     }
@@ -1731,14 +1954,15 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                 <div style={styles.half}>
                   <div style={styles.label}>GROSS WEIGHT</div>
                   <input
-                    style={styles.input}
+                    style={{
+                      ...styles.input,
+                      backgroundColor: (!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? '#edf2f7' : '#f7fafc',
+                      cursor: (!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? 'not-allowed' : 'text'
+                    }}
                     type="number"
                     step="0.001"
-                    value={
-                      Number(formik.values.gross_weight_kg) === 0
-                        ? ""
-                        : formik.values.gross_weight_kg || ""
-                    }
+                    disabled={!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)}
+                    value={formik.values.gross_weight_kg ?? ""}
                     onChange={(e) =>
                       handleFieldChange("gross_weight_kg", e.target.value)
                     }
@@ -1748,7 +1972,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                         handleFieldChange("gross_weight_kg", val.toFixed(3));
                       }
                     }}
-                    placeholder="0.00"
+                    placeholder={(!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? "Fill Containers first" : "0.00"}
                   />
                 </div>
                 <UnitDropdownField
@@ -1763,14 +1987,15 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                 <div style={styles.half}>
                   <div style={styles.label}>NET WEIGHT</div>
                   <input
-                    style={styles.input}
+                    style={{
+                      ...styles.input,
+                      backgroundColor: (!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? '#edf2f7' : '#f7fafc',
+                      cursor: (!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? 'not-allowed' : 'text'
+                    }}
                     type="number"
                     step="0.001"
-                    value={
-                      Number(formik.values.net_weight_kg) === 0
-                        ? ""
-                        : formik.values.net_weight_kg || ""
-                    }
+                    disabled={!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)}
+                    value={formik.values.net_weight_kg ?? ""}
                     onChange={(e) =>
                       handleFieldChange("net_weight_kg", e.target.value)
                     }
@@ -1780,7 +2005,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                         handleFieldChange("net_weight_kg", val.toFixed(3));
                       }
                     }}
-                    placeholder="0.00"
+                    placeholder={(!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? "Fill Containers first" : "0.00"}
                   />
                 </div>
                 <UnitDropdownField
@@ -1808,11 +2033,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   style={styles.input}
                   type="number"
                   step="0.001"
-                  value={
-                    Number(formik.values.volume_cbm) === 0
-                      ? ""
-                      : formik.values.volume_cbm || ""
-                  }
+                  value={formik.values.volume_cbm ?? ""}
                   onChange={(e) =>
                     handleFieldChange("volume_cbm", e.target.value)
                   }
@@ -1840,11 +2061,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
                   style={styles.input}
                   type="number"
                   step="0.001"
-                  value={
-                    Number(formik.values.chargeable_weight) === 0
-                      ? ""
-                      : formik.values.chargeable_weight || ""
-                  }
+                  value={formik.values.chargeable_weight ?? ""}
                   onChange={(e) =>
                     handleFieldChange("chargeable_weight", e.target.value)
                   }
@@ -1883,6 +2100,7 @@ function ShipmentMainTab({ formik, onUpdate, directories }) {
         </div>
       </div>
     </div>
+    </fieldset>
   );
 }
 

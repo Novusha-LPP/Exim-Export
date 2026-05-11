@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Box from "@mui/material/Box";
 import CssBaseline from "@mui/material/CssBaseline";
 import Toolbar from "@mui/material/Toolbar";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, Outlet } from "react-router-dom";
 import { TabValueContext } from "../contexts/TabValueContext.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 // Home
@@ -17,15 +17,27 @@ import ExportDocumentationModule from "../components/Export/Export-Dsr/ExportDoc
 import ExportEsanchitModule from "../components/Export/Export-Dsr/ExportEsanchitModule.js";
 import EximOperationModule from "../components/Export/Export-Dsr/EximOperationModule.js";
 import ExportChargesModule from "../components/Export/Export-Dsr/ExportChargesModule.js";
+import ExportBillingPage from "../components/Export/Export-Billing/ExportBillingPage.jsx";
+import FreightForwardingModule from "../components/Export/FreightForwarding/FreightForwardingModule.js";
+import { AnalyticsProvider } from "../components/Export/Export-Dsr/analytics/AnalyticsContext.js";
+// import AnalyticsLayout from "../components/Export/Export-Dsr/analytics/AnalyticsLayout.js"; // Removed
+// import OverviewDashboard from "../components/Export/Export-Dsr/analytics/OverviewDashboard.js"; // Removed
+import CombinedDashboard from "../components/Export/Export-Dsr/analytics/CombinedDashboard.js";
+import GenericPulseTV from "../components/Export/Export-Dsr/analytics/GenericPulseTV.js";
 
 // import auditrail
 import AllUsersPage from "./AllUsersPage.js";
 import AuditTrailPage from "./AuditTrailPage.js";
+import ApiKeyManagement from "./ApiKeyManagement.jsx";
 
 import AppbarComponent from "../components/home/AppbarComponent.js";
 import DrawerComponent from "../components/home/DrawerComponent.js";
 
 import Feedback from "../components/home/FeedBack.js";
+import ReportTabs from "../components/Report/ReportTabs.js";
+import MonthlyContainers from "../components/Report/monthlyContainers.js";
+import DetailedReport from "../components/Report/DetailedReport.js";
+import BillingReportsUtility from "../components/Report/BillingReportsUtility.js";
 import OpenPointsHome from "../components/open-points/OpenPointsHome.js";
 import ProjectWorkspace from "../components/open-points/ProjectWorkspace.js";
 import AnalyticsDashboard from "../components/open-points/AnalyticsDashboard.js";
@@ -58,12 +70,12 @@ function HomePage() {
             width: {
               lg: `calc(100% - ${drawerWidth}px)`,
               height: "100vh",
-              padding: "20px",
+              padding: "5px 15px",
               paddingTop: 0,
             },
           }}
         >
-          <Toolbar />
+          <Toolbar sx={{ minHeight: "60px !important" }} />
           <Routes>
             {/* Public Routes - No protection needed */}
             <Route path="/" element={<Home />} />
@@ -77,7 +89,7 @@ function HomePage() {
             <Route
               path="/all-users"
               element={
-                <ProtectedRoute requiredModule="Audit Trail">
+                <ProtectedRoute requiredModule="Export - Audit Trail">
                   <AllUsersPage />
                 </ProtectedRoute>
               }
@@ -176,6 +188,24 @@ function HomePage() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Export - Billing */}
+            <Route
+              path="/export-billing"
+              element={
+                <ProtectedRoute requiredModule="Export - Billing">
+                  <ExportBillingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/freight-forwarding"
+              element={
+                <ProtectedRoute requiredModule="Freight Forwarding">
+                  <FreightForwardingModule />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/export-charges/job/:jobNo"
               element={
@@ -185,11 +215,38 @@ function HomePage() {
               }
             />
 
+            {/* Pulse Module - Standardized as an assignable module */}
+            <Route
+              path="/pulse"
+              element={
+                <ProtectedRoute requiredModule="Pulse">
+                  <AnalyticsProvider>
+                    <Outlet />
+                  </AnalyticsProvider>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<CombinedDashboard />} />
+              <Route path="combined" element={<CombinedDashboard />} />
+              <Route path="operations" element={<GenericPulseTV metric="ops" title="OPERATIONS" />} />
+              <Route path="billing" element={<GenericPulseTV metric="billing" title="BILLING" />} />
+              <Route path="handover" element={<GenericPulseTV metric="handover" title="HANDOVER" />} />
+            </Route>
+
             <Route
               path="/export-audit-trail"
               element={
                 <ProtectedRoute requiredModule="Export - Audit Trail">
                   <AuditTrailPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/api-key-management"
+              element={
+                <ProtectedRoute requiredModule="Export - Audit Trail">
+                  <ApiKeyManagement />
                 </ProtectedRoute>
               }
             />
@@ -220,6 +277,40 @@ function HomePage() {
             />
 
             <Route path="/feedback" element={<Feedback />} />
+
+            {/* Reports */}
+            <Route
+              path="/report"
+              element={
+                <ProtectedRoute requiredModule="Export - Reports">
+                  <ReportTabs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/report/monthly-containers"
+              element={
+                <ProtectedRoute requiredModule="Export - Reports">
+                  <MonthlyContainers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/report/detailed"
+              element={
+                <ProtectedRoute requiredModule="Export - Reports">
+                  <DetailedReport />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/report/billing"
+              element={
+                <ProtectedRoute requiredModule="Export - Reports">
+                  <BillingReportsUtility />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </Box>
       </Box>

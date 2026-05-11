@@ -116,7 +116,7 @@ const getTabsForEximCode = (eximCode) => {
   }
 };
 
-const ProductTab = ({ formik, directories, params }) => {
+const ProductTab = ({ formik, directories, params, isEditable = true }) => {
   const [activeSubTab, setActiveSubTab] = useState(0);
   const [selectedInvoiceIndex, setSelectedInvoiceIndex] = useState(0);
   const [selectedProductIndex, setSelectedProductIndex] = useState(() => {
@@ -274,7 +274,7 @@ const ProductTab = ({ formik, directories, params }) => {
               <Typography variant="body2" fontWeight="600">
                 Product
               </Typography>
-              <Box sx={{ display: "flex", gap: 0.5 }}>
+              <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mt: 0.5, maxHeight: "120px", overflowY: "auto", p: 0.5, border: products.length > 20 ? "1px solid #eee" : "none", borderRadius: 1 }}>
                 {products.map((product, index) => (
                   <Chip
                     key={index}
@@ -331,11 +331,13 @@ const ProductTab = ({ formik, directories, params }) => {
       </Tabs>
 
       {/* Dynamic Tab Content */}
-      {availableTabs.map((tabName, index) => (
-        <ProductTabPanel key={tabName} value={activeSubTab} index={index}>
-          {renderTabContent(tabName)}
-        </ProductTabPanel>
-      ))}
+      <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
+        {availableTabs.map((tabName, index) => (
+          <ProductTabPanel key={tabName} value={activeSubTab} index={index}>
+            {renderTabContent(tabName)}
+          </ProductTabPanel>
+        ))}
+      </fieldset>
     </Box>
   );
 };

@@ -20,8 +20,12 @@ const allModules = [
   "Export - Audit Trail",
   "Export - Operation",
   "Export - Charges",
+  "Export - Billing",
+  "Freight Forwarding",
   "Directories",
   "Open Points",
+  "Export - Reports",
+  "Pulse"
 ];
 
 function not(a, b) {

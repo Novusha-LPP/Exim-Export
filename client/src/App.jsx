@@ -6,6 +6,9 @@ import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
 import axios from "axios";
 
+import { Routes, Route } from "react-router-dom";
+import BLDraftForm from "./components/Public/BLDraftForm.jsx";
+
 function App() {
   const [user, setUser] = useState(
     JSON.parse(localStorage.getItem("exim_user"))
@@ -52,7 +55,15 @@ function App() {
 
   return (
     <UserContext.Provider value={{ user, setUser }}>
-      <div className="App">{user ? <HomePage /> : <LoginPage />}</div>
+      <div className="App">
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/public/bl-form/:enquiryId" element={<BLDraftForm />} />
+          
+          {/* Main App Routes */}
+          <Route path="/*" element={user ? <HomePage /> : <LoginPage />} />
+        </Routes>
+      </div>
     </UserContext.Provider>
   );
 }

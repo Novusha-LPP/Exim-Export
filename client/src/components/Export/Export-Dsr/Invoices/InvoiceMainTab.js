@@ -310,7 +310,21 @@ const InvoiceMainTab = ({ formik }) => {
   const handleInvChange = (index, field, value) => {
     const updatedInvoices = [...invoices];
     const invoice = updatedInvoices[index] || {};
+
+    if (field === "invoiceValue" || field === "productValue") {
+      if (parseFloat(value) < 0) {
+        alert("Value cannot be negative");
+        return;
+      }
+    }
+
     const updatedInvoice = { ...invoice, [field]: value };
+
+    if (field === "invoiceValue" || field === "packing_charges") {
+      const invVal = field === "invoiceValue" && value !== "" ? parseFloat(value) : (parseFloat(invoice.invoiceValue) || 0);
+      const packVal = field === "packing_charges" && value !== "" ? parseFloat(value) : (parseFloat(invoice.packing_charges) || 0);
+      updatedInvoice.productValue = Math.max(0, invVal - packVal);
+    }
 
     if (field === "termsOfInvoice") {
       const priceIncludesValue = mapTOIToPriceIncludes(value);
@@ -365,6 +379,10 @@ const InvoiceMainTab = ({ formik }) => {
   };
 
   const handleFieldChange = (field, value) => {
+    if (field === "exchange_rate" && parseFloat(value) < 0) {
+      alert("Exchange rate cannot be negative");
+      return;
+    }
     formik.setFieldValue(field, value);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
@@ -452,7 +470,17 @@ const InvoiceMainTab = ({ formik }) => {
               </tr>
             </thead>
             <tbody>
-              {invoices.map((invoice, index) => (
+              {invoices.map((invoice, index) => {
+                const sumOfProducts = (invoice.products || []).reduce(
+                  (acc, p) => acc + (parseFloat(p.amount) || 0),
+                  0,
+                );
+                const prodVal = parseFloat(invoice.productValue) || 0;
+                const rawDiff = prodVal - sumOfProducts;
+                const mismatch = invoice.products && invoice.products.length > 0 && Math.abs(rawDiff) > 0.01;
+                const diff = rawDiff > 0 ? "+" + rawDiff.toFixed(2) : rawDiff.toFixed(2);
+
+                return (
                 <tr key={index} className="invoice-row">
                   <td style={styles.td} data-label="Sr No">
                     {index + 1}
@@ -466,7 +494,7 @@ const InvoiceMainTab = ({ formik }) => {
                         handleInvChange(
                           index,
                           "invoiceNumber",
-                          e.target.value.toUpperCase(),
+                          e.target.value.toUpperCase().replace(/[^A-Z0-9\-\/]/g, ''),
                         )
                       }
                       placeholder="INVOICE NO"
@@ -596,7 +624,11 @@ const InvoiceMainTab = ({ formik }) => {
                   <td style={styles.td} data-label="Product Value">
                     <input
                       type="number"
-                      style={styles.inputNumber}
+                      style={{
+                        ...styles.inputNumber,
+                        borderColor: mismatch ? "#e53e3e" : "#c4ccd8",
+                        backgroundColor: mismatch ? "#fff5f5" : "#f7fafc",
+                      }}
                       value={
                         invoice.productValue === 0 ||
                           invoice.productValue === ""
@@ -614,6 +646,11 @@ const InvoiceMainTab = ({ formik }) => {
                       }
                       placeholder="0.00"
                     />
+                    {mismatch && (
+                      <div style={{ color: "#e53e3e", fontSize: 10, marginTop: 4, fontWeight: 600 }}>
+                        Mismatch! Diff: {diff}
+                      </div>
+                    )}
                   </td>
                   <td style={styles.td} data-label="Packing Charges">
                     <input
@@ -657,7 +694,8 @@ const InvoiceMainTab = ({ formik }) => {
                     )}
                   </td>
                 </tr>
-              ))}
+              );
+            })}
             </tbody>
           </table>
         </div>

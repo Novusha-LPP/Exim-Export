@@ -42,9 +42,12 @@ import {
   Description as DocumentIcon,
   LocationOn as LocationIcon,
   Assignment as AssignmentIcon,
+  FileDownload as FileDownloadIcon,
+  Email as EmailIcon,
 } from "@mui/icons-material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import DirectoryForm from "./DirectoryForm.js";
+import axios from "axios"; // For testing API call
 import DirectoryService from "../Directories/DirectoryService";
 import { formatDate } from "../../../utils/dateUtils";
 
@@ -80,7 +83,7 @@ const logisticsTheme = createTheme({
 const TABLE_COLUMNS = [
   { key: "organization", label: "Organization", minWidth: 200 },
   { key: "approvalStatus", label: "Status", minWidth: 100 },
-  { key: "entityType", label: "Company Type", minWidth: 120 },
+  { key: "gstNo", label: "GST Number", minWidth: 160 },
   { key: "ieCode", label: "IE Code", minWidth: 120 },
   { key: "adCode", label: "AD Code", minWidth: 120 },
   { key: "panNo", label: "PAN", minWidth: 110 },
@@ -118,6 +121,12 @@ const getEntityIcon = (entityType) => {
 const getFirstAdCode = (bankDetails) => {
   if (!bankDetails || bankDetails.length === 0) return "-";
   return bankDetails[0]?.adCode || "-";
+};
+
+// Get first branch's GST Number
+const getFirstGstNo = (branchInfo) => {
+  if (!branchInfo || branchInfo.length === 0) return "-";
+  return branchInfo[0]?.gstNo || "-";
 };
 
 // Directory Detail View (Dialog)
@@ -459,6 +468,23 @@ const ExportDirectory = () => {
     }
   };
 
+  const handleTestEmail = async (directory) => {
+    try {
+      showSnackbar(`Sending test DSR email for ${directory.organization}...`, "info");
+      const response = await axios.post(`${import.meta.env.VITE_API_STRING}/export-dsr/test-dsr-email`, {
+        exporterName: directory.organization
+      });
+      if (response.data.success) {
+        showSnackbar(response.data.message, "success");
+      } else {
+        showSnackbar("Failed to send test email: " + (response.data.message || "Unknown error"), "error");
+      }
+    } catch (error) {
+      console.error("Test email error:", error);
+      showSnackbar("Error sending test email: " + (error.response?.data?.message || error.message), "error");
+    }
+  };
+
   const handleSave = async (formData) => {
     try {
       if (selectedDirectory) {
@@ -473,6 +499,35 @@ const ExportDirectory = () => {
     } catch (error) {
       showSnackbar("Error saving directory", "error");
     }
+  };
+
+  // Export to Excel
+  const handleExportToExcel = () => {
+    const headers = ["Exporter Name", "GST Number", "IE Code", "AD Code", "PAN"];
+    const rows = filteredDirectories.map((dir) => [
+      dir.organization || "-",
+      getFirstGstNo(dir.branchInfo),
+      dir.registrationDetails?.ieCode || "-",
+      getFirstAdCode(dir.bankDetails),
+      dir.registrationDetails?.panNo || "-",
+    ]);
+
+    // Build CSV
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Export_Directory_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showSnackbar(`Exported ${rows.length} directories to Excel`, "success");
   };
 
   const paginatedDirectories = filteredDirectories.slice(
@@ -501,17 +556,30 @@ const ExportDirectory = () => {
                   Comprehensive logistics directory system
                 </Typography>
               </Box>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleAdd}
-                sx={{
-                  bgcolor: "rgba(255,255,255,0.2)",
-                  "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
-                }}
-              >
-                Add Directory
-              </Button>
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Button
+                  variant="contained"
+                  startIcon={<FileDownloadIcon />}
+                  onClick={handleExportToExcel}
+                  sx={{
+                    bgcolor: "rgba(255,255,255,0.15)",
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.25)" },
+                  }}
+                >
+                  Export to Excel
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleAdd}
+                  sx={{
+                    bgcolor: "rgba(255,255,255,0.2)",
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
+                  }}
+                >
+                  Add Directory
+                </Button>
+              </Box>
             </Toolbar>
           </Paper>
 
@@ -654,8 +722,8 @@ const ExportDirectory = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2">
-                            {directory.generalInfo?.entityType || "-"}
+                          <Typography variant="body2" fontFamily="monospace">
+                            {getFirstGstNo(directory.branchInfo)}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -688,6 +756,15 @@ const ExportDirectory = () => {
                               gap: 0.5,
                             }}
                           >
+                            <IconButton
+                                onClick={() => handleTestEmail(directory)}
+                                size="small"
+                                title="Send Test DSR Email"
+                                color="secondary"
+                                sx={{ "&:hover": { color: "#ff6b35" } }}
+                              >
+                                <EmailIcon fontSize="small" />
+                              </IconButton>
                             <IconButton
                               onClick={() => handleView(directory)}
                               size="small"

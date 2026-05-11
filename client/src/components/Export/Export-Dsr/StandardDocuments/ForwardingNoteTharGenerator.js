@@ -4,6 +4,7 @@ import { MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Button } f
 import jsPDF from "jspdf";
 import DocumentEditorDialog from "./DocumentEditorDialog";
 import thatLogo from "../../../../assets/images/that-logo.png";
+import { imageToBase64 } from "../../../../utils/imageUtils";
 
 const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
   const [editorOpen, setEditorOpen] = useState(false);
@@ -12,16 +13,21 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      if (
-        typeof dateString === "string" &&
-        /^\d{1,2}-\d{1,2}-\d{4}/.test(dateString)
-      ) {
-        return dateString;
+
+    // Handle string inputs like "09-03-2026" carefully to avoid MM-DD-YYYY misinterpretation
+    if (typeof dateString === "string") {
+      const match = dateString.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+      if (match) {
+        const day = match[1].padStart(2, "0");
+        const month = match[2].padStart(2, "0");
+        const year = match[3];
+        return `${day}.${month}.${year}`;
       }
-      return dateString;
     }
+
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+
     return date
       .toLocaleDateString("en-GB", {
         day: "2-digit",
@@ -49,278 +55,310 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`
       );
       const data = response.data;
+
+      // Pre-load logo as base64 to ensure it appears in PDF
+      let logoSrc = thatLogo;
+      try {
+        logoSrc = await imageToBase64(thatLogo);
+      } catch (err) {
+        console.warn("Failed to convert logo to base64, using original path", err);
+      }
+      // Calculations and Data Mapping
+      const operations = data.operations?.[0] || {};
       const invoice = data.invoices?.[0] || {};
-      const booking = data.operations?.[0]?.bookingDetails?.[0] || {};
-      const statusDetails = data.operations?.[0]?.statusDetails?.[0] || {};
-      const containers = data.containers || [];
+      const statusDetails = operations.statusDetails?.[0] || {};
+      const containers = data.containers?.length > 0 ? data.containers : (data.operations?.[0]?.containerDetails || []);
       const products = invoice.products || [];
 
-      // Fetch Currency Rates
-      let exchangeRate = 1;
-      try {
-        const jobDateFormatted = formatDateForApi(data.job_date || new Date());
-        const currencyResponse = await axios.get(
-          `${import.meta.env.VITE_API_STRING
-          }/currency-rates/by-date/${jobDateFormatted}`
-        );
-        if (
-          currencyResponse.data.success &&
-          currencyResponse.data.data.exchange_rates
-        ) {
-          const rateObj = currencyResponse.data.data.exchange_rates.find(
-            (r) => r.currency_code === (invoice.currency || "USD")
-          );
-          if (rateObj) {
-            exchangeRate = rateObj.export_rate || rateObj.import_rate || 1;
-          }
+      // Extract User Information for Footer
+      const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
+      const generatedBy = (user.first_name || user.user_first_name
+        ? `${user.first_name || user.user_first_name || ""} ${user.last_name || user.user_last_name || ""}`.trim()
+        : user.username || "System User").toUpperCase();
+
+      // Mapping values
+      const consignorName = data.exporter || "";
+      const vesselName = data.vessel_name || "";
+      const Bookingno = data.booking_no || "";
+      const agentCha = "SURAJ FORWARDERS & SHIPPING AGENCIES";
+      const cutOffDate = formatDate(data.cut_off_date || data.booking_date);
+      const portofLoading = data.port_of_loading || "";
+      const dischargeCountry = data.discharge_country || "";
+      const exporterAddress = data.exporter || "";
+      const gatewayPort = data.gateway_port || data.port_of_loading || "";
+      const shippingBillNo = data.sb_no || "";
+      const portOfDischarge = data.port_of_discharge || "";
+      const stuffingType = data.goods_stuffed_at?.toString().toLowerCase() === "factory" ? "FACTORY" : "ICD (CFS) / FACTORY";
+      const shippingLineName = data.shipping_line_airline || "";
+      const fobvalue = data.invoices?.[0]?.freightInsuranceCharges?.fobValue?.amount || "";
+
+      const hsnList = [...new Set(products.map(p => {
+        if (p.hsn_code || p.hsnCode || p.hsn) return p.hsn_code || p.hsnCode || p.hsn;
+        if (p.ritc) {
+          if (typeof p.ritc === 'object') return p.ritc.hsnCode || p.ritc.ritcCode;
+          return p.ritc;
         }
-      } catch (err) {
-        console.warn("Currency rate fetch failed", err);
-      }
+        return null;
+      }).filter(Boolean))].join(", ");
 
-      // Calculations
-      const totalFobVal = (data.invoices || []).reduce((sum, inv) => {
-        const val =
-          inv.freightInsuranceCharges?.fobValue?.amount ||
-          inv.productValue ||
-          0;
-        return sum + (Number(val) || 0);
-      }, 0);
-      const totalInvoiceVal = (data.invoices || []).reduce((sum, inv) => {
-        return sum + (Number(inv.invoiceValue) || 0);
-      }, 0);
-
-      const fobInInr = (totalFobVal * exchangeRate).toFixed(2);
-      const invInInr = (totalInvoiceVal * exchangeRate).toFixed(2);
-
-      const shortenedDescription = products[0]?.description || "";
+      const descriptionOfGoods = products[0]?.description || "";
 
       let containersRows = "";
-      let totalPkgs = 0;
-      let totalWeight = 0;
-
-      containers.forEach((c, idx) => {
+      containers.forEach((c, i) => {
         const pkgs = Number(c.pkgsStuffed) || 0;
+        const pkgsDisplay = pkgs ? `${pkgs}` : "";
         const weight = Number(c.grossWeight) || 0;
-        const weightMT = (weight / 1000).toFixed(3);
-        totalPkgs += pkgs;
-        totalWeight += weight;
 
         containersRows += `
-          <tr>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${idx + 1}</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${c.containerNo || ""}</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${c.type?.match(/\d+/)?.[0] || "20"}</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${pkgs || ""}</td>
-            <td style="border: 1px solid black; padding: 4px; text-align: left; vertical-align: middle;">${shortenedDescription}</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${weightMT || ""}</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${c.sealNo || ""}</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${booking.shippingLineSealNo || ""}</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${data.sb_no || ""}</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${formatDate(data.sb_date)}</td>
+          <tr style="height: 60px;">
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: top;">${i + 1}</td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: top;">${c.containerNo || ""}</td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: top;">${c.type?.match(/\d+/)?.[0] || "20"}</td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: top;">${pkgsDisplay}</td>
+            <td style="border: 1px solid black; padding: 5px; text-align: left; vertical-align: top; font-size: 10px; font-weight: bold; word-wrap: break-word;">${i === 0 ? `<div style="margin-bottom: 5px;"><b>${descriptionOfGoods}</b></div><div>HSN: ${hsnList}</div>` : ""}</td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: top;">${weight}</td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: top;">${c.tareWeightKgs || ""}</td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: top;">${c.sealNo || ""}</td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: top;">${c.shippingLineSealNo || ""}</td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: top;">${i === 0 ? `${shippingBillNo}<br/><br/>dt ${formatDate(data.sb_date)}` : ""}</td>
           </tr>
         `;
       });
 
+      if (containers.length > 0) {
+        containersRows += `
+          <tr style="height: 30px;">
+            <td colspan="3" style="border: 1px solid black; padding: 5px; text-align: right; font-size: 10px; font-weight: bold; vertical-align: middle;">Total:</td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: middle;">${data.total_no_of_pkgs || ""}</td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: middle;"></td>
+            <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: middle;">${data.gross_weight_kg || ""}</td>
+            <td colspan="4" style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: middle;"></td>
+          </tr>
+        `;
+      }
 
-      // Total Row
-      containersRows += `
-        <tr style="font-weight: bold;">
-          <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
-          <td style="border: 1px solid black; text-align: left; vertical-align: middle; padding: 5px;">TOTAL</td>
-          <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
-          <td style="border: 1px solid black; vertical-align: middle; padding: 5px;">${totalPkgs || ""}</td>
-          <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
-          <td style="border: 1px solid black; vertical-align: middle; padding: 5px;">${(totalWeight / 1000).toFixed(3)}</td>
-          <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
-          <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
-          <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
-          <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
-        </tr>
-      `;
+      // Calculate spacer to prevent certifications from breaking across pages
+      // jsPDF 'slice' mode renders HTML as one tall canvas then slices at page boundaries.
+      // CSS page-break-inside has no effect, so we manually compute a spacer.
+      const headerHeight = 510;     // approximate px height of rows 1-9 + table header row
+      const containerRowHeight = 60; // each container row is 60px
+      const certFooterHeight = 380;  // certifications (6 rows) + footer section
+      // A4=842pt, margins [15,0,15,0], usable=812pt. Scale: 595/900≈0.661. Page height in px ≈ 812/0.661 ≈ 1228
+      const pageHeightPx = 1228;
+
+      const contentBeforeCert = headerHeight + (containers.length * containerRowHeight) + (containers.length > 0 ? 30 : 0);
+      const currentPagePos = contentBeforeCert % pageHeightPx;
+      const remainingOnPage = pageHeightPx - currentPagePos;
+
+      let spacerHtml = '';
+      if (remainingOnPage < certFooterHeight && remainingOnPage > 0) {
+        // Not enough room on current page — push certifications to next page
+        spacerHtml = `<div style="height: ${remainingOnPage + 10}px;"></div>`;
+      }
 
       const template = `
-        <div style="font-family: 'Helvetica', 'Arial', sans-serif; max-width: 1100px; margin: 0 auto; padding: 5px;">
-          
-          <!-- Header Section (Thar Specific) -->
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-             <div style="width: 200px;">
-                <img src="${thatLogo}" alt="Thar Dry Port" style="width: 200px; height: auto;" />
-             </div>
-             <div style="border: 1px solid black; padding: 5px; width: 250px;">
-              <div style="text-align: center; font-weight: bold; border-bottom: 1px solid black; padding-bottom: 2px; margin-bottom: 2px;">CWC (NS) PVT. LTD. USE</div>
-              <p style="margin: 2px 0; font-size: 12px;">CCN No. & Date :</p>
-              <p style="margin: 2px 0; font-size: 12px;">To :</p>
-              <p style="margin: 2px 0; font-size: 12px;">Rail Operator :</p>
-            </div>
-          </div>
+        <div style="width: 900px; font-family: 'Arial', sans-serif; color: #000; padding: 0 22px; box-sizing: border-box; line-height: 1.2;">
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid black; table-layout: fixed; box-sizing: border-box;">
+            <colgroup>
+              <col style="width: 3%;">
+              <col style="width: 13%;">
+              <col style="width: 5%;">
+              <col style="width: 7%;">
+              <col style="width: 25%;">
+              <col style="width: 8%;">
+              <col style="width: 7%;">
+              <col style="width: 10%;">
+              <col style="width: 10%;">
+              <col style="width: 12%;">
+            </colgroup>
+            <!-- ROW 1: Logo & Header Information -->
+            <tr style="height: 100px;">
+              <td colspan="4" style="border: 1px solid black; padding: 5px; text-align: center; vertical-align: middle;">
+                <img src="${logoSrc}" alt="Logo" style="max-width: 150px; height: auto;" />
+              </td>
+              <td colspan="4" style="border: 1px solid black; padding: 5px; vertical-align: bottom; text-align: center;">
+                <div style="font-weight: bold; font-size: 14px; margin-bottom: 15px;">HPCSL CONSIGNMENT NOTE</div>
+              </td>
+              <td colspan="2" style="border: 1px solid black; padding: 0; vertical-align: top;">
+                <table style="width: 100%; height: 100%; margin: 0; border: none; border-collapse: collapse; table-layout: fixed;">
+                  <tr><td colspan="2" style="border-bottom: 1px solid black; font-weight: bold; font-size: 10px; text-align: center; background: #eee; height: 20px; vertical-align: middle;">HPCSL USE</td></tr>
+                  <tr><td colspan="2" style="border-bottom: 1px solid black; font-size: 10px; padding: 4px; vertical-align: middle;">CCN No. & Date :</td></tr>
+                  <tr><td colspan="2" style="border-bottom: 1px solid black; font-size: 10px; padding: 4px; vertical-align: middle;">To :</td></tr>
+                  <tr><td colspan="2" style="border-bottom: 1px solid black; font-size: 10px; padding: 4px; vertical-align: middle;">Rail Operator (Please Specify)</td></tr>
+                  <tr>
+                    <td style="border-right: 1px solid black; width: 50%; font-weight: bold; font-size: 10px; text-align: center; vertical-align: middle;">HPCSL</td>
+                    <td style="width: 50%;"></td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
 
-          <!-- Title -->
-          <div style="text-align: center; margin-bottom: 10px;">
-             <h2 style="margin: 0; text-decoration: underline; font-weight: bold; font-size: 18px;">FORWARDING NOTE</h2>
-             <p style="margin: 2px 0; font-weight: bold;">Mode By : ${statusDetails.railRoad ? statusDetails.railRoad.toUpperCase() : "Rail / Road"}</p>
-             <p style="margin: 2px 0; font-weight: bold;">INVOICE NO:- ${data.invoices?.map((inv) => inv.invoiceNumber).join(", ") || ""}</p>
-          </div>
+            <!-- ROW 2: Destination and Invoice -->
+            <tr style="height: 50px;">
+              <td colspan="10" style="border: 1px solid black; padding: 5px; vertical-align: top;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="width: 30%; vertical-align: top; padding: 5px;">
+                      <div style="font-weight: bold; font-size: 10px;">To,</div>
+                      <div style="font-weight: bold; font-size: 10px;">The Terminal Manager,</div>
+                      <div style="font-weight: bold; font-size: 10px;">HPCSL, The Thar Dry Port, ICD-Sanand</div>
+                    </td>
+                    <td style="width: 40%; vertical-align: top; text-align: center; padding: 5px;">
+                       <div style="font-weight: bold; font-size: 12px; margin-bottom: 5px;">Mode By : ${statusDetails.railRoad || "RAIL"}</div>
+                    </td>
+                    <td style="width: 30%; vertical-align: top; text-align: right; padding: 5px;">
+                      <div style="font-weight: bold; font-size: 11px; padding-bottom: 10px;">INVOICE NO.: ${data.invoices?.[0]?.invoiceNumber || ""}</div>
+                      ${data.exporter_ref_no ? `<div style="font-weight: bold; font-size: 11px; padding-bottom: 10px;">EXPORTER REF NO.: ${data.exporter_ref_no}</div>` : ""}
+                      <div style="font-weight: bold; font-size: 10px;">Cargo : Non Hazardous</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
 
-          <!-- Address Block (Thar Specific) -->
-          <div style="margin-bottom: 10px;">
-            <p style="margin: 0;"><strong>To,</strong></p>
-            <p style="margin: 0;"><strong>The Terminal Manager,</strong></p>
-            <p style="margin: 2px 0;"><strong>CWC, The Thar Dry Port, ICD-Sanand</strong></p>
-            <p style="text-align: right; margin: 2px 0; font-weight: bold;">Cargo : Non Hazardous</p>
-            <p style="font-size: 11px; text-align: justify; margin: 5px 0; line-height: 1.2; word-break: break-word;">
-              Please receive the under mentioned container stuffed at ICD/Factory. We accept the all Transportation and/or provision of Containers of business incidental there to have been under taken by CWC-THE THAR DRY PORT on the basis of their standard terms and conditions which have been read by us and understood. No servant or agent of the company has any authority to vary or waive conditions or any part there of.
-            </p>
-          </div>
+            <!-- ROW 3: Disclaimer -->
+            <tr style="height: 35px;">
+              <td colspan="10" style="border: 1px solid black; padding: 8px; font-size: 8px; text-align: justify; line-height: 1.4; vertical-align: middle;">
+                Please receive the under mentioned container stuffed at ICD/Factory. We accept the all Transportation and/or provision of Containers of business incidental there to have been under taken by HPCSL-THE THAR DRY PORT on the basis of their standard terms and conditions which have been read by us and understood. No servant or agent of the company has any authority to vary or waive conditions or any part there of.
+              </td>
+            </tr>
 
-          <!-- Details Table -->
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px;">
-            <tr>
-              <td style="border: 1px solid black; padding: 4px; width: 40%; vertical-align: top; word-break: break-word;">
-                <div style="margin-bottom: 2px;"><strong>Shipping Line</strong></div>
-                <div>${booking.shippingLineName || ""}</div>
+            <!-- ROW 4: Consignor and Vessel -->
+            <tr style="height: 50px;">
+              <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
+                <div style="font-size: 10px; margin-bottom: 5px;"><b>Name of Consignor (S/Line) :</b></div>
+                <div style="font-size: 11px; font-weight: bold;">${shippingLineName}</div>
               </td>
-              <td style="border: 1px solid black; padding: 4px; width: 60%; vertical-align: top; word-break: break-word;">
-                <div style="margin-bottom: 2px;"><strong>Booking No</strong></div>
-                <div>${booking.bookingNo || ""}</div>
+              <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
+                <div style="font-size: 11px; font-weight: bold; margin-bottom: 5px;">VESSEL NAME : ${vesselName}</div>
+                <div style="font-size: 11px; font-weight: bold;">BOOKING NO : ${Bookingno}</div>
+              </td>
+            </tr>
+
+            <!-- ROW 5: Agent and Date -->
+            <tr style="height: 45px;">
+              <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
+                <div style="font-size: 10px;"><b>Agent/CHA :</b> ${agentCha}</div>
+              </td>
+              <td colspan="3" style="border: 1px solid black; border-left: none; padding: 8px; vertical-align: top;">
+                <div style="font-size: 10px;"><b>Cut-Off Date.:</b> ${cutOffDate}</div>
+              </td>
+              <td colspan="2" style="border: 1px solid black; border-left: none; padding: 8px; vertical-align: top;">
+                <div style="font-size: 10px; margin-bottom: 5px;"><b>Country</b></div>
+                <div style="font-size: 10px; text-align: center; width: 100%; font-weight: bold;">${dischargeCountry}</div>
+              </td>
+            </tr>
+
+            <!-- ROW 6: Exporter and Gateway Port -->
+            <tr style="height: 55px;">
+              <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
+                <div style="font-size: 10px; margin-bottom: 5px;"><b>Name and Address of Exporter :</b></div>
+                <div style="font-size: 11px; font-weight: bold;">${exporterAddress}</div>
+              </td>
+              <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: middle; background-color: #FFFF00;">
+                <span style="font-size: 11px; font-weight: bold;">Gateway Port;</span>
+                <span style="font-size: 24px; font-weight: bold; margin-left: 10px;">${gatewayPort}</span>
+              </td>
+            </tr>
+
+            <!-- ROW 7: SB No and Port of Discharge -->
+            <tr style="height: 45px;">
+              <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
+                <div style="font-size: 10px; margin-bottom: 5px;"><b>SHIPPING BILL NO.</b></div>
+                <div style="font-size: 11px; font-weight: bold;">${shippingBillNo}</div>
+              </td>
+              <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
+                <div style="font-size: 10px;"><b>Port of Discharge : ${portOfDischarge}</b></div>
+              </td>
+            </tr>
+
+            <!-- ROW 8: Stuffing and FOB -->
+            <tr style="height: 45px;">
+              <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
+                <div style="font-size: 10px; margin-bottom: 5px;"><b>Stuffing (Please Tick) F/S</b></div>
+                <div style="font-size: 10px; font-weight: bold;">${stuffingType}</div>
+              </td>
+              <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
+                <div style="font-size: 10px;"><b>F.O.B./C.I.F. Value : ${fobvalue}</b></div>
+              </td>
+            </tr>
+
+            <!-- ROW 9: Payment Type -->
+            <tr style="height: 35px;">
+              <td colspan="10" style="border: 1px solid black; padding: 5px; font-weight: bold; font-size: 9px; vertical-align: middle;">
+                e:LCL/FCL/ODC:Yes/No.Payment Type:PAID / TO PAY
+              </td>
+            </tr>
+
+            <!-- CONTAINER TABLE HEADERS -->
+            <tr style="background: #eee; font-weight: bold; font-size: 9px; text-align: center; height: 40px;">
+              <td style="border: 1px solid black; padding: 5px 2px; vertical-align: middle;">Sr No</td>
+              <td style="border: 1px solid black; padding: 5px 2px; vertical-align: middle;">Container No</td>
+              <td style="border: 1px solid black; padding: 5px 2px; vertical-align: middle;">Size</td>
+              <td style="border: 1px solid black; padding: 5px 2px; vertical-align: middle;">No & Type of Pkgs.</td>
+              <td style="border: 1px solid black; padding: 5px 2px; vertical-align: middle;">Description of Goods</td>
+              <td style="border: 1px solid black; padding: 5px 2px; vertical-align: middle;">Cargo Weight (MT)</td>
+              <td style="border: 1px solid black; padding: 5px 2px; vertical-align: middle;">TARE WT</td>
+              <td style="border: 1px solid black; padding: 5px 2px; vertical-align: middle;">Customs Seal No.</td>
+              <td style="border: 1px solid black; padding: 5px 2px; vertical-align: middle;">Shipping Line Seal No.</td>
+              <td style="border: 1px solid black; padding: 5px 2px; vertical-align: middle;">SB NO.: & DATE</td>
+            </tr>
+            ${containersRows}
+
+          </table>
+
+          ${spacerHtml}
+          <!-- CERTIFICATIONS + FOOTER wrapped together -->
+          <div style="margin-top: -1px;">
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid black; table-layout: fixed; box-sizing: border-box;">
+            <colgroup>
+              <col style="width: 3%;">
+              <col style="width: 97%;">
+            </colgroup>
+            <tr><td style="border: 1px solid black; padding: 6px 4px; font-weight: bold; font-size: 7px; text-align: center; vertical-align: middle;">1</td><td style="border: 1px solid black; padding: 6px 4px; font-size: 10px;">I do hereby certify that I have satisfied by self description, marks, quantity, measurement and weight of goods consigned by me have been correctly entered in the note.</td></tr>
+            <tr><td style="border: 1px solid black; padding: 6px 4px; font-weight: bold; font-size: 7px; text-align: center; vertical-align: middle;">2</td><td style="border: 1px solid black; padding: 6px 4px; font-size: 10px; text-align: center; font-weight: bold;">I hereby certify that the goods described above are in goods order and condition at the time of dispatch.</td></tr>
+            <tr><td style="border: 1px solid black; padding: 6px 4px; font-weight: bold; font-size: 7px; text-align: center; vertical-align: middle;">3</td><td style="border: 1px solid black; padding: 6px 4px; font-size: 10px; text-align: center; font-weight: bold;">I hereby certify that goods are not classified as dangerous in Indian Railway. Road Tariff of my IMO regulations.</td></tr>
+            <tr><td style="border: 1px solid black; padding: 6px 4px; font-weight: bold; font-size: 7px; text-align: center; vertical-align: middle;">4</td><td style="border: 1px solid black; padding: 6px 4px; font-size: 10px; text-align: center; font-weight: bold;">It is certify that rated tonnage of the commitment (5) has been exceeded.</td></tr>
+            <tr><td style="border: 1px solid black; padding: 6px 4px; font-weight: bold; font-size: 7px; text-align: center; vertical-align: middle;">5</td><td style="border: 1px solid black; padding: 6px 4px; font-size: 10px; text-align: center; font-weight: bold;">IF THE CONTAINER WEIGHT, IS NOT SPECIFIED THEIR TARE WEIGHT, IT WILL BE TAKEN AS 2.3 TONS FOR 20' & 4.6 TONS FOR 40'</td></tr>
+            <tr><td style="border: 1px solid black; padding: 6px 4px; font-weight: bold; font-size: 7px; text-align: center; vertical-align: middle;">6</td><td style="border: 1px solid black; padding: 6px 4px; font-size: 10px; text-align: center; font-weight: bold;">I understand that the principal terms and conditions applying to the carriage of above containers are subject to the conditions and liabilities as specified in the Indian Railway Act 1989, as amended from time to time.</td></tr>
+          </table>
+
+          <!-- FOOTER SIGNATURE SECTION -->
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid black; table-layout: fixed; box-sizing: border-box; margin-top: -1px;">
+            <tr>
+              <td colspan="2" style="border: 1px solid black; padding: 10px 5px; vertical-align: top; min-height: 70px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="width: 50%; vertical-align: top; padding: 5px;">
+                      <div style="font-size: 10px; font-weight: bold; margin-bottom: 30px;">PDA A/C/Cheque No):</div>
+                      <div style="font-size: 14px; font-weight: bold;">${shippingLineName}</div>
+                    </td>
+                    <td style="width: 50%; vertical-align: top; text-align: right; padding: 5px;">
+                       <div style="font-size: 10px; font-weight: bold; margin-bottom: 30px;">PDA/PDC ${shippingLineName}</div>
+                       <div style="font-size: 12px; font-weight: bold;">${generatedBy.toUpperCase()}</div>
+                    </td>
+                  </tr>
+                </table>
               </td>
             </tr>
             <tr>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: top; word-break: break-word;">
-                 <div style="margin-bottom: 2px;"><strong>Agent / CHA</strong></div>
-                 <div>${data.cha || "SURAJ FORWARDERS & SHIPPING AGENCIES"}</div>
+              <td style="border: 1px solid black; padding: 5px; vertical-align: bottom; width: 70%;">
+                <div style="font-size: 10px; font-weight: bold;">DATE : ${formatDate(new Date())}</div>
               </td>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: top; word-break: break-word;">
-                <div style="display: flex; gap: 10px;">
-                  <div style="flex: 1;">
-                     <div style="margin-bottom: 2px;"><strong>Final Destination</strong></div>
-                     <div>${data.destination_port || ""}</div>
-                  </div>
-                  <div style="flex: 1;">
-                     <div style="margin-bottom: 2px;"><strong>Country</strong></div>
-                     <div>${data.destination_country || ""}</div>
-                  </div>
-                </div>
+              <td style="border: 1px solid black; padding: 5px; text-align: center; vertical-align: top; width: 30%;">
+                <div style="font-size: 10px; font-weight: bold;">STAMP AND SIGNATURE</div>
               </td>
             </tr>
             <tr>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: top; word-break: break-word;">
-                 <div style="margin-bottom: 2px;"><strong>Name & Address of Exporter</strong></div>
-                 <div>${data.exporter || ""}</div>
-                 <div>${data.exporter_address || ""}</div>
-              </td>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: top; word-break: break-word;">
-                 <div style="margin-bottom: 2px;"><strong>Gateway Port</strong></div>
-                 <div>${data.gateway_port || booking.portOfLoading || ""}</div>
-              </td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: top; word-break: break-word;">
-                 <div style="margin-bottom: 2px;"><strong>Shipping Bill No. & Date</strong></div>
-                 <div>${data.sb_no || ""} / ${formatDate(data.sb_date)}</div>
-              </td>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: top; word-break: break-word;">
-                 <div style="margin-bottom: 2px;"><strong>Port of Discharge</strong></div>
-                 <div>${data.port_of_discharge || ""}</div>
-              </td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: top; word-break: break-word;">
-                 <div style="margin-bottom: 2px;"><strong>Stuffing</strong></div>
-                 <div>${data.goods_stuffed_at === "Factory" ? "FACTORY" : "ICD (CFS)"}</div>
-              </td>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: top; word-break: break-word;">
-                 <div style="margin-bottom: 2px;"><strong>F.O.B./C.I.F. Value</strong></div>
-                 <div>FOB: ${fobInInr} INR</div>
-                 <div>INVVAL: ${invInInr} INR</div>
-              </td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: top; word-break: break-word;">
-                 <div style="margin-bottom: 2px;"><strong>VESSEL NAME AND VOYAGE</strong></div>
-                 <div>${booking.vesselName || ""} ${booking.voyageNo || ""}</div>
-              </td>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: top; word-break: break-word;">
-                 <div style="margin-bottom: 2px;"><strong>LEO Date</strong></div>
-                 <div>${formatDate(data.statusDetails?.[0]?.leoDate)}</div>
+              <td colspan="2" style="border: 1px solid black; padding: 5px; vertical-align: top; min-height: 40px;">
+                <div style="font-size: 10px; font-weight: bold; text-decoration: underline; margin-bottom: 5px;">(HPCSL USE ONLY)</div>
+                <div style="font-size: 10px; font-weight: bold;">DATE & TIME OF BOOKING OR (EA) :</div>
               </td>
             </tr>
           </table>
-
-          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px;">
-            <span>Factory stuffing arranged by: SHIPPER</span>
-            <span>Type: LCL/FCL/ODC: Yes/No.</span>
-            <span>Payment Type: PAID / TO PAY</span>
           </div>
+        </div>
 
-          <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; margin-bottom: 10px;">
-            <thead>
-              <tr style="background-color: #f0f0f0;">
-                <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">Sr No</th>
-                <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">Container No</th>
-                <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">Size</th>
-                <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">No & Type of Pkgs.</th>
-                <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">Description of Goods</th>
-                <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">Cargo Weight (MT)</th>
-                <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">Customs Seal No.</th>
-                <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">S.Line/Agent Seal No.</th>
-                <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">SB NO.</th>
-                <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">SB DATE</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${containersRows}
-            </tbody>
-          </table>
-
-          <!-- Certifications Table -->
-          <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; font-weight: bold; border: 2px solid black;">
-            <tr>
-              <td style="border: 1px solid black; width: 30px; text-align: center; vertical-align: middle; padding: 4px;">1</td>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">I do hereby certify that I have satisfied by self description, marks, quantity, measurement and weight of goods consigned by me have been correctly entered in the note.</td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid black; width: 30px; text-align: center; vertical-align: middle; padding: 4px;">2</td>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">I hereby certify that the goods described above are in goods order and condition at the time of dispatch.</td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid black; width: 30px; text-align: center; vertical-align: middle; padding: 4px;">3</td>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">I hereby certify that goods are not classified as dangerous in Indian Railway. Road Tariff of my IMO regulations.</td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid black; width: 30px; text-align: center; vertical-align: middle; padding: 4px;">4</td>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">It is certify that rated tonnage of the commitment (5) has been exceeded.</td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid black; width: 30px; text-align: center; vertical-align: middle; padding: 4px;">5</td>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">IF THE CONTAINER WEIGHT, IS NOT SPECIFIED THEIR TARE WEIGHT, IT WILL BE TAKEN AS 2.3 TONS FOR 20' & 4.6 TONS FOR 40'</td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid black; width: 30px; text-align: center; vertical-align: middle; padding: 4px;">6</td>
-              <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">I understand that the principal terms and conditions applying to the carriage of above containers are subject to the conditions and liabilities as specified in the Indian Railway Act 1989, as amended from time to time.</td>
-            </tr>
-          </table>
-
-          <!-- Footer Table to ensure block stays together -->
-          <table style="width: 100%; margin-top: 10px; page-break-inside: avoid;">
-            <tr style="page-break-inside: avoid;">
-                <td style="border: none; padding: 0;">
-                    <div style="border: 1px solid black; padding: 10px; margin-bottom: 20px; min-height: 40px; font-size: 12px;">
-                      <strong>Remarks, if any (PDA A/C/Cheque No):</strong>
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px;">
-                      <div>DATE ________________________</div>
-                      <div style="text-align: right;">STAMP AND SIGNATURE OF SHIPPER OR AGENT (CHA)</div>
-                    </div>
-
-                    <div style="border: 1px solid black; padding: 10px; margin-top: 30px; font-size: 12px;">
-                       <strong>CES (NS) PVT. LTD.</strong><br/>
-                       DATE & TIME OF BOOKING OR (EA) :
-                    </div>
-                </td>
-            </tr>
-          </table>
       `;
 
       setHtmlContent(template);
@@ -349,11 +387,11 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         callback: function (doc) {
           doc.save(`Forwarding_Note_${jobNo}.pdf`);
         },
-        x: 15,
+        x: 0,
         y: 15,
-        width: 545,
+        width: 595,
         windowWidth: 900,
-        margin: [20, 15, 110, 15],
+        margin: [15, 0, 15, 0],
         autoPaging: 'slice',
       });
     } catch (error) {
@@ -396,6 +434,13 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         onClose={() => setEditorOpen(false)}
         initialContent={htmlContent}
         title={`Forwarding Note (Thar) - ${jobNo}`}
+        pdfOptions={{
+          x: 0,
+          y: 15,
+          width: 595,
+          windowWidth: 900,
+          margin: [15, 0, 15, 0],
+        }}
       />
     </>
   );

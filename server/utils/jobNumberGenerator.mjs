@@ -38,12 +38,27 @@ export const getNextJobSequence = async (branch, year) => {
  */
 async function initializeCounter(branch, year) {
     try {
+        // Handle custom format for AIR jobs e.g., branch argument 'AMD-AIR'
+        const isAirCounter = branch.endsWith('-AIR');
+        const isSeaCounter = branch.endsWith('-SEA');
+        let baseBranch = branch;
+        if (isAirCounter) {
+            baseBranch = branch.replace('-AIR', '');
+        } else if (isSeaCounter) {
+            baseBranch = branch.replace('-SEA', '');
+        }
+
+        const regexPrefix = isAirCounter ? `^${baseBranch}/EXP/AIR/`
+            : isSeaCounter ? `^${baseBranch}/EXP/SEA/`
+                : `^${baseBranch}/EXP/`;
+
         // Find highest sequence in existing jobs
-        // Format: BRANCH/SEQUENCE/YEAR. Regex: ^BRANCH/
-        const jobs = await ExportJobModel.find({
-            job_no: { $regex: `^${branch}/`, $options: "i" },
+        const filter = {
+            job_no: { $regex: regexPrefix, $options: "i" },
             year: year
-        }, { job_no: 1 });
+        };
+
+        const jobs = await ExportJobModel.find(filter, { job_no: 1 });
 
         let maxSequence = 0;
 
@@ -51,7 +66,7 @@ async function initializeCounter(branch, year) {
             if (!job.job_no) continue;
             const parts = job.job_no.split('/');
             // Look for the numeric part in the middle (index 1 usually, but allow search)
-            // Usually BRANCH/SEQ/YEAR -> index 1
+            // Usually BRANCH/EXP/MODE/SEQ/YEAR -> index 3
             if (parts.length >= 3) {
                 const seqPart = parts.find(p => /^\d{3,}$/.test(p)); // heuristic: at least 3 digits
                 if (seqPart) {

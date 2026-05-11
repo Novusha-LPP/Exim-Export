@@ -20,7 +20,7 @@ function InvoiceTabPanel(props) {
   );
 }
 
-const InvoiceTab = ({ formik, directories, params, }) => {
+const InvoiceTab = ({ formik, directories, params, isEditable = true }) => {
   const [activeSubTab, setActiveSubTab] = useState(0);
 
   const handleSubTabChange = (event, newValue) => {
@@ -54,22 +54,24 @@ const InvoiceTab = ({ formik, directories, params, }) => {
         </Tabs>
       </Box>
 
-      <InvoiceTabPanel value={activeSubTab} index={0}>
-        <InvoiceMainTab
-          formik={formik}
-          directories={directories}
-          params={params}
-        />
-      </InvoiceTabPanel>
-      <InvoiceTabPanel value={activeSubTab} index={1}>
-        <InvoiceFreightTab formik={formik} />
-      </InvoiceTabPanel>
-      <InvoiceTabPanel value={activeSubTab} index={2}>
-        <InvoiceBuyerThirdPartyTab formik={formik} />
-      </InvoiceTabPanel>
-      <InvoiceTabPanel value={activeSubTab} index={3}>
-        <OtherInfoTab formik={formik} />
-      </InvoiceTabPanel>
+      <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
+        <InvoiceTabPanel value={activeSubTab} index={0}>
+          <InvoiceMainTab
+            formik={formik}
+            directories={directories}
+            params={params}
+          />
+        </InvoiceTabPanel>
+        <InvoiceTabPanel value={activeSubTab} index={1}>
+          <InvoiceFreightTab formik={formik} />
+        </InvoiceTabPanel>
+        <InvoiceTabPanel value={activeSubTab} index={2}>
+          <InvoiceBuyerThirdPartyTab formik={formik} />
+        </InvoiceTabPanel>
+        <InvoiceTabPanel value={activeSubTab} index={3}>
+          <OtherInfoTab formik={formik} />
+        </InvoiceTabPanel>
+      </fieldset>
     </Box>
   );
 };

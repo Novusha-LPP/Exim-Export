@@ -40,7 +40,7 @@ export const requireAdmin = async (req, res, next) => {
             });
         }
 
-        if (user.role !== "Admin") {
+        if (user.role?.toLowerCase() !== "admin") {
             console.warn(`⚠️ Unauthorized admin access attempt by user: ${username} (role: ${user.role})`);
             return res.status(403).json({
                 success: false,

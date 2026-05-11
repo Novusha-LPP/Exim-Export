@@ -10,9 +10,14 @@ import LockResetIcon from "@mui/icons-material/LockReset";
 import DescriptionIcon from '@mui/icons-material/Description';
 import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
 import HistoryIcon from '@mui/icons-material/History';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import InsightsIcon from '@mui/icons-material/Insights';
+import TvIcon from '@mui/icons-material/Tv';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import { UserContext } from "../../contexts/UserContext";
 import CurrencyRateDialog from "./CurrencyRateDialog.js"; // Import the dialog
 import axios from "axios";
+import { fetchUserWithCache, clearUserCache } from "../../utils/userCache.js";
 
 function Sidebar() {
   const navigate = useNavigate();
@@ -27,11 +32,9 @@ function Sidebar() {
     async function verifyAdminRole() {
       if (user?.username) {
         try {
-          const res = await axios.get(
-            `${import.meta.env.VITE_API_STRING}/get-user/${user.username}`
-          );
+          const userData = await fetchUserWithCache(user.username);
           // Only trust the role from the server response
-          setIsVerifiedAdmin(res.data?.role === "Admin");
+          setIsVerifiedAdmin(userData?.role === "Admin");
         } catch (error) {
           console.error("Error verifying admin role:", error);
           setIsVerifiedAdmin(false);
@@ -43,6 +46,7 @@ function Sidebar() {
 
   const handleLogout = () => {
     setUser(null);
+    clearUserCache();
     navigate("/");
     // Remove user from local storage
     localStorage.removeItem("exim_user");
@@ -89,6 +93,35 @@ function Sidebar() {
           </ListItemButton>
         </Tooltip>
       )}
+
+      {isVerifiedAdmin && (
+        <Tooltip title="API Key Management" enterDelay={0} placement="right">
+          <ListItemButton
+            className="appbar-links"
+            aria-label="list-item"
+            onClick={() => navigate("/api-key-management")}
+          >
+            <IconButton sx={{ color: "#ffffff9f" }} aria-label="icon">
+              <VpnKeyIcon />
+            </IconButton>
+          </ListItemButton>
+        </Tooltip>
+      )}
+
+      {/* Analytics and Pulse removed from sidebar per user request */}
+      
+      <Tooltip title="Reports Hub" enterDelay={0} placement="right">
+        <ListItemButton
+          sx={{ textAlign: "left" }}
+          className="appbar-links"
+          aria-label="list-item"
+          onClick={() => navigate("/report/billing")}
+        >
+          <IconButton sx={{ color: "#ffffff9f" }} aria-label="icon">
+            <AssessmentIcon />
+          </IconButton>
+        </ListItemButton>
+      </Tooltip>
 
       {/* NEW: Currency Exchange Rates Icon */}
       <Tooltip title="Currency Exchange Rates" enterDelay={0} placement="right">

@@ -1,0 +1,269 @@
+{
+	"info": {
+		"_postman_id": "c1f7b8d4-5a6b-4e8c-9d1e-2f3a4b5c6d7e",
+		"name": "Tally Integration API",
+		"description": "API collection for Tally integration with the Exim-Export system. Includes endpoints for job data, purchase book entries, and payment requests.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Test Connection",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/tally/test",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"tally",
+						"test"
+					]
+				},
+				"description": "Check if the Tally API is up and running."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Job Data",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{api_key}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/tally/job-data?job_number=BOM/EXP/SEA/001/24-25",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"tally",
+						"job-data"
+					],
+					"query": [
+						{
+							"key": "job_number",
+							"value": "BOM/EXP/SEA/001/24-25",
+							"description": "The full job number to retrieve details for"
+						}
+					]
+				},
+				"description": "Retrieve comprehensive job details for a specific job number."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Next Sequence",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{api_key}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/tally/next-sequence?type=purchase&jobNo=BOM/EXP/SEA/001/24-25",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"tally",
+						"next-sequence"
+					],
+					"query": [
+						{
+							"key": "type",
+							"value": "purchase",
+							"description": "Type of sequence: 'purchase' or 'payment'"
+						},
+						{
+							"key": "jobNo",
+							"value": "BOM/EXP/SEA/001/24-25",
+							"description": "The job number to generate sequence for"
+						}
+					]
+				},
+				"description": "Retrieve the next available sequence number for Purchase Book or Payment Request."
+			},
+			"response": []
+		},
+		{
+			"name": "Create Purchase Entry",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{api_key}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"Entry No\": \"PB/01/BOM/EXP/SEA/001/24-25\",\n    \"Entry Date\": \"2024-05-04\",\n    \"Supplier Inv No\": \"INV-123\",\n    \"Supplier Inv Date\": \"2024-05-01\",\n    \"Job No\": \"BOM/EXP/SEA/001/24-25\",\n    \"Supplier Name\": \"ABC LOGISTICS\",\n    \"GSTIN NO\": \"27AAAAA0000A1Z5\",\n    \"Taxable Value\": 1000,\n    \"GST%\": 18,\n    \"CGST\": 90,\n    \"SGST\": 90,\n    \"Total\": 1180,\n    \"Description of Services\": \"Freight Charges\",\n    \"Charge Heading\": \"Ocean Freight\",\n    \"Status\": \"Pending\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/tally/purchase-entry",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"tally",
+						"purchase-entry"
+					]
+				},
+				"description": "Create a new Purchase Book Entry in the system."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Purchase Entry",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{api_key}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/tally/purchase-entry?entry_no=PB/01/BOM/EXP/SEA/001/24-25",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"tally",
+						"purchase-entry"
+					],
+					"query": [
+						{
+							"key": "entry_no",
+							"value": "PB/01/BOM/EXP/SEA/001/24-25",
+							"description": "The entry number to retrieve"
+						}
+					]
+				},
+				"description": "Retrieve details of a specific Purchase Book Entry."
+			},
+			"response": []
+		},
+		{
+			"name": "Create Payment Request",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{api_key}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"Request No\": \"R1/01/BOM/EXP/SEA/001/24-25\",\n    \"Request Date\": \"2024-05-04\",\n    \"Payment To\": \"ABC LOGISTICS\",\n    \"Amount\": 1180,\n    \"Job No\": \"BOM/EXP/SEA/001/24-25\",\n    \"Transaction Type\": \"NEFT\",\n    \"Bank Name\": \"HDFC BANK\",\n    \"Status\": \"Pending\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/tally/payment-request",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"tally",
+						"payment-request"
+					]
+				},
+				"description": "Create a new Payment Request in the system."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Payment Request",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{api_key}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/tally/payment-request?request_no=R1/01/BOM/EXP/SEA/001/24-25",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"tally",
+						"payment-request"
+					],
+					"query": [
+						{
+							"key": "request_no",
+							"value": "R1/01/BOM/EXP/SEA/001/24-25",
+							"description": "The request number to retrieve"
+						}
+					]
+				},
+				"description": "Retrieve details of a specific Payment Request."
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:9002",
+			"type": "string"
+		},
+		{
+			"key": "api_key",
+			"value": "YOUR_API_KEY_HERE",
+			"type": "string"
+		}
+	]
+}

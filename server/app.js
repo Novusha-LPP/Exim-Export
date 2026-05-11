@@ -32,26 +32,21 @@ import assignIcdCode from "./routes/home/assignIcdCode.mjs";
 // Audit Trail
 import auditTrail from "./routes/audit/auditTrail.mjs";
 
-// directrories
+// directories
 import directory from "./routes/Directories/directory.js";
-import state from "./routes/Directories/state.mjs";
 import airline from "./routes/Directories/airlines.js";
 import Country from "./routes/Directories/Country.js";
-import TarrifHead from "./routes/Directories/tarrifhead.js";
 import ShippingLine from "./routes/Directories/shippinglines.js";
-import edilocations from "./routes/Directories/edilocations.js";
-import nonedilocations from "./routes/Directories/nonedilocation.js";
 import ports from "./routes/Directories/ports.js";
 import airports from "./routes/Directories/airports.js";
 import seaPorts from "./routes/Directories/seaports.js";
-import uqcs from "./routes/Directories/uqcs.js";
-import Currency from "./routes/Directories/currencies.js";
-import Packages from "./routes/Directories/packages.js";
-import SupportingDocuments from "./routes/Directories/supportingdocumentcodes.js";
 import genrateExportChecklist from "./routes/export-dsr/generateExportChecklist.mjs";
-import gatwayPort from "./routes/Directories/gatwayPort.js"; //gatwatPort
-import district from "./routes/Directories/districts.js"; //gatwatPort
+import gatwayPort from "./routes/Directories/gatwayPort.js";
 import license from "./routes/Directories/license.js";
+import districts from "./routes/Directories/districts.js";
+import transporters from "./routes/Directories/transporters.js";
+import terminalCodes from "./routes/Directories/terminalcodes.js";
+
 import getExportJobsModuleUsers from "./routes/export-dsr/getExportJobsModuleUsers.mjs";
 
 //============== EXPORT DSR =========================
@@ -79,6 +74,29 @@ import generateDSRReport from "./routes/export-dsr/generateDSRReport.mjs";
 import openPointsRoutes from "./routes/open-points/openPointsRoutes.mjs";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import sbTrack from "./routes/export-dsr/sbTrack.mjs";
+import generateFlatFile from "./routes/export-dsr/generateFlatFile.mjs";
+import operationPendingJobs from "./routes/export-dsr/operationPendingJobs.mjs";
+import operationListJobs from "./routes/export-dsr/operationListJobs.mjs";
+import chargesListJobs from "./routes/export-dsr/chargesListJobs.mjs";
+import exportBillingJobs from "./routes/export-dsr/exportBillingJobs.mjs";
+import exportAnalyticsRoutes from "./routes/export-dsr/exportAnalyticsRoutes.mjs";
+import queryRoutes from "./routes/export-dsr/queryRoutes.mjs";
+import chargesRoute from "./routes/charges/chargesRoute.mjs";
+import tallyRoutes from "./routes/charges/tallyRoutes.mjs";
+import { initDsrCronJob } from "./jobs/dsrJob.mjs"; // Import DSR Job
+import testDsrEmailRoute from "./routes/export-dsr/testDsrEmail.mjs"; // Import Test DSR Route
+import apiKeyRoutes from "./routes/admin/apiKeyRoutes.mjs";
+import freightEnquiryRoutes from "./routes/export-dsr/freightEnquiryRoutes.mjs";
+import forwarderRoutes from "./routes/export-dsr/forwarderRoutes.mjs";
+import getHistoricalFreight from "./routes/export-dsr/getHistoricalFreight.mjs";
+
+// Report Routes
+import monthlyContainersReport from "./routes/report/monthlyContainers.mjs";
+import billingPendingReport from "./routes/report/getBillingPendingReport.mjs";
+import fineReport from "./routes/report/getFineReport.mjs";
+import exporterReport from "./routes/report/getExporterReport.mjs";
+import exportClearanceReport from "./routes/report/exportClearanceMonthly.mjs";
+import tdsPayableRegister from "./routes/report/tdsPayableRegister.mjs";
 
 // REMOVED: Dangerous exception handlers that caused 3.1M log storm
 // Exception handlers are now in ./exceptionHandlers.js with:
@@ -118,6 +136,7 @@ app.use(
       "user-role",
       "x-username",
       "x-user-role",
+      "x-api-key",
     ],
   })
 );
@@ -175,29 +194,20 @@ app.use(auditTrail);
 
 //directories
 app.use(auditMiddleware("Directory"), directory);
-app.use("/api/states", auditMiddleware("Directory"), state);
 app.use("/api/airlines", auditMiddleware("Directory"), airline);
 app.use("/api/countries", auditMiddleware("Directory"), Country);
-app.use("/api/tariffHeads", auditMiddleware("Directory"), TarrifHead);
 app.use("/api/shippingLines", auditMiddleware("Directory"), ShippingLine);
-app.use("/api/ediLocations", auditMiddleware("Directory"), edilocations);
-app.use("/api/nonEdiLocations", auditMiddleware("Directory"), nonedilocations);
 app.use("/api/ports", auditMiddleware("Directory"), ports);
 app.use("/api/airPorts", auditMiddleware("Directory"), airports);
 app.use("/api/seaPorts", auditMiddleware("Directory"), seaPorts);
-app.use("/api/uqcs", auditMiddleware("Directory"), uqcs);
-app.use("/api/currencies", auditMiddleware("Directory"), Currency);
-app.use("/api/packages", auditMiddleware("Directory"), Packages);
-app.use(
-  "/api/supportingDocumentCodes",
-  auditMiddleware("Directory"),
-  SupportingDocuments
-);
 app.use(genrateExportChecklist);
 app.use(getExpJob);
 app.use("/api/gateway-ports", auditMiddleware("Directory"), gatwayPort);
-app.use("/api/districts", auditMiddleware("Directory"), district);
 app.use("/api/licenses", auditMiddleware("Directory"), license);
+app.use("/api/districts", auditMiddleware("Directory"), districts);
+app.use("/api/transporters", auditMiddleware("Directory"), transporters);
+app.use("/api/terminalCodes", auditMiddleware("Directory"), terminalCodes);
+
 // app.set("trust proxy", 1); // Trust first proxy (NGINX, AWS ELB, etc.)
 
 //============== EXPORT DSR =========================
@@ -226,10 +236,34 @@ app.use(generateDSRReport);
 app.use(openPointsRoutes);
 app.use("/api", uploadRoutes);
 app.use(sbTrack);
+app.use(generateFlatFile);
+app.use(operationPendingJobs);
+app.use(operationListJobs);
+app.use(chargesListJobs);
+app.use(exportBillingJobs);
+app.use(exportAnalyticsRoutes);
+app.use(queryRoutes);
+app.use(testDsrEmailRoute);
+app.use(apiKeyRoutes);
+app.use("/api", forwarderRoutes);
+app.use("/api", freightEnquiryRoutes);
+app.use(getHistoricalFreight);
+
+// Report Routes
+app.use(monthlyContainersReport);
+app.use(billingPendingReport);
+app.use(fineReport);
+app.use(exporterReport);
+app.use(exportClearanceReport);
+app.use(tdsPayableRegister);
 
 // s3 route
 
 app.use(deleteFromS3Routes);
+
+// Charges & Charge Heads (must be before wildcard updateExportJobs)
+app.use("/api", chargesRoute);
+app.use("/api/tally", tallyRoutes);
 
 // Update Export Jobs (Wildcard route - must be last)
 app.use("/api", updateExportJobs);
@@ -256,6 +290,10 @@ process.on("SIGTERM", async () => {
 
 // Start server
 const PORT = process.env.PORT || 9002;
+
+// Initialize Cron Jobs
+initDsrCronJob(); // Start Daily 8 PM DSR Job
+
 app.listen(PORT, () => {
   console.log(`🟢 Server listening on http://localhost:${PORT}`);
 });

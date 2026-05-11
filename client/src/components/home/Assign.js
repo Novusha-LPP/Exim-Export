@@ -100,10 +100,10 @@ function Assign() {
         return <AssignRole selectedUser={selectedUsername} />;
       case "Change Password":
         return <ChangePasswordByAdmin selectedUser={selectedUsername} />;
-      case "Assign ICD Code":
+      case "Assign Branch":
         return <SelectIcdCode selectedUser={selectedUsername} />;
-      case "Assign Importers":
-        return <AssignImporters selectedUser={selectedUsername} />;
+      // case "Assign Importers":
+      //   return <AssignImporters selectedUser={selectedUsername} />;
       default:
         return null;
     }
@@ -169,8 +169,8 @@ function Assign() {
           <MenuItem value="Assign Module">Assign Module</MenuItem>
           <MenuItem value="Assign Role">Assign Role</MenuItem>
           <MenuItem value="Change Password">Change Password</MenuItem>
-          <MenuItem value="Assign ICD Code">Assign ICD Code</MenuItem>
-          <MenuItem value="Assign Importers">Assign Importers</MenuItem>
+          <MenuItem value="Assign Branch">Assign Branch</MenuItem>
+          {/* <MenuItem value="Assign Importers">Assign Importers</MenuItem> */}
         </TextField>
       </div>
 

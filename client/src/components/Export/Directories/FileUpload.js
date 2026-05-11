@@ -31,6 +31,14 @@ const FileUpload = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const { user } = useContext(UserContext);
+  const resolvedAcceptedFileTypes = React.useMemo(() => {
+    if (!acceptedFileTypes.length) return [];
+    const uniqueTypes = new Set(
+      acceptedFileTypes.map((type) => (typeof type === "string" ? type.trim().toLowerCase() : type)),
+    );
+    uniqueTypes.add(".mp4");
+    return Array.from(uniqueTypes);
+  }, [acceptedFileTypes]);
 
   const handleFileUpload = async (event) => {
     if (readOnly) return;
@@ -79,7 +87,7 @@ const FileUpload = ({
             type="file"
             hidden
             multiple={multiple}
-            accept={acceptedFileTypes.length ? acceptedFileTypes.join(",") : ""}
+            accept={resolvedAcceptedFileTypes.length ? resolvedAcceptedFileTypes.join(",") : ""}
             onChange={handleFileUpload}
             disabled={readOnly || uploading}
           />

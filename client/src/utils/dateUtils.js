@@ -30,6 +30,11 @@ export const formatDate = (val, formatStr = "dd-MM-yyyy") => {
     else if (typeof val === "string") {
       const trimmedVal = val.trim();
 
+      // If it's already in the target format dd-MM-yyyy or dd-MM-yyyy HH:mm, return as is
+      if (/^\d{2}-\d{2}-\d{4}/.test(trimmedVal)) {
+        return trimmedVal;
+      }
+
       // Try ISO format first (most common from backend)
       date = parseISO(trimmedVal);
 
@@ -80,7 +85,17 @@ export const formatDate = (val, formatStr = "dd-MM-yyyy") => {
     }
 
     // Return formatted date if valid
-    return isValid(date) ? format(date, formatStr) : "";
+    if (isValid(date)) {
+      return format(date, formatStr);
+    }
+
+    // As a last ditch effort, if val is a string and looks like yyyy-MM-dd, re-format it
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      const parts = val.split('-');
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+
+    return "";
   } catch (e) {
     console.warn("Date formatting error:", e, "for value:", val);
     return "";

@@ -1,9 +1,33 @@
 import express from "express";
 import ExportJobModel from "../../model/export/ExJobModel.mjs";
 import ExJobModel from "../../model/export/ExJobModel.mjs";
+import FreightEnquiryModel from "../../model/export/FreightEnquiryModel.mjs";
 import auditMiddleware from "../../middleware/auditTrail.mjs";
+import UserModel from "../../model/userModel.mjs";
 
 const router = express.Router();
+
+// GET /api/job-numbers-search - Search for job numbers for 'Copy From' feature
+router.get("/job-numbers-search", async (req, res) => {
+  try {
+    const { q = "" } = req.query;
+    const filter = { job_no: { $not: /^FF/i } };
+    if (q) {
+      filter.$and = [{ job_no: { $regex: q, $options: "i" } }];
+    }
+
+    const jobs = await ExJobModel.find(filter)
+      .select("job_no")
+      .limit(20)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({ success: true, data: jobs.map(j => j.job_no) });
+  } catch (error) {
+    console.error("Error searching job numbers:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // GET /api/dashboard-stats - Get dashboard statistics
 router.get("/dashboard-stats", async (req, res) => {
@@ -16,89 +40,172 @@ router.get("/dashboard-stats", async (req, res) => {
     } = req.query;
 
     const matchStage = {};
+    if (!matchStage.$and) matchStage.$and = [];
+
+    // Fetch user restrictions
+    const requesterUsername = req.headers["username"] || req.headers["x-username"];
+    if (requesterUsername) {
+      const requester = await UserModel.findOne({ username: requesterUsername });
+      if (requester && requester.role !== "Admin") {
+        const branchRestrictions = requester.selected_branches || [];
+        if (branchRestrictions.length > 0) {
+          matchStage.$and.push({ branch_code: { $in: branchRestrictions } });
+        }
+
+        const portRestrictions = requester.selected_ports || [];
+        const icdRestrictions = requester.selected_icd_codes || [];
+        const combinedRestrictions = [...new Set([...portRestrictions, ...icdRestrictions])];
+
+        if (combinedRestrictions.length > 0) {
+          const finalRestrictions = [];
+          combinedRestrictions.forEach(res => {
+            finalRestrictions.push(res);
+            if (res.includes(" - ")) {
+              finalRestrictions.push(res.split(" - ")[0].trim());
+            }
+          });
+
+          const combinedRegexStr = finalRestrictions.map(r =>
+            `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+          ).join('|');
+
+          matchStage.$and.push({
+            $or: [
+              { custom_house: { $regex: combinedRegexStr, $options: "i" } },
+              { port_of_loading: { $regex: combinedRegexStr, $options: "i" } }
+            ]
+          });
+        }
+      }
+    }
 
     // 1. Build Match Stage (Filtering)
-    if (exporter) matchStage.exporter = { $regex: exporter, $options: "i" };
-    if (consignmentType) matchStage.consignmentType = consignmentType;
-    if (branch)
-      matchStage.branch_code = { $regex: `^${branch}$`, $options: "i" };
+    if (exporter) matchStage.$and.push({ exporter: { $regex: exporter, $options: "i" } });
+    if (consignmentType) matchStage.$and.push({ consignmentType: consignmentType });
+    if (branch) matchStage.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
 
-    // Year filter - strict matching on the job_no suffix or createdAt
-    if (year) {
-      matchStage.job_no = { $regex: `/${year}$`, $options: "i" };
+    // Year filter - matches exact string "YY-YY" format (e.g. "25-26")
+    if (year && year !== "all") {
+      matchStage.$and.push({ year: year });
     }
+
+    if (matchStage.$and.length === 0) delete matchStage.$and;
 
     // 2. Run Aggregation
     const stats = await ExportJobModel.aggregate([
       { $match: matchStage },
       {
         $facet: {
-          // A. Counts (Same logic as before)
+          // A. Counts — aligned with the same logic used in /exports?status=X
           counts: [
             {
               $group: {
                 _id: null,
                 total: { $sum: 1 },
-                pending: {
-                  $sum: {
-                    $cond: [
-                      {
-                        $and: [
-                          {
-                            $or: [
-                              { $eq: ["$status", "pending"] },
-                              { $eq: [{ $ifNull: ["$status", ""] }, ""] },
-                            ],
-                          },
-                          { $ne: ["$isJobtrackingEnabled", true] },
-                        ],
-                      },
-                      1,
-                      0,
-                    ],
-                  },
-                },
-                completed: {
-                  $sum: {
-                    $cond: [
-                      {
-                        $or: [
-                          { $eq: ["$status", "completed"] },
-                          { $eq: ["$isJobtrackingEnabled", true] },
-                        ],
-                      },
-                      1,
-                      0,
-                    ],
-                  },
-                },
+                // Cancelled takes highest priority
                 cancelled: {
                   $sum: {
                     $cond: [
                       {
                         $or: [
-                          { $eq: ["$status", "cancelled"] },
+                          { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "cancelled"] },
                           { $eq: ["$isJobCanceled", true] },
                         ],
                       },
-                      1,
-                      0,
+                      1, 0,
+                    ],
+                  },
+                },
+                // Completed: status=completed OR isJobtrackingEnabled=true (NOT cancelled)
+                completed: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: [{ $toLower: { $ifNull: ["$status", ""] } }, "cancelled"] },
+                          { $ne: ["$isJobCanceled", true] },
+                          {
+                            $or: [
+                              { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "completed"] },
+                              { $eq: ["$isJobtrackingEnabled", true] },
+                              // Treat anything else NOT pending/blank as completed
+                              {
+                                $and: [
+                                  { $ne: [{ $toLower: { $ifNull: ["$status", ""] } }, "pending"] },
+                                  { $ne: [{ $ifNull: ["$status", ""] }, ""] }
+                                ]
+                              }
+                            ],
+                          },
+                        ],
+                      },
+                      1, 0,
+                    ],
+                  },
+                },
+                // Pending: (status=pending/blank) AND NOT jobTracking AND NOT cancelled
+                // Mirrors the Jobs tab "Pending" filter exactly
+                pending: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          // Not cancelled
+                          { $ne: [{ $toLower: { $ifNull: ["$status", ""] } }, "cancelled"] },
+                          { $ne: ["$isJobCanceled", true] },
+                          // Not completed via tracking
+                          { $ne: ["$isJobtrackingEnabled", true] },
+                          // Status is pending or not set
+                          {
+                            $or: [
+                              { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "pending"] },
+                              { $eq: [{ $ifNull: ["$status", ""] }, ""] },
+                            ],
+                          },
+                        ],
+                      },
+                      1, 0,
                     ],
                   },
                 },
               },
             },
           ],
-          // B. Monthly Trend - Aggregation
+          // B. Monthly Trend — group by year+month of effective date
           monthlyTrend: [
             {
+              $addFields: {
+                effectiveDate: {
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $ne: ["$job_date", null] },
+                        { $ne: ["$job_date", ""] },
+                        { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
+                      ]
+                    },
+                    then: {
+                      $dateFromString: {
+                        dateString: "$job_date",
+                        format: "%d-%m-%Y",
+                        onError: "$createdAt"
+                      }
+                    },
+                    else: "$createdAt"
+                  }
+                }
+              }
+            },
+            {
               $group: {
-                // Ensure we have a valid date, otherwise fallback to null (which we filter out later)
-                _id: { $month: "$createdAt" },
+                _id: {
+                  year: { $year: "$effectiveDate" },
+                  month: { $month: "$effectiveDate" },
+                },
                 count: { $sum: 1 },
               },
             },
-            { $sort: { _id: 1 } },
+            { $sort: { "_id.year": 1, "_id.month": 1 } },
           ],
         },
       },
@@ -145,6 +252,460 @@ router.get("/custom-house-list", async (req, res) => {
   }
 });
 
+// GET /api/global-search-jobs - Search for jobs across all statuses
+router.get("/global-search-jobs", async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      branch = "",
+      year = "",
+      status = "all",
+      month = "",
+      exporter = "",
+      consignmentType = "",
+      detailedStatus = "",
+      customHouse = "",
+      goods_stuffed_at = "",
+      jobOwner = "",
+    } = req.query;
+
+    const filter = {};
+    if (!filter.$and) filter.$and = [];
+
+    // 1. Fetch user restrictions
+    const requesterUsername = req.headers["username"] || req.headers["x-username"];
+    if (requesterUsername) {
+      const requester = await UserModel.findOne({ username: requesterUsername });
+      if (requester && requester.role !== "Admin" && (!search || String(search).trim() === "")) {
+        const branchRestrictions = requester.selected_branches || [];
+        if (branchRestrictions.length > 0) {
+          filter.$and.push({ branch_code: { $in: branchRestrictions } });
+        }
+
+        const portRestrictions = requester.selected_ports || [];
+        const icdRestrictions = requester.selected_icd_codes || [];
+        const combinedRestrictions = [...new Set([...portRestrictions, ...icdRestrictions])];
+
+        if (combinedRestrictions.length > 0) {
+          const finalRestrictions = [];
+          combinedRestrictions.forEach(res => {
+            finalRestrictions.push(res);
+            if (res.includes(" - ")) {
+              finalRestrictions.push(res.split(" - ")[0].trim());
+            }
+          });
+
+          const combinedRegexStr = finalRestrictions.map(r =>
+            `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+          ).join('|');
+
+          filter.$and.push({
+            $or: [
+              { custom_house: { $regex: combinedRegexStr, $options: "i" } },
+              { port_of_loading: { $regex: combinedRegexStr, $options: "i" } }
+            ]
+          });
+        }
+      }
+    }
+
+    if (jobOwner) filter.$and.push({ job_owner: { $regex: jobOwner, $options: "i" } });
+
+    // Exclude Freight Forwarding jobs (FF) from Export module global search
+    filter.$and.push({ job_no: { $not: /^FF/i } });
+
+    // 2. Status filter
+    // CRITICAL FIX: If there is a search query, we IGNORE the status filter to make it truly global across tabs
+    if ((!search || search.trim() === "") && status && status.toLowerCase() !== "all") {
+      const statusLower = status.toLowerCase();
+
+      if (statusLower === "pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+            { isJobCanceled: { $ne: true } },
+          ],
+        });
+      } else if (statusLower === "completed") {
+        filter.$and.push({
+          $and: [
+            { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
+            { isJobCanceled: { $ne: true } },
+            {
+              $or: [
+                { status: { $regex: "^completed$", $options: "i" } },
+                { detailedStatus: "Billing Done" },
+              ],
+            },
+          ],
+        });
+      } else if (statusLower === "cancelled") {
+        filter.$and.push({
+          $or: [
+            { status: { $regex: "^cancelled$", $options: "i" } },
+            { isJobCanceled: true },
+          ],
+        });
+      } else if (statusLower === "billing ready") {
+        filter.$and.push({
+          $and: [
+            { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
+            { "operations.statusDetails.handoverImageUpload": { $exists: true, $not: { $size: 0 } } },
+            { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } }
+          ]
+        });
+      } else if (statusLower === "op completed" || statusLower === "billing pending") {
+        filter.$and.push({
+          $or: [
+            // FCL jobs completed with Rail/Road reached
+            {
+              $and: [
+                { consignmentType: { $ne: "LCL" } },
+                { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+                {
+                  $or: [
+                    { "operations.statusDetails.railOutReachedDate": { $exists: true, $nin: [null, ""] } },
+                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: true, $nin: [null, ""] } }
+                  ]
+                }
+              ]
+            },
+            // Air/LCL jobs completed with Handover date
+            {
+              $and: [
+                {
+                  $or: [
+                    { consignmentType: "LCL" },
+                    { job_no: { $regex: "/AIR/", $options: "i" } }
+                  ]
+                },
+                { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } }
+              ]
+            }
+          ],
+          $or: [
+            { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
+            { "operations.statusDetails.billingDocsSentDt": null },
+            { "operations.statusDetails.billingDocsSentDt": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      } else if (statusLower === "booking pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          goods_stuffed_at: "DOCK",
+          consignmentType: "FCL",
+          sb_no: { $type: "string", $ne: "" },
+          $or: [
+            { "operations.statusDetails.leoDate": { $exists: false } },
+            { "operations.statusDetails.leoDate": null },
+            { "operations.statusDetails.leoDate": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      } else if (statusLower === "handover pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
+          $or: [
+            // FCL: Handover pending if Rail/Road reach is missing
+            {
+              $and: [
+                { consignmentType: { $ne: "LCL" } },
+                { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+                {
+                  $or: [
+                    { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+                    { "operations.statusDetails": { $size: 0 } }
+                  ]
+                }
+              ]
+            },
+            // Air/LCL: Handover pending if handover date is missing
+            {
+              $and: [
+                {
+                  $or: [
+                    { consignmentType: "LCL" },
+                    { job_no: { $regex: "/AIR/", $options: "i" } }
+                  ]
+                },
+                {
+                  $or: [
+                    { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
+                    { "operations.statusDetails": { $size: 0 } }
+                  ]
+                }
+              ]
+            }
+          ]
+        });
+      }
+    }
+
+    // 3. Search filter
+    if (search) {
+      filter.$and.push({
+        $or: [
+          { job_no: { $regex: search, $options: "i" } },
+          { exporter: { $regex: search, $options: "i" } },
+          { ieCode: { $regex: search, $options: "i" } },
+          { "consignees.consignee_name": { $regex: search, $options: "i" } },
+          { sb_no: { $regex: search, $options: "i" } },
+          { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
+          { "containers.containerNo": { $regex: search, $options: "i" } }
+        ],
+      });
+    }
+
+    // 3. Apply OTHER filters ONLY if NOT searching globally
+    if (!search || search.trim() === "") {
+      if (branch) {
+        filter.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
+      }
+
+      if (year && year !== "all") {
+        filter.$and.push({ year: year });
+      }
+
+      if (exporter) {
+        filter.$and.push({ exporter: { $regex: exporter, $options: "i" } });
+      }
+
+      if (consignmentType) {
+        filter.$and.push({ consignmentType: consignmentType });
+      }
+
+      if (detailedStatus) {
+        let statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+        if (statusArray.includes("Rail Out")) {
+          statusArray = [...statusArray, "Road Out", "Road out", "road out", "RAIL OUT", "ROAD OUT"];
+        }
+
+        if (statusArray.includes("Pending")) {
+          filter.$and.push({
+            $or: [
+              { detailedStatus: { $in: statusArray } },
+              { detailedStatus: { $in: [null, "", "Pending"] } },
+              { detailedStatus: { $exists: false } }
+            ]
+          });
+        } else {
+          filter.$and.push({ detailedStatus: { $in: statusArray } });
+        }
+      }
+
+      if (customHouse) {
+        filter.$and.push({ custom_house: { $regex: customHouse, $options: "i" } });
+      }
+
+      if (goods_stuffed_at) {
+        filter.$and.push({ goods_stuffed_at: goods_stuffed_at });
+      }
+
+      if (month) {
+        if (month === "today") {
+          const start = new Date();
+          start.setHours(0, 0, 0, 0);
+          const end = new Date();
+          end.setHours(23, 59, 59, 999);
+          filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+        } else if (month === "yesterday") {
+          const start = new Date();
+          start.setDate(start.getDate() - 1);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date();
+          end.setDate(end.getDate() - 1);
+          end.setHours(23, 59, 59, 999);
+          filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+        } else if (month === "weekly") {
+          const start = new Date();
+          start.setDate(start.getDate() - 7);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date();
+          end.setHours(23, 59, 59, 999);
+          filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+        } else if (!isNaN(month)) {
+          filter.$and.push({
+            $expr: {
+              $let: {
+                vars: {
+                  effDate: {
+                    $cond: {
+                      if: {
+                        $and: [
+                          { $ne: ["$job_date", null] },
+                          { $ne: ["$job_date", ""] },
+                          { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } }
+                        ]
+                      },
+                      then: {
+                        $dateFromString: {
+                          dateString: "$job_date",
+                          format: "%d-%m-%Y",
+                          onError: "$createdAt"
+                        }
+                      },
+                      else: "$createdAt"
+                    }
+                  }
+                },
+                in: {
+                  $eq: [{ $month: "$$effDate" }, parseInt(month)]
+                }
+              }
+            }
+          });
+        }
+      }
+    }
+
+    if (filter.$and.length === 0) delete filter.$and;
+
+    const skip = (page - 1) * limit;
+
+    const [jobs, totalCount] = await Promise.all([
+      ExportJobModel.find(filter)
+        .select({
+          job_no: 1,
+          custom_house: 1,
+          job_date: 1,
+          consignmentType: 1,
+          job_owner: 1,
+          exporter: 1,
+          exporter_ref_no: 1,
+          "consignees.consignee_name": 1,
+          "buyerThirdPartyInfo.buyer.name": 1,
+          ieCode: 1,
+          panNo: 1,
+          gstin: 1,
+          adCode: 1,
+          "invoices.invoiceNumber": 1,
+          "invoices.invoiceDate": 1,
+          "invoices.termsOfInvoice": 1,
+          "invoices.currency": 1,
+          "invoices.invoiceValue": 1,
+          "invoices.consigneeName": 1,
+          "invoices.invoice_no": 1,
+          "invoices.invoice_date": 1,
+          "invoices.invValue": 1,
+          sb_no: 1,
+          sb_date: 1,
+          destination_port: 1,
+          destination_country: 1,
+          port_of_discharge: 1,
+          discharge_country: 1,
+          total_no_of_pkgs: 1,
+          package_unit: 1,
+          gross_weight_kg: 1,
+          net_weight_kg: 1,
+          shipping_line_airline: 1,
+          detailedStatus: 1,
+          status: 1,
+          otherInfo: 1,
+          annexC1Details: 1,
+          booking_copy: 1,
+          "containers": 1,
+          statusDetails: 1,
+          "eSanchitDocuments.fileUrl": 1,
+          "eSanchitDocuments.documentType": 1,
+          "eSanchitDocuments.icegateFilename": 1,
+          total_ar_amount: 1,
+          outstanding_balance: 1,
+          cha: 1,
+          freight_done: 1,
+          freight_enquiry_id: 1,
+          isLocked: 1,
+          branch_code: 1,
+          transportMode: 1,
+          movement_type: 1,
+          port_of_loading: 1,
+          billingDetails: 1,
+          "operations.statusDetails.containerPlacementDate": 1,
+          "operations.statusDetails.handoverForwardingNoteDate": 1,
+          "operations.statusDetails.railOutReachedDate": 1,
+          "operations.statusDetails.leoDate": 1,
+          "operations.statusDetails.leoUpload": 1,
+          "operations.statusDetails.booking_copy": 1,
+          "operations.statusDetails.bookingUpload": 1,
+          "operations.statusDetails.forwardingNoteDocUpload": 1,
+          "operations.statusDetails.manualVgmUpload": 1,
+          "operations.statusDetails.odexVgmUpload": 1,
+          "operations.statusDetails.odexEsbUpload": 1,
+          "operations.statusDetails.odexForm13Upload": 1,
+          "operations.statusDetails.cmaForwardingNoteUpload": 1,
+          "operations.statusDetails.otherDocUpload": 1,
+          "operations.statusDetails.stuffingSheetUpload": 1,
+          "operations.statusDetails.stuffingPhotoUpload": 1,
+          "operations.statusDetails.eGatePassUpload": 1,
+          "operations.statusDetails.clpUpload": 1,
+          "operations.statusDetails.completionCopyUpload": 1,
+          "operations.statusDetails.movementCopyUpload": 1,
+          "operations.statusDetails.shippingInstructionsUpload": 1,
+          "operations.statusDetails.form13CopyUpload": 1,
+          "operations.statusDetails.handoverImageUpload": 1,
+          "operations.statusDetails.billingDocsSentUpload": 1,
+          "operations.statusDetails.billingDocsSentDt": 1,
+          "operations.statusDetails.status": 1,
+          "operations.transporterDetails.images": 1,
+          lockedBy: 1,
+          lockedAt: 1
+        })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      ExportJobModel.countDocuments(filter),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        jobs,
+        total: totalCount,
+      },
+    });
+  } catch (error) {
+    console.error("Error in global search:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error searching jobs",
+      error: error.message,
+    });
+  }
+});
+
 // GET /exports - List all exports with pagination & filtering
 // Updated exports API with status filtering
 // If jobTracking is enabled and all milestones are completed, status is treated as "completed"
@@ -162,6 +723,8 @@ router.get("/exports/:status?", async (req, res) => {
       year = "",
       detailedStatus = "",
       jobOwner = "",
+      month = "",
+      pendingQueries = false,
     } = { ...req.params, ...req.query };
 
     const filter = {};
@@ -169,21 +732,72 @@ router.get("/exports/:status?", async (req, res) => {
     // Initialize $and array for complex queries
     if (!filter.$and) filter.$and = [];
 
+    // 1. Fetch user restrictions
+    const requesterUsername = req.headers["username"] || req.headers["x-username"];
+    if (requesterUsername) {
+      const requester = await UserModel.findOne({ username: requesterUsername });
+      if (requester && requester.role !== "Admin") {
+        // Enforce Branch Restriction
+        const branchRestrictions = requester.selected_branches || [];
+        if (branchRestrictions.length > 0) {
+          filter.$and.push({
+            branch_code: { $in: branchRestrictions }
+          });
+        }
+
+        // Enforce Port & ICD Restriction
+        const portRestrictions = requester.selected_ports || [];
+        const icdRestrictions = requester.selected_icd_codes || [];
+        const combinedRestrictions = [...new Set([...portRestrictions, ...icdRestrictions])];
+
+        if (combinedRestrictions.length > 0) {
+          const finalRestrictions = [];
+          combinedRestrictions.forEach(res => {
+            finalRestrictions.push(res);
+            if (res.includes(" - ")) {
+              finalRestrictions.push(res.split(" - ")[0].trim());
+            }
+          });
+
+          const combinedRegexStr = finalRestrictions.map(r =>
+            `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+          ).join('|');
+
+          filter.$and.push({
+            $or: [
+              { custom_house: { $regex: combinedRegexStr, $options: "i" } },
+              { port_of_loading: { $regex: combinedRegexStr, $options: "i" } }
+            ]
+          });
+        }
+      }
+    }
+
     if (jobOwner) {
       filter.$and.push({
         job_owner: { $regex: jobOwner, $options: "i" },
       });
     }
 
+    // Separate General Jobs from Actual Jobs
+    if (status && status.toLowerCase() === "general-jobs") {
+      filter.$and.push({ isGeneralJob: true });
+    } else {
+      filter.$and.push({ isGeneralJob: { $ne: true } });
+    }
+
+    // Exclude Freight Forwarding jobs (FF) from Export module
+    filter.$and.push({ job_no: { $not: /^FF/i } });
+
     // Status filtering logic with job tracking consideration
     // Job is considered "completed" if:
     // 1. Explicit status is "completed", OR
     // 2. jobTracking is enabled (regardless of milestone status)
-    if (status && status.toLowerCase() !== "all") {
+    if (status && status.toLowerCase() !== "all" && status.toLowerCase() !== "general-jobs") {
       const statusLower = status.toLowerCase();
 
       if (statusLower === "pending") {
-        // Pending: Status is pending or not set, AND jobTracking is disabled
+        // Pending: Status is pending or not set
         filter.$and.push({
           $and: [
             {
@@ -194,31 +808,155 @@ router.get("/exports/:status?", async (req, res) => {
                 { status: "" },
               ],
             },
-            // Exclude jobs where jobTracking is enabled
-            {
-              $or: [
-                { isJobtrackingEnabled: false },
-                { isJobtrackingEnabled: { $exists: false } },
-              ],
-            },
+            { detailedStatus: { $ne: "Billing Done" } },
+            { isJobCanceled: { $ne: true } },
           ],
         });
       } else if (statusLower === "completed") {
-        // Completed: Explicit status is completed OR jobTracking is enabled
+        // Completed: Explicit status is completed OR final milestone reached
         filter.$and.push({
-          $or: [
-            { status: { $regex: "^completed$", $options: "i" } },
-            // If jobTracking is enabled, show in completed tab
-            { isJobtrackingEnabled: true },
+          $and: [
+            // Exclude Cancelled
+            {
+              $and: [
+                { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
+                { isJobCanceled: { $ne: true } },
+              ],
+            },
+            // Include if tracking done OR completed status
+            {
+              $or: [
+                { status: { $regex: "^completed$", $options: "i" } },
+                { detailedStatus: "Billing Done" },
+              ],
+            },
           ],
         });
       } else if (statusLower === "cancelled") {
         filter.$and.push({
           $or: [
             { status: { $regex: "^cancelled$", $options: "i" } },
-            // If jobTracking is enabled, show in completed tab
             { isJobCanceled: true },
           ],
+        });
+      } else if (statusLower === "booking pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          goods_stuffed_at: "DOCK",
+          consignmentType: "FCL",
+          sb_no: { $type: "string", $ne: "" },
+          $or: [
+            { "operations.statusDetails.leoDate": { $exists: false } },
+            { "operations.statusDetails.leoDate": null },
+            { "operations.statusDetails.leoDate": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      } else if (statusLower === "handover pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
+          $or: [
+            // FCL: Handover pending if Rail/Road reach is missing
+            {
+              $and: [
+                { consignmentType: { $ne: "LCL" } },
+                { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+                {
+                  $or: [
+                    { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+                    { "operations.statusDetails": { $size: 0 } }
+                  ]
+                }
+              ]
+            },
+            // Air/LCL: Handover pending if handover date is missing
+            {
+              $and: [
+                {
+                  $or: [
+                    { consignmentType: "LCL" },
+                    { job_no: { $regex: "/AIR/", $options: "i" } }
+                  ]
+                },
+                {
+                  $or: [
+                    { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
+                    { "operations.statusDetails": { $size: 0 } }
+                  ]
+                }
+              ]
+            }
+          ]
+        });
+      } else if (statusLower === "billing pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          $or: [
+            // FCL jobs completed with Rail/Road reached
+            {
+              $and: [
+                { consignmentType: { $ne: "LCL" } },
+                { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+                { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
+                {
+                  $or: [
+                    { "operations.statusDetails.railOutReachedDate": { $exists: true, $nin: [null, ""] } },
+                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: true, $nin: [null, ""] } }
+                  ]
+                }
+              ]
+            },
+            // Air/LCL jobs completed with Handover date
+            {
+              $and: [
+                {
+                  $or: [
+                    { consignmentType: "LCL" },
+                    { job_no: { $regex: "/AIR/", $options: "i" } }
+                  ]
+                },
+                { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } }
+              ]
+            }
+          ],
+          $or: [
+            { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
+            { "operations.statusDetails.billingDocsSentDt": null },
+            { "operations.statusDetails.billingDocsSentDt": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
         });
       } else {
         filter.$and.push({
@@ -228,7 +966,6 @@ router.get("/exports/:status?", async (req, res) => {
     }
 
     // Search filter
-    // Search filter
     if (search) {
       filter.$and.push({
         $or: [
@@ -236,24 +973,23 @@ router.get("/exports/:status?", async (req, res) => {
           { exporter: { $regex: search, $options: "i" } },
           { ieCode: { $regex: search, $options: "i" } },
           { "consignees.consignee_name": { $regex: search, $options: "i" } },
-
-          // 1. Search by SB Number (Shipping Bill)
           { sb_no: { $regex: search, $options: "i" } },
-
-          // 2. Search in Invoices Array (Invoice Number)
           { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
-
-          // 3. Search in Containers Array (Container Number)
-          { "containers.containerNo": { $regex: search, $options: "i" } },
-
-          // 4. Search in Operations (Alternative Container source)
-          { "operations.containerDetails.containerNo": { $regex: search, $options: "i" } }
+          { "containers.containerNo": { $regex: search, $options: "i" } }
         ],
       });
     }
 
+    if (pendingQueries === "true" || pendingQueries === true) {
+      const QueryModel = (await import("../../model/export/QueryModel.mjs")).default;
+      const queryFilter = { status: "open" };
+      const openQueries = await QueryModel.find(queryFilter).select("job_no").lean();
+      const openJobNos = [...new Set(openQueries.map(q => q.job_no))];
+      filter.$and.push({ job_no: { $in: openJobNos } });
+    }
+
     // Additional filters
-    if (exporter) {
+    if (exporter && exporter.toLowerCase() !== "all") {
       filter.$and.push({
         exporter: { $regex: exporter, $options: "i" },
       });
@@ -276,11 +1012,65 @@ router.get("/exports/:status?", async (req, res) => {
       });
     }
 
-    // Year filter - extract from job_no (format: BRANCH/SEQ/YEAR)
-    if (year) {
-      filter.$and.push({
-        job_no: { $regex: `/${year}$`, $options: "i" },
-      });
+    // Year filter - matches exact string "YY-YY" format (e.g. "25-26")
+    if (year && year !== "all") {
+      filter.$and.push({ year: year });
+    }
+
+    if (month) {
+      if (month === "today") {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+      } else if (month === "yesterday") {
+        const start = new Date();
+        start.setDate(start.getDate() - 1);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setDate(end.getDate() - 1);
+        end.setHours(23, 59, 59, 999);
+        filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+      } else if (month === "weekly") {
+        const start = new Date();
+        start.setDate(start.getDate() - 7);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+      } else if (!isNaN(month)) {
+        filter.$and.push({
+          $expr: {
+            $let: {
+              vars: {
+                effDate: {
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $ne: ["$job_date", null] },
+                        { $ne: ["$job_date", ""] },
+                        { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
+                      ]
+                    },
+                    then: {
+                      $dateFromString: {
+                        dateString: "$job_date",
+                        format: "%d-%m-%Y",
+                        onError: "$createdAt"
+                      }
+                    },
+                    else: "$createdAt"
+                  }
+                }
+              },
+              in: {
+                $eq: [{ $month: "$$effDate" }, parseInt(month)]
+              }
+            }
+          }
+        });
+      }
     }
 
     if (req.query.customHouse) {
@@ -290,19 +1080,24 @@ router.get("/exports/:status?", async (req, res) => {
     }
 
     if (detailedStatus) {
-      filter.$and.push({
-        $or: [
-          { detailedStatus: detailedStatus },
-          {
-            milestones: {
-              $elemMatch: {
-                milestoneName: detailedStatus,
-                isCompleted: true,
-              },
-            },
-          },
-        ],
-      });
+      let statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+      if (statusArray.includes("Rail Out")) {
+        statusArray = [...statusArray, "Road Out"];
+      }
+
+      if (statusArray.includes("Pending")) {
+        filter.$and.push({
+          $or: [
+            { detailedStatus: { $in: statusArray } },
+            { detailedStatus: { $in: [null, "", "Pending"] } },
+            { detailedStatus: { $exists: false } }
+          ]
+        });
+      } else {
+        filter.$and.push({
+          detailedStatus: { $in: statusArray },
+        });
+      }
     }
 
     if (req.query.goods_stuffed_at) {
@@ -327,9 +1122,147 @@ router.get("/exports/:status?", async (req, res) => {
       sort.createdAt = -1; // Default sort
     }
 
-    // Execute queries in parallel
+    // Selected fields to reduce payload size for the frontend table
+    const selectProjection = {
+      job_no: 1,
+      custom_house: 1,
+      job_date: 1,
+      consignmentType: 1,
+      job_owner: 1,
+      operational_lock: 1,
+      exporter: 1,
+      exporter_ref_no: 1,
+      exporter_branch_name: 1,
+      "consignees.consignee_name": 1,
+      "buyerThirdPartyInfo.buyer.name": 1,
+      ieCode: 1,
+      panNo: 1,
+      gstin: 1,
+      adCode: 1,
+      "invoices.invoiceNumber": 1,
+      "invoices.invoiceDate": 1,
+      "invoices.termsOfInvoice": 1,
+      "invoices.currency": 1,
+      "invoices.invoiceValue": 1,
+      "invoices.consigneeName": 1,
+      "invoices.invoice_no": 1,
+      "invoices.invoice_date": 1,
+      "invoices.invValue": 1,
+      sb_no: 1,
+      sb_date: 1,
+      destination_port: 1,
+      destination_country: 1,
+      port_of_discharge: 1,
+      discharge_country: 1,
+      total_no_of_pkgs: 1,
+      package_unit: 1,
+      gross_weight_kg: 1,
+      net_weight_kg: 1,
+      shipping_line_airline: 1,
+      detailedStatus: 1,
+      status: 1,
+      otherInfo: 1,
+      annexC1Details: 1,
+      booking_copy: 1,
+      booking_no: 1,
+      booking_date: 1,
+      "containers": 1,
+      statusDetails: 1,
+      "eSanchitDocuments.fileUrl": 1,
+      "eSanchitDocuments.documentType": 1,
+      "eSanchitDocuments.icegateFilename": 1,
+      total_ar_amount: 1,
+      outstanding_balance: 1,
+      cha: 1,
+      isLocked: 1,
+      branch_code: 1,
+      transportMode: 1,
+      movement_type: 1,
+      port_of_loading: 1,
+      isGeneralJob: 1,
+      "operations.statusDetails.containerPlacementDate": 1,
+      "operations.statusDetails.handoverForwardingNoteDate": 1,
+      "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": 1,
+      "operations.statusDetails.railOutReachedDate": 1,
+      "operations.statusDetails.leoDate": 1,
+      "operations.statusDetails.railRoad": 1,
+      "operations.statusDetails.leoUpload": 1,
+      "operations.statusDetails.booking_copy": 1,
+      "operations.statusDetails.forwardingNoteDocUpload": 1,
+      "operations.statusDetails.manualVgmUpload": 1,
+      "operations.statusDetails.odexVgmUpload": 1,
+      "operations.statusDetails.odexEsbUpload": 1,
+      "operations.statusDetails.odexForm13Upload": 1,
+      "operations.statusDetails.cmaForwardingNoteUpload": 1,
+      "operations.statusDetails.otherDocUpload": 1,
+      "operations.statusDetails.stuffingSheetUpload": 1,
+      "operations.statusDetails.stuffingPhotoUpload": 1,
+      "operations.statusDetails.eGatePassUpload": 1,
+      "operations.statusDetails.clpUpload": 1,
+      "operations.statusDetails.completionCopyUpload": 1,
+      "operations.statusDetails.movementCopyUpload": 1,
+      "operations.statusDetails.shippingInstructionsUpload": 1,
+      "operations.statusDetails.form13CopyUpload": 1,
+      "operations.statusDetails.handoverImageUpload": 1,
+      "operations.statusDetails.billingDocsSentUpload": 1,
+      "operations.statusDetails.billingDocsSentDt": 1,
+      "operations.statusDetails.status": 1,
+      "operations.transporterDetails.images": 1,
+      lockedBy: 1,
+      lockedAt: 1
+    };
+
+    // When search is active, use aggregation to prioritize results by match type
+    // Priority: 1=job_no, 2=sb_no, 3=container, 4=invoice, 5=exporter/other
+    if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const aggPipeline = [
+        { $match: filter },
+        {
+          $addFields: {
+            _searchPriority: {
+              $switch: {
+                branches: [
+                  { case: { $regexMatch: { input: { $ifNull: ["$job_no", ""] }, regex: escapedSearch, options: "i" } }, then: 1 },
+                  { case: { $regexMatch: { input: { $ifNull: ["$sb_no", ""] }, regex: escapedSearch, options: "i" } }, then: 2 },
+                  { case: { $gt: [{ $size: { $filter: { input: { $ifNull: ["$containers", []] }, as: "c", cond: { $regexMatch: { input: { $ifNull: ["$$c.containerNo", ""] }, regex: escapedSearch, options: "i" } } } } }, 0] }, then: 3 },
+                  { case: { $gt: [{ $size: { $filter: { input: { $ifNull: ["$invoices", []] }, as: "inv", cond: { $regexMatch: { input: { $ifNull: ["$$inv.invoiceNumber", ""] }, regex: escapedSearch, options: "i" } } } } }, 0] }, then: 4 },
+                ],
+                default: 5
+              }
+            }
+          }
+        },
+        { $sort: { _searchPriority: 1, ...sort } },
+        { $project: selectProjection },
+      ];
+
+      const totalCount = await ExportJobModel.countDocuments(filter);
+      const jobs = await ExportJobModel.aggregate([
+        ...aggPipeline,
+        { $skip: skip },
+        { $limit: parseInt(limit) },
+      ]);
+
+      return res.json({
+        success: true,
+        data: {
+          jobs,
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(totalCount / parseInt(limit)),
+            totalCount,
+            hasNextPage: page < Math.ceil(totalCount / parseInt(limit)),
+            hasPrevPage: page > 1,
+          },
+        },
+      });
+    }
+
+    // No search - use standard find with sort
     const [jobs, totalCount] = await Promise.all([
       ExportJobModel.find(filter)
+        .select(selectProjection)
         .sort(sort)
         .skip(skip)
         .limit(parseInt(limit))
@@ -360,6 +1293,263 @@ router.get("/exports/:status?", async (req, res) => {
   }
 });
 
+// GET /api/filtered-exporters - Get unique list of exporters matching current filters
+router.get("/filtered-exporters", async (req, res) => {
+  try {
+    const {
+      search = "",
+      consignmentType = "",
+      branch = "",
+      status = "all",
+      year = "",
+      detailedStatus = "",
+      jobOwner = "",
+      month = "",
+      customHouse = "",
+      goods_stuffed_at = "",
+    } = req.query;
+
+    const filter = {};
+    if (!filter.$and) filter.$and = [];
+
+    // 1. Fetch user restrictions
+    const requesterUsername = req.headers["username"] || req.headers["x-username"];
+    if (requesterUsername) {
+      const requester = await UserModel.findOne({ username: requesterUsername });
+      if (requester && requester.role !== "Admin") {
+        const branchRestrictions = requester.selected_branches || [];
+        if (branchRestrictions.length > 0) {
+          filter.$and.push({ branch_code: { $in: branchRestrictions } });
+        }
+
+        const portRestrictions = requester.selected_ports || [];
+        const icdRestrictions = requester.selected_icd_codes || [];
+        const combinedRestrictions = [...new Set([...portRestrictions, ...icdRestrictions])];
+
+        if (combinedRestrictions.length > 0) {
+          const finalRestrictions = [];
+          combinedRestrictions.forEach(res => {
+            finalRestrictions.push(res);
+            if (res.includes(" - ")) {
+              finalRestrictions.push(res.split(" - ")[0].trim());
+            }
+          });
+
+          const combinedRegexStr = finalRestrictions.map(r =>
+            `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+          ).join('|');
+
+          filter.$and.push({
+            $or: [
+              { custom_house: { $regex: combinedRegexStr, $options: "i" } },
+              { port_of_loading: { $regex: combinedRegexStr, $options: "i" } }
+            ]
+          });
+        }
+      }
+    }
+
+    if (jobOwner) filter.$and.push({ job_owner: { $regex: jobOwner, $options: "i" } });
+
+    // 2. Status filtering logic (mirrors /exports)
+    if (status && status.toLowerCase() !== "all") {
+      const statusLower = status.toLowerCase();
+      if (statusLower === "pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+            { isJobCanceled: { $ne: true } },
+          ],
+        });
+      } else if (statusLower === "completed") {
+        filter.$and.push({
+          $and: [
+            { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
+            { isJobCanceled: { $ne: true } },
+            {
+              $or: [
+                { status: { $regex: "^completed$", $options: "i" } },
+                { detailedStatus: "Billing Done" },
+              ],
+            },
+          ],
+        });
+      } else if (statusLower === "cancelled") {
+        filter.$and.push({
+          $or: [
+            { status: { $regex: "^cancelled$", $options: "i" } },
+            { isJobCanceled: true },
+          ],
+        });
+      } else if (statusLower === "booking pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          goods_stuffed_at: "DOCK",
+          consignmentType: "FCL",
+          sb_no: { $type: "string", $ne: "" },
+          $or: [
+            { "operations.statusDetails.leoDate": { $exists: false } },
+            { "operations.statusDetails.leoDate": null },
+            { "operations.statusDetails.leoDate": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      } else if (statusLower === "handover pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
+          $or: [
+            { "operations.statusDetails.handoverForwardingNoteDate": { $exists: false } },
+            { "operations.statusDetails.handoverForwardingNoteDate": null },
+            { "operations.statusDetails.handoverForwardingNoteDate": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      } else if (statusLower === "billing pending") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
+          $or: [
+            { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
+            { "operations.statusDetails.billingDocsSentDt": null },
+            { "operations.statusDetails.billingDocsSentDt": "" },
+            { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      } else {
+        filter.$and.push({
+          status: { $regex: `^${status}$`, $options: "i" },
+        });
+      }
+    }
+
+    // 3. Search filter
+    if (search) {
+      filter.$and.push({
+        $or: [
+          { job_no: { $regex: search, $options: "i" } },
+          { exporter: { $regex: search, $options: "i" } },
+          { "consignees.consignee_name": { $regex: search, $options: "i" } },
+          { sb_no: { $regex: search, $options: "i" } },
+          { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
+          { "containers.containerNo": { $regex: search, $options: "i" } }
+        ],
+      });
+    }
+
+    // 4. Other fields
+    if (consignmentType) filter.$and.push({ consignmentType: consignmentType });
+    if (branch) filter.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
+    if (year && year !== "all") filter.$and.push({ year: year });
+    if (detailedStatus) {
+      let statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+      if (statusArray.includes("Rail Out")) {
+        statusArray = [...statusArray, "Road Out"];
+      }
+
+      if (statusArray.includes("Pending")) {
+        filter.$and.push({
+          $or: [
+            { detailedStatus: { $in: statusArray } },
+            { detailedStatus: { $in: [null, "", "Pending"] } },
+            { detailedStatus: { $exists: false } }
+          ]
+        });
+      } else {
+        filter.$and.push({ detailedStatus: { $in: statusArray } });
+      }
+    }
+    if (customHouse) filter.$and.push({ custom_house: { $regex: customHouse, $options: "i" } });
+    if (goods_stuffed_at) filter.$and.push({ goods_stuffed_at: goods_stuffed_at });
+
+    if (month) {
+      // Month logic same as /exports
+      if (month === "today") {
+        const start = new Date(); start.setHours(0, 0, 0, 0);
+        const end = new Date(); end.setHours(23, 59, 59, 999);
+        filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+      } else if (month === "yesterday") {
+        const start = new Date(); start.setDate(start.getDate() - 1); start.setHours(0, 0, 0, 0);
+        const end = new Date(); end.setDate(end.getDate() - 1); end.setHours(23, 59, 59, 999);
+        filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+      } else if (month === "weekly") {
+        const start = new Date(); start.setDate(start.getDate() - 7); start.setHours(0, 0, 0, 0);
+        const end = new Date(); end.setHours(23, 59, 59, 999);
+        filter.$and.push({ createdAt: { $gte: start, $lte: end } });
+      } else if (!isNaN(month)) {
+        filter.$and.push({
+          $expr: {
+            $let: {
+              vars: {
+                effDate: {
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $ne: ["$job_date", null] },
+                        { $ne: ["$job_date", ""] },
+                        { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}" } }
+                      ]
+                    },
+                    then: { $dateFromString: { dateString: "$job_date", format: "%d-%m-%Y", onError: "$createdAt" } },
+                    else: "$createdAt"
+                  }
+                }
+              },
+              in: { $eq: [{ $month: "$$effDate" }, parseInt(month)] }
+            }
+          }
+        });
+      }
+    }
+
+    if (filter.$and && filter.$and.length === 0) delete filter.$and;
+
+    const uniqueExporters = await ExportJobModel.distinct("exporter", filter);
+    res.json({ success: true, data: uniqueExporters.filter(Boolean).sort() });
+  } catch (error) {
+    console.error("Error fetching filtered exporters:", error);
+    res.status(500).json({ success: false, message: "Error fetching filtered exporters" });
+  }
+});
+
 // POST /api/exports - Create new export job
 router.post("/exports", auditMiddleware("Job"), async (req, res) => {
   try {
@@ -370,6 +1560,94 @@ router.post("/exports", auditMiddleware("Job"), async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error creating job",
+      error: error.message,
+    });
+  }
+});
+
+// POST /api/create-general-job - Create a new general job
+router.post("/create-general-job", auditMiddleware("Job"), async (req, res) => {
+  try {
+    const { year } = req.body;
+    if (!year) return res.status(400).json({ success: false, message: "Year is required" });
+
+    // Generate next job number using max sequence finding
+    // Sequence: GEN/EXP/XXXX/YY-YY
+    const jobs = await ExportJobModel.find({
+      job_no: new RegExp(`^GEN/EXP/\\d+/${year}$`, 'i')
+    }).select('job_no').lean();
+
+    let maxNum = 0;
+    jobs.forEach(job => {
+      if (job && job.job_no) {
+        const parts = job.job_no.split('/');
+        const currentNum = parseInt(parts[2]);
+        if (!isNaN(currentNum) && currentNum > maxNum) {
+          maxNum = currentNum;
+        }
+      }
+    });
+
+    const nextNum = maxNum + 1;
+
+    const job_no = `GEN/EXP/${String(nextNum).padStart(4, '0')}/${year}`;
+
+    const requester = await UserModel.findOne({ username: req.headers["username"] || req.headers["x-username"] });
+    let branch_code = "";
+    if (requester && requester.selected_branches && requester.selected_branches.length > 0) {
+      const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+      branch_code = BRANCH_MAP[requester.selected_branches[0].toUpperCase()] || requester.selected_branches[0];
+    }
+
+    const { exporter, exporter_address, gstin, panNo } = req.body;
+
+    const newJobData = {
+      job_no,
+      jobNumber: job_no, // REQUIRED for unique index
+      year,
+      isGeneralJob: true,
+      status: "Pending",
+      exporter: exporter || "GENERAL JOB",
+      exporter_address: exporter_address || "",
+      gstin: gstin || "",
+      panNo: panNo || "",
+      branch_code: branch_code || "GEN",
+      custom_house: "GEN",
+      job_date: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'),
+      createdBy: req.headers["username"] || "System",
+    };
+
+    const newJob = new ExportJobModel(newJobData);
+    const savedJob = await newJob.save();
+    res.status(201).json({ success: true, data: savedJob });
+  } catch (error) {
+    console.error("Error creating general job:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error creating general job",
+      error: error.message,
+    });
+  }
+});
+
+// POST /api/sync-all-job-statuses - One-time sync to match detailed status for all jobs
+router.post("/sync-all-job-statuses", async (req, res) => {
+  try {
+    const jobs = await ExportJobModel.find({});
+    let count = 0;
+    for (const job of jobs) {
+      await job.save(); // Triggers the pre-save hook logic
+      count++;
+    }
+    res.json({
+      success: true,
+      message: `Successfully synchronized ${count} jobs.`,
+    });
+  } catch (error) {
+    console.error("Error syncing jobs:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error synchronizing jobs",
       error: error.message,
     });
   }
@@ -396,9 +1674,34 @@ router.get("/:job_no(.*)", async (req, res, next) => {
 
     const username = req.headers["username"]; // Identify who is requesting
 
-    const exportJob = await ExJobModel.findOne({
+    let exportJob = await ExJobModel.findOne({
       job_no: { $regex: `^${job_no}$`, $options: "i" },
     });
+
+    // JIT CREATION: If not found and it's a Freight Forwarding enquiry, create from FreightEnquiry
+    if (!exportJob && job_no.startsWith("FF/")) {
+      const enquiry = await FreightEnquiryModel.findOne({
+        enquiry_no: job_no,
+        status: "Converted"
+      });
+      if (enquiry) {
+        console.log(`[JIT] Creating job record for converted enquiry: ${job_no}`);
+        exportJob = new ExJobModel({
+          job_no: enquiry.enquiry_no,
+          jobNumber: enquiry.enquiry_no,
+          year: String(new Date().getFullYear()).slice(-2) + "-" + String(new Date().getFullYear() + 1).slice(-2),
+          job_date: enquiry.enquiry_date || new Date().toISOString().split("T")[0],
+          exporter: enquiry.organization_name,
+          consignmentType: enquiry.consignment_type,
+          port_of_loading: enquiry.port_of_loading,
+          port_of_discharge: enquiry.port_of_destination,
+          isGeneralJob: true,
+          status: "Pending",
+          detailedStatus: "Created from Freight Enquiry"
+        });
+        await exportJob.save();
+      }
+    }
 
     if (!exportJob) {
       return res.status(404).json({ message: "Export job not found" });
@@ -417,7 +1720,7 @@ router.get("/:job_no(.*)", async (req, res, next) => {
     }
 
     // If locked by someone else, return localized info
-    if (exportJob.lockedBy && exportJob.lockedBy !== username) {
+    if (exportJob.lockedBy && (exportJob.lockedBy || "").toLowerCase() !== (username || "").toLowerCase()) {
       return res.status(423).json({
         message: `Job is currently locked by ${exportJob.lockedBy}`,
         lockedBy: exportJob.lockedBy,
@@ -454,7 +1757,7 @@ router.put("/:job_no(.*)/lock", async (req, res) => {
     const isStale =
       job.lockedAt && new Date() - new Date(job.lockedAt) > LOCK_TIMEOUT;
 
-    if (job.lockedBy && job.lockedBy !== username && !isStale) {
+    if (job.lockedBy && (job.lockedBy || "").toLowerCase() !== (username || "").toLowerCase() && !isStale) {
       return res.status(423).json({
         message: `Already locked by ${job.lockedBy}`,
         lockedBy: job.lockedBy,
@@ -471,8 +1774,8 @@ router.put("/:job_no(.*)/lock", async (req, res) => {
   }
 });
 
-// Unlock a job
-router.put("/:job_no(.*)/unlock", async (req, res) => {
+// Unlock a job (Supports both PUT and POST for sendBeacon support)
+router.route("/:job_no(.*)/unlock").all(async (req, res) => {
   try {
     const raw = req.params.job_no || "";
     const job_no = decodeURIComponent(raw);
@@ -485,7 +1788,7 @@ router.put("/:job_no(.*)/unlock", async (req, res) => {
     if (!job) return res.status(404).json({ message: "Job not found" });
 
     // Only let the owner or an admin unlock? For now, if username matches
-    if (job.lockedBy === username) {
+    if ((job.lockedBy || "").toLowerCase() === (username || "").toLowerCase()) {
       job.lockedBy = null;
       job.lockedAt = null;
       await job.save();
@@ -541,14 +1844,15 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
 
     const updateData = { ...req.body, updatedAt: new Date() };
 
-    // Business Logic: If "Billing Done" is selected in detailedStatus, mark job as completed
-    if (
-      updateData.detailedStatus &&
-      Array.isArray(updateData.detailedStatus) &&
-      updateData.detailedStatus.includes("Billing Done")
-    ) {
-      updateData.status = "Completed";
+    // Gracefully handle if detailedStatus arrives as an array from the frontend
+    if (Array.isArray(updateData.detailedStatus)) {
+      updateData.detailedStatus = updateData.detailedStatus.length > 0
+        ? String(updateData.detailedStatus[updateData.detailedStatus.length - 1])
+        : "";
     }
+
+    // Business Logic: Status is determined by pre-save hook in the model
+    // but we can set it here if desired. Removing one-way logic to allow model to handle it.
 
     const updatedExportJob = await ExJobModel.findOneAndUpdate(
       { job_no: { $regex: `^${job_no}$`, $options: "i" } },
@@ -560,7 +1864,15 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
       return res.status(404).json({ message: "Export job not found" });
     }
 
-    await updatedExportJob.save(); // This WILL trigger pre-save
+    // Force Mongoose to run pre-save hook calculation for milestones and status
+    updatedExportJob.markModified("milestones");
+    updatedExportJob.markModified("detailedStatus");
+    updatedExportJob.markModified("vgm_done");
+    updatedExportJob.markModified("form13_done");
+    updatedExportJob.markModified("shipping_bill_done");
+    updatedExportJob.markModified("isBuyer");
+    await updatedExportJob.save();
+
     res.json({
       message: "Export job updated successfully",
       data: updatedExportJob,
@@ -587,14 +1899,14 @@ router.patch(
       });
       updateObject.updatedAt = new Date();
 
-      // Business Logic: If Billing Done is selected, mark as Completed
-      if (
-        updateObject.detailedStatus &&
-        Array.isArray(updateObject.detailedStatus) &&
-        updateObject.detailedStatus.includes("Billing Done")
-      ) {
-        updateObject.status = "Completed";
+      // Gracefully handle if detailedStatus arrives as an array from the frontend
+      if (Array.isArray(updateObject.detailedStatus)) {
+        updateObject.detailedStatus = updateObject.detailedStatus.length > 0
+          ? String(updateObject.detailedStatus[updateObject.detailedStatus.length - 1])
+          : "";
       }
+
+      // Business Logic: Status is determined by pre-save hook in the model
 
       const updatedExportJob = await ExJobModel.findOneAndUpdate(
         { job_no: { $regex: `^${job_no}$`, $options: "i" } },
@@ -605,6 +1917,15 @@ router.patch(
       if (!updatedExportJob) {
         return res.status(404).json({ message: "Export job not found" });
       }
+
+      // Force Pre-Save calculations for milestones and detailedStatus
+      updatedExportJob.markModified("milestones");
+      updatedExportJob.markModified("detailedStatus");
+      updatedExportJob.markModified("vgm_done");
+      updatedExportJob.markModified("form13_done");
+      updatedExportJob.markModified("shipping_bill_done");
+      updatedExportJob.markModified("isBuyer");
+      await updatedExportJob.save();
 
       res.json({
         message: "Fields updated successfully",

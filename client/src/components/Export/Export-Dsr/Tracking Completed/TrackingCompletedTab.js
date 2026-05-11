@@ -3,18 +3,17 @@ import DateInput from "../../../common/DateInput.js";
 
 const getMilestones = (isAir) => [
   "SB Filed",
-  "SB Receipt",
   "L.E.O",
   isAir ? "File Handover to IATA" : "Container HO",
   isAir ? "Departure" : "Rail Out",
-  "Ready for Billing",
+  "Billing Pending",
   "Billing Done",
 ];
 
 const getMandatoryNames = (isAir) =>
-  new Set(["SB Filed", "SB Receipt", "L.E.O", "Ready for Billing"]);
+  new Set(["SB Filed", "L.E.O", "Billing Pending"]);
 
-const TrackingCompletedTab = ({ formik, directories, params }) => {
+const TrackingCompletedTab = ({ formik, directories, params, isAdmin, isEditable = true }) => {
   const [filter, setFilter] = useState("Show All");
   const [exportJobsUsers, setExportJobsUsers] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0); // Default to first milestone
@@ -42,124 +41,12 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
     fetchExportJobsUsers();
   }, []);
 
-  // 🔑 FIXED: Initialize milestones only after data is loaded
-  // We need to detect when real data comes in vs initial empty state
-  const hasInitializedRef = useRef(false);
+  // Milestone sync and initialization is now handled globally in ExportJobsModule.js
+  // handleInitializedRef and useEffects removed to avoid duplicate/conflicting updates.
 
   const consignmentType = (formik.values.consignmentType || "").toUpperCase();
   const isAir = consignmentType === "AIR";
-
   const currentBaseMilestones = getMilestones(isAir);
-  const currentMandatory = getMandatoryNames(isAir);
-
-  // Define all possible system milestones to distinguish from custom ones
-  const ALL_SYSTEM_MILESTONES = new Set([
-    "SB Filed",
-    "SB Receipt",
-    "L.E.O",
-    "File Handover to IATA",
-    "Container HO to Concor",
-    "Departure",
-    "Rail Out",
-    "Ready for Billing",
-    "Billing Done",
-  ]);
-
-  useEffect(() => {
-    const ms = formik.values.milestones || [];
-    const currentModeNames = new Set(currentBaseMilestones);
-
-    // Check if we need to update:
-    // 1. If not initialized yet (handled by ref check logic below combined with RealData check)
-    // 2. If the current milestones don't match the current mode's requirements (e.g. missing "Departure" when AIR)
-    // 3. If the current milestones contain "invalid" system milestones for this mode (e.g. "Rail Out" when AIR)
-
-    const isMissingRequired = !currentBaseMilestones.every((name) =>
-      ms.some((m) => m.milestoneName === name)
-    );
-
-    const hasInvalidSystem = ms.some(
-      (m) =>
-        ALL_SYSTEM_MILESTONES.has(m.milestoneName) &&
-        !currentModeNames.has(m.milestoneName)
-    );
-
-    // If perfectly aligned, do nothing
-    if (hasInitializedRef.current && !isMissingRequired && !hasInvalidSystem) {
-      return;
-    }
-
-    // Determine if we are loading real data from server
-    const hasRealData = ms.length > 0 && ms.some((m) => m._id);
-
-    // If we haven't initialized and there's no real data, set defaults
-    if (!hasInitializedRef.current && ms.length === 0) {
-      const defaults = currentBaseMilestones.map((name) => ({
-        milestoneName: name,
-        actualDate: "",
-        isCompleted: false,
-        isMandatory: currentMandatory.has(name),
-        completedBy: "",
-        remarks: "",
-      }));
-      formik.setFieldValue("milestones", defaults);
-      // We don't set initialized=true here ideally until we are sure data loaded,
-      // but for new jobs this is the init state.
-      // However, to be safe against late-loading data, we usually wait for an ID or explicit 'loaded' flag.
-      // Assuming if no milestones, we just set defaults.
-      return;
-    }
-
-    // Logic for Merging / switching modes
-    // 1. Create Map of existing milestones
-    const byName = new Map(ms.map((m) => [m.milestoneName, m]));
-
-    // 2. Generate the new base list (preserving existing data if name matches)
-    const basePart = currentBaseMilestones.map((name) => {
-      const existing = byName.get(name);
-      return (
-        existing || {
-          milestoneName: name,
-          actualDate: "",
-          isCompleted: false,
-          isMandatory: currentMandatory.has(name),
-          completedBy: "",
-          remarks: "",
-        }
-      );
-    });
-
-    // 3. Keep custom milestones (those not in system list)
-    // We filter out any milestone that is a SYSTEM milestone but NOT in the current mode
-    const extras = ms.filter((m) => {
-      const name = m.milestoneName;
-      // Keep if it is in the current base set (already handled in basePart? No, basePart creates NEW array)
-      // Wait, basePart contains the *system* milestones for current mode.
-      // We want 'extras' to be ONLY non-system milestones.
-
-      // If it's a system milestone, we only keep it if it's in the current mode (which is handled by basePart).
-      // Actually, if we put it in basePart, we don't want it in extras.
-
-      if (currentModeNames.has(name)) return false; // Already in basePart
-
-      // If it is a known system milestone but NOT in current mode (e.g. "Rail Out" when AIR), DROP IT.
-      if (ALL_SYSTEM_MILESTONES.has(name)) return false;
-
-      // Otherwise it's a user-custom milestone, KEEP IT.
-      return true;
-    });
-
-    formik.setFieldValue("milestones", [...basePart, ...extras]);
-    hasInitializedRef.current = true;
-  }, [
-    // Depend on the mode-derived lists
-    currentBaseMilestones,
-    currentMandatory,
-    // And formik values - but be careful of loops.
-    // The checks inside (isMissingRequired, hasInvalidSystem) prevent infinite loops
-    // because once we align, those become false.
-    formik.values.milestones,
-  ]);
 
   const handleMilestoneChange = (index, updates) => {
     const current = formik.values.milestones || [];
@@ -196,6 +83,7 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
         : allMilestones;
 
   return (
+    <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
     <div
       style={{
         fontFamily:
@@ -222,48 +110,36 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontWeight: 600 }}>Job Tracking Completed</span>
-            <input
-              type="checkbox"
-              checked={formik.values.isJobtrackingEnabled ?? false}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  handleFieldChange("isJobtrackingEnabled", true);
-                  handleFieldChange("isJobCanceled", false);
-                } else {
-                  handleFieldChange("isJobtrackingEnabled", false);
-                }
-              }}
-              disabled={formik.values.isJobCanceled ?? false}
-              style={{
-                cursor:
-                  formik.values.isJobCanceled ?? false
-                    ? "not-allowed"
-                    : "pointer",
-              }}
-            />
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontWeight: 600 }}>Job Canceled</span>
             <input
               type="checkbox"
               checked={formik.values.isJobCanceled ?? false}
               onChange={(e) => {
-                if (e.target.checked) {
-                  handleFieldChange("isJobCanceled", true);
-                  handleFieldChange("isJobtrackingEnabled", false);
+                const isChecked = e.target.checked;
+                handleFieldChange("isJobCanceled", isChecked);
+                if (isChecked) {
+                  const today = new Date();
+                  const dateString = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+                  handleFieldChange("jobCanceledDate", dateString);
+                  handleFieldChange("status", "Cancelled");
                 } else {
-                  handleFieldChange("isJobCanceled", false);
+                  handleFieldChange("jobCanceledDate", "");
+                  handleFieldChange("status", "Pending");
                 }
               }}
-              disabled={formik.values.isJobtrackingEnabled ?? false}
+              disabled={(formik.values.isJobCanceled && !isAdmin)}
               style={{
                 cursor:
-                  formik.values.isJobtrackingEnabled ?? false
+                  ((formik.values.isJobCanceled && !isAdmin))
                     ? "not-allowed"
                     : "pointer",
               }}
             />
+            {formik.values.isJobCanceled && formik.values.jobCanceledDate && (
+              <span style={{ fontSize: 11, color: "#d32f2f", fontWeight: 500 }}>
+                ({formik.values.jobCanceledDate})
+              </span>
+            )}
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -287,37 +163,55 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-
-        </div>
-        <div>
-          <div style={{ marginBottom: 4, fontWeight: 500 }}>
-            Customer Remark
+          <div>
+            <div style={{ marginBottom: 4, fontWeight: 500 }}>
+              Customer Remark
+            </div>
+            <textarea
+              rows={2}
+              style={{
+                width: "100%",
+                fontSize: 12,
+                padding: "4px 6px",
+                borderRadius: 3,
+                border: "1px solid #c4cdd7",
+                resize: "none",
+              }}
+              value={formik.values.customerremark || ""}
+              onChange={(e) =>
+                handleFieldChange("customerremark", e.target.value)
+              }
+            />
           </div>
-          <textarea
-            rows={2}
-            style={{
-              width: "100%",
-              fontSize: 12,
-              padding: "4px 6px",
-              borderRadius: 3,
-              border: "1px solid #c4cdd7",
-              resize: "none",
-            }}
-            value={formik.values.customerremark || ""}
-            onChange={(e) =>
-              handleFieldChange("customerremark", e.target.value)
-            }
-          />
+          {formik.values.isJobCanceled && (
+            <div>
+              <div style={{ marginBottom: 4, fontWeight: 500, color: "#d32f2f" }}>
+                Cancellation Reason <span style={{ color: "red" }}>*</span>
+              </div>
+              <textarea
+                rows={2}
+                style={{
+                  width: "100%",
+                  fontSize: 12,
+                  padding: "4px 6px",
+                  borderRadius: 3,
+                  border: "1px solid #ef5350",
+                  resize: "none",
+                }}
+                value={formik.values.cancellationReason || ""}
+                onChange={(e) =>
+                  handleFieldChange("cancellationReason", e.target.value)
+                }
+              />
+            </div>
+          )}
         </div>
       </div>
 
       {/* REST OF JSX REMAINS IDENTICAL - Milestones table, right panel, etc. */}
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 2fr) 280px",
-          columnGap: 10,
-          alignItems: "flex-start",
+          display: "block",
         }}
       >
         {/* Milestones table - SAME AS BEFORE */}
@@ -389,6 +283,10 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                     m.milestoneName
                   );
                   const isSelected = selectedIndex === realIndex;
+                  const isAutoMilestone =
+                    (currentBaseMilestones.includes(m.milestoneName) &&
+                      m.milestoneName !== "Billing Done") ||
+                    m.milestoneName === "Billing Pending";
                   return (
                     <tr
                       key={realIndex}
@@ -412,6 +310,14 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                         <span style={{ fontWeight: isBase ? 500 : 400 }}>
                           {m.milestoneName}
                         </span>
+                        {isAutoMilestone && (
+                          <span
+                            title="Auto-set from billing date in Operations tab"
+                            style={{ marginLeft: 4, fontSize: 10, color: "#94a3b8" }}
+                          >
+                            🔒
+                          </span>
+                        )}
                       </td>
                       <td style={{ padding: "4px 8px" }}>
                         <DateInput
@@ -422,16 +328,22 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                             border: "1px solid #bdc7d1",
                             borderRadius: 3,
                             height: 24,
-                            background:
-                              m.actualDate &&
+                            background: isAutoMilestone
+                              ? "#f1f5f9"
+                              : m.actualDate &&
                                 m.actualDate !== "dd-mm-yyyy" &&
                                 m.actualDate !== ""
                                 ? "#ecfdf3"
                                 : "#ffffff",
+                            ...(isAutoMilestone
+                              ? { color: "#64748b", cursor: "not-allowed" }
+                              : {}),
                           }}
                           value={m.actualDate || ""}
                           withTime={false}
+                          disabled={isAutoMilestone}
                           onChange={(e) => {
+                            if (isAutoMilestone) return;
                             const v = e.target.value;
                             if (!v) {
                               handleMilestoneChange(realIndex, {
@@ -450,7 +362,9 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
                         <input
                           type="checkbox"
                           checked={!!m.isCompleted}
+                          disabled={isAutoMilestone}
                           onChange={(e) => {
+                            if (isAutoMilestone) return;
                             const isChecked = e.target.checked;
                             const updates = { isCompleted: isChecked };
 
@@ -481,7 +395,8 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
 
                             handleMilestoneChange(realIndex, updates);
                           }}
-                          style={{ cursor: "pointer" }}
+                          style={{ cursor: isAutoMilestone ? "not-allowed" : "pointer" }}
+                          title={isAutoMilestone ? "Auto-set from billing date in Operations tab" : ""}
                         />
                       </td>
                     </tr>
@@ -539,137 +454,10 @@ const TrackingCompletedTab = ({ formik, directories, params }) => {
           </div>
         </div>
 
-        {/* Right panel */}
-        <div
-          style={{
-            background: "#ffffff",
-            borderRadius: 4,
-            border: "1px solid #d0d7e2",
-            padding: 8,
-            boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
-          }}
-        >
-          <div
-            style={{
-              fontWeight: 600,
-              borderBottom: "1px solid #e1e7f0",
-              paddingBottom: 4,
-              marginBottom: 6,
-              color: "#2563eb",
-            }}
-          >
-            Milestone: {allMilestones[selectedIndex]?.milestoneName || "None"}
-          </div>
 
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ marginBottom: 3, fontWeight: 500 }}>Remarks</div>
-            <textarea
-              rows={4}
-              style={{
-                width: "100%",
-                fontSize: 11,
-                padding: "4px 6px",
-                borderRadius: 3,
-                border: "1px solid #c4cdd7",
-                resize: "vertical",
-              }}
-              value={allMilestones[selectedIndex]?.remarks || ""}
-              onChange={(e) =>
-                handleMilestoneChange(selectedIndex, {
-                  remarks: e.target.value,
-                })
-              }
-              placeholder="Enter milestone-specific remarks..."
-            />
-          </div>
-
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ marginBottom: 3, fontWeight: 500 }}>
-              Upload Documents Link
-            </div>
-            <input
-              type="text"
-              style={{
-                width: "100%",
-                fontSize: 11,
-                padding: "4px 6px",
-                borderRadius: 3,
-                border: "1px solid #c4cdd7",
-              }}
-              value={allMilestones[selectedIndex]?.documentLink || ""}
-              onChange={(e) =>
-                handleMilestoneChange(selectedIndex, {
-                  documentLink: e.target.value,
-                })
-              }
-              placeholder="https://..."
-            />
-          </div>
-
-          <div>
-            <div style={{ marginBottom: 3, fontWeight: 500 }}>Handled By</div>
-            <select
-              style={{
-                width: "100%",
-                fontSize: 11,
-                padding: "4px 6px",
-                borderRadius: 3,
-                border: "1px solid #c4cdd7",
-                background: "#ffffff",
-              }}
-              value={allMilestones[selectedIndex]?.completedBy || ""}
-              onChange={(e) =>
-                handleMilestoneChange(selectedIndex, {
-                  completedBy: e.target.value,
-                })
-              }
-            >
-              <option value="">Select User</option>
-              {exportJobsUsers?.map((u) => (
-                <option key={u.id} value={u.username}>
-                  {u.fullName}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div
-            style={{
-              marginTop: 15,
-              paddingTop: 10,
-              borderTop: "1px dashed #d0d7e2",
-            }}
-          >
-            <div
-              style={{
-                fontWeight: 600,
-                fontSize: 11,
-                marginBottom: 5,
-                color: "#64748b",
-              }}
-            >
-              Global Job Remarks
-            </div>
-            <textarea
-              rows={2}
-              style={{
-                width: "100%",
-                fontSize: 10,
-                padding: "4px 6px",
-                borderRadius: 3,
-                border: "1px solid #e2e8f0",
-                resize: "none",
-                background: "#f8fafc",
-              }}
-              value={formik.values.milestoneremarks || ""}
-              onChange={(e) =>
-                handleFieldChange("milestoneremarks", e.target.value)
-              }
-            />
-          </div>
-        </div>
       </div>
     </div>
+    </fieldset>
   );
 };
 

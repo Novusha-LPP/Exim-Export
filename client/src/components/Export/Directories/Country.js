@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Container,
   Row,
@@ -8,198 +8,62 @@ import {
   Table,
   Form,
   Card,
-  Badge,
   Spinner,
 } from "react-bootstrap";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-// API Service
-const CountryService = {
-  baseURL: `${import.meta.env.VITE_API_STRING}/countries`,
-
-  getAll: async (params = {}) => {
-    try {
-      const response = await axios.get(`${CountryService.baseURL}/`, {
-        params,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  getById: async (id) => {
-    try {
-      const response = await axios.get(`${CountryService.baseURL}/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  create: async (data) => {
-    try {
-      const response = await axios.post(`${CountryService.baseURL}/`, data);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  update: async (id, data) => {
-    try {
-      const response = await axios.put(`${CountryService.baseURL}/${id}`, data);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  delete: async (id) => {
-    try {
-      const response = await axios.delete(`${CountryService.baseURL}/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
+const colors = {
+  primary: "#4f46e5",
+  secondary: "#64748b",
+  success: "#10b981",
+  danger: "#ef4444",
+  background: "#f8fafc",
+  border: "#e2e8f0",
+  textMain: "#1e293b",
+  textMuted: "#64748b",
 };
 
-// Form Component
+const customStyles = {
+  header: { padding: "24px 32px", background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", color: "white", borderRadius: "12px 12px 0 0", border: "none" },
+  card: { borderRadius: "12px", border: "none", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)", overflow: "hidden" },
+  input: { borderRadius: "8px", border: `1.5px solid ${colors.border}`, padding: "10px 14px", fontSize: "14px", background: "#fff" },
+  label: { fontSize: "13px", fontWeight: "600", color: colors.textMain, marginBottom: "8px", display: "block" },
+  btnPrimary: { background: colors.primary, border: "none", padding: "10px 24px", borderRadius: "8px", fontWeight: "600" },
+  badge: { padding: "6px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", textTransform: "uppercase" }
+};
+
+const CountryService = {
+  baseURL: `${import.meta.env.VITE_API_STRING}/countries`,
+  getAll: (p) => axios.get(`${CountryService.baseURL}/`, { params: p }).then(r => r.data),
+  create: (d) => axios.post(`${CountryService.baseURL}/`, d),
+  update: (id, d) => axios.put(`${CountryService.baseURL}/${id}`, d),
+  delete: (id) => axios.delete(`${CountryService.baseURL}/${id}`),
+};
+
 const CountryForm = ({ countryData, onSave, onCancel }) => {
-  const [formData, setFormData] = useState({
-    countryCode: "",
-    countryName: "",
-    status: "Active",
-  });
+  const [formData, setFormData] = useState({ countryCode: "", countryName: "", status: "Active" });
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    if (countryData) {
-      setFormData(countryData);
-    } else {
-      setFormData({
-        countryCode: "",
-        countryName: "",
-        status: "Active",
-      });
-    }
-  }, [countryData]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === "countryCode" ? value.toUpperCase() : value,
-    }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.countryCode?.trim()) {
-      newErrors.countryCode = "Country Code is required";
-    } else if (!/^[A-Z]{2,3}$/.test(formData.countryCode)) {
-      newErrors.countryCode = "Country Code must be 2-3 uppercase letters";
-    }
-
-    if (!formData.countryName?.trim()) {
-      newErrors.countryName = "Country Name is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
+  useEffect(() => { if (countryData) setFormData(countryData); else setFormData({ countryCode: "", countryName: "", status: "Active" }); }, [countryData]);
+  const handleChange = (e) => setFormData(p => ({ ...p, [e.target.name]: e.target.name === "countryCode" ? e.target.value.toUpperCase() : e.target.value }));
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    setLoading(true);
-    try {
-      if (countryData?._id) {
-        await CountryService.update(countryData._id, formData);
-      } else {
-        await CountryService.create(formData);
-      }
-      onSave();
-    } catch (error) {
-      alert(error.message || "Error saving country");
-    } finally {
-      setLoading(false);
-    }
+    e.preventDefault(); setLoading(true);
+    try { if (countryData?._id) await CountryService.update(countryData._id, formData); else await CountryService.create(formData); onSave(); }
+    catch (err) { alert(err.message); } finally { setLoading(false); }
   };
-
   return (
-    <Card>
-      <Card.Header>
-        <h5>{countryData ? "Edit Country" : "Add New Country"}</h5>
-      </Card.Header>
-      <Card.Body>
+    <Card style={customStyles.card}>
+      <Card.Header style={customStyles.header}><h5 className="mb-0 text-white fw-bold">{countryData ? "Edit Country" : "Add New Country"}</h5></Card.Header>
+      <Card.Body className="p-4">
         <Form onSubmit={handleSubmit}>
-          <Row>
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Country Code *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="countryCode"
-                  value={formData.countryCode}
-                  onChange={handleChange}
-                  isInvalid={!!errors.countryCode}
-                  placeholder="e.g., US, IND"
-                  maxLength={3}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.countryCode}
-                </Form.Control.Feedback>
-                <Form.Text className="text-muted">
-                  2-3 letter ISO code (e.g., US, UK, IND)
-                </Form.Text>
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label>Country Name *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="countryName"
-                  value={formData.countryName}
-                  onChange={handleChange}
-                  isInvalid={!!errors.countryName}
-                  placeholder="Enter country name"
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.countryName}
-                </Form.Control.Feedback>
-              </Form.Group>
-            </Col>
-            <Col md={2}>
-              <Form.Group className="mb-3">
-                <Form.Label>Status</Form.Label>
-                <Form.Select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
+          <Row className="mb-4 g-3">
+            <Col md={4}><Form.Group><Form.Label style={customStyles.label}>Country Code (ISO) *</Form.Label><Form.Control type="text" name="countryCode" value={formData.countryCode} onChange={handleChange} placeholder="e.g. US, IND" maxLength={3} style={customStyles.input} /></Form.Group></Col>
+            <Col md={5}><Form.Group><Form.Label style={customStyles.label}>Country Name *</Form.Label><Form.Control type="text" name="countryName" value={formData.countryName} onChange={handleChange} placeholder="Enter full name" style={customStyles.input} /></Form.Group></Col>
+            <Col md={3}><Form.Group><Form.Label style={customStyles.label}>Status</Form.Label><Form.Select name="status" value={formData.status} onChange={handleChange} style={customStyles.input}><option value="Active">Active</option><option value="Inactive">Inactive</option></Form.Select></Form.Group></Col>
           </Row>
-          <div className="d-flex justify-content-end gap-2">
-            <Button variant="secondary" onClick={onCancel} disabled={loading}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save"}
-            </Button>
+          <div className="d-flex justify-content-end gap-3 pt-2">
+            <Button variant="link" onClick={onCancel} style={{ color: colors.secondary, textDecoration: "none", fontWeight: 600 }}>Discard</Button>
+            <Button variant="primary" type="submit" disabled={loading} style={customStyles.btnPrimary}>{loading ? <Spinner size="sm" /> : "Save Country"}</Button>
           </div>
         </Form>
       </Card.Body>
@@ -207,367 +71,70 @@ const CountryForm = ({ countryData, onSave, onCancel }) => {
   );
 };
 
-// List Component
-// List Component
 const CountryList = ({ onEdit, onDelete, refresh }) => {
-  const [countries, setCountries] = useState([]);
-  const [filteredCountries, setFilteredCountries] = useState([]);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
-  const [filters, setFilters] = useState({
-    page: 1,
-    status: "",
-  });
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // Fetch all countries
-  useEffect(() => {
-    fetchCountries();
-  }, [filters, refresh]);
-
-  // Filter countries whenever searchTerm or countries change
-  useEffect(() => {
-    filterCountries();
-  }, [searchTerm, countries]);
-
+  const [filters, setFilters] = useState({ page: 1, status: "", search: "" });
+  const searchTimeout = useRef(null);
+  useEffect(() => { fetchCountries(); }, [filters, refresh]);
   const fetchCountries = async () => {
-    try {
-      setLoading(true);
-      const response = await CountryService.getAll(filters);
-      const countriesData = response.data || response;
-      setCountries(countriesData);
-      setPagination(response.pagination || {});
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setCountries([]);
-    } finally {
-      setLoading(false);
-    }
+    try { setLoading(true); const res = await CountryService.getAll(filters); setData(res.data || res); setPagination(res.pagination || {}); }
+    catch (e) { console.error(e); } finally { setLoading(false); }
   };
-
-  const filterCountries = () => {
-    if (!searchTerm.trim()) {
-      setFilteredCountries(countries);
-      return;
-    }
-
-    const searchLower = searchTerm.toLowerCase();
-    const filtered = countries.filter(
-      (country) =>
-        (country.countryCode &&
-          country.countryCode.toLowerCase().includes(searchLower)) ||
-        (country.countryName &&
-          country.countryName.toLowerCase().includes(searchLower)) ||
-        (country.status &&
-          country.status.toLowerCase().includes(searchLower)) ||
-        (country._id && country._id.toLowerCase().includes(searchLower))
-    );
-    setFilteredCountries(filtered);
-  };
-
-  const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value,
-      page: key === "page" ? value : 1,
-    }));
-  };
-
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const clearSearch = () => {
-    setSearchTerm("");
-  };
-
-  if (loading) {
+  const handleFilter = (k, v) => setFilters(p => ({ ...p, [k]: v, page: k === "page" ? v : 1 }));
+  const handleSearch = (v) => { if (searchTimeout.current) clearTimeout(searchTimeout.current); searchTimeout.current = setTimeout(() => handleFilter("search", v), 500); };
+  const renderPagination = () => {
+    const { currentPage, totalPages } = pagination; if (totalPages <= 1) return null;
+    const pages = []; for (let i = 1; i <= totalPages; i++) { if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) pages.push(i); else if (pages[pages.length-1] !== "...") pages.push("..."); }
     return (
-      <div className="text-center py-5">
-        <Spinner animation="border" />
-      </div>
+      <nav className="d-flex justify-content-center mt-4">
+        <ul className="pagination pagination-sm gap-2">
+          {pages.map((p, idx) => (
+            <li key={idx} className={`page-item ${p === currentPage ? "active" : ""} ${p === "..." ? "disabled" : ""}`}>
+              {p === "..." ? <span className="page-link border-0">...</span> : <button className="page-link rounded-circle" style={{ width: 35, height: 35, display: "flex", alignItems: "center", justifyContent: "center", border: "none", fontWeight: 600 }} onClick={() => handleFilter("page", p)}>{p}</button>}
+            </li>
+          ))}
+        </ul>
+      </nav>
     );
-  }
-
+  };
   return (
     <div>
-      {/* Filters - Enhanced with global search */}
-      <Row className="mb-3">
-        <Col md={6}>
-          <Form.Control
-            type="text"
-            placeholder="Search by country code, name, or status..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
-          {searchTerm && (
-            <Form.Text className="text-muted">
-              Showing {filteredCountries.length} of {countries.length} countries
-              {searchTerm && ` matching "${searchTerm}"`}
-            </Form.Text>
-          )}
-        </Col>
-        <Col md={3}>
-          <Form.Select
-            value={filters.status}
-            onChange={(e) => handleFilterChange("status", e.target.value)}
-          >
-            <option value="">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </Form.Select>
-        </Col>
-        <Col md={3} className="text-center">
-          <div className="border rounded p-2 bg-light">
-            <div className="h6 mb-0 text-primary">
-              {filteredCountries.length}
-            </div>
-            <div className="text-muted small">Total Countries</div>
-          </div>
-        </Col>
-      </Row>
-
-      {/* Table */}
-      <div className="table-responsive">
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th>Country Code</th>
-              <th>Country Name</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
+      <Card className="mb-4 border-0 shadow-sm rounded-4"><Card.Body className="p-3"><Row className="g-3"><Col md={8}><Form.Control type="text" placeholder="Global Search Country..." defaultValue={filters.search} onChange={e => handleSearch(e.target.value)} style={customStyles.input} /></Col><Col md={4}><Form.Select value={filters.status} onChange={e => handleFilter("status", e.target.value)} style={customStyles.input}><option value="">All Status</option><option value="Active">Active</option><option value="Inactive">Inactive</option></Form.Select></Col></Row></Card.Body></Card>
+      <div className="bg-white rounded-4 shadow-sm overflow-hidden border">
+        <Table hover className="mb-0 align-middle border-0">
+          <thead className="bg-light"><tr style={{ borderBottom: `2px solid ${colors.border}` }}><th className="ps-4 py-3 text-muted small">CODE</th><th className="py-3 text-muted small">COUNTRY NAME</th><th className="py-3 text-muted small">STATUS</th><th className="pe-4 py-3 text-end text-muted small">ACTIONS</th></tr></thead>
           <tbody>
-            {filteredCountries.length > 0 ? (
-              filteredCountries.map((item) => (
-                <tr key={item._id}>
-                  <td>
-                    <span className="font-monospace text-primary">
-                      <strong>{item.countryCode}</strong>
-                    </span>
-                  </td>
-                  <td>
-                    <strong>{item.countryName}</strong>
-                  </td>
-                  <td>
-                    <Badge
-                      bg={item.status === "Active" ? "success" : "secondary"}
-                    >
-                      {item.status}
-                    </Badge>
-                  </td>
-                  <td>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      className="me-2"
-                      onClick={() => onEdit(item)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => onDelete([item._id])}
-                    >
-                      Delete
-                    </Button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="4" className="text-center py-4">
-                  <Alert variant="info" className="text-center">
-                    {searchTerm ? (
-                      <>
-                        No countries found matching "{searchTerm}".
-                        <br />
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          className="mt-2"
-                          onClick={clearSearch}
-                        >
-                          Clear Search
-                        </Button>
-                      </>
-                    ) : (
-                      "No countries found."
-                    )}
-                  </Alert>
-                </td>
-              </tr>
-            )}
+            {data.length > 0 ? data.map(item => (
+              <tr key={item._id} className="border-bottom"><td className="ps-4 fw-bold text-primary">{item.countryCode}</td><td className="fw-semibold">{item.countryName}</td><td><span style={{ ...customStyles.badge, background: item.status === "Active" ? "#ecfdf5" : "#f1f5f9", color: item.status === "Active" ? "#059669" : "#64748b" }}>{item.status}</span></td><td className="pe-4 text-end"><Button variant="light" size="sm" className="me-2 fw-bold text-primary" onClick={() => onEdit(item)}>Edit</Button><Button variant="link" size="sm" className="text-danger p-0 fw-bold" style={{ textDecoration: "none" }} onClick={() => onDelete([item._id])}>Delete</Button></td></tr>
+            )) : <tr><td colSpan="4" className="text-center py-5 text-muted">No countries found.</td></tr>}
           </tbody>
         </Table>
       </div>
-
-      {/* Pagination - Only show if not searching */}
-      {!searchTerm && pagination.totalPages > 1 && (
-        <nav>
-          <ul className="pagination justify-content-center">
-            <li
-              className={`page-item ${
-                pagination.currentPage === 1 ? "disabled" : ""
-              }`}
-            >
-              <button
-                className="page-link"
-                onClick={() =>
-                  handleFilterChange("page", pagination.currentPage - 1)
-                }
-                disabled={pagination.currentPage === 1}
-              >
-                Previous
-              </button>
-            </li>
-            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
-              (page) => (
-                <li
-                  key={page}
-                  className={`page-item ${
-                    pagination.currentPage === page ? "active" : ""
-                  }`}
-                >
-                  <button
-                    className="page-link"
-                    onClick={() => handleFilterChange("page", page)}
-                  >
-                    {page}
-                  </button>
-                </li>
-              )
-            )}
-            <li
-              className={`page-item ${
-                pagination.currentPage === pagination.totalPages
-                  ? "disabled"
-                  : ""
-              }`}
-            >
-              <button
-                className="page-link"
-                onClick={() =>
-                  handleFilterChange("page", pagination.currentPage + 1)
-                }
-                disabled={pagination.currentPage === pagination.totalPages}
-              >
-                Next
-              </button>
-            </li>
-          </ul>
-        </nav>
-      )}
+      {renderPagination()}
     </div>
   );
 };
-// Main Component
+
 const Country = () => {
   const [showForm, setShowForm] = useState(false);
-  const [editingCountry, setEditingCountry] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [refresh, setRefresh] = useState(0);
   const [alert, setAlert] = useState(null);
-
-  const showAlert = useCallback((message, type = "success") => {
-    setAlert({ message, type });
-    setTimeout(() => setAlert(null), 5000);
-  }, []);
-
-  const handleAddNew = useCallback(() => {
-    setEditingCountry(null);
-    setShowForm(true);
-  }, []);
-
-  const handleEdit = useCallback((country) => {
-    setEditingCountry(country);
-    setShowForm(true);
-  }, []);
-
-  const handleDelete = useCallback(
-    async (ids) => {
-      try {
-        if (ids.length === 1) {
-          if (window.confirm("Are you sure you want to delete this country?")) {
-            await CountryService.delete(ids[0]);
-            showAlert("Country deleted successfully");
-            setRefresh((prev) => prev + 1);
-          }
-        }
-      } catch (error) {
-        showAlert(error.message || "Error deleting country", "danger");
-      }
-    },
-    [showAlert]
-  );
-
-  const handleSave = useCallback(() => {
-    setShowForm(false);
-    setEditingCountry(null);
-    setRefresh((prev) => prev + 1);
-    showAlert(
-      editingCountry
-        ? "Country updated successfully"
-        : "Country created successfully"
-    );
-  }, [editingCountry, showAlert]);
-
-  const handleCancel = useCallback(() => {
-    setShowForm(false);
-    setEditingCountry(null);
-  }, []);
-
+  const handleAddNew = () => { setEditing(null); setShowForm(true); };
+  const handleEdit = (d) => { setEditing(d); setShowForm(true); };
+  const handleSave = () => { setShowForm(false); setEditing(null); setRefresh(r => r + 1); setAlert({ m: editing ? "Updated" : "Created", t: "success" }); setTimeout(() => setAlert(null), 5000); };
+  const handleDelete = async (ids) => { if (window.confirm("Delete?")) { await CountryService.delete(ids[0]); setRefresh(r => r + 1); } };
   return (
-    <Container fluid className="py-4">
-      <Row>
-        <Col>
-          {alert && (
-            <Alert
-              variant={alert.type}
-              dismissible
-              onClose={() => setAlert(null)}
-              className="mb-4"
-            >
-              {alert.message}
-            </Alert>
-          )}
-
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h1 className="mb-0">Country Directory</h1>
-            <div>
-              {showForm && (
-                <Button
-                  variant="outline-secondary"
-                  className="me-2"
-                  onClick={handleCancel}
-                >
-                  Back to List
-                </Button>
-              )}
-              <Button variant="success" onClick={handleAddNew}>
-                Add New Country
-              </Button>
-            </div>
-          </div>
-
-          {showForm ? (
-            <CountryForm
-              countryData={editingCountry}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
-          ) : (
-            <CountryList
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              refresh={refresh}
-            />
-          )}
-        </Col>
-      </Row>
-    </Container>
+    <div style={{ background: colors.background, minHeight: "100vh" }}>
+      <Container className="py-4">
+        {alert && <Alert variant={alert.t} dismissible className="shadow-sm border-0">{alert.m}</Alert>}
+        <div className="d-flex justify-content-between align-items-center mb-4"><div><h2 className="fw-bold mb-0 text-dark">Country Master</h2><p className="text-muted small mb-0">Global region database</p></div><Button onClick={showForm ? () => setShowForm(false) : handleAddNew} style={customStyles.btnPrimary}>{showForm ? "Back" : "+ Add Country"}</Button></div>
+        <div className="animate-fade-in">{showForm ? <CountryForm countryData={editing} onSave={handleSave} onCancel={() => setShowForm(false)} /> : <CountryList onEdit={handleEdit} onDelete={handleDelete} refresh={refresh} />}</div>
+      </Container>
+      <style>{`.animate-fade-in { animation: fadeIn 0.3s ease-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } } .page-link { color: ${colors.primary}; border: none; background: #fff; } .page-item.active .page-link { background: ${colors.primary} !important; color: #fff !important; }`}</style>
+    </div>
   );
 };
-
 export default Country;

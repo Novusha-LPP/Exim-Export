@@ -1,20 +1,21 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import axios from "axios";
 import ConfirmDialog from "../../gallery/ConfirmDialog.js";
 import DateInput from "../../common/DateInput.js";
 import { currencyList } from "../../../utils/masterList.js";
+import { UserContext } from "../../../contexts/UserContext";
 
 // --- Ultra-Compact Enterprise Styles ---
 
 const s = {
   wrapper: {
     fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    backgroundColor: "#f0f2f5",
+    backgroundColor: "#fafaffff",
     padding: "20px",
     minHeight: "80vh",
     color: "#1f2937",
     fontSize: "12px",
-    fontWeight: "700",
+    fontWeight: "500",
   },
   container: {
     maxWidth: "1100px",
@@ -180,13 +181,14 @@ const s = {
     display: "flex",
     flexDirection: "column",
     fontWeight: "500",
+    fontSize: "11.5px",
   },
   consigneeRow: {
     display: "flex",
     gap: "10px",
     marginBottom: "6px",
     alignItems: "center",
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#fafaffff",
     padding: "6px",
     borderRadius: "3px",
     border: "1px solid #e5e7eb",
@@ -429,7 +431,7 @@ function ConsigneeCountryField({ value, onChange }) {
                 key={opt._id || opt.countryCode || opt.countryName || i}
                 style={{
                   ...s.dropdownItem,
-                  backgroundColor: i === d.active ? "#f9fafb" : "#fff",
+                  backgroundColor: i === d.active ? "#fafaffff" : "#fff",
                 }}
                 onMouseDown={() => d.selectIndex(i)}
                 onMouseEnter={() => d.setActive(i)}
@@ -556,7 +558,7 @@ function CurrencyDropdown({
                 onMouseDown={() => d.selectIndex(i)}
                 onMouseEnter={() => d.setActive(i)}
               >
-                <div style={{ fontWeight: 600, color: "#111827" }}>
+                <div style={{ fontWeight: 600, color: "#111827", fontSize: "11.5px" }}>
                   {c.code} – {c.description}
                 </div>
               </div>
@@ -586,52 +588,40 @@ function useGatewayPortDropdown(value, onChange, priorityList = []) {
       setOpts([]);
       return;
     }
-    const searchVal = (query || "").trim();
-    const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
-      searchVal,
-    )}`;
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        let options = Array.isArray(data?.data)
-          ? data.data
-          : Array.isArray(data)
-            ? data
-            : [];
+    const searchVal = (query || "").trim().toUpperCase();
+    const staticOpts = [
+      { unece_code: "INMUN1", name: "MUNDRA" },
+      { unece_code: "INIXY1", name: "KANDLA" },
+      { unece_code: "INPAV1", name: "PIPAVAV" },
+      { unece_code: "INHZA1", name: "HAZIRA" },
+      { unece_code: "INNSA1", name: "NHAVA SHEVA" },
+      { unece_code: "INAMD4", name: "AHMEDABAD AIR PORT" }
+    ];
 
-        // Apply Priority Sorting
-        if (priorityList.length > 0) {
-          options.sort((a, b) => {
-            const nameA = (a.name || "").toUpperCase();
-            const nameB = (b.name || "").toUpperCase();
+    // Apply Priority Sorting
+    let options = staticOpts.filter(opt =>
+      `${opt.unece_code} ${opt.name}`.toUpperCase().includes(searchVal)
+    );
 
-            // Find index in priority list (checking if name INCLUDES priority keyword)
-            const pIndexA = priorityList.findIndex((p) =>
-              nameA.includes(p.toUpperCase()),
-            );
-            const pIndexB = priorityList.findIndex((p) =>
-              nameB.includes(p.toUpperCase()),
-            );
+    if (priorityList.length > 0) {
+      options.sort((a, b) => {
+        const nameA = (a.name || "").toUpperCase();
+        const nameB = (b.name || "").toUpperCase();
+        const pIndexA = priorityList.findIndex((p) =>
+          nameA.includes(p.toUpperCase()),
+        );
+        const pIndexB = priorityList.findIndex((p) =>
+          nameB.includes(p.toUpperCase()),
+        );
+        if (pIndexA !== -1 && pIndexB !== -1) return pIndexA - pIndexB;
+        if (pIndexA !== -1) return -1;
+        if (pIndexB !== -1) return 1;
+        return 0;
+      });
+    }
 
-            // Both in priority list -> sort by order in priority list
-            if (pIndexA !== -1 && pIndexB !== -1) return pIndexA - pIndexB;
-            // Only A in priority -> A first
-            if (pIndexA !== -1) return -1;
-            // Only B in priority -> B first
-            if (pIndexB !== -1) return 1;
-            // Neither -> keep original order
-            return 0;
-          });
-        }
-
-        setOpts(options);
-      } catch {
-        setOpts([]);
-      }
-    }, 220);
-    return () => clearTimeout(t);
-  }, [open, query, apiBase, priorityList]); // added priorityList dependency
+    setOpts(options);
+  }, [open, query, priorityList]);
 
   useEffect(() => {
     function close(e) {
@@ -766,12 +756,12 @@ function GatewayPortDropdown({
                 key={p._id || p.unece_code || p.name || i}
                 style={{
                   ...s.dropdownItem,
-                  backgroundColor: i === d.active ? "#f9fafb" : "#fff",
+                  backgroundColor: i === d.active ? "#fafaffff" : "#fff",
                 }}
                 onMouseDown={() => d.selectIndex(i)}
                 onMouseEnter={() => d.setActive(i)}
               >
-                <div style={{ fontWeight: 600, color: "#111827" }}>
+                <div style={{ fontWeight: 600, color: "#111827", fontSize: "11.5px" }}>
                   {(p.unece_code || p.uneceCode || "").toUpperCase()} -{" "}
                   {(p.name || "").toUpperCase()}
                 </div>
@@ -799,7 +789,7 @@ const CUSTOM_HOUSE_OPTIONS = [
   {
     group: "Ahmedabad", branchCode: "AMD", items: [
       { value: "AHMEDABAD AIR CARGO", label: "Ahmedabad Air Cargo", code: "INAMD4" },
-      { value: "ICD SABARMATI, AHMEDABAD", label: "ICD Sabarmati, Ahmedabad", code: "INSBI6" },
+      { value: "ICD SABARMATI", label: "ICD Sabarmati", code: "INSBI6" },
       { value: "ICD SACHANA", label: "ICD SACHANA", code: "INJKA6" },
       { value: "ICD VIROCHAN NAGAR", label: "ICD Virochan Nagar", code: "INVCN6" },
       { value: "THAR DRY PORT", label: "THAR DRY PORT", code: "INSAU6" },
@@ -1015,8 +1005,8 @@ function CustomHouseDropdownLocal({ label, value, onChange, branchCode = "" }) {
                         }}
                         onMouseEnter={() => setActive(currentIndex)}
                       >
-                        <div style={{ fontWeight: 600, color: "#111827" }}>
-                          {item.label.toUpperCase()} {item.code && <span style={{ color: '#888', marginLeft: 4, fontWeight: 400 }}>({item.code})</span>}
+                        <div style={{ fontWeight: 500, color: "#111827", fontSize: "11px" }}>
+                          {item.label.toUpperCase()} {item.code && <span style={{ color: '#888', marginLeft: 4, fontWeight: 400, fontSize: "9px" }}>({item.code})</span>}
                         </div>
                       </div>
                     );
@@ -1037,6 +1027,8 @@ const AddExJobs = ({ onJobCreated }) => {
     consignee_address: "",
     consignee_country: "",
   };
+  const [exporterError, setExporterError] = useState(false);
+  const [customHouseError, setCustomHouseError] = useState(false);
   const [formData, setFormData] = useState({
     branch_code: "AMD", // 👈 default
     exporter: "",
@@ -1046,14 +1038,15 @@ const AddExJobs = ({ onJobCreated }) => {
     ieCode: "",
     panNo: "",
     job_no: "",
-    consignmentType: "FCL",
+    consignmentType: "",
     discharge_country: "",
     custom_house: "",
+    exporter_ref_no: "",
     total_no_of_pkgs: "",
     gross_weight_kg: "",
     net_weight_kg: "",
     status: "Pending",
-    year: "25-26",
+    year: "26-27",
     transportMode: "SEA",
     goods_stuffed_at: "",
     job_date: new Date().toISOString().split("T")[0],
@@ -1095,6 +1088,28 @@ const AddExJobs = ({ onJobCreated }) => {
   }, []);
 
   // inside AddExJobs.jsx, before component
+  const { user } = useContext(UserContext);
+  const isAdmin = user?.role === "Admin";
+  const userBranches = user?.selected_branches || [];
+  const userPorts = user?.selected_ports || [];
+
+  const allowedBranchOptions = [
+    { code: "BRD", label: "BRD - BARODA" },
+    { code: "GIM", label: "GIM - GANDHIDHAM" },
+    { code: "HAZ", label: "HAZ - HAZIRA" },
+    { code: "AMD", label: "AMD - AHMEDABAD" },
+    { code: "COK", label: "COK - COCHIN" },
+  ].filter(b => isAdmin || userBranches.includes(b.code));
+
+  const portOptions = [
+    { value: "INMUN1 - MUNDRA", label: "Mundra (INMUN1)" },
+    { value: "INIXY1 - KANDLA", label: "Kandla (INIXY1)" },
+    { value: "INPAV1 - PIPAVAV", label: "Pipavav (INPAV1)" },
+    { value: "INHZA1 - HAZIRA", label: "Hazira (INHZA1)" },
+    { value: "INNSA1 - NHAVA SHEVA", label: "Nhava Sheva (INNSA1)" },
+    { value: "INAMD4 - AHMEDABAD AIR PORT", label: "Ahmedabad Air Port" },
+  ].filter(p => isAdmin || !userPorts.length || userPorts.includes(p.value));
+
   useEffect(() => {
     const isAir = formData.consignmentType === "AIR";
     setFormData((prev) => ({
@@ -1108,7 +1123,7 @@ const AddExJobs = ({ onJobCreated }) => {
   useEffect(() => {
     const stuffed = toUpper(formData.goods_stuffed_at || "");
     const type = toUpper(formData.consignmentType || "");
-    if (stuffed === "FACTORY" && type !== "FCL") {
+    if (stuffed === "FACTORY" && type !== "FCL" && type !== "") {
       setFormData((prev) => ({ ...prev, consignmentType: "FCL" }));
     }
     if (type === "LCL" && stuffed !== "DOCK") {
@@ -1116,13 +1131,7 @@ const AddExJobs = ({ onJobCreated }) => {
     }
   }, [formData.goods_stuffed_at, formData.consignmentType]);
 
-  const branchOptions = [
-    { code: "BRD", label: "BRD - BARODA" },
-    { code: "GIM", label: "GIM - GANDHIDHAM" },
-    { code: "HAZ", label: "HAZ - HAZIRA" },
-    { code: "AMD", label: "AMD - AHMEDABAD" },
-    { code: "COK", label: "COK - COCHIN" },
-  ];
+  // Removed static branchOptions since it's now computed as allowedBranchOptions
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -1208,6 +1217,10 @@ const AddExJobs = ({ onJobCreated }) => {
   const handleDirectorySelect = (org) => {
     const ieCode = org.registrationDetails?.ieCode || "";
     const panNo = org.registrationDetails?.panNo || "";
+    let gstin = "";
+    if (org.branchInfo && org.branchInfo.length > 0) {
+      gstin = org.branchInfo[0].gstNo || org.branchInfo[0].gstin || "";
+    }
 
     const displayValue = ieCode || panNo;
 
@@ -1216,6 +1229,7 @@ const AddExJobs = ({ onJobCreated }) => {
       exporter: toUpper(org.organization),
       ieCode: toUpper(displayValue), // 👈 match state + input
       panNo: toUpper(panNo),
+      gstin: toUpper(gstin),
     }));
 
     setShowDropdown(false);
@@ -1274,9 +1288,14 @@ const AddExJobs = ({ onJobCreated }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.exporter) {
-      showToast("Exporter Name is required", "error");
+      setExporterError(true);
       return;
     }
+    if (!formData.custom_house) {
+      setCustomHouseError(true);
+      return;
+    }
+
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_API_STRING}/jobs/add-job-exp-man`,
@@ -1293,8 +1312,11 @@ const AddExJobs = ({ onJobCreated }) => {
   };
 
   const handleClear = () => {
+    setExporterError(false);
+    setCustomHouseError(false);
+    const defaultBranch = allowedBranchOptions.length > 0 ? allowedBranchOptions[0].code : "AMD";
     setFormData({
-      branch_code: "AMD",
+      branch_code: defaultBranch,
       exporter: "",
       job_owner: "",
       port_of_loading: "",
@@ -1308,7 +1330,7 @@ const AddExJobs = ({ onJobCreated }) => {
       gross_weight_kg: "",
       net_weight_kg: "",
       status: "Pending",
-      year: "25-26",
+      year: "26-27",
       transportMode: "SEA",
       goods_stuffed_at: "",
       job_date: new Date().toISOString().split("T")[0],
@@ -1352,18 +1374,19 @@ const AddExJobs = ({ onJobCreated }) => {
                   <label style={s.label}>Exporter Name *</label>
                   <div style={s.comboWrapper}>
                     <input
-                      style={s.inputWithIcon}
+                      style={{ ...s.inputWithIcon, borderColor: exporterError ? "red" : "#d1d5db" }}
                       value={formData.exporter}
                       onChange={(e) => {
+                        setExporterError(false);
                         handleInputChange("exporter", e.target.value);
                         setShowDropdown(true);
                       }}
                       onFocus={() => setShowDropdown(true)}
                       placeholder="Select or Type Exporter..."
-                      required
                       autoComplete="off"
                     />
                     <span style={s.comboIcon}>▼</span>
+                    {exporterError && <span style={{ color: "red", fontSize: "10px", marginTop: "2px", display: "block" }}>Exporter Name is required.</span>}
                     {showDropdown && (
                       <div style={s.dropdownList}>
                         {loading ? (
@@ -1391,12 +1414,12 @@ const AddExJobs = ({ onJobCreated }) => {
                               onMouseDown={() => handleDirectorySelect(org)}
                             >
                               <div
-                                style={{ fontWeight: "600", color: "#1f2937" }}
+                                style={{ fontWeight: "500", color: "#1f2937", fontSize: "11px" }}
                               >
                                 {org.organization}
                               </div>
                               <div
-                                style={{ fontSize: "10px", color: "#6b7280" }}
+                                style={{ fontSize: "9px", color: "#6b7280" }}
                               >
                                 IE Code:{" "}
                                 {org.registrationDetails?.ieCode || "N/A"}
@@ -1484,8 +1507,12 @@ const AddExJobs = ({ onJobCreated }) => {
                     value={formData.year}
                     onChange={(e) => handleInputChange("year", e.target.value)}
                   >
-                    <option value="25-26">25-26</option>
                     <option value="26-27">26-27</option>
+                    <option value="25-26">25-26</option>
+                    <option value="24-25">24-25</option>
+                    <option value="23-24">23-24</option>
+                    <option value="22-23">22-23</option>
+                    <option value="21-22">21-22</option>
                   </select>
                 </div>
                 <div style={{ ...s.col, maxWidth: "160px" }}>
@@ -1497,12 +1524,25 @@ const AddExJobs = ({ onJobCreated }) => {
                       handleInputChange("branch_code", e.target.value)
                     }
                   >
-                    {branchOptions.map((b) => (
+                    {allowedBranchOptions.map((b) => (
                       <option key={b.code} value={b.code}>
                         {b.label}
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              {/* Row 2: Reference and other fields */}
+              <div style={s.row}>
+                <div style={{ ...s.col, maxWidth: "250px" }}>
+                  <label style={s.label}>Export Reference No</label>
+                  <input
+                    style={s.input}
+                    placeholder="Enter Reference Number..."
+                    value={formData.exporter_ref_no}
+                    onChange={(e) => handleInputChange("exporter_ref_no", e.target.value)}
+                  />
                 </div>
               </div>
             </div>
@@ -1631,6 +1671,7 @@ const AddExJobs = ({ onJobCreated }) => {
                     />
                   </div>
 
+
                   <div
                     style={{
                       display: "flex",
@@ -1682,6 +1723,7 @@ const AddExJobs = ({ onJobCreated }) => {
                       handleInputChange("consignmentType", e.target.value)
                     }
                   >
+                    <option value="" disabled>-Select-</option>
                     <option value="FCL">FCL</option>
                     <option value="LCL">LCL</option>
                     <option value="AIR">AIR</option>
@@ -1715,28 +1757,30 @@ const AddExJobs = ({ onJobCreated }) => {
                   </select>
                 </div>
 
-                {/* Custom House with static grouped options */}
-                <CustomHouseDropdownLocal
-                  label="Custom House"
-                  value={formData.custom_house}
-                  onChange={(val) => handleInputChange("custom_house", val)}
-                  branchCode={formData.branch_code}
-                />
+                <div style={{ ...s.col, position: "relative" }}>
+                  <CustomHouseDropdownLocal
+                    label="Custom House *"
+                    value={formData.custom_house}
+                    onChange={(val) => {
+                      setCustomHouseError(false);
+                      handleInputChange("custom_house", val);
+                    }}
+                    branchCode={formData.branch_code}
+                  />
+                  {customHouseError && <span style={{ color: "red", fontSize: "10px", marginTop: "2px", display: "block" }}>Custom House is required.</span>}
+                </div>
 
                 <div style={s.col}>
                   <label style={s.label}>Port of Loading</label>
                   <select
                     style={s.select}
-                    value={formData.port_of_loading}
+                    value={formData.port_of_loading || ""}
                     onChange={(e) => handleInputChange("port_of_loading", e.target.value)}
                   >
-                    <option value="">SELECT PORT</option>
-                    <option value="INMUN1 - MUNDRA">Mundra (INMUN1)</option>
-                    <option value="INIXY1 - KANDLA">Kandla (INIXY1)</option>
-                    <option value="INPAV1 - PIPAVAV">Pipavav (INPAV1)</option>
-                    <option value="INHZA1 - HAZIRA">Hazira (INHZA1)</option>
-                    <option value="INNSA1 - NHAVA SHEVA">Nhava Sheva (INNSA1)</option>
-                    <option value="INAMD4 - AHMEDABAD AIR PORT">Ahmedabad Air Port</option>
+                    <option value="" disabled>SELECT PORT</option>
+                    {portOptions.map(p => (
+                      <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -1758,8 +1802,8 @@ const AddExJobs = ({ onJobCreated }) => {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

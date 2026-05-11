@@ -59,14 +59,13 @@ function UserDetails({ selectedUser, onClose, onSave }) {
       if (selectedYearState) {
         try {
           const res = await axios.get(
-            `${
-              import.meta.env.VITE_API_STRING
+            `${import.meta.env.VITE_API_STRING
             }/get-importer-list/${selectedYearState}`
           );
-          const importerNames = res.data.map(
+          const exporterNames = res.data.map(
             (item) => item.importer || item.name || item
           );
-          setAllImporters(importerNames.sort());
+          setAllImporters(exporterNames.sort());
         } catch (error) {
           setAllImporters([]);
         }

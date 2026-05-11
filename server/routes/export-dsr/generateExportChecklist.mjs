@@ -159,7 +159,7 @@ export const generateExportChecklist = async (jobNumber) => {
       170,
       18,
       "Master BL No.",
-      exportJob.masterblno,
+      exportJob.mbl_no,
       6,
       5
     );
@@ -208,7 +208,7 @@ export const generateExportChecklist = async (jobNumber) => {
     );
     yPos += 20;
 
-    drawFieldBox(10, yPos, 200, 18, "House BL No.", exportJob.houseblno, 6, 5);
+    drawFieldBox(10, yPos, 200, 18, "House BL No.", exportJob.hbl_no, 6, 5);
     drawFieldBox(215, yPos, 120, 18, "Invoice Details", "Invoice 1 / 1", 6, 5);
     drawFieldBox(
       340,
@@ -279,7 +279,10 @@ export const generateExportChecklist = async (jobNumber) => {
     }
     yPos += 40;
 
-    const productList = exportJob.products || [];
+    const productList = [];
+    (exportJob.invoices || []).forEach(inv => {
+      if (inv.products) productList.push(...inv.products);
+    });
     productList.forEach((item, index) => {
       doc.fontSize(5.5).font("Helvetica");
       const itemData = [
@@ -313,9 +316,59 @@ export const generateExportChecklist = async (jobNumber) => {
       yPos += 10;
     });
 
+    let totalRodtep = 0;
+    productList.forEach((item) => {
+      totalRodtep += parseFloat(item.rodtepInfo?.amountINR || 0);
+    });
+    drawFieldBox(455, yPos, 45, 15, "Total RoDTEP", totalRodtep.toFixed(2), 6, 5);
     drawFieldBox(500, yPos, 45, 15, "Total PMV", exportJob.totalPmv, 6, 5);
     drawFieldBox(545, yPos, 40, 15, "Total IGST", exportJob.totalIgst, 6, 5);
-    yPos += 20;
+    yPos += 25;
+
+    // ==================== THIRD PARTY DETAILS ====================
+    const thirdPartyItems = productList.filter(p => p.otherDetails?.isThirdPartyExport && p.otherDetails?.thirdParty);
+    if (thirdPartyItems.length > 0) {
+      if (yPos > 750) { doc.addPage(); drawHeader(2); yPos = 55; }
+      yPos = drawSectionHeader(yPos, "THIRD PARTY DETAILS");
+
+      const tpHeaders = ["Inv Sr", "Item Sr", "IE Code", "Branch", "Name", "Registration ID"];
+      const tpX = [10, 40, 70, 130, 180, 450];
+      const tpWidths = [30, 30, 60, 50, 270, 135];
+
+      doc.fontSize(5.5).font("Helvetica-Bold");
+      tpHeaders.forEach((header, i) => {
+        doc.rect(tpX[i], yPos, tpWidths[i], 12).stroke();
+        doc.text(header, tpX[i] + 1, yPos + 2, { width: tpWidths[i] - 2 });
+      });
+      yPos += 12;
+
+      thirdPartyItems.forEach((item, index) => {
+        if (yPos > 800) { doc.addPage(); drawHeader(2); yPos = 55; }
+        // Find invoice index
+        let invSr = "1";
+        exportJob.invoices?.forEach((inv, ii) => {
+          if (inv.products?.some(p => p._id === item._id)) invSr = (ii + 1).toString();
+        });
+
+        const tp = item.otherDetails.thirdParty;
+        const tpRow = [
+          invSr,
+          (productList.indexOf(item) + 1).toString(),
+          tp.ieCode,
+          tp.branchSrNo || "0",
+          tp.name,
+          tp.regnNo
+        ];
+
+        doc.fontSize(5.5).font("Helvetica");
+        tpRow.forEach((data, i) => {
+          doc.rect(tpX[i], yPos, tpWidths[i], 10).stroke();
+          doc.text(data || "", tpX[i] + 1, yPos + 2, { width: tpWidths[i] - 2 });
+        });
+        yPos += 10;
+      });
+      yPos += 20;
+    }
 
     // ==================== PAGE 3 ====================
     doc.addPage();
@@ -371,6 +424,14 @@ export const generateExportChecklist = async (jobNumber) => {
       });
       yPos += 10;
     });
+
+    let totalDbk = 0;
+    dbkData.forEach((item) => {
+      totalDbk += parseFloat(item.dbkAmount || 0);
+    });
+    doc.fontSize(6).font("Helvetica-Bold");
+    doc.text(`Total DBK Amount: ${totalDbk.toFixed(2)}`, 10, yPos + 5, { align: "right", width: 575 });
+    doc.font("Helvetica");
     yPos += 15;
 
     yPos = drawSectionHeader(yPos, "VESSEL DETAILS");
@@ -380,7 +441,7 @@ export const generateExportChecklist = async (jobNumber) => {
       90,
       16,
       "Factory Stuffed",
-      exportJob.goodsstuffedat === "Factory" ? "Yes" : "No",
+      ["FACTORY", "YES", "TRUE", "Y"].includes((exportJob.goods_stuffed_at || "").toUpperCase().trim()) ? "Yes" : "No",
       6,
       5
     );
@@ -390,7 +451,7 @@ export const generateExportChecklist = async (jobNumber) => {
       90,
       16,
       "Seal Type",
-      exportJob.stuffingsealtype,
+      exportJob.stuffing_seal_type,
       6,
       5
     );
@@ -544,18 +605,50 @@ export const generateExportChecklist = async (jobNumber) => {
 
     yPos = drawSectionHeader(yPos, "DECLARATION");
     doc.fontSize(7).font("Helvetica");
-    const declarationText = [
-      "Signature of Exporter/CHA with date",
-      "",
+
+    const codes = [];
+    exportJob.invoices?.forEach(inv =>
+      inv.products?.forEach(p => {
+        const sc = (p.eximCode || "").split(" ")[0];
+        const amount = parseFloat(p.rodtepInfo?.amountINR) || 0;
+        if ((sc === "60" || sc === "61") && !codes.includes("RS001")) codes.push("RS001");
+        if ((amount > 0 || p.rodtepInfo?.claim === "Yes" || sc === "03") && !codes.includes("RD001")) codes.push("RD001");
+      })
+    );
+
+    let declarationText = [];
+    if (codes.includes("RD001")) {
+      declarationText.push(
+        "I/We, in regard to my/our claim under RoDTEP scheme made in this Shipping Bill or Bill of Export, hereby declare that:",
+        "1. I/ We undertake to abide by the provisions, including conditions, restrictions, exclusions and time-limits as provided under RoDTEP scheme.",
+        "2. Any claim made in this shipping bill is not with respect to any duties or taxes which are exempted or remitted under any other mechanism.",
+        "3. I/We undertake to preserve and make available relevant documents relating to the exported goods for the purposes of audit."
+      );
+    }
+    if (codes.includes("RS001")) {
+      declarationText.push(
+        "I/We, in regard to my/our claim under RoSCTL scheme made in this Shipping Bill or Bill of Export, hereby declare that:",
+        "1. I/ We undertake to abide by the provisions, including conditions, restrictions, exclusions and time-limits as provided under RoSCTL scheme.",
+        "2. Any claim made in this shipping bill is not with respect to any duties or taxes which are exempted or remitted under any other mechanism.",
+        "3. I/We undertake to preserve and make available relevant documents relating to the exported goods for the purposes of audit."
+      );
+    }
+
+    declarationText.push(
       "1. I/We declare that the particulars given herein are true and are correct.",
       "2. I/We undertake to abide by the provisions of Foreign Exchange Management Act, 1999, as amended from time to time, including",
-      "realisation or repatriation of foreign exchange to or from India.",
-    ];
+      "realisation or repatriation of foreign exchange to or from India."
+    );
 
     declarationText.forEach((line) => {
       doc.text(line, 10, yPos);
       yPos += 10;
     });
+
+    yPos += 10;
+    doc.text("Signature of Exporter/CHA with date", 10, yPos);
+    yPos += 5;
+    doc.moveTo(10, yPos).lineTo(150, yPos).stroke();
 
     doc.end();
 
@@ -582,9 +675,8 @@ router.get("/api/export-checklist/:job_no", async (req, res) => {
     }
 
     const pdfBuffer = await generateExportChecklist(job_no);
-    const filename = `Export-CheckList-${job_no}-${
-      new Date().toISOString().split("T")[0]
-    }.pdf`;
+    const filename = `Export-CheckList-${job_no}-${new Date().toISOString().split("T")[0]
+      }.pdf`;
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);

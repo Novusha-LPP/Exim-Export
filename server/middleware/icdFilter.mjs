@@ -11,10 +11,10 @@ import UserModel from "../model/userModel.mjs";
 const applyUserIcdFilter = async (req, res, next) => {
   try {
     // Extract username from various sources - prioritize params.username
-    let username = 
+    let username =
       req.params?.username ||
       req.query?.username ||
-      req.headers['x-username'] || 
+      req.headers['x-username'] ||
       req.body?.username;
 
     // If no username provided, proceed without filtering (for backward compatibility)
@@ -24,14 +24,14 @@ const applyUserIcdFilter = async (req, res, next) => {
 
     // Fetch user data from database
     const user = await UserModel.findOne({ username }).select('selected_icd_codes role');
-    
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     // Admin users or users with "ALL" ICD code get full access
-    if (user.role === "Admin" || 
-        (user.selected_icd_codes && user.selected_icd_codes.includes("ALL"))) {
+    if (user.role === "Admin" ||
+      (user.selected_icd_codes && user.selected_icd_codes.includes("ALL"))) {
       // No ICD filtering needed for admins or users with ALL access
       req.userIcdFilter = null;
       req.icdFilterCondition = {}; // Empty object means no filtering
@@ -46,20 +46,20 @@ const applyUserIcdFilter = async (req, res, next) => {
           $in: user.selected_icd_codes.map(icd => new RegExp(`^${escapeRegex(icd)}$`, 'i'))
         }
       };
-      
+
       req.userIcdFilter = icdFilter; // For backward compatibility
       req.icdFilterCondition = icdFilter; // For new routes
-      
-   
+
+
     } else {
       // User has no ICD codes assigned - show no jobs
-      const emptyFilter = { 
+      const emptyFilter = {
         custom_house: { $in: [] } // This will return no results
       };
-      
+
       req.userIcdFilter = emptyFilter; // For backward compatibility
       req.icdFilterCondition = emptyFilter; // For new routes
-      
+
     }
 
     // Store user info for potential use in route handlers
@@ -124,7 +124,7 @@ export const applyUserImporterFilter = async (req, res, next) => {
     // Check if user has assigned importers
     if (user.assigned_importer_name && user.assigned_importer_name.length > 0) {
       // Check if user has "ALL" access
-      const hasAllAccess = user.assigned_importer_name.some(imp => 
+      const hasAllAccess = user.assigned_importer_name.some(imp =>
         imp.toUpperCase() === "ALL"
       );
 
@@ -135,7 +135,7 @@ export const applyUserImporterFilter = async (req, res, next) => {
         // Create filter for specific importers
         const importerFilter = {
           importer: {
-            $in: user.assigned_importer_name.map(imp => 
+            $in: user.assigned_importer_name.map(imp =>
               new RegExp(`^${escapeRegex(imp.trim())}$`, 'i')
             )
           }
@@ -155,7 +155,7 @@ export const applyUserImporterFilter = async (req, res, next) => {
     // Store user info for potential use in route handlers
     req.currentUser = {
       ...(req.currentUser || {}),
-      assignedImporterName: user.assigned_importer_name || [],
+      assignedexporterName: user.assigned_importer_name || [],
       role: user.role
     };
 

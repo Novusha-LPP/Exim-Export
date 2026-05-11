@@ -1,6 +1,7 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import UserModel from "../../model/userModel.mjs";
+import transporter from "../../utils/mailer.mjs"; // Add missing transporter import
 
 const router = express.Router();
 

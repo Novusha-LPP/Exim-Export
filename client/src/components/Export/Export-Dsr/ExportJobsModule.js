@@ -20,6 +20,29 @@ import ESanchitTab from "./E-sanchit/EsanchitTab.js";
 import ChargesTab from "./Charges/ChargesTab.js";
 import OperationsTab from "./Operations/OperationsTab.jsx";
 
+const getMilestones = (isAir) => [
+  "SB Filed",
+  "L.E.O",
+  isAir ? "File Handover to IATA" : "Container HO",
+  isAir ? "Departure" : "Rail Out",
+  "Billing Pending",
+  "Billing Done",
+];
+
+const getMandatoryNames = (isAir) =>
+  new Set(["SB Filed", "L.E.O", "Billing Pending"]);
+
+const ALL_SYSTEM_MILESTONES = new Set([
+  "SB Filed",
+  "L.E.O",
+  "File Handover to IATA",
+  "Container HO",
+  "Departure",
+  "Rail Out",
+  "Billing Pending",
+  "Billing Done",
+]);
+
 // Tab Panel Component
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -50,7 +73,8 @@ function ExportJobsModule() {
 
   const { data, loading, formik, lockError } = useExportJobDetails(
     { job_no: decodedJobNo },
-    setFileSnackbar
+    setFileSnackbar,
+    navigate
   );
 
   const getInitialTab = () => {
@@ -62,7 +86,23 @@ function ExportJobsModule() {
   const [isLocked, setIsLocked] = useState(false);
   const [lockDialogOpen, setLockDialogOpen] = useState(false);
   const [lockedByUser, setLockedByUser] = useState(null);
+  const [isEditable, setIsEditable] = useState(false);
   const hasLockedRef = useRef(false);
+
+  const isNewJob = !data?.job_no;
+
+  // Auto-lock when SB Date is present (unless manually unlocked)
+  useEffect(() => {
+    if (data && !loading && isLocked) {
+      if (formik.values.sb_date && !isNewJob) {
+        setIsEditable(false);
+      } else {
+        setIsEditable(true);
+      }
+    } else {
+      setIsEditable(false);
+    }
+  }, [formik.values.sb_date, data, loading, isLocked, isNewJob]);
 
   // Lock the job when the component mounts
   const lockJob = useCallback(async () => {
@@ -112,19 +152,16 @@ function ExportJobsModule() {
 
     // Cleanup: unlock when component unmounts
     return () => {
-      if (hasLockedRef.current) {
-        // Use sync version for unmount to ensure it runs
-        const unlockSync = async () => {
-          try {
-            await axios.put(
-              `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(decodedJobNo)}/unlock`,
-              { username: user?.username }
-            );
-          } catch (e) {
-            // Ignore errors on cleanup
-          }
-        };
-        unlockSync();
+      if (hasLockedRef.current && decodedJobNo && user?.username) {
+        const url = `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(decodedJobNo)}/unlock`;
+        const data = JSON.stringify({ username: user.username });
+        
+        // Use sendBeacon for unmount - it's more reliable for "fire and forget" on exit
+        const blob = new Blob([data], { type: 'application/json' });
+        navigator.sendBeacon(url, blob);
+        
+        hasLockedRef.current = false;
+        setIsLocked(false);
       }
     };
   }, [data, loading, decodedJobNo, lockJob]);
@@ -162,15 +199,15 @@ function ExportJobsModule() {
     const fetchDirectories = async () => {
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_API_STRING}/directory`
+          `${import.meta.env.VITE_API_STRING}/directory/names`
         );
         setDirectories({
-          exporters: response.data.data || response.data,
+          exporterNames: response.data.data || [],
           importers: [],
           banks: [],
         });
       } catch (error) {
-        console.error("Error fetching directories:", error);
+        console.error("Error fetching directory names:", error);
       }
     };
 
@@ -192,19 +229,159 @@ function ExportJobsModule() {
     fetchExportJobsUsers();
   }, []);
 
+  // 🔑 GLOBAL SYNC: Initialize and Update Milestones & Detailed Status
+  // This ensures that even if user never clicks "Tracking Completed" tab,
+  // the milestones and detailedStatus are correctly derived from source data.
+  const milestonesInitializedRef = useRef(false);
+
+  useEffect(() => {
+    if (loading || !formik.values) return;
+
+    const ms = formik.values.milestones || [];
+    const isAir = toUpper(formik.values.transportMode) === "AIR";
+    const currentBaseMilestones = getMilestones(isAir);
+    const currentMandatory = getMandatoryNames(isAir);
+    const currentModeNames = new Set(currentBaseMilestones);
+
+    // 1. Initialization / Mode Switch Logic
+    const isMissingRequired = !currentBaseMilestones.every((name) =>
+      ms.some((m) => m.milestoneName === name)
+    );
+    const hasInvalidSystem = ms.some(
+      (m) =>
+        ALL_SYSTEM_MILESTONES.has(m.milestoneName) &&
+        !currentModeNames.has(m.milestoneName)
+    );
+
+    if (!milestonesInitializedRef.current || isMissingRequired || hasInvalidSystem) {
+      // Determine if we are loading real data from server
+      const hasRealData = ms.length > 0 && ms.some((m) => m._id);
+
+      if (!milestonesInitializedRef.current && ms.length === 0 && !hasRealData) {
+        const defaults = currentBaseMilestones.map((name) => ({
+          milestoneName: name,
+          actualDate: "",
+          isCompleted: false,
+          isMandatory: currentMandatory.has(name),
+          completedBy: "",
+          remarks: "",
+        }));
+        formik.setFieldValue("milestones", defaults);
+        milestonesInitializedRef.current = true;
+      } else {
+        // Logic for Merging / switching modes
+        const byName = new Map(ms.map((m) => [m.milestoneName, m]));
+        const basePart = currentBaseMilestones.map((name) => {
+          const existing = byName.get(name);
+          return (
+            existing || {
+              milestoneName: name,
+              actualDate: "",
+              isCompleted: false,
+              isMandatory: currentMandatory.has(name),
+              completedBy: "",
+              remarks: "",
+            }
+          );
+        });
+        const extras = ms.filter((m) => {
+          const name = m.milestoneName;
+          if (!name || currentModeNames.has(name)) return false;
+          if (ALL_SYSTEM_MILESTONES.has(name)) return false;
+          return true;
+        });
+
+        const unified = [...basePart, ...extras];
+        // Only update if actually different to avoid loops
+        if (JSON.stringify(ms) !== JSON.stringify(unified)) {
+          formik.setFieldValue("milestones", unified);
+        }
+        milestonesInitializedRef.current = true;
+      }
+      return;
+    }
+
+    // 2. Data Sync Logic (Source fields -> Milestones)
+    const op = formik.values.operations?.[0]?.statusDetails?.[0] || {};
+    const sbDate = formik.values.sb_date;
+
+    const getSource = (name) => {
+      if (name === "SB Filed") return { val: sbDate, isDoc: false };
+      if (name === "L.E.O") return { val: op.leoDate, isDoc: false };
+      if (name === "Container HO" || name === "File Handover to IATA") {
+        const docs = op.handoverImageUpload;
+        const dateVal = op.handoverForwardingNoteDate || op.handoverConcorTharSanganaRailRoadDate || "";
+        const hasDocs = (Array.isArray(docs) && docs.length > 0) || !!dateVal;
+        return { val: dateVal, isDoc: true, hasDoc: hasDocs };
+      }
+      if (name === "Rail Out" || name === "Departure") return { val: op.railOutReachedDate, isDoc: false };
+      return null;
+    };
+
+    let changed = false;
+    const syncedMilestones = ms.map((m) => {
+      const source = getSource(m.milestoneName);
+      if (!source) return m;
+
+      let updates = {};
+      if (source.isDoc) {
+        if (source.hasDoc) {
+          if (!m.isCompleted) updates.isCompleted = true;
+          if (source.val && m.actualDate !== source.val) updates.actualDate = source.val;
+        } else if (m.isCompleted) {
+          updates.isCompleted = false;
+          updates.actualDate = "";
+        }
+      } else {
+        if (source.val) {
+          if (!m.isCompleted) updates.isCompleted = true;
+          if (m.actualDate !== source.val) updates.actualDate = source.val;
+        } else if (m.isCompleted) {
+          updates.isCompleted = false;
+          updates.actualDate = "";
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        changed = true;
+        return { ...m, ...updates };
+      }
+      return m;
+    });
+
+    if (changed) {
+      formik.setFieldValue("milestones", syncedMilestones);
+    }
+
+    // 3. Detailed Status Logic (Derived from highest completed milestone)
+    const completed = syncedMilestones.filter(m => m.isCompleted);
+    const lastCompleted = completed.length > 0 ? completed[completed.length - 1].milestoneName : "";
+    if (formik.values.detailedStatus !== lastCompleted) {
+      formik.setFieldValue("detailedStatus", lastCompleted);
+    }
+  }, [
+    loading,
+    formik.values.sb_date,
+    formik.values.operations,
+    formik.values.transportMode,
+    formik.values.milestones,
+    formik.values.detailedStatus
+  ]);
+
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
     setSearchParams({ tab: newValue.toString() });
   };
 
-  const handleUpdateAndClose = async () => {
+  const handleClose = async () => {
     try {
-      await formik.submitForm();
       await unlockJob(); // Unlock before navigating away
+      window.close();
       navigate("/export-dsr");
     } catch (error) {
-      console.error("Error during auto-update on close:", error);
+      console.error("Error during close:", error);
       await unlockJob(); // Still try to unlock even on error
+      window.close();
       navigate("/export-dsr");
     }
   };
@@ -272,6 +449,28 @@ function ExportJobsModule() {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
+          {(lockedByUser || "").toLowerCase() === (user?.username || "").toLowerCase() && (
+            <Button
+              onClick={async () => {
+                try {
+                  await axios.put(
+                    `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(decodedJobNo)}/unlock`,
+                    { username: user.username }
+                  );
+                  setLockDialogOpen(false);
+                  hasLockedRef.current = false;
+                  // A slight delay to ensure server processed unlock
+                  setTimeout(() => lockJob(), 500);
+                } catch (error) {
+                  console.error("Error force-unlocking:", error);
+                }
+              }}
+              color="warning"
+              variant="outlined"
+            >
+              Release My Session
+            </Button>
+          )}
           <Button onClick={handleLockDialogClose} variant="contained" color="primary">
             Go Back to Job List
           </Button>
@@ -284,6 +483,8 @@ function ExportJobsModule() {
           directories={directories}
           exportJobsUsers={exportJobsUsers}
           onUpdate={formik.handleSubmit}
+          isEditable={isEditable}
+          setIsEditable={setIsEditable}
         />
       </Box>
 
@@ -336,6 +537,7 @@ function ExportJobsModule() {
                   job={data}
                   formik={formik}
                   directories={directories}
+                  isEditable={isEditable}
                 />
               ),
             },
@@ -346,6 +548,7 @@ function ExportJobsModule() {
                   job={data}
                   formik={formik}
                   directories={directories}
+                  isEditable={isEditable}
                 />
               ),
             },
@@ -358,6 +561,7 @@ function ExportJobsModule() {
                       job={data}
                       formik={formik}
                       onUpdate={formik.handleSubmit}
+                      isEditable={isEditable}
                     />
                   ),
                 },
@@ -366,23 +570,23 @@ function ExportJobsModule() {
             {
               label: "Invoice",
               component: (
-                <InvoiceTab formik={formik} directories={directories} />
+                <InvoiceTab formik={formik} directories={directories} isEditable={isEditable} />
               ),
             },
-            { label: "Product", component: <ProductTab formik={formik} /> },
-            { label: "ESanchit", component: <ESanchitTab formik={formik} /> },
+            { label: "Product", component: <ProductTab formik={formik} isEditable={isEditable} /> },
+            { label: "ESanchit", component: <ESanchitTab formik={formik} isEditable={isEditable} /> },
             {
               label: "Charges",
-              component: <ChargesTab formik={formik} />,
+              component: <ChargesTab job={data} formik={formik} isEditable={isEditable} />,
             },
 
             {
               label: "Operations",
-              component: <OperationsTab formik={formik} />,
+              component: <OperationsTab formik={formik} isEditable={isEditable} />,
             },
             {
               label: "Tracking Completed",
-              component: <TrackingCompletedTab job={data} formik={formik} />,
+              component: <TrackingCompletedTab job={data} formik={formik} isAdmin={user?.role === "Admin"} isEditable={isEditable} />,
             },
           ];
 
@@ -395,29 +599,32 @@ function ExportJobsModule() {
 
         <ExportJobFooter
           onUpdate={formik.handleSubmit}
-          onClose={handleUpdateAndClose}
+          onClose={handleClose}
+          isJobCanceled={formik.values.isJobCanceled}
+          isAdmin={user?.role === "Admin"}
         />
       </Paper>
       <Snackbar
         open={fileSnackbar}
-        autoHideDuration={3000}
+        autoHideDuration={4000}
         onClose={() => setFileSnackbar(false)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-        sx={{ marginLeft: "50px" }}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{ mt: 2, mr: 2, zIndex: 9999 }}
       >
         <Alert
           onClose={() => setFileSnackbar(false)}
           severity="success"
+          variant="filled"
           sx={{
             width: "100%",
-            backgroundColor: "black",
-            color: "white",
-            "& .MuiAlert-icon": {
-              color: "white",
-            },
+            borderRadius: "8px",
+            boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
+            fontWeight: 500,
+            fontSize: "0.95rem",
+            alignItems: "center"
           }}
         >
-          Job Update successfully
+          Job updated successfully!
         </Alert>
       </Snackbar>
     </>

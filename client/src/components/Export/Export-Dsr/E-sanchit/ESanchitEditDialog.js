@@ -498,7 +498,6 @@ const ESanchitEditDialog = ({
   const level = safeDoc.documentLevel || "Invoice";
 
   const disableInvSrNo = level === "Job" || level === "Item";
-  const disableItemSrNo = level === "Job" || level === "Invoice";
 
   const handleFieldChange = (field, value) => {
     setDoc((prev) => ({ ...(prev || {}), [field]: value }));
@@ -588,42 +587,41 @@ const ESanchitEditDialog = ({
     if (
       isBeneficiaryPartyEmpty &&
       jobData.consignees &&
-      jobData.consignees.length > 0 &&
-      consigneeList.length > 0
+      jobData.consignees.length > 0
     ) {
       const firstConsignee = jobData.consignees[0];
       const consigneeName = toUpper(firstConsignee.consignee_name || "");
 
-      // Try to find full consignee details from the consignee list
-      const fullConsignee = consigneeList.find(
-        (c) => toUpper(c.consignee_name || "") === consigneeName,
+      handleBeneficiaryPartyChange("name", consigneeName);
+      handleBeneficiaryPartyChange(
+        "addressLine1",
+        toUpper(firstConsignee.consignee_address || ""),
       );
-
-      if (fullConsignee) {
-        handleBeneficiaryPartyChange(
-          "name",
-          toUpper(fullConsignee.consignee_name || ""),
-        );
-        handleBeneficiaryPartyChange(
-          "addressLine1",
-          toUpper(fullConsignee.consignee_address || ""),
-        );
-        handleBeneficiaryPartyChange("addressLine2", "");
-        handleBeneficiaryPartyChange("city", "");
-        handleBeneficiaryPartyChange("pinCode", "");
-      } else {
-        // Fallback to job data if not found in consignee list
-        handleBeneficiaryPartyChange("name", consigneeName);
-        handleBeneficiaryPartyChange(
-          "addressLine1",
-          toUpper(firstConsignee.consignee_address || ""),
-        );
-        handleBeneficiaryPartyChange("addressLine2", "");
-        handleBeneficiaryPartyChange("city", "");
-        handleBeneficiaryPartyChange("pinCode", "");
-      }
+      handleBeneficiaryPartyChange("addressLine2", "");
+      handleBeneficiaryPartyChange("city", "");
+      handleBeneficiaryPartyChange("pinCode", "");
     }
   }, [open, jobData, organizations, consigneeList]);
+  
+  // Auto-populate Inv. Sr. No. and Doc details for single invoice
+  useEffect(() => {
+    if (!open || !jobData?.invoices || jobData.invoices.length !== 1) return;
+    
+    const inv = jobData.invoices[0];
+    const isNew = !safeDoc.invSerialNo && !safeDoc.documentReferenceNo;
+    
+    if (isNew) {
+      setDoc(prev => ({
+        ...prev,
+        invSerialNo: "1",
+        documentReferenceNo: toUpper(inv.invoiceNumber || ""),
+        dateOfIssue: inv.invoiceDate || ""
+      }));
+    } else if (safeDoc.invSerialNo !== "1") {
+      // Force it to 1 if it's a single invoice job
+      handleFieldChange("invSerialNo", "1");
+    }
+  }, [open, jobData?.invoices]);
 
   const onSelectIssuingParty = (e) => {
     const val = toUpper(e.target.value);
@@ -716,39 +714,51 @@ const ESanchitEditDialog = ({
                   <option value="Item">Item</option>
                 </select>
               </div>
-              <Field
-                label="Inv. Sr. No."
-                value={safeDoc.invSerialNo}
-                onChange={(v) => handleFieldChange("invSerialNo", v)}
-                disabled={disableInvSrNo}
-              />
+              
+              {jobData?.invoices?.length > 1 ? (
+                <div style={s.fieldGroup}>
+                  <span style={s.label}>Inv. Sr. No.</span>
+                  <select
+                    style={s.select}
+                    value={safeDoc.invSerialNo || ""}
+                    onChange={(e) => {
+                      const sNo = e.target.value;
+                      const inv = jobData.invoices[parseInt(sNo) - 1];
+                      if (inv) {
+                        setDoc(prev => ({
+                          ...prev,
+                          invSerialNo: sNo,
+                          documentReferenceNo: toUpper(inv.invoiceNumber || ""),
+                          dateOfIssue: inv.invoiceDate || ""
+                        }));
+                      } else {
+                        handleFieldChange("invSerialNo", sNo);
+                      }
+                    }}
+                    disabled={disableInvSrNo}
+                  >
+                    <option value="">Select Invoice...</option>
+                    {jobData.invoices.map((inv, idx) => (
+                      <option key={idx} value={String(idx + 1)}>
+                        {idx + 1} - {inv.invoiceNumber}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <Field
+                  label="Inv. Sr. No."
+                  value={safeDoc.invSerialNo}
+                  onChange={(v) => handleFieldChange("invSerialNo", v)}
+                  disabled={disableInvSrNo || jobData?.invoices?.length === 1}
+                />
+              )}
               <Field
                 label="IRN (Image Ref)"
                 value={safeDoc.irn}
                 onChange={(v) => handleFieldChange("irn", v)}
               />
-              <div style={s.fieldGroup}>
-                <span style={s.label}>ICEGATE ID</span>
-                <select
-                  style={s.select}
-                  value={safeDoc.icegateIdSelect || ""}
-                  onChange={(e) =>
-                    handleFieldChange("icegateIdSelect", e.target.value)
-                  }
-                >
-                  <option value="">-- Select --</option>
-                  <option value="RAJANSFPL - GCard - RAJANSFPL">
-                    RAJANSFPL - GCard - RAJANSFPL
-                  </option>
-                  <option value="SURAJAHD - FCard - SURAJAHD">
-                    SURAJAHD - FCard - SURAJAHD
-                  </option>
-                  <option value="SURAJAMD - GCard - SURAJAMD">
-                    SURAJAMD - GCard - SURAJAMD
-                  </option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
+
               <Field
                 label="ICEGATE Filename"
                 value={safeDoc.icegateFilename}
@@ -783,23 +793,7 @@ const ESanchitEditDialog = ({
             </div>
 
             <div style={s.col}>
-              <div style={s.fieldGroup}>
-                <span style={s.label}>Scope</span>
-                <select
-                  style={s.select}
-                  value={safeDoc.scope || "This job only"}
-                  onChange={(e) => handleFieldChange("scope", e.target.value)}
-                >
-                  <option value="This job only">This job only</option>
-                  <option value="Multiple jobs">Multiple jobs</option>
-                </select>
-              </div>
-              <Field
-                label="Item Sr. No."
-                value={safeDoc.itemSerialNo}
-                onChange={(v) => handleFieldChange("itemSerialNo", v)}
-                disabled={disableItemSrNo}
-              />
+
               <div style={s.fieldGroup}>
                 <span style={s.label}>Document Type</span>
                 <select
@@ -828,11 +822,7 @@ const ESanchitEditDialog = ({
                   <option value="271000">271000-Packing List</option>
                 </select>
               </div>
-              <Field
-                label="Other ICEGATE ID"
-                value={safeDoc.icegateId}
-                onChange={(v) => handleFieldChange("icegateId", v)}
-              />
+
               <Field
                 label="File Type"
                 value="PDF"
@@ -844,16 +834,7 @@ const ESanchitEditDialog = ({
                 value={safeDoc.placeOfIssue}
                 onChange={(v) => handleFieldChange("placeOfIssue", v)}
               />
-              <div style={s.fieldGroup}>
-                <span style={s.label}>Expiry Date</span>
-                <DateInput
-                  style={s.input}
-                  value={safeDoc.expiryDate || ""}
-                  onChange={(e) =>
-                    handleFieldChange("expiryDate", e.target.value)
-                  }
-                />
-              </div>
+
             </div>
           </div>
 
@@ -931,14 +912,18 @@ const ESanchitEditDialog = ({
                   options={consigneeList}
                   onChange={(selectedConsignee) => {
                     if (selectedConsignee) {
-                      handleBeneficiaryPartyChange(
-                        "name",
-                        toUpper(selectedConsignee.consignee_name || ""),
-                      );
+                      const name = toUpper(selectedConsignee.consignee_name || "");
+                      handleBeneficiaryPartyChange("name", name);
                       handleBeneficiaryPartyChange("code", "");
+
+                      // Prioritize job-specific address if names match
+                      const jobConsignee = jobData?.consignees?.find(
+                        (c) => toUpper(c.consignee_name || "") === name
+                      );
+
                       handleBeneficiaryPartyChange(
                         "addressLine1",
-                        toUpper(selectedConsignee.consignee_address || ""),
+                        toUpper(jobConsignee?.consignee_address || selectedConsignee.consignee_address || ""),
                       );
                       handleBeneficiaryPartyChange("addressLine2", "");
                       handleBeneficiaryPartyChange("city", "");

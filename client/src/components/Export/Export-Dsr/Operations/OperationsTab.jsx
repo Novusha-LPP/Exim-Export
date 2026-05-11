@@ -4,44 +4,25 @@ import FileUpload from "../../../gallery/FileUpload";
 import ImagePreview from "../../../gallery/ImagePreview";
 import zIndex from "@mui/material/styles/zIndex";
 import { priorityFilter } from "../../../../utils/filterUtils";
+import { SHIPPING_LINES } from "../../../../utils/masterList";
 
-// Helper
 const toUpper = (str) => (str ? str.toUpperCase() : "");
 
-const formatDateForInput = (dateVal, type = "date") => {
-  if (!dateVal) return "";
-
-  // If it's a string and doesn't look like a full ISO string from the server,
-  // just return it as is to allow manual typing without auto-correction.
-  if (
-    typeof dateVal === "string" &&
-    !dateVal.includes("T") &&
-    !dateVal.includes("Z")
-  ) {
-    return dateVal;
-  }
-
-  try {
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return dateVal;
-
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-
-    if (type === "datetime-local") {
-      const hours = String(d.getHours()).padStart(2, "0");
-      const minutes = String(d.getMinutes()).padStart(2, "0");
-      return `${day}-${month}-${year} ${hours}:${minutes}`;
-    }
-    return `${day}-${month}-${year}`;
-  } catch (e) {
-    return dateVal;
-  }
-};
+import { formatDate } from "../../../../utils/dateUtils";
 
 const formatDateForPicker = (dateVal, type = "date") => {
   if (!dateVal) return "";
+
+  // Handle already formatted dd-mm-yyyy strings
+  if (typeof dateVal === 'string' && /^\d{2}-\d{2}-\d{4}/.test(dateVal)) {
+    const parts = dateVal.split(/[-/]/); // support - or /
+    if (parts.length === 3) {
+      const [d, m, y] = parts;
+      // Return yyyy-MM-dd
+      return `${y}-${m}-${d}`;
+    }
+  }
+
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return dateVal;
@@ -60,24 +41,8 @@ const formatDateForPicker = (dateVal, type = "date") => {
 };
 
 const containerTypes = [
-  "20 STANDARD DRY",
-  "20 FLAT RACK",
-  "20 COLLAPSIBLE FLAT RACK",
-  "20 REEFER",
-  "20 TANK",
-  "20 OPEN TOP",
-  "20 HARD TOP",
-  "20 PLATFORM",
-  "40 STANDARD DRY",
-  "40 FLAT RACK",
-  "40 COLLAPSIBLE FLAT RACK",
-  "40 REEFER",
-  "40 TANK",
-  "40 OPEN TOP",
-  "40 HARD TOP",
-  "40 HIGH CUBE",
-  "40 REEFER HIGH CUBE",
-  "40 PLATFORM",
+  "20 ft",
+  "40 ft",
 ];
 
 const cargoTypes = [
@@ -107,45 +72,6 @@ const getDefaultItem = (section) => {
       grossWeightKgs: 0,
       images: [],
       cartingDate: "",
-    },
-    containerDetails: {
-      containerNo: "",
-      containerSize: "",
-      containerType: "",
-      cargoType: "GEN",
-      portOfLoading: "",
-      customSealNo: "",
-      grossWeight: 0,
-      grossWeightCont: 0,
-      vgmWtInvoice: 0,
-      maxGrossWeightKgs: 0,
-      tareWeightKgs: 0,
-      maxPayloadKgs: 0,
-      shippingLineSealNo: "",
-      images: [],
-    },
-    bookingDetails: {
-      shippingLineName: "",
-      forwarderName: "",
-      bookingNo: "",
-      bookingDate: "",
-      vesselName: "",
-      voyageNo: "",
-      portOfLoading: "",
-      emptyPickUpLoc: "",
-      emptyDropLoc: "",
-      images: [],
-      containerPlacementDate: "",
-      shippingLineSealNo: "",
-    },
-    weighmentDetails: {
-      weighBridgeName: "",
-      regNo: "",
-      address: "",
-      dateTime: "",
-      vehicleNo: "",
-      tareWeight: 0,
-      images: [],
     },
     statusDetails: {
       gateInDate: "",
@@ -189,6 +115,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
   );
   const [opts, setOpts] = useState([]);
   const [active, setActive] = useState(-1);
+  const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef();
   const menuRef = useRef(); // New ref for the portal menu
   const keepOpen = useRef(false);
@@ -196,7 +123,6 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
 
   const transportMode = toUpper(formik.values.transportMode || "");
 
-  // Helper to get nested value "operations.0.bookingDetails.0.shippingLineName"
   function getNestedValue(obj, path) {
     return path.split(".").reduce((acc, part) => acc && acc[part], obj);
   }
@@ -212,34 +138,42 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
       setOpts([]);
       return;
     }
-    const searchVal = (query || "").trim();
+    const searchVal = isTyping ? (query || "").trim() : "";
     const isAir = transportMode === "AIR";
 
-    const url = isAir
-      ? `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(
-        searchVal,
-      )}`
-      : `${apiBase}/shippingLines/?page=1&location=&status=&search=${encodeURIComponent(
-        searchVal,
-      )}`;
-
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        setOpts(
-          Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-              ? data
-              : [],
-        );
-      } catch {
-        setOpts([]);
-      }
-    }, 220);
-
-    return () => clearTimeout(t);
+    if (isAir) {
+      // Airlines still use the API
+      const url = `${apiBase}/airlines/?page=1&status=&search=${encodeURIComponent(searchVal)}`;
+      const t = setTimeout(async () => {
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          setOpts(
+            Array.isArray(data?.data)
+              ? data.data
+              : Array.isArray(data)
+                ? data
+                : [],
+          );
+        } catch {
+          setOpts([]);
+        }
+      }, 220);
+      return () => clearTimeout(t);
+    } else {
+      // Sea shipping lines - use local SHIPPING_LINES master data
+      const needle = (searchVal || "").toUpperCase();
+      const mapped = SHIPPING_LINES
+        .map((sl) => ({ shippingLineCode: sl.value, shippingName: sl.label }))
+        .filter((sl) => {
+          if (!needle) return true;
+          return (
+            sl.shippingLineCode.toUpperCase().includes(needle) ||
+            sl.shippingName.toUpperCase().includes(needle)
+          );
+        });
+      setOpts(mapped);
+    }
   }, [open, query, transportMode, apiBase]);
 
   useEffect(() => {
@@ -251,6 +185,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
         (!menuRef.current || !menuRef.current.contains(e.target))
       ) {
         setOpen(false);
+        setIsTyping(false);
       }
     }
     document.addEventListener("mousedown", close);
@@ -275,6 +210,7 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
     formik.setFieldValue(fieldName, value);
     setOpen(false);
     setActive(-1);
+    setIsTyping(false);
   }
 
   return {
@@ -292,11 +228,13 @@ function useShippingOrAirlineDropdown(fieldName, formik) {
       setQuery(v);
       formik.setFieldValue(fieldName, v);
       setOpen(true);
+      setIsTyping(true);
     },
     select,
     onInputFocus: () => {
       setOpen(true);
       setActive(-1);
+      setIsTyping(false);
       keepOpen.current = true;
     },
     onInputBlur: () => {
@@ -488,31 +426,21 @@ function useGatewayPortDropdown(fieldName, formik) {
       return;
     }
 
-    // When dropdown opens, fetch all options (empty search)
-    // Only use query for search if user is actively typing
-    const searchVal = isTyping ? (query || "").trim() : "";
-    const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
-      searchVal,
-    )}`;
+    const searchVal = isTyping ? (query || "").trim().toUpperCase() : "";
+    const staticOpts = [
+      { unece_code: "INMUN1", name: "MUNDRA" },
+      { unece_code: "INIXY1", name: "KANDLA" },
+      { unece_code: "INPAV1", name: "PIPAVAV" },
+      { unece_code: "INHZA1", name: "HAZIRA" },
+      { unece_code: "INNSA1", name: "NHAVA SHEVA" },
+      { unece_code: "INAMD4", name: "AHMEDABAD AIR PORT" }
+    ];
 
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        setOpts(
-          Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-              ? data
-              : [],
-        );
-      } catch {
-        setOpts([]);
-      }
-    }, 220);
-
-    return () => clearTimeout(t);
-  }, [open, query, apiBase, isTyping]);
+    const filtered = staticOpts.filter(opt =>
+      `${opt.unece_code} ${opt.name}`.toUpperCase().includes(searchVal)
+    );
+    setOpts(filtered);
+  }, [open, query, isTyping]);
 
   useEffect(() => {
     function close(e) {
@@ -731,9 +659,12 @@ function GatewayPortDropdown({
   );
 }
 
-const OperationsTab = ({ formik }) => {
+const OperationsTab = ({ formik, isEditable = true }) => {
   const operations = formik.values.operations || [];
   const [activeOpIndex, setActiveOpIndex] = useState(0);
+
+  // Guard ref to prevent infinite ping-pong between sync phases
+  const syncingRef = useRef(false);
 
   // Flags for mode detection
   const transportMode = toUpper(formik.values.transportMode || "");
@@ -757,67 +688,37 @@ const OperationsTab = ({ formik }) => {
 
       const newOp = {
         transporterDetails: [getDefaultItem("transporterDetails")],
-        bookingDetails: [getDefaultItem("bookingDetails")],
         statusDetails: [statusDefaults],
       };
-
-      if (!isAir) {
-        newOp.containerDetails = [getDefaultItem("containerDetails")];
-        newOp.weighmentDetails = [getDefaultItem("weighmentDetails")];
-      }
 
       formik.setFieldValue("operations", [newOp]);
     }
   }, [formik.values.job_no, operations.length]);
 
-  // Sync ICD Port with Custom House if currently empty
+  // Sync ICD Port with Custom House
   useEffect(() => {
     const customHouse = toUpper(formik.values.custom_house || "");
-    if (customHouse && consignmentType !== "FCL") {
-      let changed = false;
-      const updatedOps = operations.map((op) => {
-        const statusDetails = op.statusDetails || [];
-        const updatedStatus = statusDetails.map((s) => {
-          if (!s.icdPort) {
-            changed = true;
-            return { ...s, icdPort: customHouse };
-          }
-          return s;
-        });
-        if (changed) return { ...op, statusDetails: updatedStatus };
-        return op;
-      });
+    if (!customHouse) return;
 
-      if (changed) {
-        formik.setFieldValue("operations", updatedOps);
-      }
-    }
-  }, [formik.values.custom_house, formik.values.consignmentType]);
-
-  // Sync Port Of Loading between Header and Operations
-  useEffect(() => {
-    const headerPol = toUpper(formik.values.port_of_loading || "");
-    // Propagate header POL to all containers in all operations
-    let polChanged = false;
-    const nextOps = operations.map((op) => {
-      const containerDetails = op.containerDetails || [];
-      let opPolChanged = false;
-      const updatedCD = containerDetails.map((cd) => {
-        if (toUpper(cd.portOfLoading) !== headerPol) {
-          polChanged = true;
-          opPolChanged = true;
-          return { ...cd, portOfLoading: headerPol };
+    let changed = false;
+    const updatedOps = operations.map((op) => {
+      const statusDetails = op.statusDetails || [];
+      const updatedStatus = statusDetails.map((s) => {
+        if (toUpper(s.icdPort || "") !== customHouse) {
+          changed = true;
+          return { ...s, icdPort: customHouse };
         }
-        return cd;
+        return s;
       });
-      if (opPolChanged) return { ...op, containerDetails: updatedCD };
+      if (changed) return { ...op, statusDetails: updatedStatus };
       return op;
     });
 
-    if (polChanged) {
-      formik.setFieldValue("operations", nextOps);
+    if (changed) {
+      formik.setFieldValue("operations", updatedOps);
     }
-  }, [formik.values.port_of_loading]);
+  }, [formik.values.custom_house, operations.length]);
+
 
   // Auto-select Ahmedabad Air Port when transport mode is AIR
   useEffect(() => {
@@ -829,425 +730,56 @@ const OperationsTab = ({ formik }) => {
     }
   }, [isAir]);
 
-  // Auto-sync Shipping Line from job header to booking details
-  useEffect(() => {
-    const jobShippingLine = toUpper(formik.values.shipping_line_airline || "");
-    if (!jobShippingLine) return;
-
-    const currentOps = formik.values.operations || [];
-    let changed = false;
-    const nextOps = currentOps.map((op) => {
-      const bookingDetails = op.bookingDetails || [];
-      const updatedBooking = bookingDetails.map((b) => {
-        if (!b.shippingLineName && jobShippingLine) {
-          changed = true;
-          return { ...b, shippingLineName: jobShippingLine };
-        }
-        return b;
-      });
-      if (changed) return { ...op, bookingDetails: updatedBooking };
-      return op;
-    });
-    if (changed) {
-      formik.setFieldValue("operations", nextOps);
-    }
-  }, [formik.values.shipping_line_airline, formik.values.job_no]);
-
-  // 1. Collect all unique container numbers from ALL sections of ALL operations
-  const allOpContainersSet = new Set();
-  operations.forEach((op) => {
-    ["transporterDetails", "containerDetails"].forEach(
-      (sec) => {
-        (op[sec] || []).forEach((item) => {
-          if (item.containerNo && item.containerNo.trim()) {
-            allOpContainersSet.add(item.containerNo.trim().toUpperCase());
-          }
-        });
-      },
-    );
-  });
-  const opContainerNos = Array.from(allOpContainersSet);
-
-  // 2. Get master list container numbers
-  const masterContainers = formik.values.containers || [];
-  const masterContainerNos = masterContainers.map((c) =>
-    (c.containerNo || "").toUpperCase(),
-  );
-
-  // 3. Check Sync Status
-  const isSynced =
-    opContainerNos.length === masterContainerNos.length &&
-    opContainerNos.every((no) => masterContainerNos.includes(no));
-
-  const syncStatus = isSynced ? "Synced" : "Out of Sync";
-
-  // 4. Auto-sync Effect: Keeps operations consistent and updates the main containers array
-  useEffect(() => {
-    // SECURITY: Do not run sync logic if the form hasn't loaded its job data yet.
-    // This prevents wiping container lists during the initial render "flicker".
-    if (!formik.values.job_no || operations.length === 0) return;
-
-    // Phase A: Intra-operation Sync (Propagate Unique Containers across sections)
-    let opsModified = false;
-    const nextOperations = operations.map((op) => {
-      // If Dock LCL, we DO NOT sync anything between sections.
-      if (isDockLCL) {
-        return op;
-      }
-
-      let opIsDirty = false;
-      const syncedOp = { ...op };
-
-      // 1. Collect all unique container numbers from Container Details only
-      const opUniqueContainers = new Set();
-      // Transporter details no longer has containerNo, so we only look at containerDetails
-      const sectionsToSync = isAir ? [] : ["containerDetails"];
-
-      sectionsToSync.forEach((s) => {
-        (syncedOp[s] || []).forEach((row) => {
-          if (row.containerNo && row.containerNo.trim()) {
-            opUniqueContainers.add(row.containerNo.trim().toUpperCase());
-          }
-        });
-      });
-
-      // 2. Ensure Container Details represent all unique containers
-      if (!isAir) {
-        ["containerDetails"].forEach((s) => {
-          const currentArr = [...(syncedOp[s] || [])];
-          opUniqueContainers.forEach((cNo) => {
-            const alreadyExists = currentArr.some(
-              (row) => (row.containerNo || "").trim().toUpperCase() === cNo,
-            );
-
-            if (!alreadyExists) {
-              const emptyIdx = currentArr.findIndex(
-                (row) => !(row.containerNo || "").trim(),
-              );
-
-              if (emptyIdx !== -1) {
-                currentArr[emptyIdx] = {
-                  ...currentArr[emptyIdx],
-                  containerNo: cNo,
-                };
-              } else {
-                currentArr.push({ ...getDefaultItem(s), containerNo: cNo });
-              }
-              opIsDirty = true;
-            }
-          });
-          syncedOp[s] = currentArr;
-        });
-      }
-
-      if (opIsDirty) opsModified = true;
-      return syncedOp;
-    });
-
-    if (opsModified) {
-      formik.setFieldValue("operations", nextOperations);
-      return; // Exit and wait for next render cycle
-    }
-
-    // Phase B: Totals Sync (Sum up all operations)
-    let totalPkgs = 0;
-    let totalGross = 0;
-
-    // Also build a map of container details from transporterDetails to sync to master containers
-    const containerDetailsMap = new Map();
-
-    operations.forEach((op) => {
-      (op.transporterDetails || []).forEach((item) => {
-        totalPkgs += Number(item.noOfPackages || 0);
-        // Container No removed from Transporter Details, so we don't map packages to containers here
-      });
-
-      // Also grab grossWeight, tareWeightKgs and shippingLineSealNo from containerDetails
-      (op.containerDetails || []).forEach((item) => {
-        if (item.containerNo) {
-          const cNo = item.containerNo.trim().toUpperCase();
-
-          // Ensure entry exists (it might not if not in transporterDetails)
-          if (!containerDetailsMap.has(cNo)) {
-            containerDetailsMap.set(cNo, {
-              grossWeight: 0,
-              netWeight: 0,
-              noOfPackages: 0,
-              tareWeightKgs: 0,
-              shippingLineSealNo: "",
-              maxPayloadKgs: 0,
-              containerSize: ""
-            });
-          }
-
-          const info = containerDetailsMap.get(cNo);
-
-          // Sync Container-specific fields from containerDetails
-          if (item.grossWeight)
-            info.grossWeight = Number(item.grossWeight || 0);
-          if (item.tareWeightKgs)
-            info.tareWeightKgs = Number(item.tareWeightKgs || 0);
-          if (item.shippingLineSealNo)
-            info.shippingLineSealNo = item.shippingLineSealNo;
-
-          // Accumulate Global Gross Weight from Container Details
-          totalGross += Number(item.grossWeight || 0);
-
-          if (item.maxPayloadKgs)
-            info.maxPayloadKgs = Number(item.maxPayloadKgs || 0);
-          if (item.maxPayloadKgs)
-            info.maxPayloadKgs = Number(item.maxPayloadKgs || 0);
-          if (item.containerSize)
-            info.containerSize = item.containerSize;
-        }
-      });
-    });
-
-    // Only sync if we have a non-zero sum to avoid wiping global data during load or if details are missing
-    if (totalPkgs > 0 && Number(formik.values.total_no_of_pkgs || 0) !== totalPkgs)
-      formik.setFieldValue("total_no_of_pkgs", totalPkgs);
-    if (totalGross > 0 && Number(formik.values.gross_weight_kg || 0) !== totalGross)
-      formik.setFieldValue("gross_weight_kg", totalGross);
-
-    // Phase C: Master Containers Sync (Updates formik.values.containers)
-    // Only run this if NOT Air mode, as Air doesn't use the master containers list
-    if (!isAir) {
-      const currentMaster = formik.values.containers || [];
-
-      // 1. Reconcile existing containers (Filter out those removed from operations)
-      let nextContainers = currentMaster.filter((c) => {
-        const uNo = (c.containerNo || "").trim().toUpperCase();
-        return uNo && opContainerNos.includes(uNo);
-      });
-
-      let masterChanged = nextContainers.length !== currentMaster.length;
-
-      // 2. Update existing or add new ones to match Operations
-      opContainerNos.forEach((no) => {
-        let masterItemIdx = nextContainers.findIndex(
-          (c) => (c.containerNo || "").trim().toUpperCase() === no,
-        );
-        const opInfo = containerDetailsMap.get(no) || {
-          grossWeight: 0,
-          netWeight: 0,
-          noOfPackages: 0,
-          tareWeightKgs: 0,
-        };
-
-        if (masterItemIdx === -1) {
-          nextContainers.push({
-            containerNo: no,
-            type: "",
-            sealNo: "",
-            sealDate: "",
-            pkgsStuffed: opInfo.noOfPackages,
-            grossWeight: opInfo.grossWeight,
-            netWeight: opInfo.netWeight,
-            tareWeightKgs: opInfo.tareWeightKgs,
-            shippingLineSealNo: opInfo.shippingLineSealNo || "",
-            maxPayloadKgs: opInfo.maxPayloadKgs || 0,
-          });
-          masterChanged = true;
-        } else {
-          // Sync weights/packages to master item if they differ
-          const m = nextContainers[masterItemIdx];
-          if (
-            Number(m.grossWeight) !== opInfo.grossWeight ||
-            Number(m.netWeight) !== opInfo.netWeight ||
-            Number(m.pkgsStuffed) !== opInfo.noOfPackages ||
-            Number(m.tareWeightKgs || 0) !== opInfo.tareWeightKgs ||
-            (m.shippingLineSealNo || "") !== (opInfo.shippingLineSealNo || "") ||
-            Number(m.maxPayloadKgs || 0) !== (opInfo.maxPayloadKgs || 0) ||
-            (m.type || "") !== (opInfo.containerSize || "")
-          ) {
-            nextContainers[masterItemIdx] = {
-              ...m,
-              grossWeight: opInfo.grossWeight,
-              netWeight: opInfo.netWeight,
-              pkgsStuffed: opInfo.noOfPackages,
-              tareWeightKgs: opInfo.tareWeightKgs,
-              shippingLineSealNo:
-                opInfo.shippingLineSealNo || m.shippingLineSealNo || "",
-              maxPayloadKgs: opInfo.maxPayloadKgs,
-              type: opInfo.containerSize || m.type || "",
-            };
-            masterChanged = true;
-          }
-        }
-      });
-
-      if (masterChanged) {
-        formik.setFieldValue("containers", nextContainers);
-      }
-    }
-  }, [operations]); // Watch operations to trigger sync
-
-  // Phase D: Master -> Operations Sync (Syncs newly added containers from ContainerTab to Operations)
-  useEffect(() => {
-    if (!formik.values.job_no || operations.length === 0 || isAir) return;
-
-    const masterContainers = formik.values.containers || [];
-    let opsChanged = false;
-
-    const nextOperations = operations.map(op => {
-      // Logic similar to Phase A Intra-sync but sourced from Master
-      if (isDockLCL) return op;
-
-      const syncedOp = { ...op };
-      let opIsDirty = false;
-
-      // Sync master containers to Container Details
-      const cDetails = [...(syncedOp.containerDetails || [])];
-
-      masterContainers.forEach(mContainer => {
-        const mNo = (mContainer.containerNo || "").trim().toUpperCase();
-        if (!mNo) return; // Skip empty master containers (though ContainerTab might have initialized one)
-
-        const exists = cDetails.some(d => (d.containerNo || "").trim().toUpperCase() === mNo);
-        if (!exists) {
-          // Find empty slot to fill
-          const emptyIdx = cDetails.findIndex(d => !(d.containerNo || "").trim());
-
-          if (emptyIdx !== -1) {
-            cDetails[emptyIdx] = { ...cDetails[emptyIdx], containerNo: mNo };
-          } else {
-            cDetails.push({ ...getDefaultItem("containerDetails"), containerNo: mNo });
-          }
-          opIsDirty = true;
-        }
-      });
-      syncedOp.containerDetails = cDetails;
-
-      syncedOp.containerDetails = cDetails;
-
-      // Transporter Details Sync removed as containerNo field is gone
-
-      if (opIsDirty) opsChanged = true;
-
-      if (opIsDirty) opsChanged = true;
-      return syncedOp;
-    });
-
-    if (opsChanged) {
-      formik.setFieldValue("operations", nextOperations);
-    }
-
-  }, [formik.values.containers]); // Watch master list
-
-  // Auto-fill Transporter Gross Weight & Packages from Job Header
-  // DEPENDENCY NOTE: We intentionally exclude 'operations' to prevent reverting user deletions
-  useEffect(() => {
-    const jobGross = parseFloat(formik.values.gross_weight_kg || 0);
-    const jobPkgs = parseFloat(formik.values.total_no_of_pkgs || 0);
-    if (!jobGross && !jobPkgs) return;
-
-    const currentOps = formik.values.operations || [];
-    let changed = false;
-
-    const nextOperations = currentOps.map((op) => {
-      const tDetails = op.transporterDetails || [];
-      // Only proceed if there are rows that need updating (empty/zero weight or pkgs)
-      const needsUpdate = tDetails.some(
-        (t) => !parseFloat(t.grossWeightKgs) || !parseFloat(t.noOfPackages),
-      );
-
-      if (!needsUpdate) return op;
-
-      const newDetails = tDetails.map((t) => {
-        let rowChanged = false;
-        const newRow = { ...t };
-
-        if (!parseFloat(t.grossWeightKgs) && jobGross) {
-          newRow.grossWeightKgs = jobGross;
-          rowChanged = true;
-        }
-        if (!parseFloat(t.noOfPackages) && jobPkgs) {
-          newRow.noOfPackages = jobPkgs;
-          rowChanged = true;
-        }
-
-        if (rowChanged) {
-          changed = true;
-          return newRow;
-        }
-        return t;
-      });
-      return { ...op, transporterDetails: newDetails };
-    });
-
-    if (changed) {
-      formik.setFieldValue("operations", nextOperations);
-    }
-  }, [
-    formik.values.gross_weight_kg,
-    formik.values.total_no_of_pkgs,
-    formik.values.job_no,
-  ]); // Run on mount (job load) or when global values change
+  // Auto-sync Header fields (Shipping Line, Vessel/Flight, Voyage, Booking No/Date) to booking details REMOVED
 
   // --- Actions ---
-
-  const addOperation = () => {
-    const transportMode = toUpper(formik.values.transportMode || "");
-    const isAir = transportMode === "AIR";
-    const customHouse = formik.values.custom_house || "";
-
-    const statusDefaults = { ...getDefaultItem("statusDetails") };
-    if (toUpper(formik.values.consignmentType || "") !== "FCL") {
-      statusDefaults.icdPort = toUpper(customHouse);
-    }
-
-    const tDefaults = getDefaultItem("transporterDetails");
-    // Pre-fill weight and packages for new operation's transporter
-    const jobGross = parseFloat(formik.values.gross_weight_kg || 0);
-    const jobPkgs = parseFloat(formik.values.total_no_of_pkgs || 0);
-    if (jobGross) tDefaults.grossWeightKgs = jobGross;
-    if (jobPkgs) tDefaults.noOfPackages = jobPkgs;
-
-    const newOp = {
-      transporterDetails: [tDefaults],
-      bookingDetails: [getDefaultItem("bookingDetails")],
-      statusDetails: [statusDefaults],
-    };
-
-    if (!isAir) {
-      newOp.containerDetails = [getDefaultItem("containerDetails")];
-      newOp.weighmentDetails = [getDefaultItem("weighmentDetails")];
-    }
-
-    const newOps = [...operations, newOp];
-    formik.setFieldValue("operations", newOps);
-    setActiveOpIndex(newOps.length - 1);
-  };
-
-  const deleteOperation = (index, e) => {
-    e.stopPropagation();
-    if (operations.length > 1) {
-      const newOps = operations.filter((_, i) => i !== index);
-      formik.setFieldValue("operations", newOps);
-      if (activeOpIndex >= newOps.length) {
-        setActiveOpIndex(newOps.length - 1);
-      }
-    }
-  };
 
   const updateField = (section, itemIndex, field, value) => {
     const currentOps = formik.values.operations || [];
     const transportMode = toUpper(formik.values.transportMode || "");
     const isAir = transportMode === "AIR";
 
-    const isLinkedContainerField =
-      !isAir &&
-      field === "containerNo" &&
-      ["transporterDetails", "containerDetails"].includes(
-        section,
-      );
+    // Validation: LEO date cannot be before SB Date
+    if (section === "statusDetails" && field === "leoDate" && value) {
+      const sbDate = formik.values.shipping_bill_date;
+      if (sbDate) {
+        const leo = new Date(value);
+        const sb = new Date(sbDate);
+        if (leo < sb) {
+          alert("LEO date cannot be before SB Filed date");
+          return;
+        }
+      }
+    }
+
+    const isLinkedContainerField = false;
 
     const newOperations = currentOps.map((op, opIdx) => {
       if (opIdx !== activeOpIndex) return op;
 
       const updatedOp = { ...op };
       const currentSection = op[section] || [];
-      const finalValue = field === "containerNo" ? toUpper(value) : value;
+      let finalValue = field === "containerNo" ? toUpper(value) : value;
+
+      // PROJECT-WIDE FIX: Ensure all dates are saved in dd-MM-yyyy format in the payload/DB
+      const lowerField = field.toLowerCase();
+      const isDateField = lowerField.includes("date") || lowerField.includes("dt") || lowerField.includes("time");
+
+      if (isDateField && value && typeof value === "string") {
+        // Only transform if it's clearly from a native picker (yyyy-mm-dd)
+        // Otherwise, simply hold the value exactly as the user typed it or format it
+        if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+          const formatStr = value.includes("T") ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy";
+          finalValue = formatDate(value, formatStr);
+        } else if (/^\d{2}-\d{2}-\d{4}/.test(value)) {
+          // Already in correct format, keep it
+          finalValue = value;
+        } else if (value.length >= 8) {
+          // Attempt parsing any other long strings to standard format
+          const d = formatDate(value);
+          if (d) finalValue = d;
+        }
+      }
 
       // Update the targeted field (handling virtual rows if the array is empty)
       if (currentSection.length === 0 && itemIndex === 0) {
@@ -1261,54 +793,65 @@ const OperationsTab = ({ formik }) => {
         });
       }
 
-      // SYNC: If it's a linked container field, update other sections at same index
-      if (isLinkedContainerField) {
-        ["transporterDetails", "containerDetails"].forEach(
-          (s) => {
-            if (s === section) return;
-            if (updatedOp[s] && updatedOp[s][itemIndex]) {
-              const row = {
-                ...updatedOp[s][itemIndex],
-                containerNo: finalValue,
-              };
-              updatedOp[s] = [...updatedOp[s]];
-              updatedOp[s][itemIndex] = row;
-            }
-          },
-        );
-      }
-
-      // Auto-calculate Max Payload if Gross Weight or Tare Weight changes in Container Details
-      if (section === "containerDetails" && (field === "grossWeight" || field === "tareWeightKgs")) {
-        updatedOp[section] = updatedOp[section].map((item, idx) => {
-          if (idx !== itemIndex) return item;
-          const gW = field === "grossWeight" ? Number(finalValue || 0) : Number(item.grossWeight || 0);
-          const tW = field === "tareWeightKgs" ? Number(finalValue || 0) : Number(item.tareWeightKgs || 0);
-          // Requirement: "Max Payload (KG) = gross weight + tare weight"
-          const payload = gW + tW;
-          return { ...item, maxPayloadKgs: payload };
-        });
-      }
-
-      // Auto-calculate VGM Wt. (invoice) = grossWeightCont + tareWeightKgs
-      if (section === "containerDetails" && (field === "grossWeightCont" || field === "tareWeightKgs")) {
-        updatedOp[section] = updatedOp[section].map((item, idx) => {
-          if (idx !== itemIndex) return item;
-          const gwCont = field === "grossWeightCont" ? Number(finalValue || 0) : Number(item.grossWeightCont || 0);
-          const tW = field === "tareWeightKgs" ? Number(finalValue || 0) : Number(item.tareWeightKgs || 0);
-          return { ...item, vgmWtInvoice: gwCont + tW };
-        });
-      }
 
       // SYNC: Port Of Loading with Header
       if (section === "containerDetails" && field === "portOfLoading") {
         formik.setFieldValue("port_of_loading", finalValue);
       }
 
+
       return updatedOp;
     });
 
     formik.setFieldValue("operations", newOperations);
+
+    // AUTO-SYNC: Update detailedStatus and milestones based on date fields
+    const statusSyncMap = {
+      leoDate: "L.E.O",
+      handoverForwardingNoteDate: isAir ? "File Handover to IATA" : "Container HO",
+      railOutReachedDate: isAir ? "Departure" : "Rail Out",
+    };
+
+    if (section === "statusDetails" && statusSyncMap[field]) {
+      const targetStatus = statusSyncMap[field];
+      const milestones = formik.values.milestones || [];
+      const mIdx = milestones.findIndex((m) => m.milestoneName === targetStatus);
+
+      if (value) {
+        // Update detailedStatus to the milestone being filled
+        formik.setFieldValue("detailedStatus", targetStatus);
+
+        if (mIdx !== -1) {
+          let milestoneDate = value;
+          if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+            const [y, m, d] = value.split("-");
+            milestoneDate = `${d}-${m}-${y}`;
+          }
+          const updatedMilestones = [...milestones];
+          updatedMilestones[mIdx] = {
+            ...updatedMilestones[mIdx],
+            actualDate: milestoneDate,
+            isCompleted: true,
+          };
+          formik.setFieldValue("milestones", updatedMilestones);
+        }
+      } else {
+        // If the date is cleared, reset detailedStatus (if it matches) and milestone
+        if (formik.values.detailedStatus === targetStatus) {
+          formik.setFieldValue("detailedStatus", "");
+        }
+
+        if (mIdx !== -1) {
+          const updatedMilestones = [...milestones];
+          updatedMilestones[mIdx] = {
+            ...updatedMilestones[mIdx],
+            actualDate: "",
+            isCompleted: false,
+          };
+          formik.setFieldValue("milestones", updatedMilestones);
+        }
+      }
+    }
   };
 
   const addItem = (section) => {
@@ -1317,14 +860,7 @@ const OperationsTab = ({ formik }) => {
     if (!op) return;
 
     const newItem = getDefaultItem(section);
-    // Pre-fill gross weight for new transporter row
-    if (section === "transporterDetails") {
-      const jobGross = parseFloat(formik.values.gross_weight_kg || 0);
-      const jobPkgs = parseFloat(formik.values.total_no_of_pkgs || 0);
-      if (jobGross) newItem.grossWeightKgs = jobGross;
-      if (jobPkgs) newItem.noOfPackages = jobPkgs;
-    }
-
+    // Pre-filling from header removed as requested
     op[section] = [...(op[section] || []), newItem];
 
     newOperations[activeOpIndex] = op;
@@ -1392,179 +928,13 @@ const OperationsTab = ({ formik }) => {
       onUpdate={updateField}
       onAdd={addItem}
       onDelete={deleteItem}
-      defaultOpen={false}
+      defaultOpen={true}
+      isEditable={isEditable}
     />
   );
 
-  const containerSection = !isAir && (
-    <TableSection
-      title="Container Details"
-      data={activeOperation.containerDetails || []}
-      formik={formik}
-      activeOpIndex={activeOpIndex}
-      columns={[
-        { field: "containerNo", label: "Container No.", width: "140px" },
-        {
-          field: "shippingLineSealNo",
-          label: "S/Line Seal No",
-          width: "140px",
-        },
-        {
-          field: "customSealNo",
-          label: "Custom Seal No",
-          width: "140px",
-        },
-        { field: "containerSize", label: "Size (FT)", width: "160px", type: "select", options: containerTypes },
-        { field: "cargoType", label: "Cargo Type", width: "120px", type: "select", options: cargoTypes },
-        { field: "portOfLoading", label: "Port Of Loading", width: "170px", type: "select", options: PORT_OF_LOADING_OPTIONS },
-        {
-          field: "grossWeight",
-          label: "Max Gross Weight (KG)",
-          type: "number",
-          width: "100px",
-        },
-        {
-          field: "grossWeightCont",
-          label: "Gross Weight (KG)",
-          type: "number",
-          width: "100px",
-        },
-        {
-          field: "tareWeightKgs",
-          label: "Tare Wt (KG)",
-          type: "number",
-          width: "100px",
-        },
-        {
-          field: "vgmWtInvoice",
-          label: "VGM Wt. (invoice)",
-          type: "number",
-          width: "110px",
-          readOnly: true,
-        },
-        {
-          field: "maxPayloadKgs",
-          label: "Max Payload (KG)",
-          type: "number",
-          width: "100px",
-        },
-        {
-          field: "images",
-          label: "Images",
-          type: "upload",
-          width: "180px",
-          bucketPath: "container_images",
-        },
-      ]}
-      section="containerDetails"
-      onUpdate={updateField}
-      onAdd={addItem}
-      onDelete={deleteItem}
-      defaultOpen={false}
-    />
-  );
 
-  const bookingSection = !isAir && !isLCL && (
-    <TableSection
-      title="Booking Details"
-      data={activeOperation.bookingDetails || []}
-      formik={formik}
-      activeOpIndex={activeOpIndex}
-      columns={[
-        {
-          field: "shippingLineName",
-          label: isAir ? "Air Line" : "Shipping Line",
-          width: "200px",
-          type: "shipping-dropdown",
-        },
-        { field: "forwarderName", label: "Forwarder", width: "150px" },
-        { field: "bookingNo", label: "Booking No.", width: "140px" },
-        // removed shippingLineSealNo from here
-        {
-          field: "bookingDate",
-          label: "Date",
-          type: "date",
-          width: "130px",
-        },
-        {
-          field: "vesselName",
-          label: isAir ? "Flight Name" : "Vessel",
-          width: "150px",
-        },
-        !isAir && { field: "voyageNo", label: "Voyage", width: "100px" },
-        !isAir && {
-          field: "emptyPickUpLoc",
-          label: "Pickup Loc.",
-          width: "140px",
-        },
-        !isAir && {
-          field: "emptyDropLoc",
-          label: "Drop Loc.",
-          width: "140px",
-        },
-        {
-          field: "images",
-          label: "Images",
-          type: "upload",
-          width: "180px",
-          bucketPath: "booking_images",
-        },
-      ].filter(Boolean)}
-      section="bookingDetails"
-      onUpdate={updateField}
-      onAdd={addItem}
-      onDelete={deleteItem}
-      defaultOpen={false}
-    />
-  );
 
-  const weighmentSection = !isAir && !isLCL && (
-    <TableSection
-      title="Weighment Details"
-      data={activeOperation.weighmentDetails || []}
-      formik={formik}
-      activeOpIndex={activeOpIndex}
-      columns={[
-        { field: "regNo", label: "Reg No/Slip No", width: "140px" },
-        {
-          field: "weighBridgeName",
-          label: "Weighbridge Name",
-          width: "180px",
-        },
-        {
-          field: "address",
-          label: "Weighbridge Address",
-          width: "180px",
-        },
-        {
-          field: "dateTime",
-          label: "Weighment Date & Time",
-          type: "datetime-local",
-          width: "160px",
-        },
-        { field: "vehicleNo", label: "Vehicle No.", width: "120px" },
-        {
-          field: "tareWeight",
-          label: "VGM WT (KG)",
-          type: "number",
-          width: "110px",
-          showVgmDiff: true,
-        },
-        {
-          field: "images",
-          label: "Images",
-          type: "upload",
-          width: "180px",
-          bucketPath: "weighment_images",
-        },
-      ]}
-      section="weighmentDetails"
-      onUpdate={updateField}
-      onAdd={addItem}
-      onDelete={deleteItem}
-      defaultOpen={false}
-    />
-  );
 
   const statusSection = (
     <StatusSection
@@ -1576,176 +946,54 @@ const OperationsTab = ({ formik }) => {
       onDelete={deleteItem}
       formik={formik}
       activeOpIndex={activeOpIndex}
+      isEditable={isEditable}
       isAir={isAir}
       consignmentType={toUpper(formik.values.consignmentType || "")}
+      stuffedAt={toUpper(formik.values.goods_stuffed_at || "")}
       customHouse={toUpper(formik.values.custom_house || "")}
-      defaultOpen={false}
+      defaultOpen={true}
     />
   );
 
   let renderedContent;
   if (isDock && isLCL) {
-    // Dock + LCL Order: Carting -> Status -> Weighment (ONLY these 3)
+    // Dock + LCL Order: Carting -> Status
     renderedContent = (
       <>
         {transporterSection}
         {statusSection}
-        {weighmentSection}
       </>
     );
   } else if (isFCL) {
-    // FCL Order (Dock or Factory): Carting/Transport -> Status -> Booking -> Container -> Weighment
+    // FCL Order (Dock or Factory): Carting/Transport -> Status -> Booking
     renderedContent = (
       <>
         {transporterSection}
         {statusSection}
-        {bookingSection}
-        {containerSection}
-        {weighmentSection}
       </>
     );
   } else {
-    // Standard Order (e.g. Air, Other): Transporter -> Container -> Booking -> Weighment -> Status
+    // Standard Order (e.g. Air, Other): Transporter -> Booking -> Status
     renderedContent = (
       <>
         {transporterSection}
-        {containerSection}
-        {bookingSection}
-        {weighmentSection}
         {statusSection}
       </>
     );
   }
 
   return (
-    <div style={styles.container}>
-      {/* Top Bar: Operations Tabs & Global Actions */}
-      <div style={styles.topBar}>
-        <div style={styles.tabsScroll}>
-          {operations.map((op, idx) => (
-            <div
-              key={idx}
-              onClick={() => setActiveOpIndex(idx)}
-              style={{
-                ...styles.opTab,
-                ...(activeOpIndex === idx ? styles.opTabActive : {}),
-              }}
-            >
-              <span style={styles.opTabText}>Operation {idx + 1}</span>
-              {operations.length > 1 && (
-                <span
-                  onClick={(e) => deleteOperation(idx, e)}
-                  style={styles.opTabClose}
-                  title="Remove Operation"
-                >
-                  Delete
-                </span>
-              )}
-            </div>
-          ))}
-          <button onClick={addOperation} style={styles.addOpButton}>
-            + New Op
-          </button>
-        </div>
-        <div style={styles.statusBadge}>
-          <span
-            style={{
-              ...styles.statusDot,
-              background: syncStatus === "Synced" ? "#10b981" : "#f59e0b",
-            }}
-          />
-          {syncStatus}
-        </div>
-      </div>
+    <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
+      <div style={styles.container}>
 
-      {/* Main Content Area */}
-      <div style={styles.contentArea}>{renderedContent}</div>
-    </div>
+        {/* Main Content Area */}
+        <div style={styles.contentArea}>{renderedContent}</div>
+      </div>
+    </fieldset>
   );
 };
 
 
-// const JobDetailedStatusSection = ({ formik }) => {
-//   const statuses = [
-//     "SB Filed",
-//     "SB Receipt",
-//     "L.E.O",
-//     "Container HO to Concor",
-//     "Rail Out",
-//     "Ready for Billing",
-//     "Billing Done",
-//   ];
-
-//   const currentStatusArray = formik.values.detailedStatus || [];
-
-//   const handleToggle = (status) => {
-//     let nextStatus;
-//     if (currentStatusArray.includes(status)) {
-//       nextStatus = currentStatusArray.filter((s) => s !== status);
-//     } else {
-//       nextStatus = [...currentStatusArray, status];
-//     }
-//     formik.setFieldValue("detailedStatus", nextStatus);
-//   };
-
-//   return (
-//     <div style={styles.sectionContainer}>
-//       <div style={styles.sectionHeader}>
-//         <h3 style={styles.sectionTitle}>Job Progress Checklist</h3>
-//       </div>
-//       <div
-//         style={{
-//           display: "flex",
-//           flexWrap: "wrap",
-//           gap: "20px",
-//           padding: "20px",
-//           backgroundColor: "#fff",
-//         }}
-//       >
-//         {statuses.map((status) => (
-//           <label
-//             key={status}
-//             style={{
-//               display: "flex",
-//               alignItems: "center",
-//               gap: "10px",
-//               cursor: "pointer",
-//               fontSize: "14px",
-//               fontWeight: "500",
-//               color: currentStatusArray.includes(status)
-//                 ? "#2563eb"
-//                 : "#4b5563",
-//               padding: "8px 12px",
-//               borderRadius: "6px",
-//               border: "1px solid",
-//               borderColor: currentStatusArray.includes(status)
-//                 ? "#bfdbfe"
-//                 : "#e5e7eb",
-//               backgroundColor: currentStatusArray.includes(status)
-//                 ? "#eff6ff"
-//                 : "#f9fafb",
-//               transition: "all 0.2s",
-//             }}
-//           >
-//             <input
-//               type="checkbox"
-//               checked={currentStatusArray.includes(status)}
-//               onChange={() => handleToggle(status)}
-//               style={{
-//                 width: "18px",
-//                 height: "18px",
-//                 cursor: "pointer",
-//               }}
-//             />
-//             {status}
-//           </label>
-//         ))}
-//       </div>
-//     </div>
-//   );
-// };
-
-// --- Sub-Components ---
 
 const TableSection = ({
   title,
@@ -1909,13 +1157,7 @@ const TableSection = ({
                                   (col.type === "number" &&
                                     Number(item[col.field] || 0) === 0)
                                   ? ""
-                                  : col.type === "date" ||
-                                    col.type === "datetime-local"
-                                    ? formatDateForInput(
-                                      item[col.field],
-                                      col.type,
-                                    )
-                                    : item[col.field]
+                                  : item[col.field]
                               }
                               placeholder={
                                 col.type === "number"
@@ -1925,17 +1167,31 @@ const TableSection = ({
                               }
                               readOnly={!!col.readOnly}
                               disabled={!!col.readOnly}
+                              maxLength={col.field === "containerNo" ? 11 : undefined}
                               onChange={(e) => {
                                 if (col.readOnly) return;
+                                // Fix: Immediate switch back to text mode to show formatted date
+                                if (col.type === "date" || col.type === "datetime-local") {
+                                  e.target.type = "text";
+                                  // Small timeout ensures the DOM has updated the type before we set the formatted value
+                                  // although React should handle this via the controlled 'value' prop.
+                                }
+
+                                let val = e.target.value;
+                                if (col.field === "containerNo") {
+                                  // Restrict to alphanumeric only
+                                  val = val.replace(/[^a-zA-Z0-9]/g, "");
+                                }
+
                                 onUpdate(
                                   section,
                                   rowIdx,
                                   col.field,
                                   col.type === "number"
-                                    ? e.target.value === ""
+                                    ? val === ""
                                       ? 0
-                                      : e.target.value
-                                    : e.target.value,
+                                      : val
+                                    : val,
                                 );
                               }}
                               onDoubleClick={(e) => {
@@ -1950,7 +1206,10 @@ const TableSection = ({
                                   );
                                   if (pickerVal) e.target.value = pickerVal;
                                   e.target.type = col.type;
-                                  e.target.showPicker && e.target.showPicker();
+                                  // Use setTimeout to ensure type change is processed before showPicker
+                                  setTimeout(() => {
+                                    if (e.target.showPicker) e.target.showPicker();
+                                  }, 10);
                                 }
                               }}
                               onBlur={(e) => {
@@ -1963,40 +1222,9 @@ const TableSection = ({
                               }}
                               onFocus={(e) => {
                                 if (col.readOnly) return;
-                                if (
-                                  section === "transporterDetails" &&
-                                  (col.field === "grossWeightKgs" ||
-                                    col.field === "noOfPackages") &&
-                                  !e.target.value
-                                ) {
-                                  const shipmentGross =
-                                    formik.values.gross_weight_kg || "";
-                                  const shipmentPkgs =
-                                    formik.values.total_no_of_pkgs || "";
-
-                                  if (
-                                    col.field === "grossWeightKgs" &&
-                                    shipmentGross
-                                  ) {
-                                    onUpdate(
-                                      section,
-                                      rowIdx,
-                                      col.field,
-                                      shipmentGross,
-                                    );
-                                  } else if (
-                                    col.field === "noOfPackages" &&
-                                    shipmentPkgs
-                                  ) {
-                                    onUpdate(
-                                      section,
-                                      rowIdx,
-                                      col.field,
-                                      shipmentPkgs,
-                                    );
-                                  }
-                                }
+                                // Auto-fill logic from header removed as requested
                               }}
+                              step={col.type === "datetime-local" ? "60" : undefined}
                               style={{
                                 ...styles.cellInput,
                                 ...(col.readOnly ? { backgroundColor: "#f1f5f9", color: "#64748b", cursor: "not-allowed" } : {}),
@@ -2087,12 +1315,18 @@ const StatusSection = ({
   activeOpIndex,
   isAir,
   consignmentType,
+  stuffedAt,
   customHouse,
   defaultOpen = false,
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const displayData =
     data && data.length > 0 ? data : [getDefaultItem(section)];
+
+  const hideStuffing = isAir || ["THAR DRY PORT", "ICD SACHANA", "AHMEDABAD AIR CARGO"].some(h => customHouse.includes(h));
+
+  const isLclDock = consignmentType === "LCL" && (stuffedAt === "DOCK" || stuffedAt === "DOCKS");
+  const isFclFactory = consignmentType === "FCL" && stuffedAt === "FACTORY";
 
   const row1Fields = [
     {
@@ -2125,39 +1359,41 @@ const StatusSection = ({
     {
       field: "icdPort",
       label: "ICD/Port",
-      type: "gateway-dropdown",
+      type: "text",
       width: 1,
+      readOnly: true,
     },
   ].filter((f) => !f.hidden);
 
-  const row2Fields = [
+  // All remaining fields (after row 1) in a single pool, filtered by visibility
+  const allRow2Pool = [
     {
       field: "containerPlacementDate",
-      label: "container placement",
+      label: "Container Placement",
       type: "date",
       width: 1,
-      hidden: isAir,
+      hidden: isAir || isLclDock || isFclFactory,
     },
     {
       field: "stuffingDate",
       label: "Stuffing",
       type: "date",
       width: 1,
-      hidden: isAir,
+      hidden: hideStuffing || isLclDock || isFclFactory,
     },
     {
       field: "stuffingSheetUpload",
       label: "Stuffing Sheet",
       type: "upload",
       width: 1,
-      hidden: isAir,
+      hidden: hideStuffing || isLclDock || isFclFactory,
     },
     {
       field: "stuffingPhotoUpload",
       label: "Stuffing Photo",
       type: "upload",
       width: 1,
-      hidden: isAir,
+      hidden: hideStuffing,
     },
     {
       field: "eGatePassCopyDate",
@@ -2173,19 +1409,16 @@ const StatusSection = ({
     },
     {
       field: "handoverForwardingNoteDate",
-      label: "Handover doc",
+      label: "Handover Doc",
       type: "date",
       width: 1,
     },
-  ].filter((f) => !f.hidden);
-
-  const row3Fields = [
     {
       field: "handoverImageUpload",
       label: "Handover Copy",
       type: "upload",
       width: 1,
-      hidden: isAir,
+      hidden: isAir || isLclDock,
     },
     {
       field: "forwarderName",
@@ -2198,35 +1431,30 @@ const StatusSection = ({
       label: "Dispatch Tracking",
       type: "dispatch",
       width: 2,
-      hidden: isAir,
+      hidden: isAir || isLclDock,
     },
     {
-      field: "railOutReachedDate",
-      label: "Rail Reached",
-      type: "date",
-      width: 1,
-      hidden: isAir,
-    },
-    {
-      field: "billingDocsSentDt",
-      label: "Billing",
-      type: "date",
-      width: 1,
-    },
-    {
-      field: "billingDocsSentUpload",
-      label: "Bill Doc Copy",
-      type: "upload",
-      width: 1,
-    },
-    {
-      field: "billingDocsStatus",
-      label: "Bill Status",
-      type: "select",
-      options: ["Pending", "Completed"],
+      field: "operational_lock",
+      label: "Operational Lock",
+      type: "checkbox",
       width: 1,
     },
   ].filter((f) => !f.hidden);
+
+  // Split: first 7 width-units go to row2, rest overflow to row3
+  const MAX_ROW2_COLS = 7;
+  const row2Fields = [];
+  const row3Fields = [];
+  let row2WidthCount = 0;
+  for (const f of allRow2Pool) {
+    const w = f.width || 1;
+    if (row2WidthCount + w <= MAX_ROW2_COLS) {
+      row2Fields.push(f);
+      row2WidthCount += w;
+    } else {
+      row3Fields.push(f);
+    }
+  }
 
   // Calculate grid columns for each row based on visible fields
   const r1Cols = row1Fields.reduce((sum, f) => sum + (f.width || 1), 0);
@@ -2284,6 +1512,25 @@ const StatusSection = ({
           </option>
         ))}
       </select>
+    ) : f.type === "checkbox" ? (
+      <div
+        style={{
+          padding: "0 8px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={formik.values.operational_lock || false}
+          onChange={(e) =>
+            formik.setFieldValue("operational_lock", e.target.checked)
+          }
+          style={{ transform: "scale(1.2)", cursor: "pointer" }}
+        />
+      </div>
     ) : f.type === "icd" ? (
       <div style={{ padding: "0 4px" }}>
         <IcdPortAutocomplete
@@ -2326,7 +1573,7 @@ const StatusSection = ({
               checked={item.railRoad === "rail"}
               onChange={() => onUpdate(section, rowIdx, "railRoad", "rail")}
             />
-            Rail
+            Rail out
           </label>
           <label
             style={{
@@ -2343,7 +1590,7 @@ const StatusSection = ({
               checked={item.railRoad === "road"}
               onChange={() => onUpdate(section, rowIdx, "railRoad", "road")}
             />
-            Road
+            Road out
           </label>
         </div>
 
@@ -2353,38 +1600,35 @@ const StatusSection = ({
             display: "flex",
             gap: "8px",
             flexWrap: "wrap",
-            alignItems: "center",
+            alignItems: "flex-end",
           }}
         >
           {item.railRoad === "road" && (
-            <>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    cursor: "pointer",
-                    fontSize: "11px",
-                    fontWeight: "600",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={item.concorPrivate === "private"}
-                    onChange={(e) =>
-                      onUpdate(
-                        section,
-                        rowIdx,
-                        "concorPrivate",
-                        e.target.checked ? "private" : "concor",
-                      )
-                    }
-                  />
-                  Private
-                </label>
-              </div>
-
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  cursor: "pointer",
+                  fontSize: "11px",
+                  fontWeight: "600",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={item.concorPrivate === "private"}
+                  onChange={(e) =>
+                    onUpdate(
+                      section,
+                      rowIdx,
+                      "concorPrivate",
+                      e.target.checked ? "private" : "concor",
+                    )
+                  }
+                />
+                Private
+              </label>
               {item.concorPrivate === "private" && (
                 <input
                   type="text"
@@ -2403,80 +1647,135 @@ const StatusSection = ({
                     borderRadius: "4px",
                     height: "28px",
                     minHeight: "28px",
-                    width: "130px",
+                    width: "100px",
                   }}
                   placeholder="Transporter"
                 />
               )}
-            </>
+            </div>
           )}
 
-          <input
-            type="text"
-            value={formatDateForInput(
-              item.handoverConcorTharSanganaRailRoadDate || "",
-              "date",
-            )}
-            onDoubleClick={(e) => {
-              const pickerVal = formatDateForPicker(
-                item.handoverConcorTharSanganaRailRoadDate,
-                "date",
-              );
-              if (pickerVal) e.target.value = pickerVal;
-              e.target.type = "date";
-              e.target.showPicker && e.target.showPicker();
-            }}
-            onBlur={(e) => (e.target.type = "text")}
-            onChange={(e) =>
-              onUpdate(
-                section,
-                rowIdx,
-                "handoverConcorTharSanganaRailRoadDate",
-                e.target.value,
-              )
-            }
-            style={{
-              ...styles.cellInput,
-              border: "1px solid #e2e8f0",
-              borderRadius: "4px",
-              height: "28px",
-              minHeight: "28px",
-              width: "100px",
-            }}
-            placeholder="dd-mm-yyyy"
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "9px", color: "#64748b", fontWeight: 700 }}>
+              {item.railRoad === "rail" ? "RAIL OUT:" : "ROAD OUT:"}
+            </span>
+            <input
+              type="text"
+              value={item.handoverConcorTharSanganaRailRoadDate || ""}
+              onDoubleClick={(e) => {
+                const pickerVal = formatDateForPicker(
+                  item.handoverConcorTharSanganaRailRoadDate,
+                  "date",
+                );
+                if (pickerVal) e.target.value = pickerVal;
+                e.target.type = "date";
+                e.target.showPicker && e.target.showPicker();
+              }}
+              onBlur={(e) => (e.target.type = "text")}
+              onChange={(e) => {
+                e.target.type = "text";
+                onUpdate(
+                  section,
+                  rowIdx,
+                  "handoverConcorTharSanganaRailRoadDate",
+                  e.target.value,
+                );
+              }}
+              style={{
+                ...styles.cellInput,
+                border: "1px solid #e2e8f0",
+                borderRadius: "4px",
+                height: "28px",
+                minHeight: "28px",
+                width: "90px",
+              }}
+              placeholder="dd-mm-yyyy"
+            />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "9px", color: "#64748b", fontWeight: 700 }}>
+              {item.railRoad === "rail" ? "REACHED:" : "ROAD REACHED:"}
+            </span>
+            <input
+              type="text"
+              value={item.railOutReachedDate || ""}
+              onDoubleClick={(e) => {
+                const pickerVal = formatDateForPicker(
+                  item.railOutReachedDate,
+                  "date",
+                );
+                if (pickerVal) e.target.value = pickerVal;
+                e.target.type = "date";
+                e.target.showPicker && e.target.showPicker();
+              }}
+              onBlur={(e) => (e.target.type = "text")}
+              onChange={(e) => {
+                e.target.type = "text";
+                onUpdate(
+                  section,
+                  rowIdx,
+                  "railOutReachedDate",
+                  e.target.value,
+                );
+              }}
+              style={{
+                ...styles.cellInput,
+                border: "1px solid #e2e8f0",
+                borderRadius: "4px",
+                height: "28px",
+                minHeight: "28px",
+                width: "90px",
+              }}
+              placeholder="dd-mm-yyyy"
+            />
+          </div>
         </div>
       </div>
-    ) : (
-      <input
-        type={
-          f.type === "date" || f.type === "datetime-local"
-            ? "text"
-            : f.type || "text"
-        }
-        value={
-          f.type === "date" || f.type === "datetime-local"
-            ? formatDateForInput(item[f.field] || "", f.type)
-            : item[f.field] || ""
-        }
-        onChange={(e) => onUpdate(section, rowIdx, f.field, e.target.value)}
-        onDoubleClick={(e) => {
-          if (f.type === "date" || f.type === "datetime-local") {
-            const pickerVal = formatDateForPicker(item[f.field], f.type);
-            if (pickerVal) e.target.value = pickerVal;
-            e.target.type = f.type;
-            e.target.showPicker && e.target.showPicker();
+    ) : (() => {
+      const isFieldDisabled = f.disabledFn ? f.disabledFn(item) : (f.readOnly || false);
+      return (
+        <input
+          type={
+            f.type === "date" || f.type === "datetime-local"
+              ? "text"
+              : f.type || "text"
           }
-        }}
-        onBlur={(e) => {
-          if (f.type === "date" || f.type === "datetime-local") {
-            e.target.type = "text";
-          }
-        }}
-        style={styles.cellInput}
-        placeholder={f.type === "date" ? "dd-mm-yyyy" : ""}
-      />
-    );
+          value={item[f.field] || ""}
+          disabled={isFieldDisabled}
+          onChange={(e) => {
+            if (isFieldDisabled) return;
+            // Fix: Immediate switch back to text mode to show formatted date
+            if (f.type === "date" || f.type === "datetime-local") {
+              e.target.type = "text";
+            }
+            onUpdate(section, rowIdx, f.field, e.target.value);
+          }}
+          onDoubleClick={(e) => {
+            if (isFieldDisabled) return;
+            if (f.type === "date" || f.type === "datetime-local") {
+              const pickerVal = formatDateForPicker(item[f.field], f.type);
+              if (pickerVal) e.target.value = pickerVal;
+              e.target.type = f.type;
+              e.target.showPicker && e.target.showPicker();
+            }
+          }}
+          onBlur={(e) => {
+            if (f.type === "date" || f.type === "datetime-local") {
+              e.target.type = "text";
+            }
+          }}
+          style={{
+            ...styles.cellInput,
+            ...(isFieldDisabled
+              ? { backgroundColor: "#f1f5f9", color: "#94a3b8", cursor: "not-allowed" }
+              : {}),
+          }}
+          placeholder={f.type === "date" ? "dd-mm-yyyy" : ""}
+          title={isFieldDisabled ? "Upload Bill Doc Copy first to enable this field" : ""}
+        />
+      );
+    })();
   };
 
   return (
@@ -2502,120 +1801,115 @@ const StatusSection = ({
           {displayData.map((item, rowIdx) => (
             <div
               key={rowIdx}
-              style={{ borderBottom: "2px solid #e2e8f0", padding: "10px 0" }}
+              style={{ borderBottom: "2px solid #e2e8f0" }}
             >
-              {/* Row 1 Grid */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${r1Cols}, 1fr)`,
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "4px 4px 0 0",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Headers 1 */}
-                {row1Fields.map((f) => (
+              <div style={styles.tableWrapper}>
+                <div style={{ minWidth: "1000px" }}>
+                  {/* Row 1 Grid */}
                   <div
-                    key={`h1-${f.field}`}
                     style={{
-                      ...styles.th,
-                      borderBottom: "1px solid #cbd5e1",
-                      borderRight: "1px solid #e2e8f0",
+                      display: "grid",
+                      gridTemplateColumns: `repeat(${r1Cols}, 1fr)`,
                     }}
                   >
-                    {f.label}
+                    {/* Headers 1 */}
+                    {row1Fields.map((f) => (
+                      <div
+                        key={`h1-${f.field}`}
+                        style={{
+                          ...styles.th,
+                          borderBottom: "1px solid #cbd5e1",
+                          borderRight: "1px solid #e2e8f0",
+                        }}
+                      >
+                        {f.label}
+                      </div>
+                    ))}
+                    {/* Data 1 */}
+                    {row1Fields.map((f) => (
+                      <div
+                        key={`d1-${f.field}`}
+                        style={{ ...styles.td, borderRight: "1px solid #e2e8f0" }}
+                      >
+                        {renderCell(f, item, rowIdx)}
+                      </div>
+                    ))}
                   </div>
-                ))}
-                {/* Data 1 */}
-                {row1Fields.map((f) => (
-                  <div
-                    key={`d1-${f.field}`}
-                    style={{ ...styles.td, borderRight: "1px solid #e2e8f0" }}
-                  >
-                    {renderCell(f, item, rowIdx)}
-                  </div>
-                ))}
-              </div>
 
-              {/* Row 2 Grid */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${r2Cols}, 1fr)`,
-                  border: "1px solid #e2e8f0",
-                  borderTop: "none",
-                  borderRadius: "0",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Headers 2 */}
-                {row2Fields.map((f) => (
+                  {/* Row 2 Grid */}
                   <div
-                    key={`h2-${f.field}`}
                     style={{
-                      ...styles.th,
-                      gridColumn: `span ${f.width || 1}`,
-                      borderBottom: "1px solid #cbd5e1",
-                      borderRight: "1px solid #e2e8f0",
+                      display: "grid",
+                      gridTemplateColumns: `repeat(${r2Cols}, 1fr)`,
                     }}
                   >
-                    {f.label}
+                    {/* Headers 2 */}
+                    {row2Fields.map((f) => (
+                      <div
+                        key={`h2-${f.field}`}
+                        style={{
+                          ...styles.th,
+                          gridColumn: `span ${f.width || 1}`,
+                          borderBottom: "1px solid #cbd5e1",
+                          borderRight: "1px solid #e2e8f0",
+                        }}
+                      >
+                        {f.label}
+                      </div>
+                    ))}
+                    {/* Data 2 */}
+                    {row2Fields.map((f) => (
+                      <div
+                        key={`d2-${f.field}`}
+                        style={{
+                          ...styles.td,
+                          gridColumn: `span ${f.width || 1}`,
+                          borderRight: "1px solid #e2e8f0",
+                        }}
+                      >
+                        {renderCell(f, item, rowIdx)}
+                      </div>
+                    ))}
                   </div>
-                ))}
-                {/* Data 2 */}
-                {row2Fields.map((f) => (
-                  <div
-                    key={`d2-${f.field}`}
-                    style={{
-                      ...styles.td,
-                      gridColumn: `span ${f.width || 1}`,
-                      borderRight: "1px solid #e2e8f0",
-                    }}
-                  >
-                    {renderCell(f, item, rowIdx)}
-                  </div>
-                ))}
-              </div>
 
-              {/* Row 3 Grid */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${r3Cols}, 1fr)`,
-                  border: "1px solid #e2e8f0",
-                  borderTop: "none",
-                  borderRadius: "0 0 4px 4px",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Headers 3 */}
-                {row3Fields.map((f) => (
-                  <div
-                    key={`h3-${f.field}`}
-                    style={{
-                      ...styles.th,
-                      gridColumn: `span ${f.width || 1}`,
-                      borderBottom: "1px solid #cbd5e1",
-                      borderRight: "1px solid #e2e8f0",
-                    }}
-                  >
-                    {f.label}
-                  </div>
-                ))}
-                {/* Data 3 */}
-                {row3Fields.map((f) => (
-                  <div
-                    key={`d3-${f.field}`}
-                    style={{
-                      ...styles.td,
-                      gridColumn: `span ${f.width || 1}`,
-                      borderRight: "1px solid #e2e8f0",
-                    }}
-                  >
-                    {renderCell(f, item, rowIdx)}
-                  </div>
-                ))}
+                  {/* Row 3 Grid - only rendered if there are overflow fields */}
+                  {row3Fields.length > 0 && (
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: `repeat(${r3Cols}, 1fr)`,
+                      }}
+                    >
+                      {/* Headers 3 */}
+                      {row3Fields.map((f) => (
+                        <div
+                          key={`h3-${f.field}`}
+                          style={{
+                            ...styles.th,
+                            gridColumn: `span ${f.width || 1}`,
+                            borderBottom: "1px solid #cbd5e1",
+                            borderRight: "1px solid #e2e8f0",
+                          }}
+                        >
+                          {f.label}
+                        </div>
+                      ))}
+                      {/* Data 3 */}
+                      {row3Fields.map((f) => (
+                        <div
+                          key={`d3-${f.field}`}
+                          style={{
+                            ...styles.td,
+                            gridColumn: `span ${f.width || 1}`,
+                            borderRight: "1px solid #e2e8f0",
+                          }}
+                        >
+                          {renderCell(f, item, rowIdx)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div
@@ -2749,20 +2043,16 @@ const IcdPortAutocomplete = ({ value, onChange }) => {
 
   useEffect(() => {
     if (!open) return;
-    const fetchPorts = async () => {
-      try {
-        const res = await fetch(
-          `${apiBase}/gateway-ports/?page=1&status=&type=&search=`,
-        );
-        const data = await res.json();
-        const ports = Array.isArray(data?.data) ? data.data : [];
-        setOpts(ports);
-      } catch (err) {
-        console.error("Error fetching gateway ports", err);
-      }
-    };
-    fetchPorts();
-  }, [open, apiBase]);
+    const staticPorts = [
+      { unece_code: "INMUN1", name: "MUNDRA" },
+      { unece_code: "INIXY1", name: "KANDLA" },
+      { unece_code: "INPAV1", name: "PIPAVAV" },
+      { unece_code: "INHZA1", name: "HAZIRA" },
+      { unece_code: "INNSA1", name: "NHAVA SHEVA" },
+      { unece_code: "INAMD4", name: "AHMEDABAD AIR PORT" }
+    ];
+    setOpts(staticPorts);
+  }, [open]);
 
   useEffect(() => {
     const handleOutside = (e) => {
@@ -2876,80 +2166,11 @@ const EmptyState = ({ onAdd }) => (
 
 const styles = {
   container: {
-    fontFamily:
-      "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    backgroundColor: "#f8fafc",
-    padding: "16px",
-    minHeight: "100%",
-  },
-  topBar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "16px",
-    background: "linear-gradient(to bottom, #ffffff, #f8fafc)",
-    padding: "12px 16px",
-    borderRadius: "8px",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-    border: "1px solid #e2e8f0",
-  },
-  tabsScroll: {
-    display: "flex",
-    gap: "8px",
-    overflowX: "auto",
-    paddingBottom: "2px",
-    alignItems: "center",
-    flex: 1,
-  },
-  opTab: {
-    padding: "8px 16px",
-    borderRadius: "6px",
-    background: "#ffffff",
-    color: "#64748b",
-    fontSize: "13px",
-    fontWeight: "600",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    border: "1px solid #e2e8f0",
-    transition: "all 0.2s ease",
-    userSelect: "none",
-    whiteSpace: "nowrap",
-  },
-  opTabActive: {
-    background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
-    color: "#ffffff",
-    borderColor: "#2563eb",
-    boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)",
-  },
-  opTabText: {
-    whiteSpace: "nowrap",
-    fontSize: "13px",
-    fontWeight: "600",
-  },
-  opTabClose: {
-    fontSize: "11px",
-    lineHeight: 1,
-    padding: "3px 6px",
-    borderRadius: "4px",
-    marginLeft: "4px",
-    background: "rgba(255, 255, 255, 0.25)",
-    color: "#fff",
-    cursor: "pointer",
-    transition: "background 0.2s",
-  },
-  addOpButton: {
-    padding: "8px 16px",
-    borderRadius: "6px",
-    border: "1px dashed #cbd5e1",
-    background: "#ffffff",
-    color: "#64748b",
-    fontSize: "13px",
-    fontWeight: "600",
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-    transition: "all 0.2s",
+    fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
+    fontSize: 12,
+    color: "#1f2933",
+    padding: 12,
+    background: "#f5f7fb",
   },
   statusBadge: {
     display: "flex",
@@ -2957,12 +2178,12 @@ const styles = {
     gap: "6px",
     fontSize: "12px",
     fontWeight: "600",
-    color: "#475569",
+    color: "#16408f",
     background: "#ffffff",
     padding: "8px 14px",
     borderRadius: "20px",
-    border: "1px solid #e2e8f0",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+    border: "1px solid #d2d8e4",
+    boxShadow: "0 0 0 1px rgba(15, 23, 42, 0.02)",
   },
   statusDot: {
     width: "7px",
@@ -2975,149 +2196,149 @@ const styles = {
   },
   sectionContainer: {
     background: "#ffffff",
-    borderRadius: "8px",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-    border: "1px solid #e2e8f0",
+    border: "1px solid #d2d8e4",
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 12,
+    boxShadow: "0 0 0 1px rgba(15, 23, 42, 0.02)",
     overflow: "hidden",
-    marginBottom: "10px",
   },
   sectionHeader: {
-    padding: "12px 16px",
-    borderBottom: "1px solid #e2e8f0",
-    background: "linear-gradient(to bottom, #f8fafc, #f1f5f9)",
+    padding: "10px 12px",
+    background: "#ffffff",
   },
   sectionTitle: {
     margin: 0,
-    fontSize: "13px",
-    fontWeight: "700",
-    color: "#0f172a",
+    fontWeight: 700,
+    color: "#16408f",
+    fontSize: 13,
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
     textTransform: "uppercase",
-    letterSpacing: "0.5px",
+    letterSpacing: "0.3px",
   },
   sectionFooter: {
-    padding: "12px 16px",
-    borderTop: "1px solid #e2e8f0",
-    background: "#f8fafc",
+    padding: "10px 12px",
+    background: "#ffffff",
   },
   tableWrapper: {
+    borderRadius: 6,
+    overflow: "hidden",
+    border: "1px solid #d2d8e4",
     overflowX: "auto",
-    overflowY: "visible",
   },
   table: {
     width: "100%",
+    minWidth: "max-content",
     borderCollapse: "collapse",
-    fontSize: "12px",
-    tableLayout: "auto", // Changed from fixed to auto for dynamic column widths
+    fontSize: 12,
+    tableLayout: "auto",
   },
   th: {
-    background: "linear-gradient(to bottom, #f1f5f9, #e2e8f0)",
-    color: "#0f172a",
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#ffffff",
+    background: "#16408f",
+    padding: "8px 6px",
     textAlign: "left",
-    padding: "10px 12px",
-    borderBottom: "1px solid #cbd5e1",
-    borderRight: "1px solid #e2e8f0",
     whiteSpace: "nowrap",
-    fontSize: "11px",
     textTransform: "uppercase",
-    letterSpacing: "0.3px",
+    borderBottom: "none",
+    borderRight: "1px solid rgba(255,255,255,0.15)",
   },
   tr: {
     transition: "background 0.1s ease",
   },
   td: {
-    padding: "0",
-    overflow: "visible",
-
-    borderBottom: "1px solid #e2e8f0",
-    borderRight: "1px solid #e2e8f0",
-    height: "auto",
+    padding: "6px 6px",
+    borderBottom: "1px solid #e0e5f0",
+    borderRight: "1px solid #e0e5f0",
     verticalAlign: "middle",
-    background: "#ffffff",
+    overflow: "visible",
+    height: "auto",
+    background: "#fafaffff",
   },
   cellInput: {
     width: "100%",
-    minHeight: "36px",
-    border: "1px solid transparent",
-    padding: "6px 10px",
-    fontSize: "12px",
-    fontWeight: "500",
-    color: "#1e293b",
+    fontSize: 12,
+    padding: "3px 6px",
+    border: "1px solid #c4ccd8",
+    borderRadius: 3,
+    height: 26,
+    background: "#fafaffff",
     outline: "none",
-    background: "transparent",
     boxSizing: "border-box",
-    transition: "all 0.15s ease",
+    fontWeight: 600,
   },
   uploadCell: {
-    padding: "8px",
-    minWidth: "140px",
+    padding: "6px",
+    minWidth: "120px",
+    display: "flex",
+    alignItems: "center",
+    gap: "4px",
   },
   rowDeleteBtn: {
-    background: "transparent",
-    color: "#ef4444",
+    color: "#e53e3e",
+    background: "none",
     border: "none",
-    fontSize: "11px",
     cursor: "pointer",
-    padding: "6px 10px",
-    fontWeight: "600",
-    opacity: 0.7,
-    transition: "all 0.2s",
+    fontSize: 11,
+    fontWeight: 600,
+    padding: "4px 8px",
   },
   addRowBtn: {
-    background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+    padding: "4px 10px",
+    fontSize: 11,
+    borderRadius: 4,
+    border: "1px solid #16408f",
+    background: "#16408f",
     color: "#ffffff",
-    border: "none",
-    fontSize: "13px",
-    fontWeight: "600",
     cursor: "pointer",
-    padding: "8px 16px",
+    fontWeight: 600,
     display: "inline-flex",
     alignItems: "center",
-    gap: "6px",
-    borderRadius: "6px",
-    boxShadow: "0 2px 6px rgba(37, 99, 235, 0.2)",
-    transition: "all 0.2s ease",
+    gap: "5px",
   },
   statusGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-    gap: "16px",
-    padding: "16px",
+    gap: "12px",
+    padding: "12px",
   },
   statusField: {
     display: "flex",
     flexDirection: "column",
-    gap: "6px",
+    gap: "4px",
   },
   statusLabel: {
-    fontSize: "11px",
-    fontWeight: "600",
-    color: "#475569",
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#16408f",
     textTransform: "uppercase",
     letterSpacing: "0.3px",
   },
   statusInput: {
-    padding: "8px 10px",
-    border: "1px solid #e2e8f0",
-    borderRadius: "6px",
-    fontSize: "12px",
-    fontWeight: "500",
-    color: "#1e293b",
-    outline: "none",
     width: "100%",
+    fontSize: 12,
+    padding: "3px 6px",
+    border: "1px solid #c4ccd8",
+    borderRadius: 3,
+    height: 26,
+    background: "#fafaffff",
+    outline: "none",
     boxSizing: "border-box",
-    transition: "all 0.15s ease",
-    background: "#ffffff",
+    fontWeight: 600,
   },
   checkboxWrapper: {
-    padding: "8px 10px",
-    border: "1px solid",
-    borderRadius: "6px",
-    fontSize: "12px",
+    padding: "6px 8px",
+    border: "1px solid #c4ccd8",
+    borderRadius: 3,
+    fontSize: 12,
     cursor: "pointer",
     textAlign: "center",
     userSelect: "none",
-    fontWeight: "600",
+    fontWeight: 600,
     transition: "all 0.15s ease",
   },
   emptyContainer: {
@@ -3125,29 +2346,28 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     minHeight: "300px",
-    padding: "16px",
+    padding: "12px",
   },
   emptyContent: {
     textAlign: "center",
-    background: "#ffffff",
+    background: "#fafaffff",
     padding: "32px",
-    borderRadius: "12px",
-    boxShadow: "0 4px 8px rgba(0,0,0,0.06)",
-    border: "1px solid #e2e8f0",
+    borderRadius: 6,
+    border: "1px solid #d2d8e4",
+    boxShadow: "0 0 0 1px rgba(15, 23, 42, 0.02)",
   },
   primaryBtn: {
-    background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+    padding: "8px 20px",
+    fontSize: 13,
+    borderRadius: 4,
+    border: "1px solid #16408f",
+    background: "#16408f",
     color: "#ffffff",
-    border: "none",
-    padding: "10px 24px",
-    borderRadius: "6px",
-    fontSize: "14px",
-    fontWeight: "600",
     cursor: "pointer",
-    boxShadow: "0 2px 8px rgba(37, 99, 235, 0.25)",
+    fontWeight: 600,
     transition: "all 0.2s ease",
   },
-  // --- New Styles for Dropdown ---
+  // --- Styles for Dropdown ---
   field: {
     marginBottom: "0",
     position: "relative",
@@ -3163,30 +2383,29 @@ const styles = {
   },
   input: {
     width: "100%",
-    minHeight: "36px",
-    border: "1px solid transparent",
-    padding: "6px 10px",
-    paddingRight: "28px",
-    fontSize: "12px",
-    fontWeight: "500",
-    color: "#1e293b",
+    fontSize: 12,
+    padding: "3px 6px",
+    paddingRight: "22px",
+    border: "1px solid #c4ccd8",
+    borderRadius: 3,
+    height: 26,
+    background: "#fafaffff",
     outline: "none",
-    background: "transparent",
     boxSizing: "border-box",
-    transition: "all 0.15s ease",
+    fontWeight: 600,
   },
   acIcon: {
     position: "absolute",
-    right: "10px",
+    right: "6px",
     fontSize: "10px",
     pointerEvents: "none",
     color: "#64748b",
   },
   acMenu: {
     background: "#ffffff",
-    border: "1px solid #cbd5e1",
-    borderRadius: "6px",
-    marginTop: "4px",
+    border: "1px solid #d2d8e4",
+    borderRadius: 4,
+    marginTop: "2px",
     maxHeight: "200px",
     overflowY: "auto",
     overflowX: "visible",
@@ -3194,13 +2413,13 @@ const styles = {
     boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
   },
   acItem: (isActive) => ({
-    padding: "10px 12px",
+    padding: "8px 10px",
     cursor: "pointer",
-    fontSize: "12px",
-    fontWeight: "500",
-    color: isActive ? "#1e293b" : "#475569",
-    background: isActive ? "#f1f5f9" : "#ffffff",
-    borderBottom: "1px solid #f1f5f9",
+    fontSize: 12,
+    fontWeight: 600,
+    color: isActive ? "#16408f" : "#1f2933",
+    background: isActive ? "#eef2ff" : "#ffffff",
+    borderBottom: "1px solid #f0f2f6",
     transition: "all 0.1s ease",
   }),
 };

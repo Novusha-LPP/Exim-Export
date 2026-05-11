@@ -232,6 +232,22 @@ export const userSchema = new Schema({
       trim: true,
     },
   ],
+  selected_branches: [
+    {
+      type: String,
+      trim: true,
+    },
+  ],
+  selected_ports: [
+    {
+      type: String,
+      trim: true,
+    },
+  ],
+  canDeleteDocs: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // Use the dedicated user database connection for the User model

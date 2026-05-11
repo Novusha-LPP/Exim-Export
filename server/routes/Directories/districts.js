@@ -1,96 +1,126 @@
-// routes/directories/districts.js
-import express from "express";
-import DistrictCode from "../../model/Directorties/DistrictCode.js";
+import express from 'express';
+import District from '../../model/Directorties/District.js';
 
 const router = express.Router();
 
-// GET all (with optional filters like stateCode / status)
-router.get("/", async (req, res) => {
+// GET /api/districts - Get all districts with search and status filter
+router.get('/', async (req, res) => {
   try {
-    const { stateCode, status, search } = req.query;
+    const {
+      page = 1,
+      limit = 300, // Higher limit as it's often used for dropdowns
+      search = '',
+      status = ''
+    } = req.query;
 
-    const query = {};
-    if (stateCode) query.stateCode = stateCode;
-    if (status) query.status = status;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    let query = {};
 
     if (search) {
-      const regex = new RegExp(search, "i");
       query.$or = [
-        { districtName: regex },
-        { districtCode: regex },
-        { stateCode: regex },
+        { districtName: { $regex: search, $options: 'i' } },
+        { districtCode: { $regex: search, $options: 'i' } }
       ];
     }
 
-    const districts = await DistrictCode.find(query).sort({
-      stateCode: 1,
-      districtCode: 1,
+    if (status) query.status = status;
+
+    const total = await District.countDocuments(query);
+    const districts = await District.find(query)
+      .sort({ districtName: 1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    res.json({
+      success: true,
+      data: districts,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+        totalRecords: total,
+        perPage: limitNum
+      }
     });
-    res.json(districts);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// GET single
-router.get("/:id", async (req, res) => {
+// GET /api/districts/:id - Get district by ID
+router.get('/:id', async (req, res) => {
   try {
-    const d = await DistrictCode.findById(req.params.id);
-    if (!d) return res.status(404).json({ message: "Not found" });
-    res.json(d);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const district = await District.findById(req.params.id);
+    if (!district) {
+      return res.status(404).json({ success: false, message: 'District not found' });
+    }
+    res.json({ success: true, data: district });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// CREATE
-router.post("/", async (req, res) => {
+// POST /api/districts - Create new district
+router.post('/', async (req, res) => {
   try {
-    const dist = new DistrictCode(req.body);
-    const saved = await dist.save();
-    res.status(201).json(saved);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+    const district = new District(req.body);
+    const savedDistrict = await district.save();
+    
+    res.status(201).json({
+      success: true,
+      message: 'District created successfully',
+      data: savedDistrict
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({ 
+        success: false,
+        message: `${field.toUpperCase()} already exists` 
+      });
+    }
+    res.status(400).json({ success: false, message: error.message });
   }
 });
 
-// UPDATE
-router.put("/:id", async (req, res) => {
+// PUT /api/districts/:id - Update district
+router.put('/:id', async (req, res) => {
   try {
-    const updated = await DistrictCode.findByIdAndUpdate(
+    const district = await District.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
-    if (!updated) return res.status(404).json({ message: "Not found" });
-    res.json(updated);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-});
 
-// DELETE
-router.delete("/:id", async (req, res) => {
-  try {
-    const deleted = await DistrictCode.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: "Not found" });
-    res.json({ message: "Deleted" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// BULK DELETE (for parity with airline bulkDelete)
-router.delete("/", async (req, res) => {
-  try {
-    const { ids } = req.body;
-    if (!Array.isArray(ids) || !ids.length) {
-      return res.status(400).json({ message: "No ids provided" });
+    if (!district) {
+      return res.status(404).json({ success: false, message: 'District not found' });
     }
-    const result = await DistrictCode.deleteMany({ _id: { $in: ids } });
-    res.json({ deletedCount: result.deletedCount });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+
+    res.json({
+      success: true,
+      message: 'District updated successfully',
+      data: district
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// DELETE /api/districts/:id - Delete district
+router.delete('/:id', async (req, res) => {
+  try {
+    const district = await District.findByIdAndDelete(req.params.id);
+    if (!district) {
+      return res.status(404).json({ success: false, message: 'District not found' });
+    }
+    res.json({
+      success: true,
+      message: 'District deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

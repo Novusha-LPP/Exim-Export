@@ -213,6 +213,13 @@ const drawbackDetailsSchema = new Schema(
     rosctlAmount: { type: Number, default: 0 },
     rosctlCategory: { type: String, trim: true }, // "B" or "D"
     showRosctl: { type: Boolean, default: false },
+    drawback_scroll_date: { type: String, trim: true },
+    drawback_scroll_no: { type: String, trim: true },
+    rosctl_scroll_no: { type: String, trim: true },
+    rosctl_scroll_date: { type: String, trim: true },
+    manualQuantity: { type: Boolean, default: false },
+    manualUnit: { type: Boolean, default: false },
+
   },
   { _id: true },
 );
@@ -226,6 +233,8 @@ const productDetailsSchema = new Schema(
     qtyUnit: { type: String },
     socQuantity: { type: String, default: "0" },
     socunit: { type: String },
+    isSqcQuantityManual: { type: Boolean, default: false },
+    isSqcUnitManual: { type: Boolean, default: false },
     unitPrice: { type: String },
     priceUnit: { type: String },
     per: { type: String },
@@ -263,8 +272,10 @@ const productDetailsSchema = new Schema(
     igstCompensationCess: {
       igstPaymentStatus: { type: String, trim: true, default: "LUT" },
       taxableValueINR: { type: String, default: "0" },
+      isTaxableValueManual: { type: Boolean, default: false },
       igstRate: { type: String, default: "0" },
       igstAmountINR: { type: String, default: "0" },
+      isIgstManual: { type: Boolean, default: false },
       compensationCessRate: { type: String, default: "0" },
       compensationCessAmountINR: { type: String, default: "0" },
     },
@@ -279,6 +290,7 @@ const productDetailsSchema = new Schema(
       amountINR: { type: String, default: "0" },
       unit: { type: String, trim: true }, // Added unit if needed
       capUnit: { type: String, trim: true }, // Added capUnit if needed
+      isCapUnitManual: { type: Boolean, default: false },
     },
 
     // --- ROSCTL Info (Grouped) ---
@@ -420,19 +432,33 @@ const containerDetailsSchema = new Schema(
     serialNumber: { type: Number },
     containerNo: { type: String },
     sealNo: String,
+    shippingLineSealNo: String,
     sealDate: { type: String, trim: true },
     type: {
       type: String,
     },
-    pkgsStuffed: { type: Number, default: 0 }, // 'Pkgs Stuffed'
+    pkgsStuffed: { type: Number, default: 0 },
     grossWeight: { type: Number, default: 0 },
+    maxGrossWeightKgs: { type: Number, default: 0 },
+    vgmWtInvoice: { type: Number, default: 0 },
+    maxPayloadKgs: { type: Number, default: 0 },
     sealType: {
       type: String,
     },
     grWtPlusTrWt: { type: Number, default: 0 },
     tareWeightKgs: { type: Number, default: 0 },
     sealDeviceId: String,
-    rfid: String, // If needed for RFID field
+    rfid: String,
+    images: [String],
+    // Weighment Details
+    weighBridgeName: { type: String, trim: true },
+    weighmentTransporterName: { type: String, trim: true },
+    weighmentRegNo: { type: String, trim: true },
+    weighmentDateTime: { type: String, trim: true },
+    weighmentVehicleNo: { type: String, trim: true },
+    weighmentTareWeight: { type: Number, default: 0 },
+    weighmentAddress: { type: String, trim: true },
+    weighmentImages: [String],
   },
   { _id: true },
 );
@@ -542,16 +568,105 @@ const eSanchitDocumentSchema = new Schema({
 });
 
 // Charge Schema
-// Charge Schema
 const chargeSchema = new Schema(
   {
-    isEnabled: { type: Boolean, default: false },
-    particulars: { type: String, trim: true },
-    buying: { type: Number, default: 0 },
-    selling: { type: Number, default: 0 },
-    remarks: { type: String, trim: true },
+    chargeHead: { type: String },
+    category: { type: String },
+    chargeType: { type: String, enum: ['Margin', 'Reimbursement'], default: 'Margin' },
+    hsnCode: { type: String, trim: true },
+    tdsCategory: { type: String, trim: true },
+    isPbMandatory: { type: Boolean, default: false },
+
+    // Top-level fields
+    invoice_number: { type: String, trim: true },
+    invoice_date: { type: String, trim: true },
+    remark: { type: String, trim: true },
+    purchase_book_no: { type: String, trim: true },
+    purchase_book_status: { type: String, trim: true },
+    purchase_book_is_approved: { type: Boolean, default: false },
+    payment_request_no: { type: String, trim: true },
+    payment_request_status: { type: String, trim: true },
+    payment_request_is_approved: { type: Boolean, default: false },
+    payment_request_receipt_url: { type: String, trim: true },
+    purchase_book_receipt_url: { type: String, trim: true },
+    payment_request_transaction_type: { type: String, trim: true },
+
+    revenue: {
+      particulars: { type: String },
+      url: { type: [String], default: [] },
+      amount: { type: Number, default: 0 },
+      amountINR: { type: Number, default: 0 },
+      currency: { type: String, default: 'INR' },
+      exRate: { type: Number, default: 1 },
+      exchangeRate: { type: Number, default: 1 }, // alias for exRate sometimes used in UI
+      gst: { type: Number, default: 0 },
+      total: { type: Number, default: 0 },
+      invoiceNo: { type: String },
+      invoiceDate: { type: String },
+      status: { type: String },
+      isSynced: { type: Boolean, default: false },
+
+      // Added fields for GST/TDS persistence
+      isGst: { type: Boolean, default: false },
+      gstRate: { type: Number, default: 18 },
+      basicAmount: { type: Number, default: 0 },
+      gstAmount: { type: Number, default: 0 },
+      cgst: { type: Number, default: 0 },
+      sgst: { type: Number, default: 0 },
+      igst: { type: Number, default: 0 },
+      isTds: { type: Boolean, default: false },
+      tdsPercent: { type: Number, default: 0 },
+      tdsAmount: { type: Number, default: 0 },
+      netPayable: { type: Number, default: 0 },
+      chargeDescription: { type: String, trim: true },
+      partyName: { type: String, trim: true },
+      partyType: { type: String, trim: true },
+      branchIndex: { type: Number, default: 0 },
+      basis: { type: String, trim: true },
+      qty: { type: Number, default: 1 },
+      rate: { type: Number, default: 0 },
+    },
+    cost: {
+      particulars: { type: String },
+      url: { type: [String], default: [] },
+      amount: { type: Number, default: 0 },
+      amountINR: { type: Number, default: 0 },
+      currency: { type: String, default: 'INR' },
+      exRate: { type: Number, default: 1 },
+      exchangeRate: { type: Number, default: 1 },
+      gst: { type: Number, default: 0 },
+      total: { type: Number, default: 0 },
+      vendorName: { type: String }, // maintained for legacy
+      invoiceNo: { type: String },
+      invoiceDate: { type: String },
+      status: { type: String },
+      isSynced: { type: Boolean, default: false },
+
+      // Added fields for GST/TDS persistence
+      isGst: { type: Boolean, default: false },
+      gstRate: { type: Number, default: 18 },
+      basicAmount: { type: Number, default: 0 },
+      gstAmount: { type: Number, default: 0 },
+      cgst: { type: Number, default: 0 },
+      sgst: { type: Number, default: 0 },
+      igst: { type: Number, default: 0 },
+      isTds: { type: Boolean, default: false },
+      tdsPercent: { type: Number, default: 0 },
+      tdsAmount: { type: Number, default: 0 },
+      netPayable: { type: Number, default: 0 },
+      chargeDescription: { type: String, trim: true },
+      partyName: { type: String, trim: true },
+      partyType: { type: String, trim: true },
+      branchIndex: { type: Number, default: 0 },
+      basis: { type: String, trim: true },
+      qty: { type: Number, default: 1 },
+      rate: { type: Number, default: 0 },
+    },
+    copyToCost: { type: Boolean, default: true },
+    parentId: { type: Schema.Types.ObjectId },
+    parentModule: { type: String },
   },
-  { _id: true },
+  { _id: true, timestamps: true },
 );
 
 // Milestone Tracking Schema
@@ -575,6 +690,7 @@ const statusDetailsSchema = new Schema(
     goodsReportDate: { type: String, trim: true },
     leoDate: { type: String, trim: true },
     leoUpload: [String],
+    booking_copy: [String], // Added for status-level storage
     stuffingDate: { type: String, trim: true },
     stuffingSheetUpload: [String],
     stuffingPhotoUpload: [String],
@@ -582,11 +698,27 @@ const statusDetailsSchema = new Schema(
     eGatePassUpload: [String],
     icdPort: { type: String, trim: true },
     handoverForwardingNoteDate: { type: String, trim: true },
+    forwardingNoteUpload: [String],
     handoverImageUpload: [String],
+    manualVgmUpload: [String],
+    odexVgmUpload: [String],
+    odexEsbUpload: [String],
+    odexForm13Upload: [String],
+    cmaForwardingNoteUpload: [String],
+    containerDoorPhotoUpload: [String],
+    cartingPhotoUpload: [String],
+    weighmentSlipUpload: [String],
+    clpUpload: [String],
+    completionCopyUpload: [String],
+    movementCopyUpload: [String],
+    shippingInstructionsUpload: [String],
+    form13CopyUpload: [String],
     forwarderName: { type: String, trim: true },
     handoverConcorTharSanganaRailRoadDate: { type: String, trim: true },
     billingDocsSentDt: { type: String, trim: true },
     billingDocsSentUpload: [String],
+    otherDocUpload: [String],
+    forwardingNoteDocUpload: [String],
     billingDocsStatus: { type: String, trim: true },
     railRoad: { type: String, trim: true },
     concorPrivate: { type: String, trim: true },
@@ -606,56 +738,12 @@ const exportOperationSchema = new Schema(
   {
     transporterDetails: [
       {
-        transporterName: { type: String },
-        vehicleNo: { type: String },
-        noOfPackages: { type: Number },
-        grossWeightKgs: { type: Number },
+        transporterName: { type: String, trim: true },
+        vehicleNo: { type: String, trim: true },
+        noOfPackages: { type: Number, trim: true },
+        grossWeightKgs: { type: Number, trim: true },
         images: [String],
         cartingDate: { type: String, trim: true },
-      },
-    ],
-
-    containerDetails: [
-      {
-        containerNo: { type: String },
-        shippingLineSealNo: { type: String },
-        containerSize: { type: String },
-        containerType: { type: String },
-        cargoType: { type: String, default: "GEN" },
-        portOfLoading: { type: String },
-        customSealNo: { type: String },
-        grossWeight: { type: Number },
-        maxGrossWeightKgs: { type: Number },
-        tareWeightKgs: { type: Number },
-        maxPayloadKgs: { type: Number },
-        images: [String],
-      },
-    ],
-
-    bookingDetails: [
-      {
-        shippingLineName: { type: String },
-        forwarderName: { type: String },
-        bookingNo: { type: String },
-        bookingDate: { type: String, trim: true },
-        vesselName: { type: String },
-        voyageNo: { type: String },
-        portOfLoading: { type: String },
-        emptyPickUpLoc: { type: String },
-        emptyDropLoc: { type: String },
-        images: [String],
-      },
-    ],
-
-    weighmentDetails: [
-      {
-        weighBridgeName: { type: String },
-        regNo: { type: String },
-        dateTime: { type: String, trim: true },
-        vehicleNo: { type: String },
-        tareWeight: { type: Number },
-        address: { type: String },
-        images: [String],
       },
     ],
 
@@ -676,18 +764,18 @@ const exportJobSchema = new mongoose.Schema(
       default: Date.now,
     },
     isBuyer: { type: Boolean },
+    isGeneralJob: { type: Boolean, default: false },
 
     ////////////////////////////////////////////////// Excel sheet
     year: { type: String, trim: true },
-    jobNumber: { type: String, trim: true, unique: true },
+    jobNumber: { type: String, trim: true }, // unique index handled below with isGeneralJob
     custom_house: { type: String, trim: true },
     job_date: { type: String, trim: true },
     exporter: { type: String, trim: true },
     description: { type: String, trim: true },
     sb_no: { type: String, trim: true },
     consignmentType: {
-      type: String,
-      enum: ["FCL", "LCL", "AIR", "Break Bulk"],
+      type: String, trim: true
     },
     shipping_line_airline: { type: String, trim: true },
     branchSrNo: { type: String, trim: true },
@@ -695,11 +783,13 @@ const exportJobSchema = new mongoose.Schema(
     bank_name: { type: String, trim: true },
     ieCode: { type: String, trim: true },
     branch_index: { type: String, trim: true },
+    bank_index: { type: String, trim: true },
     exporter_ref_no: { type: String, trim: true },
     shipper: { type: String, trim: true },
     sb_type: { type: String, trim: true },
     transportMode: { type: String, trim: true },
     exporter_type: { type: String, trim: true },
+    exporter_branch_name: { type: String, trim: true },
 
     // Exporter Additional Fields (Missing)
     branch_sno: { type: String, trim: true },
@@ -740,6 +830,15 @@ const exportJobSchema = new mongoose.Schema(
     flight_no: { type: String, trim: true },
     flight_date: { type: String, trim: true },
     nature_of_cargo: { type: String, trim: true },
+    booking_no: { type: String, trim: true },
+    booking_date: { type: String, trim: true },
+    forwarder: { type: String, trim: true },
+    pickup_loc: { type: String, trim: true },
+    drop_loc: { type: String, trim: true },
+    cut_off_date: { type: String, trim: true },
+    booking_copy: [String],
+    leo_date: { type: String, trim: true },
+    gate_in: { type: String, trim: true },
     loose_pkgs: { type: String, trim: true },
     no_of_containers: { type: String, trim: true },
     marks_nos: { type: String, trim: true },
@@ -747,9 +846,7 @@ const exportJobSchema = new mongoose.Schema(
     sample_accompanied: { type: Boolean, default: false },
     factory_address: { type: String, trim: true },
     warehouse_code: { type: String, trim: true },
-    stuffing_seal_type: { type: String, trim: true },
-    stuffing_seal_no: { type: String, trim: true },
-    stuffing_agency_name: { type: String, trim: true },
+
 
     total_no_of_pkgs: { type: String, trim: true },
     package_unit: { type: String, trim: true },
@@ -766,12 +863,10 @@ const exportJobSchema = new mongoose.Schema(
     buyer_other_than_consignee: { type: Boolean, default: false },
 
     // products: { type: Array, default: [] },
-    charges: { type: Array, default: [] },
+    charges: [chargeSchema],
     documents: { type: Object, default: {} },
 
     status: { type: String, trim: true },
-    detailedStatus: { type: [String], default: [] },
-    
     // --- DSC Signing Status ---
     signingStatus: {
       type: String,
@@ -780,6 +875,15 @@ const exportJobSchema = new mongoose.Schema(
     },
     signedFilePath: { type: String, trim: true }, // Path to .sb file or .sig file in S3/Local
     signedDate: { type: Date },
+    detailedStatus: { type: String, default: "" },
+    vgm_done: { type: Boolean, default: false },
+    vgm_date: { type: String, trim: true },
+    form13_done: { type: Boolean, default: false },
+    form13_date: { type: String, trim: true },
+    shipping_bill_done: { type: Boolean, default: false },
+    shipping_bill_done_date: { type: String, trim: true },
+    freight_done: { type: Boolean, default: false },
+    freight_enquiry_id: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Exporter Information
     exporter_address: { type: String, trim: true },
@@ -795,14 +899,12 @@ const exportJobSchema = new mongoose.Schema(
     // Regulatory Information
     ieCode: { type: String, trim: true }, // Import Export Code
     exporter_pan: { type: String, trim: true },
-    exporter_gstin: { type: String, trim: true },
     exporter_tan: { type: String, trim: true },
     ad_code: { type: String, trim: true }, // Authorized Dealer Code
 
     // Banking Information - Removed duplicate bank_name
     bank_account_number: { type: String, trim: true },
     bank_ifsc_code: { type: String, trim: true },
-    bank_swift_code: { type: String, trim: true },
 
     ////////////////////////////////////////////////// Consignee/Importer Information
     consignees: [
@@ -827,11 +929,7 @@ const exportJobSchema = new mongoose.Schema(
     ////////////////////////////////////////////////// Containers Information
     operations: [exportOperationSchema], // ✅ CORRECT - works directly
 
-    // Removed duplicate container_count
-    stuffing_date: { type: String, trim: true },
-    stuffing_supervisor: { type: String, trim: true },
-    stuffing_remarks: { type: String, trim: true },
-    cfs: { type: String, trim: true },
+
 
     ////////////////////////////////////////////////// Charges and Financial
     remarks: { type: String, trim: true },
@@ -841,7 +939,6 @@ const exportJobSchema = new mongoose.Schema(
 
     job_no: {
       type: String,
-      unique: true,
       uppercase: true,
     },
 
@@ -931,10 +1028,9 @@ const exportJobSchema = new mongoose.Schema(
         default: false,
       },
 
-      // This will reference the main stuffing_seal_no
       sealNumber: {
         type: String,
-        ref: "stuffing_seal_no", // Indicates this references another field
+        trim: true,
       },
 
       // Documents for Annex C1
@@ -972,27 +1068,20 @@ const exportJobSchema = new mongoose.Schema(
     // Charges and Billing
     charges: [chargeSchema],
 
-    // Payment Requests
-    // AR/AP Invoices
-    arInvoices: [
-      {
-        date: Date,
-        billNo: String,
-        type: String,
-        organization: { type: String, ref: "Directory" },
-        currency: { type: String, ref: "Currency" },
-        amount: Number,
-        balance: Number,
-        vendorBillNo: String,
-      },
-    ],
 
     // eSanchit Documents
     eSanchitDocuments: [eSanchitDocumentSchema],
 
     // Milestone Tracking
     isJobtrackingEnabled: { type: Boolean, default: false },
+    jobtrackingCompletedDate: { type: String, trim: true },
+    operational_lock: { type: Boolean, default: false },
+    financial_lock: { type: Boolean, default: false },
     isJobCanceled: { type: Boolean, default: false },
+    jobCanceledDate: { type: String, trim: true },
+    cancellationReason: { type: String, trim: true },
+    send_for_billing: { type: Boolean, default: false },
+    send_for_billing_date: { type: Date },
     milestones: [milestoneSchema],
     customerremark: { type: String, trim: true },
     shipmenttype: { type: String, trim: true },
@@ -1000,24 +1089,23 @@ const exportJobSchema = new mongoose.Schema(
     milestoneviewuploaddocuments: { type: String, trim: true },
     milestonehandledby: { type: String, trim: true },
 
+    // Fine Report Fields
+    fine_amount: { type: Number, default: 0 },
+    fine_accountability: { type: String, trim: true }, // "By Us" or "By Exporter"
+    fine_remarks: { type: String, trim: true },
+    fines: [
+      {
+        fineType: { type: String, trim: true }, // "Challan", "Fine by Officer", "Notesheet Amount", "Misc"
+        accountability: { type: String, trim: true },
+        amount: { type: Number, default: 0 },
+        remarks: { type: String, trim: true },
+      },
+    ],
+
     // System Fields
     createdBy: { type: String },
     updatedBy: String,
-    ar_invoices: [arInvoiceSchema],
-    total_ar_amount: { type: Number, default: 0 },
-    outstanding_balance: { type: Number, default: 0 },
-    ar_default_currency: { type: String, trim: true },
-    ar_payment_terms_days: { type: Number, default: 30 },
-    ar_last_updated: { type: Date },
-    ar_notes: { type: String, trim: true },
 
-    // Add these fields to your main exportJobSchema:
-    ap_invoices: [apInvoiceSchema],
-    total_ap_amount: { type: Number, default: 0 },
-    ap_outstanding_balance: { type: Number, default: 0 },
-    ap_default_currency: { type: String, trim: true },
-    ap_payment_terms_days: { type: Number, default: 30 },
-    ap_notes: { type: String, trim: true },
     // Add to main exportJobSchema:
     charges: [chargeSchema],
     // Export Checklist Additional Fields - Missing Fields Added
@@ -1026,9 +1114,9 @@ const exportJobSchema = new mongoose.Schema(
       default: "SURAJ FORWARDERS & SHIPPING AGENCIES",
       trim: true,
     },
-    masterblno: { type: String, trim: true }, // Master BL Number
-    houseblno: { type: String, trim: true }, // House BL Number
+    icegateId: { type: String, trim: true, default: "RAJANSFPL" },
     isLocked: { type: Boolean, default: false },
+    isGeneralJob: { type: Boolean, default: false },
     lockedBy: { type: String, trim: true, default: null }, // User who currently has the job open
     lockedAt: { type: Date, default: null }, // Timestamp when the job was locked
   },
@@ -1041,303 +1129,30 @@ const exportJobSchema = new mongoose.Schema(
 );
 
 exportJobSchema.pre("save", function (next) {
-
-
-  // CLEANUP: If Dock (FCL or LCL), remove containerNo from all Transporter (Carting) Details
-  // This ensures that Carting Details are treated as independent "Gate In" entries for loose goods,
-  // not tied 1:1 to the output containers.
-  const isDock =
-    this.goods_stuffed_at?.toUpperCase() === "DOCK" ||
-    this.goods_stuffed_at?.toUpperCase() === "DOCKS";
-
-  if (isDock) {
-    (this.operations || []).forEach((op) => {
-      (op.transporterDetails || []).forEach((td) => {
-        if (td.containerNo) {
-
-          td.containerNo = "";
-        }
-      });
-    });
+  // Enforce ONLY ONE operation
+  if (this.operations && this.operations.length > 1) {
+    this.operations = [this.operations[0]];
   }
 
-  // ========================================
-  // COLLECT ALL UNIQUE CONTAINER NUMBERS FROM BOTH SOURCES
-  // ========================================
-
-  // From containers array
-  const containerNosFromContainers = new Set(
-    (this.containers || [])
-      .map((c) => c.containerNo)
-      .filter((c) => c && typeof c === "string" && c.trim().length > 0)
-      .map((c) => c.trim().toUpperCase()),
-  );
-
-  // From operations - CHECK ALL ARRAYS (transporterDetails, containerDetails, weighmentDetails)
-  const containerNosFromOperations = new Set();
-  (this.operations || []).forEach((op) => {
-    // Get from transporterDetails array
-    (op.transporterDetails || []).forEach((td) => {
-      if (td.containerNo && td.containerNo.trim().length > 0)
-        containerNosFromOperations.add(td.containerNo.trim().toUpperCase());
-    });
-    // Get from containerDetails array
-    (op.containerDetails || []).forEach((cd) => {
-      if (cd.containerNo && cd.containerNo.trim().length > 0)
-        containerNosFromOperations.add(cd.containerNo.trim().toUpperCase());
-    });
-    // Get from weighmentDetails array
-    (op.weighmentDetails || []).forEach((wd) => {
-      if (wd.containerNo && wd.containerNo.trim().length > 0)
-        containerNosFromOperations.add(wd.containerNo.trim().toUpperCase());
-    });
-  });
-
-  // Merge all unique container numbers
-  const allContainerNos = new Set([
-    ...containerNosFromContainers,
-    ...containerNosFromOperations,
-  ]);
-
-
-  // ========================================
-  // STEP 1: SYNC CONTAINERS ARRAY
-  // ========================================
-  const existingContainers = this.containers || [];
-  const existingContainerMap = new Map(
-    existingContainers.map((c) => [c.containerNo, c]),
-  );
-
-  // Create missing containers from operations
-  const syncedContainers = [];
-  let serialNum = 1;
-
-  allContainerNos.forEach((containerNo) => {
-    if (existingContainerMap.has(containerNo)) {
-      // Keep existing container
-      const existing = existingContainerMap.get(containerNo);
-      existing.serialNumber = serialNum++;
-      syncedContainers.push(existing);
-
-    } else {
-      // Create new container from operation data
-      const opData = this.getOperationDataForContainer(containerNo);
-      const newContainer = {
-        serialNumber: serialNum++,
-        containerNo: containerNo,
-        type: opData.containerSize || "",
-        pkgsStuffed: opData.noOfPackages || 0,
-        grossWeight: opData.grossWeight || 0,
-        sealNo: "",
-        sealDate: "",
-        sealType: "",
-        grWtPlusTrWt: 0,
-        sealDeviceId: "",
-        rfid: "",
-      };
-      syncedContainers.push(newContainer);
-
-    }
-  });
-
-  this.containers = syncedContainers;
-
-
-  // ========================================
-  // STEP 2: SYNC OPERATIONS ARRAY
-  // ========================================
-
-  // If no operations exist, create one operation with all containers
+  // Ensure at least one operation exists
   if (!this.operations || this.operations.length === 0) {
-
-
-    const transporterDetails = [];
-    const containerDetails = [];
-    const weighmentDetails = [];
-
-    // IsDock check is already defined above
-
-    allContainerNos.forEach((containerNo) => {
-      const container = syncedContainers.find(
-        (c) => c.containerNo === containerNo,
-      );
-
-
-
-      containerDetails.push({
-        containerNo,
-        containerSize: container?.type || "",
-        containerType: "",
-        cargoType: "Gen",
-        maxGrossWeightKgs: 0,
-        tareWeightKgs: 2250,
-        maxPayloadKgs: 28230,
-        images: [],
-      });
-
-      // 3. Weighment Details
-      // REMOVED: Weighment Details should be fully independent and not tied to the container list.
-    });
-
-    // If no weighment rows exist at all, add one empty row to prevent UI issues
-    if (weighmentDetails.length === 0) {
-      weighmentDetails.push({
-        weighBridgeName: "",
-        regNo: "",
-        dateTime: "",
-        vehicleNo: "",
-        tareWeight: 0,
-        address: "",
-      });
+    this.operations = [{
+      transporterDetails: [],
+      statusDetails: [{}]
+    }];
+  } else if (this.operations[0]) {
+    // Ensure the first operation has at least one statusDetails entry
+    if (!this.operations[0].statusDetails || this.operations[0].statusDetails.length === 0) {
+      this.operations[0].statusDetails = [{}];
     }
-
-    // Ensure at least one empty row exists so the UI isn't broken
-    if (transporterDetails.length === 0) {
-      transporterDetails.push({
-        transporterName: "",
-        vehicleNo: "",
-        noOfPackages: 0,
-        grossWeightKgs: 0,
-        images: [],
-        cartingDate: null,
-      });
-    }
-
-    this.operations = [
-      {
-        transporterDetails,
-        containerDetails,
-        weighmentDetails,
-        bookingDetails: [
-          {
-            shippingLineName: "",
-            bookingNo: "",
-            bookingDate: null,
-            vesselName: "",
-            voyageNo: "",
-            portOfLoading: "",
-            emptyPickUpLoc: "",
-            emptyDropLoc: "",
-            validity: "",
-            images: [],
-          },
-        ],
-        statusDetails: [
-          {
-            rms: "",
-            goodsRegistrationDate: null,
-            leoDate: null,
-            leoUpload: [],
-            stuffingDate: null,
-            stuffingSheetUpload: [],
-            stuffingPhotoUpload: [],
-            eGatePassCopyDate: null,
-            eGatePassUpload: [],
-            handoverForwardingNoteDate: null,
-            handoverImageUpload: [],
-            handoverConcorTharSanganaRailRoadDate: null,
-            billingDocsSentDt: null,
-            billingDocsSentUpload: [],
-            billingDocsStatus: "",
-            railRoad: "",
-            concorPrivate: "",
-            privateTransporterName: "",
-            hoToConsoleDate: null,
-            hoToConsoleDate2: null,
-            hoToConsoleName: "",
-            containerPlacementDate: null,
-          },
-        ],
-      },
-    ];
-  } else {
-    // Update existing operation(s)
-    this.operations.forEach((operation) => {
-      // Iterate over ALL valid containers to Upsert (Update or Insert) details
-      allContainerNos.forEach((containerNo) => {
-        const container = syncedContainers.find(
-          (c) => c.containerNo === containerNo,
-        );
-
-
-
-        // 2. Container Details
-        operation.containerDetails = operation.containerDetails || [];
-        let cd = operation.containerDetails.find(
-          (c) => c.containerNo === containerNo,
-        );
-
-        if (!cd) {
-          // Insert new
-          operation.containerDetails.push({
-            containerNo,
-            containerSize: container?.type || "",
-            containerType: "",
-            cargoType: "Gen",
-            maxGrossWeightKgs: 0,
-            tareWeightKgs: 0,
-            maxPayloadKgs: 0,
-            images: [],
-          });
-        } else {
-          // Update existing: Sync Size logic from main Container list
-          if (container?.type) {
-            cd.containerSize = container.type;
-          }
-        }
-
-        // 3. Weighment Details
-        // REMOVED: Weighment Details should be fully independent and not tied to the container list.
-      });
-    });
-  }
-
-
-
-  // ========================================
-  // STEP 3: SEAL SYNC
-  // ========================================
-  if (this.stuffing_seal_no) {
-    this.annexC1Details = this.annexC1Details || {};
-    this.annexC1Details.sealNumber = this.stuffing_seal_no;
   }
 
   next();
 });
 
-// Helper method to extract operation data for a container
-exportJobSchema.methods.getOperationDataForContainer = function (containerNo) {
-  let result = { containerSize: "", grossWeight: 0, noOfPackages: 0 };
-
-  (this.operations || []).forEach((op) => {
-    const cd = (op.containerDetails || []).find(
-      (c) => c.containerNo === containerNo,
-    );
-    if (cd) {
-      result.containerSize = cd.containerSize || result.containerSize;
-    }
-
-    const wd = (op.weighmentDetails || []).find(
-      (w) => w.containerNo === containerNo,
-    );
-    if (wd) {
-      result.grossWeight = wd.grossWeight || result.grossWeight;
-    }
-
-    const td = (op.transporterDetails || []).find(
-      (t) => t.containerNo === containerNo,
-    );
-    if (td) {
-      result.noOfPackages = td.noOfPackages || result.noOfPackages;
-      result.grossWeight = td.grossWeightKgs || result.grossWeight;
-    }
-  });
-
-  return result;
-};
-
 // Remove redundant indexes and add compound indexes
-exportJobSchema.index({ jobNumber: 1 }, { unique: true });
+exportJobSchema.index({ jobNumber: 1, isGeneralJob: 1 }, { unique: true });
+exportJobSchema.index({ job_no: 1, isGeneralJob: 1 }, { unique: true });
 exportJobSchema.index({ filingMode: 1, status: 1 }); // Compound index
 exportJobSchema.index({ jobDate: -1, customHouse: 1 }); // Common query pattern
 exportJobSchema.index({ createdAt: -1 }); // For recent jobs
@@ -1402,26 +1217,65 @@ exportJobSchema.statics.findByStatus = function (status) {
   return this.find({ status: status });
 };
 
-// Virtual population for sealNumber
-exportJobSchema.virtual("annexC1Details.virtualSealNumber").get(function () {
-  return this.stuffing_seal_no;
-});
 
-exportJobSchema.virtual("annexC1Details.virtualSealType").get(function () {
-  return this.stuffing_seal_type;
-});
-
-// Pre-save to keep them in sync
 exportJobSchema.pre("save", function (next) {
-  // Always sync the seal number from main to annex C1
-  if (this.stuffing_seal_no) {
-    this.annexC1Details.sealNumber = this.stuffing_seal_no;
-  }
+  // 0. Sync dates from operations to milestones to ensure automated status updates
+  // Priorities: Date fields are now EXCEPTIONAL and are the absolute source of truth
+  const op0Status = (this.operations && this.operations[0] && this.operations[0].statusDetails && this.operations[0].statusDetails[0]);
+  const isAirJob = (this.job_no && String(this.job_no).toUpperCase().includes('/AIR/'));
+
+  const isFCL = this.consignmentType === "FCL";
+  const handoverDate = op0Status ? op0Status.handoverForwardingNoteDate : null;
+  const railOutDate = op0Status ? op0Status.railOutReachedDate : null;
+
+  const syncMap = [
+    { date: this.sb_date, name: "SB Filed" },
+    { date: op0Status ? op0Status.leoDate : null, name: "L.E.O" },
+    { date: handoverDate, name: isAirJob ? "File Handover to IATA" : "Container HO" },
+    {
+      date: (isAirJob || !isFCL) ? handoverDate : (handoverDate && railOutDate ? handoverDate : null),
+      name: "Billing Pending"
+    },
+    { date: railOutDate, name: isAirJob ? "Departure" : "Rail Out" },
+    { date: op0Status ? op0Status.billingDocsSentDt : null, name: "Billing Done" },
+  ];
+
+  (this.milestones || []).forEach((m) => {
+    const match = syncMap.find((s) => s.name === m.milestoneName);
+    if (match) {
+      if (match.date) {
+        m.isCompleted = true;
+        m.actualDate = match.date;
+      } else {
+        // PRIORITIZE DATE: If date field is empty, the milestone MUST be incomplete
+        m.isCompleted = false;
+        m.actualDate = "";
+      }
+    }
+  });
 
   // 1. Bi-directional sync between detailedStatus and milestones
-  const detailedSet = new Set(this.detailedStatus || []);
+  // Prevent string casting bug by handling detailedStatus as a single string item
+  const currentStatusItems = [];
+  if (typeof this.detailedStatus === "string" && this.detailedStatus.trim() !== "") {
+    currentStatusItems.push(this.detailedStatus);
+  } else if (Array.isArray(this.detailedStatus)) {
+    // Legacy support if somehow array
+    currentStatusItems.push(...this.detailedStatus);
+  }
 
-  // A. Update detailedStatus based on Milestones (handling unchecks)
+  const detailedSet = new Set(currentStatusItems);
+
+  // Normalize "Road Out" to "Rail Out" to ensure consistency
+  if (detailedSet.has("Road Out")) {
+    detailedSet.delete("Road Out");
+    detailedSet.add("Rail Out");
+  } else if (detailedSet.has("Road out")) {
+    detailedSet.delete("Road out");
+    detailedSet.add("Rail Out");
+  }
+
+  // A. Update detailedSet based on Milestones (handling unchecks)
   (this.milestones || []).forEach((m) => {
     if (m.milestoneName) {
       if (m.isCompleted) {
@@ -1432,15 +1286,39 @@ exportJobSchema.pre("save", function (next) {
     }
   });
 
-  // B. Update Milestones based on detailedStatus (handling unchecks)
+  // B. Update Milestones based on detailedSet (handling unchecks)
+  let latestCompletedMilestone = "";
+
+  // Define priority order to find the "highest" milestone regardless of array position
+  const isAir = isAirJob;
+  const milestonePriority = [
+    "SB Filed",
+    "L.E.O",
+    isAir ? "File Handover to IATA" : "Container HO",
+    isAir ? "Departure" : "Rail Out",
+    "Road Out", // Treat Road Out as equivalent status
+    "Billing Pending",
+    "Billing Done"
+  ];
+
   if (this.milestones && this.milestones.length > 0) {
     this.milestones.forEach((m) => {
       if (detailedSet.has(m.milestoneName)) {
         if (!m.isCompleted) {
           m.isCompleted = true;
         }
-        // Auto-fill date if missing or still using old placeholder
-        if (!m.actualDate || m.actualDate.startsWith("dd-")) {
+
+        // Determine if this milestone is "higher" than the current latest
+        const currentPriority = milestonePriority.indexOf(m.milestoneName);
+        const latestPriority = milestonePriority.indexOf(latestCompletedMilestone);
+
+        if (currentPriority >= latestPriority) {
+          latestCompletedMilestone = m.milestoneName;
+        }
+
+        // Auto-fill date if missing - BUT ONLY if it's NOT a milestone driven by a specific date field
+        const isDateDriven = syncMap.some(s => s.name === m.milestoneName);
+        if (!isDateDriven && (!m.actualDate || m.actualDate.startsWith("dd-"))) {
           const d = new Date();
           const day = String(d.getDate()).padStart(2, "0");
           const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -1461,13 +1339,66 @@ exportJobSchema.pre("save", function (next) {
         }
       }
     });
+
+    // Make sure detailedStatus is a primitive String and properly reflects the latest tracked tracking progression point.
+    // Normalized check: If the latest milestone is "Road Out", we treat it as "Rail Out" for the primary detailedStatus label.
+    if (latestCompletedMilestone === "Road Out" || latestCompletedMilestone === "Road out") {
+      latestCompletedMilestone = "Rail Out";
+    }
+
+    if (latestCompletedMilestone) {
+      this.detailedStatus = latestCompletedMilestone;
+    } else {
+      // If no milestones are checked but they typed something custom
+      let customSt = Array.from(detailedSet).pop() || "";
+      if (customSt === "Road Out" || customSt === "Road out") customSt = "Rail Out";
+      this.detailedStatus = customSt;
+    }
+  } else {
+    // If there are no milestones array to reference, simply store the topmost status
+    this.detailedStatus = Array.from(detailedSet).pop() || "";
   }
 
-  this.detailedStatus = Array.from(detailedSet);
-
-  // 2. Business Logic: If Billing Done is selected, mark as Completed
+  // 2. Business Logic: Status transitions
   if (this.detailedStatus.includes("Billing Done")) {
     this.status = "Completed";
+  } else if (this.status === "Completed" && !this.isJobCanceled) {
+    // Revert to Pending if Billing Done is removed and it was previously Completed
+    this.status = "Pending";
+  }
+
+  // Auto-sync jobNumber with job_no for indexing and consistency
+  if (this.isModified("job_no")) {
+    this.jobNumber = this.job_no;
+  }
+
+  // 3. Auto-populate completion dates for VGM, Form 13, and shipping bill
+  const getTodayStr = () => {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, "0");
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const year = today.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  if (this.isModified("vgm_done") || this.isModified("form13_done") || this.isModified("shipping_bill_done")) {
+    if (this.vgm_done && !this.vgm_date) this.vgm_date = getTodayStr();
+    else if (!this.vgm_done) this.vgm_date = "";
+
+    if (this.form13_done && !this.form13_date) this.form13_date = getTodayStr();
+    else if (!this.form13_done) this.form13_date = "";
+
+    if (this.shipping_bill_done && !this.shipping_bill_done_date) this.shipping_bill_done_date = getTodayStr();
+    else if (!this.shipping_bill_done) this.shipping_bill_done_date = "";
+  }
+
+  // 4. Sync leo_date with operations[0].statusDetails[0].leoDate
+  const op0 = this.operations && this.operations[0];
+  const stat0 = op0 && op0.statusDetails && op0.statusDetails[0];
+  if (stat0 && stat0.leoDate) {
+    this.leo_date = stat0.leoDate;
+  } else if (this.leo_date && stat0) {
+    stat0.leoDate = this.leo_date;
   }
 
   next();
@@ -1475,12 +1406,7 @@ exportJobSchema.pre("save", function (next) {
 
 // Static method to find by seal number
 exportJobSchema.statics.findBySealNumber = function (sealNo) {
-  return this.findOne({
-    $or: [
-      { stuffing_seal_no: sealNo },
-      { "annexC1Details.sealNumber": sealNo },
-    ],
-  });
+  return this.findOne({ "annexC1Details.sealNumber": sealNo });
 };
 // Create and export the model
 const ExJobModel = mongoose.model("ExportJob", exportJobSchema);

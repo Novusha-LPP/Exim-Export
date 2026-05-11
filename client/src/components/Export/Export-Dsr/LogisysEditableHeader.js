@@ -1,22 +1,48 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
+import axios from "axios";
 import { createPortal } from "react-dom";
 import { UserContext } from "../../../contexts/UserContext";
 import DateInput from "../../common/DateInput.js";
 import AutocompleteSelect from "../../common/AutocompleteSelect.js";
 import CustomHouseDropdown from "../../common/CustomHouseDropdown.js";
-import { Menu, MenuItem, IconButton, Tooltip } from "@mui/material";
+import { Menu, MenuItem, IconButton, Tooltip, Autocomplete, TextField, CircularProgress, Button } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import * as xlsx from "xlsx";
 import ExportChecklistGenerator from "./StandardDocuments/ExportChecklistGenerator";
 import ConsignmentNoteGenerator from "./StandardDocuments/ConsignmentNoteGenerator";
 import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
 import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharGenerator";
 import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
 import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
+import VGMAuthorizationGenerator from "./StandardDocuments/VGMAuthorizationGenerator";
+import FreightCertificateGenerator from "./StandardDocuments/FreightCertificateGenerator";
+import BillOfLadingGenerator from "./StandardDocuments/BillOfLadingGenerator";
 
 // Helper function
 const toUpper = (str) => (str || "").toUpperCase();
+
+// Helper to split job number into prefix, sequence, and suffix
+const getJobNoParts = (jn) => {
+  const p = (jn || "").split("/");
+  if (p.length >= 4) {
+    return {
+      prefix: p.slice(0, -2).join("/") + "/",
+      seq: p[p.length - 2],
+      suffix: "/" + p[p.length - 1],
+    };
+  }
+  if (p.length === 3) {
+    return {
+      prefix: p[0] + "/",
+      seq: p[1],
+      suffix: "/" + p[2],
+    };
+  }
+  return { prefix: "", seq: jn, suffix: "" };
+};
 
 // Compact styles for single-row layout
 const styles = {
@@ -42,7 +68,7 @@ const styles = {
     border: "1px solid #d6dae2",
     borderRadius: 3,
     fontSize: 11,
-    background: "#fff",
+    background: "#fafaffff",
     boxSizing: "border-box",
     height: 24,
   },
@@ -52,7 +78,7 @@ const styles = {
     border: "1px solid #e0e0e0",
     borderRadius: 3,
     fontSize: 11,
-    background: "#f5f5f5",
+    background: "#fafaffff",
     boxSizing: "border-box",
     height: 24,
     color: "#666",
@@ -73,7 +99,7 @@ const styles = {
     right: 0,
     maxHeight: 240,
     overflowY: "auto",
-    background: "#fff",
+    background: "#fafaffff",
     border: "1px solid #d6dae2",
     borderRadius: 4,
     boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
@@ -84,7 +110,7 @@ const styles = {
     cursor: "pointer",
     fontSize: 11,
     fontWeight: 500,
-    background: active ? "#e3f2fd" : "#fff",
+    background: active ? "#e3f2fd" : "#fafaffff",
     color: "#111827",
     borderBottom: "1px solid #f0f0f0",
   }),
@@ -112,29 +138,21 @@ function useGatewayPortDropdown(fieldName, formik, disabled) {
       return;
     }
 
-    const searchVal = isTyping ? (query || "").trim() : "";
-    const url = `${apiBase}/gateway-ports/?page=1&status=&type=&search=${encodeURIComponent(
-      searchVal,
-    )}`;
+    const searchVal = isTyping ? (query || "").trim().toUpperCase() : "";
+    const staticOpts = [
+      { unece_code: "INMUN1", name: "MUNDRA" },
+      { unece_code: "INIXY1", name: "KANDLA" },
+      { unece_code: "INPAV1", name: "PIPAVAV" },
+      { unece_code: "INHZA1", name: "HAZIRA" },
+      { unece_code: "INNSA1", name: "NHAVA SHEVA" },
+      { unece_code: "INAMD4", name: "AHMEDABAD AIR PORT" }
+    ];
 
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        setOpts(
-          Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-              ? data
-              : [],
-        );
-      } catch {
-        setOpts([]);
-      }
-    }, 220);
-
-    return () => clearTimeout(t);
-  }, [open, query, apiBase, isTyping, disabled]);
+    const filtered = staticOpts.filter(opt =>
+      `${opt.unece_code} ${opt.name}`.toUpperCase().includes(searchVal)
+    );
+    setOpts(filtered);
+  }, [open, query, isTyping, disabled]);
 
   useEffect(() => {
     function close(e) {
@@ -304,7 +322,7 @@ function GatewayPortDropdown({
             >
               {filtered.map((port, i) => (
                 <div
-                  key={port._id || port.unece_code || port.name || i}
+                  key={`${port.unece_code}_${port.name}_${i}`}
                   style={styles.acItem(d.active === i)}
                   onMouseDown={(e) => {
                     e.preventDefault();
@@ -336,9 +354,115 @@ const LogisysEditableHeader = ({
   onUpdate,
   directories,
   exportJobsUsers = [],
+  isEditable,
+  setIsEditable
 }) => {
-  // Lock state - default to locked (not editable)
-  const [isEditable, setIsEditable] = useState(false);
+  // removed local isEditable state
+
+  const [hasShownJobNoWarning, setHasShownJobNoWarning] = useState(false);
+  const [searchJobOpen, setSearchJobOpen] = useState(false);
+  const [searchJobOptions, setSearchJobOptions] = useState([]);
+  const [searchJobLoading, setSearchJobLoading] = useState(false);
+  const [searchJobInputValue, setSearchJobInputValue] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    if (!searchJobOpen) {
+      return undefined;
+    }
+
+    (async () => {
+      setSearchJobLoading(true);
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/job-numbers-search?q=${searchJobInputValue}`);
+        if (active) {
+          setSearchJobOptions(response.data.data || []);
+        }
+      } catch (err) {
+        console.error("Error searching job numbers:", err);
+      } finally {
+        setSearchJobLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [searchJobInputValue, searchJobOpen]);
+
+  const handleCopyFromJob = async (selectedJobNo) => {
+    if (!selectedJobNo) return;
+
+    if (window.confirm(`⚠️ DO YOU WANT TO COPY THIS JOB DATA (${selectedJobNo}) IN THIS JOB? \n\nThis will overwrite all fields except the Job Number and identifiers.`)) {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/get-export-job/${encodeURIComponent(selectedJobNo)}`);
+        const sourceData = response.data;
+
+        if (sourceData) {
+          // Fields to exclude from copying (top level)
+          const excludeFields = [
+            "_id", "id", "job_no", "jobNumber", "createdAt", "updatedAt", "__v",
+            "isLocked", "lockedBy", "lockedAt", "operational_lock"
+          ];
+
+          // Helper to recursively strip IDs and excluded fields
+          const cleanData = (obj) => {
+            if (Array.isArray(obj)) {
+              return obj.map(item => cleanData(item));
+            } else if (obj !== null && typeof obj === 'object') {
+              const cleaned = {};
+              Object.keys(obj).forEach(key => {
+                if (!excludeFields.includes(key)) {
+                  cleaned[key] = cleanData(obj[key]);
+                }
+              });
+              return cleaned;
+            }
+            return obj;
+          };
+
+          const newData = cleanData(sourceData);
+
+          // Maintain current job identifiers
+          const currentJobNo = formik.values.job_no;
+          const currentYear = formik.values.year;
+
+          formik.setValues({
+            ...formik.values,
+            ...newData,
+            job_no: currentJobNo,
+            year: currentYear
+          });
+
+          alert("Job data copied successfully!");
+        }
+      } catch (err) {
+        console.error("Error copying job data:", err);
+        alert("Error fetching source job data.");
+      }
+    }
+  };
+
+  // Reset warning show state when job is locked
+  useEffect(() => {
+    if (!isEditable) setHasShownJobNoWarning(false);
+  }, [isEditable]);
+
+  const handleJobNoFocus = () => {
+    if (!hasShownJobNoWarning) {
+      const confirmEdit = window.confirm(
+        "⚠️ WARNING: Changing the Job Number sequence is a critical operation.\n\n" +
+        "This will update the job identifier and may affect document tracking.\n\n" +
+        "Are you sure you want to proceed?"
+      );
+      if (confirmEdit) {
+        setHasShownJobNoWarning(true);
+      } else {
+        document.activeElement.blur();
+      }
+    }
+  };
 
   useEffect(() => {
     const isAir = formik.values.consignmentType === "AIR";
@@ -359,7 +483,7 @@ const LogisysEditableHeader = ({
     const stuffed = toUpper(formik.values.goods_stuffed_at || "");
     const type = toUpper(formik.values.consignmentType || "");
 
-    if (stuffed === "FACTORY" && type !== "FCL") {
+    if (stuffed === "FACTORY" && type !== "FCL" && type !== "") {
       formik.setFieldValue("consignmentType", "FCL");
     }
 
@@ -370,6 +494,263 @@ const LogisysEditableHeader = ({
 
   const [snackbar, setSnackbar] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
+  const openMenu = Boolean(anchorEl);
+  const productExcelInputRef = React.useRef(null);
+
+  const handleProductExcelUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = event.target.result;
+        const workbook = xlsx.read(data, { type: "binary" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = xlsx.utils.sheet_to_json(worksheet);
+
+        if (jsonData.length === 0) {
+          alert("Excel file is empty or invalid.");
+          return;
+        }
+
+        // Fetch active districts to map state from district code
+        let districtStateMap = {};
+        let districtFullMap = {};
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_STRING}/districts/?status=Active&limit=1000`);
+          if (res.ok) {
+            const resData = await res.json();
+            const allDistricts = Array.isArray(resData?.data) ? resData.data : [];
+            allDistricts.forEach(d => {
+              if (d.districtCode) {
+                const code = d.districtCode.toUpperCase();
+                districtStateMap[code] = d.stateName ? d.stateName.toUpperCase() : "";
+                districtFullMap[code] = `${d.districtCode} - ${d.districtName ? d.districtName.toUpperCase() : ""}`;
+              }
+            });
+          }
+        } catch (err) {
+          console.error("Failed to fetch districts for state mapping", err);
+        }
+
+        // Simple mapping based on common names
+
+
+        const normalizeEximScheme = (val) => {
+          const s = String(val || "").trim();
+          if (!s) return "";
+          const mapping = {
+            "03": "03 - ADVANCE LICENCE",
+            "19": "19 - DRAWBACK (DBK)",
+            "21": "21 (EOU/EPZ/SEZ/EHTP/STP)",
+            "43": "43 - DRAWBACK AND ZERO DUTY PECG",
+            "50": "50 - EPCG AND ADVANCE LICENSE",
+            "60": "60 - DRAWBACK AND ROSCTL",
+            "61": "61 - EPCG, DRAWBACK AND ROSCTL",
+            "99": "99 - NFEI"
+          };
+          if (mapping[s]) return mapping[s];
+          if (s.includes(" - ")) return s;
+          const key = Object.keys(mapping).find(k => s.startsWith(k));
+          return key ? mapping[key] : s;
+        };
+
+        const normalizeIgstPaymentStatus = (val) => {
+          const s = String(val || "").trim().toUpperCase();
+          if (!s || s === "LUT" || s.includes("BOND") || s.includes("NOT PAID")) {
+            return "Export Under Bond – Not Paid";
+          }
+          if (s.includes("PAYMENT") || s.includes("PAID")) {
+            return "Export Against Payment";
+          }
+          if (s.includes("NOT APPLICABLE")) {
+            return "Not Applicable";
+          }
+          return "Export Under Bond – Not Paid"; // default
+        };
+
+        const newProducts = jsonData.map((row, index) => {
+          const findValRow = (keys) => {
+            const key = Object.keys(row).find(k => {
+              const normK = k.toLowerCase().replace(/[^a-z0-9]/g, "");
+              return keys.some(v => {
+                const normV = v.toLowerCase().replace(/[^a-z0-9]/g, "");
+                return normK.includes(normV);
+              });
+            });
+            return key ? row[key] : "";
+          };
+
+          const desc = findValRow(["product desc", "desc", "product", "item"]);
+          const ritc = findValRow(["ritc", "hsn", "tariff"]);
+          const qty = findValRow(["quantity", "qty"]);
+          const unit = findValRow(["unit", "uom", "pkg"]);
+          const sqcQty = findValRow(["sqc qty", "sqcqty", "socqty", "sqc_quantity"]);
+          const sqcUnit = findValRow(["sqc unit", "sqcunit", "socunit"]);
+          const amt = findValRow(["amt", "amount", "value", "prodval", "product_amount"]);
+          const exim = findValRow(["exim sche", "exim", "scheme"]);
+          const pta = findValRow(["ptafta co", "pta", "fta", "pta_fta"]);
+          const district = findValRow(["origin dist", "district", "origin_district"]);
+          const state = findValRow(["sourcesta", "source_state", "state", "origin_state"]);
+          const endUse = findValRow(["end use", "enduse"]);
+          const igstPayS = findValRow(["igst pay s", "igst_pay_s", "igststatus"]);
+          const rewardIte = findValRow(["reward ite", "reward", "reward_item"]);
+          const rodtepSta = findValRow(["rodtep sta", "rodtep", "rodtep_status"]);
+          const manufacturer = findValRow(["manufactu", "manufacturer_name"]);
+          const transitCnt = findValRow(["transitcnt", "transit_country"]);
+          const dbkSrNo = findValRow(["dbk sr no", "dbksrno", "dbksrnc", "dbk_sr"]);
+          const dbkQty = findValRow(["dbk qty", "dbkqty"]);
+          const price = findValRow(["price", "rate", "unitprice"]);
+          const per = findValRow(["per", "per_qty"]);
+          const pUnit = findValRow(["per unit", "price unit", "per_unit", "price_unit"]);
+
+          // Calculate amount if missing but price and qty are available
+          let finalAmount = String(amt || "0");
+          if ((!amt || amt === "0") && price && qty) {
+            const p = parseFloat(price);
+            const q = parseFloat(qty);
+            if (!isNaN(p) && !isNaN(q)) {
+              finalAmount = (p * q).toFixed(4);
+            }
+          }
+
+          return {
+            serialNumber: (index + 1).toString(),
+            description: String(desc || "").toUpperCase(),
+            ritc: String(ritc || "").toUpperCase(),
+            quantity: String(qty || "1"),
+            qtyUnit: String(unit || "NOS").toUpperCase(),
+            socQuantity: String(sqcQty || "0"),
+            socunit: String(sqcUnit || "").toUpperCase(),
+            unitPrice: String(price || "0"),
+            per: String(per || "1"),
+            priceUnit: String(pUnit || unit || "NOS").toUpperCase(),
+            perUnit: String(pUnit || unit || "NOS").toUpperCase(),
+            amount: finalAmount,
+            eximCode: normalizeEximScheme(exim),
+            ptaFtaInfo: (() => {
+              const s = String(pta || "").trim().toUpperCase();
+              if (s === "NCPTI") return "NCPTI - PREFERENTIAL TRADE BENEFIT NOT CLAIMED AT IMPORTING COUNTRY";
+              return s;
+            })(),
+            originDistrict: (() => {
+              let s = String(district || "").toUpperCase().trim();
+              if (s && districtFullMap[s]) return districtFullMap[s];
+              return s;
+            })(),
+            originState: (() => {
+              let s = String(state || "");
+              if (!s && district) {
+                const mappedState = districtStateMap[String(district).toUpperCase().trim()];
+                if (mappedState) return mappedState;
+              }
+              return s;
+            })(),
+            endUse: (() => {
+              const s = String(endUse || "").trim().toUpperCase();
+              if (s === "GNX200") return "GNX200 - GENERIC -FOR COMMERCIAL ASSEMBLY OR PROCESSING (FOR MANUFACTURE/ACTUAL USE)";
+              return s;
+            })(),
+            rewardItem: String(rewardIte || "").toUpperCase() === "YES" || String(rewardIte || "").toUpperCase() === "Y",
+            rodtepInfo: {
+              claim: (String(rodtepSta || "").toUpperCase() === "YES" || String(rodtepSta || "").toUpperCase() === "Y") ? "Yes" : "No",
+              amountINR: "0",
+              quantity: String(sqcQty || qty || "0"),
+              ratePercent: "0",
+              capValue: "0",
+              capValuePerUnits: String(qty || "1"),
+              unit: String(sqcUnit || unit || "NOS").toUpperCase(),
+              capUnit: String(unit || "NOS").toUpperCase(),
+              isCapUnitManual: false
+            },
+            igstCompensationCess: {
+              igstPaymentStatus: normalizeIgstPaymentStatus(igstPayS),
+              taxableValueINR: "0",
+              igstRate: "0",
+              igstAmountINR: "0"
+            },
+            otherDetails: {
+              manufacturer: {
+                name: String(manufacturer || ""),
+                sourceState: String(state || ""),
+                transitCountry: String(transitCnt || ""),
+              }
+            },
+            drawbackDetails: [
+              {
+                serialNumber: "1",
+                dbkitem: !!dbkSrNo,
+                dbkSrNo: String(dbkSrNo || ""),
+                quantity: parseFloat(dbkQty || qty || sqcQty || 0) || 0,
+                unit: String(unit || sqcUnit || "").toUpperCase(),
+                dbkUnder: "Actual",
+                dbkDescription: "",
+                dbkRate: 0,
+                dbkCap: 0,
+                dbkAmount: 0,
+              }
+            ],
+            pmvInfo: {
+              currency: "INR",
+              calculationMethod: "percentage",
+              percentage: "110",
+              pmvPerUnit: "0",
+              totalPMV: "0"
+            },
+            rosctlInfo: {
+              claim: "No",
+              amountINR: "0"
+            },
+            epcgDetails: {
+              isEpcgItem: false,
+              epcgItems: [],
+              epcg_reg_obj: [{ licRefNo: "", regnNo: "", licDate: "" }]
+            },
+            deecDetails: {
+              isDeecItem: false,
+              deecItems: [],
+              deec_reg_obj: [{ licRefNo: "", regnNo: "", licDate: "" }]
+            }
+          };
+        });
+
+        // Update formik invoices
+        let currentInvoices = [...(formik.values.invoices || [])];
+        if (currentInvoices.length === 0) {
+          currentInvoices.push({
+            invoiceNumber: "INV-1",
+            invoiceDate: new Date().toISOString().split('T')[0],
+            products: []
+          });
+        }
+
+        // Add to first invoice
+        const targetInvoice = { ...currentInvoices[0] };
+        targetInvoice.products = [...(targetInvoice.products || []), ...newProducts];
+
+        // Recalculate total product value for the invoice
+        targetInvoice.productValue = targetInvoice.products.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
+        targetInvoice.invoiceValue = targetInvoice.productValue;
+
+        currentInvoices[0] = targetInvoice;
+        formik.setFieldValue("invoices", currentInvoices);
+
+        // Also update top-level products if they exist (for backward compatibility)
+        if (formik.values.products) {
+          formik.setFieldValue("products", [...(formik.values.products || []), ...newProducts]);
+        }
+
+        alert(`${newProducts.length} products added successfully to the first invoice. Click "Update" to save.`);
+      } catch (err) {
+        console.error("Error parsing product excel:", err);
+        alert("Error parsing file. Please check format.");
+      }
+      e.target.value = null;
+    };
+    reader.readAsBinaryString(file);
+  };
   const { user } = useContext(UserContext);
   const isNewJob = !formik.values.job_no;
 
@@ -380,7 +761,15 @@ const LogisysEditableHeader = ({
   };
 
   const toggleLock = () => {
-    setIsEditable(!isEditable);
+    if (setIsEditable) {
+      if (!isEditable) {
+        if (window.confirm("⚠️ WARNING: You are about to unlock this job for editing. \n\nUnlocking a job with an SB Date may lead to data inconsistencies if not handled carefully. \n\nDo you want to proceed and unlock?")) {
+          setIsEditable(true);
+        }
+      } else {
+        setIsEditable(false);
+      }
+    }
   };
 
   const shipperOpts = (directories?.exporters || []).map((exp) => ({
@@ -394,7 +783,7 @@ const LogisysEditableHeader = ({
     <div
       style={{
         marginBottom: 8,
-        background: "linear-gradient(90deg, #f7fafc 85%, #e3f2fd 100%)",
+        background: "#fafaffff",
         borderBottom: "1px solid #e0e0e0",
         border: "1px solid #e3e7ee",
         borderRadius: 10,
@@ -457,39 +846,110 @@ const LogisysEditableHeader = ({
               disabled={!isEditable}
             />
           ) : (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                background: "#eef4fa",
-                border: "1px solid #e0e0e0",
-                borderRadius: 3,
-                padding: "1px 4px",
-                fontSize: 11,
-                color: "#000",
-                height: 22,
-                whiteSpace: "nowrap",
-              }}
-            >
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                {formik.values.job_no}
-              </span>
-              <button
-                title="Copy"
-                onClick={() => handleCopyText(formik.values.job_no)}
+            isEditable ? (
+              <div
                 style={{
-                  background: "none",
-                  border: "none",
-                  marginLeft: 4,
-                  cursor: "pointer",
-                  fontSize: 10,
-                  color: "#666",
-                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  background: "#fff",
+                  border: "1.5px solid #3b82f6",
+                  borderRadius: 6,
+                  padding: "0 6px",
+                  fontSize: 11,
+                  color: "#1e293b",
+                  height: 24,
+                  whiteSpace: "nowrap",
+                  boxShadow: "0 0 0 2px rgba(59, 130, 246, 0.1)",
                 }}
               >
-                📋
-              </button>
-            </div>
+                <span
+                  style={{
+                    color: "#94a3b8",
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: "0.3px",
+                  }}
+                >
+                  {getJobNoParts(formik.values.job_no).prefix}
+                </span>
+                <input
+                  style={{
+                    border: "none",
+                    outline: "none",
+                    width: 45,
+                    textAlign: "center",
+                    fontSize: 11.5,
+                    background: "transparent",
+                    color: "#2563eb",
+                    fontWeight: 800,
+                    padding: 0,
+                    margin: "0 2px",
+                    letterSpacing: "1px",
+                  }}
+                  value={getJobNoParts(formik.values.job_no).seq}
+                  onChange={(e) => {
+                    const parts = getJobNoParts(formik.values.job_no);
+                    const newSeq = e.target.value;
+                    formik.setFieldValue(
+                      "job_no",
+                      `${parts.prefix}${newSeq}${parts.suffix}`
+                    );
+                  }}
+                  onFocus={handleJobNoFocus}
+                />
+                <span
+                  style={{
+                    color: "#94a3b8",
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: "0.3px",
+                  }}
+                >
+                  {getJobNoParts(formik.values.job_no).suffix}
+                </span>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 6,
+                  padding: "0 8px",
+                  fontSize: 11,
+                  color: "#475569",
+                  height: 24,
+                  whiteSpace: "nowrap",
+                  fontWeight: 600,
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {formik.values.job_no}
+                </span>
+                <button
+                  title="Copy"
+                  onClick={() => handleCopyText(formik.values.job_no)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    marginLeft: 6,
+                    cursor: "pointer",
+                    fontSize: 10,
+                    color: "#94a3b8",
+                    padding: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    transition: "color 0.2s",
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.color = "#64748b")}
+                  onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+                >
+                  📋
+                </button>
+              </div>
+            )
           )}
         </div>
 
@@ -566,8 +1026,8 @@ const LogisysEditableHeader = ({
             style={!isEditable ? styles.inputDisabled : styles.input}
           />
           <datalist id="shipper-list">
-            {shipperOpts.map((opt) => (
-              <option key={opt.value} value={opt.value}>
+            {shipperOpts.map((opt, i) => (
+              <option key={`${opt.value}_${i}`} value={opt.value}>
                 {opt.label}
               </option>
             ))}
@@ -626,9 +1086,11 @@ const LogisysEditableHeader = ({
             name="consignmentType"
             value={formik.values.consignmentType}
             options={[
+              { value: "", label: "-Select-" },
               { value: "FCL", label: "FCL" },
               { value: "LCL", label: "LCL" },
               { value: "AIR", label: "AIR" },
+              { value: "Break Bulk", label: "Break Bulk" },
             ]}
             onChange={formik.handleChange}
             placeholder="Type"
@@ -656,8 +1118,101 @@ const LogisysEditableHeader = ({
           />
         </div>
 
-        {/* Documents Button */}
-        <div style={{ flex: "0 0 auto" }}>
+
+        {/* ICEGATE ID */}
+        <div style={{ flex: "0 0 auto", minWidth: 80 }}>
+          <div style={styles.label}>ICEGATE ID</div>
+          <select
+            name="icegateId"
+            value={formik.values.icegateId || "RAJANSFPL"}
+            onChange={(e) => formik.setFieldValue("icegateId", e.target.value)}
+            style={{ ...styles.input, cursor: "pointer", paddingRight: 4 }}
+            disabled={!isEditable}
+          >
+            <option value="RAJANSFPL">RAJANSFPL</option>
+            <option value="SURAJAMD">SURAJAMD</option>
+          </select>
+        </div>
+
+        {/* Copy From Job */}
+        {isEditable && (
+          <div style={{ flex: "0 0 auto", minWidth: 150 }}>
+            <div style={{ ...styles.label, color: "#d32f2f", fontWeight: "bold" }}>Copy From Job</div>
+            <Autocomplete
+              size="small"
+              open={searchJobOpen}
+              onOpen={() => setSearchJobOpen(true)}
+              onClose={() => setSearchJobOpen(false)}
+              isOptionEqualToValue={(option, value) => option === value}
+              getOptionLabel={(option) => option}
+              options={searchJobOptions}
+              loading={searchJobLoading}
+              onInputChange={(event, newInputValue) => {
+                setSearchJobInputValue(newInputValue);
+              }}
+              onChange={(event, newValue) => {
+                handleCopyFromJob(newValue);
+              }}
+              renderOption={(props, option) => (
+                <li {...props} style={{ fontSize: 11, padding: '4px 8px', minHeight: 'auto' }}>
+                  {option}
+                </li>
+              )}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Search Job No..."
+                  variant="outlined"
+                  size="small"
+                  InputProps={{
+                    ...params.InputProps,
+                    style: { height: 24, fontSize: 11, padding: '0 8px' },
+                    endAdornment: (
+                      <React.Fragment>
+                        {searchJobLoading ? <CircularProgress color="inherit" size={14} /> : null}
+                        {params.InputProps.endAdornment}
+                      </React.Fragment>
+                    ),
+                  }}
+                />
+              )}
+            />
+          </div>
+        )}
+
+        {/* Documents, VGM Button and Checkboxes */}
+        <div style={{ flex: "0 0 auto", display: "flex", gap: 10, alignItems: "center" }}>
+          {isEditable && (
+            <>
+              <input
+                type="file"
+                accept=".xlsx, .xls, .csv"
+                ref={productExcelInputRef}
+                style={{ display: "none" }}
+                onChange={handleProductExcelUpload}
+              />
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<CloudUploadIcon />}
+                onClick={() => productExcelInputRef.current.click()}
+                sx={{
+                  textTransform: "none",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  borderColor: "#2563eb",
+                  color: "#2563eb",
+                  "&:hover": {
+                    borderColor: "#1d4ed8",
+                    backgroundColor: "#eff6ff",
+                  },
+                }}
+              >
+                Excel
+              </Button>
+            </>
+          )}
+
           <button
             style={{
               background: "#fff",
@@ -679,6 +1234,127 @@ const LogisysEditableHeader = ({
             Docs
             <ArrowDropDownIcon sx={{ fontSize: 14, ml: 0.3 }} />
           </button>
+
+          {!isNewJob && (
+            <button
+              style={{
+                background: "#1976d2",
+                border: "none",
+                color: "#fff",
+                padding: "3px 12px",
+                borderRadius: 3,
+                fontWeight: 600,
+                fontSize: 11,
+                cursor: "pointer",
+                height: 24,
+                whiteSpace: "nowrap",
+              }}
+              type="button"
+              onClick={() => {
+                const jn = formik.values.job_no;
+                if (!jn) return;
+                const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/vgm/${encodeURIComponent(jn)}`;
+                window.open(url, "_blank");
+              }}
+            >
+              VGM
+            </button>
+          )}
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: isEditable ? "pointer" : "default", fontSize: 11, fontWeight: 500, color: "#1976d2", opacity: isEditable ? 1 : 0.6 }}>
+              <input
+                type="checkbox"
+                name="vgm_done"
+                checked={!!formik.values.vgm_done}
+                onChange={(e) => formik.setFieldValue("vgm_done", e.target.checked)}
+                disabled={!isEditable}
+                style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
+              />
+              VGM
+              {formik.values.vgm_done && formik.values.vgm_date && (
+                <span style={{ fontSize: 9, color: "#059669", marginLeft: 2 }}>({formik.values.vgm_date})</span>
+              )}
+            </label>
+
+            <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: isEditable ? "pointer" : "default", fontSize: 11, fontWeight: 500, color: "#1976d2", opacity: isEditable ? 1 : 0.6 }}>
+              <input
+                type="checkbox"
+                name="form13_done"
+                checked={!!formik.values.form13_done}
+                onChange={(e) => formik.setFieldValue("form13_done", e.target.checked)}
+                disabled={!isEditable}
+                style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
+              />
+              FORM 13
+              {formik.values.form13_done && formik.values.form13_date && (
+                <span style={{ fontSize: 9, color: "#059669", marginLeft: 2 }}>({formik.values.form13_date})</span>
+              )}
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: isEditable ? "pointer" : "default", fontSize: 11, fontWeight: 500, color: "#1976d2", opacity: isEditable ? 1 : 0.6 }}>
+              <input
+                type="checkbox"
+                name="shipping_bill_done"
+                checked={!!formik.values.shipping_bill_done}
+                onChange={(e) => formik.setFieldValue("shipping_bill_done", e.target.checked)}
+                disabled={!isEditable}
+                style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
+              />
+              SHIPPING BILL
+            </label>
+
+            <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: isEditable ? "pointer" : "default", fontSize: 11, fontWeight: 700, color: "#2563eb", opacity: isEditable ? 1 : 0.8 }}>
+              <input
+                type="checkbox"
+                name="freight_done"
+                checked={!!formik.values.freight_done}
+                onChange={async (e) => {
+                  const checked = e.target.checked;
+                  if (checked && !formik.values.freight_done) {
+                    if (window.confirm("Create a new Freight Forwarding enquiry from this job?")) {
+                      try {
+                        const payload = {
+                          organization_name: formik.values.exporter,
+                          shipment_type: toUpper(formik.values.transportMode) === "AIR" ? "Export-Air" : "Export-Sea",
+                          port_of_loading: formik.values.port_of_loading,
+                          port_of_destination: formik.values.port_of_discharge || formik.values.final_destination,
+                          gross_weight: formik.values.gross_weight_kg,
+                          net_weight: formik.values.net_weight_kg,
+                          no_packages: formik.values.total_no_of_pkgs,
+                          consignment_type: formik.values.consignmentType,
+                          goods_stuffed: formik.values.goods_stuffed_at === "DOCK" ? "DOCK STUFFED" : (formik.values.goods_stuffed_at === "FACTORY" ? "FACTORY STUFFED" : ""),
+                          container_size: formik.values.containers?.[0]?.type || "",
+                          source_job_no: formik.values.job_no,
+                          remarks: `Created automatically from Export Job: ${formik.values.job_no}`,
+                          enquiry_date: new Date().toISOString().split("T")[0],
+                          status: "Open"
+                        };
+
+                        const res = await axios.post(`${import.meta.env.VITE_API_STRING}/freight-enquiries`, payload);
+                        if (res.data.success) {
+                          formik.setFieldValue("freight_done", true);
+                          formik.setFieldValue("freight_enquiry_id", res.data.data.enquiry_no);
+                          alert(`Freight Enquiry ${res.data.data.enquiry_no} created successfully!`);
+                        }
+                      } catch (error) {
+                        console.error("Error creating freight enquiry:", error);
+                        alert("Failed to create freight enquiry.");
+                      }
+                    }
+                  } else {
+                    formik.setFieldValue("freight_done", checked);
+                  }
+                }}
+                disabled={!isEditable}
+                style={{ cursor: isEditable ? "pointer" : "default", width: 14, height: 14, margin: 0 }}
+              />
+              FREIGHT
+              {formik.values.freight_done && formik.values.freight_enquiry_id && (
+                <span style={{ fontSize: 9, color: "#059669", marginLeft: 2 }}>({formik.values.freight_enquiry_id})</span>
+              )}
+            </label>
+          </div>
+
           <Menu
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
@@ -693,7 +1369,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                Checklist
+                CHECKLIST
               </MenuItem>
             </ExportChecklistGenerator>
 
@@ -703,7 +1379,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                File Cover
+                FILE COVER
               </MenuItem>
             </FileCoverGenerator>
 
@@ -713,7 +1389,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                Consignment Note
+                CONSIGNMENT NOTE
               </MenuItem>
             </ConsignmentNoteGenerator>
 
@@ -723,7 +1399,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                Forwarding Note (THAR)
+                FORWARDING NOTE (THAR)
               </MenuItem>
             </ForwardingNoteTharGenerator>
 
@@ -733,7 +1409,7 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                Annexure C
+                ANNEXURE C
               </MenuItem>
             </AnnexureCGenerator>
 
@@ -743,9 +1419,39 @@ const LogisysEditableHeader = ({
                 onClick={() => setAnchorEl(null)}
                 sx={{ fontSize: 12, minWidth: 140 }}
               >
-                Forwarding Note (CONCOR)
+                FORWARDING NOTE (CONCOR)
               </MenuItem>
             </ConcorForwardingNoteGenerator>
+
+            <VGMAuthorizationGenerator jobNo={formik.values.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => setAnchorEl(null)}
+                sx={{ fontSize: 12, minWidth: 140 }}
+              >
+                VGM AUTHORIZATION
+              </MenuItem>
+            </VGMAuthorizationGenerator>
+
+            <FreightCertificateGenerator jobNo={formik.values.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => setAnchorEl(null)}
+                sx={{ fontSize: 12, minWidth: 140 }}
+              >
+                FREIGHT CERTIFICATE
+              </MenuItem>
+            </FreightCertificateGenerator>
+
+            <BillOfLadingGenerator jobNo={formik.values.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => setAnchorEl(null)}
+                sx={{ fontSize: 12, minWidth: 140 }}
+              >
+                DRAFT BILL OF LADING
+              </MenuItem>
+            </BillOfLadingGenerator>
           </Menu>
         </div>
       </div>

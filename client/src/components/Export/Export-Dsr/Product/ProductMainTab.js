@@ -133,6 +133,12 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
   const products = activeInvoice.products || [];
   const inputRefs = useRef({});
 
+  const sumOfProducts = products.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
+  const prodVal = parseFloat(activeInvoice.productValue) || 0;
+  const rawDiff = prodVal - sumOfProducts;
+  const mismatch = products.length > 0 && Math.abs(rawDiff) > 0.01;
+  const diff = rawDiff > 0 ? "+" + rawDiff.toFixed(2) : rawDiff.toFixed(2);
+
   // Export State
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [productToExportIndex, setProductToExportIndex] = useState(null);
@@ -158,6 +164,32 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
     return (qty * rate) / per;
   }, []);
 
+  const syncProductIGST = useCallback((prod, updatedInvoices) => {
+    const status = prod.igstCompensationCess?.igstPaymentStatus;
+    if (status === "Export Against Payment") {
+      const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+      const amount = parseFloat(prod.amount) || 0;
+      const autoTaxableValue = parseFloat((amount * invoiceExchangeRate).toFixed(2));
+      
+      const isTaxableManual = !!prod.igstCompensationCess?.isTaxableValueManual;
+      const isIgstManual = !!prod.igstCompensationCess?.isIgstManual;
+      const igstRate = parseFloat(prod.igstCompensationCess?.igstRate) || 0;
+
+      if (!prod.igstCompensationCess) prod.igstCompensationCess = {};
+
+      if (!isTaxableManual) {
+        prod.igstCompensationCess.taxableValueINR = autoTaxableValue;
+        if (!isIgstManual) {
+          prod.igstCompensationCess.igstAmountINR = parseFloat(((autoTaxableValue * igstRate) / 100).toFixed(2));
+        }
+      } else if (!isIgstManual) {
+        const manualTaxableValue = parseFloat(prod.igstCompensationCess.taxableValueINR) || 0;
+        prod.igstCompensationCess.igstAmountINR = parseFloat(((manualTaxableValue * igstRate) / 100).toFixed(2));
+      }
+    }
+    return prod;
+  }, [formik.values.exchange_rate]);
+
   const handleProductFieldChange = useCallback(
     (idx, field, rawValue, { autoRecalc = false } = {}) => {
       const updated = [...products];
@@ -165,11 +197,70 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
 
       current[field] = rawValue;
 
-      if (autoRecalc && field !== "amount") {
-        const calculated = recalcAmount(current);
-        if (!isNaN(calculated) && isFinite(calculated)) {
-          current.amount = formatAmount(calculated);
+      // -- Unit Conversion: MTS <-> KGS --
+      const qUnit = (current.qtyUnit || "").toUpperCase();
+      const sUnit = (current.socunit || "").toUpperCase();
+
+      if (field === "socunit") {
+        current.isSqcUnitManual = true;
+      }
+      if (field === "socQuantity") {
+        current.isSqcQuantityManual = true;
+      }
+
+      if (field === "quantity" || field === "qtyUnit" || field === "socunit") {
+        const val = parseFloat(current.quantity);
+        if (!isNaN(val) && !current.isSqcQuantityManual) {
+          if (qUnit === sUnit && qUnit !== "") {
+            current.socQuantity = formatSocQty(val);
+          } else if (qUnit === "MTS" && sUnit === "KGS") {
+            current.socQuantity = formatSocQty(val * 1000);
+          } else if (qUnit === "KGS" && sUnit === "MTS") {
+            current.socQuantity = formatSocQty(val / 1000);
+          }
+
+          // Sync RoDTEP quantity if it exists
+          if (current.rodtepInfo) {
+            current.rodtepInfo.quantity = parseFloat(current.socQuantity) || 0;
+          }
         }
+      } else if (field === "socQuantity") {
+        const val = parseFloat(current.socQuantity);
+        if (!isNaN(val)) {
+          if (qUnit === sUnit && qUnit !== "") {
+            current.quantity = formatQty(val);
+            autoRecalc = true;
+          } else if (sUnit === "KGS" && qUnit === "MTS") {
+            current.quantity = formatQty(val / 1000);
+            autoRecalc = true;
+          } else if (sUnit === "MTS" && qUnit === "KGS") {
+            current.quantity = formatQty(val * 1000);
+            autoRecalc = true;
+          }
+
+          // Sync RoDTEP quantity if it exists
+          if (current.rodtepInfo) {
+            current.rodtepInfo.quantity = val || 0;
+          }
+        }
+      }
+
+      if (autoRecalc) {
+        const qty = Number(current.quantity) || 0;
+        const rate = Number(current.unitPrice) || 0;
+        const per = Number(current.per) || 1;
+
+        if (field === "quantity" || field === "unitPrice" || field === "per" || field === "socQuantity") {
+          // Standard Forward calculation: only if we have both qty and rate
+          if (qty > 0 && rate > 0) {
+            const calculated = (qty * rate) / per;
+            if (!isNaN(calculated) && isFinite(calculated)) {
+              current.amount = formatAmount(calculated);
+            }
+          }
+        }
+        // Note: Backward calculation (amount -> qty/price) is moved to handleBlur 
+        // to prevent erratic jumping while the user is still typing.
       }
 
       // Propagate Unit change
@@ -178,10 +269,10 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
         current.perUnit = rawValue;
       }
 
-      updated[idx] = current;
+      updated[idx] = syncProductIGST(current);
       setProducts(updated);
     },
-    [products, setProducts, recalcAmount],
+    [products, setProducts, recalcAmount, syncProductIGST],
   );
 
   const handleRITCChange = useCallback(
@@ -191,10 +282,38 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
       current.ritc = toUpper(ritcValue);
 
       if (origin && origin.unit) {
-        const u = origin.unit.toUpperCase();
-        const matched = unitCodes.find((c) => c === u || c.startsWith(u));
-        if (matched) {
+        let u = origin.unit.toUpperCase().trim();
+        // specific hardcoded maps for common API responses
+        if (u === "KG") u = "KGS";
+        if (u === "PC" || u === "U" || u === "NO") u = "PCS"; // Default U or NO to PCS if needed, or rely on startsWith
+
+        let matched = unitCodes.find((c) => c === u);
+        if (!matched) {
+          matched = unitCodes.find((c) => c.startsWith(u) || u.startsWith(c));
+        }
+        // Only set default unit if not manually overridden
+        if (matched && !current.isSqcUnitManual) {
           current.socunit = matched;
+        } else if (!current.isSqcUnitManual) {
+          current.socunit = u; // fallback
+        }
+
+        // After setting socunit, trigger the quantity conversion/sync if quantity exists
+        const val = parseFloat(current.quantity);
+        if (!isNaN(val)) {
+          const qUnit = (current.qtyUnit || "").toUpperCase();
+          const sUnit = (current.socunit || "").toUpperCase();
+          if (qUnit === sUnit && qUnit !== "") {
+            current.socQuantity = formatSocQty(val);
+          } else if (qUnit === "MTS" && sUnit === "KGS") {
+            current.socQuantity = formatSocQty(val * 1000);
+          } else if (qUnit === "KGS" && sUnit === "MTS") {
+            current.socQuantity = formatSocQty(val / 1000);
+          }
+
+          if (current.rodtepInfo) {
+            current.rodtepInfo.quantity = parseFloat(current.socQuantity) || 0;
+          }
         }
       }
 
@@ -211,18 +330,89 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
       const value = current[field];
 
       switch (field) {
-        case "quantity":
-          current[field] = formatQty(value);
+        case "ritc":
+          if (value && !/^\d+$/.test(value)) {
+            alert("HSN Code must be numeric");
+            current[field] = "";
+          }
           break;
         case "socQuantity":
           current[field] = formatSocQty(value);
           break;
-        case "unitPrice":
+        case "unitPrice": {
           current[field] = formatUnitPrice(value);
+          const q = Number(current.quantity) || 0;
+          const r = Number(current[field]) || 0;
+          const p = Number(current.per) || 1;
+          const amt = Number(current.amount) || 0;
+
+          if (q > 0 && r > 0) {
+            // Normal forward recalc
+            current.amount = formatAmount((q * r) / p);
+          } else if (r > 0 && amt > 0 && q === 0) {
+            // Backward: have Amount and Price, find Quantity
+            const calculatedQty = (amt * p) / r;
+            current.quantity = formatQty(calculatedQty);
+            // Sync unit conversions for the new quantity
+            const qUnit = (current.qtyUnit || "").toUpperCase();
+            const sUnit = (current.socunit || "").toUpperCase();
+            if (qUnit === sUnit && qUnit !== "") {
+              current.socQuantity = formatSocQty(calculatedQty);
+            } else if (qUnit === "MTS" && sUnit === "KGS") {
+              current.socQuantity = formatSocQty(calculatedQty * 1000);
+            } else if (qUnit === "KGS" && sUnit === "MTS") {
+              current.socQuantity = formatSocQty(calculatedQty / 1000);
+            }
+          }
           break;
-        case "amount":
+        }
+        case "amount": {
           current[field] = formatAmount(value);
+          const amt = Number(current[field]) || 0;
+          const qty = Number(current.quantity) || 0;
+          const rate = Number(current.unitPrice) || 0;
+          const per = Number(current.per) || 1;
+
+          if (qty > 0) {
+            // Amount / Quantity = unit price
+            current.unitPrice = formatUnitPrice((amt * per) / qty);
+          } else if (rate > 0) {
+            // Amount / unit price = Quantity
+            const calculatedQty = (amt * per) / rate;
+            current.quantity = formatQty(calculatedQty);
+            // Sync unit conversions
+            const qUnit = (current.qtyUnit || "").toUpperCase();
+            const sUnit = (current.socunit || "").toUpperCase();
+            if (qUnit === sUnit && qUnit !== "") {
+              current.socQuantity = formatSocQty(calculatedQty);
+            } else if (qUnit === "MTS" && sUnit === "KGS") {
+              current.socQuantity = formatSocQty(calculatedQty * 1000);
+            } else if (qUnit === "KGS" && sUnit === "MTS") {
+              current.socQuantity = formatSocQty(calculatedQty / 1000);
+            }
+          }
           break;
+        }
+        case "quantity": {
+          if (Number(value) <= 0 && value !== "") {
+            alert("Quantity must be greater than zero");
+            current[field] = "";
+          } else {
+            current[field] = formatQty(value);
+            const q = Number(current[field]) || 0;
+            const r = Number(current.unitPrice) || 0;
+            const p = Number(current.per) || 1;
+            const amt = Number(current.amount) || 0;
+            
+            if (q > 0 && r > 0) {
+              current.amount = formatAmount((q * r) / p);
+            } else if (q > 0 && amt > 0 && r === 0) {
+              // Backward case: user entered Amount, then Quantity
+              current.unitPrice = formatUnitPrice((amt * p) / q);
+            }
+          }
+          break;
+        }
         case "per": {
           const num = Number(value);
           current[field] = isNaN(num) ? value : String(num);
@@ -232,10 +422,15 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
           break;
       }
 
-      updated[idx] = current;
+      // Sync RoDTEP quantity on blur to ensure consistency
+      if ((field === "quantity" || field === "socQuantity") && current.rodtepInfo) {
+        current.rodtepInfo.quantity = parseFloat(current.socQuantity) || 0;
+      }
+
+      updated[idx] = syncProductIGST(current);
       setProducts(updated);
     },
-    [products, setProducts],
+    [products, setProducts, syncProductIGST],
   );
 
   const addNewProduct = useCallback(() => {
@@ -270,16 +465,30 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
     (idx) => {
       const next = [...products];
       const source = next[idx] || {};
-      const clone = { ...source };
+      // Deep clone to avoid shared references especially for rodtepInfo object
+      const clone = JSON.parse(JSON.stringify(source));
+      // Remove _id from clone so it's treated as a new record in DB
+      delete clone._id;
+      
       next.splice(idx + 1, 0, clone);
+      
+      // Reset manual flags so the copy starts with auto-calculation
+      if (next[idx + 1].igstCompensationCess) {
+        next[idx + 1].igstCompensationCess.isTaxableValueManual = false;
+        next[idx + 1].igstCompensationCess.isIgstManual = false;
+      }
+
+      next[idx + 1] = syncProductIGST(next[idx + 1]);
+
       const resequenced = next.map((p, i) => ({
         ...p,
         serialNumber: i + 1,
       }));
       setProducts(resequenced);
     },
-    [products, setProducts],
+    [products, setProducts, syncProductIGST],
   );
+
 
   const openExportModal = (idx) => {
     setProductToExportIndex(idx);
@@ -328,6 +537,11 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
             Selected Invoice:{" "}
             {activeInvoice.invoiceNumber || `#${selectedInvoiceIndex + 1}`}
           </div>
+          {mismatch && (
+            <div style={{ color: "#e53e3e", fontSize: 12, fontWeight: 700, background: "#fff5f5", padding: "4px 10px", borderRadius: 4, border: "1px solid #feb2b2" }}>
+              Product Value Mismatch! Diff: {diff}
+            </div>
+          )}
         </div>
         {activeInvoice?.currency && (
           <div
@@ -354,7 +568,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                 <th style={{ ...styles.th, width: 200 }}>Description</th>
                 <th style={{ ...styles.th, width: 140 }}>RITC</th>
                 <th style={{ ...styles.th, width: 170 }}>Quantity</th>
-                <th style={{ ...styles.th, width: 170 }}>SOC Qty</th>
+                <th style={{ ...styles.th, width: 170 }}>SQC Qty</th>
                 <th style={{ ...styles.th, width: 110 }}>Unit Price</th>
                 <th style={{ ...styles.th, width: 90 }}>Currency</th>
                 <th style={{ ...styles.th, width: 130 }}>Per</th>
@@ -532,7 +746,9 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
                       value={prod.amount || ""}
                       onChange={(e) => {
                         const value = e.target.value.replace(/[^\d.-]/g, "");
-                        handleProductFieldChange(idx, "amount", value);
+                        handleProductFieldChange(idx, "amount", value, {
+                          autoRecalc: true,
+                        });
                       }}
                       onBlur={() => handleBlur(idx, "amount")}
                       placeholder="0.00"

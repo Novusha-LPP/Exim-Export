@@ -1,43 +1,5 @@
 export const navigateToModule = (module, navigate) => {
   switch (module) {
-    case "Employee Onboarding":
-      return navigate("/employee-onboarding");
-    case "Employee KYC":
-      return navigate("/employee-kyc");
-    case "Import - DSR":
-      return navigate("/import-dsr");
-    case "Report":
-      return navigate("/report");
-    case "Audit Trail":
-      return navigate("/audit-trail");
-    case "Import - Operations":
-      return navigate("/import-operations");
-    case "Import - Add":
-      return navigate("/ImportersInfo");
-    case "Import - Billing":
-      return navigate("/import-billing");
-    case "Import Utility Tool":
-      return navigate("/utilities");
-    case "Import - DO":
-      return navigate("/import-do");
-    case "Inward Register":
-      return navigate("/inward-register");
-    case "Outward Register":
-      return navigate("/outward-register");
-    case "Accounts":
-      return navigate("/accounts");
-    case "Customer KYC":
-      const kycUrl = "http://eximcustomerkyc.s3-website.ap-south-1.amazonaws.com/customer-kyc";
-      const kycLink = document.createElement("a");
-      kycLink.href = kycUrl;
-      kycLink.target = "_blank";
-      kycLink.rel = "noopener noreferrer";
-      kycLink.click();
-      return;
-    case "Exit Feedback":
-      return navigate("/exit-feedback");
-    case "e-Sanchit":
-      return navigate("/e-sanchit");
     case "Directories":
       return navigate("/export-directories");
     case "Export - Jobs":
@@ -58,12 +20,14 @@ export const navigateToModule = (module, navigate) => {
       return navigate("/export-operation");
     case "Export - Charges":
       return navigate("/export-charges");
+    case "Export - Billing":
+      return navigate("/export-billing");
+    case "Freight Forwarding":
+      return navigate("/freight-forwarding");
     case "Export - Audit Trail":
       return navigate("/export-audit-trail");
-    case "Documentation":
-      return navigate("/documentation");
-    case "Submission":
-      return navigate("/submission");
+    case "Export - Reports":
+      return navigate("/report");
     case "Screen1":
       return navigate("/screen1");
     case "Screen2":
@@ -78,6 +42,8 @@ export const navigateToModule = (module, navigate) => {
       return navigate("/screen6");
     case "Open Points":
       return navigate("/open-points");
+    case "Pulse":
+      return navigate("/pulse/combined");
     default:
       return navigate("/home");
   }

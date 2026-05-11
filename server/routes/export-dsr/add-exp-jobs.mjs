@@ -54,11 +54,21 @@ router.post(
         }
 
         const sequenceStr = job_no.padStart(5, "0");
-        newJobNo = `${branch_code}/${sequenceStr}/${yearFormat}`;
+        const isAir = (transportMode && transportMode.toUpperCase() === 'AIR') || (req.body.consignmentType && req.body.consignmentType.toUpperCase() === 'AIR');
+        const isSea = (transportMode && transportMode.toUpperCase() === 'SEA') || (req.body.consignmentType && ['FCL', 'LCL'].includes(req.body.consignmentType?.toUpperCase() || '')) || !isAir;
 
-        // Check for duplicates
+        if (isAir) {
+          newJobNo = `${branch_code}/EXP/AIR/${sequenceStr}/${yearFormat}`;
+        } else if (isSea) {
+          newJobNo = `${branch_code}/EXP/SEA/${sequenceStr}/${yearFormat}`;
+        } else {
+          newJobNo = `${branch_code}/EXP/${sequenceStr}/${yearFormat}`;
+        }
+
+        // Check for duplicates (only within the same job type)
         const existingJob = await ExportJobModel.findOne({
           job_no: { $regex: `^${newJobNo}$`, $options: "i" },
+          isGeneralJob: { $ne: true } // Manual jobs are actual jobs by default
         });
 
         if (existingJob) {
@@ -74,13 +84,25 @@ router.post(
         }
 
         // Update the central counter if manual sequence is higher
-        await updateJobSequenceIfHigher(branch_code, yearFormat, parseInt(job_no, 10));
+        const branchSeqArg = isAir ? `${branch_code}-AIR` : `${branch_code}-SEA`;
+        await updateJobSequenceIfHigher(branchSeqArg, yearFormat, parseInt(job_no, 10));
 
       } else {
         // --- AUTO GENERATED JOB NUMBER ---
         // Use the centralized atomic generator
-        const nextSequenceStr = await getNextJobSequence(branch_code, yearFormat);
-        newJobNo = `${branch_code}/${nextSequenceStr}/${yearFormat}`;
+        const isAir = (transportMode && transportMode.toUpperCase() === 'AIR') || (req.body.consignmentType && req.body.consignmentType.toUpperCase() === 'AIR');
+        const isSea = (transportMode && transportMode.toUpperCase() === 'SEA') || (req.body.consignmentType && ['FCL', 'LCL'].includes(req.body.consignmentType?.toUpperCase() || '')) || !isAir;
+
+        const branchSeqArg = isAir ? `${branch_code}-AIR` : `${branch_code}-SEA`;
+        const nextSequenceStr = await getNextJobSequence(branchSeqArg, yearFormat);
+
+        if (isAir) {
+          newJobNo = `${branch_code}/EXP/AIR/${nextSequenceStr}/${yearFormat}`;
+        } else if (isSea) {
+          newJobNo = `${branch_code}/EXP/SEA/${nextSequenceStr}/${yearFormat}`;
+        } else {
+          newJobNo = `${branch_code}/EXP/${nextSequenceStr}/${yearFormat}`;
+        }
       }
 
       // Date Handling
@@ -130,9 +152,12 @@ router.post(
     } catch (error) {
       console.error("Error adding export job:", error);
       if (error.code === 11000 || error.message.includes("duplicate")) {
+        // Try to extract the duplicate key from error message for better debugging
+        const conflictedNum = (error.message.match(/dup key: \{ [^:]+: "([^"]+)" \}/) || [null, "unknown"])[1];
         return res.status(409).json({
           success: false,
-          message: "Job number conflict detected. Please try again.",
+          message: `Job number conflict detected (${conflictedNum}). This number might already be in use or in a cancelled job. Please try another number.`,
+          error: error.message
         });
       }
       res.status(500).json({
@@ -188,26 +213,48 @@ router.post(
         }
 
         const sequenceStr = manualSequence.padStart(5, "0");
-        newJobNo = `${branch_code}/${sequenceStr}/${year}`;
+        const isAir = (transportMode && transportMode.toUpperCase() === 'AIR') || (req.body.consignmentType && req.body.consignmentType.toUpperCase() === 'AIR');
+        const isSea = (transportMode && transportMode.toUpperCase() === 'SEA') || (req.body.consignmentType && ['FCL', 'LCL'].includes(req.body.consignmentType?.toUpperCase() || '')) || !isAir;
+
+        if (isAir) {
+          newJobNo = `${branch_code}/EXP/AIR/${sequenceStr}/${year}`;
+        } else if (isSea) {
+          newJobNo = `${branch_code}/EXP/SEA/${sequenceStr}/${year}`;
+        } else {
+          newJobNo = `${branch_code}/EXP/${sequenceStr}/${year}`;
+        }
 
         const existingJob = await ExportJobModel.findOne({
           job_no: { $regex: `^${newJobNo}$`, $options: "i" },
+          isGeneralJob: sourceJob.isGeneralJob // Check duplicates within same type
         });
 
         if (existingJob) {
           return res.status(409).json({
             success: false,
-            message: `Job number ${newJobNo} already exists.`,
+            message: `Job number ${newJobNo} already exists in ${sourceJob.isGeneralJob ? 'General' : 'Actual'} Jobs.`,
           });
         }
 
         // Update counter
-        await updateJobSequenceIfHigher(branch_code, year, parseInt(manualSequence, 10));
+        const branchSeqArg = isAir ? `${branch_code}-AIR` : `${branch_code}-SEA`;
+        await updateJobSequenceIfHigher(branchSeqArg, year, parseInt(manualSequence, 10));
 
       } else {
         // Auto Generation Logic
-        const nextSequenceStr = await getNextJobSequence(branch_code, year);
-        newJobNo = `${branch_code}/${nextSequenceStr}/${year}`;
+        const isAir = (transportMode && transportMode.toUpperCase() === 'AIR') || (req.body.consignmentType && req.body.consignmentType.toUpperCase() === 'AIR');
+        const isSea = (transportMode && transportMode.toUpperCase() === 'SEA') || (req.body.consignmentType && ['FCL', 'LCL'].includes(req.body.consignmentType?.toUpperCase() || '')) || !isAir;
+
+        const branchSeqArg = isAir ? `${branch_code}-AIR` : `${branch_code}-SEA`;
+        const nextSequenceStr = await getNextJobSequence(branchSeqArg, year);
+
+        if (isAir) {
+          newJobNo = `${branch_code}/EXP/AIR/${nextSequenceStr}/${year}`;
+        } else if (isSea) {
+          newJobNo = `${branch_code}/EXP/SEA/${nextSequenceStr}/${year}`;
+        } else {
+          newJobNo = `${branch_code}/EXP/${nextSequenceStr}/${year}`;
+        }
       }
 
       // Prepare New Job Data
@@ -228,18 +275,21 @@ router.post(
       delete sourceData.sb_submitted_date;
       delete sourceData.sb_status;
       delete sourceData.jobNumber;
+      delete sourceData.eSanchitDocuments;
+      delete sourceData.operations;
 
       // Set new values
       const newExportJob = new ExportJobModel({
         ...sourceData,
         job_no: newJobNo,
-        jobNumber: newJobNo, // Added for unique index consistency
+        jobNumber: newJobNo, 
         branch_code,
         year,
         transportMode,
         status: "Pending",
+        detailedStatus: "", 
         job_date: new Date().toISOString().split("T")[0],
-        milestones: [], // Reset milestones
+        milestones: [], 
       });
 
       await newExportJob.save();
@@ -257,9 +307,11 @@ router.post(
     } catch (error) {
       console.error("Error copying export job:", error);
       if (error.code === 11000 || error.message.includes("duplicate")) {
+        const conflictedNum = (error.message.match(/dup key: \{ [^:]+: "([^"]+)" \}/) || [null, "unknown"])[1];
         return res.status(409).json({
           success: false,
-          message: "Job number conflict detected. Please try again.",
+          message: `Job number conflict detected for ${conflictedNum}. Please try another number.`,
+          error: error.message
         });
       }
       res.status(500).json({
@@ -283,8 +335,11 @@ router.post("/api/jobs/suggest-sequence", async (req, res) => {
     }
 
     // Get the current max sequence from our centralized counter
+    const isAir = (req.body.transportMode && req.body.transportMode.toUpperCase() === 'AIR') || (req.body.consignmentType && req.body.consignmentType.toUpperCase() === 'AIR');
+    const branchToQuery = isAir ? `${branch_code.toUpperCase()}-AIR` : `${branch_code.toUpperCase()}-SEA`;
+
     const sequenceDoc = await JobSequence.findOne({
-      branch: branch_code.toUpperCase(),
+      branch: branchToQuery,
       year: year
     });
 
@@ -309,10 +364,50 @@ router.post("/api/jobs/suggest-sequence", async (req, res) => {
 // Route 4: Fix Index (Utility)
 router.delete("/api/jobs/fix-export-indexes", async (req, res) => {
   try {
-    await ExportJobModel.collection.dropIndex("account_fields.name_1");
-    res.json({ success: true, message: "Problematic index dropped successfully" });
+    // Drop old non-compound unique indexes if they exist
+    const collections = await ExportJobModel.db.db.listCollections({ name: ExportJobModel.collection.name }).toArray();
+    if (collections.length > 0) {
+      const indexes = await ExportJobModel.collection.indexes();
+      const indexesToDrop = ["jobNumber_1", "job_no_1", "account_fields.name_1"];
+      
+      for (const idxName of indexesToDrop) {
+        if (indexes.some(i => i.name === idxName)) {
+          await ExportJobModel.collection.dropIndex(idxName);
+          console.log(`Dropped legacy index: ${idxName}`);
+        }
+      }
+    }
+
+    // Trigger Mongoose to re-recreate indexes based on current schema
+    await ExportJobModel.syncIndexes();
+
+    res.json({ 
+      success: true, 
+      message: "Legacy unique indexes dropped and new compound indexes synced successfully." 
+    });
   } catch (error) {
-    console.error("Error dropping index:", error);
+    console.error("Error fixing indexes:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Route 5: Permanent Delete Job (Utility)
+router.delete("/api/jobs/permanent-delete/:job_no", async (req, res) => {
+  try {
+    const raw = req.params.job_no || "";
+    const job_no = decodeURIComponent(raw);
+
+    const deleted = await ExportJobModel.findOneAndDelete({ 
+      job_no: { $regex: `^${job_no}$`, $options: "i" } 
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Job not found" });
+    }
+
+    res.json({ success: true, message: `Job ${job_no} permanently deleted from database.` });
+  } catch (error) {
+    console.error("Error deleting job:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

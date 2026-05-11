@@ -42,6 +42,7 @@ const DateInput = ({
   // Convert yyyy-MM-dd to dd-MM-yyyy from native date picker
   const fromPickerFormat = (val) => {
     if (!val) return "";
+    // Project standard: dd-mm-yyyy
     return formatDate(val, withTime ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy");
   };
 
@@ -58,6 +59,12 @@ const DateInput = ({
         },
         persist: () => { },
       };
+
+      // Immediately switch back to text mode to show dd-MM-yyyy
+      setPickerMode(false);
+      e.target.type = "text";
+      e.target.value = formattedDate;
+
       onChange(syntheticEvent);
     } else {
       // Regular text mode - allow user to type freely

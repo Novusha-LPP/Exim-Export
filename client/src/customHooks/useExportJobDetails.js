@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useFormik } from "formik";
+import { formatDate } from "../utils/dateUtils";
+import { syncAllProductsDrawbackAndRodtep } from "../utils/fobCalculations";
 
-function useExportJobDetails(params, setFileSnackbar) {
+function useExportJobDetails(params, setFileSnackbar, navigate) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lockError, setLockError] = useState(null);
@@ -75,6 +77,8 @@ function useExportJobDetails(params, setFileSnackbar) {
   const safeValue = (value, defaultVal = "") =>
     value === undefined || value === null ? defaultVal : value;
 
+  const safeArray = (val) => (Array.isArray(val) ? val : []);
+
   const formik = useFormik({
     initialValues: {
       // Basic job info
@@ -92,6 +96,7 @@ function useExportJobDetails(params, setFileSnackbar) {
       bank_name: "",
       ieCode: "",
       branch_index: "",
+      bank_index: "",
       exporter_ref_no: "",
       shipper: "",
       sb_type: "",
@@ -111,6 +116,8 @@ function useExportJobDetails(params, setFileSnackbar) {
       gr_no: "",
       rbi_waiver_no: "",
       notify: "",
+      booking_date: "",
+      booking_no: "",
 
       // Commercial Fields
       currency: "",
@@ -131,10 +138,16 @@ function useExportJobDetails(params, setFileSnackbar) {
       gateway_port: "",
       state_of_origin: "",
       sailing_date: "",
+      leo_date: "",
       vessel_name: "",
       flight_no: "",
       flight_date: "",
       voyage_no: "",
+      forwarder: "",
+      pickup_loc: "",
+      drop_loc: "",
+      cut_off_date: "",
+      booking_copy: [],
       nature_of_cargo: "",
       total_no_of_pkgs: "",
       loose_pkgs: "",
@@ -144,11 +157,23 @@ function useExportJobDetails(params, setFileSnackbar) {
       sample_accompanied: false,
       factory_address: "",
       warehouse_code: "",
-      stuffing_seal_type: "",
-      stuffing_seal_no: "",
-      stuffing_agency_name: "",
+
       // Boolean Control Fields
+      isBuyer: false,
       buyer_other_than_consignee: false,
+      vgm_done: false,
+      vgm_date: "",
+      form13_done: false,
+      form13_date: "",
+      shipping_bill_done: false,
+      shipping_bill_done_date: "",
+      freight_done: false,
+      freight_enquiry_id: "",
+
+      financial_lock: false,
+      operational_lock: false,
+      send_for_billing: false,
+      send_for_billing_date: "",
 
       status: "",
       // Add these fields in the appropriate section (around the shipping/cargo details)
@@ -183,14 +208,12 @@ function useExportJobDetails(params, setFileSnackbar) {
       // Regulatory Information
       ieCode: "",
       exporter_pan: "",
-      exporter_gstin: "",
       exporter_tan: "",
       ad_code: "",
 
       // Banking Information
       bank_account_number: "",
       bank_ifsc_code: "",
-      bank_swift_code: "",
       bank_dealer: "",
       ac_number: "",
 
@@ -213,7 +236,6 @@ function useExportJobDetails(params, setFileSnackbar) {
       // Invoice Details
       exchange_rate: "",
 
-      // Containers Information
       containers: [
         {
           serialNumber: 1,
@@ -228,6 +250,7 @@ function useExportJobDetails(params, setFileSnackbar) {
           sealDeviceId: "",
           tareWeightKgs: 0,
           rfid: "",
+          weighmentTransporterName: "",
         },
       ],
 
@@ -376,20 +399,9 @@ function useExportJobDetails(params, setFileSnackbar) {
       // Charges and Billing
       // Charges and Billing
       charges: [],
+      fines: [],
 
-      // AR Invoices
-      arInvoices: [
-        {
-          date: "",
-          billNo: "",
-          type: "INV",
-          organization: "",
-          currency: "INR",
-          amount: 0,
-          balance: 0,
-          vendorBillNo: "",
-        },
-      ],
+
 
       // eSanchit Documents
       eSanchitDocuments: [
@@ -429,7 +441,11 @@ function useExportJobDetails(params, setFileSnackbar) {
 
       // Milestone Tracking
       isJobtrackingEnabled: false,
+      jobtrackingCompletedDate: "",
       isJobCanceled: false,
+      jobCanceledDate: "",
+      isLocked: false,
+      cancellationReason: "",
       milestones: [
         {
           milestoneName: "",
@@ -452,6 +468,8 @@ function useExportJobDetails(params, setFileSnackbar) {
           qtyUnit: "",
           socQuantity: "",
           socunit: "",
+          isSqcQuantityManual: false,
+          isSqcUnitManual: false,
           unitPrice: "",
           priceUnit: "",
           per: "",
@@ -484,8 +502,10 @@ function useExportJobDetails(params, setFileSnackbar) {
           igstCompensationCess: {
             igstPaymentStatus: "",
             taxableValueINR: "0",
+            isTaxableValueManual: false,
             igstRate: "0",
             igstAmountINR: "0",
+            isIgstManual: false,
             compensationCessRate: "0",
             compensationCessAmountINR: "0",
           },
@@ -499,6 +519,7 @@ function useExportJobDetails(params, setFileSnackbar) {
             amountINR: "0",
             unit: "",
             capUnit: "",
+            isCapUnitManual: false,
           },
 
           cessExpDuty: {
@@ -687,16 +708,11 @@ function useExportJobDetails(params, setFileSnackbar) {
 
       operations: [],
 
-      // Stuffing Details
-      stuffing_date: "",
-      stuffing_supervisor: "",
-      stuffing_remarks: "",
-      cfs: "",
+
 
       // CHA Details
       cha: "",
-      masterblno: "",
-      houseblno: "",
+      icegateId: "RAJANSFPL",
 
       // System Fields
       updatedBy: "",
@@ -705,6 +721,26 @@ function useExportJobDetails(params, setFileSnackbar) {
     },
     enableReinitialize: true,
     onSubmit: async (values) => {
+
+
+
+
+      // TC_SHP_037: Verify Sailing Date cannot be before Job Date
+      if (values.sailing_date && values.job_date) {
+        const sd = new Date(values.sailing_date);
+        const jd = new Date(values.job_date);
+        if (sd < jd) {
+          alert("Sailing Date cannot be before Job Date");
+          return Promise.reject(new Error("Validation failed: Sailing Date cannot be before Job Date"));
+        }
+      }
+
+      // TC_CAN_024: Verify Cancellation Reason is mandatory when cancelling a job
+      if (values.isJobCanceled && (!values.cancellationReason || !values.cancellationReason.trim())) {
+        alert("Cancellation reason is required");
+        return Promise.reject(new Error("Validation failed: Cancellation reason is required"));
+      }
+
       try {
         const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
         const headers = {
@@ -714,16 +750,21 @@ function useExportJobDetails(params, setFileSnackbar) {
           "user-role": user.role || "unknown",
         };
 
+        const { charges, ...receivedValues } = values;
         const syncedValues = {
-          ...values,
+          ...receivedValues,
           drawbackDetails: (values.drawbackDetails || []).map((dbk, i) => {
             const product = values.products?.[i];
             if (product) {
+              const pQty = product.isSqcQuantityManual ? (parseFloat(product.socQuantity) || 0) : (parseFloat(product.socQuantity || product.quantity || 0));
+              const pUnit = product.isSqcUnitManual ? (product.socunit || "") : (product.socunit || product.qtyUnit || "");
+              const qty = dbk.manualQuantity ? (dbk.quantity || 0) : pQty;
+              const unit = dbk.manualUnit ? (dbk.unit || "") : pUnit;
               return {
                 ...dbk,
-                quantity: product.quantity || 0,
-                unit: product.qtyUnit || "",
-                dbkCapunit: product.qtyUnit || "",
+                quantity: qty,
+                unit: unit,
+                dbkCapunit: unit,
               };
             }
             return dbk;
@@ -735,9 +776,9 @@ function useExportJobDetails(params, setFileSnackbar) {
           })),
           annexC1Details: {
             ...values.annexC1Details,
-            sealNumber:
-              values.stuffing_seal_no || values.annexC1Details?.sealNumber,
+            sealNumber: values.annexC1Details?.sealNumber,
           },
+          invoices: syncAllProductsDrawbackAndRodtep(values.invoices, Number(values.exchange_rate) || 1),
           updatedAt: new Date(),
         };
 
@@ -754,9 +795,18 @@ function useExportJobDetails(params, setFileSnackbar) {
           setTimeout(() => setFileSnackbar(false), 3000);
         }
 
-        setTimeout(() => {
-          window.close();
-        }, 500);
+        // Redirection logic if Job Number changed
+        if (navigate && response.data.data?.job_no && response.data.data.job_no !== params.job_no) {
+          const updatedJobNo = response.data.data.job_no;
+          const currentPath = window.location.pathname;
+          const oldJobNoEncoded = encodeURIComponent(params.job_no);
+          const newJobNoEncoded = encodeURIComponent(updatedJobNo);
+
+          if (currentPath.includes(oldJobNoEncoded)) {
+            const nextPath = currentPath.replace(oldJobNoEncoded, newJobNoEncoded);
+            navigate(nextPath, { replace: true });
+          }
+        }
       } catch (error) {
         console.error("Error updating export job:", error);
         throw error;
@@ -784,7 +834,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         job_no: safeValue(data.job_no),
         year: safeValue(data.year),
         custom_house: safeValue(data.custom_house),
-        job_date: safeValue(data.job_date),
+        job_date: formatDate(safeValue(data.job_date)),
         exporter: safeValue(data.exporter),
         description: safeValue(data.description),
         sb_no: safeValue(data.sb_no),
@@ -795,6 +845,7 @@ function useExportJobDetails(params, setFileSnackbar) {
         bank_name: safeValue(data.bank_name),
         ieCode: safeValue(data.ieCode),
         branch_index: safeValue(data.branch_index),
+        bank_index: safeValue(data.bank_index),
         exporter_ref_no: safeValue(data.exporter_ref_no),
         shipper: safeValue(data.shipper),
         sb_type: safeValue(data.sb_type),
@@ -811,7 +862,9 @@ function useExportJobDetails(params, setFileSnackbar) {
         bank_dealer: safeValue(data.bank_dealer),
         ac_number: safeValue(data.ac_number || data.bank_account_number),
         adCode: safeValue(data.adCode || data.ad_code),
-        sb_date: safeValue(data.sb_date),
+        booking_date: formatDate(safeValue(data.booking_date)),
+        booking_no: safeValue(data.booking_no),
+        sb_date: formatDate(safeValue(data.sb_date)),
         rbi_app_no: safeValue(data.rbi_app_no),
         gr_waived: safeValue(data.gr_waived, false),
         gr_no: safeValue(data.gr_no),
@@ -823,20 +876,26 @@ function useExportJobDetails(params, setFileSnackbar) {
         destination_port: safeValue(data.destination_port),
         destination_country: safeValue(data.destination_country),
         egm_no: safeValue(data.egm_no),
-        egm_date: safeValue(data.egm_date),
-        mbl_date: safeValue(data.mbl_date),
-        hbl_date: safeValue(data.hbl_date),
+        egm_date: formatDate(safeValue(data.egm_date)),
+        mbl_date: formatDate(safeValue(data.mbl_date)),
+        hbl_date: formatDate(safeValue(data.hbl_date)),
         hbl_no: safeValue(data.hbl_no),
         mbl_no: safeValue(data.mbl_no),
         transhipper_code: safeValue(data.transhipper_code),
         pre_carriage_by: safeValue(data.pre_carriage_by),
         gateway_port: safeValue(data.gateway_port),
         state_of_origin: safeValue(data.state_of_origin),
-        sailing_date: safeValue(data.sailing_date),
+        sailing_date: formatDate(safeValue(data.sailing_date)),
+        leo_date: formatDate(safeValue(data.leo_date)),
         vessel_name: safeValue(data.vessel_name),
         flight_no: safeValue(data.flight_no),
-        flight_date: safeValue(data.flight_date),
+        flight_date: formatDate(safeValue(data.flight_date)),
         voyage_no: safeValue(data.voyage_no),
+        forwarder: safeValue(data.forwarder),
+        pickup_loc: safeValue(data.pickup_loc),
+        drop_loc: safeValue(data.drop_loc),
+        cut_off_date: formatDate(safeValue(data.cut_off_date)),
+        booking_copy: safeValue(data.booking_copy),
         nature_of_cargo: safeValue(data.nature_of_cargo),
         total_no_of_pkgs: safeValue(data.total_no_of_pkgs),
         // Add these lines in the setValues call (around the shipping details section)
@@ -856,13 +915,22 @@ function useExportJobDetails(params, setFileSnackbar) {
         sample_accompanied: safeValue(data.sample_accompanied, false),
         factory_address: safeValue(data.factory_address),
         warehouse_code: safeValue(data.warehouse_code),
-        stuffing_seal_type: safeValue(data.stuffing_seal_type),
-        stuffing_seal_no: safeValue(data.stuffing_seal_no),
-        stuffing_agency_name: safeValue(data.stuffing_agency_name),
-        buyer_other_than_consignee: safeValue(
-          data.buyer_other_than_consignee,
-          false,
-        ),
+
+        isBuyer: safeValue(data.isBuyer, false),
+        buyer_other_than_consignee: safeValue(data.buyer_other_than_consignee, false),
+        vgm_done: safeValue(data.vgm_done, false),
+        vgm_date: formatDate(safeValue(data.vgm_date)),
+        form13_done: safeValue(data.form13_done, false),
+        form13_date: formatDate(safeValue(data.form13_date)),
+        shipping_bill_done: safeValue(data.shipping_bill_done, false),
+        shipping_bill_done_date: formatDate(safeValue(data.shipping_bill_done_date)),
+        freight_done: safeValue(data.freight_done, false),
+        freight_enquiry_id: safeValue(data.freight_enquiry_id),
+
+        financial_lock: safeValue(data.financial_lock, false),
+        operational_lock: safeValue(data.operational_lock, false),
+        send_for_billing: safeValue(data.send_for_billing, false),
+        send_for_billing_date: formatDate(safeValue(data.send_for_billing_date)),
         status: safeValue(data.status),
         exporter_address: safeValue(data.exporter_address),
         exporter_state: safeValue(data.exporter_state),
@@ -875,12 +943,10 @@ function useExportJobDetails(params, setFileSnackbar) {
         branch_code: safeValue(data.branch_code),
         ieCode: safeValue(data.ieCode),
         exporter_pan: safeValue(data.exporter_pan),
-        exporter_gstin: safeValue(data.exporter_gstin),
         exporter_tan: safeValue(data.exporter_tan),
         ad_code: safeValue(data.ad_code),
         bank_account_number: safeValue(data.bank_account_number),
         bank_ifsc_code: safeValue(data.bank_ifsc_code),
-        bank_swift_code: safeValue(data.bank_swift_code),
         consignees: safeValue(data.consignees, [emptyConsignee]),
         port_of_loading: safeValue(data.port_of_loading),
         port_of_discharge: safeValue(data.port_of_discharge),
@@ -891,11 +957,18 @@ function useExportJobDetails(params, setFileSnackbar) {
         containers: safeValue(data.containers, []).map((c) => ({
           ...c,
           tareWeightKgs: c.tareWeightKgs || c.sealDeviceId || 0,
+          sealDate: formatDate(safeValue(c.sealDate)),
         })),
         remarks: safeValue(data.remarks),
         job_owner: safeValue(data.job_owner),
+        jobtrackingCompletedDate: formatDate(safeValue(data.jobtrackingCompletedDate)),
+        isJobCanceled: safeValue(data.isJobCanceled, false),
+        jobCanceledDate: formatDate(safeValue(data.jobCanceledDate)),
+        isLocked: safeValue(data.isLocked, false),
+        cancellationReason: safeValue(data.cancellationReason),
         invoices: safeValue(data.invoices, []).map((inv) => ({
           ...inv,
+          invoiceDate: formatDate(safeValue(inv.invoiceDate)),
           products: (inv.products || []).map((prod) => ({
             ...prod,
             epcgDetails: safeValue(prod.epcgDetails, {
@@ -908,6 +981,10 @@ function useExportJobDetails(params, setFileSnackbar) {
               deecItems: [],
               deec_reg_obj: [getDefaultRegItem()],
             }),
+            rodtepInfo: {
+              ...prod.rodtepInfo,
+              isCapUnitManual: prod.rodtepInfo?.isCapUnitManual || false,
+            },
           })),
         })),
         buyerThirdPartyInfo: safeValue(data.buyerThirdPartyInfo, {}),
@@ -926,9 +1003,9 @@ function useExportJobDetails(params, setFileSnackbar) {
           data.branch_sr_no || data.annexC1Details?.branchSerialNo,
           0,
         ),
-        examination_date: safeValue(
+        examination_date: formatDate(safeValue(
           data.examination_date || data.annexC1Details?.examinationDate,
-        ),
+        )),
         examining_officer: safeValue(
           data.examining_officer || data.annexC1Details?.examiningOfficer,
         ),
@@ -945,9 +1022,8 @@ function useExportJobDetails(params, setFileSnackbar) {
         ),
         annex_seal_number: safeValue(
           data.annex_seal_number ||
-          data.annexC1Details?.sealNumber ||
-          data.stuffing_seal_no,
-        ), // Reference stuffing_seal_no
+          data.annexC1Details?.sealNumber,
+        ),
         annex_designation: safeValue(
           data.annex_designation || data.annexC1Details?.designation,
         ),
@@ -974,9 +1050,9 @@ function useExportJobDetails(params, setFileSnackbar) {
             data.branch_sr_no || data.annexC1Details?.branchSerialNo,
             0,
           ),
-          examinationDate: safeValue(
+          examinationDate: formatDate(safeValue(
             data.examination_date || data.annexC1Details?.examinationDate,
-          ),
+          )),
           examiningOfficer: safeValue(
             data.examining_officer || data.annexC1Details?.examiningOfficer,
           ),
@@ -992,10 +1068,9 @@ function useExportJobDetails(params, setFileSnackbar) {
             false,
           ),
           sealNumber: safeValue(
-            data.stuffing_seal_no ||
             data.annex_seal_number ||
             data.annexC1Details?.sealNumber,
-          ), // Sync from main seal number
+          ),
           documents: safeValue(
             data.annex_c1_documents || data.annexC1Details?.documents,
             [],
@@ -1013,7 +1088,10 @@ function useExportJobDetails(params, setFileSnackbar) {
           ),
         }),
         freightInsuranceCharges: safeValue(data.freightInsuranceCharges, {}),
-        milestones: safeValue(data.milestones, []),
+        milestones: safeValue(data.milestones, []).map((m) => ({
+          ...m,
+          actualDate: formatDate(safeValue(m.actualDate)),
+        })),
         customerremark: safeValue(data.customerremark),
         shipmenttype: safeValue(data.shipmenttype, "International"),
         milestoneremarks: safeValue(data.milestoneremarks),
@@ -1023,8 +1101,9 @@ function useExportJobDetails(params, setFileSnackbar) {
         milestonehandledby: safeValue(data.milestonehandledby),
         isJobtrackingEnabled: safeValue(data.isJobtrackingEnabled, false),
         isJobCanceled: safeValue(data.isJobCanceled, false),
+        isLocked: safeValue(data.isLocked, false),
         charges: safeValue(data.charges, []),
-        arInvoices: safeValue(data.arInvoices, []),
+        fines: safeValue(data.fines, []),
         eSanchitDocuments: safeValue(data.eSanchitDocuments, []),
         products: safeValue(data.products, []).map((product) => ({
           ...product,
@@ -1067,14 +1146,42 @@ function useExportJobDetails(params, setFileSnackbar) {
           percentageOfFobValue: d.percentageOfFobValue || "1.5% of FOB Value",
         })),
         documents: safeValue(data.documents, {}),
-        stuffing_date: safeValue(data.stuffing_date),
-        stuffing_supervisor: safeValue(data.stuffing_supervisor),
-        stuffing_remarks: safeValue(data.stuffing_remarks),
-        operations: safeValue(data.operations, []),
-        cfs: safeValue(data.cfs),
+
+        operations: safeArray(data.operations).map((operation) => {
+          // Normalization: Fix for corrupted data where MongoDB dot-notation created objects with key "0" instead of arrays
+          const op = operation["0"] ? { ...operation, ...operation["0"] } : operation;
+
+          return {
+            ...op,
+            statusDetails: safeArray(op.statusDetails || op["0"]?.statusDetails).map((status) => {
+              // Same fix for statusDetails nested under "0"
+              const s = status["0"] ? { ...status, ...status["0"] } : status;
+              return {
+                ...s,
+                leoDate: formatDate(safeValue(s.leoDate)),
+                billingDocsSentDt: formatDate(safeValue(s.billingDocsSentDt)),
+                goodsRegistrationDate: formatDate(safeValue(s.goodsRegistrationDate)),
+                goodsReportDate: formatDate(safeValue(s.goodsReportDate)),
+                stuffingDate: formatDate(safeValue(s.stuffingDate)),
+                eGatePassCopyDate: formatDate(safeValue(s.eGatePassCopyDate)),
+                handoverForwardingNoteDate: formatDate(safeValue(s.handoverForwardingNoteDate)),
+                handoverConcorTharSanganaRailRoadDate: formatDate(safeValue(s.handoverConcorTharSanganaRailRoadDate)),
+                hoToConsoleDate: formatDate(safeValue(s.hoToConsoleDate)),
+                hoToConsoleDate2: formatDate(safeValue(s.hoToConsoleDate2)),
+                containerPlacementDate: formatDate(safeValue(s.containerPlacementDate)),
+                gateInDate: formatDate(safeValue(s.gateInDate)),
+                railOutReachedDate: formatDate(safeValue(s.railOutReachedDate)),
+              };
+            }),
+
+            weighmentDetails: safeArray(op.weighmentDetails || op["0"]?.weighmentDetails).map((w) => ({
+              ...w,
+              dateTime: formatDate(safeValue(w.dateTime), "dd-MM-yyyy HH:mm"),
+            })),
+          };
+        }),
         cha: safeValue(data.cha),
-        masterblno: safeValue(data.masterblno),
-        houseblno: safeValue(data.houseblno),
+        icegateId: safeValue(data.icegateId, "RAJANSFPL"),
         createdBy: safeValue(data.createdBy),
         updatedBy: safeValue(data.updatedBy),
         createdAt: safeValue(data.createdAt),

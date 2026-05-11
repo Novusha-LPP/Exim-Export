@@ -26,6 +26,12 @@ const getDefaultDrawback = (idx = 1) => ({
   rosctlAmount: 0,
   rosctlCategory: "", // "B" or "D"
   showRosctl: false,
+  drawback_scroll_no: "",
+  drawback_scroll_date: "",
+  rosctl_scroll_no: "",
+  rosctl_scroll_date: "",
+  manualQuantity: false,
+  manualUnit: false,
 });
 
 const getJobDateFormatted = (jobDate) => {
@@ -119,8 +125,8 @@ const DrawbackTab = ({
       let hasChanges = false;
       const currentDbk = product.drawbackDetails || [];
       const updatedDbk = currentDbk.map((item) => {
-        const pQty = product.quantity || 0;
-        const pUnit = product.qtyUnit || "";
+        const pQty = product.isSqcQuantityManual ? (parseFloat(product.socQuantity) || 0) : (parseFloat(product.socQuantity || product.quantity || 0));
+        const pUnit = product.isSqcUnitManual ? (product.socunit || "") : (product.socunit || product.qtyUnit || "");
 
         const currentFob = parseFloat(item.fobValue) || 0;
         const rate = parseFloat(item.dbkRate) || 0;
@@ -128,25 +134,25 @@ const DrawbackTab = ({
         let newItem = { ...item };
         let changedLocal = false;
 
-        if (
-          String(item.quantity) !== String(pQty) ||
-          String(item.unit) !== String(pUnit) ||
-          String(item.dbkCapunit) !== String(pUnit)
-        ) {
-          newItem.quantity = pQty;
-          newItem.unit = pUnit;
-          newItem.dbkCapunit = pUnit;
+        // Sync quantity/unit with SQC values if they differ and NOT manually overridden
+        const isQtyDiff = Math.abs((parseFloat(item.quantity) || 0) - pQty) > 0.001;
+        const isUnitDiff = item.unit !== pUnit;
+        
+        if ((isQtyDiff && !item.manualQuantity) || (isUnitDiff && !item.manualUnit)) {
+          if (!item.manualQuantity) newItem.quantity = pQty;
+          if (!item.manualUnit) {
+            newItem.unit = pUnit;
+            newItem.dbkCapunit = pUnit;
+          }
           changedLocal = true;
         }
 
         if (Math.abs(currentFob - fobAmountInr) > 0.01) {
           newItem.fobValue = fobAmountInr.toFixed(2);
-          newItem.dbkAmount = ((rate * fobAmountInr) / 100).toFixed(2);
-          newItem.percentageOfFobValue = `${rate}% of FOB Value`;
-
-          // Recalculate ROSCTL if applicable
+          // Recalculate amounts
+          newItem.dbkAmount = calculateDbkAmount(newItem);
           if (newItem.showRosctl) {
-            calculateRosctlAmount(newItem);
+            newItem.rosctlAmount = calculateRosctlAmount(newItem);
           }
 
           changedLocal = true;
@@ -195,54 +201,23 @@ const DrawbackTab = ({
     currentDbk[rowIndex].dbkRate = isNaN(rateVal) ? 0 : rateVal;
     currentDbk[rowIndex].dbkCap = item.drawback_cap || 0;
 
-    currentDbk[rowIndex].quantity = product.quantity || 0;
-    currentDbk[rowIndex].unit = product.qtyUnit || "";
-    currentDbk[rowIndex].dbkCapunit = product.qtyUnit || "";
+    currentDbk[rowIndex].quantity = parseFloat(product.socQuantity) || 0;
+    currentDbk[rowIndex].unit = item.unit || product.socunit || "";
+    currentDbk[rowIndex].dbkCapunit = item.unit || product.socunit || "";
+    currentDbk[rowIndex].manualQuantity = false;
+    currentDbk[rowIndex].manualUnit = !!item.unit;
 
-    const invoiceCurrency = activeInvoice?.currency;
-    let productAmount = parseFloat(product.amount || 0);
-    let fobInr = 0;
+    const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+    const fobInr = calculateProductFobINR(
+      product,
+      activeInvoice,
+      invoiceExchangeRate
+    );
 
-    if (
-      productAmount > 0 &&
-      invoiceCurrency &&
-      invoiceCurrency.toUpperCase() !== "INR"
-    ) {
-      try {
-        const dateStr = getJobDateFormatted(formik.values.job_date);
-        const res = await fetch(
-          `${import.meta.env.VITE_API_STRING}/currency-rates/by-date/${dateStr}`
-        );
-        const json = await res.json();
-
-        if (json?.success && json?.data?.exchange_rates) {
-          const currencyRate = json.data.exchange_rates.find(
-            (r) =>
-              r.currency_code?.toUpperCase() === invoiceCurrency.toUpperCase()
-          );
-          if (currencyRate && typeof currencyRate.export_rate === "number") {
-            fobInr = productAmount * currencyRate.export_rate;
-          } else {
-            fobInr = productAmount;
-          }
-        } else {
-          fobInr = productAmount;
-        }
-      } catch (error) {
-        console.error("Error fetching currency rates:", error);
-        fobInr = productAmount;
-      }
-    } else {
-      fobInr = productAmount;
-    }
-
-    currentDbk[rowIndex].fobValue = fobInr;
+    currentDbk[rowIndex].fobValue = fobInr.toFixed(2);
 
     // Calculate Amount
-    currentDbk[rowIndex].dbkAmount = (
-      (currentDbk[rowIndex].dbkRate * fobInr) /
-      100
-    ).toFixed(2);
+    currentDbk[rowIndex].dbkAmount = calculateDbkAmount(currentDbk[rowIndex]);
     currentDbk[
       rowIndex
     ].percentageOfFobValue = `${currentDbk[rowIndex].dbkRate}% of FOB Value`;
@@ -291,23 +266,14 @@ const DrawbackTab = ({
           currentDbk[rowIndex].ctlRate = ctlEntry ? ctlEntry.rate : 0;
           currentDbk[rowIndex].ctlCap = ctlEntry ? ctlEntry.cap_per_unit : 0;
 
+          // Use Unit from ROSCTL response if available
+          if (slEntry && slEntry.unit) {
+            currentDbk[rowIndex].unit = slEntry.unit;
+            currentDbk[rowIndex].dbkCapunit = slEntry.unit;
+          }
+
           // Calculate ROSCTL Amount inline
-          const qty = parseFloat(currentDbk[rowIndex].quantity || 0);
-
-          let finalSl = (currentDbk[rowIndex].slRate * fobInr) / 100;
-          const sCap = parseFloat(currentDbk[rowIndex].slCap || 0);
-          if (sCap > 0) {
-            const sCapTotal = sCap * qty;
-            if (finalSl > sCapTotal) finalSl = sCapTotal;
-          }
-
-          let finalCtl = (currentDbk[rowIndex].ctlRate * fobInr) / 100;
-          const cCap = parseFloat(currentDbk[rowIndex].ctlCap || 0);
-          if (cCap > 0) {
-            const cCapTotal = cCap * qty;
-            if (finalCtl > cCapTotal) finalCtl = cCapTotal;
-          }
-          currentDbk[rowIndex].rosctlAmount = (finalSl + finalCtl).toFixed(2);
+          currentDbk[rowIndex].rosctlAmount = calculateRosctlAmount(currentDbk[rowIndex]);
         } else {
           // Reset ROSCTL values but keep show=true so they can toggle if needed?
           // Or better to hide if not found?
@@ -357,17 +323,25 @@ const DrawbackTab = ({
       currentDbk[rowIndex] = getDefaultDrawback(rowIndex + 1);
     currentDbk[rowIndex][field] = value;
 
-    if (field === "dbkRate" || field === "fobValue") {
-      const rate =
-        parseFloat(
-          field === "dbkRate" ? value : currentDbk[rowIndex].dbkRate
-        ) || 0;
-      const fob =
-        parseFloat(
-          field === "fobValue" ? value : currentDbk[rowIndex].fobValue
-        ) || 0;
-      currentDbk[rowIndex].dbkAmount = ((rate * fob) / 100).toFixed(2);
-      currentDbk[rowIndex].percentageOfFobValue = `${rate}% of FOB Value`;
+    if (field === "dbkRate" || field === "fobValue" || field === "quantity" || field === "dbkCap") {
+      currentDbk[rowIndex].dbkAmount = calculateDbkAmount(currentDbk[rowIndex]);
+      if (field === "dbkRate") {
+        currentDbk[rowIndex].percentageOfFobValue = `${value}% of FOB Value`;
+      }
+      if (field === "quantity") {
+        currentDbk[rowIndex].manualQuantity = true;
+      }
+    }
+    
+    if (field === "unit") {
+      currentDbk[rowIndex].manualUnit = true;
+      currentDbk[rowIndex].dbkCapunit = value;
+    }
+
+    if (field === "slRate" || field === "ctlRate" || field === "slCap" || field === "ctlCap" || field === "fobValue" || field === "quantity") {
+      if (currentDbk[rowIndex].showRosctl) {
+        currentDbk[rowIndex].rosctlAmount = calculateRosctlAmount(currentDbk[rowIndex]);
+      }
     }
 
     const updatedInvoices = [...invoices];
@@ -417,10 +391,12 @@ const DrawbackTab = ({
 
         currentDbk[rowIndex].dbkCap = item.drawback_cap || 0;
 
-        // Pull Quantity & Unit from ProductMainTab (corresponding index)
-        currentDbk[rowIndex].quantity = product.quantity || 0;
-        currentDbk[rowIndex].unit = product.qtyUnit || "";
-        currentDbk[rowIndex].dbkCapunit = product.qtyUnit || "";
+        // Pull Quantity & Unit
+        currentDbk[rowIndex].quantity = parseFloat(product.socQuantity) || 0;
+        currentDbk[rowIndex].unit = item.unit || product.socunit || "";
+        currentDbk[rowIndex].dbkCapunit = item.unit || product.socunit || "";
+        currentDbk[rowIndex].manualQuantity = false;
+        currentDbk[rowIndex].manualUnit = !!item.unit;
 
         // Pull FOB Value (INR) using standardized calculation
         const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
@@ -433,10 +409,7 @@ const DrawbackTab = ({
         currentDbk[rowIndex].fobValue = fobInr.toFixed(2);
 
         // Calculate Amount
-        currentDbk[rowIndex].dbkAmount = (
-          (currentDbk[rowIndex].dbkRate * fobInr) /
-          100
-        ).toFixed(2);
+        currentDbk[rowIndex].dbkAmount = calculateDbkAmount(currentDbk[rowIndex]);
         currentDbk[
           rowIndex
         ].percentageOfFobValue = `${currentDbk[rowIndex].dbkRate}% of FOB Value`;
@@ -508,8 +481,13 @@ const DrawbackTab = ({
         currentDbk[rowIndex].ctlRate = ctlEntry ? ctlEntry.rate : 0;
         currentDbk[rowIndex].ctlCap = ctlEntry ? ctlEntry.cap_per_unit : 0;
 
+        if (slEntry && slEntry.unit) {
+            currentDbk[rowIndex].unit = slEntry.unit;
+            currentDbk[rowIndex].dbkCapunit = slEntry.unit;
+        }
+
         // Calculate Amount
-        calculateRosctlAmount(currentDbk[rowIndex]);
+        currentDbk[rowIndex].rosctlAmount = calculateRosctlAmount(currentDbk[rowIndex]);
 
         saveUpdatedProducts(currentDbk);
       } else {
@@ -547,26 +525,43 @@ const DrawbackTab = ({
     }
   };
 
+  const calculateDbkAmount = (item) => {
+    const fob = parseFloat(item.fobValue || 0);
+    const qty = parseFloat(item.quantity || 0);
+    const rate = parseFloat(item.dbkRate || 0);
+    const cap = parseFloat(item.dbkCap || 0);
+
+    const a = (fob * rate) / 100;
+    const b = qty * cap;
+
+    let calcAmt = 0;
+    if (cap > 0) {
+      calcAmt = Math.min(a, b);
+    } else {
+      calcAmt = a;
+    }
+
+    if (calcAmt < 50) {
+      return "0.00";
+    }
+    return calcAmt.toFixed(2);
+  };
+
   const calculateRosctlAmount = (item) => {
     const fob = parseFloat(item.fobValue || 0);
     const qty = parseFloat(item.quantity || 0);
+    const slRate = parseFloat(item.slRate || 0);
+    const ctlRate = parseFloat(item.ctlRate || 0);
+    const slCap = parseFloat(item.slCap || 0);
+    const ctlCap = parseFloat(item.ctlCap || 0);
 
-    let finalSl = (parseFloat(item.slRate || 0) * fob) / 100;
-    const sCap = parseFloat(item.slCap || 0);
+    const a = (fob * (slRate + ctlRate)) / 100;
+    const b = qty * (slCap + ctlCap);
 
-    if (sCap > 0) {
-      const capTotal = sCap * qty;
-      if (finalSl > capTotal) finalSl = capTotal;
+    if (slCap + ctlCap > 0) {
+      return Math.min(a, b).toFixed(2);
     }
-
-    let finalCtl = (parseFloat(item.ctlRate || 0) * fob) / 100;
-    const cCap = parseFloat(item.ctlCap || 0);
-    if (cCap > 0) {
-      const capTotal = cCap * qty;
-      if (finalCtl > capTotal) finalCtl = capTotal;
-    }
-
-    item.rosctlAmount = (finalSl + finalCtl).toFixed(2);
+    return a.toFixed(2);
   };
 
   const saveUpdatedProducts = (newDbkDetails) => {
@@ -714,13 +709,9 @@ const DrawbackTab = ({
                   </td>
                   <td style={styles.td}>
                     <input
-                      style={{
-                        ...styles.input,
-                        backgroundColor: "#e9ecef",
-                        color: "#495057",
-                      }}
+                      style={styles.input}
                       value={item.unit || ""}
-                      disabled
+                      onChange={(e) => handleDrawbackFieldChange(idx, "unit", e.target.value)}
                     />
                   </td>
                   <td style={styles.td}>
@@ -788,13 +779,8 @@ const DrawbackTab = ({
                   </td>
                   <td style={styles.td}>
                     <input
-                      style={{
-                        ...styles.input,
-                        backgroundColor: "#e9ecef",
-                        color: "#495057",
-                      }}
+                      style={styles.input}
                       value={item.dbkCapunit ?? ""}
-                      disabled
                       onChange={(e) =>
                         handleDrawbackFieldChange(
                           idx,
@@ -816,6 +802,12 @@ const DrawbackTab = ({
                           e.target.value
                         )
                       }
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        if (val < 50) {
+                          handleDrawbackFieldChange(idx, "dbkAmount", "0.00");
+                        }
+                      }}
                     />
                   </td>
 
@@ -837,6 +829,47 @@ const DrawbackTab = ({
                     >
                       ✕
                     </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={12} style={{ padding: "10px", backgroundColor: "#f9fafb" }}>
+                    <div style={{ display: "flex", gap: "15px", alignItems: "center", flexWrap: "wrap", border: "1px solid #e5e7eb", padding: "10px", borderRadius: "6px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>DBK Scroll No</span>
+                        <input
+                          style={styles.input}
+                          value={item.drawback_scroll_no || ""}
+                          onChange={(e) => handleDrawbackFieldChange(idx, "drawback_scroll_no", e.target.value)}
+                        />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>DBK Scroll Date</span>
+                        <input
+                          type="date"
+                          style={styles.input}
+                          value={item.drawback_scroll_date || ""}
+                          onChange={(e) => handleDrawbackFieldChange(idx, "drawback_scroll_date", e.target.value)}
+                        />
+                      </div>
+                      <div style={{ width: "1px", height: "40px", backgroundColor: "#d1d5db", margin: "0 10px" }} />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>ROSCTL Scroll No</span>
+                        <input
+                          style={styles.input}
+                          value={item.rosctl_scroll_no || ""}
+                          onChange={(e) => handleDrawbackFieldChange(idx, "rosctl_scroll_no", e.target.value)}
+                        />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>ROSCTL Scroll Date</span>
+                        <input
+                          type="date"
+                          style={styles.input}
+                          value={item.rosctl_scroll_date || ""}
+                          onChange={(e) => handleDrawbackFieldChange(idx, "rosctl_scroll_date", e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </td>
                 </tr>
                 {item.showRosctl && (

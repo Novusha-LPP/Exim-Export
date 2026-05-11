@@ -1137,17 +1137,6 @@ function ProductRow({
 }) {
   const [rodtepLoading, setRodtepLoading] = useState(false);
 
-  // Sync rodtepInfo.unit with product.qtyUnit (from Product Main Tab)
-  const prevRodtepUnitRef = useRef(product.rodtepInfo?.unit);
-  useEffect(() => {
-    const mainUnit = product.qtyUnit;
-
-    if (mainUnit !== undefined && prevRodtepUnitRef.current !== mainUnit) {
-      handleUnitChange(index, "unit", mainUnit);
-      prevRodtepUnitRef.current = mainUnit;
-    }
-  }, [product.qtyUnit, index]);
-
   // Fetch RoDTEP data when RITC or eximCode changes
   useEffect(() => {
     const fetchRodtepData = async () => {
@@ -1158,12 +1147,10 @@ function ProductRow({
       const eximCode = product.eximCode || "";
       const useReApi = eximCode.includes("03");
 
-      const ritcToSearch = product.ritc.toString().startsWith("0")
-        ? product.ritc.toString().slice(1)
-        : product.ritc.toString();
+      const ritcToSearch = product.ritc.toString();
 
       const endpoint = useReApi
-        ? `${apiBase}/getRodtep_RE?tariff_line=${ritcToSearch}`
+        ? `${apiBase}/getRodtep_RE?tariff_item=${ritcToSearch}`
         : `${apiBase}/getRodtep_R?tariff_item=${ritcToSearch}`;
 
       try {
@@ -1177,17 +1164,14 @@ function ProductRow({
             entry =
               data.data.find(
                 (e) =>
-                  (e.tariff_line || e.tariff_item || "").toString() ===
-                  ritcToSearch,
+                  (e.tariff_item || "").toString() === ritcToSearch,
               ) || data.data[0];
           }
         }
 
         if (entry) {
           const rate = parseFloat(entry.rate_percentage_fob ?? entry.rate ?? 0);
-          const cap = parseFloat(
-            entry.cap_rs_per_uqc ?? entry.cap_per_uqc ?? entry.cap ?? 0,
-          );
+          const cap = parseFloat(entry.cap_per_uqc ?? entry.cap ?? 0);
           const uqc = toUpper(entry.uqc || "");
 
           const currentRate = parseFloat(product.rodtepInfo?.ratePercent) || 0;
@@ -1203,7 +1187,7 @@ function ProductRow({
             handleProductChange(index, "rodtepInfo.capValuePerUnits", cap);
           }
 
-          if (uqc && uqc !== currentUqc) {
+          if (uqc && uqc !== currentUqc && !product.rodtepInfo?.isCapUnitManual) {
             handleProductChange(index, "rodtepInfo.capUnit", uqc);
           }
         }
@@ -1238,7 +1222,8 @@ function ProductRow({
 
     let capAmount = Infinity;
     if (cap > 0) {
-      capAmount = (parseFloat(product.quantity) || 0) * cap;
+      // Use RoDTEP specific quantity for calculation as it allows manual override
+      capAmount = (parseFloat(product.rodtepInfo?.quantity) || 0) * cap;
     }
 
     let finalAmount = 0;
@@ -1262,6 +1247,7 @@ function ProductRow({
     product.rodtepInfo?.claim,
     product.rodtepInfo?.ratePercent,
     product.rodtepInfo?.capValuePerUnits,
+    product.rodtepInfo?.quantity,
     product.quantity,
     product.amount,
     invoice.freightInsuranceCharges,
@@ -1284,41 +1270,38 @@ function ProductRow({
 
     if (status === "Export Against Payment") {
       const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
-      const taxableValue =
-        (parseFloat(product.amount) || 0) * invoiceExchangeRate;
-
-      const isTaxableManual =
-        product.igstCompensationCess?.isTaxableValueManual;
-
-      if (
-        !isTaxableManual &&
-        Math.abs(
-          (product.igstCompensationCess?.taxableValueINR || 0) - taxableValue,
-        ) > 0.01
-      ) {
-        handleProductChange(
-          index,
-          "igstCompensationCess.taxableValueINR",
-          parseFloat(taxableValue.toFixed(2)),
-        );
-      }
+      const autoTaxableValue = parseFloat(((parseFloat(product.amount) || 0) * invoiceExchangeRate).toFixed(2));
+      const isTaxableManual = !!product.igstCompensationCess?.isTaxableValueManual;
+      
+      // Use the manual value from state if present, otherwise use the auto-calculated one
+      const effectiveTaxableValue = isTaxableManual 
+        ? (parseFloat(product.igstCompensationCess?.taxableValueINR) || 0)
+        : autoTaxableValue;
 
       const rateValue = parseFloat(product.igstCompensationCess?.igstRate) || 0;
-      const igstAmount = (taxableValue * rateValue) / 100;
+      const expectedIgstAmount = parseFloat(((effectiveTaxableValue * rateValue) / 100).toFixed(2));
+      const isIgstManual = !!product.igstCompensationCess?.isIgstManual;
 
-      const isManual = product.igstCompensationCess?.isIgstManual;
+      let updates = {};
+      let hasUpdates = false;
 
-      if (
-        !isManual &&
-        Math.abs(
-          (product.igstCompensationCess?.igstAmountINR || 0) - igstAmount,
-        ) > 0.01
-      ) {
-        handleProductChange(
-          index,
-          "igstCompensationCess.igstAmountINR",
-          parseFloat(igstAmount.toFixed(2)),
-        );
+      // 1. Sync Taxable Value if not manual
+      if (!isTaxableManual && Math.abs((product.igstCompensationCess?.taxableValueINR || 0) - autoTaxableValue) > 0.01) {
+        updates.taxableValueINR = autoTaxableValue;
+        hasUpdates = true;
+      }
+
+      // 2. Sync IGST Amount if not manual
+      if (!isIgstManual && Math.abs((product.igstCompensationCess?.igstAmountINR || 0) - expectedIgstAmount) > 0.01) {
+        updates.igstAmountINR = expectedIgstAmount;
+        hasUpdates = true;
+      }
+
+      if (hasUpdates) {
+        handleProductChange(index, "igstCompensationCess", {
+          ...product.igstCompensationCess,
+          ...updates
+        });
       }
     }
   }, [
@@ -1330,6 +1313,7 @@ function ProductRow({
     product.igstCompensationCess?.igstRate,
     product.igstCompensationCess?.isIgstManual,
     product.igstCompensationCess?.isTaxableValueManual,
+    product.igstCompensationCess?.taxableValueINR, // Added this as a dependency!
   ]);
 
   return (
@@ -1543,6 +1527,27 @@ function ProductRow({
             }
           />
         </div>
+        {/* Row 4 */}
+        <div style={styles.field}>
+          <label style={styles.label}>SQC Quantity</label>
+          <input
+            style={styles.input}
+            type="number"
+            value={product.socQuantity || ""}
+            placeholder="0.00000"
+            onChange={(e) =>
+              handleProductChange(index, "socQuantity", e.target.value)
+            }
+          />
+        </div>
+        <UnitDropdownField
+          label="SQC Unit"
+          fieldName={`invoices[${selectedInvoiceIndex}].products[${index}].socunit`}
+          formik={formik}
+          unitOptions={unitCodes}
+          placeholder="SQC Unit"
+          onSelect={(val) => handleProductChange(index, "socunit", val)}
+        />
         <div style={styles.field}>
           <label style={styles.label}>Material Code</label>
           <input
@@ -1815,13 +1820,26 @@ function ProductRow({
                   : {}),
               }}
               value={product.igstCompensationCess?.igstRate ?? ""}
-              onChange={(e) =>
+              onChange={(e) => {
+                const newRate = parseFloat(e.target.value) || 0;
+                const taxableVal = parseFloat(product.igstCompensationCess?.taxableValueINR) || 0;
+                
+                let newIgstInfo = {
+                  ...product.igstCompensationCess,
+                  igstRate: newRate
+                };
+
+                // Calculate new IGST amount if it is not overridden manually
+                if (!product.igstCompensationCess?.isIgstManual) {
+                  newIgstInfo.igstAmountINR = parseFloat(((taxableVal * newRate) / 100).toFixed(2));
+                }
+
                 handleProductChange(
                   index,
-                  "igstCompensationCess.igstRate",
-                  parseFloat(e.target.value),
-                )
-              }
+                  "igstCompensationCess",
+                  newIgstInfo
+                );
+              }}
               disabled={
                 product.igstCompensationCess?.igstPaymentStatus !==
                 "Export Against Payment"
@@ -1914,13 +1932,26 @@ function ProductRow({
               type="number"
               value={product.igstCompensationCess?.taxableValueINR || ""}
               placeholder="0.00"
-              onChange={(e) =>
+              onChange={(e) => {
+                const newTaxableVal = parseFloat(e.target.value) || 0;
+                const rate = parseFloat(product.igstCompensationCess?.igstRate) || 0;
+                
+                let newIgstInfo = {
+                  ...product.igstCompensationCess,
+                  taxableValueINR: newTaxableVal
+                };
+
+                // Calculate new IGST amount if it is not overridden manually
+                if (!product.igstCompensationCess?.isIgstManual) {
+                  newIgstInfo.igstAmountINR = parseFloat(((newTaxableVal * rate) / 100).toFixed(2));
+                }
+
                 handleProductChange(
                   index,
-                  "igstCompensationCess.taxableValueINR",
-                  parseFloat(e.target.value),
-                )
-              }
+                  "igstCompensationCess",
+                  newIgstInfo
+                );
+              }}
               disabled={
                 product.igstCompensationCess?.igstPaymentStatus !==
                 "Export Under Bond – Not Paid" &&
@@ -1961,13 +1992,25 @@ function ProductRow({
                       checked={
                         product.igstCompensationCess?.isIgstManual || false
                       }
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        let newIgstInfo = {
+                          ...product.igstCompensationCess,
+                          isIgstManual: checked
+                        };
+                        
+                        if (!checked) {
+                          const taxableVal = parseFloat(product.igstCompensationCess?.taxableValueINR) || 0;
+                          const rate = parseFloat(product.igstCompensationCess?.igstRate) || 0;
+                          newIgstInfo.igstAmountINR = parseFloat(((taxableVal * rate) / 100).toFixed(2));
+                        }
+                        
                         handleProductChange(
                           index,
-                          "igstCompensationCess.isIgstManual",
-                          e.target.checked,
-                        )
-                      }
+                          "igstCompensationCess",
+                          newIgstInfo
+                        );
+                      }}
                     />
                     MANUAL
                   </label>
@@ -2061,7 +2104,7 @@ function ProductRow({
         </div>
 
         <div style={styles.field}>
-          <label style={styles.label}>Quantity</label>
+          <label style={styles.label}>SQC Quantity</label>
           <input
             style={styles.input}
             type="number"
@@ -2152,7 +2195,7 @@ function ProductRow({
             unitOptions={unitCodes}
             placeholder="Cap Unit"
             onSelect={(val) => handleUnitChange(index, "capUnit", val)}
-            disabled={true}
+            disabled={product.rodtepInfo?.claim === "Not Applicable"}
           />
         </div>
 
@@ -2280,7 +2323,15 @@ const ProductGeneralTab = ({
           (r.currency_code || r.code || "").toString().toUpperCase() === code,
       );
 
-      if (!rateObj) return 1;
+      // Smart Fallback: Assume the formik global exchange rate if it matches the main invoice
+      if (!rateObj) {
+        const invCur = (invoice?.currency || "").toUpperCase();
+        if (code === invCur && formik.values.exchange_rate) {
+          const num = parseFloat(formik.values.exchange_rate);
+          return !isNaN(num) && num > 0 ? num : 1;
+        }
+        return 1;
+      }
       const raw =
         rateObj.export_rate ?? rateObj.exportRate ?? rateObj.rate ?? 0;
       const unit = parseFloat(rateObj.unit) || 1;
@@ -2288,7 +2339,7 @@ const ProductGeneralTab = ({
       if (isNaN(num) || unit <= 0) return 1;
       return num / unit;
     },
-    [exchangeRates],
+    [exchangeRates, invoice?.currency, formik.values.exchange_rate],
   );
 
   const convertToINR = useCallback(
@@ -2352,43 +2403,98 @@ const ProductGeneralTab = ({
         value,
       );
 
-      // If PMV calculation method changes to percentage, recalculate PMV
-      if (field === "pmvInfo.calculationMethod" && value === "percentage") {
-        const prod = products[index];
-        const quantity = parseFloat(prod.quantity) || 1;
-        const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
-        const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
-
-        // Use prorated FOB in INR
-        const amountInINR = calculateProductFobINR(
-          prod,
-          invoice,
-          invoiceExchangeRate,
+      // Sync RoDTEP quantity if SQC quantity is changed
+      if (field === "socQuantity") {
+        formik.setFieldValue(
+          `invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.quantity`,
+          parseFloat(value) || 0,
         );
+      }
 
-        const totalPMV_INR = (amountInINR * percentage) / 100;
-        const pmvPerUnit_INR = totalPMV_INR / quantity;
+      // If PMV calculation method changes to percentage or currency/percentage changes, recalculate PMV
+      if (
+        (field === "pmvInfo.calculationMethod" && value === "percentage") ||
+        field === "pmvInfo.currency" ||
+        field === "pmvInfo.percentage"
+      ) {
+        const prod = products[index];
+        const method = field === "pmvInfo.calculationMethod" ? value : (prod.pmvInfo?.calculationMethod || "percentage");
 
-        const pmvCurrency = prod.pmvInfo?.currency || "INR";
-        let totalPMV = totalPMV_INR;
-        let pmvPerUnit = pmvPerUnit_INR;
+        if (method === "percentage") {
+          const quantity = parseFloat(prod.quantity) || 1;
+          const percentage = field === "pmvInfo.percentage" ? parseFloat(value) || 0 : (parseFloat(prod.pmvInfo?.percentage) || 110);
+          const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
 
-        if (pmvCurrency !== "INR") {
-          const rate = getExportRate(pmvCurrency);
-          if (rate > 0) {
-            totalPMV = totalPMV_INR / rate;
-            pmvPerUnit = pmvPerUnit_INR / rate;
+          // Use prorated FOB in INR
+          const amountInINR = calculateProductFobINR(
+            prod,
+            invoice,
+            invoiceExchangeRate,
+          );
+
+          const pmvCurrency = field === "pmvInfo.currency" ? value : (prod.pmvInfo?.currency || "INR");
+          const rate = pmvCurrency !== "INR" ? getExportRate(pmvCurrency) : 1;
+          const effectiveRate = rate > 0 ? rate : 1;
+
+          // Convert Product FOB to PMV currency first, determine unit FOB, apply PMV %
+          const fobInPmvCurrency = amountInINR / effectiveRate;
+          const unitFobInPmvCurrency = fobInPmvCurrency / quantity;
+          let pmvPerUnit = (unitFobInPmvCurrency * percentage) / 100;
+
+          // Round per unit first, then multiply by quantity completely matching Logisys
+          pmvPerUnit = parseFloat(pmvPerUnit.toFixed(2));
+          let totalPMV = parseFloat((pmvPerUnit * quantity).toFixed(2));
+
+          formik.setFieldValue(
+            `invoices[${selectedInvoiceIndex}].products[${index}].pmvInfo.pmvPerUnit`,
+            parseFloat(pmvPerUnit.toFixed(2)),
+          );
+          formik.setFieldValue(
+            `invoices[${selectedInvoiceIndex}].products[${index}].pmvInfo.totalPMV`,
+            parseFloat(totalPMV.toFixed(2)),
+          );
+        }
+      }
+
+      // Sync IGST fields if amount changes
+      if (field === "amount" || field === "quantity" || field === "unitPrice") {
+        const prod = products[index];
+        const status = prod.igstCompensationCess?.igstPaymentStatus;
+
+        if (status === "Export Against Payment") {
+          const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+          // Determine the new amount to use for calculation
+          const effectiveAmount = field === "amount" ? parseFloat(value) || 0 : parseFloat(prod.amount) || 0;
+          const autoTaxableValue = parseFloat((effectiveAmount * invoiceExchangeRate).toFixed(2));
+          
+          const isTaxableManual = !!prod.igstCompensationCess?.isTaxableValueManual;
+          const isIgstManual = !!prod.igstCompensationCess?.isIgstManual;
+          const igstRate = parseFloat(prod.igstCompensationCess?.igstRate) || 0;
+
+          if (!isTaxableManual) {
+            formik.setFieldValue(
+              `invoices[${selectedInvoiceIndex}].products[${index}].igstCompensationCess.taxableValueINR`,
+              autoTaxableValue
+            );
+            
+            // If taxable value is auto-updated, and IGST amount is not manual, update IGST amount too
+            if (!isIgstManual) {
+              const newIgstAmt = parseFloat(((autoTaxableValue * igstRate) / 100).toFixed(2));
+              formik.setFieldValue(
+                `invoices[${selectedInvoiceIndex}].products[${index}].igstCompensationCess.igstAmountINR`,
+                newIgstAmt
+              );
+            }
+          } else if (!isIgstManual) {
+            // If taxable value is manual but IGST amount is not, still sync IGST amount with manual taxable value
+            const manualTaxableValue = parseFloat(prod.igstCompensationCess?.taxableValueINR) || 0;
+            const newIgstAmt = parseFloat(((manualTaxableValue * igstRate) / 100).toFixed(2));
+            formik.setFieldValue(
+              `invoices[${selectedInvoiceIndex}].products[${index}].igstCompensationCess.igstAmountINR`,
+              newIgstAmt
+            );
           }
         }
-
-        formik.setFieldValue(
-          `invoices[${selectedInvoiceIndex}].products[${index}].pmvInfo.pmvPerUnit`,
-          parseFloat(pmvPerUnit.toFixed(2)),
-        );
-        formik.setFieldValue(
-          `invoices[${selectedInvoiceIndex}].products[${index}].pmvInfo.totalPMV`,
-          parseFloat(totalPMV.toFixed(2)),
-        );
       }
     },
     [
@@ -2408,35 +2514,40 @@ const ProductGeneralTab = ({
         `invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.${unitField}`,
         unitValue,
       );
+      if (unitField === "capUnit") {
+        formik.setFieldValue(
+          `invoices[${selectedInvoiceIndex}].products[${index}].rodtepInfo.isCapUnitManual`,
+          true,
+        );
+      }
     },
     [formik.setFieldValue, selectedInvoiceIndex],
   );
 
-  // Sync RoDTEP Quantity & Unit with SQC values
-  // Replace the RoDTEP sync effect:
+  // Sync RoDTEP unit and quantity from SQC values.
   useEffect(() => {
     const currentProducts = products || [];
     let changed = false;
-    const updatedProducts = currentProducts.map((prod, idx) => {
-      // Only update if product has changed
-      const sqcQty = parseFloat(prod.socQuantity) || 0;
-      const sqcUnit = (prod.socunit || "").trim();
+    const updatedProducts = currentProducts.map((prod) => {
+      const sqcUnit = prod.isSqcUnitManual ? (prod.socunit || "").trim() : (prod.socunit || prod.qtyUnit || "").trim();
+      const sqcQty = prod.isSqcQuantityManual ? (parseFloat(prod.socQuantity) || 0) : (parseFloat(prod.socQuantity || prod.quantity) || 0);
 
       const currentRodtep = prod.rodtepInfo || {};
-      const currentRodtepQty = parseFloat(currentRodtep.quantity) || 0;
       const currentRodtepUnit = (currentRodtep.unit || "").trim();
+      const currentRodtepQty = parseFloat(currentRodtep.quantity) || 0;
 
-      const isQtyDifferent = Math.abs(currentRodtepQty - sqcQty) > 0.001;
-      const isUnitDifferent = currentRodtepUnit !== sqcUnit;
+      const isUnitDifferent = sqcUnit !== "" && currentRodtepUnit !== sqcUnit;
+      // Sync quantity if it's currently 0 or undefined and we have an SQC quantity to provide as default
+      const isQtyMissing = sqcQty > 0 && currentRodtepQty === 0;
 
-      if (isQtyDifferent || isUnitDifferent) {
+      if (isUnitDifferent || isQtyMissing) {
         changed = true;
         return {
           ...prod,
           rodtepInfo: {
             ...currentRodtep,
-            quantity: sqcQty,
-            unit: sqcUnit,
+            unit: isUnitDifferent ? sqcUnit : (currentRodtep.unit || ""),
+            quantity: isQtyMissing ? sqcQty : (currentRodtep.quantity || 0),
           },
         };
       }
@@ -2453,8 +2564,18 @@ const ProductGeneralTab = ({
         formik.setFieldValue("invoices", updatedInvoices);
       }
     }
-  }, [products, selectedInvoiceIndex, invoices, formik]); // Remove formik.setFieldValue from dependencies if it's causing loops
-  // Recalculate PMV when invoice currency changes - FIXED to avoid infinite loop
+  }, [products, selectedInvoiceIndex, invoices]);
+  // Recalculate PMV when important fields change. Using serialized deps to avoid infinite loops.
+  const serializedPmvInputs = JSON.stringify(
+    (products || []).map((p) => ({
+      amt: p.amount,
+      qty: p.quantity,
+      pmvC: p.pmvInfo?.currency,
+      pmvM: p.pmvInfo?.calculationMethod,
+      pmvP: p.pmvInfo?.percentage,
+    }))
+  );
+
   useEffect(() => {
     if (!invoice?.currency) return;
 
@@ -2476,19 +2597,18 @@ const ProductGeneralTab = ({
       );
 
       const percentage = parseFloat(prod.pmvInfo?.percentage) || 110;
-      let totalPMV_INR = (amountInINR * percentage) / 100;
-      let pmvPerUnit_INR = totalPMV_INR / quantity;
 
-      let totalPMV = totalPMV_INR;
-      let pmvPerUnit = pmvPerUnit_INR;
+      const rate = pmvCurrency !== "INR" ? getExportRate(pmvCurrency) : 1;
+      const effectiveRate = rate > 0 ? rate : 1;
 
-      if (pmvCurrency !== "INR") {
-        const rate = getExportRate(pmvCurrency);
-        if (rate > 0) {
-          totalPMV = totalPMV_INR / rate;
-          pmvPerUnit = pmvPerUnit_INR / rate;
-        }
-      }
+      // Convert Product FOB to PMV currency, compute unit PMV, then total
+      const fobInPmvCurrency = amountInINR / effectiveRate;
+      const unitFobInPmvCurrency = fobInPmvCurrency / quantity;
+      let pmvPerUnit = (unitFobInPmvCurrency * percentage) / 100;
+
+      // Round per unit first to strictly match Logisys
+      pmvPerUnit = parseFloat(pmvPerUnit.toFixed(2));
+      let totalPMV = parseFloat((pmvPerUnit * quantity).toFixed(2));
 
       const isPmvDiff =
         Math.abs(parseFloat(prod.pmvInfo?.totalPMV || 0) - totalPMV) > 0.01;
@@ -2524,7 +2644,10 @@ const ProductGeneralTab = ({
     invoice.freightInsuranceCharges,
     invoice.productValue,
     invoice.invoiceValue,
+    serializedPmvInputs, // Safe tracker for product inputs to cleanly auto-trigger computation initially and dynamically
   ]);
+
+
 
   return (
     <div style={styles.page}>
@@ -2547,8 +2670,8 @@ const ProductGeneralTab = ({
                 "Unit",
                 "Amount",
                 "Unit",
-              ].map((h) => (
-                <th key={h} style={styles.th}>
+              ].map((h, idx) => (
+                <th key={idx} style={styles.th}>
                   {h}
                 </th>
               ))}

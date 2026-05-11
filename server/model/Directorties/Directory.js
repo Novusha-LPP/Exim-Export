@@ -76,6 +76,7 @@ const registrationDetailsSchema = new Schema(
     binNo: String,
     ieCode: { type: String },
     panNo: { type: String },
+    aeoCode: { type: String },
     gstinBranchCodeFree: String,
     gstinBranchCode15: String,
     msmeRegistered: { type: Boolean, default: false },
@@ -92,6 +93,8 @@ const branchInfoSchema = new Schema({
   state: { type: String },
   postalCode: { type: String },
   country: { type: String, default: "India" },
+  mobile: { type: String },
+  email: { type: String },
 });
 
 const aeoDetailsSchema = new Schema(

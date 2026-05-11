@@ -3,15 +3,14 @@ import ShippingLine from "../../model/Directorties/ShippingLine.js";
 
 const router = express.Router();
 
-// GET /api/shippingLines - Get all shipping lines
+// GET /api/shippingLines - Get all shipping lines with pagination and search
 router.get('/', async (req, res) => {
   try {
     const {
       page = 1,
       limit = 10,
       search = '',
-      location = '',
-      status = ''
+      active = ''
     } = req.query;
 
     const pageNum = parseInt(page);
@@ -22,18 +21,18 @@ router.get('/', async (req, res) => {
 
     if (search) {
       query.$or = [
-        { shippingLineCode: { $regex: search, $options: 'i' } },
-        { shippingName: { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } }
+        { name: { $regex: search, $options: 'i' } },
+        { 'branches.city': { $regex: search, $options: 'i' } },
+        { 'branches.gst': { $regex: search, $options: 'i' } },
+        { 'branches.pan': { $regex: search, $options: 'i' } }
       ];
     }
 
-    if (location) query.location = { $regex: location, $options: 'i' };
-    if (status) query.status = status;
+    if (active) query.active = active;
 
     const total = await ShippingLine.countDocuments(query);
     const shippingLines = await ShippingLine.find(query)
-      .sort({ createdAt: -1 })
+      .sort({ created_at: -1 })
       .skip(skip)
       .limit(limitNum);
 
@@ -79,7 +78,7 @@ router.post('/', async (req, res) => {
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ 
-        message: 'Shipping Line Code already exists' 
+        message: 'Shipping Line with this name already exists' 
       });
     }
     res.status(400).json({ message: error.message });
@@ -107,7 +106,7 @@ router.put('/:id', async (req, res) => {
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ 
-        message: 'Shipping Line Code already exists' 
+        message: 'Shipping Line with this name already exists' 
       });
     }
     res.status(400).json({ message: error.message });

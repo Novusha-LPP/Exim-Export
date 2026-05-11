@@ -18,7 +18,7 @@ const ExportChecklistGenerator = ({
     margins: {
       left: 20,
       right: 20,
-      top: 25,
+      top: 15,
       bottom: 30,
     },
   };
@@ -27,14 +27,14 @@ const ExportChecklistGenerator = ({
     return pdf.splitTextToSize(text, width);
   };
   const FONT_SIZES = {
-    title: 14,
+    title: 12,
     sectionHeader: 11,
-    fieldLabel: 8,
-    fieldValue: 9,
-    footer: 8,
-    declaration: 10,
-    tableHeader: 9,
-    tableContent: 8,
+    fieldLabel: 7.5,
+    fieldValue: 8,
+    footer: 7,
+    declaration: 8.5,
+    tableHeader: 8.5,
+    tableContent: 7.5,
   };
 
   // ==================== HELPER FUNCTIONS ====================
@@ -93,7 +93,7 @@ const ExportChecklistGenerator = ({
     const leftX = PAGE_CONFIG.margins.left;
 
     return {
-      drawLine: (x1, y, x2, lineWidth = 0.6) => {
+      drawLine: (x1, y, x2, lineWidth = 0.8) => {
         pdf.setLineWidth(lineWidth);
         pdf.line(x1, y, x2, y);
       },
@@ -104,7 +104,7 @@ const ExportChecklistGenerator = ({
         pdf.text(`${label}: `, x, y);
 
         if (value) {
-          pdf.setFont("helvetica", "normal");
+          pdf.setFont("helvetica", "bold");
           pdf.setFontSize(FONT_SIZES.fieldValue);
 
           const valueStr = value.toString();
@@ -162,7 +162,7 @@ const ExportChecklistGenerator = ({
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldValue);
         pdf.text(
-          `AEO Registration No. ${"INABOFS1766L0F191"}`,
+          `AEO Registration No. ${"INABOFS1766L0F251"}`,
           centerX,
           y + 30,
           { align: "center" },
@@ -201,12 +201,12 @@ const ExportChecklistGenerator = ({
     pdf.text("SB No. / Date", leftColX, yPos);
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(FONT_SIZES.fieldValue);
-    pdf.text(`${data.sbNumber} dt ${data.sbDate}`, leftColX + 85, yPos);
+    pdf.text(`${data.sbNumber || ""} dt ${data.sbDate || ""}`, leftColX + 85, yPos);
 
     pdf.setFont("helvetica", "bold");
     pdf.text("Party Ref", rightColX, yPos);
     pdf.setFont("helvetica", "normal");
-    pdf.text(data.partyRef, rightColX + 60, yPos);
+    pdf.text(data.partyRef || "", rightColX + 60, yPos);
 
     yPos += 12;
 
@@ -214,7 +214,7 @@ const ExportChecklistGenerator = ({
     pdf.setFont("helvetica", "bold");
     pdf.text("Job No", leftColX, yPos);
     pdf.setFont("helvetica", "normal");
-    pdf.text(data.jobNumber, leftColX + 50, yPos);
+    pdf.text(data.jobNumber || "", leftColX + 50, yPos);
 
     yPos += 12;
 
@@ -222,7 +222,7 @@ const ExportChecklistGenerator = ({
     pdf.setFont("helvetica", "bold");
     pdf.text("CHA", leftColX, yPos);
     pdf.setFont("helvetica", "normal");
-    pdf.text(data.chaCode, leftColX + 35, yPos);
+    pdf.text(data.chaCode || "", leftColX + 35, yPos);
 
     yPos += 15;
 
@@ -238,7 +238,7 @@ const ExportChecklistGenerator = ({
 
     let exporterY = yPos + 10;
     const exporterLines = [
-      data.exporterGstin,
+      data.exporterIec,
       data.exporterGstinFull,
       data.exporterPan,
       data.exporterType,
@@ -251,12 +251,36 @@ const ExportChecklistGenerator = ({
 
     exporterLines.forEach((line) => {
       if (line) {
-        pdf.setFont("helvetica", "normal");
         pdf.setFontSize(FONT_SIZES.fieldValue);
-        // Wrap text to fit within left column (max width ~250px)
-        const splitLines = pdf.splitTextToSize(line, 250);
-        pdf.text(splitLines, leftColX, exporterY);
-        exporterY += splitLines.length * 9;
+
+        if (line.includes(": ")) {
+          const colonIndex = line.indexOf(": ");
+          const label = line.substring(0, colonIndex + 2);
+          const value = line.substring(colonIndex + 2);
+
+          pdf.setFont("helvetica", "bold");
+          const labelWidth = pdf.getTextWidth(label);
+
+          if (labelWidth < 200) {
+            // Render Label in Bold
+            pdf.text(label, leftColX, exporterY);
+
+            // Render Value in Bold
+            const splitValue = pdf.splitTextToSize(value, 250 - labelWidth);
+            pdf.text(splitValue, leftColX + labelWidth, exporterY);
+            exporterY += Math.max(splitValue.length * 9, 9);
+          } else {
+            // Label is too long, treat as normal text to prevent negative width
+            const splitLines = pdf.splitTextToSize(line, 250);
+            pdf.text(splitLines, leftColX, exporterY);
+            exporterY += splitLines.length * 9;
+          }
+        } else {
+          pdf.setFont("helvetica", "bold");
+          const splitLines = pdf.splitTextToSize(line, 250);
+          pdf.text(splitLines, leftColX, exporterY);
+          exporterY += splitLines.length * 9;
+        }
       }
     });
 
@@ -271,7 +295,7 @@ const ExportChecklistGenerator = ({
 
     consigneeLines.forEach((line) => {
       if (line) {
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldValue);
         const splitLines = pdf.splitTextToSize(line, 250);
         pdf.text(splitLines, rightColX, consigneeY);
@@ -329,7 +353,7 @@ const ExportChecklistGenerator = ({
         pdf.setFontSize(FONT_SIZES.fieldLabel);
         pdf.text(leftFields[i].label, leftColX, leftY);
 
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldValue);
         const val = String(leftFields[i].value || "");
         const splitVal = pdf.splitTextToSize(val, 140);
@@ -342,7 +366,7 @@ const ExportChecklistGenerator = ({
         pdf.setFontSize(FONT_SIZES.fieldLabel);
         pdf.text(rightFields[i].label, rightColX, rightY);
 
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldValue);
         const val = String(rightFields[i].value || "");
         const splitVal = pdf.splitTextToSize(val, 140);
@@ -409,7 +433,7 @@ const ExportChecklistGenerator = ({
         pdf.setFontSize(FONT_SIZES.fieldLabel);
         pdf.text(invoiceLeftFields[i].label, leftColX, invoiceLeftY);
 
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont("helvetica", "bold");
         pdf.setFontSize(FONT_SIZES.fieldValue);
         const leftVal = String(invoiceLeftFields[i].value || "");
         const leftSplit = pdf.splitTextToSize(leftVal, 160);
@@ -420,7 +444,7 @@ const ExportChecklistGenerator = ({
         pdf.setFont("helvetica", "bold");
         pdf.text(invoiceRightFields[i].label, rightColX, invoiceRightY);
 
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont("helvetica", "bold");
         const rightVal = String(invoiceRightFields[i].value || "");
         const rightSplit = pdf.splitTextToSize(rightVal, 160);
         pdf.text(rightSplit, rightColX + 80, invoiceRightY);
@@ -449,7 +473,7 @@ const ExportChecklistGenerator = ({
         { label: "Packing Charges", ...inv.packingChargesData },
       ];
 
-      pdf.setFont("helvetica", "normal");
+      pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.tableContent);
 
       rateItemsData.forEach((item) => {
@@ -477,11 +501,10 @@ const ExportChecklistGenerator = ({
         yPos += 10;
       });
 
-      yPos += 15;
+      yPos += 8;
     });
 
     yPos += 5;
-    yPos += 12;
 
     // Nature Of Payment and Period Of Payment on same line - exactly like first image
     pdf.setFont("helvetica", "bold");
@@ -489,24 +512,24 @@ const ExportChecklistGenerator = ({
     pdf.text("Nature Of Payment", leftColX, yPos);
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(FONT_SIZES.fieldValue);
-    pdf.text(data.natureOfPayment, leftColX + 100, yPos);
+    pdf.text(data.natureOfPayment || "", leftColX + 100, yPos);
 
     pdf.setFont("helvetica", "bold");
     pdf.text("Period Of Payment", rightColX, yPos);
     pdf.setFont("helvetica", "normal");
-    pdf.text(data.periodOfPayment, rightColX + 90, yPos);
+    pdf.text(data.periodOfPayment || "", rightColX + 90, yPos);
 
     yPos += 12;
 
-    // Marks & Nos - exactly like first image
+    // Marks & Nos - wrap text to prevent cutting off
     pdf.setFont("helvetica", "bold");
     pdf.text("Marks & Nos", leftColX, yPos);
     pdf.setFont("helvetica", "normal");
-    pdf.text(data.marksAndNos, leftColX + 70, yPos);
-    yPos += 12;
-
-    yPos += 5;
-    yPos += 12;
+    pdf.setFontSize(FONT_SIZES.fieldValue);
+    const marksVal = data.marksAndNos || "";
+    const marksLines = pdf.splitTextToSize(marksVal, rightX - (leftColX + 70));
+    pdf.text(marksLines, leftColX + 70, yPos);
+    yPos += Math.max(marksLines.length * 10 + 5, 20);
 
     // Buyer's Name & Address section - exactly like first image
     pdf.setFont("helvetica", "bold");
@@ -556,31 +579,34 @@ const ExportChecklistGenerator = ({
 
     yPos = Math.max(yPos, rightDetailsY) + 8;
 
-    // EOU Details - exactly like first image
-    pdf.setFont("helvetica", "bold");
-    pdf.text("EOU IEC", leftColX, yPos);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(data.eou, leftColX + 50, yPos);
+    // EOU Details
+    if (data.eou || data.factoryAddress) {
+      pdf.setFont("helvetica", "bold");
+      pdf.text("EOU IEC", leftColX, yPos);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(data.eou || "", leftColX + 50, yPos);
 
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Branch Sno", leftColX + 200, yPos);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(data.branchSno, leftColX + 260, yPos);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Branch Sno", leftColX + 200, yPos);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(data.branchSno || "", leftColX + 260, yPos);
 
-    yPos += 12;
+      yPos += 12;
 
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Factory Address", leftColX, yPos);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(data.factoryAddress, leftColX + 80, yPos);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Factory Address", leftColX, yPos);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(data.factoryAddress || "", leftColX + 80, yPos);
+      yPos += 10;
+    }
 
-    return yPos + 20;
+    return yPos;
   };
 
   // ==================== NEW PAGE FOR ITEM DETAILS ====================
-  const renderItemDetailsPage = (pdf, helpers, data) => {
+  const renderItemDetailsPage = (pdf, helpers, data, startY = 80) => {
     const { drawLine, leftX, rightX } = helpers;
-    let yPos = 80;
+    let yPos = startY;
 
     // ITEM DETAILS Header
     pdf.setFont("helvetica", "bold");
@@ -588,229 +614,188 @@ const ExportChecklistGenerator = ({
     pdf.text("ITEM DETAILS", leftX, yPos);
     yPos += 10;
     drawLine(leftX, yPos, rightX);
-    yPos += 12;
-
-    // Define column positions
-    const col1 = leftX + 10; // SI No, Qty, Unit
-    const col2 = leftX + 60; // RITC, Exim Scheme, NFEI Catg, Reward Item
-    const col3 = leftX + 160; // Description
-    const col4 = leftX + 240; // Unit Price/Unit, FOB ValFC
-    const col5 = leftX + 320; // FOB ValINR
-    const col6 = leftX + 410; // Total ValueFC, IGST Pymt Status
-    const col7 = leftX + 500; // PMV/Unit, IGST Taxable Value
-
-    // ITEM DETAILS Table Headers - PROPERLY ALIGNED
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.tableHeader);
-
-    // Column 1: SI No, Qty, Unit
-    pdf.text("SI No", col1, yPos);
-    pdf.text("Qty", col1, yPos + 10);
-    pdf.text("Unit", col1, yPos + 20);
-
-    // Column 2: RITC, Exim Scheme Code description, NFEI Catg, Reward Item
-    pdf.text("RITC", col2, yPos);
-    pdf.text("Exim Scheme Code description", col2, yPos + 10);
-    pdf.text("NFEI Catg", col2, yPos + 20);
-    pdf.text("Reward Item", col2, yPos + 30);
-
-    // Column 3: Description (single row spanning height)
-    pdf.text("Description", col3, yPos);
-
-    // Column 4: Unit Price/Unit, FOB ValFC
-    pdf.text("Unit Price Unit", col3, yPos + 20);
-    pdf.text("FOB ValFC", col3, yPos + 30);
-
-    // Column 5: FOB ValINR - single row
-    pdf.text("FOB ValINR", col4, yPos + 30);
-
-    // Column 6: Total ValueFC, IGST Pymt Status
-    pdf.text("Total ValueFC", col5, yPos + 20);
-    pdf.text("IGST Pymt Status", col5, yPos + 30);
-
-    // Column 7: PMV/Unit, IGST Taxable Value
-    pdf.text("PMV/Unit", col6, yPos + 20);
-    pdf.text("IGST Taxable Value", col6, yPos + 30);
-
-    // Column 8: Total PMV INR, IGST Amount
-    pdf.text("Total PMV INR", col7, yPos + 20);
-    pdf.text("IGST Amount", col7, yPos + 30);
-
-    yPos += 40; // Increased for multi-row headers
-    drawLine(leftX, yPos, rightX);
-    yPos += 12;
-
-    // Item Data - 100% SAFE PURE DATABASE DATA ONLY
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(FONT_SIZES.tableContent);
-
-    if (data.products && data.products.length > 0) {
-      data.products.forEach((product, index) => {
-        const itemY = yPos;
-
-        // Column 1: SI No, Qty, Unit - PURE DATA
-        pdf.text(product.serialNumber || (index + 1).toString(), col1, itemY);
-        pdf.text(product.quantity || "", col1, itemY + 10);
-        pdf.text(product.qtyUnit || product.unit || "", col1, itemY + 20);
-
-        // Column 2: RITC, Exim Scheme, NFEI Catg, Reward Item - PURE DATA
-        pdf.text(product.ritc || "", col2, itemY);
-        pdf.text(product.eximCode || "", col2, itemY + 10);
-        pdf.text(product.nfeiCategory || "", col2, itemY + 20);
-        pdf.text(product.rewardItem ? "Yes" : "No", col2, itemY + 30);
-
-        // Column 3: Description - PURE DATA
-        const description = product.description || "";
-        const descriptionLines = pdf.splitTextToSize(description, 90);
-        pdf.text(descriptionLines, col3, itemY);
-
-        // Unit Price and FOB ValFC - SAFE (adjust Y based on description height)
-        const unitPriceY = itemY + descriptionLines.length * 10;
-        pdf.text(
-          `${product.unitPrice || ""}/${product.priceUnit || product.qtyUnit || "PCS"}/${product.per || "1"}`,
-          col3,
-          unitPriceY,
-        );
-        pdf.text(
-          product.fobValueFC || product.amount || "",
-          col3,
-          unitPriceY + 20,
-        );
-
-        // Column 5: FOB ValINR - PURE DATA
-        pdf.text(product.fobValueINR || "", col4, itemY + 20);
-
-        // Column 6: Total ValueFC, IGST Pymt Status - PURE DATA
-        pdf.text(product.amount || "", col5, itemY);
-        pdf.text(
-          product.igstPaymentStatus ||
-          product.igstCompensationCess?.igstPaymentStatus ||
-          "",
-          col5,
-          itemY + 20,
-        );
-
-        // Column 7: PMV/Unit, IGST Taxable Value - PURE DATA
-        pdf.text(
-          product.pmvPerUnit || product.pmvInfo?.pmvPerUnit || "",
-          col6,
-          itemY,
-        );
-        pdf.text(
-          product.taxableValueINR ||
-          product.igstCompensationCess?.taxableValueINR ||
-          "",
-          col6,
-          itemY + 20,
-        );
-
-        // Column 8: Total PMV INR, IGST Amount - PURE DATA
-        pdf.text(
-          product.totalPMV || product.pmvInfo?.totalPMV || "",
-          col7,
-          itemY,
-        );
-        pdf.text(
-          product.igstAmountINR ||
-          product.igstCompensationCess?.igstAmountINR ||
-          "",
-          col7,
-          itemY + 20,
-        );
-
-        // Calculate height needed for this item based on description lines
-        const itemHeight = Math.max(35, (descriptionLines.length + 3) * 10);
-        yPos += itemHeight;
-
-        // Add separator line between items
-        if (index < data.products.length - 1) {
-          drawLine(leftX, yPos, rightX);
-          yPos += 8;
-        }
-      });
-    } else {
-      // EMPTY TABLE - No hardcoded default data, just spacing
-      yPos += 10;
-    }
-
-    // Totals section - PURE DATA
     yPos += 5;
-    yPos += 12;
-    pdf.setFont("helvetica", "bold");
-    drawLine(leftX, yPos + 20, rightX);
-    pdf.setFontSize(FONT_SIZES.tableContent);
-    yPos += 30;
 
-    // Align totals to the right - PURE DATA
-    pdf.text("Total PMV", rightX - 150, yPos);
-    pdf.text(data.totalPmv || "", rightX - 50, yPos);
-    yPos += 10;
-    pdf.text("Total IGST", rightX - 150, yPos);
-    pdf.text(data.totalIgst || "", rightX - 50, yPos);
-    yPos += 10;
-    pdf.text("Total PMV Gross", rightX - 150, yPos);
-    pdf.text(data.totalPmvGross || "", rightX - 50, yPos);
-    yPos += 10;
-    pdf.text("Total IGST Gross", rightX - 150, yPos);
-    pdf.text(data.totalIgstGross || "", rightX - 50, yPos);
-
-    return yPos + 20;
-  };
-
-  // Update the renderPage2 function to remove ITEM DETAILS and keep only DBK, VESSEL, CONTAINER details
-  const renderPage2 = (pdf, helpers, data) => {
-    const { drawLine, drawField, leftX, rightX } = helpers;
-    let yPos = 80;
-
-    // DBK DETAILS SECTION
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("DBK DETAILS", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 17;
-
-    // AutoTable for DBK Details
-    const dbkHeaders = [
-      "Inv No",
-      "Item No",
-      "DBK SI No",
-      "DBK Rate",
-      "DBK Qty / Unit",
-      "DBK Amount",
-      "DBK SPE",
+    // Build table headers and rows using autoTable for compact layout
+    const itemHeaders = [
+      "SI No\nQty\nUnit",
+      "RITC\nExim Scheme Code\nNFEI Catg\nReward Item",
+      "Description\nUnit Price/Unit\nFOB ValFC",
+      "FOB ValINR",
+      "Total ValueFC\nIGST Pymt Status",
+      "PMV/Unit\nIGST Taxable Value",
+      "Total PMV INR\nIGST Amount",
     ];
 
-    const dbkRows = Array.isArray(data.dbkData) ? data.dbkData : [data.dbkData];
+    const itemRows = (data.products || []).map((product, index) => [
+      `${product.serialNumber || (index + 1)}\n${product.quantity || ""}\n${product.qtyUnit || product.unit || ""}`,
+      `${product.ritc || ""}\n${product.eximCode || ""}\n${product.nfeiCategory || ""}\n${product.rewardItem ? "Yes" : "No"}`,
+      `${product.description || ""}\n${product.unitPrice || ""}/${product.priceUnit || product.qtyUnit || "PCS"}/${product.per || "1"}\n${product.fobValueFC || product.amount || ""}`,
+      product.fobValueINR || "",
+      `${product.amount || ""}\n${product.igstPaymentStatus || product.igstCompensationCess?.igstPaymentStatus || ""}`,
+      `${product.pmvPerUnit || product.pmvInfo?.pmvPerUnit || ""}\n${product.taxableValueINR || product.igstCompensationCess?.taxableValueINR || ""}`,
+      `${product.totalPMV || product.pmvInfo?.totalPMV || ""}\n${product.igstAmountINR || product.igstCompensationCess?.igstAmountINR || ""}`,
+    ]);
 
     pdf.autoTable({
-      head: [dbkHeaders],
-      body: dbkRows.map((row) => [
-        row.invNo,
-        row.itemNo,
-        row.dbkSlNo,
-        row.dbkRate,
-        row.dbkQtyUnit,
-        row.dbkAmount,
-        row.dbkSPE,
-      ]),
+      head: [itemHeaders],
+      body: itemRows.length > 0 ? itemRows : [["", "", "", "", "", "", ""]],
       startY: yPos,
-      styles: {
-        fontSize: FONT_SIZES.tableContent,
-        cellPadding: 2,
-        overflow: "linebreak",
-      },
-      headStyles: {
-        fillColor: [220, 220, 220],
-        textColor: 0,
-        fontStyle: "bold",
-        fontSize: FONT_SIZES.tableHeader,
+      styles: { fontSize: FONT_SIZES.tableContent, cellPadding: 2, overflow: "linebreak", lineWidth: 0.3, fontStyle: "bold", textColor: 0 },
+      headStyles: { fillColor: [180, 180, 180], textColor: 0, fontStyle: "bold", fontSize: 7.5 },
+      columnStyles: {
+        0: { cellWidth: 40 },
+        1: { cellWidth: 90 },
+        2: { cellWidth: "auto" },
+        3: { cellWidth: 60 },
+        4: { cellWidth: 70 },
+        5: { cellWidth: 70 },
+        6: { cellWidth: 60 },
       },
       margin: { left: leftX },
       tableWidth: rightX - leftX,
     });
 
-    yPos = pdf.lastAutoTable.finalY + 18;
+    yPos = pdf.lastAutoTable.finalY + 8;
+
+    // Totals section - compact
+    drawLine(leftX, yPos, rightX);
+    yPos += 10;
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(FONT_SIZES.tableContent);
+
+    const totalsData = [
+      ["Total PMV", data.totalPmv || ""],
+      ["Total IGST", data.totalIgst || ""],
+      ["Total PMV Gross", data.totalPmvGross || ""],
+      ["Total IGST Gross", data.totalIgstGross || ""],
+    ];
+
+    totalsData.forEach(([label, value]) => {
+      pdf.text(label, rightX - 150, yPos);
+      pdf.text(value, rightX - 50, yPos);
+      yPos += 10;
+    });
+
+    return yPos + 5;
+  };
+
+  // Render Third Party Details Table
+  const renderThirdPartyDetails = (pdf, helpers, data, startY = 80) => {
+    const { drawLine, leftX, rightX } = helpers;
+    let yPos = startY;
+
+    if (data.thirdPartyRows && data.thirdPartyRows.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("THIRD PARTY DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
+
+      const tpHeaders = [
+        "Inv Sr",
+        "Item Sr",
+        "IE Code",
+        "Branch",
+        "Name",
+        "Registration ID"
+      ];
+
+      pdf.autoTable({
+        head: [tpHeaders],
+        body: data.thirdPartyRows.map((row) => [
+          row.invSr,
+          row.itemSr,
+          row.ieCode,
+          row.branch,
+          row.name,
+          row.regnId
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+          fontStyle: "bold",
+          textColor: 0,
+        },
+        headStyles: {
+          fillColor: [180, 180, 180],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: 8.5,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
+
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
+
+    return yPos;
+  };
+
+  // Update the renderPage2 function to remove ITEM DETAILS and keep only DBK, VESSEL, CONTAINER details
+  const renderPage2 = (pdf, helpers, data, startY = 80) => {
+    const { drawLine, drawField, leftX, rightX } = helpers;
+    let yPos = startY;
+
+    // DBK DETAILS SECTION
+    if (data.dbkData && data.dbkData.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("DBK DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
+
+      // AutoTable for DBK Details
+      const dbkHeaders = [
+        "Inv No",
+        "Item No",
+        "DBK SI No",
+        "DBK Rate",
+        "DBK Qty / Unit",
+        "DBK Amount",
+        "DBK SPE",
+      ];
+
+      const dbkRows = Array.isArray(data.dbkData) ? data.dbkData : [data.dbkData];
+
+      pdf.autoTable({
+        head: [dbkHeaders],
+        body: dbkRows.map((row) => [
+          row.invNo,
+          row.itemNo,
+          row.dbkSlNo,
+          row.dbkRate,
+          row.dbkQtyUnit,
+          row.dbkAmount,
+          row.dbkSPE,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+          overflow: "linebreak",
+          fontStyle: "bold",
+          textColor: 0,
+        },
+        headStyles: {
+          fillColor: [180, 180, 180],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: 8.5,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
+
+      yPos = pdf.lastAutoTable.finalY + 10;
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`Total DBK Amount: ${data.dbkTotalAmount || "0.00"}`, rightX, yPos, { align: "right" });
+      yPos += 15;
+    }
 
     // ROSCTL DETAILS SECTION (Only if data exists)
     if (data.rosctlData && data.rosctlData.length > 0) {
@@ -819,7 +804,7 @@ const ExportChecklistGenerator = ({
       pdf.text("ROSCTL DETAILS", leftX, yPos);
       yPos += 10;
       drawLine(leftX, yPos, rightX);
-      yPos += 17;
+      yPos += 5;
 
       const rosctlHeaders = [
         "Inv No",
@@ -851,178 +836,316 @@ const ExportChecklistGenerator = ({
           fontSize: FONT_SIZES.tableContent,
           cellPadding: 2,
           overflow: "linebreak",
+          fontStyle: "bold",
+          textColor: 0,
         },
         headStyles: {
-          fillColor: [220, 220, 220],
+          fillColor: [180, 180, 180],
           textColor: 0,
           fontStyle: "bold",
-          fontSize: FONT_SIZES.tableHeader,
+          fontSize: 8.5,
         },
         margin: { left: leftX },
         tableWidth: rightX - leftX,
       });
 
-      yPos = pdf.lastAutoTable.finalY + 18;
+      yPos = pdf.lastAutoTable.finalY + 10;
     }
 
-    // VESSEL DETAILS
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("VESSEL DETAILS", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 17;
+    if (data.deecData && data.deecData.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("DEEC DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
 
-    const vesselFields = [
-      { label: "Factory Stuffed", value: data.factoryStuffed },
-      { label: "Seal Type", value: data.sealType },
-      { label: "Sample Acc.", value: data.sampleAcc },
-      { label: "Vessel Name", value: data.vesselName },
-      { label: "Voyage Number", value: data.voyageNumber },
-    ];
+      const deecHeaders = [
+        "Sr No",
+        "Regn No\nDate",
+        "Item SNo\n(Part-C)",
+        "Item SNo\n(Part-E)",
+        "Raw Material",
+        "Quantity",
+        "Export Quantity",
+        "Indigenous/\nImported",
+        "Inv No",
+        "Item No",
+      ];
 
-    vesselFields.forEach((field) => {
-      yPos = drawField(field.label, field.value, leftX, yPos, 160);
-      yPos += 9;
-    });
+      pdf.autoTable({
+        head: [deecHeaders],
+        body: data.deecData.map((d) => [
+          d.srNo,
+          d.regnNoDate,
+          d.itemSnoPartC,
+          d.itemSnoPartE,
+          d.rawMaterial,
+          d.quantity,
+          d.exportQuantity,
+          d.indigenousImported,
+          d.invNo,
+          d.itemNo,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+          overflow: "linebreak",
+          fontStyle: "bold",
+          textColor: 0,
+        },
+        headStyles: {
+          fillColor: [180, 180, 180],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: 8.5,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
 
-    yPos += 9;
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
+
+    // EPCG DETAILS SECTION
+    if (data.epcgData && data.epcgData.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("EPCG DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
+
+      const epcgHeaders = [
+        "Sr No",
+        "Regn No\nDate",
+        "Item SNo\n(Part-C)",
+        "Item SNo\n(Part-E)",
+        "Raw Material",
+        "Quantity",
+        "Export Quantity",
+        "Indigenous/\nImported",
+        "Inv No",
+        "Item No",
+      ];
+
+      pdf.autoTable({
+        head: [epcgHeaders],
+        body: data.epcgData.map((d) => [
+          d.srNo,
+          d.regnNoDate,
+          d.itemSnoPartC,
+          d.itemSnoPartE,
+          d.rawMaterial,
+          d.quantity,
+          d.exportQuantity,
+          d.indigenousImported,
+          d.invNo,
+          d.itemNo,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+          overflow: "linebreak",
+          fontStyle: "bold",
+          textColor: 0,
+        },
+        headStyles: {
+          fillColor: [180, 180, 180],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: 8.5,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
+
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
+
+    // VESSEL DETAILS - compact table
+    if (data.vesselName || data.voyageNumber || data.factoryStuffed === "Yes") {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("VESSEL DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
+
+      pdf.autoTable({
+        body: [
+          ["Factory Stuffed", data.factoryStuffed || "", "Seal Type", data.sealType || ""],
+          ["Sample Acc.", data.sampleAcc || "", "Vessel Name", data.vesselName || ""],
+          ["Voyage Number", data.voyageNumber || "", "", ""],
+        ],
+        startY: yPos,
+        styles: { fontSize: FONT_SIZES.tableContent, cellPadding: 2, fontStyle: "bold", textColor: 0 },
+        columnStyles: {
+          0: { fontStyle: "bold", cellWidth: 80 },
+          1: { cellWidth: (rightX - leftX) / 2 - 80 },
+          2: { fontStyle: "bold", cellWidth: 80 },
+          3: { cellWidth: (rightX - leftX) / 2 - 80 },
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+        theme: "plain",
+      });
+
+      yPos = pdf.lastAutoTable.finalY + 8;
+    }
 
     // CONTAINER DETAILS
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("CONTAINER DETAILS", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 17;
+    if (data.containers && data.containers.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("CONTAINER DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
 
-    const containerHeaders = [
-      "Container No",
-      "Size",
-      "Type",
-      "Seal No",
-      "Seal Type",
-      "Seal Date",
-      "Seal Device ID",
-    ];
+      const containerHeaders = [
+        "Container No",
+        "Size",
+        "Type",
+        "Seal No",
+        "Seal Type",
+        "Seal Date",
+        "Seal Device ID",
+      ];
 
-    const containerRows = Array.isArray(data.containers)
-      ? data.containers
-      : [data.containers];
+      const containerRows = Array.isArray(data.containers)
+        ? data.containers
+        : [data.containers];
 
-    pdf.autoTable({
-      head: [containerHeaders],
-      body: containerRows.map((containers) => [
-        containers.containerNo,
-        containers.size,
-        containers.type,
-        containers.sealNo,
-        containers.sealType,
-        containers.sealDate,
-        containers.sealDeviceID,
-      ]),
-      startY: yPos,
-      styles: {
-        fontSize: FONT_SIZES.tableContent,
-        cellPadding: 2,
-      },
-      headStyles: {
-        fillColor: [220, 220, 220],
-        textColor: 0,
-        fontStyle: "bold",
-      },
-      margin: { left: leftX },
-      tableWidth: rightX - leftX,
-    });
+      pdf.autoTable({
+        head: [containerHeaders],
+        body: containerRows.map((containers) => [
+          containers.containerNo,
+          containers.size,
+          containers.type,
+          containers.sealNo,
+          containers.sealType,
+          containers.sealDate,
+          containers.sealDeviceID,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+          fontStyle: "bold",
+          textColor: 0,
+        },
+        headStyles: {
+          fillColor: [180, 180, 180],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: 8.5,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
 
-    yPos = pdf.lastAutoTable.finalY + 18;
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
 
     // Additional Details Table
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("Additional Details", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 17;
+    if (data.additionalDetailsRows && data.additionalDetailsRows.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("Additional Details", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
 
-    const additionalHeaders = [
-      "Inv/Item SLN",
-      "SQC Qty/Unit",
-      "Origin District",
-      "Origin State",
-      "Comp. Cess Amount",
-      "PTA/FTA",
-    ];
+      const additionalHeaders = [
+        "Inv/Item SLN",
+        "SQC Qty/Unit",
+        "Origin District",
+        "Origin State",
+        "Comp. Cess Amount",
+        "PTA/FTA",
+      ];
 
-    const additionalRows = Array.isArray(data.additionalDetailsRows)
-      ? data.additionalDetailsRows
-      : [];
+      const additionalRows = Array.isArray(data.additionalDetailsRows)
+        ? data.additionalDetailsRows
+        : [];
 
-    pdf.autoTable({
-      head: [additionalHeaders],
-      body: additionalRows.map((row) => [
-        row.invItemSln,
-        row.sqcQtyUnit,
-        row.originDistrict,
-        row.originState,
-        row.compCessAmount,
-        row.ptaFta,
-      ]),
-      startY: yPos,
-      styles: {
-        fontSize: FONT_SIZES.tableContent,
-        cellPadding: 2,
-      },
-      headStyles: {
-        fillColor: [220, 220, 220],
-        textColor: 0,
-        fontStyle: "bold",
-      },
-      margin: { left: leftX },
-      tableWidth: rightX - leftX,
-    });
+      pdf.autoTable({
+        head: [additionalHeaders],
+        body: additionalRows.map((row) => [
+          row.invItemSln,
+          row.sqcQtyUnit,
+          row.originDistrict,
+          row.originState,
+          row.compCessAmount,
+          row.ptaFta,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+          fontStyle: "bold",
+          textColor: 0,
+        },
+        headStyles: {
+          fillColor: [180, 180, 180],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: 8.5,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
 
-    yPos = pdf.lastAutoTable.finalY + 18;
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
 
-    return yPos + 8;
+    return yPos + 5;
   };
 
   // Update renderPage3 to start from where Page 2 left off
-  const renderPage3 = (pdf, helpers, data) => {
+  const renderPage3 = (pdf, helpers, data, startY = 80) => {
     const { drawLine, drawField, leftX, rightX } = helpers;
-    let yPos = 80;
+    let yPos = startY;
 
     // END USE INFORMATION
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("END USE INFORMATION", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 17;
+    if (data.endUseData && data.endUseData.length > 0 && data.endUseData[0].code) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("END USE INFORMATION", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
 
-    const endUseHeaders = ["Inv / Item Sr.No.", "Code"];
-    const endUseRows = Array.isArray(data.endUseData)
-      ? data.endUseData
-      : [data.endUseData];
+      const endUseHeaders = ["Inv / Item Sr.No.", "Code"];
+      const endUseRows = Array.isArray(data.endUseData)
+        ? data.endUseData
+        : [data.endUseData];
 
-    pdf.autoTable({
-      head: [endUseHeaders],
-      body: endUseRows.map((row) => [row.invItemSrNo, row.code]),
-      startY: yPos,
-      styles: {
-        fontSize: FONT_SIZES.tableContent,
-        cellPadding: 2,
-      },
-      headStyles: {
-        fillColor: [220, 220, 220],
-        textColor: 0,
-        fontStyle: "bold",
-      },
-      margin: { left: leftX },
-      tableWidth: 250,
-    });
+      pdf.autoTable({
+        head: [endUseHeaders],
+        body: endUseRows.map((row) => [row.invItemSrNo, row.code]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent,
+          cellPadding: 2,
+          fontStyle: "bold",
+          textColor: 0,
+        },
+        headStyles: {
+          fillColor: [180, 180, 180],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: 8.5,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
 
-    yPos = pdf.lastAutoTable.finalY + 18;
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
 
     // RODTEP Info
     if (data.rodtepData && data.rodtepData.length > 0) {
@@ -1031,7 +1154,7 @@ const ExportChecklistGenerator = ({
       pdf.text("RODTEP Info", leftX, yPos);
       yPos += 10;
       drawLine(leftX, yPos, rightX);
-      yPos += 17;
+      yPos += 5;
 
       const rodtepHeaders = [
         "Inv/Item Sr",
@@ -1058,17 +1181,23 @@ const ExportChecklistGenerator = ({
         styles: {
           fontSize: FONT_SIZES.tableContent,
           cellPadding: 2,
+          fontStyle: "bold",
+          textColor: 0,
         },
         headStyles: {
-          fillColor: [220, 220, 220],
+          fillColor: [180, 180, 180],
           textColor: 0,
           fontStyle: "bold",
+          fontSize: 8.5,
         },
         margin: { left: leftX },
         tableWidth: rightX - leftX,
       });
 
-      yPos = pdf.lastAutoTable.finalY + 18;
+      yPos = pdf.lastAutoTable.finalY + 10;
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`Total RODTEP Amount (INR): ${data.rodtepTotalAmount || "0.00"}`, rightX, yPos, { align: "right" });
+      yPos += 15;
     }
 
     // DECLARATIONS
@@ -1078,7 +1207,7 @@ const ExportChecklistGenerator = ({
       pdf.text("DECLARATIONS", leftX, yPos);
       yPos += 10;
       drawLine(leftX, yPos, rightX);
-      yPos += 17;
+      yPos += 5;
 
       const declarationHeaders = ["Decl. Typ", "Decl. Cod", "Inv / Item Sr.No."];
 
@@ -1093,33 +1222,43 @@ const ExportChecklistGenerator = ({
         styles: {
           fontSize: FONT_SIZES.tableContent,
           cellPadding: 2,
+          fontStyle: "bold",
+          textColor: 0,
         },
         headStyles: {
-          fillColor: [220, 220, 220],
+          fillColor: [180, 180, 180],
           textColor: 0,
           fontStyle: "bold",
+          fontSize: 8.5,
         },
         margin: { left: leftX },
-        tableWidth: 200,
+        tableWidth: rightX - leftX,
       });
 
       yPos = pdf.lastAutoTable.finalY + 15;
 
-      // Declaration Text
+      // Declaration Text - Render multiple if they exist
       pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.declaration);
       pdf.text("Decl. Cod", leftX, yPos);
-      pdf.text("Declaration", leftX + 50, yPos);
+      pdf.text("Declaration", leftX + 80, yPos); // Increased gap
       yPos += 10;
 
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(FONT_SIZES.declaration);
-      const declarationLines = pdf.splitTextToSize(
-        data.declarationText,
-        rightX - leftX - 50,
-      );
-      declarationLines.forEach((line) => {
-        pdf.text(line, leftX + 50, yPos);
-        yPos += FONT_SIZES.declaration * 1.2;
+      data.declarationDetails?.forEach((decl) => {
+        pdf.setFont("helvetica", "bold");
+        pdf.text(decl.code || "", leftX, yPos);
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(FONT_SIZES.declaration);
+        const declarationLines = pdf.splitTextToSize(
+          decl.text || "",
+          rightX - leftX - 100, // Adjusted width
+        );
+        declarationLines.forEach((line) => {
+          pdf.text(line, leftX + 80, yPos); // Match increased gap
+          yPos += FONT_SIZES.declaration * 1.2;
+        });
+        yPos += 10; // spacing between declarations
       });
     }
 
@@ -1127,9 +1266,9 @@ const ExportChecklistGenerator = ({
   };
 
   // Update renderPage4 for SUPPORTING DOCUMENTS
-  const renderPage4 = (pdf, helpers, data) => {
+  const renderPage4 = (pdf, helpers, data, startY = 80) => {
     const { drawLine, leftX, rightX } = helpers;
-    let yPos = 80;
+    let yPos = startY;
     // INLINE SAFE SPLIT TEXT - No helpers dependency
     const safeSplitText = (text, width = 140) => {
       if (!text || typeof text !== "string") return [""];
@@ -1139,172 +1278,75 @@ const ExportChecklistGenerator = ({
         return [""];
       }
     };
-    // SUPPORTING DOCUMENTS
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.sectionHeader);
-    pdf.text("SUPPORTING DOCUMENTS", leftX, yPos);
-    yPos += 10;
-    drawLine(leftX, yPos, rightX);
-    yPos += 17;
+    // SUPPORTING DOCUMENTS - Using autoTable for compact layout
+    if (data.supportingDocs && Object.keys(data.supportingDocs).length > 0 && data.supportingDocs.imageRefNo) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("SUPPORTING DOCUMENTS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
 
-    // Define column positions
-    const col1 = leftX + 5; // First column
-    const col2 = leftX + 80; // Second column
-    const col3 = leftX + 180; // Third column
-    const col4 = leftX + 280; // Fourth column
-    const col5 = leftX + 430; // Fifth column
+      const sd = data.supportingDocs || {};
 
-    const rowHeight = 12;
-    const headerSectionHeight = 60;
+      pdf.autoTable({
+        body: [
+          ["Inv/Item/SrNo.", sd.invItemSrNo || "", "Image Ref.No.(IRN)", sd.imageRefNo || "", "ICEGATE ID", sd.icegateId || ""],
+          ["Doc Issue Date", sd.docIssueDate || "", "Doc Ref.No.", sd.docRefNo || "", "File Type", sd.fileType || ""],
+          ["Doc Expiry Date", sd.docExpiryDate || "", "Doc Uploaded On", sd.docUploadedOn || "", "Place of Issue", sd.placeOfIssue || ""],
+          ["Doc Type Code", sd.docTypeCode || "", "Doc Name", sd.docName || "", "Issuing Party Code", sd.issuingPartyCode || ""],
+          ["", "", "", "", "Beneficiary Party Code", sd.beneficiaryPartyCode || ""],
+        ],
+        startY: yPos,
+        styles: { fontSize: 7, cellPadding: 1.5, overflow: "linebreak", fontStyle: "bold", textColor: 0 },
+        columnStyles: {
+          0: { fontStyle: "bold", cellWidth: 55 },
+          1: { cellWidth: 75 },
+          2: { fontStyle: "bold", cellWidth: 60 },
+          3: { cellWidth: 90 },
+          4: { fontStyle: "bold", cellWidth: 70 },
+          5: { cellWidth: "auto" },
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+        theme: "plain",
+      });
 
-    // HEADERS SECTION - All headers in one section
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(FONT_SIZES.tableHeader);
-    let headerY = yPos;
+      yPos = pdf.lastAutoTable.finalY + 5;
 
-    // Column 1 Headers
-    pdf.text("Inv/Item/SrNo.", col1, headerY);
-    headerY += rowHeight;
-    pdf.text("Doc Issue Date", col1, headerY);
-    headerY += rowHeight;
-    pdf.text("Doc Expiry Date", col1, headerY);
-    headerY += rowHeight;
-    pdf.text("Doc Type Code", col1, headerY);
+      // Issuing Party & Beneficiary Party - side by side table
+      pdf.autoTable({
+        head: [["Issuing Party", "", "Beneficiary Party", ""]],
+        body: [
+          ["Name", sd.issuingPartyName || "", "Name", sd.beneficiaryPartyName || ""],
+          ["Address 1", sd.issuingPartyAdd1 || "", "Address 1", sd.beneficiaryPartyAdd1 || ""],
+          ["Address 2", sd.issuingPartyAdd2 || "", "Address 2", sd.beneficiaryPartyAdd2 || ""],
+          ["City", sd.issuingPartyCity || "", "City", sd.beneficiaryPartyCity || ""],
+          ["Pin Code", sd.issuingPartyPinCode || "", "Pin Code", sd.beneficiaryPartyPinCode || ""],
+        ],
+        startY: yPos,
+        styles: { fontSize: 7, cellPadding: 1.5, overflow: "linebreak", fontStyle: "bold", textColor: 0 },
+        headStyles: { fillColor: [180, 180, 180], textColor: 0, fontStyle: "bold" },
+        columnStyles: {
+          0: { fontStyle: "bold", cellWidth: 45 },
+          1: { cellWidth: (rightX - leftX) / 2 - 45 },
+          2: { fontStyle: "bold", cellWidth: 45 },
+          3: { cellWidth: (rightX - leftX) / 2 - 45 },
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
 
-    // Column 2 Headers
-    headerY = yPos;
-    pdf.text("Image Ref.No.(IRN)", col2, headerY);
-    headerY += rowHeight;
-    pdf.text("Doc Ref.No.", col2, headerY);
-    headerY += rowHeight;
-    pdf.text("Doc Uploaded On", col2, headerY);
-    headerY += rowHeight;
-    pdf.text("Doc Name", col2, headerY);
-
-    // Column 3 Headers
-    headerY = yPos;
-    pdf.text("ICEGATE ID", col3, headerY);
-    headerY += rowHeight;
-    pdf.text("File Type", col3, headerY);
-    headerY += rowHeight;
-    pdf.text("Place of Issue", col3, headerY);
-    headerY += rowHeight;
-    pdf.text("Issuing Party Code", col3, headerY);
-    headerY += rowHeight;
-    pdf.text("Beneficiary Party Code", col3, headerY);
-
-    // Column 4 Headers
-    headerY = yPos;
-    pdf.text("Issuing Party Name", col4, headerY);
-    headerY += rowHeight;
-    pdf.text("Issuing Party Add1", col4, headerY);
-    headerY += rowHeight;
-    pdf.text("Issuing Party Add2", col4, headerY);
-    headerY += rowHeight;
-    pdf.text("Issuing Party City", col4, headerY);
-    headerY += rowHeight;
-    pdf.text("Issuing Party Pin Code", col4, headerY);
-
-    // Column 5 Headers
-    headerY = yPos;
-    pdf.text("Beneficiary Party Name", col5, headerY);
-    headerY += rowHeight;
-    pdf.text("Beneficiary Party Add1", col5, headerY);
-    headerY += rowHeight;
-    pdf.text("Beneficiary Party Add2", col5, headerY);
-    headerY += rowHeight;
-    pdf.text("Beneficiary Party City", col5, headerY);
-    headerY += rowHeight;
-    pdf.text("Beneficiary Party Pin Code", col5, headerY);
-
-    // Draw line at the end of header section
-    yPos += headerSectionHeight;
-    drawLine(leftX, yPos, rightX);
-    yPos += 8;
-
-    // VALUES SECTION - SAFE RENDERING (FIXES jsPDF.text ERROR)
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(FONT_SIZES.tableContent);
-    let valueY = yPos;
-
-    // Column 1 Values - SAFE
-    pdf.text(data.supportingDocs?.invItemSrNo || "", col1, valueY);
-    valueY += rowHeight;
-    pdf.text(data.supportingDocs?.docIssueDate || "", col1, valueY);
-    valueY += rowHeight;
-    pdf.text(data.supportingDocs?.docExpiryDate || "", col1, valueY);
-    valueY += rowHeight;
-    pdf.text(data.supportingDocs?.docTypeCode || "", col1, valueY);
-
-    // Column 2 Values - SAFE
-    valueY = yPos;
-    pdf.text(data.supportingDocs?.imageRefNo || "", col2, valueY);
-    valueY += rowHeight;
-    pdf.text(data.supportingDocs?.docRefNo || "", col2, valueY);
-    valueY += rowHeight;
-    pdf.text(data.supportingDocs?.docUploadedOn || "", col2, valueY);
-    valueY += rowHeight;
-    pdf.text(data.supportingDocs?.docName || "", col2, valueY);
-
-    // Column 3 Values - SAFE
-    valueY = yPos;
-    pdf.text(data.supportingDocs?.icegateId || "", col3, valueY);
-    valueY += rowHeight;
-    pdf.text(data.supportingDocs?.fileType || "", col3, valueY);
-    valueY += rowHeight;
-    pdf.text(data.supportingDocs?.placeOfIssue || "", col3, valueY);
-    valueY += rowHeight;
-    pdf.text(data.supportingDocs?.issuingPartyCode || "", col3, valueY);
-    valueY += rowHeight;
-    pdf.text(data.supportingDocs?.beneficiaryPartyCode || "", col3, valueY);
-
-    // Column 4 Values (Issuing Party) - SAFE TEXT WRAPPING
-    valueY = yPos;
-    const issuingPartyName = data.supportingDocs?.issuingPartyName || "";
-    const issuingNameLines = safeSplitText(issuingPartyName, 140);
-    pdf.text(issuingNameLines, col4, valueY);
-    valueY += issuingNameLines.length * 10;
-
-    const issuingAdd1 = data.supportingDocs?.issuingPartyAdd1 || "";
-    const add1Lines = safeSplitText(issuingAdd1, 140);
-    pdf.text(add1Lines, col4, valueY);
-    valueY += add1Lines.length * 10;
-
-    const issuingAdd2 = data.supportingDocs?.issuingPartyAdd2 || "";
-    const add2Lines = safeSplitText(issuingAdd2, 140);
-    pdf.text(add2Lines, col4, valueY);
-    valueY += add2Lines.length * 10;
-
-    pdf.text(data.supportingDocs?.issuingPartyCity || "", col4, valueY);
-    valueY += rowHeight;
-    pdf.text(data.supportingDocs?.issuingPartyPinCode || "", col4, valueY);
-
-    // Column 5 Values (Beneficiary Party) - SAFE TEXT WRAPPING
-    valueY = yPos;
-    pdf.text(data.supportingDocs?.beneficiaryPartyName || "", col5, valueY);
-    valueY += rowHeight;
-
-    const beneficiaryAdd1 = data.supportingDocs?.beneficiaryPartyAdd1 || "";
-    const beneficiaryAdd1Lines = safeSplitText(beneficiaryAdd1, 140);
-    pdf.text(beneficiaryAdd1Lines, col5, valueY);
-    valueY += beneficiaryAdd1Lines.length * 10;
-
-    pdf.text(data.supportingDocs?.beneficiaryPartyAdd2 || "", col5, valueY);
-    valueY += rowHeight;
-    pdf.text(data.supportingDocs?.beneficiaryPartyCity || "", col5, valueY);
-    valueY += rowHeight;
-    pdf.text(data.supportingDocs?.beneficiaryPartyPinCode || "", col5, valueY);
-
-    // Calculate final Y position
-    yPos += 120; // Fixed height for supporting docs section
+      yPos = pdf.lastAutoTable.finalY + 10;
+    }
 
     // FINAL DECLARATION
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(FONT_SIZES.sectionHeader);
     pdf.text("DECLARATION", leftX, yPos);
-    yPos += 10;
+    yPos += 8;
     drawLine(leftX, yPos, rightX);
-    yPos += 17;
+    yPos += 8;
 
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(FONT_SIZES.declaration);
@@ -1314,16 +1356,16 @@ const ExportChecklistGenerator = ({
     );
     declarationLines.forEach((line) => {
       pdf.text(line, leftX, yPos);
-      yPos += FONT_SIZES.declaration * 1.3;
+      yPos += FONT_SIZES.declaration * 1.2;
     });
 
-    yPos += 20;
+    yPos += 10;
     pdf.setFont("helvetica", "bold");
     pdf.text("Signature of Exporter/CHA with date", leftX, yPos);
-    yPos += 8;
-    drawLine(leftX, yPos, rightX - 200);
+    yPos += 5;
+    drawLine(leftX, yPos, leftX + 200);
 
-    return yPos + 20;
+    return yPos + 15;
   };
 
   // ==================== MAIN GENERATOR ====================
@@ -1351,7 +1393,20 @@ const ExportChecklistGenerator = ({
           exportJob.invoices?.[0]?.invoiceDate ||
           exportJob.sb_date ||
           new Date();
-        const dt = new Date(dateRaw);
+
+        const parseDateString = (ds) => {
+          if (!ds) return new Date();
+          if (typeof ds === 'string') {
+            const parts = ds.substring(0, 10).split('-');
+            // if DD-MM-YYYY format
+            if (parts.length === 3 && parts[0].length === 2 && parts[2].length === 4) {
+              return new Date(parts[2], parts[1] - 1, parts[0]);
+            }
+          }
+          return new Date(ds);
+        };
+        const dt = parseDateString(dateRaw);
+
         const dd = String(dt.getDate()).padStart(2, "0");
         const mm = String(dt.getMonth() + 1).padStart(2, "0");
         const yyyy = dt.getFullYear();
@@ -1388,9 +1443,9 @@ const ExportChecklistGenerator = ({
         chaCode: exportJob.cha,
 
         // Exporter Details - BUILD FROM MULTIPLE FIELDS
-        exporterGstin: exportJob.exporter_gstin || exportJob.gstin || "",
-        exporterGstinFull: exportJob.exporter_gstin
-          ? `GSTIN: ${exportJob.exporter_gstin}`
+        exporterIec: exportJob.ieCode ? `IEC: ${exportJob.ieCode}` : "",
+        exporterGstinFull: exportJob.gstin
+          ? `GSTIN: ${exportJob.gstin}`
           : "",
         exporterPan: exportJob.exporter_pan
           ? `PAN No: ${exportJob.exporter_pan}`
@@ -1400,7 +1455,7 @@ const ExportChecklistGenerator = ({
           : "",
         exporterName: exportJob.exporter || "",
         exporterBranch: exportJob.branch_code
-          ? `Branch Ser #${exportJob.branch_code}`
+          ? `Branch Ser #${exportJob.branch_sno}`
           : "",
         exporterAddress1: exportJob.exporter_address || "",
         exporterAddress2: "", // Parse from exporter_address if multi-line
@@ -1412,7 +1467,7 @@ const ExportChecklistGenerator = ({
         consigneeCountry2: exportJob.dischargecountry,
 
         // Shipping Details
-        portOfLoading: exportJob.port_of_loading || "",
+        portOfLoading: exportJob.custom_house || "",
         portOfDischarge:
           exportJob.port_of_discharge || exportJob.discharge_port || "",
         portOfDestination:
@@ -1429,7 +1484,7 @@ const ExportChecklistGenerator = ({
           exportJob.state_of_origin || exportJob.exporter_state || "",
         adCode: exportJob.ad_code || exportJob.adCode || "",
         natureOfCargo: exportJob.nature_of_cargo || "",
-        totalPackages: exportJob.total_no_of_pkgs || "",
+        totalPackages: `${exportJob.total_no_of_pkgs || ""} ${exportJob.package_unit || ""}`,
         numberOfContainers: exportJob.no_of_containers || "",
         loosePackets: exportJob.loose_pkgs || "",
 
@@ -1510,7 +1565,7 @@ const ExportChecklistGenerator = ({
               0,
             )
             .toFixed(2) || "0.00",
-        forexBankAcNo: exportJob.bank_account_number || "",
+        forexBankAcNo: exportJob.ac_number || "",
         // DBK + RODTEP/ROSCTL - Dynamic label based on what's available
         dbkStrLabel: (() => {
           // Check if RODTEP is available
@@ -1523,8 +1578,8 @@ const ExportChecklistGenerator = ({
             (p) => parseFloat(p.rosctlInfo?.amountINR) > 0,
           );
 
-          if (hasRodtep) return "DBK + RODTEP (INR)";
-          if (hasRosctl) return "DBK + ROSCTL (INR)";
+          if (hasRodtep) return "DBK (INR)";
+          if (hasRosctl) return "ROSCTL (INR)";
           return "DBK (INR)";
         })(),
         dbkStr: (() => {
@@ -1538,13 +1593,6 @@ const ExportChecklistGenerator = ({
               return sum + productDbk;
             }, 0) || 0;
 
-          // Calculate total RODTEP amount
-          const totalRodtepAmount =
-            allProducts?.reduce(
-              (sum, p) => sum + (parseFloat(p.rodtepInfo?.amountINR) || 0),
-              0,
-            ) || 0;
-
           // Calculate total ROSCTL amount (if available)
           const totalRosctlAmount =
             allProducts?.reduce(
@@ -1552,12 +1600,19 @@ const ExportChecklistGenerator = ({
               0,
             ) || 0;
 
-          // DBK + RODTEP or DBK + ROSCTL (only one can be present)
-          return (
-            totalDbkAmount +
-            totalRodtepAmount +
-            totalRosctlAmount
-          ).toFixed(2);
+          // Check if RODTEP is available
+          const hasRodtep = allProducts?.some(
+            (p) => parseFloat(p.rodtepInfo?.amountINR) > 0,
+          );
+
+          // Check if ROSCTL is available
+          const hasRosctl = allProducts?.some(
+            (p) => parseFloat(p.rosctlInfo?.amountINR) > 0,
+          );
+
+          if (hasRodtep) return totalDbkAmount.toFixed(2);
+          if (hasRosctl) return totalRosctlAmount.toFixed(2);
+          return totalDbkAmount.toFixed(2);
         })(),
         rbiWaiverNo: exportJob.rbi_waiver_no || "",
         dbkBankAcNo: "", // Not found in data structure
@@ -1580,7 +1635,7 @@ const ExportChecklistGenerator = ({
             .toFixed(2) || "0.00",
 
         invoicesDetail: (exportJob.invoices || []).map((inv) => {
-          const baseValue = inv.productValue || inv.invoiceValue || 0;
+          const baseValue = inv.invoiceValue || inv.productValue || 0;
           const freightInsurance = inv.freightInsuranceCharges;
 
           return {
@@ -1711,7 +1766,7 @@ const ExportChecklistGenerator = ({
 
             packingChargesData: {
               rate: "",
-              currency: "",
+              currency: inv.currency || "",
               amount: inv.packing_charges || inv.packingFOB || "",
             },
           };
@@ -1756,9 +1811,7 @@ const ExportChecklistGenerator = ({
           "",
         iec: exportJob.ieCode || "",
         branchSno:
-          exportJob.branch_sr_no ||
           exportJob.branchSrNo ||
-          exportJob.annexC1Details?.branchSerialNo ||
           "0",
         factoryAddress: exportJob.factory_address || "",
 
@@ -1831,6 +1884,22 @@ const ExportChecklistGenerator = ({
             0,
           )
           .toFixed(2),
+        dbkTotalAmount: (() => {
+          let total = 0;
+          allProducts?.forEach((product) => {
+            product.drawbackDetails?.forEach((dbk) => {
+              total += parseFloat(dbk.dbkAmount) || 0;
+            });
+          });
+          return total.toFixed(2);
+        })(),
+        rodtepTotalAmount: (() => {
+          let total = 0;
+          allProducts?.forEach((product) => {
+            total += parseFloat(product.rodtepInfo?.amountINR) || 0;
+          });
+          return total.toFixed(2);
+        })(),
 
         // DBK Details - Extract from all products drawbackDetails
         dbkData: (() => {
@@ -1890,8 +1959,115 @@ const ExportChecklistGenerator = ({
           return rosctlRows;
         })(),
 
+        // DEEC Details Data
+        deecData: (() => {
+          const deecRows = [];
+          allProducts?.forEach((product, productIndex) => {
+            const invoice =
+              exportJob.invoices?.find((inv) =>
+                inv.products?.some(
+                  (p) => p.serialNumber === product.serialNumber,
+                ),
+              ) || exportJob.invoices?.[0];
+            const invNo = invoice?.invoiceNumber || "";
+            const itemNo = product.serialNumber || (productIndex + 1).toString();
+
+            if (product.deecDetails) {
+              const deec = product.deecDetails;
+              const regObj = deec.deec_reg_obj?.[0] || {};
+              // Build date/no safely from multiple formats
+              const regnDisplay = regObj.regnNo ? `${regObj.regnNo}\n${regObj.licDate ? formatDate(regObj.licDate) : ""}` : "";
+
+              if (deec.deecItems && deec.deecItems.length > 0) {
+                deec.deecItems.forEach((item, itemIdx) => {
+                  deecRows.push({
+                    srNo: deecRows.length + 1,
+                    regnNoDate: regnDisplay,
+                    itemSnoPartC: item.itemSnoPartC || "",
+                    itemSnoPartE: deec.itemSnoPartE || "",
+                    rawMaterial: item.description || "",
+                    quantity: `${item.quantity || 0} ${item.unit || "MTS"}`,
+                    exportQuantity: `${deec.exportQtyUnderLicence || 0} ${item.unit || "MTS"}`,
+                    indigenousImported: item.itemType || "Imported",
+                    invNo: invNo || "1",
+                    itemNo: itemNo,
+                  });
+                });
+              } else if (regObj.regnNo) {
+                // Even if no specific part-C items, we might want to log it if it has a Registration NO.
+                deecRows.push({
+                  srNo: deecRows.length + 1,
+                  regnNoDate: regnDisplay,
+                  itemSnoPartC: "",
+                  itemSnoPartE: deec.itemSnoPartE || "",
+                  rawMaterial: "",
+                  quantity: `0 MTS`,
+                  exportQuantity: `${deec.exportQtyUnderLicence || 0} MTS`,
+                  indigenousImported: "Imported",
+                  invNo: invNo || "1",
+                  itemNo: itemNo,
+                });
+              }
+            }
+          });
+          return deecRows;
+        })(),
+
+        // EPCG Details Data
+        epcgData: (() => {
+          const epcgRows = [];
+          allProducts?.forEach((product, productIndex) => {
+            const invoice =
+              exportJob.invoices?.find((inv) =>
+                inv.products?.some(
+                  (p) => p.serialNumber === product.serialNumber,
+                ),
+              ) || exportJob.invoices?.[0];
+            const invNo = invoice?.invoiceNumber || "";
+            const itemNo = product.serialNumber || (productIndex + 1).toString();
+
+            if (product.epcgDetails) {
+              const epcg = product.epcgDetails;
+              const regObj = epcg.epcg_reg_obj?.[0] || {};
+              // Build date/no safely from multiple formats
+              const regnDisplay = regObj.regnNo ? `${regObj.regnNo}\n${regObj.licDate ? formatDate(regObj.licDate) : ""}` : "";
+
+              if (epcg.epcgItems && epcg.epcgItems.length > 0) {
+                epcg.epcgItems.forEach((item, itemIdx) => {
+                  epcgRows.push({
+                    srNo: epcgRows.length + 1,
+                    regnNoDate: regnDisplay,
+                    itemSnoPartC: item.itemSnoPartC || "",
+                    itemSnoPartE: epcg.itemSnoPartE || "",
+                    rawMaterial: item.description || "",
+                    quantity: `${item.quantity || 0} ${item.unit || "MTS"}`,
+                    exportQuantity: `${epcg.exportQtyUnderLicence || 0} ${item.unit || "MTS"}`,
+                    indigenousImported: item.itemType || "Imported",
+                    invNo: invNo || "1",
+                    itemNo: itemNo,
+                  });
+                });
+              } else if (regObj.regnNo) {
+                epcgRows.push({
+                  srNo: epcgRows.length + 1,
+                  regnNoDate: regnDisplay,
+                  itemSnoPartC: "",
+                  itemSnoPartE: epcg.itemSnoPartE || "",
+                  rawMaterial: "",
+                  quantity: `0 MTS`,
+                  exportQuantity: `${epcg.exportQtyUnderLicence || 0} MTS`,
+                  indigenousImported: "Imported",
+                  invNo: invNo || "1",
+                  itemNo: itemNo,
+                });
+              }
+            }
+          });
+          return epcgRows;
+        })(),
+
         // Vessel & Container Details
-        factoryStuffed: exportJob.goods_stuffed_at === "Factory" ? "Yes" : "No",
+        factoryStuffed: ["FACTORY", "YES", "TRUE", "Y"].includes((exportJob.goods_stuffed_at || "").toUpperCase().trim()) ? "Yes" : "No",
         sealType: exportJob.stuffing_seal_type || "",
         sampleAcc: exportJob.sample_accompanied ? "Yes" : "No",
         vesselName: exportJob.vessel_name || "",
@@ -1936,6 +2112,33 @@ const ExportChecklistGenerator = ({
           return rows;
         })(),
 
+        // Third Party Details - Aggregate from all products
+        thirdPartyRows: (() => {
+          const tpRows = [];
+          allProducts?.forEach((product, prodIdx) => {
+            const tp = product.otherDetails?.thirdParty;
+            if (product.otherDetails?.isThirdPartyExport && tp) {
+              // Find which invoice this product belongs to
+              let invSr = "1";
+              exportJob.invoices?.forEach((inv, ii) => {
+                if (inv.products?.some(p => p.serialNumber === product.serialNumber)) {
+                  invSr = (ii + 1).toString();
+                }
+              });
+
+              tpRows.push({
+                invSr: invSr,
+                itemSr: product.serialNumber || (prodIdx + 1).toString(),
+                ieCode: tp.ieCode || "",
+                branch: tp.branchSrNo || "0",
+                name: tp.name || "",
+                regnId: tp.regnNo || ""
+              });
+            }
+          });
+          return tpRows;
+        })(),
+
         // End Use Information - One row per invoice × product
         endUseData: (() => {
           const endUseRows = [];
@@ -1977,31 +2180,52 @@ const ExportChecklistGenerator = ({
           return rodtepRows;
         })(),
 
-        // Declaration Data - One row per invoice × product
+        // Declaration Data - Modified for RoDTEP and RoSCTL logic
         declarationData: (() => {
           const declRows = [];
           exportJob.invoices?.forEach((invoice, invIndex) => {
             invoice.products?.forEach((product, prodIndex) => {
+              const sc = (product.eximCode || "").split(" ")[0];
               const amount = parseFloat(product.rodtepInfo?.amountINR) || 0;
-              if (product.rodtepInfo?.claim === "Yes" && amount > 0) {
-                declRows.push({
-                  declType: "DEC",
-                  declCode: "RD001", // Standard RODTEP declaration
-                  invItemSrNo: `${invIndex + 1}/${product.serialNumber || (prodIndex + 1)}`,
-                });
+              const isRodtep = amount > 0 || product.rodtepInfo?.claim === "Yes";
+              const isRosctl = sc === "60" || sc === "61";
+              const isAdvLic = sc === "03";
+
+              const invItemSrNo = `${invIndex + 1}/${product.serialNumber || (prodIndex + 1)}`;
+
+              if (isRosctl) {
+                declRows.push({ declType: "DEC", declCode: "RS001", invItemSrNo });
+              }
+              if (isRodtep || isAdvLic) {
+                declRows.push({ declType: "DEC", declCode: "RD001", invItemSrNo });
               }
             });
           });
           return declRows;
         })(),
 
-        declarationText: `I/We, in regard to my/our claim under RoDTEP scheme made in this Shipping Bill or Bill of Export, hereby declare that:
-
+        declarationDetails: (() => {
+          const texts = {
+            RD001: `I/We, in regard to my/our claim under RoDTEP scheme made in this Shipping Bill or Bill of Export, hereby declare that:
 1. I/ We undertake to abide by the provisions, including conditions, restrictions, exclusions and time-limits as provided under RoDTEP scheme, and relevant notifications, regulations, etc., as amended from time to time.
-
 2. Any claim made in this shipping bill or bill of export is not with respect to any duties or taxes or levies which are exempted or remitted or credited under any other mechanism outside RoDTEP.
-
 3. I/We undertake to preserve and make available relevant documents relating to the exported goods for the purposes of audit in the manner and for the time period prescribed in the Customs Audit Regulations, 2018.`,
+            RS001: `I/We, in regard to my/our claim under RoSCTL scheme made in this Shipping Bill or Bill of Export, hereby declare that:
+1. I/ We undertake to abide by the provisions, including conditions, restrictions, exclusions and time-limits as provided under RoSCTL scheme, and relevant notifications, regulations, etc., as amended from time to time.
+2. Any claim made in this shipping bill or bill of export is not with respect to any duties or taxes or levies which are exempted or remitted or credited under any other mechanism outside RoSCTL.
+3. I/We undertake to preserve and make available relevant documents relating to the exported goods for the purposes of audit in the manner and for the time period prescribed in the Customs Audit Regulations, 2018.`};
+          const codes = [];
+          exportJob.invoices?.forEach(inv =>
+            inv.products?.forEach(p => {
+              const sc = (p.eximCode || "").split(" ")[0];
+              const amount = parseFloat(p.rodtepInfo?.amountINR) || 0;
+              if ((sc === "60" || sc === "61") && !codes.includes("RS001")) codes.push("RS001");
+              if ((amount > 0 || p.rodtepInfo?.claim === "Yes" || sc === "03") && !codes.includes("RD001")) codes.push("RD001");
+            })
+          );
+
+          return codes.sort().map(code => ({ code, text: texts[code] }));
+        })(),
 
         // Supporting Documents
         supportingDocs: exportJob.eSanchitDocuments?.[0]
@@ -2064,72 +2288,52 @@ const ExportChecklistGenerator = ({
 
         // Final Declaration
         finalDeclaration: `1. I/We declare that the particulars given herein are true and are correct.
-
-2. I/We undertake to abide by the provisions of Foreign Exchange Management Act, 1999, as amended from time to time, including realisation or repatriation of foreign exchange to or from India.
-
-Signature of Exporter/CHA with date`,
+2. I/We undertake to abide by the provisions of Foreign Exchange Management Act, 1999, as amended from time to time, including realisation or repatriation of foreign exchange to or from India.`,
       };
 
       // Create PDF
       const pdf = new jsPDF("p", "pt", "a4");
       const helpers = createPDFHelpers(pdf);
+      const PAGE_BOTTOM_LIMIT = PAGE_CONFIG.height - 60;
+      let pageCount = 1;
 
-      helpers.addHeader(
-        1,
-        4,
-        data.customStation,
-        data.aeoRegistrationNo,
-        data.aeoRole,
-        currentDate,
-      );
-      renderPage1(pdf, helpers, data);
+      const ensureSpace = (neededHeight, currentY) => {
+        if (currentY + neededHeight > PAGE_BOTTOM_LIMIT) {
+          pdf.addPage();
+          pageCount++;
+          helpers.addHeader(pageCount, "?", data.customStation, data.aeoRegistrationNo, data.aeoRole, currentDate);
+          return 80;
+        }
+        return currentY;
+      };
 
-      // PAGE 2 - ITEM DETAILS
-      pdf.addPage();
-      helpers.addHeader(
-        2,
-        4,
-        data.customStation,
-        data.aeoRegistrationNo,
-        data.aeoRole,
-        currentDate,
-      );
-      renderItemDetailsPage(pdf, helpers, data);
+      helpers.addHeader(1, "?", data.customStation, data.aeoRegistrationNo, data.aeoRole, currentDate);
+      let yPos = renderPage1(pdf, helpers, data);
 
-      // PAGE 3 - DBK, VESSEL, CONTAINER details
-      pdf.addPage();
-      helpers.addHeader(
-        3,
-        4,
-        data.customStation,
-        data.aeoRegistrationNo,
-        data.aeoRole,
-        currentDate,
-      );
-      renderPage2(pdf, helpers, data);
+      yPos = ensureSpace(100, yPos);
+      yPos = renderItemDetailsPage(pdf, helpers, data, yPos);
 
-      // PAGE 4 - SINGLE WINDOW, RODTEP, DECLARATIONS, SUPPORTING DOCS
-      pdf.addPage();
-      helpers.addHeader(
-        4,
-        4,
-        data.customStation,
-        data.aeoRegistrationNo,
-        data.aeoRole,
-        currentDate,
-      );
-      renderPage3(pdf, helpers, data);
+      yPos = ensureSpace(80, yPos);
+      yPos = renderThirdPartyDetails(pdf, helpers, data, yPos);
 
-      pdf.addPage();
-      helpers.addHeader(
-        4,
-        4,
-        data.customStation,
-        data.aeoRegistrationNo,
-        data.aeoRole,
-        currentDate,
-      );
-      renderPage4(pdf, helpers, data);
+      yPos = ensureSpace(80, yPos);
+      yPos = renderPage2(pdf, helpers, data, yPos);
+
+      yPos = ensureSpace(80, yPos);
+      yPos = renderPage3(pdf, helpers, data, yPos);
+
+      yPos = ensureSpace(80, yPos);
+      yPos = renderPage4(pdf, helpers, data, yPos);
+
+      const totalPages = pdf.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(PAGE_CONFIG.width - 60, PAGE_CONFIG.margins.top + 5, 50, 15, "F");
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(FONT_SIZES.fieldLabel);
+        pdf.text(`${i}/${totalPages}`, PAGE_CONFIG.width - PAGE_CONFIG.margins.right, PAGE_CONFIG.margins.top + 13, { align: "right" });
+      }
 
       // Generate filename and display
       const filename = `Export-CheckList-${data.jobNumber.replace(

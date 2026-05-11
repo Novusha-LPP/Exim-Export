@@ -5,7 +5,27 @@ const router = express.Router();
 
 router.get("/api/dsr/consignees", async (req, res) => {
   try {
+    // Dynamically calculate current and last financial year (April to March)
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-11, where 3 is April
+
+    let startYear;
+    if (currentMonth >= 3) {
+      startYear = currentYear;
+    } else {
+      startYear = currentYear - 1;
+    }
+
+    const currentYearStr = `${String(startYear).slice(-2)}-${String(startYear + 1).slice(-2)}`;
+    const lastYearStr = `${String(startYear - 1).slice(-2)}-${String(startYear).slice(-2)}`;
+
     const consignees = await ExportJob.aggregate([
+      {
+        $match: {
+          year: { $in: [lastYearStr, currentYearStr] },
+        },
+      },
       { $unwind: "$consignees" },
       {
         $group: {
