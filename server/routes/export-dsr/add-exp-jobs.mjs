@@ -275,6 +275,8 @@ router.post(
       delete sourceData.sb_submitted_date;
       delete sourceData.sb_status;
       delete sourceData.jobNumber;
+      delete sourceData.eSanchitDocuments;
+      delete sourceData.operations;
 
       // Set new values
       const newExportJob = new ExportJobModel({
