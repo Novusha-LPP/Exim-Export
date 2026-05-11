@@ -34,6 +34,10 @@ public class Main extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
+        // --- Start Background Signing Server ---
+        startBackgroundServer();
+
+
         // --- Top: Configuration ---
         JPanel configPanel = new JPanel(new GridLayout(3, 2, 5, 5));
         configPanel.setBorder(BorderFactory.createTitledBorder("Configuration"));
@@ -126,6 +130,22 @@ public class Main extends JFrame {
             logArea.append(msg + "\n");
             logArea.setCaretPosition(logArea.getDocument().getLength());
         });
+    }
+
+    private void startBackgroundServer() {
+        new Thread(() -> {
+            try {
+                if (dscService == null) {
+                    dscService = new DscService();
+                }
+                SigningServer server = new SigningServer(dscService);
+                server.start();
+                log("🚀 Background Signing Server active on port 5000");
+            } catch (Exception e) {
+                log("❌ Failed to start Signing Server: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     // --- Actions ---
