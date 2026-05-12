@@ -27,6 +27,7 @@ public class DscService {
     private KeyStore keyStore;
     private Provider pkcs11Provider;
     private String alias;
+    private char[] pinChars;
 
     /**
      * Login into DSC Token using PKCS11 DLL path and PIN.
@@ -61,8 +62,9 @@ public class DscService {
         Security.addProvider(pkcs11Provider);
 
         // Load KeyStore from token
+        this.pinChars = pin.toCharArray();
         keyStore = KeyStore.getInstance("PKCS11", pkcs11Provider);
-        keyStore.load(null, pin.toCharArray());
+        keyStore.load(null, this.pinChars);
 
         // Select best signing alias
         alias = findSigningAlias();
@@ -131,7 +133,30 @@ public class DscService {
     }
 
     /**
+     * Forcefully reloads the keystore session and fetches a fresh PrivateKey handle.
+     * Prevents CKR_USER_NOT_LOGGED_IN / Key must not be null.
+     */
+    public PrivateKey getFreshPrivateKey() throws Exception {
+        if (keyStore == null || alias == null) {
+            throw new Exception("DSC not initialized. Call login() first.");
+        }
+        
+        try {
+            keyStore.load(null, this.pinChars);
+        } catch (Exception e) {
+            System.err.println("⚠ Soft warning: keystore reload failed: " + e.getMessage());
+        }
+
+        PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, this.pinChars);
+        if (privateKey == null) {
+            throw new Exception("Failed to retrieve Private Key from token. Ensure correct DSC is used.");
+        }
+        return privateKey;
+    }
+
+    /**
      * RAW Signature (SHA1withRSA) required for ICEGATE .sb file signing.
+
      * This matches NCode signing tool behavior.
      */
     public byte[] signRaw(byte[] data) throws Exception {
@@ -144,7 +169,7 @@ public class DscService {
             throw new Exception("No data provided for signing.");
         }
 
-        PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, null);
+        PrivateKey privateKey = getFreshPrivateKey();
 
         Signature signature = Signature.getInstance("SHA1withRSA", pkcs11Provider);
         signature.initSign(privateKey);
@@ -178,11 +203,7 @@ public class DscService {
      */
     private byte[] signPKCS7Internal(byte[] data, boolean detached) throws Exception {
 
-        if (keyStore == null || alias == null) {
-            throw new Exception("DSC not initialized. Call login() first.");
-        }
-
-        PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, null);
+        PrivateKey privateKey = getFreshPrivateKey();
 
         Certificate[] certChain = keyStore.getCertificateChain(alias);
         if (certChain == null || certChain.length == 0) {

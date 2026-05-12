@@ -1,95 +1,171 @@
 import express from "express";
 import mongoose from "mongoose";
+import axios from "axios";
 import ExJobModel from "../model/export/ExJobModel.mjs";
-import { generateShippingBillFlatFile } from "../services/flatFileGenerator.mjs";
-// import { uploadToS3 } from "../utils/s3"; // Assuming s3 util exists, or we store locally/base64 for now
-// For now, we will just store the signed content path or mock it since S3 util might be different
+import { generateSBFlatFile } from "./export-dsr/generateFlatFile.mjs";
+import SigningUtility from "../utils/SigningUtility.mjs";
+import { uploadToS3 } from "../utils/s3Utils.mjs";
 import multer from "multer";
 
 const router = express.Router();
-const upload = multer(); // Memory storage for now
+const upload = multer();
 
-// 1. Start Signing Process
-router.post("/start-sign", async (req, res) => {
+/**
+ * 1. GET /status
+ * Check if the Java Signing Server is alive.
+ */
+// Check status of Java signer
+router.get("/status", async (req, res) => {
   try {
-    const { jobIds } = req.body;
-    if (!jobIds || !Array.isArray(jobIds)) {
-      return res.status(400).json({ message: "Invalid jobIds" });
+    const status = await SigningUtility.checkStatus();
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Initialize DSC via Java Signer
+router.post("/init-dsc", async (req, res) => {
+  try {
+    const { pin } = req.body;
+    if (!pin) {
+      return res.status(400).json({ error: "PIN is required" });
+    }
+    const response = await axios.post(`${process.env.SIGNING_SERVER_URL}/login`, { pin });
+    res.json(response.data);
+  } catch (err) {
+    console.error("DSC Init Error:", err.message);
+    if (err.response && err.response.data) {
+      return res.status(err.response.status).json(err.response.data);
+    }
+    res.status(500).json({ error: "Failed to connect to Signing Server" });
+  }
+});
+
+/**
+ * 2. POST /sign-now
+ * Trigger an immediate signing of a job's flat file.
+ * Node.js will call the Java server on the Signing PC.
+ */
+router.post("/sign-now", async (req, res) => {
+  try {
+    const { jobId } = req.body;
+    if (!jobId) {
+      return res.status(400).json({ message: "Job ID is required" });
     }
 
-    const result = await ExJobModel.updateMany(
-      { _id: { $in: jobIds } },
-      { $set: { signingStatus: "ReadyToSign" } }
-    );
-
-    res.json({ message: "Jobs marked for signing", count: result.modifiedCount });
-  } catch (error) {
-    console.error("Error in start-sign:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
-// 2. Get Jobs Ready to Sign (Called by Local Signer)
-router.get("/jobs", async (req, res) => {
-  try {
-    const jobs = await ExJobModel.find({ signingStatus: "ReadyToSign" })
-      .select("job_no sb_no sb_date exporter ieCode gstin custom_house cha_code exporter_address exporter_state exporter_pincode destination_port invoices")
-      .lean();
-
-    // Map jobs to include proper ICEGATE Flat File Content
-    const jobsWithContent = jobs.map(job => {
-      // Use proper flat file generator
-      const flatFileContent = generateShippingBillFlatFile(job);
-      
-      return {
-        ...job,
-        flatFileContent
-      };
-    });
-
-    res.json(jobsWithContent);
-  } catch (error) {
-    console.error("Error fetching signing jobs:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
-// 3. Upload Signed File (Called by Local Signer)
-router.post("/upload", upload.any(), async (req, res) => {
-  try {
-    // Expecting: jobId, signedFile (pkcs7/signature), and originalFile (.sb)
-    const { jobId } = req.body;
-    
-    // In a real implementation:
-    // 1. Upload files to S3
-    // 2. Get the S3 URL
-    
-    // For this POC/Verification, we will mock the S3 upload and just mark as signed.
-    /*
-    const signedFile = req.files.find(f => f.fieldname === 'signedFile');
-    const s3Url = await uploadToS3(signedFile);
-    */
-    
-    // Mock URL
-    const mockS3Key = `signatures/${jobId}/${Date.now()}.sb.sig`;
-
-    const job = await ExJobModel.findByIdAndUpdate(
-      jobId, 
-      { 
-        signingStatus: "Signed",
-        signedFilePath: mockS3Key, 
-        signedDate: new Date()
-      },
-      { new: true }
-    );
-
+    const job = await ExJobModel.findById(jobId).lean();
     if (!job) {
       return res.status(404).json({ message: "Job not found" });
     }
 
-    res.json({ message: "File uploaded and job marked as Signed", job });
+    // 1. Generate the ICEGATE Flat File using the accurate generator
+    const { content, fileName: generatedName } = generateSBFlatFile(job);
+    const fileName = generatedName || `${job.job_no || "JOB"}_${job.sb_no || "SB"}.sb`;
+
+    // 2. Call Java Signing Server
+    console.log(`🔄 Requesting signature for Job: ${job.job_no}`);
+    const signedBuffer = await SigningUtility.signFlatFile(Buffer.from(content, 'binary'), fileName);
+
+    // 3. Upload signed file to S3
+    const s3Key = `signatures/${jobId}/${Date.now()}_${fileName}`;
+    const s3Url = await uploadToS3(signedBuffer, s3Key, "application/octet-stream");
+
+    // 4. Update Job Status in MongoDB
+    const updatedJob = await ExJobModel.findByIdAndUpdate(
+      jobId,
+      {
+        signingStatus: "Signed",
+        signedFilePath: s3Key,
+        signedDate: new Date(),
+        detailedStatus: "Signed (Flat-file)"
+      },
+      { new: true }
+    );
+
+    // 5. Send file back for download
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.send(signedBuffer);
+
   } catch (error) {
-    console.error("Error uploading signed file:", error);
+    console.error("❌ Signing Error:", error.message);
+    res.status(500).json({ message: "Signing Failed", error: error.message });
+  }
+});
+
+/**
+ * 3. POST /sign-esanchit
+ * Download a PDF from a given URL, sign it, and return the signed version.
+ */
+router.post("/sign-esanchit", async (req, res) => {
+  try {
+    const { jobId, fileUrl, fileName } = req.body;
+    if (!fileUrl) {
+      return res.status(400).json({ message: "File URL is required" });
+    }
+
+    // 1. Download the PDF from the URL (likely S3)
+    console.log(`🔄 Downloading e-Sanchit PDF: ${fileUrl}`);
+    const pdfResponse = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+    const pdfBuffer = Buffer.from(pdfResponse.data);
+
+    // 2. Call Java Signing Server for PDF
+    const targetFileName = fileName || "esanchit_signed.pdf";
+    const signedBuffer = await SigningUtility.signPdf(pdfBuffer, targetFileName);
+
+    // 3. Optionally upload to S3 (audit trail)
+    const s3Key = `signatures/${jobId || 'misc'}/${Date.now()}_${targetFileName}`;
+    await uploadToS3(signedBuffer, s3Key, "application/pdf");
+
+    if (jobId) {
+      await ExJobModel.findByIdAndUpdate(jobId, {
+        detailedStatus: `Signed (${targetFileName})`
+      });
+    }
+
+    // 4. Return signed file for download
+    res.setHeader('Content-Disposition', `attachment; filename="${targetFileName}"`);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.send(signedBuffer);
+
+  } catch (error) {
+    console.error("❌ e-Sanchit Signing Error:", error.message);
+    res.status(500).json({ message: "Signing Failed", error: error.message });
+  }
+});
+
+/**
+ * 3. Legacy/Compatibility Endpoints
+ */
+
+// Start Signing Process (Manual toggle)
+router.post("/start-sign", async (req, res) => {
+  try {
+    const { jobIds } = req.body;
+    const result = await ExJobModel.updateMany(
+      { _id: { $in: jobIds } },
+      { $set: { signingStatus: "ReadyToSign" } }
+    );
+    res.json({ message: "Jobs marked for signing", count: result.modifiedCount });
+  } catch (error) {
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+// Get Jobs Ready to Sign (For polling-based signers)
+router.get("/jobs", async (req, res) => {
+  try {
+    const jobs = await ExJobModel.find({ signingStatus: "ReadyToSign" }).lean();
+    const jobsWithContent = jobs.map(job => {
+      const { content } = generateSBFlatFile(job);
+      return {
+        ...job,
+        flatFileContent: content
+      };
+    });
+    res.json(jobsWithContent);
+  } catch (error) {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });

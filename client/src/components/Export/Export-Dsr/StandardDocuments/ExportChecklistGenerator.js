@@ -1482,7 +1482,7 @@ const ExportChecklistGenerator = ({
           : "",
         stateOfOrigin:
           exportJob.state_of_origin || exportJob.exporter_state || "",
-        adCode: exportJob.ad_code || exportJob.adCode || "",
+        adCode: exportJob.ad_code || "",
         natureOfCargo: exportJob.nature_of_cargo || "",
         totalPackages: `${exportJob.total_no_of_pkgs || ""} ${exportJob.package_unit || ""}`,
         numberOfContainers: exportJob.no_of_containers || "",

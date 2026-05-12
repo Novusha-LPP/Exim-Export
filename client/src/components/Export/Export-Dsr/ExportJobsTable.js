@@ -26,6 +26,7 @@ import {
   Box,
   Button,
   Divider,
+  DialogActions,
   ListSubheader,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -713,6 +714,65 @@ const ExportJobsTable = () => {
   const [customHouses, setCustomHouses] = useState([]); // Re-added customHouses state
   const [jobOwnersList, setJobOwnersList] = useState([]); // Stores fetched users for Job Owner dropdown
 
+  // --- DSC Signing Menu State ---
+  const [signAnchorEl, setSignAnchorEl] = useState(null);
+  const [selectedSignJob, setSelectedSignJob] = useState(null);
+  const [signingLoading, setSigningLoading] = useState(false);
+  const [checkingDsc, setCheckingDsc] = useState(false);
+  const [dscPinModalOpen, setDscPinModalOpen] = useState(false);
+  const [dscPin, setDscPin] = useState("");
+  const [initDscLoading, setInitDscLoading] = useState(false);
+
+  const handleSignClick = async (e, job) => {
+    e.stopPropagation();
+    setSelectedSignJob(job);
+    const target = e.currentTarget;
+
+    setCheckingDsc(true);
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/signer/status`);
+      if (res.data && res.data.dongle === 'connected') {
+        // Already initialized
+        setSignAnchorEl(target);
+      } else {
+        // Not initialized, ask for PIN
+        setDscPinModalOpen(true);
+        setDscPin("");
+      }
+    } catch (err) {
+      console.error("Failed to check DSC status", err);
+      // Fallback: Just open the modal in case server is acting weird but might still init
+      setDscPinModalOpen(true);
+    } finally {
+      setCheckingDsc(false);
+    }
+  };
+
+  const handleInitDsc = async () => {
+    if (!dscPin) return alert("Please enter the DSC PIN.");
+    setInitDscLoading(true);
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_STRING}/signer/init-dsc`, { pin: dscPin });
+      if (res.data && res.data.status === 'ok') {
+        setDscPinModalOpen(false);
+        alert("DSC Initialized Successfully!");
+        // We can't automatically open the menu here because we lost the event target reference, 
+        // but the user can click Sign again, or we can just tell them it's ready.
+        // Actually, we could save the target in state. Let's just ask them to click sign again.
+      } else {
+        alert(res.data?.error || "Failed to initialize DSC");
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || "Error connecting to local signer");
+    } finally {
+      setInitDscLoading(false);
+    }
+  };
+
+  const handleSignClose = () => {
+    setSignAnchorEl(null);
+  };
+
   // General Job Modal
   const [generalJobModalOpen, setGeneralJobModalOpen] = useState(false);
   const [generalJobForm, setGeneralJobForm] = useState({
@@ -1347,7 +1407,7 @@ const ExportJobsTable = () => {
     let address = org.address || "";
     const panNo = org.registrationDetails?.panNo || "";
     let gstin = "";
-    
+
     if (org.branchInfo && org.branchInfo.length > 0) {
       const branch = org.branchInfo[0];
       gstin = branch.gstNo || branch.gstin || "";
@@ -1654,23 +1714,89 @@ const ExportJobsTable = () => {
   };
 
   // --- DSC Signing Handler ---
-  const handleSignDSC = async (job, e) => {
-    e.stopPropagation();
-    if (!window.confirm(`Mark job ${job.job_no} for DSC Signing?`)) return;
+  const handleSignFlatFile = async () => {
+    if (!selectedSignJob) return;
+    const job = selectedSignJob;
+    handleSignClose();
 
+    if (!window.confirm(`Sign Flat-file for job ${job.job_no} using DSC?`)) return;
+
+    setSigningLoading(true);
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_STRING}/signer/start-sign`,
-        { jobIds: [job._id] }
+        `${import.meta.env.VITE_API_STRING}/signer/sign-now`,
+        { jobId: job._id },
+        { responseType: 'blob' }
       );
-      if (response.data) {
-        alert("Job marked for signing. Please open your Local Signer application.");
-        fetchJobs();
-      }
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${job.job_no}_${job.sb_no || 'SB'}.sb`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+
+      alert("Flat-file signed and downloaded successfully!");
+      fetchJobs();
     } catch (err) {
-      console.error("Error starting signing:", err);
-      alert("Failed to start signing process.");
+      console.error("Error signing flat-file:", err);
+      alert("Failed to sign flat-file. Ensure Java Signer is running.");
+    } finally {
+      setSigningLoading(false);
     }
+  };
+
+  const handleSignESanchit = async (doc = null) => {
+    if (!selectedSignJob) return;
+    const job = selectedSignJob;
+    handleSignClose();
+
+    const esanchitDocs = job.eSanchitDocuments?.filter(d => d.fileUrl) || [];
+
+    if (esanchitDocs.length === 0) {
+      alert("No e-Sanchit documents found for this job.");
+      return;
+    }
+
+    // If doc is not provided, and there are multiple, maybe sign the first one or alert
+    const targetDoc = doc || esanchitDocs[0];
+
+    if (!window.confirm(`Sign e-Sanchit PDF (${targetDoc.icegateFileName || 'Document'}) for job ${job.job_no}?`)) return;
+
+    setSigningLoading(true);
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_STRING}/signer/sign-esanchit`,
+        {
+          jobId: job._id,
+          fileUrl: targetDoc.fileUrl,
+          fileName: targetDoc.icegateFileName || `${job.job_no}_esanchit.pdf`
+        },
+        { responseType: 'blob' }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', targetDoc.icegateFileName || `${job.job_no}_signed.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+
+      alert("e-Sanchit document signed and downloaded successfully!");
+      fetchJobs();
+    } catch (err) {
+      console.error("Error signing e-Sanchit:", err);
+      alert("Failed to sign e-Sanchit document. Ensure Java Signer is running.");
+    } finally {
+      setSigningLoading(false);
+    }
+  };
+
+  const handleSignDSC = async (job, e) => {
+    // Legacy handler replaced by menu
+    handleSignClick(e, job);
   };
 
   const getDocumentLinks = (job) => {
@@ -3038,105 +3164,105 @@ const ExportJobsTable = () => {
                                       }}
                                     >
                                       {visibleContainers.map((container, index) => (
-                                      <div
-                                        key={`${container.containerNo}-${index}`}
-                                        style={{
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          backgroundColor: "rgba(37, 99, 235, 0.05)",
-                                          padding: "2px 4px",
-                                          borderRadius: "6px",
-                                          marginBottom: "4px",
-                                          border: "1px solid rgba(37, 99, 235, 0.1)"
-                                        }}
-                                      >
-                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px", flexWrap: "nowrap" }}>
-                                          <div style={{ display: "flex", alignItems: "center", gap: "4px", flex: 1, minWidth: 0 }}>
-                                            <a
-                                              href={`https://www.ldb.co.in/ldb/containersearch/39/${container.containerNo}/1726651147706`}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              style={{
-                                                display: "inline-block",
-                                                fontWeight: "800",
-                                                textDecoration: "none",
-                                                cursor: "pointer",
-                                                fontSize: "11px",
-                                                color: "#2563eb",
-                                                whiteSpace: "nowrap",
-                                              }}
-                                              onMouseOver={(e) => (e.target.style.textDecoration = "underline")}
-                                              onMouseOut={(e) => (e.target.style.textDecoration = "none")}
-                                              onClick={(e) => e.stopPropagation()}
-                                            >
-                                              {container.containerNo}
-                                            </a>
+                                        <div
+                                          key={`${container.containerNo}-${index}`}
+                                          style={{
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            backgroundColor: "rgba(37, 99, 235, 0.05)",
+                                            padding: "2px 4px",
+                                            borderRadius: "6px",
+                                            marginBottom: "4px",
+                                            border: "1px solid rgba(37, 99, 235, 0.1)"
+                                          }}
+                                        >
+                                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px", flexWrap: "nowrap" }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "4px", flex: 1, minWidth: 0 }}>
+                                              <a
+                                                href={`https://www.ldb.co.in/ldb/containersearch/39/${container.containerNo}/1726651147706`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{
+                                                  display: "inline-block",
+                                                  fontWeight: "800",
+                                                  textDecoration: "none",
+                                                  cursor: "pointer",
+                                                  fontSize: "11px",
+                                                  color: "#2563eb",
+                                                  whiteSpace: "nowrap",
+                                                }}
+                                                onMouseOver={(e) => (e.target.style.textDecoration = "underline")}
+                                                onMouseOut={(e) => (e.target.style.textDecoration = "none")}
+                                                onClick={(e) => e.stopPropagation()}
+                                              >
+                                                {container.containerNo}
+                                              </a>
 
-                                            {/* Shipping Line Tracking Link */}
-                                            {(() => {
-                                              const bookingNo = job.booking_no || "";
-                                              const containerFirst = job.containers?.[0]?.containerNo || "";
-                                              const urls = buildShippingLineUrls(bookingNo, containerFirst);
+                                              {/* Shipping Line Tracking Link */}
+                                              {(() => {
+                                                const bookingNo = job.booking_no || "";
+                                                const containerFirst = job.containers?.[0]?.containerNo || "";
+                                                const urls = buildShippingLineUrls(bookingNo, containerFirst);
 
-                                              let linerRaw = job.shipping_line_airline || "";
-                                              let liner = linerRaw.includes(" - ") ? linerRaw.split(" - ").pop().trim() : linerRaw.trim();
+                                                let linerRaw = job.shipping_line_airline || "";
+                                                let liner = linerRaw.includes(" - ") ? linerRaw.split(" - ").pop().trim() : linerRaw.trim();
 
-                                              const matchKey = Object.keys(urls).find(key => liner.toUpperCase().includes(key.toUpperCase()));
-                                              const url = matchKey ? urls[matchKey] : "#";
+                                                const matchKey = Object.keys(urls).find(key => liner.toUpperCase().includes(key.toUpperCase()));
+                                                const url = matchKey ? urls[matchKey] : "#";
 
-                                              if (liner && url !== "#") {
-                                                return (
-                                                  <Tooltip title={`Track on ${liner}`}>
-                                                    <a
-                                                      href={url}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
-                                                      onClick={(e) => e.stopPropagation()}
-                                                      style={{ display: 'flex', alignItems: 'center' }}
-                                                    >
-                                                      <FontAwesomeIcon icon={faShip} style={{ fontSize: 10, color: "#2563eb" }} />
-                                                    </a>
-                                                  </Tooltip>
-                                                );
-                                              }
-                                              return null;
-                                            })()}
+                                                if (liner && url !== "#") {
+                                                  return (
+                                                    <Tooltip title={`Track on ${liner}`}>
+                                                      <a
+                                                        href={url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        style={{ display: 'flex', alignItems: 'center' }}
+                                                      >
+                                                        <FontAwesomeIcon icon={faShip} style={{ fontSize: 10, color: "#2563eb" }} />
+                                                      </a>
+                                                    </Tooltip>
+                                                  );
+                                                }
+                                                return null;
+                                              })()}
 
-                                            {/* CONCOR Container Track Button */}
-                                            {job.custom_house?.toUpperCase().includes("ICD") && (
-                                              <Tooltip title="Track on CONCOR India">
-                                                <IconButton
-                                                  size="small"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setContainerTrackContainers(job.containers || []);
-                                                    setContainerTrackOpen(true);
-                                                  }}
-                                                  style={{ padding: 0, marginLeft: 2 }}
-                                                >
-                                                  <FontAwesomeIcon icon={faAnchor} style={{ fontSize: 10, color: "#7c3aed" }} />
-                                                </IconButton>
-                                              </Tooltip>
+                                              {/* CONCOR Container Track Button */}
+                                              {job.custom_house?.toUpperCase().includes("ICD") && (
+                                                <Tooltip title="Track on CONCOR India">
+                                                  <IconButton
+                                                    size="small"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setContainerTrackContainers(job.containers || []);
+                                                      setContainerTrackOpen(true);
+                                                    }}
+                                                    style={{ padding: 0, marginLeft: 2 }}
+                                                  >
+                                                    <FontAwesomeIcon icon={faAnchor} style={{ fontSize: 10, color: "#7c3aed" }} />
+                                                  </IconButton>
+                                                </Tooltip>
+                                              )}
+
+                                              <IconButton
+                                                size="small"
+                                                onClick={(e) => handleCopyText(container.containerNo, e)}
+                                                style={{ padding: 0, marginLeft: 2 }}
+                                                title="Copy Container No"
+                                              >
+                                                <ContentCopyIcon style={{ fontSize: 10, color: "#64748b" }} />
+                                              </IconButton>
+                                            </div>
+
+                                            {container.type && (
+                                              <span style={{ fontSize: '9px', color: '#445566', fontWeight: "900", backgroundColor: "#e2e8f0", padding: "1px 6px", borderRadius: "3px", flexShrink: 0, minWidth: "24px", textAlign: "center" }}>
+                                                {getContainerSizeLabel(container.type)}
+                                              </span>
                                             )}
-
-                                            <IconButton
-                                              size="small"
-                                              onClick={(e) => handleCopyText(container.containerNo, e)}
-                                              style={{ padding: 0, marginLeft: 2 }}
-                                              title="Copy Container No"
-                                            >
-                                              <ContentCopyIcon style={{ fontSize: 10, color: "#64748b" }} />
-                                            </IconButton>
                                           </div>
-
-                                          {container.type && (
-                                            <span style={{ fontSize: '9px', color: '#445566', fontWeight: "900", backgroundColor: "#e2e8f0", padding: "1px 6px", borderRadius: "3px", flexShrink: 0, minWidth: "24px", textAlign: "center" }}>
-                                              {getContainerSizeLabel(container.type)}
-                                            </span>
-                                          )}
                                         </div>
-                                      </div>
-                                    ))}
+                                      ))}
                                       {hiddenCount > 0 && (
                                         <button
                                           type="button"
@@ -3258,15 +3384,16 @@ const ExportJobsTable = () => {
                           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                             <button
                               onClick={(e) => handleSignDSC(job, e)}
+                              disabled={(signingLoading || checkingDsc) && selectedSignJob?._id === job._id}
                               style={{
                                 padding: "6px 12px",
-                                backgroundColor: "#9333ea",
+                                backgroundColor: ((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? "#cbd5e1" : "#9333ea",
                                 color: "white",
                                 border: "none",
                                 borderRadius: "3px",
                                 fontSize: "11px",
                                 fontWeight: "600",
-                                cursor: "pointer",
+                                cursor: ((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? "not-allowed" : "pointer",
                                 width: "100%",
                                 display: "flex",
                                 alignItems: "center",
@@ -3275,9 +3402,14 @@ const ExportJobsTable = () => {
                               }}
                               title="Sign with DSC"
                             >
-                              <GavelIcon style={{ fontSize: 12 }} />
-                              Sign
+                              {((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? (
+                                <CircularProgress size={12} color="inherit" />
+                              ) : (
+                                <GavelIcon style={{ fontSize: 12 }} />
+                              )}
+                              {((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? (checkingDsc ? "Checking..." : "Signing...") : "Sign"}
                             </button>
+
                             <button
                               className="copy-btn"
                               onClick={(e) => handleCopyJob(job, e)}
@@ -4503,8 +4635,8 @@ const ExportJobsTable = () => {
           </Box>
         </DialogContent>
         <div style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: '12px', backgroundColor: '#f8fafc', borderRadius: '0 0 12px 12px' }}>
-          <Button 
-            onClick={() => setGeneralJobModalOpen(false)} 
+          <Button
+            onClick={() => setGeneralJobModalOpen(false)}
             style={{ color: '#64748b', fontWeight: '700', fontSize: '12px' }}
           >
             CANCEL
@@ -4513,11 +4645,11 @@ const ExportJobsTable = () => {
             onClick={handleGeneralJobSubmit}
             variant="contained"
             disabled={loading || !generalJobForm.exporter}
-            style={{ 
-              backgroundColor: '#2563eb', 
-              color: '#fff', 
-              borderRadius: '8px', 
-              fontWeight: '800', 
+            style={{
+              backgroundColor: '#2563eb',
+              color: '#fff',
+              borderRadius: '8px',
+              fontWeight: '800',
               fontSize: '12px',
               padding: '8px 24px',
               boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)'
@@ -4527,6 +4659,92 @@ const ExportJobsTable = () => {
           </Button>
         </div>
       </Dialog>
+
+      {/* DSC PIN INITIALIZATION MODAL */}
+      <Dialog open={dscPinModalOpen} onClose={() => setDscPinModalOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle style={{ padding: '16px 24px', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '16px', fontWeight: '600' }}>
+          Initialize DSC Token
+        </DialogTitle>
+        <DialogContent style={{ padding: '24px' }}>
+          <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
+            The local Java Signer is running but the DSC token is not initialized. Please enter your DSC PIN to unlock the token.
+          </p>
+          <div className="form-group">
+            <label>DSC PIN</label>
+            <input
+              type="password"
+              className="form-control"
+              value={dscPin}
+              onChange={(e) => setDscPin(e.target.value)}
+              placeholder="Enter PIN (e.g. 12345678)"
+            />
+          </div>
+        </DialogContent>
+        <DialogActions style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0' }}>
+          <Button onClick={() => setDscPinModalOpen(false)} style={{ color: '#64748b' }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleInitDsc}
+            disabled={initDscLoading}
+            variant="contained"
+            style={{ backgroundColor: '#9333ea', color: 'white', textTransform: 'none', fontWeight: '600' }}
+          >
+            {initDscLoading ? "Initializing..." : "Unlock DSC"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 3. SIGNING MENU (DSC) */}
+      <Menu
+        anchorEl={signAnchorEl}
+        open={Boolean(signAnchorEl)}
+        onClose={handleSignClose}
+        PaperProps={{
+          style: {
+            width: '180px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0',
+            padding: '4px 0'
+          },
+        }}
+      >
+        <ListSubheader style={{ lineHeight: '24px', backgroundColor: '#f8fafc', color: '#9333ea', fontWeight: '800', fontSize: '10px' }}>
+          DSC SIGNING OPTIONS
+        </ListSubheader>
+
+        <MenuItem
+          onClick={handleSignFlatFile}
+          style={{ fontSize: '12px', fontWeight: '600', padding: '8px 16px' }}
+        >
+          <GavelIcon style={{ fontSize: 14, marginRight: 8, color: '#9333ea' }} />
+          Sign Flat-file (.sb)
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => handleSignESanchit()}
+          disabled={!selectedSignJob?.eSanchitDocuments?.some(d => d.fileUrl)}
+          style={{ fontSize: '12px', fontWeight: '600', padding: '8px 16px' }}
+        >
+          <CloudUploadIcon style={{ fontSize: 14, marginRight: 8, color: '#2563eb' }} />
+          Sign e-Sanchit PDF
+        </MenuItem>
+
+        {selectedSignJob?.eSanchitDocuments?.filter(d => d.fileUrl).length > 1 && (
+          <div style={{ borderTop: '1px solid #f1f5f9', marginTop: 4, paddingTop: 4 }}>
+            {selectedSignJob.eSanchitDocuments.filter(d => d.fileUrl).map((doc, i) => (
+              <MenuItem
+                key={i}
+                onClick={() => handleSignESanchit(doc)}
+                style={{ fontSize: '10px', padding: '4px 20px', color: '#64748b' }}
+              >
+                └ {doc.icegateFileName || `Doc ${i + 1}`}
+              </MenuItem>
+            ))}
+          </div>
+        )}
+      </Menu>
     </>
   );
 };

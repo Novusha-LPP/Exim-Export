@@ -23,23 +23,25 @@ import java.util.Calendar;
  */
 public class PdfSignerService implements SignatureInterface {
 
-    private PrivateKey privateKey;
+    private DscService dscService;
     private Certificate[] certificateChain;
     private Provider pkcs11Provider;
 
     /**
      * Initialize the PDF signer with credentials from DscService.
      */
-    public void initialize(KeyStore keyStore, String alias, Provider provider) throws Exception {
-        this.privateKey = (PrivateKey) keyStore.getKey(alias, null);
-        this.certificateChain = keyStore.getCertificateChain(alias);
-        this.pkcs11Provider = provider;
+    public void initialize(DscService dscService) throws Exception {
+        this.dscService = dscService;
+        this.certificateChain = dscService.getKeyStore().getCertificateChain(dscService.getAlias());
+        this.pkcs11Provider = dscService.getProvider();
 
-        if (privateKey == null) {
-            throw new Exception("Private key not found for alias: " + alias);
-        }
         if (certificateChain == null || certificateChain.length == 0) {
-            throw new Exception("Certificate chain not found for alias: " + alias);
+            Certificate cert = dscService.getCertificate();
+            if (cert != null) {
+                certificateChain = new Certificate[]{cert};
+            } else {
+                throw new Exception("Certificate chain not found for alias: " + dscService.getAlias());
+            }
         }
 
         System.out.println("PdfSignerService initialized with certificate: " +
@@ -100,13 +102,15 @@ public class PdfSignerService implements SignatureInterface {
 
             // Create signer info
             ContentSigner contentSigner;
+            PrivateKey freshKey = dscService.getFreshPrivateKey();
+
             if (pkcs11Provider != null) {
                 contentSigner = new JcaContentSignerBuilder("SHA256withRSA")
                         .setProvider(pkcs11Provider)
-                        .build(privateKey);
+                        .build(freshKey);
             } else {
                 contentSigner = new JcaContentSignerBuilder("SHA256withRSA")
-                        .build(privateKey);
+                        .build(freshKey);
             }
 
             CMSSignedDataGenerator generator = new CMSSignedDataGenerator();

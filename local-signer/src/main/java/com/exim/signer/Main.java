@@ -37,7 +37,6 @@ public class Main extends JFrame {
         // --- Start Background Signing Server ---
         startBackgroundServer();
 
-
         // --- Top: Configuration ---
         JPanel configPanel = new JPanel(new GridLayout(3, 2, 5, 5));
         configPanel.setBorder(BorderFactory.createTitledBorder("Configuration"));
@@ -192,12 +191,21 @@ public class Main extends JFrame {
             File outputDir = folderChooser.getSelectedFile();
 
             try {
-                // ✅ Read RAW BYTES (NO STRING conversion)
+                // ✅ STEP 1: Read raw bytes from file
                 byte[] rawBytes = Files.readAllBytes(inputFile.toPath());
                 log("Read file: " + rawBytes.length + " bytes");
 
-                // ✅ Sign EXACT bytes
-                byte[] signature = dscService.signRaw(rawBytes);
+                // ✅ STEP 2: Normalize \r\n → \n (ICEGATE does this before verifying)
+                String contentStr = new String(rawBytes, "ISO-8859-1").replace("\r\n", "\n");
+
+                // ✅ STEP 3: Ensure exactly one \n at end
+                contentStr = contentStr.stripTrailing() + "\n";
+
+                byte[] normalizedBytes = contentStr.getBytes("ISO-8859-1");
+                log("Normalized: " + normalizedBytes.length + " bytes");
+
+                // ✅ STEP 4: Sign the NORMALIZED bytes
+                byte[] signature = dscService.signRaw(normalizedBytes);
                 log("Signature created: " + signature.length + " bytes");
 
                 String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
@@ -205,42 +213,30 @@ public class Main extends JFrame {
 
                 // Output file name
                 String baseName = inputFile.getName();
-                if (baseName.toLowerCase().endsWith(".txt")) {
-                    baseName = baseName.substring(0, baseName.length() - 4);
-                }
-                if (baseName.toLowerCase().endsWith(".sb")) {
-                    baseName = baseName.substring(0, baseName.length() - 3);
-                }
+                if (baseName.toLowerCase().endsWith(".txt")) baseName = baseName.substring(0, baseName.length() - 4);
+                if (baseName.toLowerCase().endsWith(".sb"))  baseName = baseName.substring(0, baseName.length() - 3);
 
                 File sbFile = new File(outputDir, baseName + "Signed.sb");
 
                 try (FileOutputStream fos = new FileOutputStream(sbFile)) {
+                    // ✅ STEP 5: Write normalized bytes (same bytes that were signed)
+                    fos.write(normalizedBytes);
 
-                    // ✅ Write exact same raw bytes (unchanged)
-                    fos.write(rawBytes);
-
-                    // Append signature block exactly like ICEGATE signer
-                    fos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\n")
-                            .getBytes("ISO-8859-1"));
-
-                    fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\n")
-                            .getBytes("ISO-8859-1"));
-
-                    fos.write("<SIGNER-VERSION>V-NCODE_01.05.2013</SIGNER-VERSION>"
-                            .getBytes("ISO-8859-1"));
+                    // ✅ STEP 6: Append signature blocks with \r\n + correct version
+                    fos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\r\n").getBytes("ISO-8859-1"));
+                    fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\r\n").getBytes("ISO-8859-1"));
+                    fos.write("<SIGNER-VERSION>SOFTLINK GLOBAL v10.15</SIGNER-VERSION>".getBytes("ISO-8859-1"));
                 }
 
-                log("Saved signed file: " + sbFile.getAbsolutePath());
-
+                log("✅ Saved signed file: " + sbFile.getAbsolutePath());
                 JOptionPane.showMessageDialog(this,
-                        "SB file signed successfully!\n\nOutput: " + sbFile.getAbsolutePath(),
-                        "Success", JOptionPane.INFORMATION_MESSAGE);
+                    "SB file signed successfully!\n\nOutput: " + sbFile.getAbsolutePath(),
+                    "Success", JOptionPane.INFORMATION_MESSAGE);
 
             } catch (Exception e) {
                 log("Signing Failed: " + e.getMessage());
                 e.printStackTrace();
-                JOptionPane.showMessageDialog(this, "Signing Failed: " + e.getMessage(), "Error",
-                        JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Signing Failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -270,10 +266,7 @@ public class Main extends JFrame {
                 log("Signing PDF for e-Sanchit: " + inputFile.getName());
 
                 PdfSignerService pdfSigner = new PdfSignerService();
-                pdfSigner.initialize(
-                        dscService.getKeyStore(),
-                        dscService.getAlias(),
-                        dscService.getProvider());
+                pdfSigner.initialize(dscService);
 
                 pdfSigner.signPdf(inputFile, outputFile, "Document Signing for ICEGATE e-Sanchit", "India");
 
@@ -377,12 +370,14 @@ public class Main extends JFrame {
 
                     log("Signing Job: " + jobNo);
 
-                    // ⚠ In DB you store flatFileContent as STRING.
-                    // Convert to bytes in ISO-8859-1 (must match file generation)
-                    byte[] rawBytes = content.getBytes("ISO-8859-1");
+                    // ✅ FIXED
+                    byte[] rawBytes = content.getBytes("ISO-8859-1"); // content comes from tableModel
+                    String contentStr = new String(rawBytes, "ISO-8859-1").replace("\r\n", "\n");
+                    contentStr = contentStr.stripTrailing() + "\n";
+                    byte[] normalizedBytes = contentStr.getBytes("ISO-8859-1");
 
-                    // ✅ Sign exact bytes
-                    byte[] signature = dscService.signRaw(rawBytes);
+                    // ✅ Sign normalized bytes
+                    byte[] signature = dscService.signRaw(normalizedBytes);
 
                     String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
                     String certificateBase64 = dscService.getCertificateBase64();
@@ -394,17 +389,17 @@ public class Main extends JFrame {
 
                     try (FileOutputStream fos = new FileOutputStream(sbFile)) {
 
-                        // Write original bytes unchanged
-                        fos.write(rawBytes);
+                        // Write normalized bytes
+                        fos.write(normalizedBytes);
 
-                        // Append signature block
-                        fos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\n")
+                        // Append signature blocks with \r\n and Softlink version string
+                        fos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\r\n")
                                 .getBytes("ISO-8859-1"));
 
-                        fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\n")
+                        fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\r\n")
                                 .getBytes("ISO-8859-1"));
 
-                        fos.write("<SIGNER-VERSION>V-NCODE_01.05.2013</SIGNER-VERSION>"
+                        fos.write("<SIGNER-VERSION>SOFTLINK GLOBAL v10.15</SIGNER-VERSION>"
                                 .getBytes("ISO-8859-1"));
                     }
 
@@ -441,8 +436,22 @@ public class Main extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            new Main().setVisible(true);
-        });
+        System.out.println("==========================================");
+        System.out.println("      Exim DSC Headless Signer");
+        System.out.println("==========================================");
+        System.out.println("Starting background server...");
+
+        try {
+            DscService dscService = new DscService();
+            SigningServer server = new SigningServer(dscService);
+            server.start();
+            System.out.println("✅ Server is running in headless mode. You can close this window to stop.");
+
+            // Keep the main thread alive indefinitely
+            Thread.currentThread().join();
+        } catch (Exception e) {
+            System.err.println("❌ Failed to start headless server: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

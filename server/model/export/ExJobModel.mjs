@@ -1392,13 +1392,23 @@ exportJobSchema.pre("save", function (next) {
     else if (!this.shipping_bill_done) this.shipping_bill_done_date = "";
   }
 
-  // 4. Sync leo_date with operations[0].statusDetails[0].leoDate
+  // 4. Sync leo_date and booking_copy with operations[0].statusDetails[0]
   const op0 = this.operations && this.operations[0];
   const stat0 = op0 && op0.statusDetails && op0.statusDetails[0];
-  if (stat0 && stat0.leoDate) {
-    this.leo_date = stat0.leoDate;
-  } else if (this.leo_date && stat0) {
-    stat0.leoDate = this.leo_date;
+  if (stat0) {
+    // Sync LEO Date - prioritize the one that was actually modified in the request
+    if (this.isModified("operations")) {
+      this.leo_date = stat0.leoDate || "";
+    } else if (this.isModified("leo_date")) {
+      stat0.leoDate = this.leo_date || "";
+    }
+
+    // Sync Booking Copy - prioritize the one that was actually modified in the request
+    if (this.isModified("operations")) {
+      this.booking_copy = stat0.booking_copy || [];
+    } else if (this.isModified("booking_copy")) {
+      stat0.booking_copy = this.booking_copy || [];
+    }
   }
 
   next();

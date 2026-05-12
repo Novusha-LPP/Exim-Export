@@ -394,14 +394,17 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
           let bank;
 
           if (exp.bankDetails && exp.bankDetails.length > 0) {
-            if (
+            if (bankIdxVal === "none") {
+              // Explicitly removed by user - do not auto-fill
+              bank = null;
+            } else if (
               bankIdxVal !== undefined &&
               bankIdxVal !== "" &&
               exp.bankDetails[bankIdxVal]
             ) {
               bank = exp.bankDetails[bankIdxVal];
             } else {
-              // Find default or first
+              // Find default or first (only if user hasn't explicitly cleared it)
               const defaultIdx = exp.bankDetails.findIndex((b) => b.isDefault);
               const finalIdx = defaultIdx >= 0 ? defaultIdx : 0;
               bank = exp.bankDetails[finalIdx];
@@ -430,6 +433,14 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
               formik.setFieldValue("ad_code", toUpper(bank.adCode));
               formik.setFieldValue("adCode", toUpper(bank.adCode));
             }
+          } else if (bankIdxVal === "none") {
+            // Clear fields if 'none' is selected
+            formik.setFieldValue("bank_dealer", "");
+            formik.setFieldValue("bank_name", "");
+            formik.setFieldValue("ac_number", "");
+            formik.setFieldValue("bank_account_number", "");
+            formik.setFieldValue("ad_code", "");
+            formik.setFieldValue("adCode", "");
           }
         }
       } catch (err) {
@@ -575,7 +586,7 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
   }
 
   function bankSelectField() {
-    if (!exporterDetails || !exporterDetails.bankDetails || exporterDetails.bankDetails.length <= 1) {
+    if (!exporterDetails || !exporterDetails.bankDetails || exporterDetails.bankDetails.length === 0) {
       return null;
     }
 
@@ -587,9 +598,17 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
         <div style={{ fontSize: 11, color: "#666" }}>Select Bank</div>
         <select
           value={currentBankIndex}
-          onChange={(e) =>
-            handleFieldChange("bank_index", parseInt(e.target.value))
-          }
+          onChange={(e) => {
+            const val = e.target.value;
+            handleFieldChange("bank_index", val === "none" ? "none" : parseInt(val));
+            if (val === "none") {
+              handleFieldChange("bank_dealer", "");
+              handleFieldChange("bank_name", "");
+              handleFieldChange("ac_number", "");
+              handleFieldChange("ad_code", "");
+              handleFieldChange("adCode", "");
+            }
+          }}
           style={{
             border: "1px solid #cbd5e1",
             borderRadius: 4,
@@ -602,6 +621,7 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
             fontWeight: 500,
           }}
         >
+          <option value="none">-- NONE / REMOVE --</option>
           {banksList.map((b, i) => (
             <option key={i} value={i}>
               {toUpper(b.entityName)} - {toUpper(b.branchLocation)}

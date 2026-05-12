@@ -1,1 +1,13 @@
-local-signer
+node_modules/
+.env
+.DS_Store
+local-signer/target/
+local-signer/*.zip
+local-signer/maven_runtime/
+local-signer/java_runtime/
+*.zip
+dist/
+build/
+*.log
+*.txt
+local-signer/config.properties
