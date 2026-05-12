@@ -403,7 +403,13 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
   return (
     <>
       {children ? (
-        React.cloneElement(children, { onClick: generateHTML })
+        React.cloneElement(children, {
+          onClick: (e) => {
+            e.stopPropagation();
+            if (children.props.onClick) children.props.onClick(e);
+            generateHTML(e);
+          }
+        })
       ) : (
         <MenuItem onClick={generateHTML}>Forwarding Note (THAR)</MenuItem>
       )}

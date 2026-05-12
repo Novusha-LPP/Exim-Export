@@ -1369,7 +1369,8 @@ const ExportChecklistGenerator = ({
   };
 
   // ==================== MAIN GENERATOR ====================
-  const generateExportChecklist = async () => {
+  const generateExportChecklist = async (e) => {
+    if (e) e.stopPropagation();
     try {
       const encodedJobNo = encodeURIComponent(jobNo);
       const response = await axios.get(
@@ -2407,6 +2408,7 @@ const ExportChecklistGenerator = ({
       {children ? (
         React.cloneElement(children, {
           onClick: (e) => {
+            e.stopPropagation();
             if (children.props.onClick) children.props.onClick(e);
             generateExportChecklist(e);
           },

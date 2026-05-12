@@ -363,6 +363,7 @@ const FileCoverGenerator = ({ jobNo, children }) => {
       {children ? (
         React.cloneElement(children, {
           onClick: (e) => {
+            e.stopPropagation();
             if (children.props.onClick) children.props.onClick(e);
             generateFileCover(e);
           },

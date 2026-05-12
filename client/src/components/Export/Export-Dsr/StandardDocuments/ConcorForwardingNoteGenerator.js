@@ -556,7 +556,13 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
   return (
     <>
       {children ? (
-        React.cloneElement(children, { onClick: handleAction })
+        React.cloneElement(children, {
+          onClick: (e) => {
+            e.stopPropagation();
+            if (children.props.onClick) children.props.onClick(e);
+            handleAction(e);
+          }
+        })
       ) : (
         <MenuItem onClick={handleAction}>Concor Forwarding Note (PDF)</MenuItem>
       )}

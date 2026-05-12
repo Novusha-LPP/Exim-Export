@@ -165,7 +165,7 @@ const AnnexureCGenerator = ({ jobNo, children }) => {
       // 4. Numbers marked on the packages
       drawLineField(
         "Numbers marked on the packages",
-        data.marks_nos || "",
+        "",
         "4"
       );
 
@@ -281,12 +281,12 @@ const AnnexureCGenerator = ({ jobNo, children }) => {
           size = sizeMatch ? sizeMatch[1] : container.type || "";
           rfidSeal =
             container.sealType &&
-            container.sealType.toUpperCase().includes("RFID")
+              container.sealType.toUpperCase().includes("RFID")
               ? container.sealNo || ""
               : "";
           customsSeal =
             !container.sealType ||
-            !container.sealType.toUpperCase().includes("RFID")
+              !container.sealType.toUpperCase().includes("RFID")
               ? container.sealNo || ""
               : "";
         }
@@ -360,7 +360,13 @@ const AnnexureCGenerator = ({ jobNo, children }) => {
   };
 
   return children
-    ? React.cloneElement(children, { onClick: generatePDF })
+    ? React.cloneElement(children, {
+      onClick: (e) => {
+        e.stopPropagation();
+        if (children.props.onClick) children.props.onClick(e);
+        generatePDF(e);
+      }
+    })
     : null;
 };
 

@@ -199,14 +199,11 @@ public class SigningServer {
                     return;
                 }
 
-                // ✅ Normalize \r\n to \n before signing (ICEGATE normalizes before verifying)
-                String contentStr = new String(rawBytes, "ISO-8859-1").replace("\r\n", "\n");
+                // ✅ CORRECT — keep all \r\n, only fix the very last line ending
+                String contentStr = new String(rawBytes, "ISO-8859-1");
 
-                // Ensure the content block ends with exactly one \n before the signature block
-                // starts
-                if (!contentStr.endsWith("\n")) {
-                    contentStr += "\n";
-                }
+                // Strip trailing whitespace/newlines and end with exactly \n (not \r\n)
+                contentStr = contentStr.stripTrailing() + "\n";
 
                 byte[] normalizedBytes = contentStr.getBytes("ISO-8859-1");
 

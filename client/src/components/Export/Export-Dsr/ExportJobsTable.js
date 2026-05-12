@@ -483,7 +483,10 @@ const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSucce
     <>
       <IconButton
         size="small"
-        onClick={() => fileInputRef.current?.click()}
+        onClick={(e) => {
+          e.stopPropagation();
+          fileInputRef.current?.click();
+        }}
         disabled={uploading}
         style={{ padding: "1px", marginLeft: "2px" }}
         title="Quick Upload Document"
@@ -508,7 +511,8 @@ const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSucce
 const QuickDeleteButton = ({ job, field, url, uploadType = "status", idx = 0, onSuccess }) => {
   const [deleting, setDeleting] = useState(false);
 
-  const handleDelete = async () => {
+  const handleDelete = async (e) => {
+    if (e) e.stopPropagation();
     if (!window.confirm("Are you sure you want to delete this document?")) return;
     setDeleting(true);
     try {
@@ -553,9 +557,9 @@ const QuickDeleteButton = ({ job, field, url, uploadType = "status", idx = 0, on
   };
 
   return (
-    <IconButton
-      size="small"
-      onClick={handleDelete}
+      <IconButton
+        size="small"
+        onClick={(e) => handleDelete(e)}
       disabled={deleting}
       style={{ padding: "1px", marginLeft: "2px" }}
       title="Delete Document"
@@ -4460,28 +4464,28 @@ const ExportJobsTable = () => {
             </ListSubheader>
 
             <ExportChecklistGenerator jobNo={selectedGenDocJob?.job_no} renderAsIcon={false}>
-              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CHECKLIST</MenuItem>
+              <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CHECKLIST</MenuItem>
             </ExportChecklistGenerator>
 
             <FileCoverGenerator jobNo={selectedGenDocJob?.job_no}>
-              <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FILE COVER</MenuItem>
+              <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FILE COVER</MenuItem>
             </FileCoverGenerator>
 
             {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SACHANA")) && (
               <ConsignmentNoteGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (SACHANA)</MenuItem>
+                <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (SACHANA)</MenuItem>
               </ConsignmentNoteGenerator>
             )}
 
             {(selectedGenDocJob?.custom_house?.toUpperCase().includes("THAR")) && (
               <ForwardingNoteTharGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (THAR)</MenuItem>
+                <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (THAR)</MenuItem>
               </ForwardingNoteTharGenerator>
             )}
 
             {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SABARMATI") || selectedGenDocJob?.custom_house?.toUpperCase().includes("CONCOR")) && (
               <ConcorForwardingNoteGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (CONCOR)</MenuItem>
+                <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (CONCOR)</MenuItem>
               </ConcorForwardingNoteGenerator>
             )}
 
@@ -4491,26 +4495,26 @@ const ExportJobsTable = () => {
               selectedGenDocJob?.transportMode !== "AIR") && (
                 <>
                   <AnnexureCGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>ANNEXURE C</MenuItem>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>ANNEXURE C</MenuItem>
                   </AnnexureCGenerator>
                   <VGMAuthorizationGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>VGM AUTHORIZATION</MenuItem>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>VGM AUTHORIZATION</MenuItem>
                   </VGMAuthorizationGenerator>
                   <FreightCertificateGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FREIGHT CERTIFICATE</MenuItem>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FREIGHT CERTIFICATE</MenuItem>
                   </FreightCertificateGenerator>
                   <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem onClick={handleGenDocsClose} style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>BILL OF LADING</MenuItem>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>BILL OF LADING</MenuItem>
                   </BillOfLadingGenerator>
                 </>
               )}
 
             <MenuItem
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (!selectedGenDocJob) return;
                 const downloadUrl = `${import.meta.env.VITE_API_STRING}/generate-sb-file/${selectedGenDocJob._id}`;
                 window.open(downloadUrl, "_blank");
-                handleGenDocsClose();
               }}
               style={{
                 fontSize: '12px',

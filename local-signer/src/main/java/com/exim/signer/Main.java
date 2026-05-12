@@ -195,8 +195,8 @@ public class Main extends JFrame {
                 byte[] rawBytes = Files.readAllBytes(inputFile.toPath());
                 log("Read file: " + rawBytes.length + " bytes");
 
-                // ✅ STEP 2: Normalize \r\n → \n (ICEGATE does this before verifying)
-                String contentStr = new String(rawBytes, "ISO-8859-1").replace("\r\n", "\n");
+                // ✅ STEP 2: Keep all \r\n intact, only ensure last line ends with \n not \r\n
+                String contentStr = new String(rawBytes, "ISO-8859-1");
 
                 // ✅ STEP 3: Ensure exactly one \n at end
                 contentStr = contentStr.stripTrailing() + "\n";
@@ -213,8 +213,10 @@ public class Main extends JFrame {
 
                 // Output file name
                 String baseName = inputFile.getName();
-                if (baseName.toLowerCase().endsWith(".txt")) baseName = baseName.substring(0, baseName.length() - 4);
-                if (baseName.toLowerCase().endsWith(".sb"))  baseName = baseName.substring(0, baseName.length() - 3);
+                if (baseName.toLowerCase().endsWith(".txt"))
+                    baseName = baseName.substring(0, baseName.length() - 4);
+                if (baseName.toLowerCase().endsWith(".sb"))
+                    baseName = baseName.substring(0, baseName.length() - 3);
 
                 File sbFile = new File(outputDir, baseName + "Signed.sb");
 
@@ -223,20 +225,23 @@ public class Main extends JFrame {
                     fos.write(normalizedBytes);
 
                     // ✅ STEP 6: Append signature blocks with \r\n + correct version
-                    fos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\r\n").getBytes("ISO-8859-1"));
-                    fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\r\n").getBytes("ISO-8859-1"));
+                    fos.write(
+                            ("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\r\n").getBytes("ISO-8859-1"));
+                    fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\r\n")
+                            .getBytes("ISO-8859-1"));
                     fos.write("<SIGNER-VERSION>SOFTLINK GLOBAL v10.15</SIGNER-VERSION>".getBytes("ISO-8859-1"));
                 }
 
                 log("✅ Saved signed file: " + sbFile.getAbsolutePath());
                 JOptionPane.showMessageDialog(this,
-                    "SB file signed successfully!\n\nOutput: " + sbFile.getAbsolutePath(),
-                    "Success", JOptionPane.INFORMATION_MESSAGE);
+                        "SB file signed successfully!\n\nOutput: " + sbFile.getAbsolutePath(),
+                        "Success", JOptionPane.INFORMATION_MESSAGE);
 
             } catch (Exception e) {
                 log("Signing Failed: " + e.getMessage());
                 e.printStackTrace();
-                JOptionPane.showMessageDialog(this, "Signing Failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Signing Failed: " + e.getMessage(), "Error",
+                        JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -372,8 +377,12 @@ public class Main extends JFrame {
 
                     // ✅ FIXED
                     byte[] rawBytes = content.getBytes("ISO-8859-1"); // content comes from tableModel
-                    String contentStr = new String(rawBytes, "ISO-8859-1").replace("\r\n", "\n");
+                    // ✅ CORRECT — keep all \r\n, only fix the very last line ending
+                    String contentStr = new String(rawBytes, "ISO-8859-1");
+
+                    // Strip trailing whitespace/newlines and end with exactly \n (not \r\n)
                     contentStr = contentStr.stripTrailing() + "\n";
+
                     byte[] normalizedBytes = contentStr.getBytes("ISO-8859-1");
 
                     // ✅ Sign normalized bytes

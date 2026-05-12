@@ -203,9 +203,9 @@ const FreightCertificateGenerator = ({ jobNo, children }) => {
       {children ? (
         React.cloneElement(children, {
           onClick: (e) => {
-             // e might be passed or not depending on MUI
-             // We handle logic in generateHTML
-             generateHTML(e);
+            e.stopPropagation();
+            if (children.props.onClick) children.props.onClick(e);
+            generateHTML(e);
           },
         })
       ) : (

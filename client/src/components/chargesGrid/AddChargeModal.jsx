@@ -230,12 +230,10 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
                         </div>
                       </div>
                     </label>
-                    {isAdmin && (
-                      <div style={{ display: 'flex', gap: '12px', paddingRight: '20px' }}>
-                        <button type="button" title="Edit Master" onClick={(e) => handleEditClick(ch, e)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb', fontSize: '14px' }}>✎</button>
-                        <button type="button" title="Delete from Master" onClick={(e) => handleDelete(ch, e)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '14px' }}>🗑</button>
-                      </div>
-                    )}
+                    <div style={{ display: 'flex', gap: '12px', paddingRight: '20px' }}>
+                      <button type="button" title="Edit Master" onClick={(e) => handleEditClick(ch, e)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb', fontSize: '14px' }}>✎</button>
+                      <button type="button" title="Delete from Master" onClick={(e) => handleDelete(ch, e)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '14px' }}>🗑</button>
+                    </div>
                   </div>
                 );
               })

@@ -254,7 +254,13 @@ const VGMAuthorizationGenerator = ({ jobNo, children }) => {
 
     return (
         <>
-            {children ? React.cloneElement(children, { onClick: handleOpen }) : null}
+            {children ? React.cloneElement(children, {
+                onClick: (e) => {
+                    e.stopPropagation();
+                    if (children.props.onClick) children.props.onClick(e);
+                    handleOpen(e);
+                }
+            }) : null}
 
             <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
                 <DialogTitle sx={{ fontSize: 14, fontWeight: 600, py: 1.5, px: 2 }}>Select Branding</DialogTitle>
