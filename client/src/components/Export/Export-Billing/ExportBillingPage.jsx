@@ -114,16 +114,54 @@ function copyText(text) {
   });
 }
 
-function renderChipList(items, color = "default", limit = 3) {
+const ExpandableChipList = ({ items, limit = 2, color = "default", onClick }) => {
+  const [expanded, setExpanded] = useState(false);
   if (!items || items.length === 0) return "-";
+
+  const displayedItems = expanded ? items : items.slice(0, limit);
+  const remainingCount = items.length - limit;
+
   return (
     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, py: 0.5 }}>
-      {items.slice(0, limit).map((item) => (
-        <Chip key={item} label={item} size="small" color={color} variant="outlined" />
+      {displayedItems.map((item, idx) => (
+        <Chip
+          key={`${item}-${idx}`}
+          label={item}
+          size="small"
+          color={color}
+          variant="outlined"
+          onClick={onClick ? () => onClick(item) : undefined}
+          sx={{ cursor: onClick ? "pointer" : "default" }}
+        />
       ))}
-      {items.length > limit ? <Chip label={`+${items.length - limit}`} size="small" /> : null}
+      {!expanded && remainingCount > 0 && (
+        <Chip
+          label={`+${remainingCount} more`}
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(true);
+          }}
+          sx={{ cursor: "pointer", bgcolor: "#f1f5f9" }}
+        />
+      )}
+      {expanded && items.length > limit && (
+        <Chip
+          label="show less"
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(false);
+          }}
+          sx={{ cursor: "pointer", bgcolor: "#f1f5f9" }}
+        />
+      )}
     </Box>
   );
+};
+
+function renderChipList(items, color = "default", limit = 3) {
+  return <ExpandableChipList items={items} color={color} limit={limit} />;
 }
 
 const QuickUploadButton = ({ row, field, onSuccess }) => {
@@ -265,18 +303,7 @@ function JobNoCell({ row, navigate }) {
 
 function PartyCell({ row, workMode }) {
   const values = workMode === "purchase-book" ? row.supplier_names : row.supplier_names;
-  return (
-    <Box sx={{ py: 0.5 }}>
-      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-        {values?.[0] || "-"}
-      </Typography>
-      {values?.[1] ? (
-        <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          +{values.length - 1} more
-        </Typography>
-      ) : null}
-    </Box>
-  );
+  return <ExpandableChipList items={values} limit={1} />;
 }
 
 function RefCell({ row, workMode, activeTab, onRefClick }) {
@@ -292,28 +319,12 @@ function RefCell({ row, workMode, activeTab, onRefClick }) {
 
   return (
     <Stack spacing={0.5} sx={{ py: 0.5 }}>
-      {refs.slice(0, 2).map((ref) => (
-        <Box key={ref} sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
-          <Chip
-            label={ref}
-            size="small"
-            color={isCompleted ? "success" : "primary"}
-            variant="outlined"
-            onClick={onRefClick ? () => onRefClick(row, ref) : undefined}
-            sx={{ cursor: onRefClick ? "pointer" : "default" }}
-          />
-          <Tooltip title="Copy reference">
-            <IconButton size="small" onClick={() => copyText(ref)}>
-              <ContentCopyIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ))}
-      {refs.length > 2 ? (
-        <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          +{refs.length - 2} more
-        </Typography>
-      ) : null}
+      <ExpandableChipList
+        items={refs}
+        limit={2}
+        color={isCompleted ? "success" : "primary"}
+        onClick={onRefClick ? (ref) => onRefClick(row, ref) : undefined}
+      />
       {statuses?.length ? (
         <Typography variant="caption" sx={{ color: isCompleted ? "success.main" : "warning.main", fontWeight: 600 }}>
           {statuses.join(", ")}

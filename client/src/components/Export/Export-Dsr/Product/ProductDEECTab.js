@@ -685,6 +685,7 @@ const ProductDEECTab = ({ formik, selectedInvoiceIndex, productIndex }) => {
             formik={formik}
             unitOptions={unitCodes}
             placeholder="UT"
+            onSelect={(val) => handleDeecFieldChange("exportQtyUnit", val)}
           />
         </div>
       </div>

@@ -20,6 +20,7 @@ const deecSchema = new Schema(
     isDeecItem: { type: Boolean, default: false },
     itemSnoPartE: { type: String, trim: true },
     exportQtyUnderLicence: { type: Number, default: 0 },
+    exportQtyUnit: { type: String, trim: true },
 
     // DEEC Items table
     deecItems: [
@@ -55,6 +56,7 @@ const epcgSchema = new Schema(
     isEpcgItem: { type: Boolean, default: false },
     itemSnoPartE: { type: String, trim: true },
     exportQtyUnderLicence: { type: Number, default: 0 },
+    exportQtyUnit: { type: String, trim: true },
 
     // EPCG Items table
     epcgItems: [

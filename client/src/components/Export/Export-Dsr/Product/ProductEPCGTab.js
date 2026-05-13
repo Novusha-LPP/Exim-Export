@@ -687,6 +687,7 @@ const ProductEPCGTab = ({ formik, selectedInvoiceIndex, productIndex }) => {
             formik={formik}
             unitOptions={unitCodes}
             placeholder="UT"
+            onSelect={(val) => handleEpcgFieldChange("exportQtyUnit", val)}
           />
         </div>
       </div>

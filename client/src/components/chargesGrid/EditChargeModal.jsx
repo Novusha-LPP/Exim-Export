@@ -385,6 +385,34 @@ const EditChargeModal = ({
     handleFieldChange(index, 'qty', source.qty, toSec);
   };
 
+  const handleReject = async (type, requestNo) => {
+    if (!requestNo) return;
+    const reason = window.prompt("Enter rejection reason:");
+    if (reason === null) return; // Cancelled
+
+    try {
+      const endpoint = type === 'PB' ? '/reject-purchase-entry' : '/reject-payment-request';
+      await axios.post(`${import.meta.env.VITE_API_STRING}${endpoint}`, { requestNo, reason });
+      
+      // Update local state
+      const updated = [...formData];
+      formData.forEach((row, i) => {
+        if (type === 'PB' && row.purchase_book_no === requestNo) {
+          updated[i].purchase_book_no = null;
+          updated[i].purchase_book_status = null;
+        } else if (type === 'PR' && row.payment_request_no === requestNo) {
+          updated[i].payment_request_no = null;
+          updated[i].payment_request_status = null;
+        }
+      });
+      setFormData(updated);
+      alert(`${type} Rejected successfully`);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to reject");
+    }
+  };
+
   const handleSave = (shouldClose = true) => {
     // Validate mandatory fields
     for (let i = 0; i < formData.length; i++) {
@@ -1099,7 +1127,7 @@ const EditChargeModal = ({
                                 <span className="ep-label"></span>
                                 <div className="ep-inline">
                                   {/* Conditionally show based on workMode or if already exists */}
-                                  {(!row.purchase_book_no && (workMode === 'Purchase Book' || !row.payment_request_no)) && (
+                                  {(!row.purchase_book_no && (workMode === 'Purchase Book' || !row.payment_request_no)) ? (
                                     <button
                                       type="button"
                                       className="action-btn action-btn-blue"
@@ -1141,8 +1169,18 @@ const EditChargeModal = ({
                                     >
                                       Purchase book
                                     </button>
-                                  )}
-                                  {(!row.payment_request_no && (workMode === 'Payment' || !row.purchase_book_no)) && (
+                                  ) : row.purchase_book_no ? (
+                                    <button
+                                      type="button"
+                                      className="action-btn"
+                                      style={{ marginLeft: '10px', backgroundColor: '#fff', color: '#d32f2f', borderColor: '#d32f2f' }}
+                                      onClick={() => handleReject('PB', row.purchase_book_no)}
+                                    >
+                                      Reject PB
+                                    </button>
+                                  ) : null}
+
+                                  {(!row.payment_request_no && (workMode === 'Payment' || !row.purchase_book_no)) ? (
                                     <button
                                       type="button"
                                       className="action-btn action-btn-red"
@@ -1166,7 +1204,16 @@ const EditChargeModal = ({
                                     >
                                       Request Payment
                                     </button>
-                                  )}
+                                  ) : row.payment_request_no ? (
+                                    <button
+                                      type="button"
+                                      className="action-btn"
+                                      style={{ marginLeft: '10px', backgroundColor: '#fff', color: '#d32f2f', borderColor: '#d32f2f' }}
+                                      onClick={() => handleReject('PR', row.payment_request_no)}
+                                    >
+                                      Reject PR
+                                    </button>
+                                  ) : null}
                                 </div>
                               </div>
                             </div>

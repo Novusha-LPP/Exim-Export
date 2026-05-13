@@ -322,7 +322,6 @@ function validateJobData(job) {
     if (!job.custom_house) errors.push("Custom House is missing.");
     if (!job.exporter) errors.push("Exporter Name is missing.");
     if (!job.ieCode) errors.push("IEC Code is missing.");
-    if (!job.adCode && !job.ad_code) errors.push("AD Code is missing.");
     if (!job.port_of_discharge) errors.push("Port of Discharge is missing.");
     if (!job.gross_weight_kg) errors.push("Gross Weight is missing.");
     if (!job.net_weight_kg) errors.push("Net Weight is missing.");
