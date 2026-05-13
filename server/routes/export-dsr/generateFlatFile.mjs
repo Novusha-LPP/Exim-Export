@@ -378,15 +378,13 @@ export function generateSBFlatFile(job) {
     const now = new Date();
     const fdt = fmtDate(now);
     const ftm24 = pad(now.getHours(), 2) + pad(now.getMinutes(), 2);
-
-    // FIX 53: seq = plain SB number only — DO NOT append DDMM.
-    // Logisys sends "1" for SB "0001"; appending date caused "10104" → ICEGATE header rejection.
     const seq = sbNo;
 
     // FIX 1: Standard prefix — 2 extra empty fields after date
-    const PD = `F${FS}${loc}${FS}${sbNo}${FS}${fdt}${FS}${FS}`;
+    // All F-records must use the same control number (seq)
+    const PD = `F${FS}${loc}${FS}${seq}${FS}${fdt}${FS}${FS}`;
     // CONTAINER prefix — NO extra empties
-    const PD_CONTAINER = `F${FS}${loc}${FS}${sbNo}${FS}${fdt}`;
+    const PD_CONTAINER = `F${FS}${loc}${FS}${seq}${FS}${fdt}`;
 
     const invs = job.invoices || [];
     const con0 = (job.consignees || [])[0] || {};
@@ -1061,8 +1059,10 @@ export function generateSBFlatFile(job) {
 
     out += `<END-SB>${RS}`;
 
-    // FIX 53: seq in HREC and TREC = plain sbNo (no date suffix)
+    // FIX 53: seq in HREC and TREC = control number (sbNo + branchSno)
     const hrec = `HREC${FS}ZZ${FS}${sid}${FS}ZZ${FS}${loc}${FS}ICES1_5${FS}P${FS}${FS}CACHE01${FS}${seq}${FS}${fdt}${FS}${ftm24}${RS}`;
+
+    // REVERTED: Softlink reference shows TREC has only 2 fields (no record count)
     const trec = `TREC${FS}${seq}${RS}`;
 
     return { content: hrec + out + trec, fileName: `${sbNo}${fdt.slice(0, 4)}.sb` };

@@ -170,14 +170,15 @@ public class DscService {
         }
 
         PrivateKey privateKey = getFreshPrivateKey();
-
-        Signature signature = Signature.getInstance("SHA1withRSA", pkcs11Provider);
+        
+        // Upgrade to SHA256withRSA for ICEGATE compliance
+        Signature signature = Signature.getInstance("SHA256withRSA", pkcs11Provider);
         signature.initSign(privateKey);
         signature.update(data);
 
         byte[] signedBytes = signature.sign();
 
-        System.out.println("✅ RAW SHA1withRSA signature generated. Length: " + signedBytes.length);
+        System.out.println("✅ RAW SHA256withRSA signature generated. Length: " + signedBytes.length);
 
         return signedBytes;
     }
@@ -221,7 +222,7 @@ public class DscService {
 
         JcaCertStore certStore = new JcaCertStore(Arrays.asList(certChain));
 
-        ContentSigner contentSigner = new JcaContentSignerBuilder("SHA1withRSA")
+        ContentSigner contentSigner = new JcaContentSignerBuilder("SHA256withRSA")
                 .setProvider(pkcs11Provider)
                 .build(privateKey);
 

@@ -395,7 +395,7 @@ const EditChargeModal = ({
         alert(`Please select Category (Margin/Reimbursement) for ${chargeName}`);
         return;
       }
-      if (!charge.hsnCode) {
+      if (charge.chargeType !== 'Reimbursement' && !charge.hsnCode) {
         alert(`Please enter SAC / HSN for ${chargeName}`);
         return;
       }
@@ -458,7 +458,7 @@ const EditChargeModal = ({
                     </select>
                   </div>
                   <div className="form-row" style={{ gridColumn: 'span 1' }}>
-                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>SAC / HSN <span style={{ color: 'red' }}>*</span></span>
+                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>SAC / HSN {row.chargeType !== 'Reimbursement' && <span style={{ color: 'red' }}>*</span>}</span>
                     <input type="text" className="form-input" placeholder="Enter HSN Code" value={row.hsnCode || ''} onChange={e => handleFieldChange(i, 'hsnCode', e.target.value)} />
                   </div>
 

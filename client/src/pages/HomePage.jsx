@@ -306,9 +306,7 @@ function HomePage() {
             <Route
               path="/report/billing"
               element={
-                <ProtectedRoute requiredModule="Export - Reports">
-                  <BillingReportsUtility />
-                </ProtectedRoute>
+                <BillingReportsUtility />
               }
             />
           </Routes>

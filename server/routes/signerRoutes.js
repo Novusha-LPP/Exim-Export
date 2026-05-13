@@ -1,11 +1,14 @@
 import express from "express";
 import mongoose from "mongoose";
 import axios from "axios";
+import crypto from "crypto";
 import ExJobModel from "../model/export/ExJobModel.mjs";
 import { generateSBFlatFile } from "./export-dsr/generateFlatFile.mjs";
 import SigningUtility from "../utils/SigningUtility.mjs";
 import { uploadToS3 } from "../utils/s3Utils.mjs";
 import multer from "multer";
+
+const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 
 const router = express.Router();
 const upload = multer();
@@ -63,12 +66,18 @@ router.post("/sign-now", async (req, res) => {
     const { content, fileName: generatedName } = generateSBFlatFile(job);
     const fileName = generatedName || `${job.job_no || "JOB"}_${job.sb_no || "SB"}.sb`;
 
+    // ── Pipeline byte-integrity debug logging ──
+    const contentBuffer = Buffer.from(content, 'latin1');
+    console.log(`[SIGN DEBUG] (a) Generated flat file: ${contentBuffer.length} bytes, SHA-256: ${sha256(contentBuffer)}`);
+
     // 2. Call Java Signing Server
     console.log(`🔄 Requesting signature for Job: ${job.job_no}`);
-    const signedBuffer = await SigningUtility.signFlatFile(Buffer.from(content, 'binary'), fileName);
+    const signedBuffer = await SigningUtility.signFlatFile(contentBuffer, fileName);
+    console.log(`[SIGN DEBUG] (b) Signed file returned: ${signedBuffer.length} bytes, SHA-256: ${sha256(signedBuffer)}`);
 
     // 3. Upload signed file to S3
     const s3Key = `signatures/${jobId}/${Date.now()}_${fileName}`;
+    console.log(`[SIGN DEBUG] (c) Uploading to S3: ${signedBuffer.length} bytes, SHA-256: ${sha256(signedBuffer)}`);
     const s3Url = await uploadToS3(signedBuffer, s3Key, "application/octet-stream");
 
     // 4. Update Job Status in MongoDB

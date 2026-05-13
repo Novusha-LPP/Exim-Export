@@ -78,8 +78,8 @@ const getJobDetailsInternal = async (job_number) => {
         "HBL Date": "",
         "Vessel": job.vessel || "",
         "Voyage": job.voyage_no || "",
-        "Invoice Number": job.invoice_number || "",
-        "Inv Date": normalizeDate(job.invoice_date),
+        "Invoice Number": (job.invoices || [])[0]?.invoice_number || "",
+        "Inv Date": normalizeDate((job.invoices || [])[0]?.invoice_date),
         "Branch": job.branch_code || "",
         "Status": (job.status || "Pending").toLowerCase()
     };
@@ -261,8 +261,14 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             formattedData["CGST"] = "";
             formattedData["SGST"] = "";
             formattedData["IGST"] = "";
-            // For reimbursements, the full amount is considered taxable/total
-            formattedData["Taxable Value"] = formattedData["Total"];
+            
+            // For reimbursements, the taxable value should be the gross amount.
+            // We use Math.max to ensure we pick the gross amount, 
+            // whether it's from the saved taxableValue or reconstructed from Total + TDS.
+            const savedTaxable = Number(entry.taxableValue) || 0;
+            const total = Number(formattedData["Total"]) || 0;
+            const tds = Number(formattedData["TDS"]) || 0;
+            formattedData["Taxable Value"] = Math.max(savedTaxable, total + tds).toFixed(2);
         }
 
         // Include Job Details

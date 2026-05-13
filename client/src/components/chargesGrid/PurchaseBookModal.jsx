@@ -155,7 +155,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     "Charge Heading": initialData.name || initialData.chargeHead || '',
                     "SAC": initialData.cthNo || '',
                     "Taxable Value": isReimbursement 
-                        ? (initialData.totalAmount || initialData.amountINR || initialData.netPayable || initialData.amount || '').toString()
+                        ? (initialData.totalAmount || initialData.amount || initialData.amountINR || initialData.netPayable || '').toString()
                         : (initialData.basicAmount ? Number(initialData.basicAmount).toFixed(2) : (initialData.amount ? Number(initialData.amount).toFixed(2) : '')),
                     "GST%": !isReimbursement && (initialData.gstAmount > 0) ? (initialData.gstRate || '18') : '',
                     "CGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
