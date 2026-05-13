@@ -149,12 +149,12 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     "CIN": party?.cin || party?.CIN || '',
                     "Place of Supply": branch.state || branch.State || '',
                     "Credit Terms": party?.credit_terms || party?.CreditTerms || '',
-                    "Description of Services": !isReimbursement 
-                        ? `${initialData.name || initialData.chargeHead || ''} - E` 
-                        : (initialData.partyName ? `NEW ${initialData.partyName}` : ''),
+                    "Description of Services": !isReimbursement
+                        ? `${initialData.name || initialData.chargeHead || ''} - E`
+                        : (initialData.partyName ? `NEW - ${initialData.partyName}` : ''),
                     "Charge Heading": initialData.name || initialData.chargeHead || '',
                     "SAC": initialData.cthNo || '',
-                    "Taxable Value": isReimbursement 
+                    "Taxable Value": isReimbursement
                         ? (initialData.totalAmount || initialData.amount || initialData.amountINR || initialData.netPayable || '').toString()
                         : (initialData.basicAmount ? Number(initialData.basicAmount).toFixed(2) : (initialData.amount ? Number(initialData.amount).toFixed(2) : '')),
                     "GST%": !isReimbursement && (initialData.gstAmount > 0) ? (initialData.gstRate || '18') : '',

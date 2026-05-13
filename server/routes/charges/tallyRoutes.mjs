@@ -81,7 +81,28 @@ const getJobDetailsInternal = async (job_number) => {
         "Invoice Number": (job.invoices || [])[0]?.invoice_number || "",
         "Inv Date": normalizeDate((job.invoices || [])[0]?.invoice_date),
         "Branch": job.branch_code || "",
-        "Status": (job.status || "Pending").toLowerCase()
+        "Status": (job.status || "Pending").toLowerCase(),
+        "Sb type": (() => {
+            const eximCode = job.invoices?.[0]?.products?.[0]?.eximCode || "";
+            return eximCode.includes("-") ? eximCode.split("-").slice(1).join("-").trim() : eximCode;
+        })(),
+        "Consignment Type": job.consignmentType || "",
+        "Customer Ref No": job.exporter_ref_no || "",
+        "TOI": (job.invoices || [])[0]?.termsOfInvoice || "",
+        "Invoice Value": (() => {
+            const inv = (job.invoices || [])[0];
+            if (!inv) return "";
+            return `${inv.invoiceValue || 0}(${inv.currency || ""})`;
+        })(),
+        "Invoice Currency": (job.invoices || [])[0]?.currency || "",
+        "FOB Value": (() => {
+            const inv = (job.invoices || [])[0];
+            if (!inv) return "0.00";
+            const fob = inv.freightInsuranceCharges?.fobValue?.amount || inv.invoiceValue || 0;
+            const rate = parseFloat(job.exchange_rate || inv.freightInsuranceCharges?.freight?.exchangeRate || 1);
+            return (fob * rate).toFixed(2);
+        })(),
+        "Sb Heading": job.sb_no || ""
     };
 };
 
@@ -239,7 +260,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "CIN": entry.cin,
             "Place of Supply": entry.placeOfSupply,
             "Credit Terms": entry.creditTerms,
-            "Description of Services": entry.descriptionOfServices || (entry.supplierName ? `NEW ${entry.supplierName}` : ""),
+            "Description of Services": entry.descriptionOfServices || (entry.supplierName ? `NEW - ${entry.supplierName}` : ""),
             "Charge Heading": entry.chargeHeading || "",
             "SAC": entry.sac,
             "Taxable Value": entry.taxableValue,
@@ -261,7 +282,12 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             formattedData["CGST"] = "";
             formattedData["SGST"] = "";
             formattedData["IGST"] = "";
-            
+
+            // Custom Description of Services for reimbursements
+            if (!entry.descriptionOfServices && entry.supplierName) {
+                formattedData["Description of Services"] = `REIMBURSEMENT - ${entry.supplierName}`;
+            }
+
             // For reimbursements, the taxable value should be the gross amount.
             // We use Math.max to ensure we pick the gross amount, 
             // whether it's from the saved taxableValue or reconstructed from Total + TDS.
