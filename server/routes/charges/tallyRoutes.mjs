@@ -102,7 +102,7 @@ const getJobDetailsInternal = async (job_number) => {
             const rate = parseFloat(job.exchange_rate || inv.freightInsuranceCharges?.freight?.exchangeRate || 1);
             return (fob * rate).toFixed(2);
         })(),
-        "Sb Heading": job.sb_no || ""
+        "Sb Heading": job.invoices?.[0]?.products?.[0]?.description || ""
     };
 };
 
