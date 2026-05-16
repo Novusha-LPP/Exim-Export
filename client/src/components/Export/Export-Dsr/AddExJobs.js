@@ -1307,7 +1307,7 @@ const AddExJobs = ({ onJobCreated }) => {
         showToast(`Job Created! No: ${response.data.job.job_no}`);
         handleClear();
         if (onJobCreated) onJobCreated();
-        navigate(`/export-dsr/job/${response.data.job.job_no}`);
+        navigate(`/export-dsr/job/${encodeURIComponent(response.data.job.job_no)}`);
       }
     } catch (e) {
       showToast("Failed to create job", "error");
@@ -1547,6 +1547,23 @@ const AddExJobs = ({ onJobCreated }) => {
                     onChange={(e) => handleInputChange("exporter_ref_no", e.target.value)}
                   />
                 </div>
+
+                <div style={{ ...s.col, position: "relative" }}>
+                  <CustomHouseDropdownLocal
+                    label="Custom House *"
+                    value={formData.custom_house}
+                    onChange={(val) => {
+                      setCustomHouseError(false);
+                      handleInputChange("custom_house", val);
+                    }}
+                    branchCode={formData.branch_code}
+                  />
+                  {customHouseError && (
+                    <span style={{ color: "red", fontSize: "10px", marginTop: "2px", display: "block" }}>
+                      Custom House is required.
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1759,18 +1776,6 @@ const AddExJobs = ({ onJobCreated }) => {
                   </select>
                 </div>
 
-                <div style={{ ...s.col, position: "relative" }}>
-                  <CustomHouseDropdownLocal
-                    label="Custom House *"
-                    value={formData.custom_house}
-                    onChange={(val) => {
-                      setCustomHouseError(false);
-                      handleInputChange("custom_house", val);
-                    }}
-                    branchCode={formData.branch_code}
-                  />
-                  {customHouseError && <span style={{ color: "red", fontSize: "10px", marginTop: "2px", display: "block" }}>Custom House is required.</span>}
-                </div>
 
                 <div style={s.col}>
                   <label style={s.label}>Port of Loading</label>
