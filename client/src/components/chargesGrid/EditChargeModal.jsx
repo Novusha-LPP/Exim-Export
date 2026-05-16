@@ -5,6 +5,7 @@ import RequestPaymentModal from './RequestPaymentModal';
 import PurchaseBookModal from './PurchaseBookModal';
 import { Chip } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
+import DateInput from '../common/DateInput';
 import axios from 'axios';
 import './charges.css';
 import { generatePurchaseBookPDF } from '../../utils/purchaseBookPrint';
@@ -141,7 +142,7 @@ const EditChargeModal = ({
         name: charge.name || charge.chargeHead || '',
         chargeType: charge.chargeType || 'Margin',
         invoice_number: charge.invoice_number || '',
-        invoice_date: formatDate(charge.invoice_date, 'yyyy-MM-dd') || '',
+        invoice_date: formatDate(charge.invoice_date, 'dd-MM-yyyy') || '',
         payment_request_no: charge.payment_request_no || '',
         payment_request_status: charge.payment_request_status || '',
         revenue: {
@@ -448,7 +449,7 @@ const EditChargeModal = ({
 
     const formattedData = formData.map(charge => ({
       ...charge,
-      invoice_date: formatDate(charge.invoice_date, 'dd-MM-yyyy')
+      invoice_date: charge.invoice_date
     }));
     onSave(formattedData, shouldClose);
   };
@@ -473,7 +474,7 @@ const EditChargeModal = ({
           {formData.map((row, i) => (
             <div key={row._id || i} style={{ marginBottom: formData.length > 1 ? '30px' : '0' }}>
               <div className="form-section-new">
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginRight: '30px', gap: '10px 20px' }}>
+                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px 20px' }}>
                   <div className="form-row" style={{ gridColumn: 'span 2', alignItems: 'center' }}>
                     <span className="form-label" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                       CHARGE
@@ -487,32 +488,32 @@ const EditChargeModal = ({
                       <button type="button" className="search-btn">🔍</button>
                     </div>
                   </div>
-                  <div className="form-row" style={{ gridColumn: 'span 1' }}>
+                  <div className="form-row" style={{ gridColumn: 'span 2' }}>
                     <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>CATEGORY <span style={{ color: 'red' }}>*</span></span>
                     <select className="form-input" value={row.chargeType || 'Margin'} onChange={e => handleFieldChange(i, 'chargeType', e.target.value)}>
                       <option value="Margin">Margin</option>
                       <option value="Reimbursement">Reimbursement</option>
                     </select>
                   </div>
-                  <div className="form-row" style={{ gridColumn: 'span 1' }}>
-                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>SAC / HSN {row.chargeType !== 'Reimbursement' && <span style={{ color: 'red' }}>*</span>}</span>
-                    <input type="text" className="form-input" placeholder="Enter HSN Code" value={row.hsnCode || ''} onChange={e => handleFieldChange(i, 'hsnCode', e.target.value)} />
-                  </div>
 
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
                     <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INVOICE NUMBER <span style={{ color: 'red' }}>*</span></span>
                     <input type="text" className="form-input" value={row.invoice_number || ''} onChange={e => handleFieldChange(i, 'invoice_number', e.target.value)} />
                   </div>
-                  <div className="form-row" style={{ gridColumn: 'span 2' }}>
-                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INVOICE DATE <span style={{ color: 'red' }}>*</span></span>
-                    <input type="date" className="form-input" value={row.invoice_date || ''} onChange={e => handleFieldChange(i, 'invoice_date', e.target.value)} />
+                  <div className="form-row" style={{ gridColumn: 'span 1' }}>
+                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INV DATE <span style={{ color: 'red' }}>*</span></span>
+                    <DateInput className="form-input" value={row.invoice_date || ''} onChange={e => handleFieldChange(i, 'invoice_date', e.target.value)} />
+                  </div>
+                  <div className="form-row" style={{ gridColumn: 'span 1' }}>
+                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>SAC/HSN {row.chargeType !== 'Reimbursement' && <span style={{ color: 'red' }}>*</span>}</span>
+                    <input type="text" className="form-input" placeholder="HSN" value={row.hsnCode || ''} onChange={e => handleFieldChange(i, 'hsnCode', e.target.value)} />
                   </div>
 
                   {/* Tally Numbers & Status Row */}
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
                     <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold' }}>PB No</span>
                     <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', width: '180px', margin: 0, fontWeight: 'bold' }} value={row.purchase_book_no || ''} />
+                      <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', margin: 0, fontWeight: 'bold', minWidth: '150px' }} value={row.purchase_book_no || ''} />
                       {row.purchase_book_no && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                           <IconButton
@@ -555,7 +556,7 @@ const EditChargeModal = ({
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
                     <span className="form-label" style={{ color: '#d32f2f', fontWeight: 'bold' }}>PR NO</span>
                     <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', width: '180px', margin: 0, fontWeight: 'bold' }} value={row.payment_request_no || ''} />
+                      <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', margin: 0, fontWeight: 'bold', minWidth: '150px' }} value={row.payment_request_no || ''} />
                       {row.payment_request_no && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                           <IconButton
@@ -710,7 +711,7 @@ const EditChargeModal = ({
                                 </button>
                               </div>
                             </div>
-                            <div className="ep-grid" style={{ marginRight: '30px' }}>
+                            <div className="ep-grid">
                               <div className="ep-row">
                                 <span className="ep-label">BASIS</span>
                                 <select className="ep-select" value={row.revenue?.basis || 'Per B/E - Per Shp'} onChange={e => handleFieldChange(i, 'basis', e.target.value, 'revenue')}>
@@ -950,7 +951,7 @@ const EditChargeModal = ({
                                 </button>
                               </div>
                             </div>
-                            <div className="ep-grid" style={{ marginRight: '30px' }}>
+                            <div className="ep-grid">
                               <div className="ep-row">
                                 <span className="ep-label">BASIS</span>
                                 <select className="ep-select" value={row.cost?.basis || 'Per B/E - Per Shp'} onChange={e => handleFieldChange(i, 'basis', e.target.value, 'cost')}>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import ConfirmDialog from "../../gallery/ConfirmDialog.js";
 import DateInput from "../../common/DateInput.js";
 import { currencyList } from "../../../utils/masterList.js";
 import { UserContext } from "../../../contexts/UserContext";
@@ -1022,6 +1022,7 @@ function CustomHouseDropdownLocal({ label, value, onChange, branchCode = "" }) {
 }
 
 const AddExJobs = ({ onJobCreated }) => {
+  const navigate = useNavigate();
   const emptyConsignee = {
     consignee_name: "",
     consignee_address: "",
@@ -1306,6 +1307,7 @@ const AddExJobs = ({ onJobCreated }) => {
         showToast(`Job Created! No: ${response.data.job.job_no}`);
         handleClear();
         if (onJobCreated) onJobCreated();
+        navigate(`/export-dsr/job/${response.data.job.job_no}`);
       }
     } catch (e) {
       showToast("Failed to create job", "error");
@@ -1570,7 +1572,7 @@ const AddExJobs = ({ onJobCreated }) => {
                     style={{ ...s.col, flex: 2, position: "relative" }}
                     ref={idx === activeConsigneeIdx ? consigneeMenuRef : null}
                   >
-                    <label style={s.label}>Consignee Name *</label>
+                    <label style={s.label}>Consignee Name</label>
                     <input
                       style={s.input}
                       placeholder="Name"
@@ -1606,7 +1608,6 @@ const AddExJobs = ({ onJobCreated }) => {
                           setShowConsigneeMenu(false);
                         }
                       }}
-                      required
                     />
                     {showConsigneeMenu &&
                       activeConsigneeIdx === idx &&

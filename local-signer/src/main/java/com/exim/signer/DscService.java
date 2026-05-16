@@ -133,14 +133,15 @@ public class DscService {
     }
 
     /**
-     * Forcefully reloads the keystore session and fetches a fresh PrivateKey handle.
+     * Forcefully reloads the keystore session and fetches a fresh PrivateKey
+     * handle.
      * Prevents CKR_USER_NOT_LOGGED_IN / Key must not be null.
      */
     public PrivateKey getFreshPrivateKey() throws Exception {
         if (keyStore == null || alias == null) {
             throw new Exception("DSC not initialized. Call login() first.");
         }
-        
+
         try {
             keyStore.load(null, this.pinChars);
         } catch (Exception e) {
@@ -156,7 +157,7 @@ public class DscService {
 
     /**
      * RAW Signature (SHA1withRSA) required for ICEGATE .sb file signing.
-
+     * 
      * This matches NCode signing tool behavior.
      */
     public byte[] signRaw(byte[] data) throws Exception {
@@ -170,15 +171,15 @@ public class DscService {
         }
 
         PrivateKey privateKey = getFreshPrivateKey();
-        
-        // ICEGATE ICES 1.5 flat-file requires SHA1withRSA (V-NCODE compatible)
-        Signature signature = Signature.getInstance("SHA1withRSA", pkcs11Provider);
+
+        // ICEGATE ICES 1.5 flat-file requires SHA256withRSA for modern Class 3 DSCs
+        Signature signature = Signature.getInstance("SHA256withRSA", pkcs11Provider);
         signature.initSign(privateKey);
         signature.update(data);
 
         byte[] signedBytes = signature.sign();
 
-        System.out.println("✅ RAW SHA1withRSA signature generated. Length: " + signedBytes.length);
+        System.out.println("✅ RAW SHA256withRSA signature generated. Length: " + signedBytes.length);
 
         return signedBytes;
     }

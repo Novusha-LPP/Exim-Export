@@ -124,15 +124,27 @@ const ExpandableChipList = ({ items, limit = 2, color = "default", onClick }) =>
   return (
     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, py: 0.5 }}>
       {displayedItems.map((item, idx) => (
-        <Chip
-          key={`${item}-${idx}`}
-          label={item}
-          size="small"
-          color={color}
-          variant="outlined"
-          onClick={onClick ? () => onClick(item) : undefined}
-          sx={{ cursor: onClick ? "pointer" : "default" }}
-        />
+        <Box key={`${item}-${idx}`} sx={{ display: "inline-flex", alignItems: "center", gap: 0.2 }}>
+          <Chip
+            label={item}
+            size="small"
+            color={color}
+            variant="outlined"
+            onClick={onClick ? () => onClick(item) : undefined}
+            sx={{ cursor: onClick ? "pointer" : "default", height: 18, fontSize: '10px' }}
+          />
+          <IconButton
+            size="small"
+            sx={{ p: 0.1, opacity: 0.6, "&:hover": { opacity: 1 } }}
+            onClick={(e) => {
+              e.stopPropagation();
+              copyText(item);
+            }}
+            title={`Copy ${item}`}
+          >
+            <ContentCopyIcon sx={{ fontSize: 10 }} />
+          </IconButton>
+        </Box>
       ))}
       {!expanded && remainingCount > 0 && (
         <Chip
@@ -284,13 +296,26 @@ const EditableDateCell = ({ row, field, initialValue, onSuccess }) => {
 function JobNoCell({ row, navigate }) {
   return (
     <Box sx={{ py: 0.5 }}>
-      <Button
-        variant="text"
-        sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 700, justifyContent: "flex-start" }}
-        onClick={() => navigate(`/export-charges/job/${encodeURIComponent(row.job_no)}`)}
-      >
-        {row.job_no}
-      </Button>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Button
+          variant="text"
+          sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 700, justifyContent: "flex-start", fontSize: '11px' }}
+          onClick={() => navigate(`/export-charges/job/${encodeURIComponent(row.job_no)}`)}
+        >
+          {row.job_no}
+        </Button>
+        <IconButton
+          size="small"
+          sx={{ p: 0.2, opacity: 0.6, "&:hover": { opacity: 1 } }}
+          onClick={(e) => {
+            e.stopPropagation();
+            copyText(row.job_no);
+          }}
+          title="Copy Job No"
+        >
+          <ContentCopyIcon sx={{ fontSize: 10 }} />
+        </IconButton>
+      </Box>
       <Typography variant="caption" sx={{ display: "block", color: "text.secondary" }}>
         {row.custom_house || "-"}
       </Typography>
@@ -983,13 +1008,13 @@ function ExportBillingPage() {
       {
         accessorKey: "job_no",
         header: "Job No",
-        size: 130,
+        size: 180,
         Cell: ({ row }) => <JobNoCell row={row.original} navigate={navigate} />,
       },
       {
         accessorKey: "exporter",
         header: "Exporter",
-        size: 150,
+        size: 180,
         Cell: ({ row }) => (
           <Box sx={{ py: 0.5 }}>
             <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '11px' }}>
@@ -1212,7 +1237,7 @@ function ExportBillingPage() {
     const refCol = {
       accessorKey: workMode === "purchase-book" ? "purchase_book_nos" : "payment_request_nos",
       header: refLabel,
-      size: 160,
+      size: 200,
       Cell: ({ row }) => (
         <RefCell
           row={row.original}
@@ -1240,13 +1265,13 @@ function ExportBillingPage() {
       {
         accessorKey: "supplier_names",
         header: workMode === "purchase-book" ? "Supplier" : "Payable To",
-        size: 160,
+        size: 200,
         Cell: ({ row }) => <PartyCell row={row.original} workMode={workMode} />,
       },
       {
         accessorKey: "supplier_invoice_nos",
         header: workMode === "purchase-book" ? "Supplier Inv No" : "Invoice No",
-        size: 140,
+        size: 160,
         Cell: ({ cell }) => renderChipList(cell.getValue(), "default", 1),
       },
       {

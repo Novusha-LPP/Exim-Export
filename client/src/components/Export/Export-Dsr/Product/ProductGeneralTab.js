@@ -1142,7 +1142,8 @@ function ProductRow({
     const fetchRodtepData = async () => {
       if (!product.ritc || product.ritc.toString().length < 4) return;
       const claim = product.rodtepInfo?.claim || "Yes";
-      if (claim !== "Yes") return;
+      // Allow re-evaluation if it's "Yes" or was previously auto-set to "Not Applicable"
+      if (claim === "No") return;
 
       const eximCode = product.eximCode || "";
       const useReApi = eximCode.includes("03");
@@ -1172,23 +1173,53 @@ function ProductRow({
         if (entry) {
           const rate = parseFloat(entry.rate_percentage_fob ?? entry.rate ?? 0);
           const cap = parseFloat(entry.cap_per_uqc ?? entry.cap ?? 0);
-          const uqc = toUpper(entry.uqc || "");
+          
+          if (rate === 0 && cap === 0) {
+            if (claim !== "Not Applicable") {
+              handleProductChange(index, "rodtepInfo", {
+                ...(product.rodtepInfo || {}),
+                claim: "Not Applicable",
+                ratePercent: 0,
+                capValue: 0,
+                capValuePerUnits: 0,
+                amountINR: 0,
+              });
+            }
+          } else {
+            // If data found and it was Not Applicable, switch back to Yes
+            if (claim === "Not Applicable") {
+              handleProductChange(index, "rodtepInfo.claim", "Yes");
+            }
 
-          const currentRate = parseFloat(product.rodtepInfo?.ratePercent) || 0;
-          const currentCap =
-            parseFloat(product.rodtepInfo?.capValuePerUnits) || 0;
-          const currentUqc = toUpper(product.rodtepInfo?.capUnit || "");
+            const uqc = toUpper(entry.uqc || "");
+            const currentRate = parseFloat(product.rodtepInfo?.ratePercent) || 0;
+            const currentCap =
+              parseFloat(product.rodtepInfo?.capValuePerUnits) || 0;
+            const currentUqc = toUpper(product.rodtepInfo?.capUnit || "");
 
-          if (rate !== currentRate) {
-            handleProductChange(index, "rodtepInfo.ratePercent", rate);
+            if (rate !== currentRate) {
+              handleProductChange(index, "rodtepInfo.ratePercent", rate);
+            }
+
+            if (cap !== currentCap) {
+              handleProductChange(index, "rodtepInfo.capValuePerUnits", cap);
+            }
+
+            if (uqc && uqc !== currentUqc && !product.rodtepInfo?.isCapUnitManual) {
+              handleProductChange(index, "rodtepInfo.capUnit", uqc);
+            }
           }
-
-          if (cap !== currentCap) {
-            handleProductChange(index, "rodtepInfo.capValuePerUnits", cap);
-          }
-
-          if (uqc && uqc !== currentUqc && !product.rodtepInfo?.isCapUnitManual) {
-            handleProductChange(index, "rodtepInfo.capUnit", uqc);
+        } else {
+          // No entry found for this RITC
+          if (claim !== "Not Applicable") {
+            handleProductChange(index, "rodtepInfo", {
+              ...(product.rodtepInfo || {}),
+              claim: "Not Applicable",
+              ratePercent: 0,
+              capValue: 0,
+              capValuePerUnits: 0,
+              amountINR: 0,
+            });
           }
         }
       } catch (err) {
@@ -2083,10 +2114,10 @@ function ProductRow({
             value={product.rodtepInfo?.claim || "Yes"}
             onChange={(e) => {
               const val = e.target.value;
-              if (val === "No") {
+              if (val === "No" || val === "Not Applicable") {
                 handleProductChange(index, "rodtepInfo", {
                   ...(product.rodtepInfo || {}),
-                  claim: "No",
+                  claim: val,
                   ratePercent: 0,
                   capValue: 0,
                   capValuePerUnits: 0,

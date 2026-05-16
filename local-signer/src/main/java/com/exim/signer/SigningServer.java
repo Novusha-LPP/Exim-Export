@@ -201,19 +201,16 @@ public class SigningServer {
 
                 byte[] originalBytes = rawBytes; // keep original for writing to file
 
-                // Apply SAME normalization ICEGATE uses before verifying
-                // Based on nCode behavior: convert all \r\n to \n, strip trailing, add \n
-                String normalized = new String(rawBytes, "ISO-8859-1")
-                    .replace("\r\n", "\n")   // CRLF → LF
-                    .stripTrailing() + "\n"; // strip end + single \n
-                byte[] bytesToSign = normalized.getBytes("ISO-8859-1");
+                // Prepare the exact bytes that will form the payload in the file
+                String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
+                byte[] exactPayloadBytes = (dataPart + "\n").getBytes("ISO-8859-1");
 
                 byte[] signature;
                 String certificateBase64;
 
                 synchronized (dscService) {
-                    // Sign the NORMALIZED bytes (what ICEGATE will verify against)
-                    signature = dscService.signRaw(bytesToSign);
+                    // Sign EXACTLY what will be written to the file
+                    signature = dscService.signRaw(exactPayloadBytes);
                     certificateBase64 = dscService.getCertificateBase64();
                 }
 
@@ -222,10 +219,8 @@ public class SigningServer {
                 // Construct ICEGATE .sb format
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-                // Write the original bytes but ensure the final record delimiter is LF to match nCode
-                String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
-                baos.write(dataPart.getBytes("ISO-8859-1"));
-                baos.write('\n'); // Force LF for the TREC record
+                // Write the exact payload bytes
+                baos.write(exactPayloadBytes);
 
                 // Append signature blocks with \n (LF only — matches V-NCODE format)
                 baos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\n").getBytes("ISO-8859-1"));

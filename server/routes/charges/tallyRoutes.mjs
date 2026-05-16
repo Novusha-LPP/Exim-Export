@@ -33,13 +33,9 @@ router.get("/test", (req, res) => res.json({ status: "Tally API is connected and
  * @api {get} /api/tally/job-data Retrieve job data for Tally integration
  */
 /**
- * Internal helper to retrieve and format job data for Tally
+ * Internal helper to format job and invoice data for Tally
  */
-const getJobDetailsInternal = async (job_number) => {
-    if (!job_number) return null;
-    const job = await ExJobModel.findOne({ job_no: job_number }).lean();
-    if (!job) return null;
-
+const mapJobAndInvoiceToTally = (job, inv) => {
     return {
         "Job Number": job.job_no,
         "Job Year": job.year || "",
@@ -60,7 +56,6 @@ const getJobDetailsInternal = async (job_number) => {
             if (containers.length === 0) return job.no_of_containers || "0";
             const counts = {};
             containers.forEach(c => {
-                // Use type if available (e.g. '40 HC'), otherwise size, default to '20'
                 const detail = c.type || c.size || "20";
                 counts[detail] = (counts[detail] || 0) + 1;
             });
@@ -79,32 +74,45 @@ const getJobDetailsInternal = async (job_number) => {
         "HBL Date": "",
         "Vessel": job.vessel || "",
         "Voyage": job.voyage_no || "",
-        "Invoice Number": (job.invoices || [])[0]?.invoice_number || "",
-        "Inv Date": normalizeDate((job.invoices || [])[0]?.invoice_date),
+        "Invoice Number": inv?.invoiceNumber || inv?.invoice_number || "",
+        "Inv Date": normalizeDate(inv?.invoiceDate || inv?.invoice_date),
         "Branch": job.branch_code || "",
         "Status": (job.status || "Pending").toLowerCase(),
         "Sb type": (() => {
-            const eximCode = job.invoices?.[0]?.products?.[0]?.eximCode || "";
+            const eximCode = inv?.products?.[0]?.eximCode || "";
             return eximCode.includes("-") ? eximCode.split("-").slice(1).join("-").trim() : eximCode;
         })(),
         "Consignment Type": job.consignmentType || "",
         "Customer Ref No": job.exporter_ref_no || "",
-        "TOI": (job.invoices || [])[0]?.termsOfInvoice || "",
+        "TOI": inv?.termsOfInvoice || "",
         "Invoice Value": (() => {
-            const inv = (job.invoices || [])[0];
             if (!inv) return "";
             return `${inv.invoiceValue || 0}(${inv.currency || ""})`;
         })(),
-        "Invoice Currency": (job.invoices || [])[0]?.currency || "",
+        "Invoice Currency": inv?.currency || "",
         "FOB Value": (() => {
-            const inv = (job.invoices || [])[0];
             if (!inv) return "0.00";
             const fob = inv.freightInsuranceCharges?.fobValue?.amount || inv.invoiceValue || 0;
             const rate = parseFloat(job.exchange_rate || inv.freightInsuranceCharges?.freight?.exchangeRate || 1);
             return (fob * rate).toFixed(2);
         })(),
-        "Sb Heading": job.invoices?.[0]?.products?.[0]?.description || ""
+        "Sb Heading": inv?.products?.[0]?.description || ""
     };
+};
+
+/**
+ * Internal helper to retrieve and format job data for Tally
+ */
+const getJobDetailsInternal = async (job_number) => {
+    if (!job_number) return null;
+    const job = await ExJobModel.findOne({ job_no: job_number }).lean();
+    if (!job) return null;
+
+    const invoices = job.invoices || [];
+    if (invoices.length === 0) {
+        return [mapJobAndInvoiceToTally(job, null)];
+    }
+    return invoices.map(inv => mapJobAndInvoiceToTally(job, inv));
 };
 
 router.get("/job-data", authApiKey, async (req, res) => {

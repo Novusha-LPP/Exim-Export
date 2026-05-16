@@ -403,7 +403,7 @@ const LogisysEditableHeader = ({
           // Fields to exclude from copying (top level)
           const excludeFields = [
             "_id", "id", "job_no", "jobNumber", "createdAt", "updatedAt", "__v",
-            "isLocked", "lockedBy", "lockedAt", "operational_lock"
+            "isLocked", "lockedBy", "lockedAt", "operational_lock", "charges"
           ];
 
           // Helper to recursively strip IDs and excluded fields

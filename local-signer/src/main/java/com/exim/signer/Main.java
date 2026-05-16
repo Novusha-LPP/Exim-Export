@@ -197,15 +197,12 @@ public class Main extends JFrame {
 
                 byte[] originalBytes = rawBytes; // keep original for writing to file
 
-                // Apply SAME normalization ICEGATE uses before verifying
-                // Based on nCode behavior: convert all \r\n to \n, strip trailing, add \n
-                String normalized = new String(rawBytes, "ISO-8859-1")
-                    .replace("\r\n", "\n")   // CRLF → LF
-                    .stripTrailing() + "\n"; // strip end + single \n
-                byte[] bytesToSign = normalized.getBytes("ISO-8859-1");
+                // Prepare the exact bytes that will form the payload in the file
+                String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
+                byte[] exactPayloadBytes = (dataPart + "\n").getBytes("ISO-8859-1");
 
-                // ✅ Sign the NORMALIZED bytes (what ICEGATE will verify against)
-                byte[] signature = dscService.signRaw(bytesToSign);
+                // ✅ Sign EXACTLY what will be written to the file
+                byte[] signature = dscService.signRaw(exactPayloadBytes);
                 log("Signature created: " + signature.length + " bytes");
 
                 String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
@@ -221,10 +218,8 @@ public class Main extends JFrame {
                 File sbFile = new File(outputDir, baseName + "Signed.sb");
 
                 try (FileOutputStream fos = new FileOutputStream(sbFile)) {
-                    // Write the original bytes but ensure the final record delimiter is LF to match nCode
-                    String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
-                    fos.write(dataPart.getBytes("ISO-8859-1"));
-                    fos.write('\n'); // Force LF for the TREC record
+                    // Write the exact payload bytes
+                    fos.write(exactPayloadBytes);
 
                     // ✅ STEP 6: Append signature blocks with \n (LF only — V-NCODE format)
                     fos.write(
@@ -381,15 +376,12 @@ public class Main extends JFrame {
                     byte[] rawBytes = content.getBytes("ISO-8859-1");
                     byte[] originalBytes = rawBytes; // keep original for writing to file
 
-                    // Apply SAME normalization ICEGATE uses before verifying
-                    // Based on nCode behavior: convert all \r\n to \n, strip trailing, add \n
-                    String normalized = new String(rawBytes, "ISO-8859-1")
-                        .replace("\r\n", "\n")   // CRLF → LF
-                        .stripTrailing() + "\n"; // strip end + single \n
-                    byte[] bytesToSign = normalized.getBytes("ISO-8859-1");
+                    // Prepare the exact bytes that will form the payload in the file
+                    String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
+                    byte[] exactPayloadBytes = (dataPart + "\n").getBytes("ISO-8859-1");
 
-                    // ✅ Sign the NORMALIZED bytes (what ICEGATE will verify against)
-                    byte[] signature = dscService.signRaw(bytesToSign);
+                    // ✅ Sign EXACTLY what will be written to the file
+                    byte[] signature = dscService.signRaw(exactPayloadBytes);
 
                     String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
                     String certificateBase64 = dscService.getCertificateBase64();
@@ -400,10 +392,8 @@ public class Main extends JFrame {
                     File sbFile = new File(outputDir, baseName + ".sb");
 
                     try (FileOutputStream fos = new FileOutputStream(sbFile)) {
-                        // Write the original bytes but ensure the final record delimiter is LF to match nCode
-                        String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
-                        fos.write(dataPart.getBytes("ISO-8859-1"));
-                        fos.write('\n'); // Force LF for the TREC record
+                        // Write the exact payload bytes
+                        fos.write(exactPayloadBytes);
 
                         // Append signature blocks with \n (LF only — matches V-NCODE format)
                         fos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\n")
