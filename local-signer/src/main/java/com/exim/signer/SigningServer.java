@@ -199,19 +199,21 @@ public class SigningServer {
                     return;
                 }
 
-                // ✅ CORRECT — keep all \r\n, only fix the very last line ending
-                String contentStr = new String(rawBytes, "ISO-8859-1");
+                byte[] originalBytes = rawBytes; // keep original for writing to file
 
-                // Strip trailing whitespace/newlines and end with exactly \n (not \r\n)
-                contentStr = contentStr.stripTrailing() + "\n";
-
-                byte[] normalizedBytes = contentStr.getBytes("ISO-8859-1");
+                // Apply SAME normalization ICEGATE uses before verifying
+                // Based on nCode behavior: convert all \r\n to \n, strip trailing, add \n
+                String normalized = new String(rawBytes, "ISO-8859-1")
+                    .replace("\r\n", "\n")   // CRLF → LF
+                    .stripTrailing() + "\n"; // strip end + single \n
+                byte[] bytesToSign = normalized.getBytes("ISO-8859-1");
 
                 byte[] signature;
                 String certificateBase64;
 
                 synchronized (dscService) {
-                    signature = dscService.signRaw(normalizedBytes);
+                    // Sign the NORMALIZED bytes (what ICEGATE will verify against)
+                    signature = dscService.signRaw(bytesToSign);
                     certificateBase64 = dscService.getCertificateBase64();
                 }
 
@@ -220,14 +222,16 @@ public class SigningServer {
                 // Construct ICEGATE .sb format
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-                // Write normalized bytes
-                baos.write(normalizedBytes);
+                // Write the original bytes but ensure the final record delimiter is LF to match nCode
+                String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
+                baos.write(dataPart.getBytes("ISO-8859-1"));
+                baos.write('\n'); // Force LF for the TREC record
 
-                // Append signature blocks with \r\n and Softlink version string
-                baos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\r\n").getBytes("ISO-8859-1"));
-                baos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\r\n")
+                // Append signature blocks with \n (LF only — matches V-NCODE format)
+                baos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\n").getBytes("ISO-8859-1"));
+                baos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\n")
                         .getBytes("ISO-8859-1"));
-                baos.write("<SIGNER-VERSION>SOFTLINK GLOBAL v10.15</SIGNER-VERSION>".getBytes("ISO-8859-1"));
+                baos.write("<SIGNER-VERSION>V-NCODE_01.05.2013</SIGNER-VERSION>".getBytes("ISO-8859-1"));
 
                 byte[] outputBytes = baos.toByteArray();
 

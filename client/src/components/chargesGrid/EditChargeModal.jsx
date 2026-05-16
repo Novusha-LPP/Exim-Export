@@ -50,6 +50,12 @@ const EditChargeModal = ({
   const dropdownRef = useRef(null);
   const modalRef = useRef(null);
 
+  const addSourceLabel = (items = [], sourceLabel) =>
+    items.map((item) => ({
+      ...item,
+      sourceLabel
+    }));
+
   // Lock body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -82,12 +88,12 @@ const EditChargeModal = ({
           axios.get(`${import.meta.env.VITE_API_STRING}/get-transporters`),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-terminal-codes`)
         ]);
-        setShippingLines(slRes.data);
-        setSuppliers(supRes.data);
-        setOrganizations(orgRes.data.organizations || []);
-        setCfsList(cfsRes.data);
-        setTransporters(transRes.data);
-        setTerminalCodes(termRes.data);
+        setShippingLines(addSourceLabel(slRes.data, 'Shipping Line'));
+        setSuppliers(addSourceLabel(supRes.data, 'Vendor'));
+        setOrganizations(addSourceLabel(orgRes.data.organizations || [], 'Organisation'));
+        setCfsList(addSourceLabel(cfsRes.data, 'CFS'));
+        setTransporters(addSourceLabel(transRes.data, 'Transporter'));
+        setTerminalCodes(addSourceLabel(termRes.data, 'Terminal'));
       } catch (error) {
         console.error("Error fetching master data:", error);
       }
@@ -211,6 +217,9 @@ const EditChargeModal = ({
       return "File";
     }
   };
+
+  const getPartySourceLabel = (item) =>
+    item?.sourceLabel || item?.directoryType || 'Master Directory';
 
   const handleFieldChange = (index, field, value, section = null) => {
     const updated = [...formData];
@@ -769,7 +778,7 @@ const EditChargeModal = ({
                                         .map((item, idx) => (
                                           <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'revenue', item)}>
                                             <span className="ep-item-name">{item.name || item.organization}</span>
-                                            <span className="ep-item-sub">{item.city || item.branches?.[0]?.city || item.branchInfo?.[0]?.city || 'Master Directory'}</span>
+                                            <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
                                           </li>
                                         ))}
                                       {((row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
@@ -1014,7 +1023,7 @@ const EditChargeModal = ({
                                         .map((item, idx) => (
                                           <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'cost', item)}>
                                             <span className="ep-item-name">{item.name || item.organization}</span>
-                                            <span className="ep-item-sub">{item.city || item.branches?.[0]?.city || item.branchInfo?.[0]?.city || 'Master Directory'}</span>
+                                            <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
                                           </li>
                                         ))}
                                       {((row.cost?.partyType?.toUpperCase() === 'AGENT' ? shippingLines :

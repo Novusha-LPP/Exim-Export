@@ -51,20 +51,21 @@ const getJobDetailsInternal = async (job_number) => {
         "Origin Port": job.port_of_loading || "",
         "Destination Port": job.port_of_discharge || "",
         "Custom House": job.custom_house || "",
-        "Gross Weight": job.gross_weight_kg || "",
-        "Net Wt.": job.net_weight_kg || "",
+        "Gross Weight": job.gross_weight_kg ? String(Math.round(parseFloat(job.gross_weight_kg))) : "",
+        "Net Wt": job.net_weight_kg ? String(Math.round(parseFloat(job.net_weight_kg))) : "",
         "Package Count": job.total_no_of_pkgs || "",
         "Package Unit": job.package_unit || "",
         "Container Count": (() => {
             const containers = job.containers || [];
-            if (containers.length === 0) return "0";
+            if (containers.length === 0) return job.no_of_containers || "0";
             const counts = {};
             containers.forEach(c => {
-                const size = c.size || "20";
-                counts[size] = (counts[size] || 0) + 1;
+                // Use type if available (e.g. '40 HC'), otherwise size, default to '20'
+                const detail = c.type || c.size || "20";
+                counts[detail] = (counts[detail] || 0) + 1;
             });
             return Object.entries(counts)
-                .map(([size, count]) => `${count} X ${size}`)
+                .map(([detail, count]) => `${count} X ${detail}`)
                 .join(", ");
         })(),
         "Containers": (job.containers || []).map(c => c.containerNo).filter(Boolean).join(", "),

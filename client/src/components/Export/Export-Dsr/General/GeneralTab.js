@@ -373,6 +373,9 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
               `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""}`,
             ),
             exporter_branch_name: toUpper(branch.branchName || ""),
+            marks_nos: (!formik.values.marks_nos || formik.values.marks_nos.trim() === "") 
+              ? toUpper(exp.registrationDetails?.aeoCode || "") 
+              : formik.values.marks_nos
           };
 
           const shouldUpdate =
@@ -382,7 +385,8 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
             getVal("branch_sno") !== updates.branch_sno ||
             getVal("exporter_type") !== updates.exporter_type ||
             getVal("exporter_address") !== updates.exporter_address ||
-            getVal("exporter_branch_name") !== updates.exporter_branch_name;
+            getVal("exporter_branch_name") !== updates.exporter_branch_name ||
+            getVal("marks_nos") !== updates.marks_nos;
 
           if (shouldUpdate) {
             Object.entries(updates).forEach(([key, val]) =>

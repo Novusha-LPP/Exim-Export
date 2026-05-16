@@ -850,6 +850,9 @@ const ExportChecklistGenerator = ({
       });
 
       yPos = pdf.lastAutoTable.finalY + 10;
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`Total ROSCTL Amount: ${data.rosctlTotalAmount || "0.00"}`, rightX, yPos, { align: "right" });
+      yPos += 15;
     }
 
     if (data.deecData && data.deecData.length > 0) {
@@ -1890,6 +1893,17 @@ const ExportChecklistGenerator = ({
           allProducts?.forEach((product) => {
             product.drawbackDetails?.forEach((dbk) => {
               total += parseFloat(dbk.dbkAmount) || 0;
+            });
+          });
+          return total.toFixed(2);
+        })(),
+        rosctlTotalAmount: (() => {
+          let total = 0;
+          allProducts?.forEach((product) => {
+            product.drawbackDetails?.forEach((dbk) => {
+              if (dbk.showRosctl) {
+                total += parseFloat(dbk.rosctlAmount) || 0;
+              }
             });
           });
           return total.toFixed(2);

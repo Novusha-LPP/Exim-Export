@@ -603,6 +603,20 @@ const ESanchitEditDialog = ({
     }
   }, [open, jobData, organizations, consigneeList]);
   
+  // Auto-populate Date-Time Upload with current date-time if empty
+  useEffect(() => {
+    if (open && (!safeDoc.dateTimeOfUpload || safeDoc.dateTimeOfUpload.trim() === "")) {
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const formattedNow = `${day}-${month}-${year} ${hours}:${minutes}`;
+      handleFieldChange("dateTimeOfUpload", formattedNow);
+    }
+  }, [open]);
+  
   // Auto-populate Inv. Sr. No. and Doc details for single invoice
   useEffect(() => {
     if (!open || !jobData?.invoices || jobData.invoices.length !== 1) return;

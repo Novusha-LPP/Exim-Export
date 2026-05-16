@@ -229,6 +229,31 @@ function ExportJobsModule() {
     fetchExportJobsUsers();
   }, []);
 
+  // Auto-populate AEO Code into Marks & Nos globally for the job
+  useEffect(() => {
+    const exporterName = formik.values.exporter;
+    if (loading || !exporterName || (formik.values.marks_nos && formik.values.marks_nos.trim() !== "")) return;
+
+    const fetchExporterAEO = async () => {
+      try {
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_STRING}/directory/exporter?exporter=${encodeURIComponent(exporterName)}`
+        );
+        if (res.data?.success && res.data.data) {
+          const aeoCode = res.data.data.registrationDetails?.aeoCode;
+          if (aeoCode && (!formik.values.marks_nos || formik.values.marks_nos.trim() === "")) {
+            formik.setFieldValue("marks_nos", toUpper(aeoCode));
+          }
+        }
+      } catch (err) {
+        // fail silently
+      }
+    };
+
+    const timer = setTimeout(fetchExporterAEO, 500); // Debounce to avoid excessive calls
+    return () => clearTimeout(timer);
+  }, [loading, formik.values.exporter, formik.values.marks_nos]);
+
   // 🔑 GLOBAL SYNC: Initialize and Update Milestones & Detailed Status
   // This ensures that even if user never clicks "Tracking Completed" tab,
   // the milestones and detailedStatus are correctly derived from source data.

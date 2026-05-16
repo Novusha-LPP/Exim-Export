@@ -1230,6 +1230,7 @@ const AddExJobs = ({ onJobCreated }) => {
       ieCode: toUpper(displayValue), // 👈 match state + input
       panNo: toUpper(panNo),
       gstin: toUpper(gstin),
+      marks_nos: toUpper(org.registrationDetails?.aeoCode || ""),
     }));
 
     setShowDropdown(false);

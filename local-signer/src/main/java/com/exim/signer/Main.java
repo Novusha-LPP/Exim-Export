@@ -195,17 +195,17 @@ public class Main extends JFrame {
                 byte[] rawBytes = Files.readAllBytes(inputFile.toPath());
                 log("Read file: " + rawBytes.length + " bytes");
 
-                // ✅ STEP 2: Keep all \r\n intact, only ensure last line ends with \n not \r\n
-                String contentStr = new String(rawBytes, "ISO-8859-1");
+                byte[] originalBytes = rawBytes; // keep original for writing to file
 
-                // ✅ STEP 3: Ensure exactly one \n at end
-                contentStr = contentStr.stripTrailing() + "\n";
+                // Apply SAME normalization ICEGATE uses before verifying
+                // Based on nCode behavior: convert all \r\n to \n, strip trailing, add \n
+                String normalized = new String(rawBytes, "ISO-8859-1")
+                    .replace("\r\n", "\n")   // CRLF → LF
+                    .stripTrailing() + "\n"; // strip end + single \n
+                byte[] bytesToSign = normalized.getBytes("ISO-8859-1");
 
-                byte[] normalizedBytes = contentStr.getBytes("ISO-8859-1");
-                log("Normalized: " + normalizedBytes.length + " bytes");
-
-                // ✅ STEP 4: Sign the NORMALIZED bytes
-                byte[] signature = dscService.signRaw(normalizedBytes);
+                // ✅ Sign the NORMALIZED bytes (what ICEGATE will verify against)
+                byte[] signature = dscService.signRaw(bytesToSign);
                 log("Signature created: " + signature.length + " bytes");
 
                 String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
@@ -221,15 +221,17 @@ public class Main extends JFrame {
                 File sbFile = new File(outputDir, baseName + "Signed.sb");
 
                 try (FileOutputStream fos = new FileOutputStream(sbFile)) {
-                    // ✅ STEP 5: Write normalized bytes (same bytes that were signed)
-                    fos.write(normalizedBytes);
+                    // Write the original bytes but ensure the final record delimiter is LF to match nCode
+                    String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
+                    fos.write(dataPart.getBytes("ISO-8859-1"));
+                    fos.write('\n'); // Force LF for the TREC record
 
-                    // ✅ STEP 6: Append signature blocks with \r\n + correct version
+                    // ✅ STEP 6: Append signature blocks with \n (LF only — V-NCODE format)
                     fos.write(
-                            ("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\r\n").getBytes("ISO-8859-1"));
-                    fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\r\n")
+                            ("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\n").getBytes("ISO-8859-1"));
+                    fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\n")
                             .getBytes("ISO-8859-1"));
-                    fos.write("<SIGNER-VERSION>SOFTLINK GLOBAL v10.15</SIGNER-VERSION>".getBytes("ISO-8859-1"));
+                    fos.write("<SIGNER-VERSION>V-NCODE_01.05.2013</SIGNER-VERSION>".getBytes("ISO-8859-1"));
                 }
 
                 log("✅ Saved signed file: " + sbFile.getAbsolutePath());
@@ -375,18 +377,19 @@ public class Main extends JFrame {
 
                     log("Signing Job: " + jobNo);
 
-                    // ✅ FIXED
-                    byte[] rawBytes = content.getBytes("ISO-8859-1"); // content comes from tableModel
-                    // ✅ CORRECT — keep all \r\n, only fix the very last line ending
-                    String contentStr = new String(rawBytes, "ISO-8859-1");
+                    // ✅ Get raw bytes from content
+                    byte[] rawBytes = content.getBytes("ISO-8859-1");
+                    byte[] originalBytes = rawBytes; // keep original for writing to file
 
-                    // Strip trailing whitespace/newlines and end with exactly \n (not \r\n)
-                    contentStr = contentStr.stripTrailing() + "\n";
+                    // Apply SAME normalization ICEGATE uses before verifying
+                    // Based on nCode behavior: convert all \r\n to \n, strip trailing, add \n
+                    String normalized = new String(rawBytes, "ISO-8859-1")
+                        .replace("\r\n", "\n")   // CRLF → LF
+                        .stripTrailing() + "\n"; // strip end + single \n
+                    byte[] bytesToSign = normalized.getBytes("ISO-8859-1");
 
-                    byte[] normalizedBytes = contentStr.getBytes("ISO-8859-1");
-
-                    // ✅ Sign normalized bytes
-                    byte[] signature = dscService.signRaw(normalizedBytes);
+                    // ✅ Sign the NORMALIZED bytes (what ICEGATE will verify against)
+                    byte[] signature = dscService.signRaw(bytesToSign);
 
                     String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
                     String certificateBase64 = dscService.getCertificateBase64();
@@ -397,18 +400,19 @@ public class Main extends JFrame {
                     File sbFile = new File(outputDir, baseName + ".sb");
 
                     try (FileOutputStream fos = new FileOutputStream(sbFile)) {
+                        // Write the original bytes but ensure the final record delimiter is LF to match nCode
+                        String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
+                        fos.write(dataPart.getBytes("ISO-8859-1"));
+                        fos.write('\n'); // Force LF for the TREC record
 
-                        // Write normalized bytes
-                        fos.write(normalizedBytes);
-
-                        // Append signature blocks with \r\n and Softlink version string
-                        fos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\r\n")
+                        // Append signature blocks with \n (LF only — matches V-NCODE format)
+                        fos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\n")
                                 .getBytes("ISO-8859-1"));
 
-                        fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\r\n")
+                        fos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\n")
                                 .getBytes("ISO-8859-1"));
 
-                        fos.write("<SIGNER-VERSION>SOFTLINK GLOBAL v10.15</SIGNER-VERSION>"
+                        fos.write("<SIGNER-VERSION>V-NCODE_01.05.2013</SIGNER-VERSION>"
                                 .getBytes("ISO-8859-1"));
                     }
 
@@ -446,21 +450,19 @@ public class Main extends JFrame {
 
     public static void main(String[] args) {
         System.out.println("==========================================");
-        System.out.println("      Exim DSC Headless Signer");
+        System.out.println("      Exim DSC Local Signer");
         System.out.println("==========================================");
-        System.out.println("Starting background server...");
 
         try {
-            DscService dscService = new DscService();
-            SigningServer server = new SigningServer(dscService);
-            server.start();
-            System.out.println("✅ Server is running in headless mode. You can close this window to stop.");
-
-            // Keep the main thread alive indefinitely
-            Thread.currentThread().join();
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception e) {
-            System.err.println("❌ Failed to start headless server: " + e.getMessage());
             e.printStackTrace();
         }
+
+        SwingUtilities.invokeLater(() -> {
+            Main app = new Main();
+            app.setLocationRelativeTo(null);
+            app.setVisible(true);
+        });
     }
 }

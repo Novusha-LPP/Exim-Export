@@ -171,14 +171,14 @@ public class DscService {
 
         PrivateKey privateKey = getFreshPrivateKey();
         
-        // Upgrade to SHA256withRSA for ICEGATE compliance
-        Signature signature = Signature.getInstance("SHA256withRSA", pkcs11Provider);
+        // ICEGATE ICES 1.5 flat-file requires SHA1withRSA (V-NCODE compatible)
+        Signature signature = Signature.getInstance("SHA1withRSA", pkcs11Provider);
         signature.initSign(privateKey);
         signature.update(data);
 
         byte[] signedBytes = signature.sign();
 
-        System.out.println("✅ RAW SHA256withRSA signature generated. Length: " + signedBytes.length);
+        System.out.println("✅ RAW SHA1withRSA signature generated. Length: " + signedBytes.length);
 
         return signedBytes;
     }

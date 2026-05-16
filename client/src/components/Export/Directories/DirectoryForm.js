@@ -322,13 +322,13 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
 
 
         return (
-          <Form>
-            <Box sx={{ maxHeight: "80vh", overflow: "auto", p: 1 }}>
+          <Form style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            <Box sx={{ p: 0.5 }}>
               {/* Organization & Basic Info */}
               <Box
                 sx={{
-                  mb: 1,
-                  p: 1,
+                  mb: 0.5,
+                  p: 0.75,
                   bgcolor: "rgba(0,0,0,0.02)",
                   borderRadius: 1,
                 }}
@@ -336,15 +336,15 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 <Typography
                   variant="subtitle1"
                   sx={{
-                    mb: 0.5,
+                    mb: 0.25,
                     display: "flex",
                     alignItems: "center",
                     gap: 0.25,
-                    fontSize: "0.8rem",
+                    fontSize: "0.75rem",
                     fontWeight: "bold"
                   }}
                 >
-                  <BusinessIcon fontSize="small" color="primary" />
+                  <BusinessIcon sx={{ fontSize: 16 }} color="primary" />
                   Company Information
                 </Typography>
 
@@ -365,7 +365,11 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         touched.organization && Boolean(errors.organization)
                       }
                       helperText={touched.organization && errors.organization}
-                      margin="dense"
+                      sx={{
+                        "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                        "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                        "& .MuiInputLabel-shrink": { top: 0 },
+                      }}
                       inputProps={{
                         style: { textTransform: "uppercase" },
                       }}
@@ -382,22 +386,24 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         Boolean(errors.generalInfo?.entityType)
                       }
                     >
-                      <InputLabel>Company Type *</InputLabel>
+                      <InputLabel sx={{ fontSize: "0.75rem", top: -4, "&.MuiInputLabel-shrink": { top: 0 } }}>Company Type *</InputLabel>
                       <Select
                         name="generalInfo.entityType"
                         value={values.generalInfo.entityType}
                         onChange={handleChange}
                         onBlur={handleBlur}
                         label="Company Type *"
+                        sx={{ height: 28, fontSize: "0.75rem" }}
+                        MenuProps={{ PaperProps: { style: { maxHeight: 200 } } }}
                       >
-                        <MenuItem value="Private Limited">
+                        <MenuItem value="Private Limited" sx={{ fontSize: "0.75rem", py: 0.5 }}>
                           Private Limited
                         </MenuItem>
-                        <MenuItem value="Public Limited">
+                        <MenuItem value="Public Limited" sx={{ fontSize: "0.75rem", py: 0.5 }}>
                           Public Limited
                         </MenuItem>
-                        <MenuItem value="Proprietor">Proprietor</MenuItem>
-                        <MenuItem value="Partner">Partner</MenuItem>
+                        <MenuItem value="Proprietor" sx={{ fontSize: "0.75rem", py: 0.5 }}>Proprietor</MenuItem>
+                        <MenuItem value="Partner" sx={{ fontSize: "0.75rem", py: 0.5 }}>Partner</MenuItem>
                       </Select>
                       {touched.generalInfo?.entityType &&
                         errors.generalInfo?.entityType && (
@@ -418,18 +424,20 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         Boolean(errors.generalInfo?.exporterType)
                       }
                     >
-                      <InputLabel>Exporter Type *</InputLabel>
+                      <InputLabel sx={{ fontSize: "0.75rem", top: -4, "&.MuiInputLabel-shrink": { top: 0 } }}>Exporter Type *</InputLabel>
                       <Select
                         name="generalInfo.exporterType"
                         value={values.generalInfo.exporterType}
                         onChange={handleChange}
                         onBlur={handleBlur}
                         label="Exporter Type *"
+                        sx={{ height: 28, fontSize: "0.75rem" }}
+                        MenuProps={{ PaperProps: { style: { maxHeight: 200 } } }}
                       >
-                        <MenuItem value="Manufacturer Exporter">
+                        <MenuItem value="Manufacturer Exporter" sx={{ fontSize: "0.75rem", py: 0.5 }}>
                           Manufacturer Exporter
                         </MenuItem>
-                        <MenuItem value="Marchant Exporter">
+                        <MenuItem value="Marchant Exporter" sx={{ fontSize: "0.75rem", py: 0.5 }}>
                           Marchant Exporter
                         </MenuItem>
                       </Select>
@@ -465,7 +473,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         label="Shipper"
                         sx={{
                           "& .MuiFormControlLabel-label": {
-                            fontSize: "0.8rem",
+                            fontSize: "0.7rem",
                           },
                         }}
                       />
@@ -492,7 +500,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         label="Consignee"
                         sx={{
                           "& .MuiFormControlLabel-label": {
-                            fontSize: "0.8rem",
+                            fontSize: "0.7rem",
                           },
                         }}
                       />
@@ -508,17 +516,19 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         touched.approvalStatus && Boolean(errors.approvalStatus)
                       }
                     >
-                      <InputLabel>Status *</InputLabel>
+                      <InputLabel sx={{ fontSize: "0.75rem", top: -4, "&.MuiInputLabel-shrink": { top: 0 } }}>Status *</InputLabel>
                       <Select
                         name="approvalStatus"
                         value={values.approvalStatus}
                         onChange={handleChange}
                         onBlur={handleBlur}
                         label="Status *"
+                        sx={{ height: 28, fontSize: "0.75rem" }}
+                        MenuProps={{ PaperProps: { style: { maxHeight: 200 } } }}
                       >
-                        <MenuItem value="Pending">Pending</MenuItem>
-                        <MenuItem value="Approved">Approved</MenuItem>
-                        <MenuItem value="Rejected">Rejected</MenuItem>
+                        <MenuItem value="Pending" sx={{ fontSize: "0.75rem", py: 0.5 }}>Pending</MenuItem>
+                        <MenuItem value="Approved" sx={{ fontSize: "0.75rem", py: 0.5 }}>Approved</MenuItem>
+                        <MenuItem value="Rejected" sx={{ fontSize: "0.75rem", py: 0.5 }}>Rejected</MenuItem>
                       </Select>
                       {touched.approvalStatus && errors.approvalStatus && (
                         <FormHelperText>{errors.approvalStatus}</FormHelperText>
@@ -531,8 +541,8 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
               {/* Registration Details */}
               <Box
                 sx={{
-                  mb: 1,
-                  p: 1,
+                  mb: 0.5,
+                  p: 0.75,
                   bgcolor: "rgba(0,0,0,0.02)",
                   borderRadius: 1,
                 }}
@@ -540,15 +550,15 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 <Typography
                   variant="subtitle1"
                   sx={{
-                    mb: 0.5,
+                    mb: 0.25,
                     display: "flex",
                     alignItems: "center",
                     gap: 0.25,
-                    fontSize: "0.8rem",
+                    fontSize: "0.75rem",
                     fontWeight: "bold"
                   }}
                 >
-                  <AssignmentIcon fontSize="small" color="primary" />
+                  <AssignmentIcon sx={{ fontSize: 16 }} color="primary" />
                   Registration
                 </Typography>
 
@@ -575,7 +585,11 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         touched.registrationDetails?.ieCode &&
                         errors.registrationDetails?.ieCode
                       }
-                      margin="dense"
+                      sx={{
+                        "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                        "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                        "& .MuiInputLabel-shrink": { top: 0 },
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6} md={4}>
@@ -601,7 +615,11 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         touched.registrationDetails?.panNo &&
                         errors.registrationDetails?.panNo
                       }
-                      margin="dense"
+                      sx={{
+                        "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                        "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                        "& .MuiInputLabel-shrink": { top: 0 },
+                      }}
                       inputProps={{
                         style: { textTransform: "uppercase" },
                         maxLength: 10,
@@ -632,7 +650,11 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         touched.registrationDetails?.aeoCode &&
                         errors.registrationDetails?.aeoCode
                       }
-                      margin="dense"
+                      sx={{
+                        "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                        "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                        "& .MuiInputLabel-shrink": { top: 0 },
+                      }}
                       inputProps={{
                         style: { textTransform: "uppercase" },
                       }}
@@ -665,6 +687,386 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                   </Grid>
                 </Grid>
               </Box>
+
+              {/* Branch Information Header */}
+              <Box
+                sx={{
+                  mb: 0.5,
+                  p: 0.75,
+                  bgcolor: "rgba(0,0,0,0.02)",
+                  borderRadius: 1,
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 1.5,
+                  }}
+                >
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      fontSize: "0.75rem",
+                      fontWeight: "bold"
+                    }}
+                  >
+                    <LocationIcon sx={{ fontSize: 16 }} color="primary" />
+                    Branch Information
+                  </Typography>
+
+                  {!readOnly && (
+                    <Button
+                      startIcon={<AddIcon />}
+                      onClick={() =>
+                        setFieldValue("branchInfo", [
+                          ...values.branchInfo,
+                          {
+                            branchCode: "",
+                            branchName: `Branch ${values.branchInfo.length}`, // Auto-name from 1
+                            address: "",
+                            city: "",
+                            state: "",
+                            postalCode: "",
+                            country: "India",
+                            mobile: "",
+                            email: "",
+                          },
+                        ])
+                      }
+                      variant="outlined"
+                      size="small"
+                      sx={{ mt: 0 }}
+                    >
+                      Add Branch
+                    </Button>
+                  )}
+                </Box>
+              </Box>
+
+              {/* Branch Information Array */}
+              <FieldArray name="branchInfo">
+                {({ push, remove }) => (
+                  <Box>
+                    {values.branchInfo.map((branch, index) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          mb: 0.5,
+                          p: 0.75,
+                          bgcolor: "white",
+                          borderRadius: 1,
+                          border: "1px solid",
+                          borderColor: "divider",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            mb: 0.5,
+                          }}
+                        >
+                          <Typography
+                            variant="subtitle2"
+                            sx={{ fontSize: "0.75rem", fontWeight: "bold" }}
+                          >
+                            Branch {index}
+                          </Typography>
+                          {!readOnly && (
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => remove(index)}
+                              disabled={values.branchInfo.length === 1}
+                              sx={{ p: 0 }}
+                            >
+                              <DeleteIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          )}
+                        </Box>
+
+                        <Grid container spacing={0.5}>
+                          <Grid item xs={12} sm={6} md={3}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`branchInfo[${index}].branchName`}
+                              label="Branch Name *"
+                              value={branch.branchName}
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                              error={
+                                touched.branchInfo?.[index]?.branchName &&
+                                Boolean(errors.branchInfo?.[index]?.branchName)
+                              }
+                              helperText={
+                                touched.branchInfo?.[index]?.branchName &&
+                                errors.branchInfo?.[index]?.branchName
+                              }
+                              sx={{
+                                "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                "& .MuiInputLabel-shrink": { top: 0 },
+                              }}
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={6} md={3}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`branchInfo[${index}].branchCode`}
+                              label="Branch Code *"
+                              value={branch.branchCode}
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                              error={
+                                touched.branchInfo?.[index]?.branchCode &&
+                                Boolean(errors.branchInfo?.[index]?.branchCode)
+                              }
+                              helperText={
+                                touched.branchInfo?.[index]?.branchCode &&
+                                errors.branchInfo?.[index]?.branchCode
+                              }
+                              sx={{
+                                "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                "& .MuiInputLabel-shrink": { top: 0 },
+                              }}
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={12} md={5}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`branchInfo[${index}].gstNo`}
+                              label="GST Number"
+                              value={branch.gstNo}
+                              onChange={(e) => {
+                                const uppercaseValue = e.target.value.toUpperCase();
+                                setFieldValue(
+                                  `branchInfo[${index}].gstNo`,
+                                  uppercaseValue,
+                                );
+                              }}
+                              onBlur={handleBlur}
+                              error={
+                                touched.branchInfo?.[index]?.gstNo &&
+                                Boolean(errors.branchInfo?.[index]?.gstNo)
+                              }
+                              helperText={
+                                touched.branchInfo?.[index]?.gstNo &&
+                                errors.branchInfo?.[index]?.gstNo
+                              }
+                              sx={{
+                                "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                "& .MuiInputLabel-shrink": { top: 0 },
+                              }}
+                              inputProps={{
+                                style: { textTransform: "uppercase" },
+                                maxLength: 15,
+                              }}
+                            />
+                          </Grid>
+                          <Grid item xs={12}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              multiline
+                              rows={1}
+                              name={`branchInfo[${index}].address`}
+                              label="Address *"
+                              value={branch.address}
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                              error={
+                                touched.branchInfo?.[index]?.address &&
+                                Boolean(errors.branchInfo?.[index]?.address)
+                              }
+                              helperText={
+                                touched.branchInfo?.[index]?.address &&
+                                errors.branchInfo?.[index]?.address
+                              }
+                              sx={{
+                                "& .MuiInputBase-root": { fontSize: "0.75rem" },
+                                "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                "& .MuiInputLabel-shrink": { top: 0 },
+                              }}
+                            />
+                          </Grid>
+                          <Grid item xs={6} sm={3} md={2}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`branchInfo[${index}].city`}
+                              label="City *"
+                              value={branch.city}
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                              error={
+                                touched.branchInfo?.[index]?.city &&
+                                Boolean(errors.branchInfo?.[index]?.city)
+                              }
+                              helperText={
+                                touched.branchInfo?.[index]?.city &&
+                                errors.branchInfo?.[index]?.city
+                              }
+                              sx={{
+                                "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                "& .MuiInputLabel-shrink": { top: 0 },
+                              }}
+                            />
+                          </Grid>
+                          <Grid item xs={6} sm={3} md={2}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`branchInfo[${index}].state`}
+                              label="State *"
+                              value={branch.state}
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                              error={
+                                touched.branchInfo?.[index]?.state &&
+                                Boolean(errors.branchInfo?.[index]?.state)
+                              }
+                              helperText={
+                                touched.branchInfo?.[index]?.state &&
+                                errors.branchInfo?.[index]?.state
+                              }
+                              sx={{
+                                "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                "& .MuiInputLabel-shrink": { top: 0 },
+                              }}
+                            />
+                          </Grid>
+                          <Grid item xs={6} sm={3} md={2}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`branchInfo[${index}].postalCode`}
+                              label="Postal Code *"
+                              value={branch.postalCode}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                  .replace(/\D/g, "")
+                                  .slice(0, 6);
+                                setFieldValue(
+                                  `branchInfo[${index}].postalCode`,
+                                  value,
+                                );
+                              }}
+                              onBlur={handleBlur}
+                              error={
+                                touched.branchInfo?.[index]?.postalCode &&
+                                Boolean(errors.branchInfo?.[index]?.postalCode)
+                              }
+                              helperText={
+                                touched.branchInfo?.[index]?.postalCode &&
+                                errors.branchInfo?.[index]?.postalCode
+                              }
+                              sx={{
+                                "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                "& .MuiInputLabel-shrink": { top: 0 },
+                              }}
+                            />
+                          </Grid>
+                          <Grid item xs={6} sm={3} md={2}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`branchInfo[${index}].country`}
+                              label="Country *"
+                              value={branch.country}
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                              error={
+                                touched.branchInfo?.[index]?.country &&
+                                Boolean(errors.branchInfo?.[index]?.country)
+                              }
+                              helperText={
+                                touched.branchInfo?.[index]?.country &&
+                                errors.branchInfo?.[index]?.country
+                              }
+                              sx={{
+                                "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                "& .MuiInputLabel-shrink": { top: 0 },
+                              }}
+                            />
+                          </Grid>
+                          <Grid item xs={6} sm={4} md={3}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`branchInfo[${index}].mobile`}
+                              label="Mobile"
+                              value={branch.mobile}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                  .replace(/\D/g, "")
+                                  .slice(0, 10);
+                                setFieldValue(
+                                  `branchInfo[${index}].mobile`,
+                                  value,
+                                );
+                              }}
+                              onBlur={handleBlur}
+                              error={
+                                touched.branchInfo?.[index]?.mobile &&
+                                Boolean(errors.branchInfo?.[index]?.mobile)
+                              }
+                              helperText={
+                                touched.branchInfo?.[index]?.mobile &&
+                                errors.branchInfo?.[index]?.mobile
+                              }
+                              sx={{
+                                "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                "& .MuiInputLabel-shrink": { top: 0 },
+                              }}
+                            />
+                          </Grid>
+                          <Grid item xs={6} sm={8} md={5}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              name={`branchInfo[${index}].email`}
+                              label="Email"
+                              type="email"
+                              value={branch.email}
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                              error={
+                                touched.branchInfo?.[index]?.email &&
+                                Boolean(errors.branchInfo?.[index]?.email)
+                              }
+                              helperText={
+                                touched.branchInfo?.[index]?.email &&
+                                errors.branchInfo?.[index]?.email
+                              }
+                              sx={{
+                                "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                "& .MuiInputLabel-shrink": { top: 0 },
+                              }}
+                            />
+                          </Grid>
+                        </Grid>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </FieldArray>
 
               {/* Bank Details */}
               <Box
@@ -724,8 +1126,8 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         <Box
                           key={index}
                           sx={{
-                            mb: 1,
-                            p: 1,
+                            mb: 0.5,
+                            p: 0.75,
                             bgcolor: "white",
                             borderRadius: 1,
                             border: "1px solid",
@@ -737,12 +1139,12 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                               display: "flex",
                               justifyContent: "space-between",
                               alignItems: "center",
-                              mb: 1,
+                              mb: 0.5,
                             }}
                           >
                             <Typography
                               variant="subtitle2"
-                              sx={{ fontSize: "0.8rem" }}
+                              sx={{ fontSize: "0.75rem", fontWeight: "bold" }}
                             >
                               Bank {index + 1}
                             </Typography>
@@ -752,8 +1154,9 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                 color="error"
                                 onClick={() => remove(index)}
                                 disabled={values.bankDetails.length === 1}
+                                sx={{ p: 0 }}
                               >
-                                <DeleteIcon fontSize="small" />
+                                <DeleteIcon sx={{ fontSize: 16 }} />
                               </IconButton>
                             )}
                           </Box>
@@ -777,7 +1180,11 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                   touched.bankDetails?.[index]?.entityName &&
                                   errors.bankDetails?.[index]?.entityName
                                 }
-                                margin="dense"
+                                sx={{
+                                  "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                  "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                  "& .MuiInputLabel-shrink": { top: 0 },
+                                }}
                               />
                             </Grid>
 
@@ -802,7 +1209,11 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                     ?.branchLocation &&
                                   errors.bankDetails?.[index]?.branchLocation
                                 }
-                                margin="dense"
+                                sx={{
+                                  "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                  "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                  "& .MuiInputLabel-shrink": { top: 0 },
+                                }}
                               />
                             </Grid>
 
@@ -825,7 +1236,11 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                   touched.bankDetails?.[index]?.accountNumber &&
                                   errors.bankDetails?.[index]?.accountNumber
                                 }
-                                margin="dense"
+                                sx={{
+                                  "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                  "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                  "& .MuiInputLabel-shrink": { top: 0 },
+                                }}
                               />
                             </Grid>
 
@@ -846,7 +1261,11 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                   touched.bankDetails?.[index]?.adCode &&
                                   errors.bankDetails?.[index]?.adCode
                                 }
-                                margin="dense"
+                                sx={{
+                                  "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                  "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                  "& .MuiInputLabel-shrink": { top: 0 },
+                                }}
                               />
                             </Grid>
 
@@ -874,7 +1293,11 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                   touched.bankDetails?.[index]?.ifscCode &&
                                   errors.bankDetails?.[index]?.ifscCode
                                 }
-                                margin="dense"
+                                sx={{
+                                  "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
+                                  "& .MuiInputLabel-root": { fontSize: "0.75rem", top: -4 },
+                                  "& .MuiInputLabel-shrink": { top: 0 },
+                                }}
                                 inputProps={{
                                   style: { textTransform: "uppercase" },
                                   maxLength: 11,
@@ -909,350 +1332,12 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 </FieldArray>
               </Box>
 
-              {/* Branch Information Header */}
-              <Box
-                sx={{
-                  mb: 1,
-                  p: 1,
-                  bgcolor: "rgba(0,0,0,0.02)",
-                  borderRadius: 1,
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 1.5,
-                  }}
-                >
-                  <Typography
-                    variant="subtitle1"
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0.5,
-                      fontSize: "0.9rem",
-                    }}
-                  >
-                    <LocationIcon fontSize="small" color="primary" />
-                    Branch Information
-                  </Typography>
-
-                  {!readOnly && (
-                    <Button
-                      startIcon={<AddIcon />}
-                      onClick={() =>
-                        setFieldValue("branchInfo", [
-                          ...values.branchInfo,
-                          {
-                            branchCode: "",
-                            branchName: `Branch ${values.branchInfo.length}`, // Auto-name from 1
-                            address: "",
-                            city: "",
-                            state: "",
-                            postalCode: "",
-                            country: "India",
-                            mobile: "",
-                            email: "",
-                          },
-                        ])
-                      }
-                      variant="outlined"
-                      size="small"
-                      sx={{ mt: 0 }}
-                    >
-                      Add Branch
-                    </Button>
-                  )}
-                </Box>
-              </Box>
-
-              {/* Branch Information Array */}
-              <FieldArray name="branchInfo">
-                {({ push, remove }) => (
-                  <Box>
-                    {values.branchInfo.map((branch, index) => (
-                      <Box
-                        key={index}
-                        sx={{
-                          mb: 1,
-                          p: 1,
-                          bgcolor: "white",
-                          borderRadius: 1,
-                          border: "1px solid",
-                          borderColor: "divider",
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            mb: 2,
-                          }}
-                        >
-                          <Typography
-                            variant="subtitle2"
-                            sx={{ fontSize: "0.9rem", fontWeight: "bold" }}
-                          >
-                            Branch {index}
-                          </Typography>
-                          {!readOnly && (
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => remove(index)}
-                              disabled={values.branchInfo.length === 1}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          )}
-                        </Box>
-
-                        <Grid container spacing={1}>
-                          <Grid item xs={12} sm={6} md={3}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`branchInfo[${index}].branchName`}
-                              label="Branch Name *"
-                              value={branch.branchName}
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              error={
-                                touched.branchInfo?.[index]?.branchName &&
-                                Boolean(errors.branchInfo?.[index]?.branchName)
-                              }
-                              helperText={
-                                touched.branchInfo?.[index]?.branchName &&
-                                errors.branchInfo?.[index]?.branchName
-                              }
-                              margin="dense"
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={6} md={3}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`branchInfo[${index}].branchCode`}
-                              label="Branch Code *"
-                              value={branch.branchCode}
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              error={
-                                touched.branchInfo?.[index]?.branchCode &&
-                                Boolean(errors.branchInfo?.[index]?.branchCode)
-                              }
-                              helperText={
-                                touched.branchInfo?.[index]?.branchCode &&
-                                errors.branchInfo?.[index]?.branchCode
-                              }
-                              margin="dense"
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={12} md={5}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`branchInfo[${index}].gstNo`}
-                              label="GST Number"
-                              value={branch.gstNo}
-                              onChange={(e) => {
-                                const uppercaseValue = e.target.value.toUpperCase();
-                                setFieldValue(
-                                  `branchInfo[${index}].gstNo`,
-                                  uppercaseValue,
-                                );
-                              }}
-                              onBlur={handleBlur}
-                              error={
-                                touched.branchInfo?.[index]?.gstNo &&
-                                Boolean(errors.branchInfo?.[index]?.gstNo)
-                              }
-                              helperText={
-                                touched.branchInfo?.[index]?.gstNo &&
-                                errors.branchInfo?.[index]?.gstNo
-                              }
-                              margin="dense"
-                              inputProps={{
-                                style: { textTransform: "uppercase" },
-                                maxLength: 15,
-                              }}
-                            />
-                          </Grid>
-                          <Grid item xs={12}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              multiline
-                              rows={1}
-                              name={`branchInfo[${index}].address`}
-                              label="Address *"
-                              value={branch.address}
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              error={
-                                touched.branchInfo?.[index]?.address &&
-                                Boolean(errors.branchInfo?.[index]?.address)
-                              }
-                              helperText={
-                                touched.branchInfo?.[index]?.address &&
-                                errors.branchInfo?.[index]?.address
-                              }
-                              margin="dense"
-                            />
-                          </Grid>
-                          <Grid item xs={6} sm={3} md={2}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`branchInfo[${index}].city`}
-                              label="City *"
-                              value={branch.city}
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              error={
-                                touched.branchInfo?.[index]?.city &&
-                                Boolean(errors.branchInfo?.[index]?.city)
-                              }
-                              helperText={
-                                touched.branchInfo?.[index]?.city &&
-                                errors.branchInfo?.[index]?.city
-                              }
-                              margin="dense"
-                            />
-                          </Grid>
-                          <Grid item xs={6} sm={3} md={2}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`branchInfo[${index}].state`}
-                              label="State *"
-                              value={branch.state}
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              error={
-                                touched.branchInfo?.[index]?.state &&
-                                Boolean(errors.branchInfo?.[index]?.state)
-                              }
-                              helperText={
-                                touched.branchInfo?.[index]?.state &&
-                                errors.branchInfo?.[index]?.state
-                              }
-                              margin="dense"
-                            />
-                          </Grid>
-                          <Grid item xs={6} sm={3} md={2}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`branchInfo[${index}].postalCode`}
-                              label="Postal Code *"
-                              value={branch.postalCode}
-                              onChange={(e) => {
-                                const value = e.target.value
-                                  .replace(/\D/g, "")
-                                  .slice(0, 6);
-                                setFieldValue(
-                                  `branchInfo[${index}].postalCode`,
-                                  value,
-                                );
-                              }}
-                              onBlur={handleBlur}
-                              error={
-                                touched.branchInfo?.[index]?.postalCode &&
-                                Boolean(errors.branchInfo?.[index]?.postalCode)
-                              }
-                              helperText={
-                                touched.branchInfo?.[index]?.postalCode &&
-                                errors.branchInfo?.[index]?.postalCode
-                              }
-                              margin="dense"
-                            />
-                          </Grid>
-                          <Grid item xs={6} sm={3} md={2}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`branchInfo[${index}].country`}
-                              label="Country *"
-                              value={branch.country}
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              error={
-                                touched.branchInfo?.[index]?.country &&
-                                Boolean(errors.branchInfo?.[index]?.country)
-                              }
-                              helperText={
-                                touched.branchInfo?.[index]?.country &&
-                                errors.branchInfo?.[index]?.country
-                              }
-                              margin="dense"
-                            />
-                          </Grid>
-                          <Grid item xs={6} sm={4} md={3}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`branchInfo[${index}].mobile`}
-                              label="Mobile"
-                              value={branch.mobile}
-                              onChange={(e) => {
-                                const value = e.target.value
-                                  .replace(/\D/g, "")
-                                  .slice(0, 10);
-                                setFieldValue(
-                                  `branchInfo[${index}].mobile`,
-                                  value,
-                                );
-                              }}
-                              onBlur={handleBlur}
-                              error={
-                                touched.branchInfo?.[index]?.mobile &&
-                                Boolean(errors.branchInfo?.[index]?.mobile)
-                              }
-                              helperText={
-                                touched.branchInfo?.[index]?.mobile &&
-                                errors.branchInfo?.[index]?.mobile
-                              }
-                              margin="dense"
-                            />
-                          </Grid>
-                          <Grid item xs={6} sm={8} md={5}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              name={`branchInfo[${index}].email`}
-                              label="Email"
-                              type="email"
-                              value={branch.email}
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              error={
-                                touched.branchInfo?.[index]?.email &&
-                                Boolean(errors.branchInfo?.[index]?.email)
-                              }
-                              helperText={
-                                touched.branchInfo?.[index]?.email &&
-                                errors.branchInfo?.[index]?.email
-                              }
-                              margin="dense"
-                            />
-                          </Grid>
-                        </Grid>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </FieldArray>
-
               {/* KYC Documents Section - MOVED OUTSIDE BRANCH LOOP */}
               <Box
                 sx={{
-                  mt: 1,
-                  mb: 1,
-                  p: 1,
+                  mt: 0.5,
+                  mb: 0.5,
+                  p: 0.75,
                   bgcolor: "rgba(0,0,0,0.02)",
                   borderRadius: 1,
                 }}
@@ -1260,14 +1345,15 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 <Typography
                   variant="subtitle1"
                   sx={{
-                    mb: 1,
+                    mb: 0.5,
                     display: "flex",
                     alignItems: "center",
                     gap: 0.5,
-                    fontSize: "0.85rem",
+                    fontSize: "0.75rem",
+                    fontWeight: "bold"
                   }}
                 >
-                  <DocumentIcon fontSize="small" color="primary" />
+                  <DocumentIcon sx={{ fontSize: 16 }} color="primary" />
                   KYC Documents
                 </Typography>
 
@@ -1313,8 +1399,9 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                           gutterBottom
                           sx={{
                             fontWeight: "bold",
-                            fontSize: "0.7rem",
+                            fontSize: "0.65rem",
                             color: doc.required ? "error.main" : "text.primary",
+                            mb: 0.25
                           }}
                         >
                           {doc.label} {doc.required ? "*" : ""}
@@ -1360,7 +1447,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                   display: "flex",
                   justifyContent: "flex-end",
                   gap: 1,
-                  p: 1.5,
+                  p: 1,
                   bgcolor: "background.paper",
                   borderTop: 1,
                   borderColor: "divider",
