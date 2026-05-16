@@ -13,6 +13,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             limit = 10,
             search = "",
             exporter = "",
+            ieCode = "",
             country = "",
             consignmentType = "",
             branch = "",
@@ -317,10 +318,21 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             filter.$and.push({ job_no: { $in: openJobNos } });
         }
 
+        if (ieCode) {
+            const ieCodeArray = ieCode.split(",").map(c => c.trim()).filter(Boolean);
+            if (ieCodeArray.length > 0) {
+                filter.$and.push({ ieCode: { $in: ieCodeArray } });
+            }
+        }
         if (exporter) filter.$and.push({ exporter: { $regex: exporter, $options: "i" } });
         if (country) filter.$and.push({ destination_country: { $regex: country, $options: "i" } });
         if (consignmentType) filter.$and.push({ consignmentType: consignmentType });
-        if (branch) filter.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
+        if (branch) {
+            const branchArray = branch.split(",").map(b => b.trim().toUpperCase()).filter(Boolean);
+            if (branchArray.length > 0) {
+                filter.$and.push({ branch_code: { $in: branchArray } });
+            }
+        }
         if (year && year !== "all") filter.$and.push({ year: year });
         if (customHouse) filter.$and.push({ custom_house: { $regex: customHouse, $options: "i" } });
 
