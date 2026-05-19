@@ -32,6 +32,7 @@ const purchaseBookEntrySchema = new mongoose.Schema({
     tds: { type: Number },
     total: { type: Number },
     status: { type: String, default: '' },
+    chargeHeadCategory: { type: String },
     createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

@@ -7,8 +7,8 @@
 import fs from 'fs';
 import crypto from 'crypto';
 
-const successBuf = fs.readFileSync('server/tools/962026Signed.sb');
-const failedBuf = fs.readFileSync('server/tools/GIM_EXP_SEA_00096_26-27_3201643.sb');
+const successBuf = fs.readFileSync('server/tools/1072026Signed.sb');
+const failedBuf = fs.readFileSync('server/tools/GIM_EXP_SEA_00107_26-27_3315740.sb');
 
 const successStr = successBuf.toString('latin1');
 const failedStr = failedBuf.toString('latin1');

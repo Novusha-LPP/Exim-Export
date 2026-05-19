@@ -1920,13 +1920,7 @@ const ExportChecklistGenerator = ({
         dbkData: (() => {
           const dbkRows = [];
           allProducts?.forEach((product, productIndex) => {
-            const invoice =
-              exportJob.invoices?.find((inv) =>
-                inv.products?.some(
-                  (p) => p.serialNumber === product.serialNumber,
-                ),
-              ) || exportJob.invoices?.[0];
-            const invNo = invoice?.invoiceNumber || "1";
+            const invNo = product.invoiceNo || "1";
 
             product.drawbackDetails?.forEach((dbk, dbkIndex) => {
               dbkRows.push({
@@ -1947,13 +1941,7 @@ const ExportChecklistGenerator = ({
         rosctlData: (() => {
           const rosctlRows = [];
           allProducts?.forEach((product, productIndex) => {
-            const invoice =
-              exportJob.invoices?.find((inv) =>
-                inv.products?.some(
-                  (p) => p.serialNumber === product.serialNumber,
-                ),
-              ) || exportJob.invoices?.[0];
-            const invNo = invoice?.invoiceNumber || "1";
+            const invNo = product.invoiceNo || "1";
 
             product.drawbackDetails?.forEach((dbk) => {
               if (dbk.showRosctl) {
@@ -1978,13 +1966,7 @@ const ExportChecklistGenerator = ({
         deecData: (() => {
           const deecRows = [];
           allProducts?.forEach((product, productIndex) => {
-            const invoice =
-              exportJob.invoices?.find((inv) =>
-                inv.products?.some(
-                  (p) => p.serialNumber === product.serialNumber,
-                ),
-              ) || exportJob.invoices?.[0];
-            const invNo = invoice?.invoiceNumber || "";
+            const invNo = product.invoiceNo || "";
             const itemNo = product.serialNumber || (productIndex + 1).toString();
 
             if (product.deecDetails) {
@@ -2032,13 +2014,7 @@ const ExportChecklistGenerator = ({
         epcgData: (() => {
           const epcgRows = [];
           allProducts?.forEach((product, productIndex) => {
-            const invoice =
-              exportJob.invoices?.find((inv) =>
-                inv.products?.some(
-                  (p) => p.serialNumber === product.serialNumber,
-                ),
-              ) || exportJob.invoices?.[0];
-            const invNo = invoice?.invoiceNumber || "";
+            const invNo = product.invoiceNo || "";
             const itemNo = product.serialNumber || (productIndex + 1).toString();
 
             if (product.epcgDetails) {

@@ -236,14 +236,27 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
 
         // Fallback for Charge Head Category if missing
         let chargeCategory = entry.chargeHeadCategory;
-        if (!chargeCategory && entry.jobRef && entry.chargeRef) {
+        if (!chargeCategory) {
             try {
-                const job = await ExJobModel.findOne(
-                    { _id: entry.jobRef, "charges._id": entry.chargeRef },
-                    { "charges.$": 1 }
-                ).lean();
-                if (job && job.charges && job.charges[0]) {
-                    chargeCategory = job.charges[0].chargeType || job.charges[0].category;
+                let job = null;
+                if (entry.jobRef) {
+                    job = await ExJobModel.findById(entry.jobRef).lean();
+                }
+                if (!job && entry.jobNo) {
+                    job = await ExJobModel.findOne({ job_no: entry.jobNo }).lean();
+                }
+                if (job) {
+                    let charge = null;
+                    if (entry.chargeRef) {
+                        charge = job.charges?.find(c => c._id?.toString() === entry.chargeRef);
+                    }
+                    if (!charge && entry.chargeHeading) {
+                        const normHeading = entry.chargeHeading.trim().toLowerCase();
+                        charge = job.charges?.find(c => c.chargeHead?.trim().toLowerCase() === normHeading);
+                    }
+                    if (charge) {
+                        chargeCategory = charge.chargeType || charge.category;
+                    }
                 }
             } catch (err) {
                 console.error("Error fetching fallback category for purchase entry:", err);

@@ -479,7 +479,7 @@ export function generateSBFlatFile(job) {
         mappedSealType = "S";
     } else if (sst.includes("WAREHOUSE") || sst.includes("WEARHOUSE")) {
         mappedSealType = "W";
-    } else if (isContainerized || validContainers.length > 0 && job.goods_stuffed_at !== "FACTORY") {
+    } else if ((isContainerized) && job.goods_stuffed_at !== "DOCK") {
         // Fallback: default to 'S' for containerized sea shipments if not explicitly warehouse
         mappedSealType = "S";
     } else mappedSealType = ""

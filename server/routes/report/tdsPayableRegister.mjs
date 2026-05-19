@@ -145,15 +145,39 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
         { header: "GST", key: "gst", width: 15 },
         { header: "TDS", key: "tds", width: 15 },
         { header: "Total", key: "total", width: 15 },
+        { header: "Charge Category", key: "chargeCategory", width: 20 },
         { header: "Status", key: "status", width: 15 },
       ];
 
       const entries = await PurchaseBookEntryModel.find(query).lean();
       for (const entry of entries) {
-        // Simple branch filter check if needed
-        if (branchId && branchId !== 'all') {
-            const job = await ExJobModel.findById(entry.jobRef).lean();
-            if (job?.branch_code !== branchId) continue;
+        let job = null;
+        let chargeCategory = entry.chargeHeadCategory;
+        
+        // We need job either for branch filter or missing chargeCategory fallback
+        if (!chargeCategory || (branchId && branchId !== 'all')) {
+            if (entry.jobRef) {
+                job = await ExJobModel.findById(entry.jobRef).lean();
+            }
+            if (!job && entry.jobNo) {
+                job = await ExJobModel.findOne({ job_no: entry.jobNo }).lean();
+            }
+            
+            if (branchId && branchId !== 'all' && job?.branch_code !== branchId) continue;
+            
+            if (!chargeCategory && job) {
+                let charge = null;
+                if (entry.chargeRef) {
+                    charge = job.charges?.find(c => c._id?.toString() === entry.chargeRef);
+                }
+                if (!charge && entry.chargeHeading) {
+                    const normHeading = entry.chargeHeading.trim().toLowerCase();
+                    charge = job.charges?.find(c => c.chargeHead?.trim().toLowerCase() === normHeading);
+                }
+                if (charge) {
+                    chargeCategory = charge.chargeType || charge.category || '';
+                }
+            }
         }
 
         worksheet.addRow({
@@ -168,6 +192,7 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
           gst: (entry.cgstAmt || 0) + (entry.sgstAmt || 0) + (entry.igstAmt || 0),
           tds: entry.tds,
           total: entry.total,
+          chargeCategory: chargeCategory || '',
           status: entry.status || 'Finalized',
         });
       }
