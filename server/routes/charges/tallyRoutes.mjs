@@ -117,7 +117,7 @@ const getJobDetailsInternal = async (job_number) => {
 
 router.get("/job-data", authApiKey, async (req, res) => {
     try {
-        const { job_number } = req.query;
+        const { job_number, invoice_number } = req.query;
         if (!job_number) {
             return res.status(400).send({ error: "job_number is a required query parameter" });
         }
@@ -125,7 +125,21 @@ router.get("/job-data", authApiKey, async (req, res) => {
         if (!responseData) {
             return res.status(404).send({ error: "Job not found for the provided job_number" });
         }
-        res.status(200).json(responseData);
+
+        // If an invoice_number query parameter is provided, find that specific invoice
+        if (invoice_number && Array.isArray(responseData)) {
+            const matched = responseData.find(inv =>
+                (inv["Invoice Number"] || "").toLowerCase() === invoice_number.trim().toLowerCase()
+            );
+            if (matched) {
+                return res.status(200).json(matched);
+            }
+        }
+
+        // Return a single object (the first mapped invoice) instead of an array
+        // to remove the [] brackets for Tally integration compatibility
+        const singleObject = Array.isArray(responseData) ? (responseData[0] || {}) : responseData;
+        res.status(200).json(singleObject);
     } catch (error) {
         console.error("Tally API Error:", error);
         res.status(500).send({ error: "Internal Server Error" });
