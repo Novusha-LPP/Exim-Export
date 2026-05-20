@@ -441,6 +441,15 @@ const arrayFrom = (value) => {
   return Array.isArray(value) ? value : [value];
 };
 
+const firstArray = (...values) => {
+  for (const value of values) {
+    if (!value) continue;
+    if (Array.isArray(value) && value.length > 0) return value;
+    if (!Array.isArray(value) && text(value) !== "") return [value];
+  }
+  return [];
+};
+
 const hasAnyValue = (value) =>
   Object.values(value || {}).some((item) => text(item) !== "");
 
@@ -464,16 +473,16 @@ function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
   const containers = arrayFrom(job.containers).filter((container) =>
     firstText(container?.containerNo),
   );
-  const docs = arrayFrom(firstValue(job.eSanchitDocuments, job.supportingDocs));
+  const docs = firstArray(job.eSanchitDocuments, job.supportingDocs);
   const includeEmptyRows = options.includeEmptyRows !== false;
 
-  const packingRows = arrayFrom(firstValue(job.packingList, job.packing_list)).map((item) => ({
+  const packingRows = firstArray(job.packingList, job.packing_list).map((item) => ({
     Packing_Number_From: firstText(item?.Packing_Number_From, item?.packingNumberFrom, item?.packing_number_from, item?.from),
     Packing_Number_To: firstText(item?.Packing_Number_To, item?.packingNumberTo, item?.packing_number_to, item?.to),
     Packing_Code: firstText(item?.Packing_Code, item?.packingCode, item?.packing_code, item?.code),
   })).filter(hasAnyValue);
 
-  const stuffRows = arrayFrom(firstValue(job.stuffDetails, job.stuff, job.STUFF)).map((item) => ({
+  const stuffRows = firstArray(job.stuffDetails, job.stuff, job.STUFF).map((item) => ({
     Factory_stuffed: toYN(firstValue(item?.Factory_stuffed, item?.factoryStuffed, item?.factory_stuffed)),
     Sample_accompanied: toYN(firstValue(item?.Sample_accompanied, item?.sampleAccompanied, item?.sample_accompanied)),
   })).filter(hasAnyValue);
