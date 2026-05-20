@@ -200,9 +200,11 @@ public class Main extends JFrame {
                 // Prepare the exact bytes that will form the payload in the file
                 String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
                 byte[] exactPayloadBytes = (dataPart + "\n").getBytes("ISO-8859-1");
+                byte[] strippedBytes = dataPart.getBytes("ISO-8859-1");
 
-                // ✅ Sign EXACTLY what will be written to the file
-                byte[] signature = dscService.signRaw(exactPayloadBytes);
+                // ✅ Sign using the double-nested hashing scheme on stripped bytes
+                byte[] signature = dscService.signSHA2(strippedBytes);
+
                 log("Signature created: " + signature.length + " bytes");
 
                 String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
@@ -379,9 +381,11 @@ public class Main extends JFrame {
                     // Prepare the exact bytes that will form the payload in the file
                     String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
                     byte[] exactPayloadBytes = (dataPart + "\n").getBytes("ISO-8859-1");
+                    byte[] strippedBytes = dataPart.getBytes("ISO-8859-1");
 
-                    // ✅ Sign EXACTLY what will be written to the file
-                    byte[] signature = dscService.signRaw(exactPayloadBytes);
+                    // ✅ Sign using the double-nested hashing scheme on stripped bytes
+                    byte[] signature = dscService.signSHA2(strippedBytes);
+
 
                     String signatureBase64 = java.util.Base64.getEncoder().encodeToString(signature);
                     String certificateBase64 = dscService.getCertificateBase64();

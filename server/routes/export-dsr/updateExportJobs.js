@@ -1553,7 +1553,10 @@ router.get("/filtered-exporters", async (req, res) => {
 // POST /api/exports - Create new export job
 router.post("/exports", auditMiddleware("Job"), async (req, res) => {
   try {
-    const newJob = new ExportJobModel(req.body);
+    const jobData = ExportJobModel.isImpexCubeExportPayload(req.body)
+      ? ExportJobModel.fromImpexCubeExportPayload(req.body)
+      : req.body;
+    const newJob = new ExportJobModel(jobData);
     const savedJob = await newJob.save();
     res.status(201).json({ success: true, data: savedJob });
   } catch (error) {

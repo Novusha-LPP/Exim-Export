@@ -217,15 +217,17 @@ public class SigningServer {
                 // Prepare the exact bytes that will form the payload in the file
                 String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
                 byte[] exactPayloadBytes = (dataPart + "\n").getBytes("ISO-8859-1");
+                byte[] strippedBytes = dataPart.getBytes("ISO-8859-1");
 
                 byte[] signature;
                 String certificateBase64;
 
                 synchronized (dscService) {
-                    // Sign EXACTLY what will be written to the file
-                    signature = dscService.signRaw(exactPayloadBytes);
+                    // Sign using the ICEGATE double-nested hashing scheme on stripped bytes
+                    signature = dscService.signSHA2(strippedBytes);
                     certificateBase64 = dscService.getCertificateBase64();
                 }
+
 
                 String signatureBase64 = Base64.getEncoder().encodeToString(signature);
 
@@ -428,6 +430,7 @@ public class SigningServer {
                 // 4. Sign exactly the same way we do in our perfected flat-file signer
                 String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
                 byte[] exactPayloadBytes = (dataPart + "\n").getBytes("ISO-8859-1");
+                byte[] strippedBytes = dataPart.getBytes("ISO-8859-1");
 
                 byte[] signature;
                 String certificateBase64;
@@ -436,9 +439,10 @@ public class SigningServer {
                     if (dscService.getCertificate() == null) {
                         throw new IllegalStateException("DSC Token not initialized! Please login first in the Exim DSC Local Signer app.");
                     }
-                    signature = dscService.signRaw(exactPayloadBytes);
+                    signature = dscService.signSHA2(strippedBytes);
                     certificateBase64 = dscService.getCertificateBase64();
                 }
+
 
                 String signatureBase64 = Base64.getEncoder().encodeToString(signature);
 
