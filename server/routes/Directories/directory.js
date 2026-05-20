@@ -121,6 +121,70 @@ router.get("/api/directory/exporter", async (req, res) => {
   }
 });
 
+// GET /api/directory/iec-codes
+// Fetches all organizations with a valid IE Code from the Directory.
+// Designed to be consumed by external applications (e.g. Import module)
+// as a direct replacement for the CustomerKyc-based getAvailableIecCodes API.
+//
+// Query params:
+//   ?search=<string>  — optional; filters by IEC code or organization name (case-insensitive)
+//   ?status=Approved  — optional; filter by approvalStatus (default: no filter)
+router.get("/api/directory/iec-codes", async (req, res) => {
+  try {
+    // Build base query — only records that actually have an IEC code
+    let query = {
+      "registrationDetails.ieCode": { $exists: true, $nin: [null, ""] },
+    };
+
+    // Optional approval status filter (e.g. ?status=Approved)
+    const { search, status } = req.query;
+
+    if (status && status.trim() !== "") {
+      query.approvalStatus = status.trim();
+    }
+
+    // Search across IEC code and organization name
+    if (search && search.trim() !== "") {
+      const searchRegex = new RegExp(search.trim(), "i");
+      query.$or = [
+        { "registrationDetails.ieCode": searchRegex },
+        { organization: searchRegex },
+        { alias: searchRegex },
+      ];
+    }
+
+    const directories = await Directory.find(query)
+      .select(
+        "organization alias approvalStatus registrationDetails.ieCode registrationDetails.panNo generalInfo.entityType"
+      )
+      .sort({ organization: 1 })
+      .lean();
+
+    const formattedData = directories.map((dir) => ({
+      iecNo: dir.registrationDetails?.ieCode || null,
+      exporterName: dir.organization || dir.alias || null,
+      alias: dir.alias || null,
+      panNo: dir.registrationDetails?.panNo || null,
+      entityType: dir.generalInfo?.entityType || null,
+      approvalStatus: dir.approvalStatus,
+      id: dir._id,
+    }));
+
+    res.json({
+      success: true,
+      data: formattedData,
+      message: `Found ${formattedData.length} IEC code(s)`,
+    });
+  } catch (error) {
+    console.error("Get available IEC codes (Directory) error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch available IEC codes.",
+      error: error.message,
+    });
+  }
+});
+
 // GET /api/directory/:id - Get directory by ID
 router.get("/api/directory/:id", async (req, res) => {
   try {
@@ -287,69 +351,5 @@ router.patch("/api/directory/update-exporter-type", async (req, res) => {
   }
 });
 
-
-// GET /api/directory/iec-codes
-// Fetches all organizations with a valid IE Code from the Directory.
-// Designed to be consumed by external applications (e.g. Import module)
-// as a direct replacement for the CustomerKyc-based getAvailableIecCodes API.
-//
-// Query params:
-//   ?search=<string>  — optional; filters by IEC code or organization name (case-insensitive)
-//   ?status=Approved  — optional; filter by approvalStatus (default: no filter)
-router.get("/api/directory/iec-codes", async (req, res) => {
-  try {
-    // Build base query — only records that actually have an IEC code
-    let query = {
-      "registrationDetails.ieCode": { $exists: true, $nin: [null, ""] },
-    };
-
-    // Optional approval status filter (e.g. ?status=Approved)
-    const { search, status } = req.query;
-
-    if (status && status.trim() !== "") {
-      query.approvalStatus = status.trim();
-    }
-
-    // Search across IEC code and organization name
-    if (search && search.trim() !== "") {
-      const searchRegex = new RegExp(search.trim(), "i");
-      query.$or = [
-        { "registrationDetails.ieCode": searchRegex },
-        { organization: searchRegex },
-        { alias: searchRegex },
-      ];
-    }
-
-    const directories = await Directory.find(query)
-      .select(
-        "organization alias approvalStatus registrationDetails.ieCode registrationDetails.panNo generalInfo.entityType"
-      )
-      .sort({ organization: 1 })
-      .lean();
-
-    const formattedData = directories.map((dir) => ({
-      iecNo: dir.registrationDetails?.ieCode || null,
-      exporterName: dir.organization || dir.alias || null,
-      alias: dir.alias || null,
-      panNo: dir.registrationDetails?.panNo || null,
-      entityType: dir.generalInfo?.entityType || null,
-      approvalStatus: dir.approvalStatus,
-      id: dir._id,
-    }));
-
-    res.json({
-      success: true,
-      data: formattedData,
-      message: `Found ${formattedData.length} IEC code(s)`,
-    });
-  } catch (error) {
-    console.error("Get available IEC codes (Directory) error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch available IEC codes.",
-      error: error.message,
-    });
-  }
-});
 
 export default router;
