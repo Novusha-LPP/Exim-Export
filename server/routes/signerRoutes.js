@@ -53,8 +53,8 @@ router.post("/init-dsc", async (req, res) => {
 router.post("/sign-now", async (req, res) => {
   try {
     const { jobId } = req.body;
-    if (!jobId) {
-      return res.status(400).json({ message: "Job ID is required" });
+    if (!jobId || !mongoose.Types.ObjectId.isValid(jobId)) {
+      return res.status(400).json({ message: "Valid Job ID is required" });
     }
 
     const job = await ExJobModel.findById(jobId).lean();
@@ -109,7 +109,7 @@ router.post("/sign-now", async (req, res) => {
  */
 router.post("/sign-esanchit", async (req, res) => {
   try {
-    const { jobId, fileUrl, fileName } = req.body;
+    const { jobId, fileUrl, fileName, returnJson, json } = req.body;
     if (!fileUrl) {
       return res.status(400).json({ message: "File URL is required" });
     }
@@ -125,15 +125,24 @@ router.post("/sign-esanchit", async (req, res) => {
 
     // 3. Optionally upload to S3 (audit trail)
     const s3Key = `signatures/${jobId || 'misc'}/${Date.now()}_${targetFileName}`;
-    await uploadToS3(signedBuffer, s3Key, "application/pdf");
+    const s3Url = await uploadToS3(signedBuffer, s3Key, "application/pdf");
 
-    if (jobId) {
+    if (jobId && mongoose.Types.ObjectId.isValid(jobId)) {
       await ExJobModel.findByIdAndUpdate(jobId, {
         detailedStatus: `Signed (${targetFileName})`
       });
     }
 
-    // 4. Return signed file for download
+    // 4. Return response
+    if (returnJson || json) {
+      return res.json({
+        success: true,
+        message: "e-Sanchit document signed successfully",
+        s3Url: s3Url,
+        fileName: targetFileName
+      });
+    }
+
     res.setHeader('Content-Disposition', `attachment; filename="${targetFileName}"`);
     res.setHeader('Content-Type', 'application/pdf');
     res.send(signedBuffer);

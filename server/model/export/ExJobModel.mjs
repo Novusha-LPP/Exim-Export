@@ -1897,6 +1897,12 @@ const exportJobSchema = new mongoose.Schema(
     isGeneralJob: { type: Boolean, default: false },
     lockedBy: { type: String, trim: true, default: null }, // User who currently has the job open
     lockedAt: { type: Date, default: null }, // Timestamp when the job was locked
+    imexcube_uploaded: { type: Boolean, default: false },
+    imexcube_uploaded_at: { type: Date },
+    imexcube_response: { type: Schema.Types.Mixed },
+    imexcube_last_action: { type: String, trim: true },
+    imexcube_last_status_code: { type: Number },
+    imexcube_last_message: { type: String, trim: true },
   },
 
   {

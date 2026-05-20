@@ -81,6 +81,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
 
   const formik = useFormik({
     initialValues: {
+      _id: "",
       // Basic job info
       job_no: "",
       year: "",
@@ -830,6 +831,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
   useEffect(() => {
     if (data) {
       formik.setValues({
+        _id: safeValue(data._id),
         // Basic job info
         job_no: safeValue(data.job_no),
         year: safeValue(data.year),

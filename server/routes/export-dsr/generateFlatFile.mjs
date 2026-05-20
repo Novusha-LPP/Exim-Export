@@ -814,7 +814,7 @@ export function generateSBFlatFile(job) {
                     }
                 }
 
-                const tpL = split35(tpAddrRaw);
+                const tpL = split35(trunc(tpAddrRaw, 70));
                 const tpAddr1 = tpL[0];
                 const tpAddr2 = tpL[1];
 
@@ -827,8 +827,11 @@ export function generateSBFlatFile(job) {
                     tpAddr2,
                     tpCity,
                     tpPin,
-                    gstnTypCode(tp.regnNo),
-                    clean(tp.regnNo || ""),
+                    "",  // [15] amendmentType (char, length 1)
+                    "",  // [16] amendmentNo (integer, length 7)
+                    "",  // [17] reserved empty
+                    gstnTypCode(tp.regnNo),  // [18] gstnType
+                    clean(tp.regnNo || ""),   // [19] gstnNo
                 ));
             }
         });
