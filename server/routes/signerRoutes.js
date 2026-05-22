@@ -127,11 +127,7 @@ router.post("/sign-esanchit", async (req, res) => {
     const s3Key = `signatures/${jobId || 'misc'}/${Date.now()}_${targetFileName}`;
     const s3Url = await uploadToS3(signedBuffer, s3Key, "application/pdf");
 
-    if (jobId && mongoose.Types.ObjectId.isValid(jobId)) {
-      await ExJobModel.findByIdAndUpdate(jobId, {
-        detailedStatus: `Signed (${targetFileName})`
-      });
-    }
+
 
     // 4. Return response
     if (returnJson || json) {

@@ -4,20 +4,34 @@ const { Schema, model } = mongoose;
 
 const CUSTOM_HOUSE_CODE_MAP = {
   "AHMEDABAD AIR CARGO": "INAMD4",
+  "AHMEDABAD AIR": "INAMD4",
+  "AHMEDABAD": "INAMD4",
   "ICD SABARMATI": "INSBI6",
+  "SABARMATI": "INSBI6",
   "ICD KHODIYAR": "INSBI6",
+  "KHODIYAR": "INSBI6",
   "ICD SACHANA": "INJKA6",
+  "SACHANA": "INJKA6",
   "ICD VIROCHAN NAGAR": "INVCN6",
   "ICD VIROCHANNAGAR": "INVCN6",
   "THAR DRY PORT": "INSAU6",
+  "THAR": "INSAU6",
   "ICD SANAND": "INSND6",
+  "SANAND": "INSND6",
   "ANKLESHWAR ICD": "INAKV6",
+  "ANKLESHWAR": "INAKV6",
   "ICD VARNAMA": "INVRM6",
+  "VARNAMA": "INVRM6",
   "MUNDRA SEA": "INMUN1",
+  "MUNDRA": "INMUN1",
   "KANDLA SEA": "INIXY1",
+  "KANDLA": "INIXY1",
   "COCHIN AIR CARGO": "INCOK4",
+  "COCHIN AIR": "INCOK4",
   "COCHIN SEA": "INCOK1",
+  "COCHIN": "INCOK1",
   HAZIRA: "INHZA1",
+  "HAZIRA SEA": "INHZA1",
 };
 
 const COUNTRY_CODE_MAP = {
@@ -494,8 +508,8 @@ function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
 
   return {
     CHADetails: {
-      CHA_Code: firstText(options.chaCode, job.cha_code, job.chaCode),
-      CHA_Branch_Code: firstText(options.chaBranchCode, job.cha_branch_code, job.chaBranchCode, job.branch_code),
+      CHA_Code: firstText(options.chaCode, job.cha_code, job.chaCode, process.env.IMPEXCUBE_CHA_CODE, "CHA0001"),
+      CHA_Branch_Code: firstText(options.chaBranchCode, job.cha_branch_code, job.chaBranchCode, job.branch_code, process.env.IMPEXCUBE_CHA_BRANCH_CODE, "1"),
       Financial_Year: firstText(
         options.financialYear,
         job.financial_year,
@@ -512,10 +526,15 @@ function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
         job.pan_no,
         panFromGstin(job.gstin),
         job.icegateId,
+        "RAJANSFPL",
       ),
     },
     SB_Details: {
       Custom_house_Code: customHouseCode(job.custom_house),
+      Mode: firstUpperText(job.transportMode).startsWith("AIR") ? "A" : (firstUpperText(job.transportMode).startsWith("SEA") ? "S" : "S"),
+      "Mode of Transport": firstUpperText(job.transportMode).startsWith("AIR") ? "A" : (firstUpperText(job.transportMode).startsWith("SEA") ? "S" : "S"),
+      Mode_of_Transport: firstUpperText(job.transportMode).startsWith("AIR") ? "A" : (firstUpperText(job.transportMode).startsWith("SEA") ? "S" : "S"),
+      ModeOfTransport: firstUpperText(job.transportMode).startsWith("AIR") ? "A" : (firstUpperText(job.transportMode).startsWith("SEA") ? "S" : "S"),
       Job_Sequence_No: firstText(
         job.job_sequence_no,
         job.jobSequenceNo,
@@ -525,7 +544,15 @@ function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
       User_Job_Date: toImpexCubeDate(job.job_date),
       SB_No: firstText(job.sb_no),
       SB_Date: toImpexCubeDate(job.sb_date),
-      CHA_License_Number: firstText(job.cha_license_number, job.chaLicenseNumber, job.cha_code),
+      CHA_License_Number: firstText(
+        job.cha_license_number,
+        job.chaLicenseNumber,
+        job.cha_code,
+        job.chaCode,
+        options.chaLicenseNumber,
+        process.env.IMPEXCUBE_CHA_LICENSE_NUMBER,
+        customHouseCode(job.custom_house) === "INMUN1" ? "OFS1766LCH006" : "OFS1766LCH005",
+      ),
       Importer_Exporter_Code: firstText(job.ieCode, job.iec, job.importer_exporter_code),
       Branch_Sr_No_of_Exporter: firstText(job.branchSrNo, job.branch_sno, job.branch_sr_no, "1"),
       Imp_Exp_Name: firstText(job.exporter),
@@ -630,6 +657,7 @@ function buildExportJobFromImpexCubePayload(payload = {}) {
 
   return {
     custom_house: firstText(sb.Custom_house_Code, sb.CustomHouseCode),
+    transportMode: firstText(sb.Mode, sb.Mode_of_Transport, sb["Mode of Transport"], sb.ModeOfTransport) === "A" ? "AIR" : "SEA",
     job_sequence_no: firstText(sb.Job_Sequence_No, sb.JobSequenceNo),
     job_no: jobNo,
     jobNumber: jobNo,

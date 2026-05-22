@@ -1,6 +1,7 @@
 // InvoiceFreightTab.jsx
 import React, { useRef, useCallback, useEffect, useState } from "react";
 import { currencyList } from "../../../../utils/masterList";
+import { syncAllProductsDrawbackAndRodtep } from "../../../../utils/fobCalculations";
 
 const styles = {
   page: {
@@ -441,23 +442,38 @@ const InvoiceFreightTab = ({ formik }) => {
       ...effectiveCharges,
       fobValueUSD, // new variable stored in Formik
     };
+
+    const currentInvoiceCharges = formik.values.invoices[selectedInvoiceIndex]?.freightInsuranceCharges;
+
     // Deep comparison to allow updates when effectiveCharges changes
-    if (
-      JSON.stringify(
-        formik.values.invoices[selectedInvoiceIndex]?.freightInsuranceCharges,
-      ) !== JSON.stringify(nextVal)
-    ) {
-      formik.setFieldValue(
-        `invoices[${selectedInvoiceIndex}].freightInsuranceCharges`,
-        nextVal,
-        false,
+    if (JSON.stringify(currentInvoiceCharges) !== JSON.stringify(nextVal)) {
+      // 1. Update freightInsuranceCharges and fobValueUSD for the current invoice
+      const updatedInvoices = (formik.values.invoices || []).map((inv, idx) => {
+        if (idx === selectedInvoiceIndex) {
+          return {
+            ...inv,
+            freightInsuranceCharges: nextVal,
+            fobValueUSD: fobValueUSD,
+          };
+        }
+        return inv;
+      });
+
+      // 2. Sync all products' drawback and rodtep amounts across all invoices using the updated invoices list
+      const syncedInvoices = syncAllProductsDrawbackAndRodtep(
+        updatedInvoices,
+        Number(formik.values.exchange_rate) || 1
       );
+
+      // 3. Update the whole invoices array in Formik
+      formik.setFieldValue("invoices", syncedInvoices, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     effectiveCharges,
     fobValueUSD,
     formik.values.invoices[selectedInvoiceIndex]?.freightInsuranceCharges,
+    formik.values.exchange_rate,
   ]);
 
   useEffect(() => {
@@ -555,7 +571,7 @@ const InvoiceFreightTab = ({ formik }) => {
         handleChange("freight", "currency", "INR");
         handleChange("freight", "exchangeRate", 1);
         handleChange("freight", "amount", amount.toFixed(2));
-        
+
         alert(`Fetched historical freight from Job: ${hist.jobNo} (${hist.date}). Converted to INR.`);
       } else {
         alert("No historical freight found for this POL/POD in the last 2 months");

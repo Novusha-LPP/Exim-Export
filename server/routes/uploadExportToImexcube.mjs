@@ -375,6 +375,10 @@ router.get("/api/scmCube/export-job-data-preview", async (req, res) => {
       },
       SB_Details: {
         Custom_house_Code: field(rawPayload?.SB_Details?.Custom_house_Code, true),
+        Mode: field(rawPayload?.SB_Details?.Mode, true),
+        "Mode of Transport": field(rawPayload?.SB_Details?.["Mode of Transport"], true),
+        Mode_of_Transport: field(rawPayload?.SB_Details?.Mode_of_Transport, true),
+        ModeOfTransport: field(rawPayload?.SB_Details?.ModeOfTransport, true),
         Job_Sequence_No: field(rawPayload?.SB_Details?.Job_Sequence_No, false),
         User_Job_No: field(rawPayload?.SB_Details?.User_Job_No, true),
         User_Job_Date: field(rawPayload?.SB_Details?.User_Job_Date, false),

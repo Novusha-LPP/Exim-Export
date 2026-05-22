@@ -944,6 +944,32 @@ const ExportJobsTable = () => {
   const [suggestedSequence, setSuggestedSequence] = useState("");
   const isCopyingRef = useRef(false);
 
+  useEffect(() => {
+    const fetchNextSeq = async () => {
+      if (showCopyModal && copyForm.branch_code && copyForm.transportMode && copyForm.year) {
+        try {
+          const response = await axios.post(
+            `${import.meta.env.VITE_API_STRING}/jobs/suggest-sequence`,
+            {
+              branch_code: copyForm.branch_code,
+              transportMode: copyForm.transportMode,
+              year: copyForm.year,
+            },
+          );
+
+          if (response.data.success) {
+            setSuggestedSequence(response.data.suggestedSequence);
+          }
+        } catch (error) {
+          console.error("Error getting suggested sequence dynamically:", error);
+        }
+      } else {
+        setSuggestedSequence("");
+      }
+    };
+    fetchNextSeq();
+  }, [showCopyModal, copyForm.branch_code, copyForm.transportMode, copyForm.year]);
+
   // Create Job Dialog State
   const [openAddDialog, setOpenAddDialog] = useState(false);
 
@@ -2059,7 +2085,11 @@ const ExportJobsTable = () => {
       sequence = sequence.padStart(5, "0");
     }
 
-    return `${copyForm.branch_code}/${sequence}/${copyForm.year}`;
+    const isAir = copyForm.transportMode?.toUpperCase() === "AIR";
+    const isSea = copyForm.transportMode?.toUpperCase() === "SEA" || !isAir;
+    const prefix = isAir ? "EXP/AIR" : (isSea ? "EXP/SEA" : "EXP");
+
+    return `${copyForm.branch_code}/${prefix}/${sequence}/${copyForm.year}`;
   };
 
   const generatedJobNo = getGeneratedJobNo();

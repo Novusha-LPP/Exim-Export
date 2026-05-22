@@ -279,12 +279,23 @@ router.post(
       delete sourceData.operations;
       delete sourceData.charges;
 
+      // Remove branch-specific metadata and custom house configurations to avoid leakage
+      delete sourceData.cha_branch_code;
+      delete sourceData.exporter_branch_name;
+      delete sourceData.branchSrNo;
+      delete sourceData.branch_sno;
+      delete sourceData.branch_sr_no;
+      delete sourceData.branch_index;
+      delete sourceData.branchIndex;
+      delete sourceData.custom_house;
+
       // Set new values
       const newExportJob = new ExportJobModel({
         ...sourceData,
         job_no: newJobNo,
         jobNumber: newJobNo, 
         branch_code,
+        cha_branch_code: branch_code, // Explicitly sync with target branch
         year,
         transportMode,
         status: "Pending",
