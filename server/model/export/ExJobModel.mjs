@@ -475,6 +475,13 @@ const extensionFromPath = (value) => {
 
 function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
   const job = toPlainObject(jobOrDoc);
+  const mapBranchToChaBranch = (val) => {
+    const raw = String(val || "").toUpperCase().trim();
+    if (raw === "AMD") return "NOVUAMD";
+    if (raw === "GIM") return "NOVUGDM";
+    if (raw === "COK") return "NOVUCOK";
+    return val;
+  };
   const firstProduct = getFirstProduct(job);
   const consignee = (job.consignees || [])[0] || {};
   const exporterAddressInfo = extractPinFromAddress(job.exporter_address);
@@ -508,25 +515,35 @@ function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
 
   return {
     CHADetails: {
-      CHA_Code: firstText(options.chaCode, job.cha_code, job.chaCode, process.env.IMPEXCUBE_CHA_CODE, "CHA0001"),
-      CHA_Branch_Code: firstText(options.chaBranchCode, job.cha_branch_code, job.chaBranchCode, job.branch_code, process.env.IMPEXCUBE_CHA_BRANCH_CODE, "1"),
+      CHA_Code: firstText(options.chaCode, process.env.IMPEXCUBE_CHA_CODE, job.cha_code, job.chaCode, "NOVU"),
+      "CHA Code": firstText(options.chaCode, process.env.IMPEXCUBE_CHA_CODE, job.cha_code, job.chaCode, "NOVU"),
+      CHA_Branch_Code: mapBranchToChaBranch(firstText(options.chaBranchCode, process.env.IMPEXCUBE_CHA_BRANCH_CODE, job.cha_branch_code, job.chaBranchCode, job.branch_code, "NOVUAMD")),
+      "CHA Branch Code": mapBranchToChaBranch(firstText(options.chaBranchCode, process.env.IMPEXCUBE_CHA_BRANCH_CODE, job.cha_branch_code, job.chaBranchCode, job.branch_code, "NOVUAMD")),
       Financial_Year: firstText(
         options.financialYear,
+        process.env.IMPEXCUBE_FYEAR,
+        process.env.FYEAR,
         job.financial_year,
         job.financialYear,
         normalizeFinancialYear(job.year, job.job_date),
+        "2026-2027",
+      ),
+      "Financial Year": firstText(
+        options.financialYear,
+        process.env.IMPEXCUBE_FYEAR,
+        process.env.FYEAR,
+        job.financial_year,
+        job.financialYear,
+        normalizeFinancialYear(job.year, job.job_date),
+        "2026-2027",
       ),
       SenderID: firstUpperText(
         options.senderId,
+        process.env.IMPEXCUBE_SENDER_ID,
         job.senderId,
         job.senderID,
         job.sender_id,
-        job.exporter_pan,
-        job.panNo,
-        job.pan_no,
-        panFromGstin(job.gstin),
-        job.icegateId,
-        "RAJANSFPL",
+        "PROTRANS",
       ),
     },
     SB_Details: {
@@ -662,10 +679,10 @@ function buildExportJobFromImpexCubePayload(payload = {}) {
     job_no: jobNo,
     jobNumber: jobNo,
     job_date: toDisplayDate(firstValue(sb.User_Job_Date, sb.UserJobDate)),
-    year: toShortFinancialYear(cha.Financial_Year),
-    financial_year: firstText(cha.Financial_Year),
-    cha_code: firstText(cha.CHA_Code, cha.CHACode),
-    cha_branch_code: firstText(cha.CHA_Branch_Code, cha.CHABranchCode),
+    year: toShortFinancialYear(firstText(cha["Financial Year"], cha.Financial_Year)),
+    financial_year: firstText(cha["Financial Year"], cha.Financial_Year),
+    cha_code: firstText(cha["CHA Code"], cha.CHA_Code, cha.CHACode),
+    cha_branch_code: firstText(cha["CHA Branch Code"], cha.CHA_Branch_Code, cha.CHABranchCode),
     senderId: firstText(cha.SenderID, cha.SenderId, cha.senderId),
     sb_no: firstText(sb.SB_No, sb.SBNo),
     sb_date: toDisplayDate(firstValue(sb.SB_Date, sb.SBDate)),

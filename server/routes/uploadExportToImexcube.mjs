@@ -368,9 +368,9 @@ router.get("/api/scmCube/export-job-data-preview", async (req, res) => {
     // Construct preview tree mirroring rawPayload structure
     const preview = {
       CHADetails: {
-        CHA_Code: field(rawPayload?.CHADetails?.CHA_Code, true),
-        CHA_Branch_Code: field(rawPayload?.CHADetails?.CHA_Branch_Code, true),
-        Financial_Year: field(rawPayload?.CHADetails?.Financial_Year, true),
+        CHA_Code: field(rawPayload?.CHADetails?.CHA_Code || rawPayload?.CHADetails?.["CHA Code"], true),
+        CHA_Branch_Code: field(rawPayload?.CHADetails?.CHA_Branch_Code || rawPayload?.CHADetails?.["CHA Branch Code"], true),
+        Financial_Year: field(rawPayload?.CHADetails?.Financial_Year || rawPayload?.CHADetails?.["Financial Year"], true),
         SenderID: field(rawPayload?.CHADetails?.SenderID, true),
       },
       SB_Details: {
