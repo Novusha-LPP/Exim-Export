@@ -1693,6 +1693,7 @@ router.post("/impexcube/export-jobs/send", auditMiddleware("Job"), async (req, r
 
     const payload = exportJob.toImpexCubeExportPayload(req.body?.options || {});
     const accessToken = await getImpexCubeAccessToken(payload.CHADetails?.Financial_Year);
+    console.log("[IMEXCUBE EXPORT DSR] Sending payload to ImpexCube:\n", JSON.stringify(payload, null, 2));
     const impexCubeResponse = await axios.post(
       buildImpexCubeUrl(IMPEXCUBE_EXPORT_CREATE_PATH),
       payload,

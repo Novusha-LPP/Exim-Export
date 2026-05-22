@@ -548,10 +548,6 @@ function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
     },
     SB_Details: {
       Custom_house_Code: customHouseCode(job.custom_house),
-      Mode: firstUpperText(job.transportMode).startsWith("AIR") ? "A" : (firstUpperText(job.transportMode).startsWith("SEA") ? "S" : "S"),
-      "Mode of Transport": firstUpperText(job.transportMode).startsWith("AIR") ? "A" : (firstUpperText(job.transportMode).startsWith("SEA") ? "S" : "S"),
-      Mode_of_Transport: firstUpperText(job.transportMode).startsWith("AIR") ? "A" : (firstUpperText(job.transportMode).startsWith("SEA") ? "S" : "S"),
-      ModeOfTransport: firstUpperText(job.transportMode).startsWith("AIR") ? "A" : (firstUpperText(job.transportMode).startsWith("SEA") ? "S" : "S"),
       Job_Sequence_No: firstText(
         job.job_sequence_no,
         job.jobSequenceNo,
