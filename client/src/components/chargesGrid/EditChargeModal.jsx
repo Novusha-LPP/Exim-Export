@@ -45,6 +45,7 @@ const EditChargeModal = ({
   const [cfsList, setCfsList] = useState([]);
   const [transporters, setTransporters] = useState([]);
   const [terminalCodes, setTerminalCodes] = useState([]);
+  const [generalOrgList, setGeneralOrgList] = useState([]);
   const [activeDropdown, setActiveDropdown] = useState({ index: null, section: null }); // Track which row/section has open dropdown
   const [paymentDetailsAudit, setPaymentDetailsAudit] = useState({});
   const [rateMap, setRateMap] = useState({});
@@ -81,13 +82,14 @@ const EditChargeModal = ({
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
-        const [slRes, supRes, orgRes, cfsRes, transRes, termRes] = await Promise.all([
+        const [slRes, supRes, orgRes, cfsRes, transRes, termRes, genOrgRes] = await Promise.all([
           axios.get(`${import.meta.env.VITE_API_STRING}/get-shipping-lines`),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-suppliers`),
           axios.get(`${import.meta.env.VITE_API_STRING}/organization`),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-cfs-list`),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-transporters`),
-          axios.get(`${import.meta.env.VITE_API_STRING}/get-terminal-codes`)
+          axios.get(`${import.meta.env.VITE_API_STRING}/get-terminal-codes`),
+          axios.get(`${import.meta.env.VITE_API_STRING}/get-general-orgs`, { params: { limit: 1000 } })
         ]);
         setShippingLines(addSourceLabel(slRes.data, 'Shipping Line'));
         setSuppliers(addSourceLabel(supRes.data, 'Vendor'));
@@ -95,6 +97,7 @@ const EditChargeModal = ({
         setCfsList(addSourceLabel(cfsRes.data, 'CFS'));
         setTransporters(addSourceLabel(transRes.data, 'Transporter'));
         setTerminalCodes(addSourceLabel(termRes.data, 'Terminal'));
+        setGeneralOrgList(addSourceLabel(genOrgRes.data.data || [], 'General Org'));
       } catch (error) {
         console.error("Error fetching master data:", error);
       }
@@ -246,7 +249,7 @@ const EditChargeModal = ({
 
       // Auto-populate TDS if selecting a shipping line or CFS or transporter
       if (section === 'cost' && field === 'partyName') {
-        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList];
         const matchedSL = smartFindParty(allParties, value);
         if (matchedSL && matchedSL.tds_percent > 0) {
           updated[index][section].isTds = true;
@@ -331,7 +334,7 @@ const EditChargeModal = ({
 
         // GST Split Logic
         const partyName = sectionRef.partyName;
-        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList];
         const party = smartFindParty(allParties, partyName);
         const branchIndex = sectionRef.branchIndex || 0;
         const gstin = party?.branches?.[branchIndex]?.gst || party?.branchInfo?.[branchIndex]?.gstNo || "";
@@ -810,7 +813,7 @@ const EditChargeModal = ({
                                 </button>
                               </div>
                               {(() => {
-                                const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+                                const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList];
                                 const party = smartFindParty(allParties, row.revenue?.partyName);
                                 if (party && party.branches?.length > 1) {
                                   return (
@@ -980,7 +983,7 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">PAYABLE TYPE</span>
                                 <select className="form-input" value={row.cost?.partyType || 'Others'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'cost')}>
-                                  <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option><option>CFS</option><option>Terminal</option>
+                                  <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option><option>CFS</option><option>Terminal</option><option>General Org</option>
                                 </select>
                               </div>
                               <div className="ep-row">
@@ -1013,12 +1016,13 @@ const EditChargeModal = ({
                                   {activeDropdown.index === i && activeDropdown.section === 'cost' && (row.cost?.partyName?.length >= 1 || activeDropdown.clicked) && (
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
                                       {(row.cost?.partyType?.toUpperCase() === 'AGENT' ? shippingLines :
-                                        row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes] :
+                                        row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList] :
                                           row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
                                             row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
                                               row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations :
                                                 row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList :
-                                                  row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes : [])
+                                                  row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes :
+                                                    row.cost?.partyType?.toUpperCase() === 'GENERAL ORG' ? generalOrgList : [])
                                         .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
                                         .slice(0, 20)
                                         .map((item, idx) => (
@@ -1028,12 +1032,13 @@ const EditChargeModal = ({
                                           </li>
                                         ))}
                                       {((row.cost?.partyType?.toUpperCase() === 'AGENT' ? shippingLines :
-                                        row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes] :
+                                        row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList] :
                                           row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
                                             row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
                                               row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations :
                                                 row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList :
-                                                  row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes : [])
+                                                  row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes :
+                                                    row.cost?.partyType?.toUpperCase() === 'GENERAL ORG' ? generalOrgList : [])
                                         .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
                                         .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>}
                                     </ul>
@@ -1048,7 +1053,7 @@ const EditChargeModal = ({
                                 </div>
                               </div>
                               {(() => {
-                                const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+                                const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList];
                                 const party = smartFindParty(allParties, row.cost?.partyName);
                                 if (party && party.branches?.length > 1) {
                                   return (

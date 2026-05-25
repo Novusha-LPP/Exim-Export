@@ -1518,6 +1518,12 @@ const statusDetailsSchema = new Schema(
     handoverConcorTharSanganaRailRoadDate: { type: String, trim: true },
     billingDocsSentDt: { type: String, trim: true },
     billingDocsSentUpload: [String],
+    billing_details: {
+      agency_bill_date: { type: String, trim: true },
+      agency_bill_no: { type: String, trim: true },
+      reimbursement_bill_date: { type: String, trim: true },
+      reimbursement_bill_no: { type: String, trim: true },
+    },
     otherDocUpload: [String],
     forwardingNoteDocUpload: [String],
     billingDocsStatus: { type: String, trim: true },
@@ -2074,6 +2080,13 @@ exportJobSchema.pre("save", function (next) {
   const isFCL = this.consignmentType === "FCL";
   const handoverDate = op0Status ? op0Status.handoverForwardingNoteDate : null;
   const railOutDate = op0Status ? op0Status.railOutReachedDate : null;
+  
+  const hasCompleteAgencyBill = op0Status?.billing_details?.agency_bill_date && op0Status?.billing_details?.agency_bill_no;
+  const hasCompleteReimbursementBill = op0Status?.billing_details?.reimbursement_bill_date && op0Status?.billing_details?.reimbursement_bill_no;
+
+  const billingDateVal = (hasCompleteAgencyBill ? op0Status.billing_details.agency_bill_date : null) || 
+                         (hasCompleteReimbursementBill ? op0Status.billing_details.reimbursement_bill_date : null) || 
+                         (op0Status ? op0Status.billingDocsSentDt : null);
 
   const syncMap = [
     { date: this.sb_date, name: "SB Filed" },
@@ -2084,7 +2097,7 @@ exportJobSchema.pre("save", function (next) {
       name: "Billing Pending"
     },
     { date: railOutDate, name: isAirJob ? "Departure" : "Rail Out" },
-    { date: op0Status ? op0Status.billingDocsSentDt : null, name: "Billing Done" },
+    { date: billingDateVal, name: "Billing Done" },
   ];
 
   (this.milestones || []).forEach((m) => {

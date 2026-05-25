@@ -426,7 +426,19 @@ router.get("/global-search-jobs", async (req, res) => {
           $and: [
             { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
             { "operations.statusDetails.handoverImageUpload": { $exists: true, $not: { $size: 0 } } },
-            { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } }
+            { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
+            {
+              $or: [
+                { "operations.statusDetails.billing_details.agency_bill_date": { $in: [null, ""] } },
+                { "operations.statusDetails.billing_details.agency_bill_no": { $in: [null, ""] } }
+              ]
+            },
+            {
+              $or: [
+                { "operations.statusDetails.billing_details.reimbursement_bill_date": { $in: [null, ""] } },
+                { "operations.statusDetails.billing_details.reimbursement_bill_no": { $in: [null, ""] } }
+              ]
+            }
           ]
         });
       } else if (statusLower === "op completed" || statusLower === "billing pending") {
@@ -462,6 +474,18 @@ router.get("/global-search-jobs", async (req, res) => {
             { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
             { "operations.statusDetails.billingDocsSentDt": null },
             { "operations.statusDetails.billingDocsSentDt": "" },
+            { "operations.statusDetails.billing_details.agency_bill_date": { $exists: false } },
+            { "operations.statusDetails.billing_details.agency_bill_date": null },
+            { "operations.statusDetails.billing_details.agency_bill_date": "" },
+            { "operations.statusDetails.billing_details.agency_bill_no": { $exists: false } },
+            { "operations.statusDetails.billing_details.agency_bill_no": null },
+            { "operations.statusDetails.billing_details.agency_bill_no": "" },
+            { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: false } },
+            { "operations.statusDetails.billing_details.reimbursement_bill_date": null },
+            { "operations.statusDetails.billing_details.reimbursement_bill_date": "" },
+            { "operations.statusDetails.billing_details.reimbursement_bill_no": { $exists: false } },
+            { "operations.statusDetails.billing_details.reimbursement_bill_no": null },
+            { "operations.statusDetails.billing_details.reimbursement_bill_no": "" },
             { "operations.statusDetails": { $size: 0 } }
           ]
         });
@@ -742,6 +766,7 @@ router.get("/global-search-jobs", async (req, res) => {
           "operations.statusDetails.handoverImageUpload": 1,
           "operations.statusDetails.billingDocsSentUpload": 1,
           "operations.statusDetails.billingDocsSentDt": 1,
+          "operations.statusDetails.billing_details": 1,
           "operations.statusDetails.status": 1,
           "operations.transporterDetails.images": 1,
           lockedBy: 1,
@@ -1271,6 +1296,7 @@ router.get("/exports/:status?", async (req, res) => {
       "operations.statusDetails.handoverImageUpload": 1,
       "operations.statusDetails.billingDocsSentUpload": 1,
       "operations.statusDetails.billingDocsSentDt": 1,
+      "operations.statusDetails.billing_details": 1,
       "operations.statusDetails.status": 1,
       "operations.transporterDetails.images": 1,
       lockedBy: 1,

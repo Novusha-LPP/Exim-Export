@@ -129,9 +129,27 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
              filter.$and.push({
                 status: { $regex: "^pending$", $options: "i" },
                 send_for_billing: { $ne: true },
-                $or: [
-                    { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
-                    { "operations.statusDetails": { $size: 0 } }
+                $and: [
+                    {
+                        $or: [
+                            { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
+                            { "operations.statusDetails": { $size: 0 } }
+                        ]
+                    },
+                    {
+                        $or: [
+                            { "operations.statusDetails.billing_details.agency_bill_date": { $in: [null, ""] } },
+                            { "operations.statusDetails.billing_details.agency_bill_no": { $in: [null, ""] } },
+                            { "operations.statusDetails": { $size: 0 } }
+                        ]
+                    },
+                    {
+                        $or: [
+                            { "operations.statusDetails.billing_details.reimbursement_bill_date": { $in: [null, ""] } },
+                            { "operations.statusDetails.billing_details.reimbursement_bill_no": { $in: [null, ""] } },
+                            { "operations.statusDetails": { $size: 0 } }
+                        ]
+                    }
                 ]
             });
         } else if (normalizedStatus === "completed") {
@@ -139,7 +157,19 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
                 $or: [
                     { status: { $regex: "^completed$", $options: "i" } },
                     { detailedStatus: "Billing Done" },
-                    { "operations.statusDetails.billingDocsSentDt": { $exists: true, $nin: [null, ""] } }
+                    { "operations.statusDetails.billingDocsSentDt": { $exists: true, $nin: [null, ""] } },
+                    {
+                        $and: [
+                            { "operations.statusDetails.billing_details.agency_bill_date": { $exists: true, $nin: [null, ""] } },
+                            { "operations.statusDetails.billing_details.agency_bill_no": { $exists: true, $nin: [null, ""] } }
+                        ]
+                    },
+                    {
+                        $and: [
+                            { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: true, $nin: [null, ""] } },
+                            { "operations.statusDetails.billing_details.reimbursement_bill_no": { $exists: true, $nin: [null, ""] } }
+                        ]
+                    }
                 ]
             });
         }
@@ -232,6 +262,7 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             "operations.statusDetails.handoverImageUpload": 1,
             "operations.statusDetails.billingDocsSentUpload": 1,
             "operations.statusDetails.billingDocsSentDt": 1,
+            "operations.statusDetails.billing_details": 1,
             "operations.statusDetails.status": 1,
             "operations.statusDetails.clpUpload": 1,
             "operations.statusDetails.completionCopyUpload": 1,

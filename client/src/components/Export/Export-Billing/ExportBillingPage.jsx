@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { MaterialReactTable } from "material-react-table";
@@ -42,6 +42,9 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DescriptionIcon from "@mui/icons-material/Description";
 import { generatePaymentRequestPDF } from "../../../utils/paymentRequestPrint";
 import { generatePurchaseBookPDF } from "../../../utils/purchaseBookPrint";
+import DateInput from "../../common/DateInput.js";
+import { handleDateInput } from "../../../utils/dateUtils.js";
+
 
 const s = {
   wrapper: {
@@ -121,18 +124,55 @@ const ExpandableChipList = ({ items, limit = 2, color = "default", onClick }) =>
   const displayedItems = expanded ? items : items.slice(0, limit);
   const remainingCount = items.length - limit;
 
+  const styles = {
+    tag: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      cursor: onClick ? "pointer" : "default",
+      padding: '2px 8px',
+      fontSize: '11px',
+      fontWeight: 600,
+      color: '#1e293b',
+      backgroundColor: '#f1f5f9',
+      border: '1px solid #cbd5e1',
+      borderRadius: '4px',
+      lineHeight: 1.2,
+      transition: 'all 0.15s ease',
+      '&:hover': {
+        backgroundColor: '#e2e8f0',
+        borderColor: '#94a3b8'
+      }
+    },
+    moreBtn: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      cursor: 'pointer',
+      padding: '2px 8px',
+      fontSize: '11px',
+      fontWeight: 600,
+      color: '#2563eb',
+      backgroundColor: '#eff6ff',
+      border: '1px solid #bfdbfe',
+      borderRadius: '4px',
+      lineHeight: 1.2,
+      transition: 'all 0.15s ease',
+      '&:hover': {
+        backgroundColor: '#dbeafe',
+        borderColor: '#93c5fd'
+      }
+    }
+  };
+
   return (
     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, py: 0.5 }}>
       {displayedItems.map((item, idx) => (
         <Box key={`${item}-${idx}`} sx={{ display: "inline-flex", alignItems: "center", gap: 0.2 }}>
-          <Chip
-            label={item}
-            size="small"
-            color={color}
-            variant="outlined"
+          <Box
             onClick={onClick ? () => onClick(item) : undefined}
-            sx={{ cursor: onClick ? "pointer" : "default", height: 18, fontSize: '10px' }}
-          />
+            sx={styles.tag}
+          >
+            {item}
+          </Box>
           <IconButton
             size="small"
             sx={{ p: 0.1, opacity: 0.6, "&:hover": { opacity: 1 } }}
@@ -147,26 +187,26 @@ const ExpandableChipList = ({ items, limit = 2, color = "default", onClick }) =>
         </Box>
       ))}
       {!expanded && remainingCount > 0 && (
-        <Chip
-          label={`+${remainingCount} more`}
-          size="small"
+        <Box
           onClick={(e) => {
             e.stopPropagation();
             setExpanded(true);
           }}
-          sx={{ cursor: "pointer", bgcolor: "#f1f5f9" }}
-        />
+          sx={styles.moreBtn}
+        >
+          {`+${remainingCount} more`}
+        </Box>
       )}
       {expanded && items.length > limit && (
-        <Chip
-          label="show less"
-          size="small"
+        <Box
           onClick={(e) => {
             e.stopPropagation();
             setExpanded(false);
           }}
-          sx={{ cursor: "pointer", bgcolor: "#f1f5f9" }}
-        />
+          sx={styles.moreBtn}
+        >
+          show less
+        </Box>
       )}
     </Box>
   );
@@ -243,6 +283,266 @@ const QuickUploadButton = ({ row, field, onSuccess }) => {
         style={{ display: "none" }}
       />
     </>
+  );
+};
+
+const EditableBillingPair = ({
+  row,
+  noPathAgency,
+  datePathAgency,
+  noPathReimbursement,
+  datePathReimbursement,
+  initialAgencyNo,
+  initialAgencyDate,
+  initialReimbursementNo,
+  initialReimbursementDate,
+  onSuccess
+}) => {
+  const [agencyNo, setAgencyNo] = useState(initialAgencyNo || "");
+  const [agencyDate, setAgencyDate] = useState(() => {
+    if (initialAgencyDate) return handleDateInput(initialAgencyDate);
+    return "";
+  });
+  const [reimbursementNo, setReimbursementNo] = useState(initialReimbursementNo || "");
+  const [reimbursementDate, setReimbursementDate] = useState(() => {
+    if (initialReimbursementDate) return handleDateInput(initialReimbursementDate);
+    return "";
+  });
+  const [loading, setLoading] = useState(false);
+  const [showSavedMsg, setShowSavedMsg] = useState(false);
+
+  useEffect(() => {
+    setAgencyNo(initialAgencyNo || "");
+    setAgencyDate(initialAgencyDate ? handleDateInput(initialAgencyDate) : "");
+    setReimbursementNo(initialReimbursementNo || "");
+    setReimbursementDate(initialReimbursementDate ? handleDateInput(initialReimbursementDate) : "");
+  }, [initialAgencyNo, initialAgencyDate, initialReimbursementNo, initialReimbursementDate]);
+
+  const hasChanges =
+    agencyNo !== (initialAgencyNo || "") ||
+    agencyDate !== (initialAgencyDate || "") ||
+    reimbursementNo !== (initialReimbursementNo || "") ||
+    reimbursementDate !== (initialReimbursementDate || "");
+
+  const handleSave = async () => {
+    if (!hasChanges) return;
+
+    // Validation: Agency Pair
+    const isAgencyEmpty = !agencyNo.trim() && !agencyDate.trim();
+    const isAgencyFilled = agencyNo.trim() && agencyDate.trim();
+    if (!isAgencyEmpty && !isAgencyFilled) {
+      alert("Please enter both Bill No and Bill Date for the Agency Bill!");
+      return;
+    }
+
+    // Validation: Reimbursement Pair
+    const isReimbursementEmpty = !reimbursementNo.trim() && !reimbursementDate.trim();
+    const isReimbursementFilled = reimbursementNo.trim() && reimbursementDate.trim();
+    if (!isReimbursementEmpty && !isReimbursementFilled) {
+      alert("Please enter both Bill No and Bill Date for the Reimbursement Bill!");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const localUser = JSON.parse(localStorage.getItem("exim_user") || "{}");
+      await axios.patch(
+        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(row.job_no)}/fields`,
+        {
+          fieldUpdates: [
+            { field: noPathAgency, value: agencyNo.trim() },
+            { field: datePathAgency, value: agencyDate.trim() },
+            { field: noPathReimbursement, value: reimbursementNo.trim() },
+            { field: datePathReimbursement, value: reimbursementDate.trim() }
+          ]
+        },
+        { headers: { username: localUser.username || "" } }
+      );
+      if (onSuccess) onSuccess();
+      setShowSavedMsg(true);
+      setTimeout(() => {
+        setShowSavedMsg(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Save error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setAgencyNo(initialAgencyNo || "");
+    setAgencyDate(initialAgencyDate ? handleDateInput(initialAgencyDate) : "");
+    setReimbursementNo(initialReimbursementNo || "");
+    setReimbursementDate(initialReimbursementDate ? handleDateInput(initialReimbursementDate) : "");
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleSave();
+    } else if (e.key === "Escape") {
+      handleCancel();
+    }
+  };
+
+  const renderActionButtons = () => {
+    if (loading) {
+      return (
+        <CircularProgress size={12} sx={{ mt: 0.5, alignSelf: 'center', color: '#2563eb' }} />
+      );
+    }
+
+    if (showSavedMsg) {
+      return (
+        <Typography variant="caption" sx={{ mt: 0.5, color: '#16a34a', fontWeight: 'bold', fontSize: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          ✓ Saved
+        </Typography>
+      );
+    }
+
+    if (hasChanges) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.8, mt: 0.5 }}>
+          <Button
+            size="small"
+            variant="contained"
+            onClick={handleSave}
+            sx={{
+              padding: '1px 6px',
+              fontSize: '10px',
+              minWidth: 'auto',
+              height: '18px',
+              backgroundColor: '#2563eb',
+              textTransform: 'none',
+              fontWeight: 'bold',
+              '&:hover': {
+                backgroundColor: '#1d4ed8',
+              }
+            }}
+          >
+            Submit
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={handleCancel}
+            sx={{
+              padding: '1px 6px',
+              fontSize: '10px',
+              minWidth: 'auto',
+              height: '18px',
+              borderColor: '#dc2626',
+              color: '#dc2626',
+              textTransform: 'none',
+              fontWeight: 'bold',
+              '&:hover': {
+                borderColor: '#b91c1c',
+                backgroundColor: '#fef2f2',
+              }
+            }}
+          >
+            Cancel
+          </Button>
+        </Box>
+      );
+    }
+
+    return null;
+  };
+
+  const styles = {
+    customInput: {
+      fontSize: '11px',
+      padding: '3px 6px',
+      border: '1px solid #cbd5e1',
+      borderRadius: '4px',
+      outline: 'none',
+      fontFamily: 'inherit',
+      width: '100px',
+      height: '24px',
+      boxSizing: 'border-box',
+      transition: 'border-color 0.2s',
+      backgroundColor: '#fff',
+    },
+    customDateInput: {
+      fontSize: '11px',
+      padding: '3px 6px',
+      border: '1px solid #cbd5e1',
+      borderRadius: '4px',
+      outline: 'none',
+      fontFamily: 'inherit',
+      width: '100px',
+      height: '24px',
+      boxSizing: 'border-box',
+      transition: 'border-color 0.2s',
+      backgroundColor: '#fff',
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 0.8,
+        p: 0.8,
+        border: '1px solid #cbd5e1',
+        borderRadius: '6px',
+        backgroundColor: '#f8fafc',
+        width: '265px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+      }}
+    >
+      {/* Agency */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+        <Typography sx={{ width: '45px', fontSize: '9px', fontWeight: 800, color: '#475569', letterSpacing: '0.4px' }}>
+          AGENCY
+        </Typography>
+        <input
+          type="text"
+          value={agencyNo}
+          onChange={(e) => setAgencyNo(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={loading}
+          placeholder="Bill No"
+          style={styles.customInput}
+        />
+        <DateInput
+          value={agencyDate}
+          onChange={(e) => setAgencyDate(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={loading}
+          placeholder="dd-mm-yyyy"
+          style={styles.customDateInput}
+        />
+      </Box>
+
+      {/* Reimbursement */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+        <Typography sx={{ width: '45px', fontSize: '9px', fontWeight: 800, color: '#475569', letterSpacing: '0.4px' }}>
+          REIMB.
+        </Typography>
+        <input
+          type="text"
+          value={reimbursementNo}
+          onChange={(e) => setReimbursementNo(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={loading}
+          placeholder="Bill No"
+          style={styles.customInput}
+        />
+        <DateInput
+          value={reimbursementDate}
+          onChange={(e) => setReimbursementDate(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={loading}
+          placeholder="dd-mm-yyyy"
+          style={styles.customDateInput}
+        />
+      </Box>
+
+      {renderActionButtons()}
+    </Box>
   );
 };
 
@@ -810,21 +1110,38 @@ function BillingDetailsDialog({ open, onClose, row, requestNo, workMode, activeT
 function ExportBillingPage() {
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
-  const [workMode, setWorkMode] = useState("payment");
-  const [tabIndex, setTabIndex] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [selectedYear, setSelectedYear] = useState(getCurrentFinancialYear());
+  const [workMode, setWorkMode] = useState(() => {
+    return localStorage.getItem("billing_workMode") || "payment";
+  });
+  const [tabIndex, setTabIndex] = useState(() => {
+    const saved = localStorage.getItem("billing_tabIndex");
+    return saved !== null ? parseInt(saved, 10) : 0;
+  });
+  const [searchQuery, setSearchQuery] = useState(() => {
+    return localStorage.getItem("billing_searchQuery") || "";
+  });
+  const [debouncedSearch, setDebouncedSearch] = useState(() => {
+    return localStorage.getItem("billing_searchQuery") || "";
+  });
+  const [selectedYear, setSelectedYear] = useState(() => {
+    return localStorage.getItem("billing_selectedYear") || getCurrentFinancialYear();
+  });
   const [years, setYears] = useState([getCurrentFinancialYear()]);
   const [exporters, setExporters] = useState([]);
-  const [selectedExporter, setSelectedExporter] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  const [selectedExporter, setSelectedExporter] = useState(() => {
+    return localStorage.getItem("billing_selectedExporter") || "";
+  });
+  const [selectedBranch, setSelectedBranch] = useState(() => {
+    return localStorage.getItem("billing_selectedBranch") || "";
+  });
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalJobs, setTotalJobs] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [showUnresolvedOnly, setShowUnresolvedOnly] = useState(false);
+  const [showUnresolvedOnly, setShowUnresolvedOnly] = useState(() => {
+    return localStorage.getItem("billing_showUnresolvedOnly") === "true";
+  });
   const [unresolvedCount, setUnresolvedCount] = useState(0);
   const [selectedRow, setSelectedRow] = useState(null);
   const [selectedRequestNo, setSelectedRequestNo] = useState(null);
@@ -843,6 +1160,36 @@ function ExportBillingPage() {
   const tabs = workMode === "purchase-book" ? PURCHASE_TABS : PAYMENT_TABS;
   const activeTab = tabs[tabIndex]?.key || tabs[0].key;
 
+  const prevWorkMode = useRef(workMode);
+
+  useEffect(() => {
+    localStorage.setItem("billing_workMode", workMode);
+  }, [workMode]);
+
+  useEffect(() => {
+    localStorage.setItem("billing_tabIndex", tabIndex);
+  }, [tabIndex]);
+
+  useEffect(() => {
+    localStorage.setItem("billing_searchQuery", searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    localStorage.setItem("billing_selectedYear", selectedYear);
+  }, [selectedYear]);
+
+  useEffect(() => {
+    localStorage.setItem("billing_selectedExporter", selectedExporter);
+  }, [selectedExporter]);
+
+  useEffect(() => {
+    localStorage.setItem("billing_selectedBranch", selectedBranch);
+  }, [selectedBranch]);
+
+  useEffect(() => {
+    localStorage.setItem("billing_showUnresolvedOnly", showUnresolvedOnly);
+  }, [showUnresolvedOnly]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
@@ -852,8 +1199,11 @@ function ExportBillingPage() {
   }, [searchQuery]);
 
   useEffect(() => {
-    setTabIndex(0);
-    setPage(1);
+    if (prevWorkMode.current !== workMode) {
+      setTabIndex(0);
+      setPage(1);
+      prevWorkMode.current = workMode;
+    }
   }, [workMode]);
 
   useEffect(() => {
@@ -1004,6 +1354,26 @@ function ExportBillingPage() {
   }, [user?.username, workMode, activeTab]);
 
   const columns = useMemo(() => {
+    const billingDetailsEditable = {
+      header: "Billing Details",
+      size: 280,
+      Cell: ({ row }) => (
+        <EditableBillingPair
+          key={`${row.original.job_no}-billing_details`}
+          row={row.original}
+          noPathAgency="operations.0.statusDetails.0.billing_details.agency_bill_no"
+          datePathAgency="operations.0.statusDetails.0.billing_details.agency_bill_date"
+          noPathReimbursement="operations.0.statusDetails.0.billing_details.reimbursement_bill_no"
+          datePathReimbursement="operations.0.statusDetails.0.billing_details.reimbursement_bill_date"
+          initialAgencyNo={row.original.agency_bill_no}
+          initialAgencyDate={row.original.agency_bill_date}
+          initialReimbursementNo={row.original.reimbursement_bill_no}
+          initialReimbursementDate={row.original.reimbursement_bill_date}
+          onSuccess={() => fetchRows()}
+        />
+      ),
+    };
+
     const commonStart = [
       {
         accessorKey: "job_no",
@@ -1026,42 +1396,7 @@ function ExportBillingPage() {
           </Box>
         ),
       },
-      {
-        header: "Billing Date",
-        size: 110,
-        Cell: ({ row }) => (
-          <EditableDateCell
-            row={row.original}
-            field="billingDocsSentDt"
-            initialValue={row.original.billing_date}
-            onSuccess={() => fetchRows()}
-          />
-        ),
-      },
-      {
-        header: "Attach Copy",
-        size: 90,
-        Cell: ({ row }) => (
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {row.original.billing_docs_count > 0 && (
-              <Chip
-                label={`${row.original.billing_docs_count} View`}
-                size="small"
-                onClick={() => {
-                  setSelectedRow(row.original);
-                  setSelectedRequestNo(null);
-                }}
-                sx={{ mr: 1, height: 20, fontSize: '10px' }}
-              />
-            )}
-            <QuickUploadButton
-              row={row.original}
-              field="billingDocsSentUpload"
-              onSuccess={() => fetchRows()}
-            />
-          </Box>
-        ),
-      },
+      ...(activeTab === "billing-pending" ? [billingDetailsEditable] : []),
       {
         header: "Queries",
         size: 80,
@@ -1217,10 +1552,46 @@ function ExportBillingPage() {
           Cell: ({ cell }) => renderChipList(cell.getValue(), "default", 2),
         },
         {
-          accessorKey: "billing_date",
-          header: "Billing Date",
-          size: 160,
-          Cell: ({ row }) => formatDate(row.original.billing_date),
+          header: "Billing Details",
+          size: 260,
+          Cell: ({ row }) => (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.8,
+                p: 0.8,
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                backgroundColor: '#f8fafc',
+                width: '240px',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                <Typography sx={{ width: '45px', fontSize: '9px', fontWeight: 800, color: '#475569', letterSpacing: '0.4px' }}>
+                  AGENCY
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '11px', color: '#1e293b' }}>
+                  {row.original.agency_bill_no || "-"}
+                </Typography>
+                <Typography variant="caption" color="textSecondary" sx={{ fontSize: '10px', ml: 'auto' }}>
+                  {row.original.agency_bill_date ? formatDate(row.original.agency_bill_date).split(",")[0] : "-"}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                <Typography sx={{ width: '45px', fontSize: '9px', fontWeight: 800, color: '#475569', letterSpacing: '0.4px' }}>
+                  REIMB.
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '11px', color: '#1e293b' }}>
+                  {row.original.reimbursement_bill_no || "-"}
+                </Typography>
+                <Typography variant="caption" color="textSecondary" sx={{ fontSize: '10px', ml: 'auto' }}>
+                  {row.original.reimbursement_bill_date ? formatDate(row.original.reimbursement_bill_date).split(",")[0] : "-"}
+                </Typography>
+              </Box>
+            </Box>
+          ),
         },
         {
           accessorKey: "charge_heads",
@@ -1251,14 +1622,17 @@ function ExportBillingPage() {
       ),
     };
 
+    const queriesIndex = commonStart.findIndex(c => c.header === "Queries");
+    const insertIndex = queriesIndex !== -1 ? queriesIndex : commonStart.length;
+
     if (activeTab === "purchase-book-requested") {
       const result = [...commonStart];
-      result.splice(4, 0, refCol); // Insert besides Queries
+      result.splice(insertIndex, 0, refCol); // Insert beside Queries
       return [...result, ...commonEnd];
     }
 
     const finalColumns = [...commonStart];
-    finalColumns.splice(4, 0, refCol); // Insert besides Queries
+    finalColumns.splice(insertIndex, 0, refCol); // Insert beside Queries
 
     return [
       ...finalColumns,
