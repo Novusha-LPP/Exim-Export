@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import {
   Container, Paper, Typography, Button, Box, IconButton,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Dialog, DialogContent, TextField, InputAdornment, Chip, Snackbar, Alert
+  Dialog, DialogContent, TextField, InputAdornment, Chip, Snackbar, Alert,
+  Pagination
 } from "@mui/material";
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
@@ -13,27 +14,30 @@ import MasterDirectoryForm from "./MasterDirectoryForm";
 
 const TransporterMaster = () => {
   const [data, setData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
-  useEffect(() => { fetchItems(); }, []);
-
   useEffect(() => {
-    const filtered = data.filter(item => 
-      item.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredData(filtered);
-  }, [searchTerm, data]);
+    fetchItems();
+  }, [page, searchTerm]);
 
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const res = await TransporterService.getAll();
-      setData(res.data || res);
+      const res = await TransporterService.getAll({
+        page,
+        limit: 10,
+        search: searchTerm
+      });
+      setData(res.data || []);
+      setTotalPages(res.pagination?.totalPages || 1);
+      setTotalRecords(res.pagination?.totalRecords || 0);
     } catch (err) {
       showSnackbar("Error fetching data", "error");
     } finally {
@@ -76,7 +80,8 @@ const TransporterMaster = () => {
       <Paper sx={{ p: 2, mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <TextField
           size="small" placeholder="Search Transporters..."
-          value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+          value={searchTerm} 
+          onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
           sx={{ width: 300 }}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
         />
@@ -99,10 +104,10 @@ const TransporterMaster = () => {
           <TableBody>
             {loading ? (
               <TableRow><TableCell colSpan={5} align="center">Loading...</TableCell></TableRow>
-            ) : filteredData.length === 0 ? (
+            ) : data.length === 0 ? (
               <TableRow><TableCell colSpan={5} align="center">No data found</TableCell></TableRow>
             ) : (
-              filteredData.map((item) => (
+              data.map((item) => (
                 <TableRow key={item._id} hover>
                   <TableCell sx={{ fontWeight: 500 }}>{item.name}</TableCell>
                   <TableCell>
@@ -120,6 +125,17 @@ const TransporterMaster = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Box display="flex" justifyContent="center" alignItems="center" mt={2} mb={2}>
+        <Pagination
+          count={totalPages}
+          page={page}
+          onChange={(event, value) => setPage(value)}
+          color="primary"
+          showFirstButton
+          showLastButton
+        />
+      </Box>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
         <DialogContent sx={{ p: 0 }}>

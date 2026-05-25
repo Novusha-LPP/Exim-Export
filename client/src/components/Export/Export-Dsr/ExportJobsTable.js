@@ -1239,7 +1239,14 @@ const ExportJobsTable = () => {
           if (opDetails.handoverForwardingNoteDate) handCol.push(`DHo: ${formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}`);
           if (opDetails.handoverConcorTharSanganaRailRoadDate) handCol.push(`${outLbl}: ${formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}`);
           if (opDetails.railOutReachedDate) handCol.push(`${reachedLbl}: ${formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}`);
-          if (opDetails.billingDocsSentDt) handCol.push(`Bill: ${formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}`);
+          if (opDetails.billing_details?.agency_bill_date || opDetails.billing_details?.reimbursement_bill_date) {
+            const agencyDate = opDetails.billing_details.agency_bill_date ? formatDate(opDetails.billing_details.agency_bill_date, "dd-MM-yy") : "";
+            const reimbursementDate = opDetails.billing_details.reimbursement_bill_date ? formatDate(opDetails.billing_details.reimbursement_bill_date, "dd-MM-yy") : "";
+            const displayDates = [agencyDate, reimbursementDate].filter(Boolean).join(" & ");
+            handCol.push(`Bill: ${displayDates}`);
+          } else if (opDetails.billingDocsSentDt) {
+            handCol.push(`Bill: ${formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}`);
+          }
 
           rowData["Handover"] = handCol.join("\n");
 
@@ -3365,10 +3372,24 @@ const ExportJobsTable = () => {
                                       <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{reachedLbl.toUpperCase()}</span>
                                       <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}</span>
                                     </div>
-                                    <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                      <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL</span>
-                                      <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}</span>
-                                    </div>
+                                    {opDetails.billing_details?.agency_bill_date ? (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL (A)</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billing_details.agency_bill_date, "dd-MM-yy")}</span>
+                                      </div>
+                                    ) : null}
+                                    {opDetails.billing_details?.reimbursement_bill_date ? (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL (R)</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billing_details.reimbursement_bill_date, "dd-MM-yy")}</span>
+                                      </div>
+                                    ) : null}
+                                    {!opDetails.billing_details?.agency_bill_date && !opDetails.billing_details?.reimbursement_bill_date && opDetails.billingDocsSentDt ? (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}</span>
+                                      </div>
+                                    ) : null}
 
                                     {job.vgm_done && (
                                       <div style={{ marginTop: "4px", backgroundColor: "#ecfdf5", border: "1px solid #10b981", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#065f46" }}>
@@ -3633,7 +3654,14 @@ const ExportJobsTable = () => {
                           >
                             {(isChargesModule && activeTab === "Completed")
                               ? (
-                                formatDate(job.operations?.[0]?.statusDetails?.[0]?.billingDocsSentDt) || job.status
+                                (() => {
+                                  const bd = job.operations?.[0]?.statusDetails?.[0]?.billing_details;
+                                  const docsDt = job.operations?.[0]?.statusDetails?.[0]?.billingDocsSentDt;
+                                  if (bd?.agency_bill_date && bd?.reimbursement_bill_date) {
+                                    return `${formatDate(bd.agency_bill_date)} & ${formatDate(bd.reimbursement_bill_date)}`;
+                                  }
+                                  return formatDate(bd?.agency_bill_date || bd?.reimbursement_bill_date || docsDt) || job.status;
+                                })()
                               )
                               : (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
                                 ? job.detailedStatus[job.detailedStatus.length - 1]

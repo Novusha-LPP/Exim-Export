@@ -6,6 +6,55 @@ import { IconButton, Button } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import { calculateProductFobINR } from "../../../../utils/fobCalculations.js";
 
+const CUSTOM_HOUSE_CODE_MAP = {
+  "AHMEDABAD AIR CARGO": "INAMD4",
+  "AIR AHMEDABAD": "INAMD4",
+  "AHMEDABAD AIR": "INAMD4",
+  "AHMEDABAD": "INAMD4",
+  "ICD SABARMATI": "INSBI6",
+  "ICD SABARMATI, AHMEDABAD": "INSBI6",
+  "SABARMATI": "INSBI6",
+  "ICD KHODIYAR": "INSBI6",
+  "KHODIYAR": "INSBI6",
+  "ICD VIRAMGAM": "INVGR6",
+  "ICD SACHANA": "INJKA6",
+  "SACHANA": "INJKA6",
+  "ICD VIROCHAN NAGAR": "INVCN6",
+  "ICD VIROCHANNAGAR": "INVCN6",
+  "THAR DRY PORT": "INSAU6",
+  "THAR": "INSAU6",
+  "ICD SANAND": "INSND6",
+  "SANAND": "INSND6",
+  "ANKLESHWAR ICD": "INAKV6",
+  "ANKLESHWAR": "INAKV6",
+  "ICD VARNAMA": "INVRM6",
+  "VARNAMA": "INVRM6",
+  "MUNDRA SEA": "INMUN1",
+  "MUNDRA": "INMUN1",
+  "KANDLA SEA": "INIXY1",
+  "KANDLA": "INIXY1",
+  "COCHIN AIR CARGO": "INCOK4",
+  "COCHIN AIR": "INCOK4",
+  "COCHIN SEA": "INCOK1",
+  "COCHIN": "INCOK1",
+  "HAZIRA": "INHZA1",
+  "HAZIRA SEA": "INHZA1",
+};
+
+const getCustomHouseCode = (ch) => {
+  if (!ch) return "";
+  const upperCh = ch.toUpperCase().trim();
+  if (CUSTOM_HOUSE_CODE_MAP[upperCh]) {
+    return CUSTOM_HOUSE_CODE_MAP[upperCh];
+  }
+  for (const [key, val] of Object.entries(CUSTOM_HOUSE_CODE_MAP)) {
+    if (upperCh.includes(key) || key.includes(upperCh)) {
+      return val;
+    }
+  }
+  return "";
+};
+
 const ExportChecklistGenerator = ({
   jobNo,
   renderAsIcon = false,
@@ -1471,7 +1520,11 @@ const ExportChecklistGenerator = ({
         consigneeCountry2: exportJob.dischargecountry,
 
         // Shipping Details
-        portOfLoading: exportJob.custom_house || "",
+        portOfLoading: (() => {
+          const ch = exportJob.custom_house || "";
+          const code = getCustomHouseCode(ch);
+          return code ? `${code} - ${ch}` : ch;
+        })(),
         portOfDischarge:
           exportJob.port_of_discharge || exportJob.discharge_port || "",
         portOfDestination:

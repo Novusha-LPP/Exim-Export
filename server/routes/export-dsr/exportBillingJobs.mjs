@@ -81,10 +81,16 @@ function summarizeJob(job) {
       .map((container) => [container.containerNo, container.type].filter(Boolean).join(" | "))
       .filter(Boolean),
     handover_date: opStatus.handoverForwardingNoteDate || "",
-    billing_date: opStatus.billingDocsSentDt || "",
+    billing_date: (opStatus.billing_details?.agency_bill_date && opStatus.billing_details?.agency_bill_no ? opStatus.billing_details.agency_bill_date : "") ||
+                  (opStatus.billing_details?.reimbursement_bill_date && opStatus.billing_details?.reimbursement_bill_no ? opStatus.billing_details.reimbursement_bill_date : "") ||
+                  opStatus.billingDocsSentDt || "",
     billing_docs_count: Array.isArray(opStatus.billingDocsSentUpload)
       ? opStatus.billingDocsSentUpload.length
       : 0,
+    agency_bill_date: opStatus.billing_details?.agency_bill_date || "",
+    agency_bill_no: opStatus.billing_details?.agency_bill_no || "",
+    reimbursement_bill_date: opStatus.billing_details?.reimbursement_bill_date || "",
+    reimbursement_bill_no: opStatus.billing_details?.reimbursement_bill_no || "",
     booking_no: job.booking_no || "",
     sb_no: job.sb_no || "",
     payment_request_nos: paymentRequestNos,
@@ -286,6 +292,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       "operations.statusDetails.handoverForwardingNoteDate": 1,
       "operations.statusDetails.billingDocsSentDt": 1,
       "operations.statusDetails.billingDocsSentUpload": 1,
+      "operations.statusDetails.billing_details": 1,
       "charges.chargeHead": 1,
       "charges.invoice_number": 1,
       "charges.purchase_book_no": 1,

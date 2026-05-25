@@ -1162,6 +1162,12 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
                 ...s,
                 leoDate: formatDate(safeValue(s.leoDate)),
                 billingDocsSentDt: formatDate(safeValue(s.billingDocsSentDt)),
+                billing_details: {
+                  agency_bill_date: formatDate(safeValue(s.billing_details?.agency_bill_date)),
+                  agency_bill_no: safeValue(s.billing_details?.agency_bill_no),
+                  reimbursement_bill_date: formatDate(safeValue(s.billing_details?.reimbursement_bill_date)),
+                  reimbursement_bill_no: safeValue(s.billing_details?.reimbursement_bill_no),
+                },
                 goodsRegistrationDate: formatDate(safeValue(s.goodsRegistrationDate)),
                 goodsReportDate: formatDate(safeValue(s.goodsReportDate)),
                 stuffingDate: formatDate(safeValue(s.stuffingDate)),
