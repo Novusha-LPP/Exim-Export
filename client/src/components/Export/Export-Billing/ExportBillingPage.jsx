@@ -388,95 +388,74 @@ const EditableBillingPair = ({
   const renderActionButtons = () => {
     if (loading) {
       return (
-        <CircularProgress size={12} sx={{ mt: 0.5, alignSelf: 'center', color: '#2563eb' }} />
+        <CircularProgress size={16} sx={{ color: '#2563eb' }} />
       );
     }
 
     if (showSavedMsg) {
       return (
-        <Typography variant="caption" sx={{ mt: 0.5, color: '#16a34a', fontWeight: 'bold', fontSize: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          ✓ Saved
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+          <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#16a34a' }} />
+          <Typography sx={{ fontSize: '9px', color: '#16a34a', fontWeight: 700, letterSpacing: '0.3px' }}>SAVED</Typography>
+        </Box>
       );
     }
 
     if (hasChanges) {
       return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.8, mt: 0.5 }}>
-          <Button
+        <Tooltip title="Save billing details (Enter)" arrow placement="top">
+          <IconButton
             size="small"
-            variant="contained"
             onClick={handleSave}
             sx={{
-              padding: '1px 6px',
-              fontSize: '10px',
-              minWidth: 'auto',
-              height: '18px',
+              width: '22px',
+              height: '22px',
               backgroundColor: '#2563eb',
-              textTransform: 'none',
-              fontWeight: 'bold',
+              color: '#fff',
+              borderRadius: '6px',
               '&:hover': {
                 backgroundColor: '#1d4ed8',
-              }
+                transform: 'scale(1.08)',
+              },
+              transition: 'all 0.15s ease',
+              boxShadow: '0 1px 4px rgba(37,99,235,0.3)',
             }}
           >
-            Submit
-          </Button>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={handleCancel}
-            sx={{
-              padding: '1px 6px',
-              fontSize: '10px',
-              minWidth: 'auto',
-              height: '18px',
-              borderColor: '#dc2626',
-              color: '#dc2626',
-              textTransform: 'none',
-              fontWeight: 'bold',
-              '&:hover': {
-                borderColor: '#b91c1c',
-                backgroundColor: '#fef2f2',
-              }
-            }}
-          >
-            Cancel
-          </Button>
-        </Box>
+            <span style={{ fontSize: '12px', lineHeight: 1 }}>↵</span>
+          </IconButton>
+        </Tooltip>
       );
     }
 
     return null;
   };
 
-  const styles = {
-    customInput: {
-      fontSize: '11px',
-      padding: '3px 6px',
-      border: '1px solid #cbd5e1',
-      borderRadius: '4px',
-      outline: 'none',
-      fontFamily: 'inherit',
-      width: '100px',
-      height: '24px',
-      boxSizing: 'border-box',
-      transition: 'border-color 0.2s',
-      backgroundColor: '#fff',
+  const fieldStyle = {
+    fontSize: '11px',
+    padding: '4px 8px',
+    border: '1px solid transparent',
+    borderRadius: '4px',
+    outline: 'none',
+    fontFamily: 'inherit',
+    width: '90px',
+    height: '26px',
+    boxSizing: 'border-box',
+    transition: 'all 0.15s ease',
+    backgroundColor: '#f1f5f9',
+    color: '#1e293b',
+  };
+
+  const fieldFocusHandlers = {
+    onFocus: (e) => {
+      e.target.style.borderColor = '#93c5fd';
+      e.target.style.backgroundColor = '#fff';
+      e.target.style.boxShadow = '0 0 0 2px rgba(59,130,246,0.12)';
     },
-    customDateInput: {
-      fontSize: '11px',
-      padding: '3px 6px',
-      border: '1px solid #cbd5e1',
-      borderRadius: '4px',
-      outline: 'none',
-      fontFamily: 'inherit',
-      width: '100px',
-      height: '24px',
-      boxSizing: 'border-box',
-      transition: 'border-color 0.2s',
-      backgroundColor: '#fff',
-    }
+    onBlur: (e) => {
+      e.target.style.borderColor = 'transparent';
+      e.target.style.backgroundColor = '#f1f5f9';
+      e.target.style.boxShadow = 'none';
+    },
   };
 
   return (
@@ -484,19 +463,21 @@ const EditableBillingPair = ({
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 0.8,
-        p: 0.8,
-        border: '1px solid #cbd5e1',
-        borderRadius: '6px',
-        backgroundColor: '#f8fafc',
-        width: '265px',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+        gap: '6px',
       }}
     >
-      {/* Agency */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-        <Typography sx={{ width: '45px', fontSize: '9px', fontWeight: 800, color: '#475569', letterSpacing: '0.4px' }}>
-          AGENCY
+      {/* Agency Row */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <Typography sx={{
+          fontSize: '9px',
+          fontWeight: 700,
+          color: '#64748b',
+          letterSpacing: '0.5px',
+          width: '38px',
+          flexShrink: 0,
+          textTransform: 'uppercase',
+        }}>
+          AGN
         </Typography>
         <input
           type="text"
@@ -505,7 +486,8 @@ const EditableBillingPair = ({
           onKeyDown={handleKeyDown}
           disabled={loading}
           placeholder="Bill No"
-          style={styles.customInput}
+          style={fieldStyle}
+          {...fieldFocusHandlers}
         />
         <DateInput
           value={agencyDate}
@@ -513,14 +495,25 @@ const EditableBillingPair = ({
           onKeyDown={handleKeyDown}
           disabled={loading}
           placeholder="dd-mm-yyyy"
-          style={styles.customDateInput}
+          style={fieldStyle}
+          {...fieldFocusHandlers}
         />
+        {/* Show save icon inline with agency row when changes exist */}
+        {renderActionButtons()}
       </Box>
 
-      {/* Reimbursement */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-        <Typography sx={{ width: '45px', fontSize: '9px', fontWeight: 800, color: '#475569', letterSpacing: '0.4px' }}>
-          REIMB.
+      {/* Reimbursement Row */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <Typography sx={{
+          fontSize: '9px',
+          fontWeight: 700,
+          color: '#64748b',
+          letterSpacing: '0.5px',
+          width: '38px',
+          flexShrink: 0,
+          textTransform: 'uppercase',
+        }}>
+          RMB
         </Typography>
         <input
           type="text"
@@ -529,7 +522,8 @@ const EditableBillingPair = ({
           onKeyDown={handleKeyDown}
           disabled={loading}
           placeholder="Bill No"
-          style={styles.customInput}
+          style={fieldStyle}
+          {...fieldFocusHandlers}
         />
         <DateInput
           value={reimbursementDate}
@@ -537,11 +531,10 @@ const EditableBillingPair = ({
           onKeyDown={handleKeyDown}
           disabled={loading}
           placeholder="dd-mm-yyyy"
-          style={styles.customDateInput}
+          style={fieldStyle}
+          {...fieldFocusHandlers}
         />
       </Box>
-
-      {renderActionButtons()}
     </Box>
   );
 };
