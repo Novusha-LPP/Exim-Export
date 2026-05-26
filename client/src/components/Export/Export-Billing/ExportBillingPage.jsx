@@ -44,6 +44,7 @@ import { generatePaymentRequestPDF } from "../../../utils/paymentRequestPrint";
 import { generatePurchaseBookPDF } from "../../../utils/purchaseBookPrint";
 import DateInput from "../../common/DateInput.js";
 import { handleDateInput } from "../../../utils/dateUtils.js";
+import BillingReportsUtility from "../../Report/BillingReportsUtility";
 
 
 const s = {
@@ -1139,6 +1140,7 @@ function ExportBillingPage() {
   const [selectedRow, setSelectedRow] = useState(null);
   const [selectedRequestNo, setSelectedRequestNo] = useState(null);
   const [jobQueriesStatus, setJobQueriesStatus] = useState({});
+  const [reportsHubOpen, setReportsHubOpen] = useState(false);
   const [queryDialogOpen, setQueryDialogOpen] = useState(false);
   const [queryDialogJob, setQueryDialogJob] = useState(null);
   const [queryChatOpen, setQueryChatOpen] = useState(false);
@@ -1726,7 +1728,7 @@ function ExportBillingPage() {
             variant="outlined"
             size="small"
             startIcon={<AssessmentIcon sx={{ fontSize: '16px' }} />}
-            onClick={() => navigate("/report/billing")}
+            onClick={() => setReportsHubOpen(true)}
             sx={{
               fontWeight: 700,
               textTransform: "none",
@@ -2085,6 +2087,24 @@ function ExportBillingPage() {
               ))}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={reportsHubOpen}
+        onClose={() => setReportsHubOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: "12px", overflow: "hidden" } }}
+      >
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", py: 1.5, px: 3, background: "#19448aff", color: "#fff" }}>
+          <Typography sx={{ fontWeight: 700, fontSize: "15px" }}>Billing Reports Hub</Typography>
+          <IconButton onClick={() => setReportsHubOpen(false)} size="small" sx={{ color: "#fff" }}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          <BillingReportsUtility isDialog={true} onClose={() => setReportsHubOpen(false)} />
         </DialogContent>
       </Dialog>
     </Box>

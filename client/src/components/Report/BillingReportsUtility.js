@@ -27,7 +27,7 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import { UserContext } from "../../contexts/UserContext";
 import axios from "axios";
 
-const BillingReportsUtility = () => {
+const BillingReportsUtility = ({ isDialog, onClose }) => {
   const { user } = useContext(UserContext);
   const [branches, setBranches] = useState([]);
   const [years, setYears] = useState([]);
@@ -170,15 +170,17 @@ const BillingReportsUtility = () => {
   ];
 
   return (
-    <Box sx={{ maxWidth: 1200, margin: "0 auto", p: { xs: 2, md: 4 } }}>
-      <Box sx={{ mb: 5, textAlign: 'center' }}>
-        <Typography variant="h4" fontWeight="800" sx={{ mb: 1, color: '#202124' }}>
-          Billing Reports Hub
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Filter by Branch, Year, or Date Range to generate professional TDS and Billing reports.
-        </Typography>
-      </Box>
+    <Box sx={{ maxWidth: 1200, margin: "0 auto", p: isDialog ? 3 : { xs: 2, md: 4 } }}>
+      {!isDialog && (
+        <Box sx={{ mb: 5, textAlign: 'center' }}>
+          <Typography variant="h4" fontWeight="800" sx={{ mb: 1, color: '#202124' }}>
+            Billing Reports Hub
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Filter by Branch, Year, or Date Range to generate professional TDS and Billing reports.
+          </Typography>
+        </Box>
+      )}
 
       <Paper elevation={0} sx={{ p: 3, mb: 5, borderRadius: 3, border: '1px solid #e0e0e0', backgroundColor: '#fafafa' }}>
         <Box display="flex" alignItems="center" mb={3}>

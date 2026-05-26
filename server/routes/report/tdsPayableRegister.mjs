@@ -199,38 +199,99 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
     } else {
       // Payment Request
       worksheet.columns = [
-        { header: "Request No", key: "requestNo", width: 25 },
+        { header: "EXPORTER", key: "exporter", width: 30 },
+        { header: "SB NO", key: "sbNo", width: 15 },
+        { header: "SHIPPING LINE", key: "shippingLine", width: 25 },
+        { header: "BOOKING NO", key: "bookingNo", width: 20 },
+        { header: "CONTAINER NO", key: "containerNo", width: 30 },
+        { header: "JOB NO", key: "jobNo", width: 25 },
+        { header: "Payment Request No", key: "requestNo", width: 25 },
         { header: "Date", key: "requestDate", width: 15 },
-        { header: "Job No", key: "jobNo", width: 25 },
-        { header: "Payable To", key: "paymentTo", width: 30 },
-        { header: "Bank", key: "bankName", width: 20 },
-        { header: "Account No", key: "accountNo", width: 20 },
-        { header: "IFSC", key: "ifscCode", width: 15 },
-        { header: "Gross", key: "grossAmount", width: 15 },
-        { header: "TDS", key: "tdsAmount", width: 15 },
-        { header: "Net Amount", key: "amount", width: 15 },
-        { header: "Status", key: "status", width: 15 },
+        { header: "Transaction Mode", key: "transactionMode", width: 20 },
+        { header: "Completion Date", key: "completionDate", width: 15 },
+        { header: "Amount", key: "amount", width: 15 },
+        { header: "bankFrom", key: "bankFrom", width: 20 },
+        { header: "paymentTo", key: "paymentTo", width: 30 },
       ];
+
+      const formatToDDMMYYYY = (dateVal) => {
+        if (!dateVal) return "-";
+        const str = String(dateVal).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+          const parts = str.split("-");
+          return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        const dmyMatch = str.match(/^(\d{2})[\-\/](\d{2})[\-\/](\d{4})/);
+        if (dmyMatch) {
+          return `${dmyMatch[1]}/${dmyMatch[2]}/${dmyMatch[3]}`;
+        }
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          return `${day}/${month}/${year}`;
+        }
+        return str;
+      };
+
+      const normalizeDate = (dateVal) => {
+        if (!dateVal) return "";
+        const str = String(dateVal).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+        const dmyMatch = str.match(/^(\d{2})[\-\/](\d{2})[\-\/](\d{4})/);
+        if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`;
+        const isoMatch = str.match(/^(\d{4}-\d{2}-\d{2})T/);
+        if (isoMatch) return isoMatch[1];
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+        return str;
+      };
 
       const entries = await PaymentRequestModel.find(query).lean();
       for (const entry of entries) {
-        if (branchId && branchId !== 'all') {
-            const job = await ExJobModel.findById(entry.jobRef).lean();
-            if (job?.branch_code !== branchId) continue;
+        let job = null;
+        if (entry.jobRef) {
+          job = await ExJobModel.findById(entry.jobRef).lean();
+        }
+        if (!job && entry.jobNo) {
+          job = await ExJobModel.findOne({ job_no: entry.jobNo }).lean();
+        }
+
+        if (branchId && branchId !== 'all' && job?.branch_code !== branchId) {
+          continue;
+        }
+
+        const parsedReqDate = entry.requestDate ? normalizeDate(entry.requestDate) : (entry.createdAt ? entry.createdAt.toISOString().split('T')[0] : '');
+
+        let status = entry.status || "";
+        let completionDate = "-";
+        
+        if (job) {
+          const charge = job.charges?.find(c => c.payment_request_no === entry.requestNo);
+          if (charge) {
+            status = charge.payment_request_status || status;
+          }
+        }
+
+        if (status?.toLowerCase() === 'completed') {
+          completionDate = formatToDDMMYYYY(entry.updatedAt);
         }
 
         worksheet.addRow({
+          exporter: job?.exporter || "",
+          sbNo: job?.sb_no || "",
+          shippingLine: job?.shipping_line_airline || "",
+          bookingNo: job?.booking_no || "",
+          containerNo: (job?.containers || []).map(c => c.containerNo || c.container_number).filter(Boolean).join(", ") || "",
+          jobNo: entry.jobNo || job?.job_no || "",
           requestNo: entry.requestNo,
-          requestDate: entry.requestDate,
-          jobNo: entry.jobNo,
-          paymentTo: entry.paymentTo,
-          bankName: entry.bankName,
-          accountNo: entry.accountNo,
-          ifscCode: entry.ifscCode,
-          grossAmount: entry.grossAmount,
-          tdsAmount: entry.tdsAmount,
-          amount: entry.amount,
-          status: entry.status || 'Submitted',
+          requestDate: parsedReqDate ? formatToDDMMYYYY(parsedReqDate) : "-",
+          transactionMode: entry.transactionType || "NEFT",
+          completionDate: completionDate,
+          amount: entry.amount || 0,
+          bankFrom: entry.bankFrom || "-",
+          paymentTo: entry.paymentTo || "-",
         });
       }
     }

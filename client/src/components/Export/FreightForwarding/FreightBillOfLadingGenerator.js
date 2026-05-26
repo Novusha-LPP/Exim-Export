@@ -392,11 +392,11 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                  </div>
                  <div style="padding: 8px 10px; ${bb18} min-height: 85px;">
                     <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Consignee (Or Order)</div>
-                    <div style="font-weight: 700; text-transform: uppercase; font-size: 10px; white-space: pre-wrap; position: relative; top: ${isOriginal ? '10px' : '0'};">${bl.consignee || "TO ORDER"}</div>
+                    <div style="font-weight: 700; text-transform: uppercase; font-size: 10px; white-space: pre-wrap; position: relative; top: ${isOriginal ? '20px' : '0'};">${bl.consignee || "TO ORDER"}</div>
                  </div>
                  <div style="padding: 8px 10px; min-height: 85px;">
                     <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Notify Address</div>
-                    <div style="font-weight: 700; text-transform: uppercase; font-size: 10px; white-space: pre-wrap; position: relative; top: ${isOriginal ? '25px' : '0'};">${bl.notify_party || "SAME AS CONSIGNEE"}</div>
+                    <div style="font-weight: 700; text-transform: uppercase; font-size: 10px; white-space: pre-wrap; position: relative; top: ${isOriginal ? '40px' : '0'};">${bl.notify_party || "SAME AS CONSIGNEE"}</div>
                  </div>
               </td>
               <td style="width: 47%; vertical-align: top; padding: 10px 12px; text-align: center;">
