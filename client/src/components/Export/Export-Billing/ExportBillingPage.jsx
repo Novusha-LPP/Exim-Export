@@ -77,7 +77,7 @@ const PAYMENT_TABS = [
   { key: "payment", label: "Payment" },
   { key: "payment-completed", label: "Payment Completed" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
-  { key: "general-jobs", label: "General Jobs" },
+  { key: "general-jobs", label: "Gen/Freight Jobs" },
 ];
 
 const PURCHASE_TABS = [
@@ -86,7 +86,7 @@ const PURCHASE_TABS = [
   { key: "purchase-book", label: "Purchase Book" },
   { key: "purchase-book-completed", label: "Purchase Book Completed" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
-  { key: "general-jobs", label: "General Jobs" },
+  { key: "general-jobs", label: "Gen/Freight Jobs" },
 ];
 
 function getCurrentFinancialYear() {
@@ -1136,6 +1136,7 @@ function ExportBillingPage() {
   const [showUnresolvedOnly, setShowUnresolvedOnly] = useState(() => {
     return localStorage.getItem("billing_showUnresolvedOnly") === "true";
   });
+  const [jobTypeFilter, setJobTypeFilter] = useState("all"); // "all" | "gen" | "freight"
   const [unresolvedCount, setUnresolvedCount] = useState(0);
   const [selectedRow, setSelectedRow] = useState(null);
   const [selectedRequestNo, setSelectedRequestNo] = useState(null);
@@ -1250,6 +1251,7 @@ function ExportBillingPage() {
           branch: selectedBranch || "",
           year: selectedYear || "",
           unresolvedOnly: showUnresolvedOnly,
+          jobTypeFilter: activeTab === "general-jobs" ? jobTypeFilter : "",
         },
         headers: {
           username: user?.username || "",
@@ -1277,6 +1279,7 @@ function ExportBillingPage() {
     selectedBranch,
     selectedYear,
     showUnresolvedOnly,
+    jobTypeFilter,
     user?.username,
   ]);
 
@@ -1886,6 +1889,25 @@ function ExportBillingPage() {
                 </MenuItem>
               ))}
             </TextField>
+
+            {activeTab === "general-jobs" && (
+              <TextField
+                select
+                size="small"
+                value={jobTypeFilter}
+                onChange={(e) => {
+                  setJobTypeFilter(e.target.value);
+                  setPage(1);
+                }}
+                sx={{ width: 120 }}
+                InputProps={{ sx: { height: 28, fontSize: '11px', backgroundColor: '#f9fafb' } }}
+                SelectProps={{ displayEmpty: true }}
+              >
+                <MenuItem value="all" sx={{ fontSize: '11px' }}>All Types</MenuItem>
+                <MenuItem value="gen" sx={{ fontSize: '11px' }}>Gen Jobs</MenuItem>
+                <MenuItem value="freight" sx={{ fontSize: '11px' }}>Freight Jobs</MenuItem>
+              </TextField>
+            )}
 
             <TextField
               size="small"

@@ -291,7 +291,6 @@ router.post(
       delete sourceData.branch_sr_no;
       delete sourceData.branch_index;
       delete sourceData.branchIndex;
-      delete sourceData.custom_house;
 
       // Set new values
       const newExportJob = new ExportJobModel({

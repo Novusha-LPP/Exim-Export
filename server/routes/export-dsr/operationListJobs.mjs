@@ -431,8 +431,12 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
 
         const { sortKey, sortOrder } = req.query;
         const sort = {};
-        if (sortKey) sort[sortKey] = sortOrder === "asc" ? 1 : -1;
-        else sort.createdAt = -1;
+        if (sortKey && sortKey !== "null" && sortKey !== "undefined" && sortKey !== "") {
+            sort[sortKey] = sortOrder === "asc" ? 1 : -1;
+        } else {
+            sort.createdAt = -1;
+        }
+
 
         const selectProjection = {
             job_no: 1, custom_house: 1, job_date: 1, consignmentType: 1, job_owner: 1,

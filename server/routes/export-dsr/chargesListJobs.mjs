@@ -290,10 +290,18 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             isGeneralJob: 1
         };
 
+        const { sortKey, sortOrder } = req.query;
+        const sort = {};
+        if (sortKey && sortKey !== "null" && sortKey !== "undefined" && sortKey !== "") {
+            sort[sortKey] = sortOrder === "asc" ? 1 : -1;
+        } else {
+            sort.createdAt = -1;
+        }
+
         const [jobs, totalCount] = await Promise.all([
             ExportJobModel.find(filter)
                 .select(selectProjection)
-                .sort({ job_date: -1 })
+                .sort(sort)
                 .skip(skip)
                 .limit(parseInt(limit)),
             ExportJobModel.countDocuments(filter)

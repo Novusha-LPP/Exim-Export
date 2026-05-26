@@ -692,7 +692,7 @@ const ExportJobsTable = () => {
   const LIMIT = 100;
 
   // Sorting State
-  const [sortConfig, setSortConfig] = useState(savedFilters.sortConfig || { key: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState(savedFilters.sortConfig || { key: 'createdAt', direction: 'desc' });
 
   // Filters
   const [searchQuery, setSearchQuery] = useState(savedFilters.searchQuery || "");
@@ -924,7 +924,7 @@ const ExportJobsTable = () => {
     setSelectedJobOwner("");
     setSelectedGoodsStuffedAt("");
     setPage(1);
-    setSortConfig({ key: null, direction: 'asc' });
+    setSortConfig({ key: 'createdAt', direction: 'desc' });
 
     // Clear storage but immediate re-save will happen via useEffect for selectedBranch
     localStorage.removeItem(FILTER_STORAGE_KEY);

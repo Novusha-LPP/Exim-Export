@@ -130,8 +130,8 @@ function summarizeJob(job) {
       .filter(Boolean),
     handover_date: opStatus.handoverForwardingNoteDate || "",
     billing_date: (opStatus.billing_details?.agency_bill_date && opStatus.billing_details?.agency_bill_no ? opStatus.billing_details.agency_bill_date : "") ||
-                  (opStatus.billing_details?.reimbursement_bill_date && opStatus.billing_details?.reimbursement_bill_no ? opStatus.billing_details.reimbursement_bill_date : "") ||
-                  opStatus.billingDocsSentDt || "",
+      (opStatus.billing_details?.reimbursement_bill_date && opStatus.billing_details?.reimbursement_bill_no ? opStatus.billing_details.reimbursement_bill_date : "") ||
+      opStatus.billingDocsSentDt || "",
     billing_docs_count: Array.isArray(opStatus.billingDocsSentUpload)
       ? opStatus.billingDocsSentUpload.length
       : 0,
@@ -152,6 +152,7 @@ function summarizeJob(job) {
     financial_lock: Boolean(job.financial_lock),
     send_for_billing: Boolean(job.send_for_billing),
     isGeneralJob: Boolean(job.isGeneralJob),
+    isFreightForwarding: String(job.job_no || "").toUpperCase().startsWith("FF"),
     unresolved_queries: 0,
     // Add flags for tab logic
     hasPurchaseBook: purchaseBookState.hasAny,
@@ -169,13 +170,22 @@ function summarizeJob(job) {
   };
 }
 
-function matchesTab(job, workMode, tab) {
+function matchesTab(job, workMode, tab, jobTypeFilter = "") {
   const hasHandover = Boolean(job.handover_date);
   const hasBillingDone = Boolean(job.billing_date);
 
-  // General Jobs tab
+  // General/Freight Jobs tab
   if (tab === "general-jobs" || tab === "General Jobs") {
-    return job.isGeneralJob === true;
+    const isGenJob = job.isGeneralJob === true;
+    const isFreightJob = String(job.job_no || "").toUpperCase().startsWith("FF");
+    const matchesType = isGenJob || isFreightJob;
+
+    if (!matchesType) return false;
+
+    // Apply sub-filter if provided
+    if (jobTypeFilter === "gen") return isGenJob && !isFreightJob;
+    if (jobTypeFilter === "freight") return isFreightJob;
+    return true; // "all" or no filter
   }
 
   // Standard tabs logic
@@ -300,6 +310,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       year = "",
       unresolvedOnly = "false",
       branch = "",
+      jobTypeFilter = "",
     } = req.query;
 
     const normalizedWorkMode = String(workMode).trim().toLowerCase();
@@ -419,7 +430,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
         ...job,
         unresolved_queries: unresolvedByJob[job.job_no] || 0,
       }))
-      .filter((job) => matchesTab(job, normalizedWorkMode, normalizedTab))
+      .filter((job) => matchesTab(job, normalizedWorkMode, normalizedTab, String(jobTypeFilter).trim().toLowerCase()))
       .filter((job) =>
         String(unresolvedOnly).toLowerCase() === "true" ? job.unresolved_queries > 0 : true
       );

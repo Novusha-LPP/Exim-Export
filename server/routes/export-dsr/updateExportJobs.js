@@ -1255,11 +1255,12 @@ router.get("/exports/:status?", async (req, res) => {
     // Sorting logic
     const { sortKey, sortOrder } = req.query;
     const sort = {};
-    if (sortKey) {
+    if (sortKey && sortKey !== "null" && sortKey !== "undefined" && sortKey !== "") {
       sort[sortKey] = sortOrder === "asc" ? 1 : -1;
     } else {
       sort.createdAt = -1; // Default sort
     }
+
 
     // Selected fields to reduce payload size for the frontend table
     const selectProjection = {
