@@ -236,7 +236,19 @@ async function buildUserRestrictionFilter(req) {
   const restrictions = [];
 
   if (branchRestrictions.length > 0) {
-    restrictions.push({ branch_code: { $in: branchRestrictions } });
+    const branchRegexStr = branchRestrictions.map((r) => escapeRegex(r)).join("|");
+    const fallbackRegex = `^(${branchRegexStr})(/|$)`;
+    restrictions.push({
+      $or: [
+        { branch_code: { $in: branchRestrictions } },
+        {
+          $and: [
+            { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+            { job_no: { $regex: fallbackRegex, $options: "i" } },
+          ],
+        },
+      ],
+    });
   }
 
   const portRestrictions = requester.selected_ports || [];

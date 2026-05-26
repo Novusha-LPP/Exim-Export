@@ -112,9 +112,26 @@ router.get("/dashboard-stats", async (req, res) => {
     if (requesterUsername) {
       const requester = await UserModel.findOne({ username: requesterUsername });
       if (requester && requester.role !== "Admin") {
-        const branchRestrictions = requester.selected_branches || [];
+        let branchRestrictions = requester.selected_branches || [];
+        const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+        branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
         if (branchRestrictions.length > 0) {
-          matchStage.$and.push({ branch_code: { $in: branchRestrictions } });
+          const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+          const fallbackRegex = `^(${branchRegexStr})(/|$)`;
+          matchStage.$and.push({
+            $or: [
+              { branch_code: { $in: branchRestrictions } },
+              {
+                $and: [
+                  { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+                  { job_no: { $regex: fallbackRegex, $options: "i" } }
+                ]
+              }
+            ]
+          });
+        } else {
+          matchStage.$and.push({ branch_code: { $in: [] } });
         }
 
         const portRestrictions = requester.selected_ports || [];
@@ -344,9 +361,26 @@ router.get("/global-search-jobs", async (req, res) => {
     if (requesterUsername) {
       const requester = await UserModel.findOne({ username: requesterUsername });
       if (requester && requester.role !== "Admin" && (!search || String(search).trim() === "")) {
-        const branchRestrictions = requester.selected_branches || [];
+        let branchRestrictions = requester.selected_branches || [];
+        const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+        branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
         if (branchRestrictions.length > 0) {
-          filter.$and.push({ branch_code: { $in: branchRestrictions } });
+          const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+          const fallbackRegex = `^(${branchRegexStr})(/|$)`;
+          filter.$and.push({
+            $or: [
+              { branch_code: { $in: branchRestrictions } },
+              {
+                $and: [
+                  { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+                  { job_no: { $regex: fallbackRegex, $options: "i" } }
+                ]
+              }
+            ]
+          });
+        } else {
+          filter.$and.push({ branch_code: { $in: [] } });
         }
 
         const portRestrictions = requester.selected_ports || [];
@@ -828,11 +862,26 @@ router.get("/exports/:status?", async (req, res) => {
       const requester = await UserModel.findOne({ username: requesterUsername });
       if (requester && requester.role !== "Admin") {
         // Enforce Branch Restriction
-        const branchRestrictions = requester.selected_branches || [];
+        let branchRestrictions = requester.selected_branches || [];
+        const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+        branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
         if (branchRestrictions.length > 0) {
+          const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+          const fallbackRegex = `^(${branchRegexStr})(/|$)`;
           filter.$and.push({
-            branch_code: { $in: branchRestrictions }
+            $or: [
+              { branch_code: { $in: branchRestrictions } },
+              {
+                $and: [
+                  { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+                  { job_no: { $regex: fallbackRegex, $options: "i" } }
+                ]
+              }
+            ]
           });
+        } else {
+          filter.$and.push({ branch_code: { $in: [] } });
         }
 
         // Enforce Port & ICD Restriction
@@ -1408,9 +1457,26 @@ router.get("/filtered-exporters", async (req, res) => {
     if (requesterUsername) {
       const requester = await UserModel.findOne({ username: requesterUsername });
       if (requester && requester.role !== "Admin") {
-        const branchRestrictions = requester.selected_branches || [];
+        let branchRestrictions = requester.selected_branches || [];
+        const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+        branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
         if (branchRestrictions.length > 0) {
-          filter.$and.push({ branch_code: { $in: branchRestrictions } });
+          const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+          const fallbackRegex = `^(${branchRegexStr})(/|$)`;
+          filter.$and.push({
+            $or: [
+              { branch_code: { $in: branchRestrictions } },
+              {
+                $and: [
+                  { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+                  { job_no: { $regex: fallbackRegex, $options: "i" } }
+                ]
+              }
+            ]
+          });
+        } else {
+          filter.$and.push({ branch_code: { $in: [] } });
         }
 
         const portRestrictions = requester.selected_ports || [];

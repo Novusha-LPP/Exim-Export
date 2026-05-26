@@ -28,9 +28,12 @@ function ProductTabPanel({ children, value, index, ...other }) {
 
 // EXIM Code to Tab mapping
 const getTabsForEximCode = (eximCode) => {
-  const code = eximCode?.toString();
-  switch (code) {
-    case "03 - ADVANCE LICENCE": // ADVANCE LICENCE DEEC
+  const codeStr = eximCode?.toString() || "";
+  const parts = codeStr.split(" - ");
+  const prefix = parts[0] ? parts[0].trim().padStart(2, "0") : "";
+
+  switch (prefix) {
+    case "03": // ADVANCE LICENCE DEEC
       return [
         "Main",
         "General",
@@ -40,7 +43,7 @@ const getTabsForEximCode = (eximCode) => {
         "Re-Export",
         "Other Details",
       ];
-    case "19 - DRAWBACK (DBK)": // DRAWBACK DBK
+    case "19": // DRAWBACK DBK
       return [
         "Main",
         "General",
@@ -50,7 +53,7 @@ const getTabsForEximCode = (eximCode) => {
         "Re-Export",
         "Other Details",
       ];
-    case "21 (EOU/EPZ/SEZ/EHTP/STP)": // DRAWBACK DBK
+    case "21": // EOU/EPZ/SEZ/EHTP/STP
       return [
         "Main",
         "General",
@@ -59,7 +62,7 @@ const getTabsForEximCode = (eximCode) => {
         "Re-Export",
         "Other Details",
       ];
-    case "43 - DRAWBACK AND ZERO DUTY PECG": // DRAWBACK AND ZERO DUTY PECG EPCG
+    case "43": // DRAWBACK AND ZERO DUTY EPCG
       return [
         "Main",
         "General",
@@ -70,7 +73,7 @@ const getTabsForEximCode = (eximCode) => {
         "Re-Export",
         "Other Details",
       ];
-    case "50 - EPCG AND ADVANCE LICENSE": // EPCG AND ADVANCE LICENSE DEEC EPCG
+    case "50": // EPCG AND ADVANCE LICENSE
       return [
         "Main",
         "General",
@@ -81,7 +84,7 @@ const getTabsForEximCode = (eximCode) => {
         "Re-Export",
         "Other Details",
       ];
-    case "60 - DRAWBACK AND ROSCTL": // DRAWBACK AND ROSCTL
+    case "60": // DRAWBACK AND ROSCTL
       return [
         "Main",
         "General",
@@ -92,7 +95,7 @@ const getTabsForEximCode = (eximCode) => {
         "Other Details",
       ];
 
-    case "61 - EPCG, DRAWBACK AND ROSCTL": // EPCG, DRAWBACK AND ROSCTL EPCG Drawback
+    case "61": // EPCG, DRAWBACK AND ROSCTL
       return [
         "Main",
         "General",
@@ -103,7 +106,7 @@ const getTabsForEximCode = (eximCode) => {
         "Re-Export",
         "Other Details",
       ];
-    case "99 - NFEI": // NFEI
+    case "99": // NFEI
     default:
       return [
         "Main",

@@ -983,6 +983,8 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
               deecItems: [],
               deec_reg_obj: [getDefaultRegItem()],
             }),
+            drawbackDetails: safeValue(prod.drawbackDetails, []),
+            areDetails: safeValue(prod.areDetails, []),
             rodtepInfo: {
               ...prod.rodtepInfo,
               isCapUnitManual: prod.rodtepInfo?.isCapUnitManual || false,
@@ -1127,6 +1129,8 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
               ? product.epcgDetails.epcg_reg_obj
               : [getDefaultEpcgItem()],
           }),
+          drawbackDetails: safeValue(product.drawbackDetails, []),
+          areDetails: safeValue(product.areDetails, []),
           cessExpDuty: {
             ...safeValue(product.cessExpDuty, {}),
             cenvat: safeValue(product.cessExpDuty?.cenvat, {}),

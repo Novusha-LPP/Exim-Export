@@ -40,8 +40,28 @@ router.get("/api/operation-pending-jobs", async (req, res) => {
 
         if (requesterUsername) {
             const requester = await UserModel.findOne({ username: requesterUsername });
-            if (requester && requester.role !== "Admin" && requester.selected_branches?.length > 0) {
-                branchFilter = { branch_code: { $in: requester.selected_branches } };
+            if (requester && requester.role !== "Admin") {
+                let branchRestrictions = requester.selected_branches || [];
+                const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+                branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
+                if (branchRestrictions.length > 0) {
+                    const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+                    const fallbackRegex = `^(${branchRegexStr})(/|$)`;
+                    branchFilter = {
+                        $or: [
+                            { branch_code: { $in: branchRestrictions } },
+                            {
+                                $and: [
+                                    { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+                                    { job_no: { $regex: fallbackRegex, $options: "i" } }
+                                ]
+                            }
+                        ]
+                    };
+                } else if (requester.selected_branches) {
+                    branchFilter = { branch_code: { $in: [] } };
+                }
             }
         }
 

@@ -42,9 +42,23 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
 
                 // Always apply branch restriction for non-admins
-                filter.$and.push({
-                    branch_code: { $in: branchRestrictions }
-                });
+                if (branchRestrictions.length > 0) {
+                    const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+                    const fallbackRegex = `^(${branchRegexStr})(/|$)`;
+                    filter.$and.push({
+                        $or: [
+                            { branch_code: { $in: branchRestrictions } },
+                            {
+                                $and: [
+                                    { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+                                    { job_no: { $regex: fallbackRegex, $options: "i" } }
+                                ]
+                            }
+                        ]
+                    });
+                } else {
+                    filter.$and.push({ branch_code: { $in: [] } });
+                }
 
                 const portRestrictions = requester.selected_ports || [];
                 const icdRestrictions = requester.selected_icd_codes || [];

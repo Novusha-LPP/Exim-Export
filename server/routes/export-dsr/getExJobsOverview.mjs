@@ -36,8 +36,26 @@ router.get("/api/get-exjobs-overview/:year", async (req, res) => {
     if (requesterUsername) {
       const requester = await UserModel.findOne({ username: requesterUsername });
       if (requester && requester.role !== "Admin") {
-        if (requester.selected_branches && requester.selected_branches.length > 0) {
-          matchQuery.$and.push({ branch_code: { $in: requester.selected_branches } });
+        let branchRestrictions = requester.selected_branches || [];
+        const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+        branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
+        if (branchRestrictions.length > 0) {
+          const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+          const fallbackRegex = `^(${branchRegexStr})(/|$)`;
+          matchQuery.$and.push({
+            $or: [
+              { branch_code: { $in: branchRestrictions } },
+              {
+                $and: [
+                  { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+                  { job_no: { $regex: fallbackRegex, $options: "i" } }
+                ]
+              }
+            ]
+          });
+        } else if (requester.selected_branches) {
+          matchQuery.$and.push({ branch_code: { $in: [] } });
         }
         if (requester.selected_ports && requester.selected_ports.length > 0) {
           matchQuery.$and.push({

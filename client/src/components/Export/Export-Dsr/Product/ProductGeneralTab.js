@@ -2434,6 +2434,79 @@ const ProductGeneralTab = ({
         value,
       );
 
+      // Clear inactive scheme fields when eximCode changes
+      if (field === "eximCode") {
+        const code = String(value || "").trim().toUpperCase();
+        const parts = code.split(" - ");
+        const prefix = parts[0] ? parts[0].trim().padStart(2, "0") : "";
+
+        const emptyDeecDetails = {
+          isDeecItem: false,
+          itemSnoPartE: "",
+          exportQtyUnderLicence: 0,
+          deecItems: [],
+          deec_reg_obj: []
+        };
+
+        const emptyEpcgDetails = {
+          isEpcgItem: false,
+          itemSnoPartE: "",
+          exportQtyUnderLicence: 0,
+          epcgItems: [],
+          epcg_reg_obj: []
+        };
+
+        const emptyDrawbackDetails = [];
+
+        const emptyRosctlInfo = {
+          claim: "No",
+          quantity: "0",
+          slRate: "0",
+          slCap: "0",
+          ctlRate: "0",
+          ctlCap: "0",
+          amountINR: "0",
+          category: "",
+        };
+
+        const emptyAreDetails = [];
+
+        if (prefix === "03") {
+          // ADVANCE LICENCE (DEEC)
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].drawbackDetails`, emptyDrawbackDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].rosctlInfo`, emptyRosctlInfo);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].epcgDetails`, emptyEpcgDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
+        } else if (prefix === "19" || prefix === "60") {
+          // DRAWBACK (DBK) / DRAWBACK AND ROSCTL
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].deecDetails`, emptyDeecDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].epcgDetails`, emptyEpcgDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
+        } else if (prefix === "21") {
+          // EOU/EPZ/SEZ (AreDetails)
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].deecDetails`, emptyDeecDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].epcgDetails`, emptyEpcgDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].drawbackDetails`, emptyDrawbackDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].rosctlInfo`, emptyRosctlInfo);
+        } else if (prefix === "43" || prefix === "61") {
+          // DRAWBACK & EPCG
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].deecDetails`, emptyDeecDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
+        } else if (prefix === "50") {
+          // EPCG & ADVANCE LICENCE (DEEC & EPCG)
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].drawbackDetails`, emptyDrawbackDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].rosctlInfo`, emptyRosctlInfo);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
+        } else {
+          // NFEI / Default
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].deecDetails`, emptyDeecDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].epcgDetails`, emptyEpcgDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].drawbackDetails`, emptyDrawbackDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].rosctlInfo`, emptyRosctlInfo);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
+        }
+      }
+
       // Sync RoDTEP quantity if SQC quantity is changed
       if (field === "socQuantity") {
         formik.setFieldValue(

@@ -268,10 +268,17 @@ const ExportChecklistGenerator = ({
     yPos += 12;
 
     // Third row: CHA only on left side
+    const isGandhidham =
+      String(data.branchCode || "").toUpperCase().trim() === "GIM" ||
+      String(data.jobNumber || "").toUpperCase().startsWith("GIM");
+
+    const firmName = isGandhidham ? "SURAJ FORWARDERS" : "SURAJ FORWARDERS & SHIPPING AGENCIES";
+    const licCode = isGandhidham ? "ABOFS1766LCH006" : "ABOFS1766LCH005";
+
     pdf.setFont("helvetica", "bold");
     pdf.text("CHA", leftColX, yPos);
     pdf.setFont("helvetica", "normal");
-    pdf.text(data.chaCode || "", leftColX + 35, yPos);
+    pdf.text(licCode + " " + firmName, leftColX + 35, yPos);
 
     yPos += 15;
 
@@ -441,6 +448,8 @@ const ExportChecklistGenerator = ({
           data.aeoRegistrationNo,
           data.aeoRole,
           data.currentDate,
+          data.branchCode,
+          data.jobNumber,
         );
         yPos = 80;
       }
@@ -1831,6 +1840,7 @@ const ExportChecklistGenerator = ({
 
         // Add today's date to data for use in headers during page breaks
         currentDate: currentDate,
+        branchCode: exportJob.branch_code,
 
         // Payment & Buyer Details
         natureOfPayment: exportJob.otherInfo?.natureOfPayment || "",
@@ -2351,13 +2361,31 @@ const ExportChecklistGenerator = ({
         if (currentY + neededHeight > PAGE_BOTTOM_LIMIT) {
           pdf.addPage();
           pageCount++;
-          helpers.addHeader(pageCount, "?", data.customStation, data.aeoRegistrationNo, data.aeoRole, currentDate);
+          helpers.addHeader(
+            pageCount,
+            "?",
+            data.customStation,
+            data.aeoRegistrationNo,
+            data.aeoRole,
+            currentDate,
+            data.branchCode,
+            data.jobNumber,
+          );
           return 80;
         }
         return currentY;
       };
 
-      helpers.addHeader(1, "?", data.customStation, data.aeoRegistrationNo, data.aeoRole, currentDate);
+      helpers.addHeader(
+        1,
+        "?",
+        data.customStation,
+        data.aeoRegistrationNo,
+        data.aeoRole,
+        currentDate,
+        data.branchCode,
+        data.jobNumber,
+      );
       let yPos = renderPage1(pdf, helpers, data);
 
       yPos = ensureSpace(100, yPos);
