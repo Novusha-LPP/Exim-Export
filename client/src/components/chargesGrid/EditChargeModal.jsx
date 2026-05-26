@@ -15,6 +15,9 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { IconButton } from '@mui/material';
 import { currencyList } from '../../utils/masterList';
 import { formatDate } from '../../utils/dateUtils';
+
+const roundWholeAmount = (value) => Math.round(Number(value || 0));
+
 const EditChargeModal = ({
   isOpen,
   onClose,
@@ -157,7 +160,8 @@ const EditChargeModal = ({
         cost: {
           ...(charge.cost || {}),
           partyType: charge.cost?.partyType || 'Others',
-          isGst: (charge.cost && charge.cost.isGst !== undefined) ? charge.cost.isGst : true
+          isGst: (charge.cost && charge.cost.isGst !== undefined) ? charge.cost.isGst : true,
+          tdsAmount: roundWholeAmount(charge.cost?.tdsAmount)
         }
       }));
       setFormData(initialData);
@@ -353,7 +357,7 @@ const EditChargeModal = ({
         const isTds = sectionRef.isTds || false;
         const tdsPercent = parseFloat(sectionRef.tdsPercent) || 0;
         if (isTds) {
-          sectionRef.tdsAmount = Number((basic * (tdsPercent / 100)).toFixed(2));
+          sectionRef.tdsAmount = roundWholeAmount(basic * (tdsPercent / 100));
         } else {
           sectionRef.tdsAmount = 0;
         }
@@ -1121,7 +1125,7 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">TDS AMOUNT</span>
                                 <div className="ep-inline">
-                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.cost?.tdsAmount)} />
+                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={roundWholeAmount(row.cost?.tdsAmount)} />
                                 </div>
                               </div>
                               <div className="ep-row">

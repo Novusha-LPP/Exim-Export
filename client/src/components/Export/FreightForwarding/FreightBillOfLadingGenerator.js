@@ -224,11 +224,11 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Freight Payable at</div>
                  <div style="font-weight: 700; text-transform: uppercase; font-size: 10px; position: relative; top: ${isOriginal ? '30px' : '0'};">AHMEDABAD</div>
               </td>
-              <td style="width: 25%; ${br18} padding: 6px 10px; vertical-align: top;">
+              <td style="width: 25%; ${br18} padding: 6px 10px 6px 20px; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9px;">Number of Original MTD (s)</div>
                  <div style="font-weight: 700; text-transform: uppercase; font-size: 10px; position: relative; top: ${isOriginal ? '30px' : '0'};">3 (THREE)</div>
               </td>
-              <td style="width: 25%; padding: 6px 10px; vertical-align: top;">
+              <td style="width: 25%; padding: 6px 10px 6px 20px; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Place and Date of Issue</div>
                  <div style="font-weight: 700; text-transform: uppercase; font-size: 10px; position: relative; top: ${isOriginal ? '30px' : '0'};">AHMEDABAD<br/>${new Date().toLocaleDateString('en-GB')}</div>
               </td>
@@ -499,11 +499,11 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Freight Payable at</div>
                  <div style="font-weight: 700; text-transform: uppercase; font-size: 10px; position: relative; top: ${isOriginal ? '50px' : '0'};">AHMEDABAD</div>
               </td>
-              <td style="width: 25%; ${br18} padding: 6px 10px; vertical-align: top;">
+              <td style="width: 25%; ${br18} padding: 6px 10px 6px 20px; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9px; color: ${isOriginal ? 'transparent' : '#000'};">Number of Original MTD (s)</div>
                  <div style="font-weight: 700; text-transform: uppercase; font-size: 10px; position: relative; top: ${isOriginal ? '50px' : '0'};">3 (THREE)</div>
               </td>
-              <td style="width: 25%; padding: 6px 10px; vertical-align: top;">
+              <td style="width: 25%; padding: 6px 10px 6px 20px; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Place and Date of Issue</div>
                  <div style="font-weight: 700; text-transform: uppercase; font-size: 10px; position: relative; top: ${isOriginal ? '50px' : '0'};">AHMEDABAD<br/>${new Date().toLocaleDateString('en-GB')}</div>
               </td>

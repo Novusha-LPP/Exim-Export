@@ -25,12 +25,54 @@ const PURCHASE_TABS = [
   "General Jobs",
 ];
 
+const JOBS_WITHOUT_BRANCH_OR_CUSTOM_HOUSE_VALIDATION = [
+  { job_no: { $regex: "^(FF|GEN)", $options: "i" } },
+  { isGeneralJob: true },
+];
+
 function escapeRegex(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function uniqueNonEmpty(values) {
   return [...new Set((values || []).map((v) => String(v || "").trim()).filter(Boolean))];
+}
+
+function isCompletedStatus(status) {
+  return /complete|completed|done|paid/i.test(String(status || ""));
+}
+
+function isApprovedRequest(isApproved, status) {
+  return Boolean(isApproved) || /approved/i.test(String(status || ""));
+}
+
+function summarizeRequestState(charges, refField, statusField, approvalField) {
+  const groups = new Map();
+
+  (charges || []).forEach((charge) => {
+    const refNo = String(charge?.[refField] || "").trim();
+    if (!refNo) return;
+
+    const current = groups.get(refNo) || { hasPending: false, hasApproved: false, completed: true };
+    const completed = isCompletedStatus(charge?.[statusField]);
+    const approved = isApprovedRequest(charge?.[approvalField], charge?.[statusField]);
+
+    current.hasPending = current.hasPending || (!approved && !completed);
+    current.hasApproved = current.hasApproved || (approved && !completed);
+    current.completed = current.completed && completed;
+
+    groups.set(refNo, current);
+  });
+
+  const requests = [...groups.values()];
+
+  return {
+    hasAny: requests.length > 0,
+    allApproved: requests.length > 0 && requests.every((request) => request.hasApproved || request.completed),
+    completed: requests.length > 0 && requests.every((request) => request.completed),
+    hasPending: requests.some((request) => request.hasPending),
+    hasApproved: requests.some((request) => request.hasApproved),
+  };
 }
 
 function summarizeJob(job) {
@@ -47,12 +89,18 @@ function summarizeJob(job) {
   const purchaseBookNos = uniqueNonEmpty(pbCharges.map((c) => c.purchase_book_no));
   const purchaseBookStatuses = uniqueNonEmpty(pbCharges.map((c) => c.purchase_book_status));
 
-  const hasPurchaseBook = pbCharges.length > 0;
-  const hasPaymentRequest = prCharges.length > 0;
-  const allPbApproved = hasPurchaseBook && pbCharges.every((c) => c.purchase_book_is_approved);
-  const allPrApproved = hasPaymentRequest && prCharges.every((c) => c.payment_request_is_approved);
-  const pbCompleted = hasPurchaseBook && pbCharges.every((c) => /complete|completed|done|paid/i.test(c.purchase_book_status));
-  const prCompleted = hasPaymentRequest && prCharges.every((c) => /complete|completed|done|paid/i.test(c.payment_request_status));
+  const purchaseBookState = summarizeRequestState(
+    pbCharges,
+    "purchase_book_no",
+    "purchase_book_status",
+    "purchase_book_is_approved"
+  );
+  const paymentRequestState = summarizeRequestState(
+    prCharges,
+    "payment_request_no",
+    "payment_request_status",
+    "payment_request_is_approved"
+  );
 
   const supplierNames = uniqueNonEmpty([
     ...charges.map((c) => c.cost?.partyName),
@@ -106,12 +154,16 @@ function summarizeJob(job) {
     isGeneralJob: Boolean(job.isGeneralJob),
     unresolved_queries: 0,
     // Add flags for tab logic
-    hasPurchaseBook,
-    allPbApproved,
-    pbCompleted,
-    hasPaymentRequest,
-    allPrApproved,
-    prCompleted,
+    hasPurchaseBook: purchaseBookState.hasAny,
+    allPbApproved: purchaseBookState.allApproved,
+    pbCompleted: purchaseBookState.completed,
+    hasPendingPb: purchaseBookState.hasPending,
+    hasApprovedPb: purchaseBookState.hasApproved,
+    hasPaymentRequest: paymentRequestState.hasAny,
+    allPrApproved: paymentRequestState.allApproved,
+    prCompleted: paymentRequestState.completed,
+    hasPendingPr: paymentRequestState.hasPending,
+    hasApprovedPr: paymentRequestState.hasApproved,
     hasUnprocessedPb: charges.some((c) => !c.purchase_book_no),
     hasUnprocessedPr: charges.some((c) => !c.payment_request_no),
   };
@@ -138,14 +190,14 @@ function matchesTab(job, workMode, tab) {
   }
 
   if (workMode === "payment") {
-    if (tab === "payment-requested") return job.hasPaymentRequest && !job.allPrApproved && !job.prCompleted;
-    if (tab === "payment") return job.hasPaymentRequest && job.allPrApproved && !job.prCompleted;
+    if (tab === "payment-requested") return job.hasPendingPr;
+    if (tab === "payment") return job.hasApprovedPr;
     if (tab === "payment-completed") return job.prCompleted;
   }
 
   if (workMode === "purchase-book") {
-    if (tab === "purchase-book-requested") return job.hasPurchaseBook && !job.allPbApproved && !job.pbCompleted;
-    if (tab === "purchase-book") return job.hasPurchaseBook && job.allPbApproved && !job.pbCompleted;
+    if (tab === "purchase-book-requested") return job.hasPendingPb;
+    if (tab === "purchase-book") return job.hasApprovedPb;
     if (tab === "purchase-book-completed") return job.pbCompleted;
   }
 
@@ -181,8 +233,10 @@ async function buildUserRestrictionFilter(req) {
   };
   branchRestrictions = branchRestrictions.map((branch) => BRANCH_MAP[String(branch).toUpperCase()] || branch);
 
+  const restrictions = [];
+
   if (branchRestrictions.length > 0) {
-    filter.$and.push({ branch_code: { $in: branchRestrictions } });
+    restrictions.push({ branch_code: { $in: branchRestrictions } });
   }
 
   const portRestrictions = requester.selected_ports || [];
@@ -202,10 +256,19 @@ async function buildUserRestrictionFilter(req) {
       .map((value) => `^${escapeRegex(value)}$`)
       .join("|");
 
-    filter.$and.push({
+    restrictions.push({
       $or: [
         { custom_house: { $regex: combinedRegexStr, $options: "i" } },
         { port_of_loading: { $regex: combinedRegexStr, $options: "i" } },
+      ],
+    });
+  }
+
+  if (restrictions.length > 0) {
+    filter.$and.push({
+      $or: [
+        ...JOBS_WITHOUT_BRANCH_OR_CUSTOM_HOUSE_VALIDATION,
+        { $and: restrictions },
       ],
     });
   }
@@ -308,9 +371,13 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       "ap_invoices.vendor_bill_no": 1,
     };
 
+    const sortCriteria = normalizedTab === "general-jobs"
+      ? { job_no: 1 }
+      : { updatedAt: -1, job_date: -1 };
+
     const jobs = await ExportJobModel.find(baseFilter)
       .select(projection)
-      .sort({ updatedAt: -1, job_date: -1 })
+      .sort(sortCriteria)
       .lean();
 
     const summarizedBase = jobs.map(summarizeJob);
@@ -353,11 +420,14 @@ router.get("/api/export-billing-jobs", async (req, res) => {
           if (String(job.job_no || "").toLowerCase().includes(s)) return 1;
           if (String(job.sb_no || "").toLowerCase().includes(s)) return 2;
           if (String(job.booking_no || "").toLowerCase().includes(s)) return 3;
-          if ((job.container_summary || []).some(c => String(c).toLowerCase().includes(s))) return 3;
-          if ((job.invoice_numbers || []).some(i => String(i).toLowerCase().includes(s))) return 4;
+          if ((job.container_summary || []).some((c) => String(c).toLowerCase().includes(s))) return 3;
+          if ((job.invoice_numbers || []).some((i) => String(i).toLowerCase().includes(s))) return 4;
           return 5;
         };
-        return getPriority(a) - getPriority(b);
+
+        const priorityDifference = getPriority(a) - getPriority(b);
+        if (priorityDifference !== 0) return priorityDifference;
+        return String(a.job_no || "").localeCompare(String(b.job_no || ""));
       });
     }
 

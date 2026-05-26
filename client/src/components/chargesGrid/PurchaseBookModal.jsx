@@ -161,7 +161,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     "CGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
                     "SGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
                     "IGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? '' : (!isReimbursement && initialData.gstAmount > 0 ? Number(initialData.gstAmount).toFixed(2) : ''),
-                    "TDS": initialData.tdsAmount ? Number(initialData.tdsAmount).toFixed(2) : '',
+                    "TDS": initialData.tdsAmount ? String(Math.round(Number(initialData.tdsAmount))) : '',
                     "Total": initialData.netPayable ? Math.round(initialData.netPayable) : (initialData.totalAmount ? Math.round(initialData.totalAmount) : ''),
                     "Charge Head Category": initialData.chargeType || '',
                     "TDS Category": initialData.tdsCategory || '',

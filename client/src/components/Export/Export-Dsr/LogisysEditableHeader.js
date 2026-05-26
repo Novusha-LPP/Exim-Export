@@ -404,7 +404,9 @@ const LogisysEditableHeader = ({
           const excludeFields = [
             "_id", "id", "job_no", "jobNumber", "createdAt", "updatedAt", "__v",
             "isLocked", "lockedBy", "lockedAt", "operational_lock", "charges",
-            "eSanchitDocuments", "operations", "sb_no", "sb_date", "sb_submitted_date", "sb_status"
+            "eSanchitDocuments", "operations", "financial_lock", "send_for_billing",
+            "send_for_billing_date", "ap_invoices", "sb_no", "sb_date",
+            "sb_submitted_date", "sb_status"
           ];
 
           // Helper to recursively strip IDs and excluded fields
@@ -433,7 +435,14 @@ const LogisysEditableHeader = ({
             ...formik.values,
             ...newData,
             job_no: currentJobNo,
-            year: currentYear
+            year: currentYear,
+            eSanchitDocuments: [],
+            charges: [],
+            operations: [],
+            ap_invoices: [],
+            financial_lock: false,
+            send_for_billing: false,
+            send_for_billing_date: ""
           });
 
           alert("Job data copied successfully!");

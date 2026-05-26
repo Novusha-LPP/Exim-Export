@@ -1839,13 +1839,19 @@ const ExportChecklistGenerator = ({
           : "",
         // Buyer info - should show actual buyer, not third party
         buyerName: (() => {
+          if (exportJob.isBuyer === false) {
+            return "SAME AS CONSIGNEE";
+          }
+
           const buyer = exportJob.buyerThirdPartyInfo?.buyer;
           if (buyer?.name) {
             return `${buyer.name}\n${buyer.addressLine1 || ""}\n${buyer.country || ""}`;
           }
           return "";
         })(),
-        buyerAddress: exportJob.buyerThirdPartyInfo?.buyer?.addressLine1 || "",
+        buyerAddress: exportJob.isBuyer === false
+          ? "SAME AS CONSIGNEE"
+          : exportJob.buyerThirdPartyInfo?.buyer?.addressLine1 || "",
         buyerAeoCode: exportJob.otherInfo?.aeoCode || "",
         buyerAeoCountry: exportJob.otherInfo?.aeoCountry || "",
         buyerAeoRole: exportJob.otherInfo?.aeoRole || "",

@@ -278,6 +278,10 @@ router.post(
       delete sourceData.eSanchitDocuments;
       delete sourceData.operations;
       delete sourceData.charges;
+      delete sourceData.ap_invoices;
+      delete sourceData.financial_lock;
+      delete sourceData.send_for_billing;
+      delete sourceData.send_for_billing_date;
 
       // Remove branch-specific metadata and custom house configurations to avoid leakage
       delete sourceData.cha_branch_code;
@@ -301,7 +305,14 @@ router.post(
         status: "Pending",
         detailedStatus: "", 
         job_date: new Date().toISOString().split("T")[0],
-        milestones: [], 
+        milestones: [],
+        eSanchitDocuments: [],
+        operations: [],
+        charges: [],
+        ap_invoices: [],
+        financial_lock: false,
+        send_for_billing: false,
+        send_for_billing_date: undefined,
       });
 
       await newExportJob.save();
