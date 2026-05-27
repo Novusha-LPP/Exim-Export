@@ -55,6 +55,32 @@ const ProductReExportTab = ({ formik, selectedInvoiceIndex, idx = 0 }) => {
         </label>
       </div>
 
+      {/* Warehouse Details Row */}
+      <div style={{ ...styles.grid2, marginBottom: 16 }}>
+        <div style={styles.field}>
+          <span style={styles.label}>Warehouse Name</span>
+          <input
+            style={styles.input}
+            value={toUpperVal(reExport.warehouseName || "")}
+            onChange={(e) =>
+              handleChange("warehouseName", toUpperVal(e.target.value))
+            }
+            disabled={!isEnabled}
+          />
+        </div>
+        <div style={styles.field}>
+          <span style={styles.label}>Warehouse Code</span>
+          <input
+            style={styles.input}
+            value={toUpperVal(reExport.warehouseCode || "")}
+            onChange={(e) =>
+              handleChange("warehouseCode", toUpperVal(e.target.value))
+            }
+            disabled={!isEnabled}
+          />
+        </div>
+      </div>
+
       {/* Main Split: Left (Import) vs Right (Export) */}
       <div style={{ ...styles.grid2, alignItems: "start", gap: 32 }}>
         {/* ================= LEFT COLUMN: IMPORT / B/E DETAILS ================= */}

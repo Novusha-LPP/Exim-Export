@@ -1086,6 +1086,8 @@ const productDetailsSchema = new Schema(
     // --- Re-Export Details ---
     reExport: {
       isReExport: { type: Boolean, default: false },
+      warehouseName: { type: String, trim: true },
+      warehouseCode: { type: String, trim: true },
 
       // Import / B/E Side
       beNumber: { type: String, trim: true },

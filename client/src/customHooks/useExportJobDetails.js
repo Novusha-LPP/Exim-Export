@@ -571,6 +571,8 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
 
           reExport: {
             isReExport: false,
+            warehouseName: "",
+            warehouseCode: "",
             beNumber: "",
             beDate: "",
             invoiceSerialNo: "",

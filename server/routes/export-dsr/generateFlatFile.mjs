@@ -930,8 +930,9 @@ export function generateSBFlatFile(job) {
             }
 
             if (p.eximCode && p.eximCode.startsWith("00") && p.reExport?.isReExport) {
+                const whCode = p.reExport.warehouseCode || (loc.replace(/^IN/, "") + "U001");
                 out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++),
-                    "DIR", "XSB", loc.replace(/^IN/, "") + "U001", "", "", "");
+                    "DIR", "XSB", clean(whCode), "", "", "");
             }
         });
     });

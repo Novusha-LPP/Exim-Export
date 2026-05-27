@@ -377,6 +377,7 @@ const ExportChecklistGenerator = ({
       { label: "Forex Bank A/c No", value: data.forexBankAcNo },
       { label: "RBI Waiver No/Dt", value: data.rbiWaiverNo },
       { label: "DBK Bank A/c No", value: data.dbkBankAcNo },
+      { label: "Warehouse Name", value: data.warehouseName },
     ];
 
     const rightFields = [
@@ -911,6 +912,63 @@ const ExportChecklistGenerator = ({
       pdf.setFont("helvetica", "bold");
       pdf.text(`Total ROSCTL Amount: ${data.rosctlTotalAmount || "0.00"}`, rightX, yPos, { align: "right" });
       yPos += 15;
+    }
+
+    // RE-EXPORT DETAILS SECTION
+    if (data.reExportData && data.reExportData.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("RE-EXPORT DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
+
+      const reExportHeaders = [
+        "Inv No",
+        "Item No/\nReExport SN",
+        "Port Code",
+        "BENo/\nDate",
+        "BE Inv/\nItem SNo",
+        "DBK Val\nClaimed",
+        "Qty. Imp",
+        "Commissioner\nPermission",
+        "Input Credit\nAvailed",
+        "Pers. Use /\nItem Un-Use",
+      ];
+
+      pdf.autoTable({
+        head: [reExportHeaders],
+        body: data.reExportData.map((row) => [
+          row.invNo,
+          row.itemNo,
+          row.portCode,
+          row.beNoDate,
+          row.beInvItemSNo,
+          row.dbkValClaimed,
+          row.qtyImp,
+          row.commPermission,
+          row.inputCredit,
+          row.persUseItemUnUse,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent - 1,
+          cellPadding: 2,
+          overflow: "linebreak",
+          fontStyle: "bold",
+          textColor: 0,
+        },
+        headStyles: {
+          fillColor: [180, 180, 180],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: 7.5,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
+
+      yPos = pdf.lastAutoTable.finalY + 15;
     }
 
     if (data.deecData && data.deecData.length > 0) {
@@ -1682,6 +1740,17 @@ const ExportChecklistGenerator = ({
         })(),
         rbiWaiverNo: exportJob.rbi_waiver_no || "",
         dbkBankAcNo: "", // Not found in data structure
+        warehouseName: (() => {
+          const reProd = allProducts?.find(p => p.reExport?.isReExport && (p.reExport?.warehouseCode || p.reExport?.warehouseName));
+          if (reProd) {
+            const code = reProd.reExport.warehouseCode || "";
+            const name = reProd.reExport.warehouseName || "";
+            if (code && name) return `(${code})${name}`;
+            if (code) return `(${code})`;
+            return name;
+          }
+          return "";
+        })(),
         totalDbk:
           allProducts
             ?.reduce((sum, p) => {
@@ -1983,6 +2052,30 @@ const ExportChecklistGenerator = ({
             total += parseFloat(product.rodtepInfo?.amountINR) || 0;
           });
           return total.toFixed(2);
+        })(),
+
+        // Re-Export Details
+        reExportData: (() => {
+          const rows = [];
+          allProducts?.forEach((product, productIndex) => {
+            const re = product.reExport || {};
+            if (re.isReExport) {
+              const invNo = product.invoiceNo || "1";
+              rows.push({
+                invNo: invNo,
+                itemNo: product.serialNumber || (productIndex + 1).toString(),
+                portCode: re.importPortCode || "",
+                beNoDate: `${re.beNumber || ""}\n${re.beDate ? formatDate(re.beDate) : ""}`,
+                beInvItemSNo: `${re.invoiceSerialNo || ""} / ${re.itemSerialNo || ""}`,
+                dbkValClaimed: (re.drawbackAmtClaimed || 0).toFixed(6),
+                qtyImp: (re.quantityImported || 0).toFixed(6),
+                commPermission: re.commissionerPermission ? "Y" : "N",
+                inputCredit: re.inputCreditAvailed ? "Y" : "N",
+                persUseItemUnUse: `${re.personalUseItem ? "Y" : "N"} / ${re.itemUnUsed ? "Y" : "N"}`,
+              });
+            }
+          });
+          return rows;
         })(),
 
         // DBK Details - Extract from all products drawbackDetails
