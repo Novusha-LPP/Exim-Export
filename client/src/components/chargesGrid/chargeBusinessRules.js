@@ -1,4 +1,5 @@
 const round2 = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+const roundWholeAmount = (value) => Math.round(Number(value || 0));
 
 export const normalizeChargeCategory = (category) =>
   (category || "").toString().trim().toUpperCase();
@@ -57,7 +58,7 @@ export const buildPurchaseBookDraft = ({
   }
 
   const grossAmount = round2(taxableValue + gstAmount);
-  const tdsAmount = round2(cost.tdsAmount);
+  const tdsAmount = roundWholeAmount(cost.tdsAmount);
   const total = round2(cost.netPayable || grossAmount - tdsAmount);
 
   return {
@@ -103,7 +104,7 @@ export const buildPaymentRequestDraft = ({
   branchIndex,
   netPayable: round2(cost.netPayable),
   grossAmount: round2(cost.isGst !== false ? cost.amount : (cost.basicAmount || 0) + (cost.gstAmount || 0)),
-  tdsAmount: round2(cost.tdsAmount),
+  tdsAmount: roundWholeAmount(cost.tdsAmount),
   tdsCategory: getDefaultTdsCategory(cost.tdsPercent),
   chargeHead: row?.chargeHead || "",
   category: row?.category || "",

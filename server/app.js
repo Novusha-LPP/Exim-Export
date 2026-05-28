@@ -46,6 +46,7 @@ import license from "./routes/Directories/license.js";
 import districts from "./routes/Directories/districts.js";
 import transporters from "./routes/Directories/transporters.js";
 import terminalCodes from "./routes/Directories/terminalcodes.js";
+import generalOrgs from "./routes/Directories/generalorgs.js";
 
 import getExportJobsModuleUsers from "./routes/export-dsr/getExportJobsModuleUsers.mjs";
 
@@ -56,6 +57,7 @@ import getExporterList from "./routes/export-dsr/getExporterList.mjs";
 import addJobs from "./routes/export-dsr/add-exp-jobs.mjs";
 import addJobsExcel from "./routes/export-dsr/add-exp-jobs-excel.mjs";
 import getExpJob from "./routes/export-dsr/getExpJob.mjs";
+import getJobInfo from "./routes/export-dsr/getJobInfo.mjs";
 import updateExportJobs from "./routes/export-dsr/updateExportJobs.js";
 import currencyRate from "./routes/currencyRate.js";
 import deleteFromS3Routes from "./routes/deleteFromS3.js";
@@ -73,6 +75,8 @@ import rodtepReRoutes from "./routes/export-dsr/rodtepReRoutes.js";
 import generateDSRReport from "./routes/export-dsr/generateDSRReport.mjs";
 import openPointsRoutes from "./routes/open-points/openPointsRoutes.mjs";
 import uploadRoutes from "./routes/uploadRoutes.js";
+// import uploadToImexcube from "./routes/uploadToImexcube.mjs";
+import uploadExportToImexcube from "./routes/uploadExportToImexcube.mjs";
 import sbTrack from "./routes/export-dsr/sbTrack.mjs";
 import generateFlatFile from "./routes/export-dsr/generateFlatFile.mjs";
 import operationPendingJobs from "./routes/export-dsr/operationPendingJobs.mjs";
@@ -202,11 +206,13 @@ app.use("/api/airPorts", auditMiddleware("Directory"), airports);
 app.use("/api/seaPorts", auditMiddleware("Directory"), seaPorts);
 app.use(genrateExportChecklist);
 app.use(getExpJob);
+app.use(getJobInfo);
 app.use("/api/gateway-ports", auditMiddleware("Directory"), gatwayPort);
 app.use("/api/licenses", auditMiddleware("Directory"), license);
 app.use("/api/districts", auditMiddleware("Directory"), districts);
 app.use("/api/transporters", auditMiddleware("Directory"), transporters);
 app.use("/api/terminalCodes", auditMiddleware("Directory"), terminalCodes);
+app.use("/api", auditMiddleware("Directory"), generalOrgs);
 
 // app.set("trust proxy", 1); // Trust first proxy (NGINX, AWS ELB, etc.)
 
@@ -235,6 +241,8 @@ app.use("/api", rodtepReRoutes);
 app.use(generateDSRReport);
 app.use(openPointsRoutes);
 app.use("/api", uploadRoutes);
+// app.use(uploadToImexcube);
+app.use(uploadExportToImexcube);
 app.use(sbTrack);
 app.use(generateFlatFile);
 app.use(operationPendingJobs);

@@ -1254,6 +1254,16 @@ function ShipmentMainTab({ formik, onUpdate, directories, isEditable = true }) {
     }
   }, [isAir]);
 
+  // Default weight units to KGS
+  useEffect(() => {
+    if (!formik.values.gross_weight_unit) {
+      formik.setFieldValue("gross_weight_unit", "KGS");
+    }
+    if (!formik.values.net_weight_unit) {
+      formik.setFieldValue("net_weight_unit", "KGS");
+    }
+  }, [formik.values.gross_weight_unit, formik.values.net_weight_unit]);
+
   // Ensure country names are formatted with their respective codes (e.g. "SRI LANKA (LK)")
   useEffect(() => {
     const processCountryFieldTimeout = setTimeout(async () => {

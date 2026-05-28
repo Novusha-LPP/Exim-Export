@@ -62,7 +62,19 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
                 if (branchRestrictions.length > 0 || combinedRegexStr) {
                     const restrictions = [];
                     if (branchRestrictions.length > 0) {
-                        restrictions.push({ branch_code: { $in: branchRestrictions } });
+                        const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+                        const fallbackRegex = `^(${branchRegexStr})(/|$)`;
+                        restrictions.push({
+                            $or: [
+                                { branch_code: { $in: branchRestrictions } },
+                                {
+                                    $and: [
+                                        { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+                                        { job_no: { $regex: fallbackRegex, $options: "i" } }
+                                    ]
+                                }
+                            ]
+                        });
                     }
                     if (combinedRegexStr) {
                         restrictions.push({
@@ -129,9 +141,27 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
              filter.$and.push({
                 status: { $regex: "^pending$", $options: "i" },
                 send_for_billing: { $ne: true },
-                $or: [
-                    { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
-                    { "operations.statusDetails": { $size: 0 } }
+                $and: [
+                    {
+                        $or: [
+                            { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
+                            { "operations.statusDetails": { $size: 0 } }
+                        ]
+                    },
+                    {
+                        $or: [
+                            { "operations.statusDetails.billing_details.agency_bill_date": { $in: [null, ""] } },
+                            { "operations.statusDetails.billing_details.agency_bill_no": { $in: [null, ""] } },
+                            { "operations.statusDetails": { $size: 0 } }
+                        ]
+                    },
+                    {
+                        $or: [
+                            { "operations.statusDetails.billing_details.reimbursement_bill_date": { $in: [null, ""] } },
+                            { "operations.statusDetails.billing_details.reimbursement_bill_no": { $in: [null, ""] } },
+                            { "operations.statusDetails": { $size: 0 } }
+                        ]
+                    }
                 ]
             });
         } else if (normalizedStatus === "completed") {
@@ -139,7 +169,19 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
                 $or: [
                     { status: { $regex: "^completed$", $options: "i" } },
                     { detailedStatus: "Billing Done" },
-                    { "operations.statusDetails.billingDocsSentDt": { $exists: true, $nin: [null, ""] } }
+                    { "operations.statusDetails.billingDocsSentDt": { $exists: true, $nin: [null, ""] } },
+                    {
+                        $and: [
+                            { "operations.statusDetails.billing_details.agency_bill_date": { $exists: true, $nin: [null, ""] } },
+                            { "operations.statusDetails.billing_details.agency_bill_no": { $exists: true, $nin: [null, ""] } }
+                        ]
+                    },
+                    {
+                        $and: [
+                            { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: true, $nin: [null, ""] } },
+                            { "operations.statusDetails.billing_details.reimbursement_bill_no": { $exists: true, $nin: [null, ""] } }
+                        ]
+                    }
                 ]
             });
         }
@@ -232,7 +274,14 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             "operations.statusDetails.handoverImageUpload": 1,
             "operations.statusDetails.billingDocsSentUpload": 1,
             "operations.statusDetails.billingDocsSentDt": 1,
+            "operations.statusDetails.billing_details": 1,
             "operations.statusDetails.status": 1,
+            "operations.statusDetails.clpUpload": 1,
+            "operations.statusDetails.completionCopyUpload": 1,
+            "operations.statusDetails.movementCopyUpload": 1,
+            "operations.statusDetails.shippingInstructionsUpload": 1,
+            "operations.statusDetails.form13CopyUpload": 1,
+            "eSanchitDocuments.fileUrl": 1, "eSanchitDocuments.documentType": 1, "eSanchitDocuments.icegateFilename": 1, "eSanchitDocuments.icegateFileName": 1,
             "operations.transporterDetails.images": 1,
             booking_copy: 1,
             containers: 1,
@@ -241,10 +290,18 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             isGeneralJob: 1
         };
 
+        const { sortKey, sortOrder } = req.query;
+        const sort = {};
+        if (sortKey && sortKey !== "null" && sortKey !== "undefined" && sortKey !== "") {
+            sort[sortKey] = sortOrder === "asc" ? 1 : -1;
+        } else {
+            sort.createdAt = -1;
+        }
+
         const [jobs, totalCount] = await Promise.all([
             ExportJobModel.find(filter)
                 .select(selectProjection)
-                .sort({ job_date: -1 })
+                .sort(sort)
                 .skip(skip)
                 .limit(parseInt(limit)),
             ExportJobModel.countDocuments(filter)

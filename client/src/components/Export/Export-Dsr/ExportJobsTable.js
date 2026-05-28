@@ -692,7 +692,7 @@ const ExportJobsTable = () => {
   const LIMIT = 100;
 
   // Sorting State
-  const [sortConfig, setSortConfig] = useState(savedFilters.sortConfig || { key: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState(savedFilters.sortConfig || { key: 'createdAt', direction: 'desc' });
 
   // Filters
   const [searchQuery, setSearchQuery] = useState(savedFilters.searchQuery || "");
@@ -924,7 +924,7 @@ const ExportJobsTable = () => {
     setSelectedJobOwner("");
     setSelectedGoodsStuffedAt("");
     setPage(1);
-    setSortConfig({ key: null, direction: 'asc' });
+    setSortConfig({ key: 'createdAt', direction: 'desc' });
 
     // Clear storage but immediate re-save will happen via useEffect for selectedBranch
     localStorage.removeItem(FILTER_STORAGE_KEY);
@@ -943,6 +943,32 @@ const ExportJobsTable = () => {
   const [copyError, setCopyError] = useState("");
   const [suggestedSequence, setSuggestedSequence] = useState("");
   const isCopyingRef = useRef(false);
+
+  useEffect(() => {
+    const fetchNextSeq = async () => {
+      if (showCopyModal && copyForm.branch_code && copyForm.transportMode && copyForm.year) {
+        try {
+          const response = await axios.post(
+            `${import.meta.env.VITE_API_STRING}/jobs/suggest-sequence`,
+            {
+              branch_code: copyForm.branch_code,
+              transportMode: copyForm.transportMode,
+              year: copyForm.year,
+            },
+          );
+
+          if (response.data.success) {
+            setSuggestedSequence(response.data.suggestedSequence);
+          }
+        } catch (error) {
+          console.error("Error getting suggested sequence dynamically:", error);
+        }
+      } else {
+        setSuggestedSequence("");
+      }
+    };
+    fetchNextSeq();
+  }, [showCopyModal, copyForm.branch_code, copyForm.transportMode, copyForm.year]);
 
   // Create Job Dialog State
   const [openAddDialog, setOpenAddDialog] = useState(false);
@@ -1213,7 +1239,14 @@ const ExportJobsTable = () => {
           if (opDetails.handoverForwardingNoteDate) handCol.push(`DHo: ${formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}`);
           if (opDetails.handoverConcorTharSanganaRailRoadDate) handCol.push(`${outLbl}: ${formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}`);
           if (opDetails.railOutReachedDate) handCol.push(`${reachedLbl}: ${formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}`);
-          if (opDetails.billingDocsSentDt) handCol.push(`Bill: ${formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}`);
+          if (opDetails.billing_details?.agency_bill_date || opDetails.billing_details?.reimbursement_bill_date) {
+            const agencyDate = opDetails.billing_details.agency_bill_date ? formatDate(opDetails.billing_details.agency_bill_date, "dd-MM-yy") : "";
+            const reimbursementDate = opDetails.billing_details.reimbursement_bill_date ? formatDate(opDetails.billing_details.reimbursement_bill_date, "dd-MM-yy") : "";
+            const displayDates = [agencyDate, reimbursementDate].filter(Boolean).join(" & ");
+            handCol.push(`Bill: ${displayDates}`);
+          } else if (opDetails.billingDocsSentDt) {
+            handCol.push(`Bill: ${formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}`);
+          }
 
           rowData["Handover"] = handCol.join("\n");
 
@@ -2059,7 +2092,11 @@ const ExportJobsTable = () => {
       sequence = sequence.padStart(5, "0");
     }
 
-    return `${copyForm.branch_code}/${sequence}/${copyForm.year}`;
+    const isAir = copyForm.transportMode?.toUpperCase() === "AIR";
+    const isSea = copyForm.transportMode?.toUpperCase() === "SEA" || !isAir;
+    const prefix = isAir ? "EXP/AIR" : (isSea ? "EXP/SEA" : "EXP");
+
+    return `${copyForm.branch_code}/${prefix}/${sequence}/${copyForm.year}`;
   };
 
   const generatedJobNo = getGeneratedJobNo();
@@ -3335,10 +3372,24 @@ const ExportJobsTable = () => {
                                       <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{reachedLbl.toUpperCase()}</span>
                                       <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}</span>
                                     </div>
-                                    <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                      <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL</span>
-                                      <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}</span>
-                                    </div>
+                                    {opDetails.billing_details?.agency_bill_date ? (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL (A)</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billing_details.agency_bill_date, "dd-MM-yy")}</span>
+                                      </div>
+                                    ) : null}
+                                    {opDetails.billing_details?.reimbursement_bill_date ? (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL (R)</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billing_details.reimbursement_bill_date, "dd-MM-yy")}</span>
+                                      </div>
+                                    ) : null}
+                                    {!opDetails.billing_details?.agency_bill_date && !opDetails.billing_details?.reimbursement_bill_date && opDetails.billingDocsSentDt ? (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}</span>
+                                      </div>
+                                    ) : null}
 
                                     {job.vgm_done && (
                                       <div style={{ marginTop: "4px", backgroundColor: "#ecfdf5", border: "1px solid #10b981", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#065f46" }}>
@@ -3603,7 +3654,14 @@ const ExportJobsTable = () => {
                           >
                             {(isChargesModule && activeTab === "Completed")
                               ? (
-                                formatDate(job.operations?.[0]?.statusDetails?.[0]?.billingDocsSentDt) || job.status
+                                (() => {
+                                  const bd = job.operations?.[0]?.statusDetails?.[0]?.billing_details;
+                                  const docsDt = job.operations?.[0]?.statusDetails?.[0]?.billingDocsSentDt;
+                                  if (bd?.agency_bill_date && bd?.reimbursement_bill_date) {
+                                    return `${formatDate(bd.agency_bill_date)} & ${formatDate(bd.reimbursement_bill_date)}`;
+                                  }
+                                  return formatDate(bd?.agency_bill_date || bd?.reimbursement_bill_date || docsDt) || job.status;
+                                })()
                               )
                               : (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
                                 ? job.detailedStatus[job.detailedStatus.length - 1]

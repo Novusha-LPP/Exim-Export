@@ -33,13 +33,9 @@ router.get("/test", (req, res) => res.json({ status: "Tally API is connected and
  * @api {get} /api/tally/job-data Retrieve job data for Tally integration
  */
 /**
- * Internal helper to retrieve and format job data for Tally
+ * Internal helper to format job and invoice data for Tally
  */
-const getJobDetailsInternal = async (job_number) => {
-    if (!job_number) return null;
-    const job = await ExJobModel.findOne({ job_no: job_number }).lean();
-    if (!job) return null;
-
+const mapJobAndInvoiceToTally = (job, inv) => {
     return {
         "Job Number": job.job_no,
         "Job Year": job.year || "",
@@ -51,20 +47,20 @@ const getJobDetailsInternal = async (job_number) => {
         "Origin Port": job.port_of_loading || "",
         "Destination Port": job.port_of_discharge || "",
         "Custom House": job.custom_house || "",
-        "Gross Weight": job.gross_weight_kg || "",
-        "Net Wt.": job.net_weight_kg || "",
+        "Gross Weight": job.gross_weight_kg ? String(Math.round(parseFloat(job.gross_weight_kg))) : "",
+        "Net Wt": job.net_weight_kg ? String(Math.round(parseFloat(job.net_weight_kg))) : "",
         "Package Count": job.total_no_of_pkgs || "",
         "Package Unit": job.package_unit || "",
         "Container Count": (() => {
             const containers = job.containers || [];
-            if (containers.length === 0) return "0";
+            if (containers.length === 0) return job.no_of_containers || "0";
             const counts = {};
             containers.forEach(c => {
-                const size = c.size || "20";
-                counts[size] = (counts[size] || 0) + 1;
+                const detail = c.type || c.size || "20";
+                counts[detail] = (counts[detail] || 0) + 1;
             });
             return Object.entries(counts)
-                .map(([size, count]) => `${count} X ${size}`)
+                .map(([detail, count]) => `${count} X ${detail}`)
                 .join(", ");
         })(),
         "Containers": (job.containers || []).map(c => c.containerNo).filter(Boolean).join(", "),
@@ -78,37 +74,50 @@ const getJobDetailsInternal = async (job_number) => {
         "HBL Date": "",
         "Vessel": job.vessel || "",
         "Voyage": job.voyage_no || "",
-        "Invoice Number": (job.invoices || [])[0]?.invoice_number || "",
-        "Inv Date": normalizeDate((job.invoices || [])[0]?.invoice_date),
+        "Invoice Number": inv?.invoiceNumber || inv?.invoice_number || "",
+        "Inv Date": normalizeDate(inv?.invoiceDate || inv?.invoice_date),
         "Branch": job.branch_code || "",
         "Status": (job.status || "Pending").toLowerCase(),
         "Sb type": (() => {
-            const eximCode = job.invoices?.[0]?.products?.[0]?.eximCode || "";
+            const eximCode = inv?.products?.[0]?.eximCode || "";
             return eximCode.includes("-") ? eximCode.split("-").slice(1).join("-").trim() : eximCode;
         })(),
         "Consignment Type": job.consignmentType || "",
         "Customer Ref No": job.exporter_ref_no || "",
-        "TOI": (job.invoices || [])[0]?.termsOfInvoice || "",
+        "TOI": inv?.termsOfInvoice || "",
         "Invoice Value": (() => {
-            const inv = (job.invoices || [])[0];
             if (!inv) return "";
             return `${inv.invoiceValue || 0}(${inv.currency || ""})`;
         })(),
-        "Invoice Currency": (job.invoices || [])[0]?.currency || "",
+        "Invoice Currency": inv?.currency || "",
         "FOB Value": (() => {
-            const inv = (job.invoices || [])[0];
             if (!inv) return "0.00";
             const fob = inv.freightInsuranceCharges?.fobValue?.amount || inv.invoiceValue || 0;
             const rate = parseFloat(job.exchange_rate || inv.freightInsuranceCharges?.freight?.exchangeRate || 1);
             return (fob * rate).toFixed(2);
         })(),
-        "Sb Heading": job.invoices?.[0]?.products?.[0]?.description || ""
+        "Sb Heading": inv?.products?.[0]?.description || ""
     };
+};
+
+/**
+ * Internal helper to retrieve and format job data for Tally
+ */
+const getJobDetailsInternal = async (job_number) => {
+    if (!job_number) return null;
+    const job = await ExJobModel.findOne({ job_no: job_number }).lean();
+    if (!job) return null;
+
+    const invoices = job.invoices || [];
+    if (invoices.length === 0) {
+        return [mapJobAndInvoiceToTally(job, null)];
+    }
+    return invoices.map(inv => mapJobAndInvoiceToTally(job, inv));
 };
 
 router.get("/job-data", authApiKey, async (req, res) => {
     try {
-        const { job_number } = req.query;
+        const { job_number, invoice_number } = req.query;
         if (!job_number) {
             return res.status(400).send({ error: "job_number is a required query parameter" });
         }
@@ -116,7 +125,21 @@ router.get("/job-data", authApiKey, async (req, res) => {
         if (!responseData) {
             return res.status(404).send({ error: "Job not found for the provided job_number" });
         }
-        res.status(200).json(responseData);
+
+        // If an invoice_number query parameter is provided, find that specific invoice
+        if (invoice_number && Array.isArray(responseData)) {
+            const matched = responseData.find(inv =>
+                (inv["Invoice Number"] || "").toLowerCase() === invoice_number.trim().toLowerCase()
+            );
+            if (matched) {
+                return res.status(200).json(matched);
+            }
+        }
+
+        // Return a single object (the first mapped invoice) instead of an array
+        // to remove the [] brackets for Tally integration compatibility
+        const singleObject = Array.isArray(responseData) ? (responseData[0] || {}) : responseData;
+        res.status(200).json(singleObject);
     } catch (error) {
         console.error("Tally API Error:", error);
         res.status(500).send({ error: "Internal Server Error" });
@@ -227,14 +250,27 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
 
         // Fallback for Charge Head Category if missing
         let chargeCategory = entry.chargeHeadCategory;
-        if (!chargeCategory && entry.jobRef && entry.chargeRef) {
+        if (!chargeCategory) {
             try {
-                const job = await ExJobModel.findOne(
-                    { _id: entry.jobRef, "charges._id": entry.chargeRef },
-                    { "charges.$": 1 }
-                ).lean();
-                if (job && job.charges && job.charges[0]) {
-                    chargeCategory = job.charges[0].chargeType || job.charges[0].category;
+                let job = null;
+                if (entry.jobRef) {
+                    job = await ExJobModel.findById(entry.jobRef).lean();
+                }
+                if (!job && entry.jobNo) {
+                    job = await ExJobModel.findOne({ job_no: entry.jobNo }).lean();
+                }
+                if (job) {
+                    let charge = null;
+                    if (entry.chargeRef) {
+                        charge = job.charges?.find(c => c._id?.toString() === entry.chargeRef);
+                    }
+                    if (!charge && entry.chargeHeading) {
+                        const normHeading = entry.chargeHeading.trim().toLowerCase();
+                        charge = job.charges?.find(c => c.chargeHead?.trim().toLowerCase() === normHeading);
+                    }
+                    if (charge) {
+                        chargeCategory = charge.chargeType || charge.category;
+                    }
                 }
             } catch (err) {
                 console.error("Error fetching fallback category for purchase entry:", err);

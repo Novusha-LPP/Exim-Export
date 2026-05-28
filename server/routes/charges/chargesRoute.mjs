@@ -502,6 +502,10 @@ router.post('/approve-payment-request', async (req, res) => {
             }
         });
         await job.save();
+        
+        // Synchronize PaymentRequestModel status
+        await PaymentRequestModel.updateOne({ requestNo }, { status: 'Approved' });
+
         res.json({ success: true, message: 'Approved successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -523,6 +527,10 @@ router.post('/reject-payment-request', async (req, res) => {
             }
         });
         await job.save();
+
+        // Synchronize PaymentRequestModel status
+        await PaymentRequestModel.updateOne({ requestNo }, { status: 'Rejected' });
+
         res.json({ success: true, message: 'Rejected successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -561,6 +569,10 @@ router.post('/update-payment-utr', async (req, res) => {
             }
         });
         await job.save();
+
+        // Synchronize PaymentRequestModel status and completion details
+        await PaymentRequestModel.updateOne({ requestNo }, { status: 'Completed', updatedAt: new Date() });
+
         res.json({ success: true, message: 'UTR updated' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

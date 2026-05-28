@@ -1142,7 +1142,8 @@ function ProductRow({
     const fetchRodtepData = async () => {
       if (!product.ritc || product.ritc.toString().length < 4) return;
       const claim = product.rodtepInfo?.claim || "Yes";
-      if (claim !== "Yes") return;
+      // Allow re-evaluation if it's "Yes" or was previously auto-set to "Not Applicable"
+      if (claim === "No") return;
 
       const eximCode = product.eximCode || "";
       const useReApi = eximCode.includes("03");
@@ -1172,23 +1173,53 @@ function ProductRow({
         if (entry) {
           const rate = parseFloat(entry.rate_percentage_fob ?? entry.rate ?? 0);
           const cap = parseFloat(entry.cap_per_uqc ?? entry.cap ?? 0);
-          const uqc = toUpper(entry.uqc || "");
+          
+          if (rate === 0 && cap === 0) {
+            if (claim !== "Not Applicable") {
+              handleProductChange(index, "rodtepInfo", {
+                ...(product.rodtepInfo || {}),
+                claim: "Not Applicable",
+                ratePercent: 0,
+                capValue: 0,
+                capValuePerUnits: 0,
+                amountINR: 0,
+              });
+            }
+          } else {
+            // If data found and it was Not Applicable, switch back to Yes
+            if (claim === "Not Applicable") {
+              handleProductChange(index, "rodtepInfo.claim", "Yes");
+            }
 
-          const currentRate = parseFloat(product.rodtepInfo?.ratePercent) || 0;
-          const currentCap =
-            parseFloat(product.rodtepInfo?.capValuePerUnits) || 0;
-          const currentUqc = toUpper(product.rodtepInfo?.capUnit || "");
+            const uqc = toUpper(entry.uqc || "");
+            const currentRate = parseFloat(product.rodtepInfo?.ratePercent) || 0;
+            const currentCap =
+              parseFloat(product.rodtepInfo?.capValuePerUnits) || 0;
+            const currentUqc = toUpper(product.rodtepInfo?.capUnit || "");
 
-          if (rate !== currentRate) {
-            handleProductChange(index, "rodtepInfo.ratePercent", rate);
+            if (rate !== currentRate) {
+              handleProductChange(index, "rodtepInfo.ratePercent", rate);
+            }
+
+            if (cap !== currentCap) {
+              handleProductChange(index, "rodtepInfo.capValuePerUnits", cap);
+            }
+
+            if (uqc && uqc !== currentUqc && !product.rodtepInfo?.isCapUnitManual) {
+              handleProductChange(index, "rodtepInfo.capUnit", uqc);
+            }
           }
-
-          if (cap !== currentCap) {
-            handleProductChange(index, "rodtepInfo.capValuePerUnits", cap);
-          }
-
-          if (uqc && uqc !== currentUqc && !product.rodtepInfo?.isCapUnitManual) {
-            handleProductChange(index, "rodtepInfo.capUnit", uqc);
+        } else {
+          // No entry found for this RITC
+          if (claim !== "Not Applicable") {
+            handleProductChange(index, "rodtepInfo", {
+              ...(product.rodtepInfo || {}),
+              claim: "Not Applicable",
+              ratePercent: 0,
+              capValue: 0,
+              capValuePerUnits: 0,
+              amountINR: 0,
+            });
           }
         }
       } catch (err) {
@@ -2083,10 +2114,10 @@ function ProductRow({
             value={product.rodtepInfo?.claim || "Yes"}
             onChange={(e) => {
               const val = e.target.value;
-              if (val === "No") {
+              if (val === "No" || val === "Not Applicable") {
                 handleProductChange(index, "rodtepInfo", {
                   ...(product.rodtepInfo || {}),
-                  claim: "No",
+                  claim: val,
                   ratePercent: 0,
                   capValue: 0,
                   capValuePerUnits: 0,
@@ -2402,6 +2433,79 @@ const ProductGeneralTab = ({
         `invoices[${selectedInvoiceIndex}].products[${index}].${field}`,
         value,
       );
+
+      // Clear inactive scheme fields when eximCode changes
+      if (field === "eximCode") {
+        const code = String(value || "").trim().toUpperCase();
+        const parts = code.split(" - ");
+        const prefix = parts[0] ? parts[0].trim().padStart(2, "0") : "";
+
+        const emptyDeecDetails = {
+          isDeecItem: false,
+          itemSnoPartE: "",
+          exportQtyUnderLicence: 0,
+          deecItems: [],
+          deec_reg_obj: []
+        };
+
+        const emptyEpcgDetails = {
+          isEpcgItem: false,
+          itemSnoPartE: "",
+          exportQtyUnderLicence: 0,
+          epcgItems: [],
+          epcg_reg_obj: []
+        };
+
+        const emptyDrawbackDetails = [];
+
+        const emptyRosctlInfo = {
+          claim: "No",
+          quantity: "0",
+          slRate: "0",
+          slCap: "0",
+          ctlRate: "0",
+          ctlCap: "0",
+          amountINR: "0",
+          category: "",
+        };
+
+        const emptyAreDetails = [];
+
+        if (prefix === "03") {
+          // ADVANCE LICENCE (DEEC)
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].drawbackDetails`, emptyDrawbackDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].rosctlInfo`, emptyRosctlInfo);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].epcgDetails`, emptyEpcgDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
+        } else if (prefix === "19" || prefix === "60") {
+          // DRAWBACK (DBK) / DRAWBACK AND ROSCTL
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].deecDetails`, emptyDeecDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].epcgDetails`, emptyEpcgDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
+        } else if (prefix === "21") {
+          // EOU/EPZ/SEZ (AreDetails)
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].deecDetails`, emptyDeecDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].epcgDetails`, emptyEpcgDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].drawbackDetails`, emptyDrawbackDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].rosctlInfo`, emptyRosctlInfo);
+        } else if (prefix === "43" || prefix === "61") {
+          // DRAWBACK & EPCG
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].deecDetails`, emptyDeecDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
+        } else if (prefix === "50") {
+          // EPCG & ADVANCE LICENCE (DEEC & EPCG)
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].drawbackDetails`, emptyDrawbackDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].rosctlInfo`, emptyRosctlInfo);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
+        } else {
+          // NFEI / Default
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].deecDetails`, emptyDeecDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].epcgDetails`, emptyEpcgDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].drawbackDetails`, emptyDrawbackDetails);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].rosctlInfo`, emptyRosctlInfo);
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
+        }
+      }
 
       // Sync RoDTEP quantity if SQC quantity is changed
       if (field === "socQuantity") {

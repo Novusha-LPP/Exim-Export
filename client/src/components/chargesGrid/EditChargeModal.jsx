@@ -5,6 +5,7 @@ import RequestPaymentModal from './RequestPaymentModal';
 import PurchaseBookModal from './PurchaseBookModal';
 import { Chip } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
+import DateInput from '../common/DateInput';
 import axios from 'axios';
 import './charges.css';
 import { generatePurchaseBookPDF } from '../../utils/purchaseBookPrint';
@@ -14,6 +15,9 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { IconButton } from '@mui/material';
 import { currencyList } from '../../utils/masterList';
 import { formatDate } from '../../utils/dateUtils';
+
+const roundWholeAmount = (value) => Math.round(Number(value || 0));
+
 const EditChargeModal = ({
   isOpen,
   onClose,
@@ -44,11 +48,18 @@ const EditChargeModal = ({
   const [cfsList, setCfsList] = useState([]);
   const [transporters, setTransporters] = useState([]);
   const [terminalCodes, setTerminalCodes] = useState([]);
+  const [generalOrgList, setGeneralOrgList] = useState([]);
   const [activeDropdown, setActiveDropdown] = useState({ index: null, section: null }); // Track which row/section has open dropdown
   const [paymentDetailsAudit, setPaymentDetailsAudit] = useState({});
   const [rateMap, setRateMap] = useState({});
   const dropdownRef = useRef(null);
   const modalRef = useRef(null);
+
+  const addSourceLabel = (items = [], sourceLabel) =>
+    items.map((item) => ({
+      ...item,
+      sourceLabel
+    }));
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -74,20 +85,22 @@ const EditChargeModal = ({
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
-        const [slRes, supRes, orgRes, cfsRes, transRes, termRes] = await Promise.all([
+        const [slRes, supRes, orgRes, cfsRes, transRes, termRes, genOrgRes] = await Promise.all([
           axios.get(`${import.meta.env.VITE_API_STRING}/get-shipping-lines`),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-suppliers`),
           axios.get(`${import.meta.env.VITE_API_STRING}/organization`),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-cfs-list`),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-transporters`),
-          axios.get(`${import.meta.env.VITE_API_STRING}/get-terminal-codes`)
+          axios.get(`${import.meta.env.VITE_API_STRING}/get-terminal-codes`),
+          axios.get(`${import.meta.env.VITE_API_STRING}/get-general-orgs`, { params: { limit: 1000 } })
         ]);
-        setShippingLines(slRes.data);
-        setSuppliers(supRes.data);
-        setOrganizations(orgRes.data.organizations || []);
-        setCfsList(cfsRes.data);
-        setTransporters(transRes.data);
-        setTerminalCodes(termRes.data);
+        setShippingLines(addSourceLabel(slRes.data, 'Shipping Line'));
+        setSuppliers(addSourceLabel(supRes.data, 'Vendor'));
+        setOrganizations(addSourceLabel(orgRes.data.organizations || [], 'Organisation'));
+        setCfsList(addSourceLabel(cfsRes.data, 'CFS'));
+        setTransporters(addSourceLabel(transRes.data, 'Transporter'));
+        setTerminalCodes(addSourceLabel(termRes.data, 'Terminal'));
+        setGeneralOrgList(addSourceLabel(genOrgRes.data.data || [], 'General Org'));
       } catch (error) {
         console.error("Error fetching master data:", error);
       }
@@ -135,7 +148,7 @@ const EditChargeModal = ({
         name: charge.name || charge.chargeHead || '',
         chargeType: charge.chargeType || 'Margin',
         invoice_number: charge.invoice_number || '',
-        invoice_date: formatDate(charge.invoice_date, 'yyyy-MM-dd') || '',
+        invoice_date: formatDate(charge.invoice_date, 'dd-MM-yyyy') || '',
         payment_request_no: charge.payment_request_no || '',
         payment_request_status: charge.payment_request_status || '',
         revenue: {
@@ -147,7 +160,8 @@ const EditChargeModal = ({
         cost: {
           ...(charge.cost || {}),
           partyType: charge.cost?.partyType || 'Others',
-          isGst: (charge.cost && charge.cost.isGst !== undefined) ? charge.cost.isGst : true
+          isGst: (charge.cost && charge.cost.isGst !== undefined) ? charge.cost.isGst : true,
+          tdsAmount: roundWholeAmount(charge.cost?.tdsAmount)
         }
       }));
       setFormData(initialData);
@@ -212,6 +226,9 @@ const EditChargeModal = ({
     }
   };
 
+  const getPartySourceLabel = (item) =>
+    item?.sourceLabel || item?.directoryType || 'Master Directory';
+
   const handleFieldChange = (index, field, value, section = null) => {
     const updated = [...formData];
     if (section) {
@@ -236,7 +253,7 @@ const EditChargeModal = ({
 
       // Auto-populate TDS if selecting a shipping line or CFS or transporter
       if (section === 'cost' && field === 'partyName') {
-        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList];
         const matchedSL = smartFindParty(allParties, value);
         if (matchedSL && matchedSL.tds_percent > 0) {
           updated[index][section].isTds = true;
@@ -321,7 +338,7 @@ const EditChargeModal = ({
 
         // GST Split Logic
         const partyName = sectionRef.partyName;
-        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList];
         const party = smartFindParty(allParties, partyName);
         const branchIndex = sectionRef.branchIndex || 0;
         const gstin = party?.branches?.[branchIndex]?.gst || party?.branchInfo?.[branchIndex]?.gstNo || "";
@@ -340,7 +357,7 @@ const EditChargeModal = ({
         const isTds = sectionRef.isTds || false;
         const tdsPercent = parseFloat(sectionRef.tdsPercent) || 0;
         if (isTds) {
-          sectionRef.tdsAmount = Number((basic * (tdsPercent / 100)).toFixed(2));
+          sectionRef.tdsAmount = roundWholeAmount(basic * (tdsPercent / 100));
         } else {
           sectionRef.tdsAmount = 0;
         }
@@ -439,7 +456,7 @@ const EditChargeModal = ({
 
     const formattedData = formData.map(charge => ({
       ...charge,
-      invoice_date: formatDate(charge.invoice_date, 'dd-MM-yyyy')
+      invoice_date: charge.invoice_date
     }));
     onSave(formattedData, shouldClose);
   };
@@ -464,7 +481,7 @@ const EditChargeModal = ({
           {formData.map((row, i) => (
             <div key={row._id || i} style={{ marginBottom: formData.length > 1 ? '30px' : '0' }}>
               <div className="form-section-new">
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginRight: '30px', gap: '10px 20px' }}>
+                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px 20px' }}>
                   <div className="form-row" style={{ gridColumn: 'span 2', alignItems: 'center' }}>
                     <span className="form-label" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                       CHARGE
@@ -478,32 +495,32 @@ const EditChargeModal = ({
                       <button type="button" className="search-btn">🔍</button>
                     </div>
                   </div>
-                  <div className="form-row" style={{ gridColumn: 'span 1' }}>
+                  <div className="form-row" style={{ gridColumn: 'span 2' }}>
                     <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>CATEGORY <span style={{ color: 'red' }}>*</span></span>
                     <select className="form-input" value={row.chargeType || 'Margin'} onChange={e => handleFieldChange(i, 'chargeType', e.target.value)}>
                       <option value="Margin">Margin</option>
                       <option value="Reimbursement">Reimbursement</option>
                     </select>
                   </div>
-                  <div className="form-row" style={{ gridColumn: 'span 1' }}>
-                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>SAC / HSN {row.chargeType !== 'Reimbursement' && <span style={{ color: 'red' }}>*</span>}</span>
-                    <input type="text" className="form-input" placeholder="Enter HSN Code" value={row.hsnCode || ''} onChange={e => handleFieldChange(i, 'hsnCode', e.target.value)} />
-                  </div>
 
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
                     <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INVOICE NUMBER <span style={{ color: 'red' }}>*</span></span>
                     <input type="text" className="form-input" value={row.invoice_number || ''} onChange={e => handleFieldChange(i, 'invoice_number', e.target.value)} />
                   </div>
-                  <div className="form-row" style={{ gridColumn: 'span 2' }}>
-                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INVOICE DATE <span style={{ color: 'red' }}>*</span></span>
-                    <input type="date" className="form-input" value={row.invoice_date || ''} onChange={e => handleFieldChange(i, 'invoice_date', e.target.value)} />
+                  <div className="form-row" style={{ gridColumn: 'span 1' }}>
+                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INV DATE <span style={{ color: 'red' }}>*</span></span>
+                    <DateInput className="form-input" value={row.invoice_date || ''} onChange={e => handleFieldChange(i, 'invoice_date', e.target.value)} />
+                  </div>
+                  <div className="form-row" style={{ gridColumn: 'span 1' }}>
+                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>SAC/HSN {row.chargeType !== 'Reimbursement' && <span style={{ color: 'red' }}>*</span>}</span>
+                    <input type="text" className="form-input" placeholder="HSN" value={row.hsnCode || ''} onChange={e => handleFieldChange(i, 'hsnCode', e.target.value)} />
                   </div>
 
                   {/* Tally Numbers & Status Row */}
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
                     <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold' }}>PB No</span>
                     <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', width: '180px', margin: 0, fontWeight: 'bold' }} value={row.purchase_book_no || ''} />
+                      <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', margin: 0, fontWeight: 'bold', minWidth: '150px' }} value={row.purchase_book_no || ''} />
                       {row.purchase_book_no && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                           <IconButton
@@ -546,7 +563,7 @@ const EditChargeModal = ({
                   <div className="form-row" style={{ gridColumn: 'span 2' }}>
                     <span className="form-label" style={{ color: '#d32f2f', fontWeight: 'bold' }}>PR NO</span>
                     <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', width: '180px', margin: 0, fontWeight: 'bold' }} value={row.payment_request_no || ''} />
+                      <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', margin: 0, fontWeight: 'bold', minWidth: '150px' }} value={row.payment_request_no || ''} />
                       {row.payment_request_no && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                           <IconButton
@@ -701,7 +718,7 @@ const EditChargeModal = ({
                                 </button>
                               </div>
                             </div>
-                            <div className="ep-grid" style={{ marginRight: '30px' }}>
+                            <div className="ep-grid">
                               <div className="ep-row">
                                 <span className="ep-label">BASIS</span>
                                 <select className="ep-select" value={row.revenue?.basis || 'Per B/E - Per Shp'} onChange={e => handleFieldChange(i, 'basis', e.target.value, 'revenue')}>
@@ -769,7 +786,7 @@ const EditChargeModal = ({
                                         .map((item, idx) => (
                                           <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'revenue', item)}>
                                             <span className="ep-item-name">{item.name || item.organization}</span>
-                                            <span className="ep-item-sub">{item.city || item.branches?.[0]?.city || item.branchInfo?.[0]?.city || 'Master Directory'}</span>
+                                            <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
                                           </li>
                                         ))}
                                       {((row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
@@ -800,7 +817,7 @@ const EditChargeModal = ({
                                 </button>
                               </div>
                               {(() => {
-                                const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+                                const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList];
                                 const party = smartFindParty(allParties, row.revenue?.partyName);
                                 if (party && party.branches?.length > 1) {
                                   return (
@@ -941,7 +958,7 @@ const EditChargeModal = ({
                                 </button>
                               </div>
                             </div>
-                            <div className="ep-grid" style={{ marginRight: '30px' }}>
+                            <div className="ep-grid">
                               <div className="ep-row">
                                 <span className="ep-label">BASIS</span>
                                 <select className="ep-select" value={row.cost?.basis || 'Per B/E - Per Shp'} onChange={e => handleFieldChange(i, 'basis', e.target.value, 'cost')}>
@@ -970,7 +987,7 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">PAYABLE TYPE</span>
                                 <select className="form-input" value={row.cost?.partyType || 'Others'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'cost')}>
-                                  <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option><option>CFS</option><option>Terminal</option>
+                                  <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option><option>CFS</option><option>Terminal</option><option>General Org</option>
                                 </select>
                               </div>
                               <div className="ep-row">
@@ -1003,27 +1020,29 @@ const EditChargeModal = ({
                                   {activeDropdown.index === i && activeDropdown.section === 'cost' && (row.cost?.partyName?.length >= 1 || activeDropdown.clicked) && (
                                     <ul className="ep-dropdown-list" ref={dropdownRef}>
                                       {(row.cost?.partyType?.toUpperCase() === 'AGENT' ? shippingLines :
-                                        row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes] :
+                                        row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList] :
                                           row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
                                             row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
                                               row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations :
                                                 row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList :
-                                                  row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes : [])
+                                                  row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes :
+                                                    row.cost?.partyType?.toUpperCase() === 'GENERAL ORG' ? generalOrgList : [])
                                         .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
                                         .slice(0, 20)
                                         .map((item, idx) => (
                                           <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'cost', item)}>
                                             <span className="ep-item-name">{item.name || item.organization}</span>
-                                            <span className="ep-item-sub">{item.city || item.branches?.[0]?.city || item.branchInfo?.[0]?.city || 'Master Directory'}</span>
+                                            <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
                                           </li>
                                         ))}
                                       {((row.cost?.partyType?.toUpperCase() === 'AGENT' ? shippingLines :
-                                        row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes] :
+                                        row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList] :
                                           row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
                                             row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
                                               row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations :
                                                 row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList :
-                                                  row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes : [])
+                                                  row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes :
+                                                    row.cost?.partyType?.toUpperCase() === 'GENERAL ORG' ? generalOrgList : [])
                                         .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
                                         .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>}
                                     </ul>
@@ -1038,7 +1057,7 @@ const EditChargeModal = ({
                                 </div>
                               </div>
                               {(() => {
-                                const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+                                const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList];
                                 const party = smartFindParty(allParties, row.cost?.partyName);
                                 if (party && party.branches?.length > 1) {
                                   return (
@@ -1106,7 +1125,7 @@ const EditChargeModal = ({
                               <div className="ep-row">
                                 <span className="ep-label">TDS AMOUNT</span>
                                 <div className="ep-inline">
-                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.cost?.tdsAmount)} />
+                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={roundWholeAmount(row.cost?.tdsAmount)} />
                                 </div>
                               </div>
                               <div className="ep-row">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import ConfirmDialog from "../../gallery/ConfirmDialog.js";
 import DateInput from "../../common/DateInput.js";
 import { currencyList } from "../../../utils/masterList.js";
 import { UserContext } from "../../../contexts/UserContext";
@@ -1022,6 +1022,7 @@ function CustomHouseDropdownLocal({ label, value, onChange, branchCode = "" }) {
 }
 
 const AddExJobs = ({ onJobCreated }) => {
+  const navigate = useNavigate();
   const emptyConsignee = {
     consignee_name: "",
     consignee_address: "",
@@ -1230,6 +1231,7 @@ const AddExJobs = ({ onJobCreated }) => {
       ieCode: toUpper(displayValue), // 👈 match state + input
       panNo: toUpper(panNo),
       gstin: toUpper(gstin),
+      marks_nos: toUpper(org.registrationDetails?.aeoCode || ""),
     }));
 
     setShowDropdown(false);
@@ -1305,6 +1307,7 @@ const AddExJobs = ({ onJobCreated }) => {
         showToast(`Job Created! No: ${response.data.job.job_no}`);
         handleClear();
         if (onJobCreated) onJobCreated();
+        navigate(`/export-dsr/job/${encodeURIComponent(response.data.job.job_no)}`);
       }
     } catch (e) {
       showToast("Failed to create job", "error");
@@ -1544,6 +1547,23 @@ const AddExJobs = ({ onJobCreated }) => {
                     onChange={(e) => handleInputChange("exporter_ref_no", e.target.value)}
                   />
                 </div>
+
+                <div style={{ ...s.col, position: "relative" }}>
+                  <CustomHouseDropdownLocal
+                    label="Custom House *"
+                    value={formData.custom_house}
+                    onChange={(val) => {
+                      setCustomHouseError(false);
+                      handleInputChange("custom_house", val);
+                    }}
+                    branchCode={formData.branch_code}
+                  />
+                  {customHouseError && (
+                    <span style={{ color: "red", fontSize: "10px", marginTop: "2px", display: "block" }}>
+                      Custom House is required.
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1569,7 +1589,7 @@ const AddExJobs = ({ onJobCreated }) => {
                     style={{ ...s.col, flex: 2, position: "relative" }}
                     ref={idx === activeConsigneeIdx ? consigneeMenuRef : null}
                   >
-                    <label style={s.label}>Consignee Name *</label>
+                    <label style={s.label}>Consignee Name</label>
                     <input
                       style={s.input}
                       placeholder="Name"
@@ -1605,7 +1625,6 @@ const AddExJobs = ({ onJobCreated }) => {
                           setShowConsigneeMenu(false);
                         }
                       }}
-                      required
                     />
                     {showConsigneeMenu &&
                       activeConsigneeIdx === idx &&
@@ -1757,18 +1776,6 @@ const AddExJobs = ({ onJobCreated }) => {
                   </select>
                 </div>
 
-                <div style={{ ...s.col, position: "relative" }}>
-                  <CustomHouseDropdownLocal
-                    label="Custom House *"
-                    value={formData.custom_house}
-                    onChange={(val) => {
-                      setCustomHouseError(false);
-                      handleInputChange("custom_house", val);
-                    }}
-                    branchCode={formData.branch_code}
-                  />
-                  {customHouseError && <span style={{ color: "red", fontSize: "10px", marginTop: "2px", display: "block" }}>Custom House is required.</span>}
-                </div>
 
                 <div style={s.col}>
                   <label style={s.label}>Port of Loading</label>

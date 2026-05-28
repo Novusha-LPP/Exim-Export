@@ -11,3 +11,5 @@ build/
 *.log
 *.txt
 local-signer/config.properties
+scratch/
+local-signer/PKIComponent/

@@ -43,9 +43,23 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
 
                 // Always apply branch restriction for non-admins
-                filter.$and.push({
-                    branch_code: { $in: branchRestrictions }
-                });
+                if (branchRestrictions.length > 0) {
+                    const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+                    const fallbackRegex = `^(${branchRegexStr})(/|$)`;
+                    filter.$and.push({
+                        $or: [
+                            { branch_code: { $in: branchRestrictions } },
+                            {
+                                $and: [
+                                    { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+                                    { job_no: { $regex: fallbackRegex, $options: "i" } }
+                                ]
+                            }
+                        ]
+                    });
+                } else {
+                    filter.$and.push({ branch_code: { $in: [] } });
+                }
 
                 const portRestrictions = requester.selected_ports || [];
                 const icdRestrictions = requester.selected_icd_codes || [];
@@ -138,7 +152,19 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 $and: [
                     { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
                     { "operations.statusDetails.handoverImageUpload": { $exists: true, $not: { $size: 0 } } },
-                    { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } }
+                    { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
+                    {
+                        $or: [
+                            { "operations.statusDetails.billing_details.agency_bill_date": { $in: [null, ""] } },
+                            { "operations.statusDetails.billing_details.agency_bill_no": { $in: [null, ""] } }
+                        ]
+                    },
+                    {
+                        $or: [
+                            { "operations.statusDetails.billing_details.reimbursement_bill_date": { $in: [null, ""] } },
+                            { "operations.statusDetails.billing_details.reimbursement_bill_no": { $in: [null, ""] } }
+                        ]
+                    }
                 ]
             });
         } else if (normalizedStatus === "pending") {
@@ -181,6 +207,10 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             filter.$and.push({
                 $or: [
                     { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
+                    { "operations.statusDetails.billing_details.agency_bill_date": { $in: [null, ""] } },
+                    { "operations.statusDetails.billing_details.agency_bill_no": { $in: [null, ""] } },
+                    { "operations.statusDetails.billing_details.reimbursement_bill_date": { $in: [null, ""] } },
+                    { "operations.statusDetails.billing_details.reimbursement_bill_no": { $in: [null, ""] } },
                     { "operations.statusDetails": { $size: 0 } }
                 ]
             });
@@ -267,6 +297,18 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                     { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
                     { "operations.statusDetails.billingDocsSentDt": null },
                     { "operations.statusDetails.billingDocsSentDt": "" },
+                    { "operations.statusDetails.billing_details.agency_bill_date": { $exists: false } },
+                    { "operations.statusDetails.billing_details.agency_bill_date": null },
+                    { "operations.statusDetails.billing_details.agency_bill_date": "" },
+                    { "operations.statusDetails.billing_details.agency_bill_no": { $exists: false } },
+                    { "operations.statusDetails.billing_details.agency_bill_no": null },
+                    { "operations.statusDetails.billing_details.agency_bill_no": "" },
+                    { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: false } },
+                    { "operations.statusDetails.billing_details.reimbursement_bill_date": null },
+                    { "operations.statusDetails.billing_details.reimbursement_bill_date": "" },
+                    { "operations.statusDetails.billing_details.reimbursement_bill_no": { $exists: false } },
+                    { "operations.statusDetails.billing_details.reimbursement_bill_no": null },
+                    { "operations.statusDetails.billing_details.reimbursement_bill_no": "" },
                     { "operations.statusDetails": { $size: 0 } }
                 ]
             });
@@ -401,8 +443,12 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
 
         const { sortKey, sortOrder } = req.query;
         const sort = {};
-        if (sortKey) sort[sortKey] = sortOrder === "asc" ? 1 : -1;
-        else sort.createdAt = -1;
+        if (sortKey && sortKey !== "null" && sortKey !== "undefined" && sortKey !== "") {
+            sort[sortKey] = sortOrder === "asc" ? 1 : -1;
+        } else {
+            sort.createdAt = -1;
+        }
+
 
         const selectProjection = {
             job_no: 1, custom_house: 1, job_date: 1, consignmentType: 1, job_owner: 1,
@@ -437,7 +483,14 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             "operations.statusDetails.handoverImageUpload": 1,
             "operations.statusDetails.billingDocsSentUpload": 1,
             "operations.statusDetails.billingDocsSentDt": 1,
+            "operations.statusDetails.billing_details": 1,
             "operations.statusDetails.status": 1,
+            "operations.statusDetails.clpUpload": 1,
+            "operations.statusDetails.completionCopyUpload": 1,
+            "operations.statusDetails.movementCopyUpload": 1,
+            "operations.statusDetails.shippingInstructionsUpload": 1,
+            "operations.statusDetails.form13CopyUpload": 1,
+            "eSanchitDocuments.icegateFileName": 1,
             "operations.transporterDetails.images": 1,
             booking_copy: 1,
             containers: 1,

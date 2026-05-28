@@ -487,6 +487,11 @@ const ESanchitEditDialog = ({
   const [consigneeList, setConsigneeList] = useState([]);
   const [orgLoading, setOrgLoading] = useState(false);
 
+  // Signing States
+  const [signing, setSigning] = useState(false);
+  const [signingError, setSigningError] = useState("");
+  const [signingSuccess, setSigningSuccess] = useState(false);
+
   const safeDoc = doc || {};
 
   useEffect(() => {
@@ -501,6 +506,79 @@ const ESanchitEditDialog = ({
 
   const handleFieldChange = (field, value) => {
     setDoc((prev) => ({ ...(prev || {}), [field]: value }));
+  };
+
+  const handleSignDocument = async () => {
+    if (!safeDoc.fileUrl) return;
+    setSigning(true);
+    setSigningError("");
+    setSigningSuccess(false);
+
+    try {
+      // Extract file name
+      let fileName = "esanchit_document.pdf";
+      try {
+        const parts = safeDoc.fileUrl.split("/");
+        fileName = decodeURIComponent(parts[parts.length - 1]);
+        if (!fileName.toLowerCase().endsWith(".pdf")) {
+          fileName += ".pdf";
+        }
+      } catch (err) {
+        console.error("Error parsing filename", err);
+      }
+
+      // Append _signed to filename
+      const dotIdx = fileName.lastIndexOf(".");
+      const baseName = dotIdx > 0 ? fileName.substring(0, dotIdx) : fileName;
+      const targetFileName = `${baseName}_signed.pdf`;
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_STRING}/signer/sign-esanchit`,
+        {
+          jobId: jobData?._id || "misc",
+          fileUrl: safeDoc.fileUrl,
+          fileName: targetFileName,
+          json: true // request JSON response containing the S3 URL
+        }
+      );
+
+      if (response.data?.success && response.data?.s3Url) {
+        // Update fileUrl in safeDoc in-place
+        handleFieldChange("fileUrl", response.data.s3Url);
+        
+        // Update icegateFilename field if it exists or populate it
+        if (!safeDoc.icegateFilename || safeDoc.icegateFilename.trim() === "") {
+          handleFieldChange("icegateFilename", targetFileName);
+        }
+
+        setSigningSuccess(true);
+        setTimeout(() => setSigningSuccess(false), 5000);
+
+        // Trigger direct download via blob (cross-origin S3 URLs ignore link.download)
+        try {
+          const blobRes = await axios.get(response.data.s3Url, { responseType: "blob" });
+          const blobUrl = window.URL.createObjectURL(new Blob([blobRes.data], { type: "application/pdf" }));
+          const link = document.createElement("a");
+          link.href = blobUrl;
+          link.download = targetFileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(blobUrl);
+        } catch (dlErr) {
+          console.warn("Blob download failed, falling back to direct link:", dlErr);
+          window.open(response.data.s3Url, "_blank");
+        }
+      } else {
+        throw new Error(response.data?.message || "Failed to sign PDF.");
+      }
+    } catch (err) {
+      console.error("eSanchit Document Signing Error:", err);
+      const errMsg = err.response?.data?.message || err.message || "Connection to signing server failed. Please ensure local-signer is running.";
+      setSigningError(errMsg);
+    } finally {
+      setSigning(false);
+    }
   };
 
   const handleIssuingPartyChange = (field, value) => {
@@ -602,6 +680,20 @@ const ESanchitEditDialog = ({
       handleBeneficiaryPartyChange("pinCode", "");
     }
   }, [open, jobData, organizations, consigneeList]);
+  
+  // Auto-populate Date-Time Upload with current date-time if empty
+  useEffect(() => {
+    if (open && (!safeDoc.dateTimeOfUpload || safeDoc.dateTimeOfUpload.trim() === "")) {
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const formattedNow = `${day}-${month}-${year} ${hours}:${minutes}`;
+      handleFieldChange("dateTimeOfUpload", formattedNow);
+    }
+  }, [open]);
   
   // Auto-populate Inv. Sr. No. and Doc details for single invoice
   useEffect(() => {
@@ -989,6 +1081,42 @@ const ESanchitEditDialog = ({
               readOnly={false}
               onDeleteImage={() => setDeleteConfirmOpen(true)}
             />
+
+            {safeDoc.fileUrl && typeof safeDoc.fileUrl === "string" && safeDoc.fileUrl.toLowerCase().endsWith(".pdf") && (
+              <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  style={{
+                    backgroundColor: signing ? "#64748b" : "#10b981",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "6px 12px",
+                    borderRadius: 4,
+                    cursor: signing ? "not-allowed" : "pointer",
+                    fontWeight: 700,
+                    fontSize: 11,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.15)"
+                  }}
+                  disabled={signing}
+                  onClick={handleSignDocument}
+                >
+                  {signing ? "🖋️ Signing via DSC..." : "🖋️ Digitally Sign PDF"}
+                </button>
+                {signingError && (
+                  <span style={{ color: "#ef4444", fontSize: 10, fontWeight: "bold" }}>
+                    ❌ {signingError}
+                  </span>
+                )}
+                {signingSuccess && (
+                  <span style={{ color: "#10b981", fontSize: 10, fontWeight: "bold" }}>
+                    ✅ PDF Signed and Downloaded!
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Footer buttons */}

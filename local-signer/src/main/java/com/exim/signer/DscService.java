@@ -133,14 +133,15 @@ public class DscService {
     }
 
     /**
-     * Forcefully reloads the keystore session and fetches a fresh PrivateKey handle.
+     * Forcefully reloads the keystore session and fetches a fresh PrivateKey
+     * handle.
      * Prevents CKR_USER_NOT_LOGGED_IN / Key must not be null.
      */
     public PrivateKey getFreshPrivateKey() throws Exception {
         if (keyStore == null || alias == null) {
             throw new Exception("DSC not initialized. Call login() first.");
         }
-        
+
         try {
             keyStore.load(null, this.pinChars);
         } catch (Exception e) {
@@ -156,7 +157,7 @@ public class DscService {
 
     /**
      * RAW Signature (SHA1withRSA) required for ICEGATE .sb file signing.
-
+     * 
      * This matches NCode signing tool behavior.
      */
     public byte[] signRaw(byte[] data) throws Exception {
@@ -170,18 +171,54 @@ public class DscService {
         }
 
         PrivateKey privateKey = getFreshPrivateKey();
-        
-        // Upgrade to SHA256withRSA for ICEGATE compliance
-        Signature signature = Signature.getInstance("SHA256withRSA", pkcs11Provider);
+
+        // ICEGATE ICES 1.5 flat-file strictly requires SHA1withRSA for the V-NCODE format
+        Signature signature = Signature.getInstance("SHA1withRSA", pkcs11Provider);
         signature.initSign(privateKey);
         signature.update(data);
 
         byte[] signedBytes = signature.sign();
 
-        System.out.println("✅ RAW SHA256withRSA signature generated. Length: " + signedBytes.length);
+        System.out.println("✅ RAW SHA1withRSA signature generated. Length: " + signedBytes.length);
 
         return signedBytes;
     }
+
+    /**
+     * Non-standard nested double-hashing signature scheme used by official nCode PKI Component.
+     * Computes the SHA-256 digest of strippedData, and signs that 32-byte digest array using SHA1withRSA.
+     */
+    public byte[] signSHA2(byte[] strippedData) throws Exception {
+
+        if (keyStore == null || alias == null) {
+            throw new Exception("DSC not initialized. Call login() first.");
+        }
+
+        if (strippedData == null || strippedData.length == 0) {
+            throw new Exception("No data provided for signing.");
+        }
+
+        PrivateKey privateKey = getFreshPrivateKey();
+
+        // 1. Compute SHA-256 digest of the stripped ISO-8859-1 content bytes
+        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+        byte[] sha256Digest = md.digest(strippedData);
+
+        // 2. Initialize signature using SHA1withRSA via SunPKCS11 provider
+        Signature signature = Signature.getInstance("SHA1withRSA", pkcs11Provider);
+        signature.initSign(privateKey);
+
+        // 3. Update the signature with the 32-byte SHA-256 digest
+        signature.update(sha256Digest);
+
+        // 4. Compute the signature
+        byte[] signedBytes = signature.sign();
+
+        System.out.println("✅ ICEGATE Double-Nested Hashing (SHA-256 -> SHA1withRSA) signature generated. Length: " + signedBytes.length);
+
+        return signedBytes;
+    }
+
 
     /**
      * Generate PKCS#7 (CMS) signature (ATTACHED).

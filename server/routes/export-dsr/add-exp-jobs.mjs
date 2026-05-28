@@ -277,6 +277,20 @@ router.post(
       delete sourceData.jobNumber;
       delete sourceData.eSanchitDocuments;
       delete sourceData.operations;
+      delete sourceData.charges;
+      delete sourceData.ap_invoices;
+      delete sourceData.financial_lock;
+      delete sourceData.send_for_billing;
+      delete sourceData.send_for_billing_date;
+
+      // Remove branch-specific metadata and custom house configurations to avoid leakage
+      delete sourceData.cha_branch_code;
+      delete sourceData.exporter_branch_name;
+      delete sourceData.branchSrNo;
+      delete sourceData.branch_sno;
+      delete sourceData.branch_sr_no;
+      delete sourceData.branch_index;
+      delete sourceData.branchIndex;
 
       // Set new values
       const newExportJob = new ExportJobModel({
@@ -284,12 +298,20 @@ router.post(
         job_no: newJobNo,
         jobNumber: newJobNo, 
         branch_code,
+        cha_branch_code: branch_code, // Explicitly sync with target branch
         year,
         transportMode,
         status: "Pending",
         detailedStatus: "", 
         job_date: new Date().toISOString().split("T")[0],
-        milestones: [], 
+        milestones: [],
+        eSanchitDocuments: [],
+        operations: [],
+        charges: [],
+        ap_invoices: [],
+        financial_lock: false,
+        send_for_billing: false,
+        send_for_billing_date: undefined,
       });
 
       await newExportJob.save();

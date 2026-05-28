@@ -15,6 +15,23 @@ export const generateExportChecklist = async (jobNumber) => {
       throw new Error(`Export job with job number ${jobNumber} not found`);
     }
 
+    const productList = [];
+    (exportJob.invoices || []).forEach(inv => {
+      if (inv.products) productList.push(...inv.products);
+    });
+
+    const warehouseInfo = (() => {
+      const reProd = productList.find(p => p.reExport?.isReExport && (p.reExport?.warehouseCode || p.reExport?.warehouseName));
+      if (reProd) {
+        const code = reProd.reExport.warehouseCode || "";
+        const name = reProd.reExport.warehouseName || "";
+        if (code && name) return `(${code})${name}`;
+        if (code) return `(${code})`;
+        return name;
+      }
+      return "";
+    })();
+
     const doc = new PDFDocument({ margin: 10, size: "A4" });
     const chunks = [];
 
@@ -225,6 +242,9 @@ export const generateExportChecklist = async (jobNumber) => {
     drawFieldBox(10, yPos, 575, 18, "EOU IEC", exportJob.iecNo, 6, 5);
     yPos += 20;
 
+    drawFieldBox(10, yPos, 575, 18, "Warehouse Name", warehouseInfo, 6, 5);
+    yPos += 20;
+
     const factoryAddress = [
       exportJob.exporterName,
       exportJob.branchcode,
@@ -279,10 +299,6 @@ export const generateExportChecklist = async (jobNumber) => {
     }
     yPos += 40;
 
-    const productList = [];
-    (exportJob.invoices || []).forEach(inv => {
-      if (inv.products) productList.push(...inv.products);
-    });
     productList.forEach((item, index) => {
       doc.fontSize(5.5).font("Helvetica");
       const itemData = [
@@ -433,6 +449,80 @@ export const generateExportChecklist = async (jobNumber) => {
     doc.text(`Total DBK Amount: ${totalDbk.toFixed(2)}`, 10, yPos + 5, { align: "right", width: 575 });
     doc.font("Helvetica");
     yPos += 15;
+
+    // RE-EXPORT DETAILS SECTION
+    const reExportProducts = productList.filter(p => p.reExport?.isReExport);
+    if (reExportProducts.length > 0) {
+      if (yPos > 700) { doc.addPage(); drawHeader(3); yPos = 55; }
+      yPos = drawSectionHeader(yPos, "RE-EXPORT DETAILS");
+
+      const reHeaders = [
+        "Inv No",
+        "Item No/\nReExport SN",
+        "Port Code",
+        "BENo/\nDate",
+        "BE Inv/\nItem SNo",
+        "DBK Val\nClaimed",
+        "Qty. Imp",
+        "Commissioner\nPermission",
+        "Input Credit\nAvailed",
+        "Pers. Use /\nItem Un-Use",
+      ];
+      const reX = [10, 40, 110, 155, 215, 265, 325, 385, 455, 515];
+      const reWidths = [30, 70, 45, 60, 50, 60, 60, 70, 60, 70];
+
+      doc.fontSize(5.5).font("Helvetica-Bold");
+      reHeaders.forEach((header, i) => {
+        doc.rect(reX[i], yPos, reWidths[i], 12).stroke();
+        doc.text(header, reX[i] + 1, yPos + 2, {
+          width: reWidths[i] - 2,
+          align: "center",
+        });
+      });
+      yPos += 12;
+
+      reExportProducts.forEach((item, index) => {
+        if (yPos > 780) { doc.addPage(); drawHeader(3); yPos = 55; }
+        
+        let invNo = "1";
+        exportJob.invoices?.forEach((inv, ii) => {
+          if (inv.products?.some(p => p._id.toString() === item._id.toString())) {
+            invNo = (ii + 1).toString();
+          }
+        });
+
+        const re = item.reExport || {};
+        const beDateStr = re.beDate ? new Date(re.beDate).toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }) : "";
+
+        const reRow = [
+          invNo,
+          item.serialNumber || (productList.indexOf(item) + 1).toString(),
+          re.importPortCode || "",
+          `${re.beNumber || ""}\n${beDateStr}`,
+          `${re.invoiceSerialNo || ""} / ${re.itemSerialNo || ""}`,
+          (re.drawbackAmtClaimed || 0).toFixed(6),
+          (re.quantityImported || 0).toFixed(6),
+          re.commissionerPermission ? "Y" : "N",
+          re.inputCreditAvailed ? "Y" : "N",
+          `${re.personalUseItem ? "Y" : "N"} / ${re.itemUnUsed ? "Y" : "N"}`,
+        ];
+
+        doc.fontSize(5.5).font("Helvetica");
+        reRow.forEach((data, i) => {
+          doc.rect(reX[i], yPos, reWidths[i], 12).stroke();
+          doc.text(data || "", reX[i] + 1, yPos + 2, {
+            width: reWidths[i] - 2,
+            align: "center",
+          });
+        });
+        yPos += 12;
+      });
+      yPos += 15;
+    }
 
     yPos = drawSectionHeader(yPos, "VESSEL DETAILS");
     drawFieldBox(

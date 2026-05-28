@@ -186,57 +186,100 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
           <div className="grid-wrapper" style={{ border: 'none', boxShadow: 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ width: '4px', height: '16px', background: '#2563eb', marginRight: '8px', borderRadius: '2px' }}></span>
-              <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Billing Submission & Document Proof</h3>
+              <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Billing Submission & Details</h3>
             </div>
 
-            <div style={{ padding: '16px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '20px', display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
-              <div style={{ flex: '1', minWidth: '250px', maxWidth: '300px' }}>
-                <span className="form-label" style={{ display: 'block', textAlign: 'left', marginBottom: '8px', width: 'auto' }}>Billing Date</span>
-                <DateInput
-                  name="operations[0].statusDetails[0].billingDocsSentDt"
-                  value={formik.values.operations?.[0]?.statusDetails?.[0]?.billingDocsSentDt || ""}
-                  onChange={(e) => formik.setFieldValue("operations[0].statusDetails[0].billingDocsSentDt", e.target.value)}
-                  style={{
-                    width: "100%",
-                    fontSize: "12px",
-                    padding: "0 8px",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "4px",
-                    height: "28px",
-                    background: "#f9fafb",
-                    outline: "none",
-                    boxSizing: "border-box",
-                    fontWeight: 500,
-                    color: '#1e293b'
-                  }}
-                />
-              </div>
-              <div style={{ flex: '2', minWidth: '350px' }}>
-                <span className="form-label" style={{ display: 'block', textAlign: 'left', marginBottom: '8px', width: 'auto' }}>Invoice Document / Bill Copy</span>
-                <div style={{
-                  padding: '12px',
-                  border: '1px dashed #cbd5e1',
-                  borderRadius: '6px',
-                  background: '#f8fafc',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px'
-                }}>
-                  <FileUpload
-                    bucketPath="billing_docs"
-                    onFilesUploaded={(urls) => {
-                      const current = formik.values.operations?.[0]?.statusDetails?.[0]?.billingDocsSentUpload || [];
-                      formik.setFieldValue("operations[0].statusDetails[0].billingDocsSentUpload", [...current, ...urls]);
+            <div style={{ padding: '16px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Agency Bill */}
+              <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', borderBottom: '1px solid #f1f5f9', paddingBottom: '16px' }}>
+                <div style={{ flex: '1', minWidth: '200px' }}>
+                  <span className="form-label" style={{ display: 'block', textAlign: 'left', marginBottom: '8px', width: 'auto', fontWeight: 600 }}>Agency Bill Date</span>
+                  <DateInput
+                    name="operations[0].statusDetails[0].billing_details.agency_bill_date"
+                    value={formik.values.operations?.[0]?.statusDetails?.[0]?.billing_details?.agency_bill_date || ""}
+                    onChange={(e) => formik.setFieldValue("operations[0].statusDetails[0].billing_details.agency_bill_date", e.target.value)}
+                    style={{
+                      width: "100%",
+                      fontSize: "12px",
+                      padding: "0 8px",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "4px",
+                      height: "28px",
+                      background: "#f9fafb",
+                      outline: "none",
+                      boxSizing: "border-box",
+                      fontWeight: 500,
+                      color: '#1e293b'
                     }}
                   />
-                  <ImagePreview
-                    images={formik.values.operations?.[0]?.statusDetails?.[0]?.billingDocsSentUpload || []}
-                    onDeleteImage={(index) => {
-                      const current = formik.values.operations?.[0]?.statusDetails?.[0]?.billingDocsSentUpload || [];
-                      const updated = current.filter((_, i) => i !== index);
-                      formik.setFieldValue("operations[0].statusDetails[0].billingDocsSentUpload", updated);
+                </div>
+                <div style={{ flex: '1', minWidth: '200px' }}>
+                  <span className="form-label" style={{ display: 'block', textAlign: 'left', marginBottom: '8px', width: 'auto', fontWeight: 600 }}>Agency Bill Number</span>
+                  <input
+                    type="text"
+                    name="operations[0].statusDetails[0].billing_details.agency_bill_no"
+                    value={formik.values.operations?.[0]?.statusDetails?.[0]?.billing_details?.agency_bill_no || ""}
+                    onChange={formik.handleChange}
+                    style={{
+                      width: "100%",
+                      fontSize: "12px",
+                      padding: "0 8px",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "4px",
+                      height: "28px",
+                      background: "#f9fafb",
+                      outline: "none",
+                      boxSizing: "border-box",
+                      fontWeight: 500,
+                      color: '#1e293b'
                     }}
-                    readOnly={!isEditable}
+                  />
+                </div>
+              </div>
+
+              {/* Reimbursement Bill */}
+              <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1', minWidth: '200px' }}>
+                  <span className="form-label" style={{ display: 'block', textAlign: 'left', marginBottom: '8px', width: 'auto', fontWeight: 600 }}>Reimbursement Bill Date</span>
+                  <DateInput
+                    name="operations[0].statusDetails[0].billing_details.reimbursement_bill_date"
+                    value={formik.values.operations?.[0]?.statusDetails?.[0]?.billing_details?.reimbursement_bill_date || ""}
+                    onChange={(e) => formik.setFieldValue("operations[0].statusDetails[0].billing_details.reimbursement_bill_date", e.target.value)}
+                    style={{
+                      width: "100%",
+                      fontSize: "12px",
+                      padding: "0 8px",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "4px",
+                      height: "28px",
+                      background: "#f9fafb",
+                      outline: "none",
+                      boxSizing: "border-box",
+                      fontWeight: 500,
+                      color: '#1e293b'
+                    }}
+                  />
+                </div>
+                <div style={{ flex: '1', minWidth: '200px' }}>
+                  <span className="form-label" style={{ display: 'block', textAlign: 'left', marginBottom: '8px', width: 'auto', fontWeight: 600 }}>Reimbursement Bill Number</span>
+                  <input
+                    type="text"
+                    name="operations[0].statusDetails[0].billing_details.reimbursement_bill_no"
+                    value={formik.values.operations?.[0]?.statusDetails?.[0]?.billing_details?.reimbursement_bill_no || ""}
+                    onChange={formik.handleChange}
+                    style={{
+                      width: "100%",
+                      fontSize: "12px",
+                      padding: "0 8px",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "4px",
+                      height: "28px",
+                      background: "#f9fafb",
+                      outline: "none",
+                      boxSizing: "border-box",
+                      fontWeight: 500,
+                      color: '#1e293b'
+                    }}
                   />
                 </div>
               </div>

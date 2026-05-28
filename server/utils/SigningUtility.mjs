@@ -9,7 +9,7 @@ import fs from 'fs';
 class SigningUtility {
   constructor() {
     // Default to localhost, can be overridden by env
-    this.baseUrl = process.env.SIGNING_SERVER_URL || 'http://localhost:5000';
+    this.baseUrl = process.env.SIGNING_SERVER_URL;
   }
 
   /**
@@ -51,7 +51,7 @@ class SigningUtility {
   async _sendSignRequest(endpoint, content, fileName) {
     try {
       const form = new FormData();
-      
+
       // Handle Buffers, Streams, or File Paths
       if (typeof content === 'string' && fs.existsSync(content)) {
         form.append('file', fs.createReadStream(content));
@@ -90,7 +90,7 @@ class SigningUtility {
         // The request was made but no response was received
         detailedError = `No response received from signing server. Code: ${error.code}. Is it running?`;
         if (error.code === 'ECONNREFUSED') {
-            detailedError = 'Connection Refused: The Java Signer is NOT running on the specified port. Please start the Local Signer app.';
+          detailedError = 'Connection Refused: The Java Signer is NOT running on the specified port. Please start the Local Signer app.';
         }
       } else {
         // Something happened in setting up the request that triggered an Error

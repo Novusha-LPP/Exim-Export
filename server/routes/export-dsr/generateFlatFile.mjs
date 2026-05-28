@@ -479,10 +479,10 @@ export function generateSBFlatFile(job) {
         mappedSealType = "S";
     } else if (sst.includes("WAREHOUSE") || sst.includes("WEARHOUSE")) {
         mappedSealType = "W";
-    } else if (isContainerized || validContainers.length > 0) {
+    } else if ((isContainerized) && job.goods_stuffed_at !== "DOCK") {
         // Fallback: default to 'S' for containerized sea shipments if not explicitly warehouse
         mappedSealType = "S";
-    }
+    } else mappedSealType = ""
 
     let out = "";
 
@@ -814,7 +814,7 @@ export function generateSBFlatFile(job) {
                     }
                 }
 
-                const tpL = split35(tpAddrRaw);
+                const tpL = split35(trunc(tpAddrRaw, 70));
                 const tpAddr1 = tpL[0];
                 const tpAddr2 = tpL[1];
 
@@ -827,8 +827,11 @@ export function generateSBFlatFile(job) {
                     tpAddr2,
                     tpCity,
                     tpPin,
-                    gstnTypCode(tp.regnNo),
-                    clean(tp.regnNo || ""),
+                    "",  // [15] amendmentType (char, length 1)
+                    "",  // [16] amendmentNo (integer, length 7)
+                    "",  // [17] reserved empty
+                    gstnTypCode(tp.regnNo),  // [18] gstnType
+                    clean(tp.regnNo || ""),   // [19] gstnNo
                 ));
             }
         });
@@ -927,8 +930,9 @@ export function generateSBFlatFile(job) {
             }
 
             if (p.eximCode && p.eximCode.startsWith("00") && p.reExport?.isReExport) {
+                const whCode = p.reExport.warehouseCode || (loc.replace(/^IN/, "") + "U001");
                 out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++),
-                    "DIR", "XSB", loc.replace(/^IN/, "") + "U001", "", "", "");
+                    "DIR", "XSB", clean(whCode), "", "", "");
             }
         });
     });

@@ -1,4 +1,5 @@
 import express from "express";
+import axios from "axios";
 import ExportJobModel from "../../model/export/ExJobModel.mjs";
 import ExJobModel from "../../model/export/ExJobModel.mjs";
 import FreightEnquiryModel from "../../model/export/FreightEnquiryModel.mjs";
@@ -6,6 +7,70 @@ import auditMiddleware from "../../middleware/auditTrail.mjs";
 import UserModel from "../../model/userModel.mjs";
 
 const router = express.Router();
+
+const IMPEXCUBE_BASE_URL =
+  process.env.IMPEXCUBE_BASE_URL || "http://testimpexapi.impexcube.in";
+const IMPEXCUBE_LOGIN_PATH =
+  process.env.IMPEXCUBE_LOGIN_PATH || "/api/Authentication/login";
+const IMPEXCUBE_EXPORT_CREATE_PATH =
+  process.env.IMPEXCUBE_EXPORT_CREATE_PATH || "/api/v1/ExpJobCreation/CreateJob";
+const IMPEXCUBE_TIMEOUT_MS = Number(process.env.IMPEXCUBE_TIMEOUT_MS || 30000);
+const IMPEXCUBE_TEST_HOST = "testimpexapi.impexcube.in";
+const IMPEXCUBE_TEST_DEFAULTS = {
+  username: "test",
+  password: "testabc",
+  companyBrCode: "8A6EE027-A8FF-40E3-9468-00F1BB57F1C",
+};
+
+const buildImpexCubeUrl = (path) =>
+  `${IMPEXCUBE_BASE_URL.replace(/\/+$/, "")}/${String(path || "").replace(/^\/+/, "")}`;
+
+async function getImpexCubeAccessToken(financialYear) {
+  const isDocumentedTestHost = IMPEXCUBE_BASE_URL.includes(IMPEXCUBE_TEST_HOST);
+  const username =
+    process.env.IMPEXCUBE_USERNAME ||
+    (isDocumentedTestHost ? IMPEXCUBE_TEST_DEFAULTS.username : "");
+  const password =
+    process.env.IMPEXCUBE_PASSWORD ||
+    (isDocumentedTestHost ? IMPEXCUBE_TEST_DEFAULTS.password : "");
+  const companyBrCode =
+    process.env.IMPEXCUBE_COMPANY_BR_CODE ||
+    (isDocumentedTestHost ? IMPEXCUBE_TEST_DEFAULTS.companyBrCode : "");
+  const fyear = process.env.IMPEXCUBE_FYEAR || financialYear;
+
+  const missing = [];
+  if (!username) missing.push("IMPEXCUBE_USERNAME");
+  if (!password) missing.push("IMPEXCUBE_PASSWORD");
+  if (!companyBrCode) missing.push("IMPEXCUBE_COMPANY_BR_CODE");
+  if (!fyear) missing.push("IMPEXCUBE_FYEAR");
+
+  if (missing.length > 0) {
+    const error = new Error(`Missing ImpexCube configuration: ${missing.join(", ")}`);
+    error.statusCode = 500;
+    throw error;
+  }
+
+  const response = await axios.post(buildImpexCubeUrl(IMPEXCUBE_LOGIN_PATH), null, {
+    params: {
+      username,
+      password,
+      CompanyBrCode: companyBrCode,
+      Fyear: fyear,
+    },
+    headers: { accept: "*/*" },
+    timeout: IMPEXCUBE_TIMEOUT_MS,
+  });
+
+  const token = response.data?.data?.accessToken;
+  if (!token) {
+    const error = new Error(response.data?.message || "ImpexCube authentication did not return an access token");
+    error.statusCode = response.status || 502;
+    error.impexCubeResponse = response.data;
+    throw error;
+  }
+
+  return token;
+}
 
 // GET /api/job-numbers-search - Search for job numbers for 'Copy From' feature
 router.get("/job-numbers-search", async (req, res) => {
@@ -47,9 +112,26 @@ router.get("/dashboard-stats", async (req, res) => {
     if (requesterUsername) {
       const requester = await UserModel.findOne({ username: requesterUsername });
       if (requester && requester.role !== "Admin") {
-        const branchRestrictions = requester.selected_branches || [];
+        let branchRestrictions = requester.selected_branches || [];
+        const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+        branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
         if (branchRestrictions.length > 0) {
-          matchStage.$and.push({ branch_code: { $in: branchRestrictions } });
+          const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+          const fallbackRegex = `^(${branchRegexStr})(/|$)`;
+          matchStage.$and.push({
+            $or: [
+              { branch_code: { $in: branchRestrictions } },
+              {
+                $and: [
+                  { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+                  { job_no: { $regex: fallbackRegex, $options: "i" } }
+                ]
+              }
+            ]
+          });
+        } else {
+          matchStage.$and.push({ branch_code: { $in: [] } });
         }
 
         const portRestrictions = requester.selected_ports || [];
@@ -279,9 +361,26 @@ router.get("/global-search-jobs", async (req, res) => {
     if (requesterUsername) {
       const requester = await UserModel.findOne({ username: requesterUsername });
       if (requester && requester.role !== "Admin" && (!search || String(search).trim() === "")) {
-        const branchRestrictions = requester.selected_branches || [];
+        let branchRestrictions = requester.selected_branches || [];
+        const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+        branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
         if (branchRestrictions.length > 0) {
-          filter.$and.push({ branch_code: { $in: branchRestrictions } });
+          const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+          const fallbackRegex = `^(${branchRegexStr})(/|$)`;
+          filter.$and.push({
+            $or: [
+              { branch_code: { $in: branchRestrictions } },
+              {
+                $and: [
+                  { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+                  { job_no: { $regex: fallbackRegex, $options: "i" } }
+                ]
+              }
+            ]
+          });
+        } else {
+          filter.$and.push({ branch_code: { $in: [] } });
         }
 
         const portRestrictions = requester.selected_ports || [];
@@ -361,7 +460,19 @@ router.get("/global-search-jobs", async (req, res) => {
           $and: [
             { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
             { "operations.statusDetails.handoverImageUpload": { $exists: true, $not: { $size: 0 } } },
-            { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } }
+            { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
+            {
+              $or: [
+                { "operations.statusDetails.billing_details.agency_bill_date": { $in: [null, ""] } },
+                { "operations.statusDetails.billing_details.agency_bill_no": { $in: [null, ""] } }
+              ]
+            },
+            {
+              $or: [
+                { "operations.statusDetails.billing_details.reimbursement_bill_date": { $in: [null, ""] } },
+                { "operations.statusDetails.billing_details.reimbursement_bill_no": { $in: [null, ""] } }
+              ]
+            }
           ]
         });
       } else if (statusLower === "op completed" || statusLower === "billing pending") {
@@ -397,6 +508,18 @@ router.get("/global-search-jobs", async (req, res) => {
             { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
             { "operations.statusDetails.billingDocsSentDt": null },
             { "operations.statusDetails.billingDocsSentDt": "" },
+            { "operations.statusDetails.billing_details.agency_bill_date": { $exists: false } },
+            { "operations.statusDetails.billing_details.agency_bill_date": null },
+            { "operations.statusDetails.billing_details.agency_bill_date": "" },
+            { "operations.statusDetails.billing_details.agency_bill_no": { $exists: false } },
+            { "operations.statusDetails.billing_details.agency_bill_no": null },
+            { "operations.statusDetails.billing_details.agency_bill_no": "" },
+            { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: false } },
+            { "operations.statusDetails.billing_details.reimbursement_bill_date": null },
+            { "operations.statusDetails.billing_details.reimbursement_bill_date": "" },
+            { "operations.statusDetails.billing_details.reimbursement_bill_no": { $exists: false } },
+            { "operations.statusDetails.billing_details.reimbursement_bill_no": null },
+            { "operations.statusDetails.billing_details.reimbursement_bill_no": "" },
             { "operations.statusDetails": { $size: 0 } }
           ]
         });
@@ -677,6 +800,7 @@ router.get("/global-search-jobs", async (req, res) => {
           "operations.statusDetails.handoverImageUpload": 1,
           "operations.statusDetails.billingDocsSentUpload": 1,
           "operations.statusDetails.billingDocsSentDt": 1,
+          "operations.statusDetails.billing_details": 1,
           "operations.statusDetails.status": 1,
           "operations.transporterDetails.images": 1,
           lockedBy: 1,
@@ -738,11 +862,26 @@ router.get("/exports/:status?", async (req, res) => {
       const requester = await UserModel.findOne({ username: requesterUsername });
       if (requester && requester.role !== "Admin") {
         // Enforce Branch Restriction
-        const branchRestrictions = requester.selected_branches || [];
+        let branchRestrictions = requester.selected_branches || [];
+        const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+        branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
         if (branchRestrictions.length > 0) {
+          const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+          const fallbackRegex = `^(${branchRegexStr})(/|$)`;
           filter.$and.push({
-            branch_code: { $in: branchRestrictions }
+            $or: [
+              { branch_code: { $in: branchRestrictions } },
+              {
+                $and: [
+                  { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+                  { job_no: { $regex: fallbackRegex, $options: "i" } }
+                ]
+              }
+            ]
           });
+        } else {
+          filter.$and.push({ branch_code: { $in: [] } });
         }
 
         // Enforce Port & ICD Restriction
@@ -1116,11 +1255,12 @@ router.get("/exports/:status?", async (req, res) => {
     // Sorting logic
     const { sortKey, sortOrder } = req.query;
     const sort = {};
-    if (sortKey) {
+    if (sortKey && sortKey !== "null" && sortKey !== "undefined" && sortKey !== "") {
       sort[sortKey] = sortOrder === "asc" ? 1 : -1;
     } else {
       sort.createdAt = -1; // Default sort
     }
+
 
     // Selected fields to reduce payload size for the frontend table
     const selectProjection = {
@@ -1206,6 +1346,7 @@ router.get("/exports/:status?", async (req, res) => {
       "operations.statusDetails.handoverImageUpload": 1,
       "operations.statusDetails.billingDocsSentUpload": 1,
       "operations.statusDetails.billingDocsSentDt": 1,
+      "operations.statusDetails.billing_details": 1,
       "operations.statusDetails.status": 1,
       "operations.transporterDetails.images": 1,
       lockedBy: 1,
@@ -1317,9 +1458,26 @@ router.get("/filtered-exporters", async (req, res) => {
     if (requesterUsername) {
       const requester = await UserModel.findOne({ username: requesterUsername });
       if (requester && requester.role !== "Admin") {
-        const branchRestrictions = requester.selected_branches || [];
+        let branchRestrictions = requester.selected_branches || [];
+        const BRANCH_MAP = { "AHMEDABAD": "AMD", "BARODA": "BRD", "GANDHIDHAM": "GIM", "COCHIN": "COK", "HAZIRA": "HAZ" };
+        branchRestrictions = branchRestrictions.map(b => BRANCH_MAP[b.toUpperCase()] || b);
+
         if (branchRestrictions.length > 0) {
-          filter.$and.push({ branch_code: { $in: branchRestrictions } });
+          const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+          const fallbackRegex = `^(${branchRegexStr})(/|$)`;
+          filter.$and.push({
+            $or: [
+              { branch_code: { $in: branchRestrictions } },
+              {
+                $and: [
+                  { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+                  { job_no: { $regex: fallbackRegex, $options: "i" } }
+                ]
+              }
+            ]
+          });
+        } else {
+          filter.$and.push({ branch_code: { $in: [] } });
         }
 
         const portRestrictions = requester.selected_ports || [];
@@ -1553,7 +1711,10 @@ router.get("/filtered-exporters", async (req, res) => {
 // POST /api/exports - Create new export job
 router.post("/exports", auditMiddleware("Job"), async (req, res) => {
   try {
-    const newJob = new ExportJobModel(req.body);
+    const jobData = ExportJobModel.isImpexCubeExportPayload(req.body)
+      ? ExportJobModel.fromImpexCubeExportPayload(req.body)
+      : req.body;
+    const newJob = new ExportJobModel(jobData);
     const savedJob = await newJob.save();
     res.status(201).json({ success: true, data: savedJob });
   } catch (error) {
@@ -1561,6 +1722,219 @@ router.post("/exports", auditMiddleware("Job"), async (req, res) => {
       success: false,
       message: "Error creating job",
       error: error.message,
+    });
+  }
+});
+
+// Helper methods for ImpexCube response classification (aligned with uploadExportToImexcube.mjs)
+const normalizeVendorStatusCode = (payload, fallbackStatus = null) => {
+  const fromPayload = Number(payload?.statusCode);
+  if (Number.isFinite(fromPayload) && fromPayload > 0) return fromPayload;
+  const fromNested = Number(payload?.data?.[0]?.Code || payload?.data?.[0]?.code);
+  if (Number.isFinite(fromNested) && fromNested > 0) return fromNested;
+  return fallbackStatus;
+};
+
+const classifyImexcubeAction = (payload, fallbackStatus = null) => {
+  const statusCode = normalizeVendorStatusCode(payload, fallbackStatus);
+  const text = [
+    payload?.message,
+    payload?.data?.[0]?.Message,
+    payload?.data?.[0]?.ErrorMsg,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (text.includes("updated")) return "updated";
+  if (statusCode === 409 || text.includes("already exists") || text.includes("duplicate")) {
+    return "duplicate";
+  }
+  return "created";
+};
+
+const getVendorMessage = (payload, fallback = "") => {
+  return (
+    payload?.data?.[0]?.Message ||
+    payload?.data?.[0]?.ErrorMsg ||
+    payload?.message ||
+    fallback
+  );
+};
+
+// POST /api/impexcube/export-jobs/send - Send an export job to ImpexCube
+router.post("/impexcube/export-jobs/send", auditMiddleware("Job"), async (req, res) => {
+  try {
+    const jobNo = req.body?.job_no || req.body?.jobNo;
+    if (!jobNo) {
+      return res.status(400).json({
+        success: false,
+        message: "job_no is required",
+      });
+    }
+
+    const exportJob = await ExJobModel.findOne({
+      job_no: { $regex: `^${String(jobNo).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
+    });
+
+    if (!exportJob) {
+      return res.status(404).json({
+        success: false,
+        message: "Export job not found",
+      });
+    }
+
+    const payload = exportJob.toImpexCubeExportPayload(req.body?.options || {});
+    const accessToken = await getImpexCubeAccessToken(payload.CHADetails?.Financial_Year);
+    console.log("[IMEXCUBE EXPORT DSR] Sending payload to ImpexCube:\n", JSON.stringify(payload, null, 2));
+    const impexCubeResponse = await axios.post(
+      buildImpexCubeUrl(IMPEXCUBE_EXPORT_CREATE_PATH),
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        timeout: IMPEXCUBE_TIMEOUT_MS,
+      },
+    );
+
+    const vendorPayload = impexCubeResponse.data || {};
+    const action = classifyImexcubeAction(vendorPayload, impexCubeResponse.status);
+    const vendorStatusCode = normalizeVendorStatusCode(vendorPayload, impexCubeResponse.status);
+    const vendorMessage = getVendorMessage(vendorPayload, "Job created successfully");
+
+    const queryFilter = { _id: exportJob._id };
+
+    if (action === "duplicate") {
+      await ExJobModel.updateOne(
+        queryFilter,
+        {
+          $set: {
+            imexcube_last_action: "duplicate",
+            imexcube_last_status_code: vendorStatusCode,
+            imexcube_last_message: vendorMessage,
+            imexcube_response: vendorPayload,
+          },
+        }
+      );
+
+      return res.status(409).json({
+        success: false,
+        message: vendorMessage || "Duplicate Job in IMEXCUBE",
+        data: vendorPayload,
+        statusCode: 409,
+      });
+    }
+
+    // Mark the job as uploaded in our DB
+    await ExJobModel.updateOne(
+      queryFilter,
+      {
+        $set: {
+          imexcube_uploaded: true,
+          imexcube_uploaded_at: new Date(),
+          imexcube_response: vendorPayload,
+          imexcube_last_action: action,
+          imexcube_last_status_code: vendorStatusCode,
+          imexcube_last_message: vendorMessage,
+        },
+      }
+    );
+
+    return res.status(impexCubeResponse.status || 200).json({
+      success: true,
+      message: action === "updated" ? "Job updated in IMEXCUBE (TEST) successfully" : "Job created in IMEXCUBE (TEST) successfully",
+      data: vendorPayload,
+      job_no: exportJob.job_no,
+    });
+  } catch (error) {
+    const jobNo = req.body?.job_no || req.body?.jobNo;
+    const queryFilter = {
+      $or: [
+        { job_no: jobNo },
+        { jobNumber: jobNo }
+      ]
+    };
+
+    // Identify if this is a connection/network timeout error
+    let isNetworkError = false;
+    let userFriendlyMessage = "";
+
+    if (!error.response) {
+      isNetworkError = true;
+      if (error.code === "ECONNRESET") {
+        userFriendlyMessage = "ImpexCube API connection was reset by the remote server (ECONNRESET). The API may be offline or unreachable.";
+      } else if (error.code === "ETIMEDOUT" || error.message?.toLowerCase().includes("timeout")) {
+        userFriendlyMessage = "ImpexCube API connection timed out. The server is currently offline or unreachable.";
+      } else if (error.code === "ENOTFOUND" || error.code === "EAI_AGAIN") {
+        userFriendlyMessage = "ImpexCube API domain name could not be resolved. Please check your internet connection or URL configuration.";
+      } else {
+        userFriendlyMessage = `ImpexCube API is unreachable. Network error: ${error.message || "Connection failed"}`;
+      }
+    }
+
+    const status = isNetworkError ? 503 : (error.response?.status || error.statusCode || 500);
+    const impexCubeData = error.response?.data || error.impexCubeResponse;
+    const vendorMessage = isNetworkError ? userFriendlyMessage : getVendorMessage(impexCubeData, error.message || "Failed to send export job to ImpexCube");
+
+    console.error("Error sending export job to ImpexCube:", impexCubeData || error.message);
+
+    if (!isNetworkError && jobNo) {
+      const action = classifyImexcubeAction(impexCubeData, status);
+      const vendorStatusCode = normalizeVendorStatusCode(impexCubeData, status);
+
+      if (action === "updated") {
+        await ExJobModel.updateOne(
+          queryFilter,
+          {
+            $set: {
+              imexcube_uploaded: true,
+              imexcube_uploaded_at: new Date(),
+              imexcube_response: impexCubeData,
+              imexcube_last_action: "updated",
+              imexcube_last_status_code: vendorStatusCode,
+              imexcube_last_message: vendorMessage,
+            },
+          }
+        );
+
+        return res.status(200).json({
+          success: true,
+          message: "Job updated in IMEXCUBE (TEST) successfully",
+          data: impexCubeData,
+          job_no: jobNo,
+        });
+      }
+
+      if (action === "duplicate") {
+        await ExJobModel.updateOne(
+          queryFilter,
+          {
+            $set: {
+              imexcube_last_action: "duplicate",
+              imexcube_last_status_code: vendorStatusCode,
+              imexcube_last_message: vendorMessage,
+              imexcube_response: impexCubeData,
+            },
+          }
+        );
+
+        return res.status(409).json({
+          success: false,
+          message: vendorMessage,
+          data: impexCubeData,
+          statusCode: 409,
+        });
+      }
+    }
+
+    return res.status(status).json({
+      success: false,
+      message: vendorMessage,
+      data: impexCubeData || null,
+      errors: impexCubeData?.errors || null,
+      statusCode: status,
     });
   }
 });
@@ -1843,6 +2217,7 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
     }
 
     const updateData = { ...req.body, updatedAt: new Date() };
+    delete updateData._id;
 
     // Gracefully handle if detailedStatus arrives as an array from the frontend
     if (Array.isArray(updateData.detailedStatus)) {

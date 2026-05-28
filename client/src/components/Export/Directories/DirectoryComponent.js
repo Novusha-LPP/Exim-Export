@@ -10,6 +10,7 @@ import District from "./District.js";
 import ShippingLineMaster from "./ShippingLineMaster.js";
 import TransporterMaster from "./TransporterMaster.js";
 import TerminalCodeMaster from "./TerminalCodeMaster.js";
+import GeneralOrgDirectory from "./GeneralOrgDirectory.js";
 
 function DirectoryComponent({ directoryType }) {
   const renderDirectory = () => {
@@ -36,6 +37,8 @@ function DirectoryComponent({ directoryType }) {
         return <TransporterMaster />;
       case "Terminal Code":
         return <TerminalCodeMaster />;
+      case "General Org":
+        return <GeneralOrgDirectory />;
       default:
         return null;
     }

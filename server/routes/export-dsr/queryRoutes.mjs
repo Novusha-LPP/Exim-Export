@@ -6,6 +6,62 @@ import auditMiddleware from "../../middleware/auditTrail.mjs";
 
 const router = express.Router();
 
+const JOBS_WITHOUT_BRANCH_OR_CUSTOM_HOUSE_VALIDATION = [
+  { job_no: { $regex: "^(FF|GEN)", $options: "i" } },
+  { isGeneralJob: true },
+];
+
+const buildAllowedJobFilter = (branchRestrictions = [], portRestrictions = [], icdRestrictions = []) => {
+  const restrictions = [];
+
+  if (branchRestrictions.length > 0) {
+    const branchRegexStr = branchRestrictions.map(r => String(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    const fallbackRegex = `^(${branchRegexStr})(/|$)`;
+    restrictions.push({
+      $or: [
+        { branch_code: { $in: branchRestrictions } },
+        {
+          $and: [
+            { $or: [{ branch_code: "" }, { branch_code: null }, { branch_code: { $exists: false } }] },
+            { job_no: { $regex: fallbackRegex, $options: "i" } }
+          ]
+        }
+      ]
+    });
+  }
+
+  const combinedRestrictions = [...new Set([...portRestrictions, ...icdRestrictions])];
+  if (combinedRestrictions.length > 0) {
+    const finalRestrictions = [];
+    combinedRestrictions.forEach((restriction) => {
+      finalRestrictions.push(restriction);
+      if (String(restriction).includes(" - ")) {
+        finalRestrictions.push(String(restriction).split(" - ")[0].trim());
+      }
+    });
+
+    const combinedRegexStr = finalRestrictions
+      .map((restriction) => `^${String(restriction).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`)
+      .join("|");
+
+    restrictions.push({
+      $or: [
+        { custom_house: { $regex: combinedRegexStr, $options: "i" } },
+        { port_of_loading: { $regex: combinedRegexStr, $options: "i" } },
+      ],
+    });
+  }
+
+  if (restrictions.length === 0) return null;
+
+  return {
+    $or: [
+      ...JOBS_WITHOUT_BRANCH_OR_CUSTOM_HOUSE_VALIDATION,
+      { $and: restrictions },
+    ],
+  };
+};
+
 // ─── CREATE A NEW QUERY ─────────────────────────────────────────────────────
 router.post("/api/queries", auditMiddleware("Query"), async (req, res) => {
   try {
@@ -89,34 +145,9 @@ router.get("/api/queries", async (req, res) => {
         const portRestrictions = requester.selected_ports || [];
         const icdRestrictions = requester.selected_icd_codes || [];
 
-        if (branchRestrictions.length > 0 || portRestrictions.length > 0 || icdRestrictions.length > 0) {
-          const jobFilter = {};
-          if (!jobFilter.$and) jobFilter.$and = [];
+        const jobFilter = buildAllowedJobFilter(branchRestrictions, portRestrictions, icdRestrictions);
 
-          if (branchRestrictions.length > 0) {
-            jobFilter.$and.push({ branch_code: { $in: branchRestrictions } });
-          }
-
-          const combinedRestrictions = [...new Set([...portRestrictions, ...icdRestrictions])];
-          if (combinedRestrictions.length > 0) {
-            const finalRestrictions = [];
-            combinedRestrictions.forEach(res => {
-              finalRestrictions.push(res);
-              if (res.includes(" - ")) finalRestrictions.push(res.split(" - ")[0].trim());
-            });
-
-            const combinedRegexStr = finalRestrictions.map(r =>
-              `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
-            ).join('|');
-
-            jobFilter.$and.push({
-              $or: [
-                { custom_house: { $regex: combinedRegexStr, $options: "i" } },
-                { port_of_loading: { $regex: combinedRegexStr, $options: "i" } }
-              ]
-            });
-          }
-
+        if (jobFilter) {
           // Fetch allowed job numbers
           const allowedJobs = await ExportJobModel.find(jobFilter).select("job_no").lean();
           const allowedJobNos = allowedJobs.map(j => j.job_no);
@@ -191,25 +222,8 @@ router.get("/api/queries/count", async (req, res) => {
         const portRest = requester.selected_ports || [];
         const icdRest = requester.selected_icd_codes || [];
 
-        if (branchRest.length > 0 || portRest.length > 0 || icdRest.length > 0) {
-          const jobFilter = {};
-          if (!jobFilter.$and) jobFilter.$and = [];
-          if (branchRest.length > 0) jobFilter.$and.push({ branch_code: { $in: branchRest } });
-          const combinedP = [...new Set([...portRest, ...icdRest])];
-          if (combinedP.length > 0) {
-            const finalP = [];
-            combinedP.forEach(p => {
-              finalP.push(p);
-              if (p.includes(" - ")) finalP.push(p.split(" - ")[0].trim());
-            });
-            const pRegex = finalP.map(r => `^${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`).join('|');
-            jobFilter.$and.push({
-              $or: [
-                { custom_house: { $regex: pRegex, $options: "i" } },
-                { port_of_loading: { $regex: pRegex, $options: "i" } }
-              ]
-            });
-          }
+        const jobFilter = buildAllowedJobFilter(branchRest, portRest, icdRest);
+        if (jobFilter) {
           const allowedJobs = await ExportJobModel.find(jobFilter).select("job_no").lean();
           filter.job_no = { $in: allowedJobs.map(j => j.job_no) };
         }

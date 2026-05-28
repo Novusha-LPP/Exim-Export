@@ -6,6 +6,55 @@ import { IconButton, Button } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import { calculateProductFobINR } from "../../../../utils/fobCalculations.js";
 
+const CUSTOM_HOUSE_CODE_MAP = {
+  "AHMEDABAD AIR CARGO": "INAMD4",
+  "AIR AHMEDABAD": "INAMD4",
+  "AHMEDABAD AIR": "INAMD4",
+  "AHMEDABAD": "INAMD4",
+  "ICD SABARMATI": "INSBI6",
+  "ICD SABARMATI, AHMEDABAD": "INSBI6",
+  "SABARMATI": "INSBI6",
+  "ICD KHODIYAR": "INSBI6",
+  "KHODIYAR": "INSBI6",
+  "ICD VIRAMGAM": "INVGR6",
+  "ICD SACHANA": "INJKA6",
+  "SACHANA": "INJKA6",
+  "ICD VIROCHAN NAGAR": "INVCN6",
+  "ICD VIROCHANNAGAR": "INVCN6",
+  "THAR DRY PORT": "INSAU6",
+  "THAR": "INSAU6",
+  "ICD SANAND": "INSND6",
+  "SANAND": "INSND6",
+  "ANKLESHWAR ICD": "INAKV6",
+  "ANKLESHWAR": "INAKV6",
+  "ICD VARNAMA": "INVRM6",
+  "VARNAMA": "INVRM6",
+  "MUNDRA SEA": "INMUN1",
+  "MUNDRA": "INMUN1",
+  "KANDLA SEA": "INIXY1",
+  "KANDLA": "INIXY1",
+  "COCHIN AIR CARGO": "INCOK4",
+  "COCHIN AIR": "INCOK4",
+  "COCHIN SEA": "INCOK1",
+  "COCHIN": "INCOK1",
+  "HAZIRA": "INHZA1",
+  "HAZIRA SEA": "INHZA1",
+};
+
+const getCustomHouseCode = (ch) => {
+  if (!ch) return "";
+  const upperCh = ch.toUpperCase().trim();
+  if (CUSTOM_HOUSE_CODE_MAP[upperCh]) {
+    return CUSTOM_HOUSE_CODE_MAP[upperCh];
+  }
+  for (const [key, val] of Object.entries(CUSTOM_HOUSE_CODE_MAP)) {
+    if (upperCh.includes(key) || key.includes(upperCh)) {
+      return val;
+    }
+  }
+  return "";
+};
+
 const ExportChecklistGenerator = ({
   jobNo,
   renderAsIcon = false,
@@ -219,10 +268,17 @@ const ExportChecklistGenerator = ({
     yPos += 12;
 
     // Third row: CHA only on left side
+    const isGandhidham =
+      String(data.branchCode || "").toUpperCase().trim() === "GIM" ||
+      String(data.jobNumber || "").toUpperCase().startsWith("GIM");
+
+    const firmName = isGandhidham ? "SURAJ FORWARDERS" : "SURAJ FORWARDERS & SHIPPING AGENCIES";
+    const licCode = isGandhidham ? "ABOFS1766LCH006" : "ABOFS1766LCH005";
+
     pdf.setFont("helvetica", "bold");
     pdf.text("CHA", leftColX, yPos);
     pdf.setFont("helvetica", "normal");
-    pdf.text(data.chaCode || "", leftColX + 35, yPos);
+    pdf.text(licCode + " " + firmName, leftColX + 35, yPos);
 
     yPos += 15;
 
@@ -321,6 +377,7 @@ const ExportChecklistGenerator = ({
       { label: "Forex Bank A/c No", value: data.forexBankAcNo },
       { label: "RBI Waiver No/Dt", value: data.rbiWaiverNo },
       { label: "DBK Bank A/c No", value: data.dbkBankAcNo },
+      { label: "Warehouse Name", value: data.warehouseName },
     ];
 
     const rightFields = [
@@ -392,6 +449,8 @@ const ExportChecklistGenerator = ({
           data.aeoRegistrationNo,
           data.aeoRole,
           data.currentDate,
+          data.branchCode,
+          data.jobNumber,
         );
         yPos = 80;
       }
@@ -850,6 +909,66 @@ const ExportChecklistGenerator = ({
       });
 
       yPos = pdf.lastAutoTable.finalY + 10;
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`Total ROSCTL Amount: ${data.rosctlTotalAmount || "0.00"}`, rightX, yPos, { align: "right" });
+      yPos += 15;
+    }
+
+    // RE-EXPORT DETAILS SECTION
+    if (data.reExportData && data.reExportData.length > 0) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("RE-EXPORT DETAILS", leftX, yPos);
+      yPos += 10;
+      drawLine(leftX, yPos, rightX);
+      yPos += 5;
+
+      const reExportHeaders = [
+        "Inv No",
+        "Item No/\nReExport SN",
+        "Port Code",
+        "BENo/\nDate",
+        "BE Inv/\nItem SNo",
+        "DBK Val\nClaimed",
+        "Qty. Imp",
+        "Commissioner\nPermission",
+        "Input Credit\nAvailed",
+        "Pers. Use /\nItem Un-Use",
+      ];
+
+      pdf.autoTable({
+        head: [reExportHeaders],
+        body: data.reExportData.map((row) => [
+          row.invNo,
+          row.itemNo,
+          row.portCode,
+          row.beNoDate,
+          row.beInvItemSNo,
+          row.dbkValClaimed,
+          row.qtyImp,
+          row.commPermission,
+          row.inputCredit,
+          row.persUseItemUnUse,
+        ]),
+        startY: yPos,
+        styles: {
+          fontSize: FONT_SIZES.tableContent - 1,
+          cellPadding: 2,
+          overflow: "linebreak",
+          fontStyle: "bold",
+          textColor: 0,
+        },
+        headStyles: {
+          fillColor: [180, 180, 180],
+          textColor: 0,
+          fontStyle: "bold",
+          fontSize: 7.5,
+        },
+        margin: { left: leftX },
+        tableWidth: rightX - leftX,
+      });
+
+      yPos = pdf.lastAutoTable.finalY + 15;
     }
 
     if (data.deecData && data.deecData.length > 0) {
@@ -1468,7 +1587,11 @@ const ExportChecklistGenerator = ({
         consigneeCountry2: exportJob.dischargecountry,
 
         // Shipping Details
-        portOfLoading: exportJob.custom_house || "",
+        portOfLoading: (() => {
+          const ch = exportJob.custom_house || "";
+          const code = getCustomHouseCode(ch);
+          return code ? `${code} - ${ch}` : ch;
+        })(),
         portOfDischarge:
           exportJob.port_of_discharge || exportJob.discharge_port || "",
         portOfDestination:
@@ -1617,6 +1740,17 @@ const ExportChecklistGenerator = ({
         })(),
         rbiWaiverNo: exportJob.rbi_waiver_no || "",
         dbkBankAcNo: "", // Not found in data structure
+        warehouseName: (() => {
+          const reProd = allProducts?.find(p => p.reExport?.isReExport && (p.reExport?.warehouseCode || p.reExport?.warehouseName));
+          if (reProd) {
+            const code = reProd.reExport.warehouseCode || "";
+            const name = reProd.reExport.warehouseName || "";
+            if (code && name) return `(${code})${name}`;
+            if (code) return `(${code})`;
+            return name;
+          }
+          return "";
+        })(),
         totalDbk:
           allProducts
             ?.reduce((sum, p) => {
@@ -1775,6 +1909,7 @@ const ExportChecklistGenerator = ({
 
         // Add today's date to data for use in headers during page breaks
         currentDate: currentDate,
+        branchCode: exportJob.branch_code,
 
         // Payment & Buyer Details
         natureOfPayment: exportJob.otherInfo?.natureOfPayment || "",
@@ -1783,13 +1918,19 @@ const ExportChecklistGenerator = ({
           : "",
         // Buyer info - should show actual buyer, not third party
         buyerName: (() => {
+          if (exportJob.isBuyer === false) {
+            return "SAME AS CONSIGNEE";
+          }
+
           const buyer = exportJob.buyerThirdPartyInfo?.buyer;
           if (buyer?.name) {
             return `${buyer.name}\n${buyer.addressLine1 || ""}\n${buyer.country || ""}`;
           }
           return "";
         })(),
-        buyerAddress: exportJob.buyerThirdPartyInfo?.buyer?.addressLine1 || "",
+        buyerAddress: exportJob.isBuyer === false
+          ? "SAME AS CONSIGNEE"
+          : exportJob.buyerThirdPartyInfo?.buyer?.addressLine1 || "",
         buyerAeoCode: exportJob.otherInfo?.aeoCode || "",
         buyerAeoCountry: exportJob.otherInfo?.aeoCountry || "",
         buyerAeoRole: exportJob.otherInfo?.aeoRole || "",
@@ -1894,6 +2035,17 @@ const ExportChecklistGenerator = ({
           });
           return total.toFixed(2);
         })(),
+        rosctlTotalAmount: (() => {
+          let total = 0;
+          allProducts?.forEach((product) => {
+            product.drawbackDetails?.forEach((dbk) => {
+              if (dbk.showRosctl) {
+                total += parseFloat(dbk.rosctlAmount) || 0;
+              }
+            });
+          });
+          return total.toFixed(2);
+        })(),
         rodtepTotalAmount: (() => {
           let total = 0;
           allProducts?.forEach((product) => {
@@ -1902,17 +2054,35 @@ const ExportChecklistGenerator = ({
           return total.toFixed(2);
         })(),
 
+        // Re-Export Details
+        reExportData: (() => {
+          const rows = [];
+          allProducts?.forEach((product, productIndex) => {
+            const re = product.reExport || {};
+            if (re.isReExport) {
+              const invNo = product.invoiceNo || "1";
+              rows.push({
+                invNo: invNo,
+                itemNo: product.serialNumber || (productIndex + 1).toString(),
+                portCode: re.importPortCode || "",
+                beNoDate: `${re.beNumber || ""}\n${re.beDate ? formatDate(re.beDate) : ""}`,
+                beInvItemSNo: `${re.invoiceSerialNo || ""} / ${re.itemSerialNo || ""}`,
+                dbkValClaimed: (re.drawbackAmtClaimed || 0).toFixed(6),
+                qtyImp: (re.quantityImported || 0).toFixed(6),
+                commPermission: re.commissionerPermission ? "Y" : "N",
+                inputCredit: re.inputCreditAvailed ? "Y" : "N",
+                persUseItemUnUse: `${re.personalUseItem ? "Y" : "N"} / ${re.itemUnUsed ? "Y" : "N"}`,
+              });
+            }
+          });
+          return rows;
+        })(),
+
         // DBK Details - Extract from all products drawbackDetails
         dbkData: (() => {
           const dbkRows = [];
           allProducts?.forEach((product, productIndex) => {
-            const invoice =
-              exportJob.invoices?.find((inv) =>
-                inv.products?.some(
-                  (p) => p.serialNumber === product.serialNumber,
-                ),
-              ) || exportJob.invoices?.[0];
-            const invNo = invoice?.invoiceNumber || "1";
+            const invNo = product.invoiceNo || "1";
 
             product.drawbackDetails?.forEach((dbk, dbkIndex) => {
               dbkRows.push({
@@ -1933,13 +2103,7 @@ const ExportChecklistGenerator = ({
         rosctlData: (() => {
           const rosctlRows = [];
           allProducts?.forEach((product, productIndex) => {
-            const invoice =
-              exportJob.invoices?.find((inv) =>
-                inv.products?.some(
-                  (p) => p.serialNumber === product.serialNumber,
-                ),
-              ) || exportJob.invoices?.[0];
-            const invNo = invoice?.invoiceNumber || "1";
+            const invNo = product.invoiceNo || "1";
 
             product.drawbackDetails?.forEach((dbk) => {
               if (dbk.showRosctl) {
@@ -1964,13 +2128,7 @@ const ExportChecklistGenerator = ({
         deecData: (() => {
           const deecRows = [];
           allProducts?.forEach((product, productIndex) => {
-            const invoice =
-              exportJob.invoices?.find((inv) =>
-                inv.products?.some(
-                  (p) => p.serialNumber === product.serialNumber,
-                ),
-              ) || exportJob.invoices?.[0];
-            const invNo = invoice?.invoiceNumber || "";
+            const invNo = product.invoiceNo || "";
             const itemNo = product.serialNumber || (productIndex + 1).toString();
 
             if (product.deecDetails) {
@@ -2018,13 +2176,7 @@ const ExportChecklistGenerator = ({
         epcgData: (() => {
           const epcgRows = [];
           allProducts?.forEach((product, productIndex) => {
-            const invoice =
-              exportJob.invoices?.find((inv) =>
-                inv.products?.some(
-                  (p) => p.serialNumber === product.serialNumber,
-                ),
-              ) || exportJob.invoices?.[0];
-            const invNo = invoice?.invoiceNumber || "";
+            const invNo = product.invoiceNo || "";
             const itemNo = product.serialNumber || (productIndex + 1).toString();
 
             if (product.epcgDetails) {
@@ -2302,13 +2454,31 @@ const ExportChecklistGenerator = ({
         if (currentY + neededHeight > PAGE_BOTTOM_LIMIT) {
           pdf.addPage();
           pageCount++;
-          helpers.addHeader(pageCount, "?", data.customStation, data.aeoRegistrationNo, data.aeoRole, currentDate);
+          helpers.addHeader(
+            pageCount,
+            "?",
+            data.customStation,
+            data.aeoRegistrationNo,
+            data.aeoRole,
+            currentDate,
+            data.branchCode,
+            data.jobNumber,
+          );
           return 80;
         }
         return currentY;
       };
 
-      helpers.addHeader(1, "?", data.customStation, data.aeoRegistrationNo, data.aeoRole, currentDate);
+      helpers.addHeader(
+        1,
+        "?",
+        data.customStation,
+        data.aeoRegistrationNo,
+        data.aeoRole,
+        currentDate,
+        data.branchCode,
+        data.jobNumber,
+      );
       let yPos = renderPage1(pdf, helpers, data);
 
       yPos = ensureSpace(100, yPos);

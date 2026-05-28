@@ -1,6 +1,7 @@
 import React from 'react';
 import { Chip } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import './charges.css';
 
 const extractFileName = (url) => {
@@ -170,13 +171,27 @@ const ChargesTable = ({
                       )}
                       {ch.isPbMandatory && <span style={{ fontSize: '8px', color: '#d32f2f', fontWeight: 'bold', border: '1px solid #d32f2f', padding: '0 4px', borderRadius: '2px' }}>MANDATORY</span>}
                       {ch.purchase_book_no && (
-                        <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', background: '#e3f2fd', color: '#1565c0', border: '1px solid #bbdefb' }}>
+                        <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', background: '#e3f2fd', color: '#1565c0', border: '1px solid #bbdefb', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           PB: {ch.purchase_book_no}
+                          <ContentCopyIcon 
+                            style={{ fontSize: '10px', cursor: 'pointer', opacity: 0.7 }} 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(ch.purchase_book_no);
+                            }}
+                          />
                         </span>
                       )}
                       {ch.payment_request_no && (
-                        <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', background: '#ffebee', color: '#c62828', border: '1px solid #ffcdd2' }}>
+                        <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', background: '#ffebee', color: '#c62828', border: '1px solid #ffcdd2', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           PR: {ch.payment_request_no}
+                          <ContentCopyIcon 
+                            style={{ fontSize: '10px', cursor: 'pointer', opacity: 0.7 }} 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(ch.payment_request_no);
+                            }}
+                          />
                         </span>
                       )}
                     </div>

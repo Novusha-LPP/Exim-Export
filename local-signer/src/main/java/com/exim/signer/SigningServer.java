@@ -3,7 +3,14 @@ package com.exim.signer;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpsServer;
+import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsParameters;
+import javax.net.ssl.*;
+import java.security.KeyStore;
 import com.google.gson.JsonObject;
+import javax.swing.JFileChooser;
+import javax.swing.SwingUtilities;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -16,9 +23,12 @@ import java.util.concurrent.Executors;
 public class SigningServer {
 
     private static final int PORT = 5000;
+    private static final int HTTPS_PORT = 13591;
     private final DscService dscService;
     private final PdfSignerService pdfSignerService;
     private final Properties config;
+    private HttpServer server;
+    private HttpsServer httpsServer;
 
     public SigningServer(DscService dscService) {
         this.dscService = dscService;
@@ -62,7 +72,7 @@ public class SigningServer {
             System.err.println("⚠ Invalid port in config, using default " + PORT);
         }
 
-        HttpServer server = HttpServer.create(new InetSocketAddress(portToUse), 0);
+        server = HttpServer.create(new InetSocketAddress(portToUse), 0);
 
         server.createContext("/status", new StatusHandler());
         server.createContext("/login", new LoginHandler());
@@ -74,6 +84,9 @@ public class SigningServer {
 
         System.out.println("🚀 Signing Server started on port " + portToUse);
         System.out.println("📍 Endpoints: /status, /sign/pdf, /sign/flatfile");
+
+        // Start secure HTTPS server on port 13591 to drop-in replace nCode Solutions
+        startHttpsServer();
     }
 
     private class StatusHandler implements HttpHandler {
@@ -199,35 +212,36 @@ public class SigningServer {
                     return;
                 }
 
-                // ✅ CORRECT — keep all \r\n, only fix the very last line ending
-                String contentStr = new String(rawBytes, "ISO-8859-1");
+                byte[] originalBytes = rawBytes; // keep original for writing to file
 
-                // Strip trailing whitespace/newlines and end with exactly \n (not \r\n)
-                contentStr = contentStr.stripTrailing() + "\n";
-
-                byte[] normalizedBytes = contentStr.getBytes("ISO-8859-1");
+                // Prepare the exact bytes that will form the payload in the file
+                String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
+                byte[] exactPayloadBytes = (dataPart + "\n").getBytes("ISO-8859-1");
+                byte[] strippedBytes = dataPart.getBytes("ISO-8859-1");
 
                 byte[] signature;
                 String certificateBase64;
 
                 synchronized (dscService) {
-                    signature = dscService.signRaw(normalizedBytes);
+                    // Sign using the ICEGATE double-nested hashing scheme on stripped bytes
+                    signature = dscService.signSHA2(strippedBytes);
                     certificateBase64 = dscService.getCertificateBase64();
                 }
+
 
                 String signatureBase64 = Base64.getEncoder().encodeToString(signature);
 
                 // Construct ICEGATE .sb format
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-                // Write normalized bytes
-                baos.write(normalizedBytes);
+                // Write the exact payload bytes
+                baos.write(exactPayloadBytes);
 
-                // Append signature blocks with \r\n and Softlink version string
-                baos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\r\n").getBytes("ISO-8859-1"));
-                baos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\r\n")
+                // Append signature blocks with \n (LF only — matches V-NCODE format)
+                baos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\n").getBytes("ISO-8859-1"));
+                baos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\n")
                         .getBytes("ISO-8859-1"));
-                baos.write("<SIGNER-VERSION>SOFTLINK GLOBAL v10.15</SIGNER-VERSION>".getBytes("ISO-8859-1"));
+                baos.write("<SIGNER-VERSION>V-NCODE_01.05.2013</SIGNER-VERSION>".getBytes("ISO-8859-1"));
 
                 byte[] outputBytes = baos.toByteArray();
 
@@ -304,5 +318,170 @@ public class SigningServer {
     private void log(HttpExchange exchange, String endpoint) {
         String timestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
         System.out.println("[" + timestamp + "] Request: " + endpoint + " from " + exchange.getRemoteAddress());
+    }
+
+    private void setCorsHeaders(HttpExchange exchange) {
+        exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+    }
+
+    private void startHttpsServer() {
+        try {
+            File jksFile = new File("localhost.jks");
+            if (!jksFile.exists()) {
+                System.err.println("⚠ localhost.jks not found! Secure nCode replacement server on port " + HTTPS_PORT + " not started.");
+                System.err.println("👉 Tip: Run powershell -File setup-localhost-cert.ps1 to generate and trust the certificate.");
+                return;
+            }
+
+            httpsServer = HttpsServer.create(new InetSocketAddress(HTTPS_PORT), 0);
+
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            KeyStore ks = KeyStore.getInstance("JKS");
+            try (FileInputStream fis = new FileInputStream(jksFile)) {
+                ks.load(fis, "changeit".toCharArray());
+            }
+
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+            kmf.init(ks, "changeit".toCharArray());
+
+            TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+            tmf.init(ks);
+
+            sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+
+            httpsServer.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
+                @Override
+                public void configure(HttpsParameters params) {
+                    try {
+                        SSLContext context = getSSLContext();
+                        SSLEngine engine = context.createSSLEngine();
+                        params.setNeedClientAuth(false);
+                        params.setCipherSuites(engine.getEnabledCipherSuites());
+                        params.setProtocols(engine.getEnabledProtocols());
+                        SSLParameters sslParameters = context.getSupportedSSLParameters();
+                        params.setSSLParameters(sslParameters);
+                    } catch (Exception ex) {
+                        System.err.println("❌ HTTPS parameters configuration failed: " + ex.getMessage());
+                    }
+                }
+            });
+
+            httpsServer.createContext("/signservice/signdata", new NcodeSignDataHandler());
+            httpsServer.setExecutor(Executors.newFixedThreadPool(5));
+            httpsServer.start();
+            System.out.println("🚀 Secure nCode replacement server successfully active on port " + HTTPS_PORT);
+
+        } catch (Exception e) {
+            System.err.println("❌ Failed to start secure nCode replacement server: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private class NcodeSignDataHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            // 1. Handle preflight CORS request
+            if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+                setCorsHeaders(exchange);
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            if (!exchange.getRequestMethod().equalsIgnoreCase("POST")) {
+                setCorsHeaders(exchange);
+                sendError(exchange, 405, "Method Not Allowed");
+                return;
+            }
+
+            log(exchange, "POST /signservice/signdata");
+
+            try {
+                // Read request body to log it
+                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                System.out.println("📥 Request payload: " + body);
+
+                // 2. Open JFileChooser on EDT to let user pick the file to sign
+                final File[] selectedFile = new File[1];
+                SwingUtilities.invokeAndWait(() -> {
+                    JFileChooser fc = new JFileChooser(new File(System.getProperty("user.home") + "/Desktop"));
+                    fc.setDialogTitle("Select ICEGATE Shipping Bill (.sb) or XML file to sign");
+                    fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Shipping Bill / XML Files", "sb", "txt", "xml"));
+                    
+                    int returnVal = fc.showOpenDialog(null);
+                    if (returnVal == JFileChooser.APPROVE_OPTION) {
+                        selectedFile[0] = fc.getSelectedFile();
+                    }
+                });
+
+                if (selectedFile[0] == null) {
+                    System.out.println("⚠ User cancelled file selection.");
+                    setCorsHeaders(exchange);
+                    sendError(exchange, 400, "Signing cancelled by user.");
+                    return;
+                }
+
+                System.out.println("📄 Selected file to sign: " + selectedFile[0].getAbsolutePath());
+
+                // 3. Read chosen file
+                byte[] originalBytes = Files.readAllBytes(selectedFile[0].toPath());
+
+                // 4. Sign exactly the same way we do in our perfected flat-file signer
+                String dataPart = new String(originalBytes, "ISO-8859-1").stripTrailing();
+                byte[] exactPayloadBytes = (dataPart + "\n").getBytes("ISO-8859-1");
+                byte[] strippedBytes = dataPart.getBytes("ISO-8859-1");
+
+                byte[] signature;
+                String certificateBase64;
+
+                synchronized (dscService) {
+                    if (dscService.getCertificate() == null) {
+                        throw new IllegalStateException("DSC Token not initialized! Please login first in the Exim DSC Local Signer app.");
+                    }
+                    signature = dscService.signSHA2(strippedBytes);
+                    certificateBase64 = dscService.getCertificateBase64();
+                }
+
+
+                String signatureBase64 = Base64.getEncoder().encodeToString(signature);
+
+                // Construct ICEGATE .sb format
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                baos.write(exactPayloadBytes);
+                baos.write(("<START-SIGNATURE>" + signatureBase64 + "</START-SIGNATURE>\n").getBytes("ISO-8859-1"));
+                baos.write(("<START-CERTIFICATE>" + certificateBase64 + "</START-CERTIFICATE>\n").getBytes("ISO-8859-1"));
+                baos.write("<SIGNER-VERSION>V-NCODE_01.05.2013</SIGNER-VERSION>".getBytes("ISO-8859-1"));
+
+                byte[] outputBytes = baos.toByteArray();
+
+                // 5. Generate signed file path (appending "Signed")
+                String absolutePath = selectedFile[0].getAbsolutePath();
+                String newPath = absolutePath;
+                int lastDot = absolutePath.lastIndexOf('.');
+                if (lastDot > 0) {
+                    newPath = absolutePath.substring(0, lastDot) + "Signed" + absolutePath.substring(lastDot);
+                } else {
+                    newPath = absolutePath + "Signed";
+                }
+                File outputFile = new File(newPath);
+                Files.write(outputFile.toPath(), outputBytes);
+                System.out.println("✅ Signed file saved successfully at: " + outputFile.getAbsolutePath());
+
+                // 6. Return response matching nCode format exactly
+                JsonObject response = new JsonObject();
+                response.addProperty("msg", outputFile.getAbsolutePath());
+                response.addProperty("flag", "true");
+                response.addProperty("version", "20");
+
+                setCorsHeaders(exchange);
+                sendResponse(exchange, 200, response.toString(), "application/json");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                setCorsHeaders(exchange);
+                sendError(exchange, 500, "Signing Failed: " + e.getMessage());
+            }
+        }
     }
 }

@@ -81,6 +81,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
 
   const formik = useFormik({
     initialValues: {
+      _id: "",
       // Basic job info
       job_no: "",
       year: "",
@@ -570,6 +571,8 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
 
           reExport: {
             isReExport: false,
+            warehouseName: "",
+            warehouseCode: "",
             beNumber: "",
             beDate: "",
             invoiceSerialNo: "",
@@ -830,6 +833,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
   useEffect(() => {
     if (data) {
       formik.setValues({
+        _id: safeValue(data._id),
         // Basic job info
         job_no: safeValue(data.job_no),
         year: safeValue(data.year),
@@ -981,6 +985,8 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
               deecItems: [],
               deec_reg_obj: [getDefaultRegItem()],
             }),
+            drawbackDetails: safeValue(prod.drawbackDetails, []),
+            areDetails: safeValue(prod.areDetails, []),
             rodtepInfo: {
               ...prod.rodtepInfo,
               isCapUnitManual: prod.rodtepInfo?.isCapUnitManual || false,
@@ -1125,6 +1131,8 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
               ? product.epcgDetails.epcg_reg_obj
               : [getDefaultEpcgItem()],
           }),
+          drawbackDetails: safeValue(product.drawbackDetails, []),
+          areDetails: safeValue(product.areDetails, []),
           cessExpDuty: {
             ...safeValue(product.cessExpDuty, {}),
             cenvat: safeValue(product.cessExpDuty?.cenvat, {}),
@@ -1160,6 +1168,12 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
                 ...s,
                 leoDate: formatDate(safeValue(s.leoDate)),
                 billingDocsSentDt: formatDate(safeValue(s.billingDocsSentDt)),
+                billing_details: {
+                  agency_bill_date: formatDate(safeValue(s.billing_details?.agency_bill_date)),
+                  agency_bill_no: safeValue(s.billing_details?.agency_bill_no),
+                  reimbursement_bill_date: formatDate(safeValue(s.billing_details?.reimbursement_bill_date)),
+                  reimbursement_bill_no: safeValue(s.billing_details?.reimbursement_bill_no),
+                },
                 goodsRegistrationDate: formatDate(safeValue(s.goodsRegistrationDate)),
                 goodsReportDate: formatDate(safeValue(s.goodsReportDate)),
                 stuffingDate: formatDate(safeValue(s.stuffingDate)),

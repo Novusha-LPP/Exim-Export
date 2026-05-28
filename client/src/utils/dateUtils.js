@@ -16,83 +16,17 @@ export const formatDate = (val, formatStr = "dd-MM-yyyy") => {
   if (!val) return "";
 
   try {
-    let date;
-
-    // If it's already a Date object
-    if (val instanceof Date) {
-      date = val;
-    }
-    // If it's a number (timestamp)
-    else if (typeof val === "number") {
-      date = new Date(val);
-    }
-    // If it's a string
-    else if (typeof val === "string") {
-      const trimmedVal = val.trim();
-
-      // If it's already in the target format dd-MM-yyyy or dd-MM-yyyy HH:mm, return as is
-      if (/^\d{2}-\d{2}-\d{4}/.test(trimmedVal)) {
-        return trimmedVal;
-      }
-
-      // Try ISO format first (most common from backend)
-      date = parseISO(trimmedVal);
-
-      // If ISO parsing didn't work, try other formats
-      if (!isValid(date)) {
-        // Try dd/MM/yyyy format
-        const ddMMyyyyFormats = [
-          "dd/MM/yyyy",
-          "dd-MM-yyyy",
-          "dd.MM.yyyy",
-          "d/M/yyyy",
-          "d-M-yyyy",
-        ];
-
-        for (const dateFormat of ddMMyyyyFormats) {
-          try {
-            date = parse(trimmedVal, dateFormat, new Date());
-            if (isValid(date)) break;
-          } catch (e) {
-            continue;
-          }
-        }
-      }
-
-      // If still not valid, try MM/dd/yyyy format
-      if (!isValid(date)) {
-        const mmDDyyyyFormats = [
-          "MM/dd/yyyy",
-          "M/d/yyyy",
-          "yyyy-MM-dd",
-          "yyyy/MM/dd",
-        ];
-
-        for (const dateFormat of mmDDyyyyFormats) {
-          try {
-            date = parse(trimmedVal, dateFormat, new Date());
-            if (isValid(date)) break;
-          } catch (e) {
-            continue;
-          }
-        }
-      }
-
-      // Last resort - try new Date()
-      if (!isValid(date)) {
-        date = new Date(trimmedVal);
-      }
-    }
-
-    // Return formatted date if valid
-    if (isValid(date)) {
+    const date = parseDate(val);
+    if (date && isValid(date)) {
       return format(date, formatStr);
     }
 
-    // As a last ditch effort, if val is a string and looks like yyyy-MM-dd, re-format it
-    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
-      const parts = val.split('-');
-      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    // Fallback for strings that look like yyyy-MM-dd but failed parsing for some reason
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+      if (formatStr === 'yyyy-MM-dd') return val.trim();
+      const parts = val.trim().split('-');
+      const d = new Date(parts[0], parts[1] - 1, parts[2]);
+      if (isValid(d)) return format(d, formatStr);
     }
 
     return "";

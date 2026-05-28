@@ -403,7 +403,10 @@ const LogisysEditableHeader = ({
           // Fields to exclude from copying (top level)
           const excludeFields = [
             "_id", "id", "job_no", "jobNumber", "createdAt", "updatedAt", "__v",
-            "isLocked", "lockedBy", "lockedAt", "operational_lock"
+            "isLocked", "lockedBy", "lockedAt", "operational_lock", "charges",
+            "eSanchitDocuments", "operations", "financial_lock", "send_for_billing",
+            "send_for_billing_date", "ap_invoices", "sb_no", "sb_date",
+            "sb_submitted_date", "sb_status"
           ];
 
           // Helper to recursively strip IDs and excluded fields
@@ -432,7 +435,14 @@ const LogisysEditableHeader = ({
             ...formik.values,
             ...newData,
             job_no: currentJobNo,
-            year: currentYear
+            year: currentYear,
+            eSanchitDocuments: [],
+            charges: [],
+            operations: [],
+            ap_invoices: [],
+            financial_lock: false,
+            send_for_billing: false,
+            send_for_billing_date: ""
           });
 
           alert("Job data copied successfully!");
@@ -493,6 +503,8 @@ const LogisysEditableHeader = ({
   }, [formik.values.goods_stuffed_at, formik.values.consignmentType, formik.setFieldValue]);
 
   const [snackbar, setSnackbar] = useState(false);
+  const [impexCubeToast, setImpexCubeToast] = useState(null);
+  const [impexCubeSending, setImpexCubeSending] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const openMenu = Boolean(anchorEl);
   const productExcelInputRef = React.useRef(null);
@@ -758,6 +770,55 @@ const LogisysEditableHeader = ({
     navigator.clipboard.writeText(text || "");
     setSnackbar(true);
     setTimeout(() => setSnackbar(false), 2000);
+  };
+
+  const showImpexCubeToast = (message, type = "success") => {
+    setImpexCubeToast({ message, type });
+    setTimeout(() => setImpexCubeToast(null), 4500);
+  };
+
+  const handleSendToImpexCube = async () => {
+    const jobNo = formik.values.job_no;
+    if (!jobNo) {
+      showImpexCubeToast("Save the job before sending to ImpexCube.", "error");
+      return;
+    }
+
+    if (!window.confirm(`Send export job ${jobNo} to ImpexCube?`)) {
+      return;
+    }
+
+    setImpexCubeSending(true);
+    try {
+      if (isEditable && formik.dirty) {
+        if (typeof onUpdate === "function") {
+          await onUpdate();
+        } else if (typeof formik.submitForm === "function") {
+          await formik.submitForm();
+        }
+      }
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_STRING}/impexcube/export-jobs/send`,
+        { job_no: jobNo },
+        { headers: { username: user?.username || "" } },
+      );
+
+      showImpexCubeToast(
+        response.data?.message || "Export job sent to ImpexCube successfully.",
+        "success",
+      );
+    } catch (error) {
+      console.error("Error sending job to ImpexCube:", error);
+      showImpexCubeToast(
+        error.response?.data?.message ||
+        error.response?.data?.errors?.[0]?.ErrorMsg ||
+        "Failed to send export job to ImpexCube.",
+        "error",
+      );
+    } finally {
+      setImpexCubeSending(false);
+    }
   };
 
   const toggleLock = () => {
@@ -1238,6 +1299,33 @@ const LogisysEditableHeader = ({
           {!isNewJob && (
             <button
               style={{
+                background: impexCubeSending ? "#e5e7eb" : "#0f766e",
+                border: "1px solid #0f766e",
+                color: impexCubeSending ? "#64748b" : "#fff",
+                padding: "3px 10px",
+                borderRadius: 3,
+                fontWeight: 700,
+                fontSize: 11,
+                cursor: impexCubeSending ? "not-allowed" : "pointer",
+                height: 24,
+                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+              type="button"
+              onClick={handleSendToImpexCube}
+              disabled={impexCubeSending}
+              title="Send this export job to ImpexCube"
+            >
+              {impexCubeSending && <CircularProgress size={12} color="inherit" />}
+              {impexCubeSending ? "Sending..." : "Send to ImpexCube"}
+            </button>
+          )}
+
+          {!isNewJob && (
+            <button
+              style={{
                 background: "#1976d2",
                 border: "none",
                 color: "#fff",
@@ -1470,6 +1558,26 @@ const LogisysEditableHeader = ({
           }}
         >
           Copied to clipboard
+        </div>
+      )}
+
+      {impexCubeToast && (
+        <div
+          style={{
+            background: impexCubeToast.type === "error" ? "#b91c1c" : "#047857",
+            color: "#fff",
+            padding: "6px 14px",
+            fontSize: 12,
+            position: "fixed",
+            right: 20,
+            top: 108,
+            borderRadius: 5,
+            boxShadow: "0 8px 18px rgba(15, 23, 42, 0.18)",
+            zIndex: 10000,
+            maxWidth: 360,
+          }}
+        >
+          {impexCubeToast.message}
         </div>
       )}
     </div>
