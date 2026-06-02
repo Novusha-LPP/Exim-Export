@@ -316,7 +316,11 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
                   const checked = e.target.checked;
                   formik.setFieldValue("send_for_billing", checked);
                   if (checked) {
-                    formik.setFieldValue("send_for_billing_date", new Date().toISOString());
+                    const d = new Date();
+                    const day = String(d.getDate()).padStart(2, "0");
+                    const month = String(d.getMonth() + 1).padStart(2, "0");
+                    const year = d.getFullYear();
+                    formik.setFieldValue("send_for_billing_date", `${day}-${month}-${year}`);
                   }
                 }}
                 disabled={!isEditable || (chargesCount === 0 && (formik.values.charges || []).length === 0)}
