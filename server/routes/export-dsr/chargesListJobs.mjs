@@ -101,11 +101,38 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
         }
 
         // --- MANDATORY BASE CONDITION FOR CHARGES MODULE ---
-        // Must have a handover date, UNLESS it's a general job
+        // Must have completed operational milestones based on job type, UNLESS it's a general job
         filter.$and.push({
             $or: [
-                { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
-                { isGeneralJob: true }
+                { isGeneralJob: true },
+                {
+                    $or: [
+                        // For Air/LCL jobs: require Handover Date and LEO Date
+                        {
+                            $and: [
+                                {
+                                    $or: [
+                                        { consignmentType: "LCL" },
+                                        { job_no: { $regex: "/AIR/", $options: "i" } }
+                                    ]
+                                },
+                                { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
+                                { "operations.statusDetails.leoDate": { $exists: true, $nin: [null, ""] } }
+                            ]
+                        },
+                        // For FCL jobs: require all 4 milestones (Handover, LEO, Rail Out, Rail Reached)
+                        {
+                            $and: [
+                                { consignmentType: { $ne: "LCL" } },
+                                { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+                                { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
+                                { "operations.statusDetails.leoDate": { $exists: true, $nin: [null, ""] } },
+                                { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: true, $nin: [null, ""] } },
+                                { "operations.statusDetails.railOutReachedDate": { $exists: true, $nin: [null, ""] } }
+                            ]
+                        }
+                    ]
+                }
             ]
         });
 

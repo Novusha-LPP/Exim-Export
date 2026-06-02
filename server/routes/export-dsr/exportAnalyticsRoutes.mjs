@@ -4,10 +4,24 @@ import UserModel from "../../model/userModel.mjs";
 
 const router = express.Router();
 
+const getCurrentFinancialYear = () => {
+    const today = new Date();
+    const month = today.getMonth(); // 0-based: 0=Jan, 3=April
+    const year = today.getFullYear();
+    const startYear = month < 3 ? year - 1 : year;
+    return `${String(startYear).slice(-2)}-${String(startYear + 1).slice(-2)}`;
+};
+
 router.get("/api/export-analytics/overview", async (req, res) => {
     try {
-        const { exporter, startDate, endDate } = req.query;
+        const { exporter, startDate, endDate, year } = req.query;
         const filter = {};
+
+        const selectedYear = year || getCurrentFinancialYear();
+        if (selectedYear && selectedYear !== "all") {
+            filter.year = selectedYear;
+        }
+
         if (!filter.$and) filter.$and = [];
 
         // Fetch user restrictions
@@ -106,22 +120,24 @@ router.get("/api/export-analytics/overview", async (req, res) => {
                     { $or: [{ status: { $regex: "^pending$", $options: "i" } }, { status: { $exists: false } }, { status: null }, { status: "" }] },
                     { detailedStatus: { $ne: "Billing Done" } }
                 ],
-                $or: [
-                    // For FCL: Pending if Rail/Road reach date is missing
+                 $or: [
+                    // For FCL: Pending if any of the 4 milestones is missing
                     {
                         $and: [
                             { consignmentType: { $ne: "LCL" } },
                             { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
                             {
                                 $or: [
-                                    { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                                    { "operations.statusDetails.leoDate": { $in: [null, ""] } },
+                                    { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                                     { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+                                    { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
                                     { "operations.statusDetails": { $size: 0 } }
                                 ]
                             }
                         ]
                     },
-                    // For Air/LCL: Pending if Handover date is missing
+                    // For Air/LCL: Pending if LEO or Handover date is missing
                     {
                         $and: [
                             {
@@ -132,6 +148,7 @@ router.get("/api/export-analytics/overview", async (req, res) => {
                             },
                             {
                                 $or: [
+                                    { "operations.statusDetails.leoDate": { $in: [null, ""] } },
                                     { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                                     { "operations.statusDetails": { $size: 0 } }
                                 ]
@@ -155,11 +172,37 @@ router.get("/api/export-analytics/overview", async (req, res) => {
             ExJobModel.find({
                 ...filter,
                 send_for_billing: true,
-                $or: [
-                    { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
-                    { "operations.statusDetails.billingDocsSentDt": null },
-                    { "operations.statusDetails.billingDocsSentDt": "" },
-                    { "operations.statusDetails": { $size: 0 } }
+                $and: [
+                    {
+                        $or: [
+                            { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
+                            { "operations.statusDetails.billingDocsSentDt": null },
+                            { "operations.statusDetails.billingDocsSentDt": "" },
+                            { "operations.statusDetails": { $size: 0 } }
+                        ]
+                    },
+                    {
+                        $or: [
+                            { "operations.statusDetails.billing_details.agency_bill_date": { $exists: false } },
+                            { "operations.statusDetails.billing_details.agency_bill_date": null },
+                            { "operations.statusDetails.billing_details.agency_bill_date": "" },
+                            { "operations.statusDetails.billing_details.agency_bill_no": { $exists: false } },
+                            { "operations.statusDetails.billing_details.agency_bill_no": null },
+                            { "operations.statusDetails.billing_details.agency_bill_no": "" },
+                            { "operations.statusDetails": { $size: 0 } }
+                        ]
+                    },
+                    {
+                        $or: [
+                            { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: false } },
+                            { "operations.statusDetails.billing_details.reimbursement_bill_date": null },
+                            { "operations.statusDetails.billing_details.reimbursement_bill_date": "" },
+                            { "operations.statusDetails.billing_details.reimbursement_bill_no": { $exists: false } },
+                            { "operations.statusDetails.billing_details.reimbursement_bill_no": null },
+                            { "operations.statusDetails.billing_details.reimbursement_bill_no": "" },
+                            { "operations.statusDetails": { $size: 0 } }
+                        ]
+                    }
                 ]
             }).select("job_no exporter createdAt").lean(),
 
@@ -241,8 +284,14 @@ router.get("/api/export-analytics/overview", async (req, res) => {
 
 router.get("/api/export-analytics/pulse", async (req, res) => {
     try {
-        const { exporter } = req.query;
+        const { exporter, year } = req.query;
         const filter = {};
+
+        const selectedYear = year || getCurrentFinancialYear();
+        if (selectedYear && selectedYear !== "all") {
+            filter.year = selectedYear;
+        }
+
         if (!filter.$and) filter.$and = [];
 
         // Fetch user restrictions
@@ -353,11 +402,37 @@ router.get("/api/export-analytics/pulse", async (req, res) => {
         const billingPendingCount = await ExJobModel.countDocuments({
             ...filter, // Use filter instead of baseFilter to include General Jobs
             send_for_billing: true,
-            $or: [
-                { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
-                { "operations.statusDetails.billingDocsSentDt": null },
-                { "operations.statusDetails.billingDocsSentDt": "" },
-                { "operations.statusDetails": { $size: 0 } }
+            $and: [
+                {
+                    $or: [
+                        { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
+                        { "operations.statusDetails.billingDocsSentDt": null },
+                        { "operations.statusDetails.billingDocsSentDt": "" },
+                        { "operations.statusDetails": { $size: 0 } }
+                    ]
+                },
+                {
+                    $or: [
+                        { "operations.statusDetails.billing_details.agency_bill_date": { $exists: false } },
+                        { "operations.statusDetails.billing_details.agency_bill_date": null },
+                        { "operations.statusDetails.billing_details.agency_bill_date": "" },
+                        { "operations.statusDetails.billing_details.agency_bill_no": { $exists: false } },
+                        { "operations.statusDetails.billing_details.agency_bill_no": null },
+                        { "operations.statusDetails.billing_details.agency_bill_no": "" },
+                        { "operations.statusDetails": { $size: 0 } }
+                    ]
+                },
+                {
+                    $or: [
+                        { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: false } },
+                        { "operations.statusDetails.billing_details.reimbursement_bill_date": null },
+                        { "operations.statusDetails.billing_details.reimbursement_bill_date": "" },
+                        { "operations.statusDetails.billing_details.reimbursement_bill_no": { $exists: false } },
+                        { "operations.statusDetails.billing_details.reimbursement_bill_no": null },
+                        { "operations.statusDetails.billing_details.reimbursement_bill_no": "" },
+                        { "operations.statusDetails": { $size: 0 } }
+                    ]
+                }
             ]
         });
 
@@ -377,22 +452,24 @@ router.get("/api/export-analytics/pulse", async (req, res) => {
                 },
                 { detailedStatus: { $ne: "Billing Done" } }
             ],
-            $or: [
-                // For FCL: Pending if Rail/Road reach date is missing
+             $or: [
+                // For FCL: Pending if any of the 4 milestones is missing
                 {
                     $and: [
                         { consignmentType: { $ne: "LCL" } },
                         { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
                         {
                             $or: [
-                                { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                                { "operations.statusDetails.leoDate": { $in: [null, ""] } },
+                                { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                                 { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+                                { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
                                 { "operations.statusDetails": { $size: 0 } }
                             ]
                         }
                     ]
                 },
-                // For Air/LCL: Pending if Handover date is missing
+                // For Air/LCL: Pending if LEO or Handover date is missing
                 {
                     $and: [
                         {
@@ -403,6 +480,7 @@ router.get("/api/export-analytics/pulse", async (req, res) => {
                         },
                         {
                             $or: [
+                                { "operations.statusDetails.leoDate": { $in: [null, ""] } },
                                 { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                                 { "operations.statusDetails": { $size: 0 } }
                             ]

@@ -902,6 +902,7 @@ export function generateSBFlatFile(job) {
     // <TABLE>SW_INFO_TYPE
     // ══════════════════════════════════════════════════════════════════════════
     out += `<TABLE>SW_INFO_TYPE${RS}`;
+    let dirXsbEmitted = false;
     invs.forEach((inv, ii) => {
         (inv.products || []).forEach((p, pi) => {
             const socQty = parseFloat(p.socQuantity || p.quantity || 0).toFixed(6);
@@ -930,9 +931,12 @@ export function generateSBFlatFile(job) {
             }
 
             if (p.eximCode && p.eximCode.startsWith("00") && p.reExport?.isReExport) {
-                const whCode = p.reExport.warehouseCode || (loc.replace(/^IN/, "") + "U001");
-                out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++),
-                    "DIR", "XSB", clean(whCode), "", "", "");
+                if (!dirXsbEmitted) {
+                    const whCode = p.reExport.warehouseCode || (loc.replace(/^IN/, "") + "U001");
+                    out += row(PD, String(ii + 1), String(pi + 1), String(rowNo++),
+                        "DIR", "XSB", clean(whCode), "", "", "");
+                    dirXsbEmitted = true;
+                }
             }
         });
     });

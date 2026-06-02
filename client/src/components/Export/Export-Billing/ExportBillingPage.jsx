@@ -1831,7 +1831,12 @@ function ExportBillingPage() {
             </Box>
 
             <Autocomplete
-              sx={{ width: 220 }}
+              sx={{
+                width: 220,
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: selectedExporter ? '#3b82f6' : '#cbd5e1'
+                }
+              }}
               freeSolo
               options={exporterOptions}
               value={selectedExporter || ""}
@@ -1846,7 +1851,13 @@ function ExportBillingPage() {
                   placeholder="Filter Exporter"
                   InputProps={{
                     ...params.InputProps,
-                    sx: { height: 28, fontSize: '11px', backgroundColor: '#f9fafb' }
+                    sx: {
+                      height: 28,
+                      fontSize: '11px',
+                      backgroundColor: selectedExporter ? '#eff6ff' : '#f9fafb',
+                      color: selectedExporter ? '#1e40af' : 'inherit',
+                      fontWeight: selectedExporter ? 600 : 'normal'
+                    }
                   }}
                 />
               )}
@@ -1860,8 +1871,21 @@ function ExportBillingPage() {
                 setSelectedBranch(e.target.value);
                 setPage(1);
               }}
-              sx={{ width: 110 }}
-              InputProps={{ sx: { height: 28, fontSize: '11px', backgroundColor: '#f9fafb' } }}
+              sx={{
+                width: 110,
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: selectedBranch ? '#3b82f6' : '#cbd5e1'
+                }
+              }}
+              InputProps={{
+                sx: {
+                  height: 28,
+                  fontSize: '11px',
+                  backgroundColor: selectedBranch ? '#eff6ff' : '#f9fafb',
+                  color: selectedBranch ? '#1e40af' : 'inherit',
+                  fontWeight: selectedBranch ? 600 : 'normal'
+                }
+              }}
               SelectProps={{ displayEmpty: true }}
             >
               <MenuItem value="" sx={{ fontSize: '11px' }}>All Branches</MenuItem>
@@ -1880,8 +1904,21 @@ function ExportBillingPage() {
                 setSelectedYear(event.target.value);
                 setPage(1);
               }}
-              sx={{ width: 90 }}
-              InputProps={{ sx: { height: 28, fontSize: '11px', backgroundColor: '#f9fafb' } }}
+              sx={{
+                width: 90,
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: selectedYear !== getCurrentFinancialYear() ? '#3b82f6' : '#cbd5e1'
+                }
+              }}
+              InputProps={{
+                sx: {
+                  height: 28,
+                  fontSize: '11px',
+                  backgroundColor: selectedYear !== getCurrentFinancialYear() ? '#eff6ff' : '#f9fafb',
+                  color: selectedYear !== getCurrentFinancialYear() ? '#1e40af' : 'inherit',
+                  fontWeight: selectedYear !== getCurrentFinancialYear() ? 600 : 'normal'
+                }
+              }}
             >
               {years.map((year) => (
                 <MenuItem key={year} value={year} sx={{ fontSize: '11px' }}>
@@ -1899,8 +1936,21 @@ function ExportBillingPage() {
                   setJobTypeFilter(e.target.value);
                   setPage(1);
                 }}
-                sx={{ width: 120 }}
-                InputProps={{ sx: { height: 28, fontSize: '11px', backgroundColor: '#f9fafb' } }}
+                sx={{
+                  width: 120,
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: jobTypeFilter !== "all" ? '#3b82f6' : '#cbd5e1'
+                  }
+                }}
+                InputProps={{
+                  sx: {
+                    height: 28,
+                    fontSize: '11px',
+                    backgroundColor: jobTypeFilter !== "all" ? '#eff6ff' : '#f9fafb',
+                    color: jobTypeFilter !== "all" ? '#1e40af' : 'inherit',
+                    fontWeight: jobTypeFilter !== "all" ? 600 : 'normal'
+                  }
+                }}
                 SelectProps={{ displayEmpty: true }}
               >
                 <MenuItem value="all" sx={{ fontSize: '11px' }}>All Types</MenuItem>
@@ -1914,12 +1964,25 @@ function ExportBillingPage() {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search Job No, Ref..."
-              sx={{ flex: 1, minWidth: 200, maxWidth: 400 }}
+              sx={{
+                flex: 1,
+                minWidth: 200,
+                maxWidth: 400,
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: searchQuery ? '#3b82f6' : '#cbd5e1'
+                }
+              }}
               InputProps={{
-                sx: { height: 28, fontSize: '11px', backgroundColor: '#f9fafb' },
+                sx: {
+                  height: 28,
+                  fontSize: '11px',
+                  backgroundColor: searchQuery ? '#eff6ff' : '#f9fafb',
+                  color: searchQuery ? '#1e40af' : 'inherit',
+                  fontWeight: searchQuery ? 600 : 'normal'
+                },
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ fontSize: 16, color: '#64748b' }} />
+                    <SearchIcon sx={{ fontSize: 16, color: searchQuery ? '#1e40af' : '#64748b' }} />
                   </InputAdornment>
                 ),
               }}

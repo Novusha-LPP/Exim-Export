@@ -76,8 +76,33 @@ router.get("/api/report/tds-payable-register", async (req, res) => {
       const charge = job?.charges?.find(c => c._id?.toString() === entry.chargeRef);
       const tdsCategory = charge?.cost?.tdsCategory || '';
       
-      const gstAmount = (entry.cgstAmt || 0) + (entry.sgstAmt || 0) + (entry.igstAmt || 0);
-      const exemptAmount = (entry.total || 0) - (entry.taxableValue || 0) - gstAmount + (entry.tds || 0);
+      let chargeCategory = entry.chargeHeadCategory;
+      if (!chargeCategory && job) {
+          if (entry.chargeRef) {
+              const c = job.charges?.find(ch => ch._id?.toString() === entry.chargeRef);
+              if (c) {
+                  chargeCategory = c.chargeType || c.category || '';
+              }
+          }
+          if (!chargeCategory && entry.chargeHeading) {
+              const normHeading = entry.chargeHeading.trim().toLowerCase();
+              const c = job.charges?.find(ch => ch.chargeHead?.trim().toLowerCase() === normHeading);
+              if (c) {
+                  chargeCategory = c.chargeType || c.category || '';
+              }
+          }
+      }
+
+      const isReimbursement = (chargeCategory || '').trim().toLowerCase() === 'reimbursement';
+      let gstAmount = (entry.cgstAmt || 0) + (entry.sgstAmt || 0) + (entry.igstAmt || 0);
+      let taxableValue = entry.taxableValue;
+
+      if (isReimbursement && entry.total) {
+          gstAmount = parseFloat((entry.total * 18 / 118).toFixed(2));
+          taxableValue = parseFloat((entry.total - gstAmount).toFixed(2));
+      }
+
+      const exemptAmount = (entry.total || 0) - (taxableValue || 0) - gstAmount + (entry.tds || 0);
 
       worksheet.addRow({
         orgType: party?.generalInfo?.entityType || "Organization",
@@ -180,6 +205,15 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
             }
         }
 
+        const isReimbursement = (chargeCategory || '').trim().toLowerCase() === 'reimbursement';
+        let gst = (entry.cgstAmt || 0) + (entry.sgstAmt || 0) + (entry.igstAmt || 0);
+        let taxableValue = entry.taxableValue;
+
+        if (isReimbursement && entry.total) {
+            gst = parseFloat((entry.total * 18 / 118).toFixed(2));
+            taxableValue = parseFloat((entry.total - gst).toFixed(2));
+        }
+
         worksheet.addRow({
           entryNo: entry.entryNo,
           entryDate: entry.entryDate,
@@ -188,8 +222,8 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
           gstinNo: entry.gstinNo,
           supplierInvNo: entry.supplierInvNo,
           supplierInvDate: entry.supplierInvDate,
-          taxableValue: entry.taxableValue,
-          gst: (entry.cgstAmt || 0) + (entry.sgstAmt || 0) + (entry.igstAmt || 0),
+          taxableValue: taxableValue,
+          gst: gst,
           tds: entry.tds,
           total: entry.total,
           chargeCategory: chargeCategory || '',

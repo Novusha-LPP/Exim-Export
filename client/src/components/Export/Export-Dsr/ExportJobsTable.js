@@ -588,6 +588,17 @@ const ExportJobsTable = () => {
   const { user } = useContext(UserContext);
   const isAdmin = user?.role === "Admin";
 
+  const getFilterSelectStyle = (isNotDefault, widthVal) => ({
+    ...s.select,
+    width: widthVal,
+    ...(isNotDefault ? {
+      backgroundColor: "#eff6ff",
+      borderColor: "#3b82f6",
+      color: "#1e40af",
+      fontWeight: "600"
+    } : {})
+  });
+
   // Filter Branch Options based on User Permissions
   const allowedBranches = isAdmin ? [] : (user?.selected_branches || []);
   const filteredBranchOptions = branchOptions.filter(b =>
@@ -1232,13 +1243,18 @@ const ExportJobsTable = () => {
           // Column 7: Handover
           let handCol = [];
           const opDetails = job.operations?.[0]?.statusDetails?.[0] || {};
+          const isLcl = job.consignmentType === "LCL";
+          const isAir = job.transportMode?.toUpperCase() === "AIR" || job.job_no?.toUpperCase().includes("/AIR/");
+          const showRailRoad = !isLcl && !isAir;
           const outLbl = opDetails.railRoad === "road" ? "Road Out" : "Rail Out";
           const reachedLbl = opDetails.railRoad === "road" ? "Road Rch" : "Rail Rch";
 
           if (opDetails.leoDate) handCol.push(`Leo: ${formatDate(opDetails.leoDate, "dd-MM-yy")}`);
           if (opDetails.handoverForwardingNoteDate) handCol.push(`DHo: ${formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}`);
-          if (opDetails.handoverConcorTharSanganaRailRoadDate) handCol.push(`${outLbl}: ${formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}`);
-          if (opDetails.railOutReachedDate) handCol.push(`${reachedLbl}: ${formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}`);
+          if (showRailRoad) {
+            if (opDetails.handoverConcorTharSanganaRailRoadDate) handCol.push(`${outLbl}: ${formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}`);
+            if (opDetails.railOutReachedDate) handCol.push(`${reachedLbl}: ${formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}`);
+          }
           if (opDetails.billing_details?.agency_bill_date || opDetails.billing_details?.reimbursement_bill_date) {
             const agencyDate = opDetails.billing_details.agency_bill_date ? formatDate(opDetails.billing_details.agency_bill_date, "dd-MM-yy") : "";
             const reimbursementDate = opDetails.billing_details.reimbursement_bill_date ? formatDate(opDetails.billing_details.reimbursement_bill_date, "dd-MM-yy") : "";
@@ -2361,7 +2377,7 @@ const ExportJobsTable = () => {
           <div style={s.toolbar} className="toolbar-responsive">
             {/* Year Filter */}
             <select
-              style={{ ...s.select, width: "80px" }}
+              style={getFilterSelectStyle(selectedYear !== "26-27", "80px")}
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
             >
@@ -2372,7 +2388,7 @@ const ExportJobsTable = () => {
             </select>
             {/* Month Filter */}
             <select
-              style={{ ...s.select, width: "100px" }}
+              style={getFilterSelectStyle(selectedMonth !== "", "100px")}
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
             >
@@ -2392,7 +2408,7 @@ const ExportJobsTable = () => {
 
             {/* Branch Filter */}
             <select
-              style={{ ...s.select, width: "110px" }}
+              style={getFilterSelectStyle(selectedBranch !== "", "110px")}
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
             >
@@ -2405,7 +2421,7 @@ const ExportJobsTable = () => {
 
             {/* Custom House Filter */}
             <select
-              style={{ ...s.select, width: "140px" }}
+              style={getFilterSelectStyle(selectedCustomHouse !== "", "140px")}
               value={selectedCustomHouse}
               onChange={(e) => setSelectedCustomHouse(e.target.value)}
             >
@@ -2440,7 +2456,7 @@ const ExportJobsTable = () => {
 
             {/* Movement Type Filter */}
             <select
-              style={{ ...s.select, width: "100px" }}
+              style={getFilterSelectStyle(selectedMovementType !== "", "100px")}
               value={selectedMovementType}
               onChange={(e) => setSelectedMovementType(e.target.value)}
             >
@@ -2452,7 +2468,7 @@ const ExportJobsTable = () => {
 
             {/* Job Owner Filter */}
             <select
-              style={{ ...s.select, width: "110px" }}
+              style={getFilterSelectStyle(selectedJobOwner !== "", "110px")}
               value={selectedJobOwner}
               onChange={(e) => setSelectedJobOwner(e.target.value)}
             >
@@ -2492,10 +2508,12 @@ const ExportJobsTable = () => {
                       padding: "0 4px 0 4px !important",
                       height: "30px",
                       fontSize: "12px",
-                      backgroundColor: "#fff",
+                      backgroundColor: selectedExporterFilter ? "#eff6ff" : "#fff",
+                      color: selectedExporterFilter ? "#1e40af" : "inherit",
+                      fontWeight: selectedExporterFilter ? "600" : "normal",
                     },
                     "& .MuiOutlinedInput-notchedOutline": {
-                      borderColor: "#d1d5db",
+                      borderColor: selectedExporterFilter ? "#3b82f6" : "#d1d5db",
                     },
                   }}
                 />
@@ -2532,6 +2550,12 @@ const ExportJobsTable = () => {
                 sx={{
                   height: 28,
                   fontSize: "12px",
+                  backgroundColor: selectedDetailedStatus.length > 0 ? "#eff6ff" : "#fff",
+                  color: selectedDetailedStatus.length > 0 ? "#1e40af" : "inherit",
+                  fontWeight: selectedDetailedStatus.length > 0 ? "600" : "normal",
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: selectedDetailedStatus.length > 0 ? "#3b82f6" : "#d1d5db",
+                  },
                   "& .MuiSelect-select": {
                     padding: "4px 4px",
                     display: "flex",
@@ -2629,7 +2653,7 @@ const ExportJobsTable = () => {
 
             {/* Goods Stuffed At Filter */}
             <select
-              style={{ ...s.select, width: "100px" }}
+              style={getFilterSelectStyle(selectedGoodsStuffedAt !== "", "100px")}
               value={selectedGoodsStuffedAt}
               onChange={(e) => setSelectedGoodsStuffedAt(e.target.value)}
             >
@@ -2700,7 +2724,16 @@ const ExportJobsTable = () => {
             >
               <input
                 className="search-input-responsive"
-                style={{ ...s.input, width: "160px", minWidth: "130px", padding: "0 4px" }}
+                style={{
+                  ...s.input,
+                  width: "160px",
+                  minWidth: "130px",
+                  padding: "0 4px",
+                  backgroundColor: searchQuery ? "#eff6ff" : "#fff",
+                  borderColor: searchQuery ? "#3b82f6" : "#d1d5db",
+                  color: searchQuery ? "#1e40af" : "#333",
+                  fontWeight: searchQuery ? "600" : "normal",
+                }}
                 placeholder="Search by Job No, Exporter, Consignee..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -3351,6 +3384,9 @@ const ExportJobsTable = () => {
                             <>
                               {(() => {
                                 const opDetails = job.operations?.[0]?.statusDetails?.[0] || {};
+                                const isLcl = job.consignmentType === "LCL";
+                                const isAir = job.transportMode?.toUpperCase() === "AIR" || job.job_no?.toUpperCase().includes("/AIR/");
+                                const showRailRoad = !isLcl && !isAir;
                                 const outLbl = opDetails.railRoad === "road" ? "Road Out" : "Rail Out";
                                 const reachedLbl = opDetails.railRoad === "road" ? "Road Rch" : "Rail Rch";
 
@@ -3364,14 +3400,18 @@ const ExportJobsTable = () => {
                                       <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>DHO</span>
                                       <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}</span>
                                     </div>
-                                    <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                      <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{outLbl.toUpperCase()}</span>
-                                      <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}</span>
-                                    </div>
-                                    <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                      <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{reachedLbl.toUpperCase()}</span>
-                                      <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}</span>
-                                    </div>
+                                    {showRailRoad && (
+                                      <>
+                                        <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                          <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{outLbl.toUpperCase()}</span>
+                                          <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}</span>
+                                        </div>
+                                        <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                          <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{reachedLbl.toUpperCase()}</span>
+                                          <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}</span>
+                                        </div>
+                                      </>
+                                    )}
                                     {opDetails.billing_details?.agency_bill_date ? (
                                       <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
                                         <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL (A)</span>
