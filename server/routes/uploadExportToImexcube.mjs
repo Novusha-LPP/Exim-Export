@@ -11,7 +11,7 @@ const router = express.Router();
 const IMEXCUBE_BASE_URL =
   process.env.IMPEXCUBE_BASE_URL ||
   process.env.IMEXCUBE_BASE_URL ||
-  "http://testimpexapi.impexcube.in";
+  "https://impexapi.impexcube.in";
 
 const IMPEX_USERNAME =
   process.env.IMPEXCUBE_USERNAME ||
@@ -160,12 +160,34 @@ router.post("/api/scmCube/upload-export-to-imexcube", async (req, res) => {
 
     // Step 2: Authenticate with IMEXCUBE
     console.log("[IMEXCUBE EXPORT] Authenticating with IMEXCUBE TEST API...");
+    const job = await ExportJobModel.findOne({
+      $or: [
+        { job_no: job_number },
+        { jobNumber: job_number }
+      ]
+    });
+    const branchCode = job ? job.branch_code : "";
+
+    let companyBrCode = "";
+    const normalizedBranch = String(branchCode || "").toUpperCase().trim();
+    if (normalizedBranch === "AMD") {
+      companyBrCode = process.env.COMPANY_BR_CODE_AMD || "5E8D2587-A7BA-49A2-B836-21C70B2AAF47";
+    } else if (normalizedBranch === "GIM") {
+      companyBrCode = process.env.COMPANY_BR_CODE_GIM || "8677A8AA-D338-4413-8CCD-48DB23D28EBD";
+    } else if (normalizedBranch === "COK") {
+      companyBrCode = process.env.COMPANY_BR_CODE_COK || "F9BB73B5-C772-4474-866B-C8B2790B7448";
+    }
+
+    if (!companyBrCode) {
+      companyBrCode = COMPANY_BR_CODE;
+    }
+
     const loginUrl = `${IMEXCUBE_BASE_URL}/api/Authentication/login?username=${encodeURIComponent(
       IMPEX_USERNAME
     )}&password=${encodeURIComponent(
       IMPEX_PASSWORD
     )}&CompanyBrCode=${encodeURIComponent(
-      COMPANY_BR_CODE
+      companyBrCode
     )}&Fyear=${encodeURIComponent(FYEAR)}`;
 
     const loginRes = await axios.post(loginUrl, null, {

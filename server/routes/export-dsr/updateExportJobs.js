@@ -25,18 +25,35 @@ const IMPEXCUBE_TEST_DEFAULTS = {
 const buildImpexCubeUrl = (path) =>
   `${IMPEXCUBE_BASE_URL.replace(/\/+$/, "")}/${String(path || "").replace(/^\/+/, "")}`;
 
-async function getImpexCubeAccessToken(financialYear) {
+async function getImpexCubeAccessToken(financialYear, branchCode) {
   const isDocumentedTestHost = IMPEXCUBE_BASE_URL.includes(IMPEXCUBE_TEST_HOST);
   const username =
     process.env.IMPEXCUBE_USERNAME ||
+    process.env.IMPEX_USERNAME ||
     (isDocumentedTestHost ? IMPEXCUBE_TEST_DEFAULTS.username : "");
   const password =
     process.env.IMPEXCUBE_PASSWORD ||
+    process.env.IMPEX_PASSWORD ||
     (isDocumentedTestHost ? IMPEXCUBE_TEST_DEFAULTS.password : "");
-  const companyBrCode =
-    process.env.IMPEXCUBE_COMPANY_BR_CODE ||
-    (isDocumentedTestHost ? IMPEXCUBE_TEST_DEFAULTS.companyBrCode : "");
-  const fyear = process.env.IMPEXCUBE_FYEAR || financialYear;
+
+  let companyBrCode = "";
+  const normalizedBranch = String(branchCode || "").toUpperCase().trim();
+  if (normalizedBranch === "AMD") {
+    companyBrCode = process.env.COMPANY_BR_CODE_AMD || "5E8D2587-A7BA-49A2-B836-21C70B2AAF47";
+  } else if (normalizedBranch === "GIM") {
+    companyBrCode = process.env.COMPANY_BR_CODE_GIM || "8677A8AA-D338-4413-8CCD-48DB23D28EBD";
+  } else if (normalizedBranch === "COK") {
+    companyBrCode = process.env.COMPANY_BR_CODE_COK || "F9BB73B5-C772-4474-866B-C8B2790B7448";
+  }
+
+  if (!companyBrCode) {
+    companyBrCode =
+      process.env.IMPEXCUBE_COMPANY_BR_CODE ||
+      process.env.COMPANY_BR_CODE ||
+      (isDocumentedTestHost ? IMPEXCUBE_TEST_DEFAULTS.companyBrCode : "");
+  }
+
+  const fyear = process.env.IMPEXCUBE_FYEAR || process.env.FYEAR || financialYear;
 
   const missing = [];
   if (!username) missing.push("IMPEXCUBE_USERNAME");
@@ -1730,7 +1747,7 @@ router.post("/impexcube/export-jobs/send", auditMiddleware("Job"), async (req, r
     }
 
     const payload = exportJob.toImpexCubeExportPayload(req.body?.options || {});
-    const accessToken = await getImpexCubeAccessToken(payload.CHADetails?.Financial_Year);
+    const accessToken = await getImpexCubeAccessToken(payload.CHADetails?.Financial_Year, exportJob.branch_code);
     console.log("[IMEXCUBE EXPORT DSR] Sending payload to ImpexCube:\n", JSON.stringify(payload, null, 2));
     const impexCubeResponse = await axios.post(
       buildImpexCubeUrl(IMPEXCUBE_EXPORT_CREATE_PATH),

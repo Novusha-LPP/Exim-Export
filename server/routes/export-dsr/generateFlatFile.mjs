@@ -472,17 +472,19 @@ export function generateSBFlatFile(job) {
 
     const sbModCHA = "AB" + chaLicNo;
 
-    // SB [34] — seal type: 'S' = shipper seal, 'W' = warehouse seal
+    // SB [34] — seal type: 'S' = shipper seal, 'W' = warehouse seal; always empty for air shipments
     let mappedSealType = "";
-    const sst = clean(job.stuffing_seal_type || "").toUpperCase();
-    if (sst.includes("SELF") || sst.includes("AGENT")) {
-        mappedSealType = "S";
-    } else if (sst.includes("WAREHOUSE") || sst.includes("WEARHOUSE")) {
-        mappedSealType = "W";
-    } else if ((isContainerized) && job.goods_stuffed_at !== "DOCK") {
-        // Fallback: default to 'S' for containerized sea shipments if not explicitly warehouse
-        mappedSealType = "S";
-    } else mappedSealType = ""
+    if (job.transportMode !== "AIR") {
+        const sst = clean(job.stuffing_seal_type || "").toUpperCase();
+        if (sst.includes("SELF") || sst.includes("AGENT")) {
+            mappedSealType = "S";
+        } else if (sst.includes("WAREHOUSE") || sst.includes("WEARHOUSE")) {
+            mappedSealType = "W";
+        } else if ((isContainerized) && job.goods_stuffed_at !== "DOCK") {
+            // Fallback: default to 'S' for containerized sea shipments if not explicitly warehouse
+            mappedSealType = "S";
+        }
+    }
 
     let out = "";
 

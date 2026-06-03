@@ -2,30 +2,33 @@ import React, { useState } from "react";
 import surajCompanyLogo from "../../../assets/images/surajCompanyLogo.jpeg";
 
 const THEME = {
-  blue: "#2563eb",
-  border: "#ccd3de",
-  text: "#1e293b",
+  blue: "#16408f",
+  border: "#cbd5e1",
+  text: "#0f172a",
 };
 
 const s = {
   quoteWrapper: {
-    fontFamily: "'Segoe UI', Roboto, sans-serif",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
     width: "100%",
     maxWidth: "800px",
     margin: "0 auto",
-    padding: "30px",
+    padding: "40px",
     backgroundColor: "#fff",
     color: THEME.text,
     boxSizing: "border-box",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    borderRadius: "3px",
+    border: "1px solid #cbd5e1",
   },
-  header: { display: "flex", justifyContent: "space-between", marginBottom: "10px" },
-  address: { fontSize: "12px", lineHeight: "1.5" },
-  title: { textAlign: "center", fontSize: "15px", fontWeight: "bold", textDecoration: "underline", margin: "10px 0" },
-  table: { width: "100%", borderCollapse: "collapse", marginBottom: "10px" },
-  th: { backgroundColor: "#e2e8f0", padding: "6px", textAlign: "left", fontSize: "12px", border: `1px solid ${THEME.border}` },
-  td: { padding: "6px", border: `1px solid ${THEME.border}`, fontSize: "12px" },
-  footerNote: { fontSize: "10.5px", marginTop: "10px", display: "flex", flexDirection: "column", gap: "3px" },
-  input: { border: "none", backgroundColor: "#f8fafc", width: "80px", textAlign: "right", padding: "2px" },
+  header: { display: "flex", justifyContent: "space-between", marginBottom: "20px", borderBottom: "2px solid #16408f", paddingBottom: "15px" },
+  address: { fontSize: "12px", lineHeight: "1.6", color: "#334155" },
+  title: { textAlign: "center", fontSize: "16px", fontWeight: "bold", letterSpacing: "1px", color: "#1e293b", margin: "16px 0", textTransform: "uppercase" },
+  table: { width: "100%", borderCollapse: "collapse", marginBottom: "20px" },
+  th: { backgroundColor: "#19448aff", padding: "10px 12px", textAlign: "left", fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#ffffff", border: `1px solid ${THEME.border}` },
+  td: { padding: "10px 12px", border: `1px solid ${THEME.border}`, fontSize: "12.5px", color: "#334155" },
+  footerNote: { fontSize: "11px", marginTop: "20px", display: "flex", flexDirection: "column", gap: "6px", backgroundColor: "#f8fafc", padding: "16px", borderRadius: "3px", border: "1px solid #cbd5e1", color: "#475569" },
+  input: { border: "none", backgroundColor: "#f1f5f9", width: "90px", textAlign: "right", padding: "6px 10px", borderRadius: "3px", fontSize: "12px", outline: "none", fontWeight: 600, color: "#1e293b" },
 };
 
 function FreightQuotation({ enquiry, selectedRate, onBack }) {
@@ -86,7 +89,30 @@ function FreightQuotation({ enquiry, selectedRate, onBack }) {
       <button 
         className="no-print"
         onClick={onBack} 
-        style={{ marginBottom: "15px", padding: "6px 12px", borderRadius: "5px", border: "1px solid #ccc", cursor: "pointer" }}
+        style={{
+          marginBottom: "16px",
+          padding: "8px 16px",
+          borderRadius: "3px",
+          border: "1px solid #cbd5e1",
+          backgroundColor: "#fff",
+          color: "#475569",
+          fontWeight: 600,
+          fontSize: "12.5px",
+          cursor: "pointer",
+          transition: "all 0.15s ease",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px"
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = "#f8fafc";
+          e.currentTarget.style.borderColor = "#94a3b8";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = "#fff";
+          e.currentTarget.style.borderColor = "#cbd5e1";
+        }}
       >
         ← Back to Rates
       </button>
@@ -205,7 +231,27 @@ function FreightQuotation({ enquiry, selectedRate, onBack }) {
         <div style={{ marginTop: "30px", textAlign: "center" }} className="no-print">
            <button 
              onClick={() => window.print()} 
-             style={{ backgroundColor: "#1e293b", color: "#fff", padding: "10px 20px", border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+             style={{
+               backgroundColor: "#16408f",
+               color: "#fff",
+               padding: "12px 24px",
+               border: "none",
+               borderRadius: "3px",
+               fontWeight: 700,
+               fontSize: "13px",
+               cursor: "pointer",
+               transition: "all 0.15s ease",
+               display: "inline-flex",
+               alignItems: "center",
+               justifyContent: "center",
+               gap: "8px"
+             }}
+             onMouseEnter={(e) => {
+               e.currentTarget.style.backgroundColor = "#19448a";
+             }}
+             onMouseLeave={(e) => {
+               e.currentTarget.style.backgroundColor = "#16408f";
+             }}
            >
              Download / Print Quotation
            </button>

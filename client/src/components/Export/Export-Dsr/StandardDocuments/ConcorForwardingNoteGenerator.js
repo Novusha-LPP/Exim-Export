@@ -4,6 +4,8 @@ import "jspdf-autotable";
 import axios from "axios";
 import { MenuItem, Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import DocumentEditorDialog from "./DocumentEditorDialog";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 // Import the logo properly for Vite
 import concorLogo from "../../../../assets/images/concor.png";
@@ -529,6 +531,552 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
     }
   };
 
+  const handleDownloadExcel = async () => {
+    setChoiceOpen(false);
+    if (!jobData) {
+      alert("No job data loaded.");
+      return;
+    }
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("CONCOR Note");
+
+      // Column Widths for 14 columns
+      worksheet.columns = [
+        { width: 5 },   // A: Sr No
+        { width: 18 },  // B: Container No
+        { width: 10 },  // C: Type
+        { width: 8 },   // D: Size
+        { width: 12 },  // E: Tare Wt
+        { width: 12 },  // F: No of Packages
+        { width: 35 },  // G: Commodity Name
+        { width: 14 },  // H: HSN Code
+        { width: 12 },  // I: Cargo Wt (MT)
+        { width: 12 },  // J: VGM
+        { width: 12 },  // K: Hazardous
+        { width: 14 },  // L: Value/FOB
+        { width: 14 },  // M: LEO Dt
+        { width: 16 }   // N: Seal No
+      ];
+
+      // Defaults
+      for (let r = 1; r <= 100; r++) {
+        worksheet.getRow(r).height = 20;
+      }
+
+      // Add logo images
+      try {
+        const base64Logo = await imageToBase64(concorLogo);
+        if (base64Logo && base64Logo.startsWith("data:image")) {
+          const base64Data = base64Logo.split(",")[1];
+          const extension = base64Logo.match(/image\/(\w+)/)?.[1] || "png";
+          const imageId1 = workbook.addImage({ base64: base64Data, extension });
+          const imageId2 = workbook.addImage({ base64: base64Data, extension });
+          
+          worksheet.addImage(imageId1, {
+            tl: { col: 0.3, row: 0.3 },
+            ext: { width: 50, height: 50 },
+            editAs: 'oneCell'
+          });
+          worksheet.addImage(imageId2, {
+            tl: { col: 12.3, row: 0.3 },
+            ext: { width: 50, height: 50 },
+            editAs: 'oneCell'
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to add logos to CONCOR Excel", err);
+      }
+
+      // Merges for header
+      worksheet.mergeCells("A1:B3"); // Left logo placeholder
+      worksheet.mergeCells("M1:N3"); // Right logo placeholder
+      worksheet.mergeCells("C1:L1"); // Company name
+      worksheet.mergeCells("C2:L2"); // Subtitle
+      worksheet.mergeCells("C3:L3"); // CONCOR USE
+      worksheet.mergeCells("C4:G4"); // JOB
+      worksheet.mergeCells("H4:L4"); // INV
+
+      worksheet.getCell("C1").value = "CONTAINER CORPORATION OF INDIA LIMITED (CONCOR)";
+      worksheet.getCell("C1").font = { name: "Arial", bold: true, size: 14 };
+      worksheet.getCell("C1").alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.getCell("C2").value = "FORWARDING NOTE FOR GENERAL AND DANGEROUS MERCHANDISE";
+      worksheet.getCell("C2").font = { name: "Arial", size: 8 };
+      worksheet.getCell("C2").alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.getCell("C3").value = "(FOR CONCOR USE ONLY)";
+      worksheet.getCell("C3").font = { name: "Arial", size: 7.5 };
+      worksheet.getCell("C3").alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.getCell("C4").value = `JOB: ${jobData.job_no || ""}`;
+      worksheet.getCell("C4").font = { name: "Arial", bold: true, size: 11 };
+      worksheet.getCell("C4").alignment = { vertical: "middle", horizontal: "right" };
+
+      const invoice = jobData.invoices?.[0] || {};
+      worksheet.getCell("H4").value = `INV: ${invoice.invoiceNumber || ""}`;
+      worksheet.getCell("H4").font = { name: "Arial", bold: true, size: 11 };
+      worksheet.getCell("H4").alignment = { vertical: "middle", horizontal: "left" };
+
+      // Segment Details
+      worksheet.mergeCells("A5:B5");
+      worksheet.mergeCells("C5:D5");
+      worksheet.mergeCells("E5:N5");
+      worksheet.getCell("A5").value = "SEGMENT";
+      worksheet.getCell("A5").font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell("A5").alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.getCell("C5").value = "EXIM";
+      worksheet.getCell("C5").font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell("C5").alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.getCell("E5").value = "MODE (TICK ONE):    BY    RAIL /ROAD";
+      worksheet.getCell("E5").font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell("E5").alignment = { vertical: "middle", horizontal: "left" };
+
+      // FROM / TO
+      worksheet.mergeCells("A6:G6");
+      worksheet.mergeCells("H6:N6");
+      worksheet.getCell("A6").value = "FROM";
+      worksheet.getCell("A6").font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell("A6").alignment = { vertical: "middle", horizontal: "center" };
+      worksheet.getCell("H6").value = "TO";
+      worksheet.getCell("H6").font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell("H6").alignment = { vertical: "middle", horizontal: "center" };
+
+      // Header Detail Subtitles
+      worksheet.mergeCells("A7:C7");
+      worksheet.mergeCells("D7:G7");
+      worksheet.mergeCells("H7:J7");
+      worksheet.mergeCells("K7:L7");
+      worksheet.mergeCells("M7:N7");
+      worksheet.getCell("A7").value = "TERMINAL";
+      worksheet.getCell("D7").value = "GATEWAY PORT";
+      worksheet.getCell("H7").value = "SHIPPING LINE";
+      worksheet.getCell("K7").value = "PORT OF DISCHARGE";
+      worksheet.getCell("M7").value = "COUNTRY";
+      ["A7", "D7", "H7", "K7", "M7"].forEach(cellId => {
+        worksheet.getCell(cellId).font = { name: "Arial", size: 8 };
+        worksheet.getCell(cellId).alignment = { vertical: "middle", horizontal: "center" };
+      });
+
+      // Values
+      worksheet.mergeCells("A8:C8");
+      worksheet.mergeCells("D8:G8");
+      worksheet.mergeCells("H8:J8");
+      worksheet.mergeCells("K8:L8");
+      worksheet.mergeCells("M8:N8");
+      worksheet.getCell("A8").value = jobData.branchCode || "KHDB";
+      worksheet.getCell("D8").value = jobData.gateway_port || jobData.port_of_loading || "";
+      worksheet.getCell("H8").value = jobData.shipping_line_airline || "";
+      worksheet.getCell("K8").value = jobData.port_of_discharge || "";
+      worksheet.getCell("M8").value = jobData.discharge_country || "";
+      ["A8", "D8", "H8", "K8", "M8"].forEach(cellId => {
+        worksheet.getCell(cellId).font = { name: "Arial", bold: true, size: 10 };
+        worksheet.getCell(cellId).alignment = { vertical: "middle", horizontal: "center" };
+      });
+
+      // Customer Type
+      worksheet.mergeCells("A9:N9");
+      worksheet.getCell("A9").value = "CUSTOMER TYPE: (TICK ONE) EXPORTER | IMPORTER | ASSOCIATE PARTNER | CORPORATE CUSTOMER";
+      worksheet.getCell("A9").font = { name: "Arial", size: 9 };
+      worksheet.getCell("A9").alignment = { vertical: "middle", horizontal: "left" };
+
+      // CHA Name
+      worksheet.mergeCells("A10:N10");
+      worksheet.getCell("A10").value = "CHA NAME & CODE:  SURAJ FORWARDERS AND SHIPPING AGENCIES";
+      worksheet.getCell("A10").font = { name: "Arial", bold: true, size: 11 };
+      worksheet.getCell("A10").alignment = { vertical: "middle", horizontal: "left" };
+
+      // Transported by
+      worksheet.mergeCells("A11:N11");
+      worksheet.getCell("A11").value = "TRANSPORTED BY: SELF TPT | CONCOR";
+      worksheet.getCell("A11").font = { name: "Arial", size: 8.5 };
+      worksheet.getCell("A11").alignment = { vertical: "middle", horizontal: "left" };
+
+      // Transported disclaimer
+      worksheet.mergeCells("A12:N12");
+      worksheet.getCell("A12").value = "In case of CONCOR service, Kindly provide";
+      worksheet.getCell("A12").font = { name: "Arial", size: 7.5, italic: true };
+      worksheet.getCell("A12").alignment = { vertical: "middle", horizontal: "left" };
+
+      // Pick up point
+      worksheet.mergeCells("A13:N13");
+      worksheet.getCell("A13").value = `PICK UP POINT/KM:    ${jobData.factory_address || ""}`;
+      worksheet.getCell("A13").font = { name: "Arial", size: 8.5 };
+      worksheet.getCell("A13").alignment = { vertical: "middle", horizontal: "left" };
+
+      // Deliver point
+      worksheet.mergeCells("A14:N14");
+      worksheet.getCell("A14").value = "DELIVER POINT/KM:";
+      worksheet.getCell("A14").font = { name: "Arial", size: 8.5 };
+      worksheet.getCell("A14").alignment = { vertical: "middle", horizontal: "left" };
+
+      // Shipping Bill
+      worksheet.mergeCells("A15:N15");
+      worksheet.getCell("A15").value = {
+        richText: [
+          { text: "SHIPPING BILL NO. ", font: { name: "Arial", size: 9 } },
+          { text: jobData.sb_no || "", font: { name: "Arial", bold: true, size: 12 } },
+          { text: "   DATE ", font: { name: "Arial", size: 9 } },
+          { text: formatDate(jobData.sb_date), font: { name: "Arial", bold: true, size: 12 } }
+        ]
+      };
+      worksheet.getCell("A15").alignment = { vertical: "middle", horizontal: "left" };
+      worksheet.getRow(15).height = 24;
+
+      // Stuffing Type & GST
+      worksheet.mergeCells("A16:G16");
+      worksheet.mergeCells("H16:N16");
+      worksheet.getCell("A16").value = `STUFFING TYPE: ${jobData.goods_stuffed_at === "Factory" ? "FCL" : "ICD"}`;
+      worksheet.getCell("A16").font = { name: "Arial", size: 9 };
+      worksheet.getCell("A16").alignment = { vertical: "middle", horizontal: "left" };
+
+      worksheet.getCell("H16").value = `GST IN INVOICE NAME: ${jobData.exporter || ""}`;
+      worksheet.getCell("H16").font = { name: "Arial", size: 9 };
+      worksheet.getCell("H16").alignment = { vertical: "middle", horizontal: "left" };
+
+      // Payment Mode
+      worksheet.mergeCells("A17:N17");
+      worksheet.getCell("A17").value = "PAYMENT MODE (PDA) & NO.: SURAJ FORWARDERS PVT. LTD.";
+      worksheet.getCell("A17").font = { name: "Arial", size: 9 };
+      worksheet.getCell("A17").alignment = { vertical: "middle", horizontal: "left" };
+
+      // Exporter Name
+      worksheet.mergeCells("A18:N18");
+      worksheet.getCell("A18").value = {
+        richText: [
+          { text: "EXPORTER NAME : ", font: { name: "Arial", size: 9 } },
+          { text: jobData.exporter || "", font: { name: "Arial", bold: true, size: 11 } }
+        ]
+      };
+      worksheet.getCell("A18").alignment = { vertical: "middle", horizontal: "left" };
+
+      // GSTIN No
+      worksheet.mergeCells("A19:N19");
+      worksheet.getCell("A19").value = `NAME IN INVOICE GSTIN NO : ${jobData.gstin || ""}`;
+      worksheet.getCell("A19").font = { name: "Arial", size: 9 };
+      worksheet.getCell("A19").alignment = { vertical: "middle", horizontal: "left" };
+
+      // Container Headers
+      const tableHeaders = ["Sr. No.", "CONTAINER NO.", "TYPE", "SIZE", "TARE WT.", "NO. OF PACKAGES", "COMMODITY NAME", "COMMODITY HSN CODE", "CARGO WT (In MTS)", "VGM", "HAZARDOUS", "VALUE/FOB", "LEO DT", "SEAL NO."];
+      worksheet.getRow(20).height = 28;
+      tableHeaders.forEach((h, cidx) => {
+        const cell = worksheet.getCell(20, cidx + 1);
+        cell.value = h;
+        cell.font = { name: "Arial", bold: true, size: 9 };
+        cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAEAEA" } };
+      });
+
+      // Containers Rows
+      let currentRow = 21;
+      let totalPackages = 0;
+      let totalCargoWeight = 0;
+
+      const containers = jobData.containers || [];
+      const operations = jobData.operations?.[0] || {};
+      const product = invoice.products?.[0] || {};
+      const statusDetails = operations.statusDetails?.[0] || {};
+
+      containers.forEach((cnt, i) => {
+        worksheet.getRow(currentRow).height = 45;
+        const pkgs = Number(cnt.pkgsStuffed) || 0;
+        const weight = Number(cnt.grossWeight) || 0;
+        const cargoWeightMT = weight / 1000;
+        const tareWeight = Number(cnt.tareWeightKgs) || 0;
+        const sizeMatch = (cnt.type || "").match(/^(\d+)/);
+        const size = sizeMatch ? sizeMatch[1] : "";
+
+        totalPackages += pkgs;
+        totalCargoWeight += cargoWeightMT;
+
+        worksheet.getCell(currentRow, 1).value = i + 1;
+        worksheet.getCell(currentRow, 2).value = cnt.containerNo || "";
+        worksheet.getCell(currentRow, 3).value = cnt.sealType || "RFID";
+        worksheet.getCell(currentRow, 4).value = size;
+        worksheet.getCell(currentRow, 5).value = tareWeight || "";
+        worksheet.getCell(currentRow, 5).numFormat = '#,##0';
+        worksheet.getCell(currentRow, 6).value = pkgs || "";
+        worksheet.getCell(currentRow, 6).numFormat = '#,##0';
+        worksheet.getCell(currentRow, 7).value = product.description || "";
+        worksheet.getCell(currentRow, 8).value = product.ritc || "";
+        worksheet.getCell(currentRow, 9).value = cargoWeightMT || "";
+        worksheet.getCell(currentRow, 9).numFormat = '#,##0.0';
+        worksheet.getCell(currentRow, 10).value = cnt.grWtPlusTrWt ? Number(cnt.grWtPlusTrWt) / 1000 : "";
+        worksheet.getCell(currentRow, 10).numFormat = '#,##0.0';
+        worksheet.getCell(currentRow, 11).value = "NO";
+        worksheet.getCell(currentRow, 12).value = invoice.invoiceValue ? Number(invoice.invoiceValue) : "";
+        worksheet.getCell(currentRow, 12).numFormat = '#,##0.00';
+        worksheet.getCell(currentRow, 13).value = formatDate(statusDetails.leoDate);
+        worksheet.getCell(currentRow, 14).value = cnt.sealNo || "";
+
+        // Alignments
+        worksheet.getRow(currentRow).eachCell((cell, colNum) => {
+          cell.font = cell.font || { name: "Arial", size: 9 };
+          if (colNum === 2) cell.font.bold = true;
+          cell.alignment = { vertical: "middle", horizontal: colNum === 7 ? "left" : "center", wrapText: true };
+        });
+
+        currentRow++;
+      });
+
+      // Total Row
+      worksheet.getRow(currentRow).height = 24;
+      worksheet.mergeCells(`A${currentRow}:E${currentRow}`);
+      worksheet.getCell(`A${currentRow}`).value = "Total:";
+      worksheet.getCell(`A${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "middle", horizontal: "right" };
+
+      worksheet.getCell(`F${currentRow}`).value = totalPackages || "";
+      worksheet.getCell(`F${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`F${currentRow}`).numFormat = '#,##0';
+      worksheet.getCell(`F${currentRow}`).alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.getCell(`I${currentRow}`).value = totalCargoWeight || "";
+      worksheet.getCell(`I${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`I${currentRow}`).numFormat = '#,##0.0';
+      worksheet.getCell(`I${currentRow}`).alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.mergeCells(`J${currentRow}:N${currentRow}`);
+
+      currentRow++;
+
+      // Declarations and Acceptances
+      worksheet.getRow(currentRow).height = 18;
+      worksheet.mergeCells(`A${currentRow}:N${currentRow}`);
+      worksheet.getCell(`A${currentRow}`).value = "(Accepted on said to contain Basis)";
+      worksheet.getCell(`A${currentRow}`).font = { name: "Arial", size: 8, italic: true };
+      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "middle", horizontal: "left" };
+      currentRow++;
+
+      const declarations = [
+        "1. I declare that each consignment is of value Rs._________________ and engage**/do not engage** to pay percentage charge on excess value for the increased risk as required by CONCOR...",
+        "   Alternative CONCOR risk and Owner's risk being available, I elect to pay ________________ rates.",
+        "2. Please declare whether above container/contains high value cargo YES/NO",
+        "3. I do hereby certify that I have satisfied myself that the description, marks & weights or quantity of goods consigned by me have been correctly entered in the Forwarding Note..."
+      ];
+      declarations.forEach(line => {
+        worksheet.getRow(currentRow).height = 18;
+        worksheet.mergeCells(`A${currentRow}:N${currentRow}`);
+        worksheet.getCell(`A${currentRow}`).value = line;
+        worksheet.getCell(`A${currentRow}`).font = { name: "Arial", size: 8 };
+        worksheet.getCell(`A${currentRow}`).alignment = { vertical: "middle", horizontal: "left" };
+        currentRow++;
+      });
+
+      worksheet.getRow(currentRow).height = 32;
+      worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
+      worksheet.getCell(`A${currentRow}`).value = "Tick the appropriate option shown above.";
+      worksheet.getCell(`A${currentRow}`).font = { name: "Arial", size: 8 };
+      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "top", horizontal: "left" };
+
+      worksheet.mergeCells(`H${currentRow}:N${currentRow}`);
+      worksheet.getCell(`H${currentRow}`).value = `Signature & Seal of the Customer\nDATE: ${formatDate(new Date())}`;
+      worksheet.getCell(`H${currentRow}`).font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell(`H${currentRow}`).alignment = { vertical: "top", horizontal: "right", wrapText: true };
+      currentRow++;
+
+      // Terms and Conditions
+      worksheet.getRow(currentRow).height = 20;
+      worksheet.mergeCells(`A${currentRow}:N${currentRow}`);
+      worksheet.getCell(`A${currentRow}`).value = "TERMS AND CONDITIONS";
+      worksheet.getCell(`A${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "middle", horizontal: "center" };
+      currentRow++;
+
+      const terms = [
+        "1. Unless the consignor declares in clause(1) overleaf the value of any consignment & pays percentage charge on excess value as required by CONCOR, the maximum limit of liability shall not exceed Rs. 50 per kg.",
+        "2. When alternative 'CONCOR Risk' and 'Owner Risk' rates are quoted, the latter will apply unless sender elects 'CONCOR Risk'.",
+        "3. I accept responsibility for any consequences to the property of CONCOR or others caused by this consignment Note - Attention is invited to terms for dangerous goods in I.R.C.A Red Tariff and IMDG."
+      ];
+      terms.forEach(line => {
+        worksheet.getRow(currentRow).height = 18;
+        worksheet.mergeCells(`A${currentRow}:N${currentRow}`);
+        worksheet.getCell(`A${currentRow}`).value = line;
+        worksheet.getCell(`A${currentRow}`).font = { name: "Arial", size: 8 };
+        worksheet.getCell(`A${currentRow}`).alignment = { vertical: "middle", horizontal: "left" };
+        currentRow++;
+      });
+
+      // Additional declarations
+      worksheet.getRow(currentRow).height = 24;
+      worksheet.mergeCells(`A${currentRow}:N${currentRow}`);
+      worksheet.getCell(`A${currentRow}`).value = "Additional declarations for Dangerous Goods (I.R.C.A / IMDG)";
+      worksheet.getCell(`A${currentRow}`).font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "middle", horizontal: "left" };
+      currentRow++;
+
+      // Office use
+      worksheet.getRow(currentRow).height = 36;
+      worksheet.mergeCells(`A${currentRow}:N${currentRow}`);
+      worksheet.getCell(`A${currentRow}`).value = "FOR OFFICE USE ONLY";
+      worksheet.getCell(`A${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "top", horizontal: "left" };
+      currentRow++;
+
+      // Borders
+      const borderStyle = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } }
+      };
+
+      for (let r = 1; r < currentRow; r++) {
+        const rowObj = worksheet.getRow(r);
+        for (let c = 1; c <= 14; c++) {
+          rowObj.getCell(c).border = borderStyle;
+        }
+      }
+
+      // Write buffer and save
+      const buffer = await workbook.xlsx.writeBuffer();
+      saveAs(new Blob([buffer]), `CONCOR_Forwarding_Note_${jobNo}.xlsx`);
+    } catch (error) {
+      console.error("Error generating CONCOR Excel:", error);
+      alert("Failed to generate CONCOR Excel file.");
+    }
+  };
+
+  const handleDownloadFNTable = async () => {
+    setChoiceOpen(false);
+    if (!jobData) {
+      alert("No job data loaded.");
+      return;
+    }
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("FN Table");
+
+      // Column Widths for 14 columns
+      worksheet.columns = [
+        { width: 5 },   // A: Sr No
+        { width: 18 },  // B: Container No
+        { width: 10 },  // C: Type
+        { width: 8 },   // D: Size
+        { width: 12 },  // E: Tare Wt
+        { width: 12 },  // F: No of Packages
+        { width: 35 },  // G: Commodity Name
+        { width: 14 },  // H: HSN Code
+        { width: 12 },  // I: Cargo Wt (MT)
+        { width: 12 },  // J: VGM
+        { width: 12 },  // K: Hazardous
+        { width: 14 },  // L: Value/FOB
+        { width: 14 },  // M: LEO Dt
+        { width: 16 }   // N: Seal No
+      ];
+
+      // Headers
+      const tableHeaders = ["Sr. No.", "CONTAINER NO.", "TYPE", "SIZE", "TARE WT.", "NO. OF PACKAGES", "COMMODITY NAME", "COMMODITY HSN CODE", "CARGO WT (In MTS)", "VGM", "HAZARDOUS", "VALUE/FOB", "LEO DT", "SEAL NO."];
+      worksheet.getRow(1).height = 28;
+      tableHeaders.forEach((h, cidx) => {
+        const cell = worksheet.getCell(1, cidx + 1);
+        cell.value = h;
+        cell.font = { name: "Arial", bold: true, size: 9 };
+        cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAEAEA" } };
+      });
+
+      // Containers Rows
+      let currentRow = 2;
+      let totalPackages = 0;
+      let totalCargoWeight = 0;
+
+      const containers = jobData.containers || [];
+      const invoice = jobData.invoices?.[0] || {};
+      const product = invoice.products?.[0] || {};
+      const statusDetails = (jobData.operations?.[0]?.statusDetails?.[0]) || {};
+
+      containers.forEach((cnt, i) => {
+        worksheet.getRow(currentRow).height = 45;
+        const pkgs = Number(cnt.pkgsStuffed) || 0;
+        const weight = Number(cnt.grossWeight) || 0;
+        const cargoWeightMT = weight / 1000;
+        const tareWeight = Number(cnt.tareWeightKgs) || 0;
+        const sizeMatch = (cnt.type || "").match(/^(\d+)/);
+        const size = sizeMatch ? sizeMatch[1] : "";
+
+        totalPackages += pkgs;
+        totalCargoWeight += cargoWeightMT;
+
+        worksheet.getCell(currentRow, 1).value = i + 1;
+        worksheet.getCell(currentRow, 2).value = cnt.containerNo || "";
+        worksheet.getCell(currentRow, 3).value = cnt.sealType || "RFID";
+        worksheet.getCell(currentRow, 4).value = size;
+        worksheet.getCell(currentRow, 5).value = tareWeight || "";
+        worksheet.getCell(currentRow, 5).numFormat = '#,##0';
+        worksheet.getCell(currentRow, 6).value = pkgs || "";
+        worksheet.getCell(currentRow, 6).numFormat = '#,##0';
+        worksheet.getCell(currentRow, 7).value = product.description || "";
+        worksheet.getCell(currentRow, 8).value = product.ritc || "";
+        worksheet.getCell(currentRow, 9).value = cargoWeightMT || "";
+        worksheet.getCell(currentRow, 9).numFormat = '#,##0.0';
+        worksheet.getCell(currentRow, 10).value = cnt.grWtPlusTrWt ? Number(cnt.grWtPlusTrWt) / 1000 : "";
+        worksheet.getCell(currentRow, 10).numFormat = '#,##0.0';
+        worksheet.getCell(currentRow, 11).value = "NO";
+        worksheet.getCell(currentRow, 12).value = invoice.invoiceValue ? Number(invoice.invoiceValue) : "";
+        worksheet.getCell(currentRow, 12).numFormat = '#,##0.00';
+        worksheet.getCell(currentRow, 13).value = formatDate(statusDetails.leoDate);
+        worksheet.getCell(currentRow, 14).value = cnt.sealNo || "";
+
+        // Alignments
+        worksheet.getRow(currentRow).eachCell((cell, colNum) => {
+          cell.font = cell.font || { name: "Arial", size: 9 };
+          if (colNum === 2) cell.font.bold = true;
+          cell.alignment = { vertical: "middle", horizontal: colNum === 7 ? "left" : "center", wrapText: true };
+        });
+
+        currentRow++;
+      });
+
+      // Total Row
+      worksheet.getRow(currentRow).height = 24;
+      worksheet.mergeCells(`A${currentRow}:E${currentRow}`);
+      worksheet.getCell(`A${currentRow}`).value = "Total:";
+      worksheet.getCell(`A${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "middle", horizontal: "right" };
+
+      worksheet.getCell(`F${currentRow}`).value = totalPackages || "";
+      worksheet.getCell(`F${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`F${currentRow}`).numFormat = '#,##0';
+      worksheet.getCell(`F${currentRow}`).alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.getCell(`I${currentRow}`).value = totalCargoWeight || "";
+      worksheet.getCell(`I${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`I${currentRow}`).numFormat = '#,##0.0';
+      worksheet.getCell(`I${currentRow}`).alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.mergeCells(`J${currentRow}:N${currentRow}`);
+
+      currentRow++;
+
+      // Apply borders
+      const borderStyle = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } }
+      };
+
+      for (let r = 1; r < currentRow; r++) {
+        const rowObj = worksheet.getRow(r);
+        for (let c = 1; c <= 14; c++) {
+          rowObj.getCell(c).border = borderStyle;
+        }
+      }
+
+      // Write buffer and save
+      const buffer = await workbook.xlsx.writeBuffer();
+      saveAs(new Blob([buffer]), `FN_Table_${jobNo}.xlsx`);
+    } catch (error) {
+      console.error("Error generating CONCOR FN Table Excel:", error);
+      alert("Failed to generate FN Table Excel file.");
+    }
+  };
+
   const handleEdit = () => {
     setChoiceOpen(false);
     setEditorOpen(true);
@@ -570,12 +1118,14 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       <Dialog open={choiceOpen} onClose={() => setChoiceOpen(false)}>
         <DialogTitle>Document Action</DialogTitle>
         <DialogContent>
-          <div>Do you want to edit the CONCOR document inline or download the precise version directly?</div>
+          <div>Do you want to edit the CONCOR document inline, download PDF, or download Excel?</div>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setChoiceOpen(false)}>Cancel</Button>
           <Button onClick={handleEdit} color="primary" variant="outlined">Edit</Button>
-          <Button onClick={downloadDirectly} color="primary" variant="contained">Download Directly</Button>
+          <Button onClick={downloadDirectly} color="primary" variant="contained">Download PDF</Button>
+          <Button onClick={handleDownloadExcel} color="success" variant="contained">Download Excel</Button>
+          <Button onClick={handleDownloadFNTable} color="warning" variant="contained">Download FN Table</Button>
         </DialogActions>
       </Dialog>
 

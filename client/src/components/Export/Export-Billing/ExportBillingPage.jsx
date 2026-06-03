@@ -45,6 +45,9 @@ import { generatePurchaseBookPDF } from "../../../utils/purchaseBookPrint";
 import DateInput from "../../common/DateInput.js";
 import { handleDateInput } from "../../../utils/dateUtils.js";
 import BillingReportsUtility from "../../Report/BillingReportsUtility";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 
 
 const s = {
@@ -1283,6 +1286,100 @@ function ExportBillingPage() {
     user?.username,
   ]);
 
+  const handleDownloadExcel = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/export-billing-jobs`, {
+        params: {
+          workMode,
+          tab: activeTab,
+          page: 1,
+          limit: 100000,
+          search: debouncedSearch,
+          exporter: selectedExporter || "",
+          branch: selectedBranch || "",
+          year: selectedYear || "",
+          unresolvedOnly: showUnresolvedOnly,
+          jobTypeFilter: activeTab === "general-jobs" ? jobTypeFilter : "",
+        },
+        headers: {
+          username: user?.username || "",
+        },
+      });
+
+      const allJobs = res.data?.data?.jobs || [];
+      if (allJobs.length === 0) {
+        alert("No jobs found to download.");
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Jobs");
+
+      worksheet.columns = [
+        { header: "Job No", key: "job_no", width: 25 },
+        { header: "Exporter Name", key: "exporter", width: 35 },
+        { header: "Booking No & Shipping Bill No", key: "booking_and_sb", width: 35 },
+      ];
+
+      worksheet.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FF1A237E" },
+        };
+        cell.alignment = { vertical: "middle", horizontal: "left" };
+      });
+
+      allJobs.forEach((job) => {
+        const bookingNo = job.booking_no || "-";
+        const sbNo = job.sb_no || "-";
+        
+        let bookingSbVal = "";
+        if (bookingNo !== "-" && sbNo !== "-") {
+          bookingSbVal = `Booking: ${bookingNo} | SB: ${sbNo}`;
+        } else if (bookingNo !== "-") {
+          bookingSbVal = `Booking: ${bookingNo}`;
+        } else if (sbNo !== "-") {
+          bookingSbVal = `SB: ${sbNo}`;
+        } else {
+          bookingSbVal = "-";
+        }
+
+        worksheet.addRow({
+          job_no: job.job_no || "",
+          exporter: job.exporter || "",
+          booking_and_sb: bookingSbVal,
+        });
+      });
+
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) {
+          row.eachCell((cell) => {
+            cell.alignment = { vertical: "middle", horizontal: "left" };
+            cell.border = {
+              top: { style: "thin", color: { argb: "FFE0E0E0" } },
+              left: { style: "thin", color: { argb: "FFE0E0E0" } },
+              bottom: { style: "thin", color: { argb: "FFE0E0E0" } },
+              right: { style: "thin", color: { argb: "FFE0E0E0" } },
+            };
+          });
+        }
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const tabNameClean = activeTab.replace(/-+/g, "_");
+      const filename = `Jobs_${tabNameClean}_${new Date().toISOString().split("T")[0]}.xlsx`;
+      saveAs(new Blob([buffer]), filename);
+    } catch (err) {
+      console.error("Excel download error:", err);
+      alert("Failed to download excel report");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateGeneralJob = async () => {
     if (!window.confirm(`Create a new General Job for year ${selectedYear}?`)) return;
     try {
@@ -1987,6 +2084,30 @@ function ExportBillingPage() {
                 ),
               }}
             />
+
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleDownloadExcel}
+              disabled={loading}
+              sx={{
+                borderRadius: '6px',
+                textTransform: "none",
+                fontWeight: 700,
+                fontSize: '11px',
+                height: 28,
+                px: 1.5,
+                color: "#16408f",
+                borderColor: "#16408f",
+                "&:hover": {
+                  backgroundColor: "#eff6ff",
+                  borderColor: "#16408f"
+                }
+              }}
+              startIcon={<CloudDownloadIcon sx={{ fontSize: 14 }} />}
+            >
+              Download Excel
+            </Button>
 
             <Box sx={{ position: "relative", ml: 'auto' }}>
               <Button

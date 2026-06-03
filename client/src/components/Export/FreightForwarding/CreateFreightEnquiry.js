@@ -3,104 +3,117 @@ import axios from "axios";
 
 const s = {
   wrapper: {
-    fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    backgroundColor: "#fafaff",
-    padding: "18px",
-    color: "#1f2937",
-    fontSize: "12px",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+    backgroundColor: "#f8fafc",
+    padding: "20px 24px",
+    color: "#0f172a",
+    fontSize: "12.5px",
   },
   card: {
     backgroundColor: "#fff",
-    borderRadius: "4px",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
-    marginBottom: "10px",
-    border: "1px solid #e5e7eb",
+    borderRadius: "3px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    marginBottom: "16px",
+    border: "1px solid #cbd5e1",
+    overflow: "hidden",
   },
   cardHeader: {
-    padding: "8px 15px",
-    borderBottom: "1px solid #f3f4f6",
+    padding: "12px 20px",
+    borderBottom: "1px solid #cbd5e1",
     display: "flex",
     alignItems: "center",
     gap: "8px",
     fontWeight: 700,
-    fontSize: "12px",
+    fontSize: "12.5px",
     textTransform: "uppercase",
-    color: "#374151",
+    letterSpacing: "0.5px",
+    color: "#334155",
+    backgroundColor: "#f8fafc",
   },
   cardBody: {
-    padding: "12px 15px",
+    padding: "16px 20px",
   },
-  borderBlue: { borderLeft: "3px solid #2563eb" },
-  borderTeal: { borderLeft: "3px solid #0891b2" },
+  borderBlue: { borderLeft: "3px solid #16408f" },
+  borderTeal: { borderLeft: "3px solid #16408f" },
   row: {
     display: "flex",
-    gap: "12px",
-    marginBottom: "10px",
+    gap: "16px",
+    marginBottom: "12px",
     flexWrap: "wrap",
   },
   col: {
     flex: 1,
-    minWidth: "170px",
+    minWidth: "180px",
     display: "flex",
     flexDirection: "column",
   },
   label: {
-    fontSize: "11px",
+    fontSize: "11.5px",
     fontWeight: 600,
-    color: "#4b5563",
-    marginBottom: "2px",
+    color: "#475569",
+    marginBottom: "4px",
   },
   input: {
-    height: "30px",
-    padding: "0 8px",
-    fontSize: "12px",
-    border: "1px solid #d1d5db",
+    height: "34px",
+    padding: "0 12px",
+    fontSize: "12.5px",
+    border: "1px solid #cbd5e1",
     borderRadius: "3px",
     outline: "none",
     width: "100%",
     boxSizing: "border-box",
-    color: "#111827",
+    color: "#0f172a",
+    backgroundColor: "#fff",
+    transition: "all 0.15s ease",
   },
   select: {
-    height: "30px",
-    padding: "0 6px",
-    fontSize: "12px",
-    border: "1px solid #d1d5db",
+    height: "34px",
+    padding: "0 10px",
+    fontSize: "12.5px",
+    border: "1px solid #cbd5e1",
     borderRadius: "3px",
     backgroundColor: "#fff",
     width: "100%",
     boxSizing: "border-box",
-    color: "#111827",
+    color: "#0f172a",
+    outline: "none",
+    transition: "all 0.15s ease",
   },
   textarea: {
-    minHeight: "65px",
-    padding: "6px 8px",
-    fontSize: "12px",
-    border: "1px solid #d1d5db",
+    minHeight: "75px",
+    padding: "8px 12px",
+    fontSize: "12.5px",
+    border: "1px solid #cbd5e1",
     borderRadius: "3px",
+    backgroundColor: "#fff",
     resize: "vertical",
     fontFamily: "inherit",
+    outline: "none",
+    transition: "all 0.15s ease",
   },
   comboWrapper: {
     position: "relative",
     width: "100%",
   },
   inputWithIcon: {
-    height: "30px",
-    padding: "0 24px 0 8px",
-    fontSize: "12px",
-    border: "1px solid #d1d5db",
+    height: "34px",
+    padding: "0 28px 0 12px",
+    fontSize: "12.5px",
+    border: "1px solid #cbd5e1",
     borderRadius: "3px",
     width: "100%",
     boxSizing: "border-box",
+    backgroundColor: "#fff",
+    outline: "none",
+    transition: "all 0.15s ease",
   },
   comboIcon: {
     position: "absolute",
-    right: "8px",
+    right: "10px",
     top: "50%",
     transform: "translateY(-50%)",
-    fontSize: "10px",
-    color: "#6b7280",
+    fontSize: "9px",
+    color: "#64748b",
     pointerEvents: "none",
   },
   dropdownList: {
@@ -108,43 +121,111 @@ const s = {
     top: "100%",
     left: 0,
     right: 0,
-    border: "1px solid #d1d5db",
+    border: "1px solid #cbd5e1",
     backgroundColor: "#fff",
     zIndex: 1000,
     maxHeight: "220px",
     overflowY: "auto",
-    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
     borderRadius: "3px",
-    marginTop: "2px",
+    marginTop: "4px",
   },
   dropdownItem: {
-    padding: "6px 8px",
+    padding: "8px 12px",
     cursor: "pointer",
-    borderBottom: "1px solid #f3f4f6",
-    fontSize: "11.5px",
+    borderBottom: "1px solid #f1f5f9",
+    fontSize: "12px",
+    color: "#334155",
+    transition: "all 0.1s ease",
+  },
+  dropdownItemActive: {
+    backgroundColor: "#eff6ff",
+    color: "#16408f",
   },
   btnPrimary: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#16408f",
     color: "#fff",
-    padding: "0 20px",
-    height: "32px",
+    padding: "0 24px",
+    height: "36px",
     borderRadius: "3px",
     border: "none",
     fontWeight: 600,
     cursor: "pointer",
-    fontSize: "12px",
+    fontSize: "12.5px",
+    transition: "all 0.15s ease",
   },
   btnClear: {
     backgroundColor: "#fff",
-    color: "#4b5563",
-    padding: "0 15px",
-    height: "32px",
+    color: "#475569",
+    padding: "0 20px",
+    height: "36px",
     borderRadius: "3px",
-    border: "1px solid #d1d5db",
+    border: "1px solid #cbd5e1",
     fontWeight: 600,
     cursor: "pointer",
-    fontSize: "12px",
+    fontSize: "12.5px",
     marginRight: "8px",
+    transition: "all 0.15s ease",
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    marginTop: "8px",
+    marginBottom: "8px",
+  },
+  th: {
+    textAlign: "left",
+    padding: "10px 12px",
+    fontSize: "11px",
+    fontWeight: 700,
+    color: "#ffffff",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    borderBottom: "2px solid #cbd5e1",
+    backgroundColor: "#19448aff",
+  },
+  td: {
+    padding: "8px 12px",
+    borderBottom: "1px solid #cbd5e1",
+    verticalAlign: "middle",
+  },
+  btnDanger: {
+    backgroundColor: "#ef4444",
+    color: "#fff",
+    padding: "0 12px",
+    height: "30px",
+    borderRadius: "3px",
+    border: "none",
+    fontWeight: 600,
+    cursor: "pointer",
+    fontSize: "11px",
+    transition: "all 0.15s ease",
+  },
+  btnAddRow: {
+    backgroundColor: "#10b981",
+    color: "#fff",
+    padding: "0 16px",
+    height: "30px",
+    borderRadius: "3px",
+    border: "none",
+    fontWeight: 600,
+    cursor: "pointer",
+    fontSize: "11.5px",
+    transition: "all 0.15s ease",
+  },
+  calcField: {
+    height: "34px",
+    padding: "0 12px",
+    fontSize: "12.5px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "3px",
+    backgroundColor: "#f1f5f9",
+    width: "100%",
+    boxSizing: "border-box",
+    color: "#334155",
+    display: "flex",
+    alignItems: "center",
+    fontWeight: "bold",
   },
 };
 
@@ -165,6 +246,7 @@ const emptyForm = {
   shipment_type: "",
   dimension: "",
   no_packages: "",
+  dimensions: [],
 };
 
 const seaPortOptions = [
@@ -179,21 +261,213 @@ const airPortOptions = [
   "INAMD4 - AHMEDABAD AIR PORT",
 ];
 
+const calculateRowCbm = (row) => {
+  const l = parseFloat(row.length) || 0;
+  const b = parseFloat(row.breadth) || 0;
+  const h = parseFloat(row.height) || 0;
+  const qty = parseFloat(row.no_packages) || 0;
+  const uom = row.uom || "cm";
+
+  let cbm = 0;
+  if (uom === "cm") {
+    cbm = (l * b * h * qty) / 1000000;
+  } else if (uom === "inch") {
+    cbm = (l * b * h * qty) * 0.000016387064;
+  } else if (uom === "m") {
+    cbm = (l * b * h * qty);
+  } else if (uom === "ft") {
+    cbm = (l * b * h * qty) * 0.028316846592;
+  }
+  return parseFloat(cbm.toFixed(4));
+};
+
 function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLabel = "Create Enquiry" }) {
-  const [formData, setFormData] = useState({ ...emptyForm, ...(initialData || {}) });
+  const [formData, setFormData] = useState(() => {
+    const initial = { ...emptyForm, ...(initialData || {}) };
+    if (!initial.dimensions || initial.dimensions.length === 0) {
+      initial.dimensions = [{
+        length: "",
+        breadth: "",
+        height: "",
+        uom: "cm",
+        no_packages: initial.no_packages || "",
+        net_weight: initial.net_weight || "",
+        gross_weight: initial.gross_weight || "",
+        calculated_cbm: 0
+      }];
+    }
+    return initial;
+  });
+
   const [organizations, setOrganizations] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleDimensionChange = (index, field, value) => {
+    setFormData((prev) => {
+      const updatedDimensions = prev.dimensions.map((row, i) => {
+        if (i === index) {
+          const updatedRow = { ...row, [field]: value };
+          updatedRow.calculated_cbm = calculateRowCbm(updatedRow);
+          return updatedRow;
+        }
+        return row;
+      });
+
+      let totalNet = 0;
+      let totalGross = 0;
+      let totalPkgs = 0;
+
+      updatedDimensions.forEach((row) => {
+        totalNet += parseFloat(row.net_weight) || 0;
+        totalGross += parseFloat(row.gross_weight) || 0;
+        totalPkgs += parseInt(row.no_packages) || 0;
+      });
+
+      const dimensionText = updatedDimensions
+        .map((row) => {
+          if (!row.length || !row.breadth || !row.height) return "";
+          const l = row.length;
+          const b = row.breadth;
+          const h = row.height;
+          const uom = row.uom || "";
+          const pkgs = row.no_packages || 0;
+          return `${l}x${b}x${h} ${uom} (${pkgs} pkgs)`;
+        })
+        .filter(Boolean)
+        .join("; ");
+
+      return {
+        ...prev,
+        dimensions: updatedDimensions,
+        net_weight: totalNet > 0 ? String(parseFloat(totalNet.toFixed(3))) : "",
+        gross_weight: totalGross > 0 ? String(parseFloat(totalGross.toFixed(3))) : "",
+        no_packages: totalPkgs > 0 ? String(totalPkgs) : "",
+        dimension: dimensionText,
+      };
+    });
+  };
+
+  const handleAddDimensionRow = () => {
+    setFormData((prev) => {
+      const newRow = {
+        length: "",
+        breadth: "",
+        height: "",
+        uom: "cm",
+        no_packages: "",
+        net_weight: "",
+        gross_weight: "",
+        calculated_cbm: 0,
+      };
+      return {
+        ...prev,
+        dimensions: [...prev.dimensions, newRow],
+      };
+    });
+  };
+
+  const handleRemoveDimensionRow = (index) => {
+    setFormData((prev) => {
+      if (prev.dimensions.length <= 1) {
+        const clearedRow = {
+          length: "",
+          breadth: "",
+          height: "",
+          uom: "cm",
+          no_packages: "",
+          net_weight: "",
+          gross_weight: "",
+          calculated_cbm: 0,
+        };
+        return {
+          ...prev,
+          dimensions: [clearedRow],
+          net_weight: "",
+          gross_weight: "",
+          no_packages: "",
+          dimension: "",
+        };
+      }
+      const updatedDimensions = prev.dimensions.filter((_, i) => i !== index);
+
+      let totalNet = 0;
+      let totalGross = 0;
+      let totalPkgs = 0;
+
+      updatedDimensions.forEach((row) => {
+        totalNet += parseFloat(row.net_weight) || 0;
+        totalGross += parseFloat(row.gross_weight) || 0;
+        totalPkgs += parseInt(row.no_packages) || 0;
+      });
+
+      const dimensionText = updatedDimensions
+        .map((row) => {
+          if (!row.length || !row.breadth || !row.height) return "";
+          const l = row.length;
+          const b = row.breadth;
+          const h = row.height;
+          const uom = row.uom || "";
+          const pkgs = row.no_packages || 0;
+          return `${l}x${b}x${h} ${uom} (${pkgs} pkgs)`;
+        })
+        .filter(Boolean)
+        .join("; ");
+
+      return {
+        ...prev,
+        dimensions: updatedDimensions,
+        net_weight: totalNet > 0 ? String(parseFloat(totalNet.toFixed(3))) : "",
+        gross_weight: totalGross > 0 ? String(parseFloat(totalGross.toFixed(3))) : "",
+        no_packages: totalPkgs > 0 ? String(totalPkgs) : "",
+        dimension: dimensionText,
+      };
+    });
+  };
+
+  const totalVolumeCbm = useMemo(() => {
+    return formData.dimensions.reduce((acc, row) => acc + (row.calculated_cbm || 0), 0);
+  }, [formData.dimensions]);
+
+  const totalGrossWeight = useMemo(() => {
+    return formData.dimensions.reduce((acc, row) => acc + (parseFloat(row.gross_weight) || 0), 0);
+  }, [formData.dimensions]);
+
+  const totalNetWeight = useMemo(() => {
+    return formData.dimensions.reduce((acc, row) => acc + (parseFloat(row.net_weight) || 0), 0);
+  }, [formData.dimensions]);
+
+  const totalPackages = useMemo(() => {
+    return formData.dimensions.reduce((acc, row) => acc + (parseInt(row.no_packages) || 0), 0);
+  }, [formData.dimensions]);
+
+  const volumetricWeight = useMemo(() => {
+    const isAir = formData.shipment_type && formData.shipment_type.includes("Air");
+    const factor = isAir ? 167 : 1000;
+    return totalVolumeCbm * factor;
+  }, [totalVolumeCbm, formData.shipment_type]);
+
+  const chargeableWeight = useMemo(() => {
+    return Math.max(totalGrossWeight, volumetricWeight);
+  }, [totalGrossWeight, volumetricWeight]);
 
   const [loadingPorts, setLoadingPorts] = useState([]);
   const [destinationPorts, setDestinationPorts] = useState([]);
   const [showLoadingDropdown, setShowLoadingDropdown] = useState(false);
   const [showDestinationDropdown, setShowDestinationDropdown] = useState(false);
 
+  const [activeOrgIndex, setActiveOrgIndex] = useState(-1);
+  const [activeLoadingPortIndex, setActiveLoadingPortIndex] = useState(-1);
+  const [activeDestinationPortIndex, setActiveDestinationPortIndex] = useState(-1);
+
   const wrapperRef = useRef(null);
   const loadingPortRef = useRef(null);
   const destinationPortRef = useRef(null);
+
+  const orgListRef = useRef(null);
+  const loadingPortListRef = useRef(null);
+  const destinationPortListRef = useRef(null);
 
   useEffect(() => {
     const close = (e) => {
@@ -210,6 +484,144 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
+  useEffect(() => {
+    setActiveOrgIndex(-1);
+  }, [organizations, showDropdown]);
+
+  useEffect(() => {
+    setActiveLoadingPortIndex(-1);
+  }, [loadingPorts, showLoadingDropdown]);
+
+  useEffect(() => {
+    setActiveDestinationPortIndex(-1);
+  }, [destinationPorts, showDestinationDropdown]);
+
+  useEffect(() => {
+    if (showDropdown && orgListRef.current && activeOrgIndex >= 0) {
+      const listEl = orgListRef.current;
+      const activeEl = listEl.children[activeOrgIndex];
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }, [activeOrgIndex, showDropdown]);
+
+  useEffect(() => {
+    if (showLoadingDropdown && loadingPortListRef.current && activeLoadingPortIndex >= 0) {
+      const listEl = loadingPortListRef.current;
+      const activeEl = listEl.children[activeLoadingPortIndex];
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }, [activeLoadingPortIndex, showLoadingDropdown]);
+
+  useEffect(() => {
+    if (showDestinationDropdown && destinationPortListRef.current && activeDestinationPortIndex >= 0) {
+      const listEl = destinationPortListRef.current;
+      const activeEl = listEl.children[activeDestinationPortIndex];
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }, [activeDestinationPortIndex, showDestinationDropdown]);
+
+  const handleOrgKeyDown = (e) => {
+    if (!showDropdown) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        setShowDropdown(true);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveOrgIndex((prev) => {
+        const next = prev + 1;
+        return next >= organizations.length ? 0 : next;
+      });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveOrgIndex((prev) => {
+        const next = prev - 1;
+        return next < 0 ? organizations.length - 1 : next;
+      });
+    } else if (e.key === "Enter") {
+      if (activeOrgIndex >= 0 && activeOrgIndex < organizations.length) {
+        e.preventDefault();
+        const selectedOrg = organizations[activeOrgIndex];
+        handleChange("organization_name", selectedOrg.organization || "");
+        setShowDropdown(false);
+      }
+    } else if (e.key === "Escape") {
+      setShowDropdown(false);
+    }
+  };
+
+  const handleLoadingPortKeyDown = (e) => {
+    if (!showLoadingDropdown) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        setShowLoadingDropdown(true);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveLoadingPortIndex((prev) => {
+        const next = prev + 1;
+        return next >= loadingPorts.length ? 0 : next;
+      });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveLoadingPortIndex((prev) => {
+        const next = prev - 1;
+        return next < 0 ? loadingPorts.length - 1 : next;
+      });
+    } else if (e.key === "Enter") {
+      if (activeLoadingPortIndex >= 0 && activeLoadingPortIndex < loadingPorts.length) {
+        e.preventDefault();
+        const selectedPort = loadingPorts[activeLoadingPortIndex];
+        handleChange("port_of_loading", selectedPort);
+        setShowLoadingDropdown(false);
+      }
+    } else if (e.key === "Escape") {
+      setShowLoadingDropdown(false);
+    }
+  };
+
+  const handleDestinationPortKeyDown = (e) => {
+    if (!showDestinationDropdown) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        setShowDestinationDropdown(true);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveDestinationPortIndex((prev) => {
+        const next = prev + 1;
+        return next >= destinationPorts.length ? 0 : next;
+      });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveDestinationPortIndex((prev) => {
+        const next = prev - 1;
+        return next < 0 ? destinationPorts.length - 1 : next;
+      });
+    } else if (e.key === "Enter") {
+      if (activeDestinationPortIndex >= 0 && activeDestinationPortIndex < destinationPorts.length) {
+        e.preventDefault();
+        const selectedPort = destinationPorts[activeDestinationPortIndex];
+        handleChange("port_of_destination", selectedPort);
+        setShowDestinationDropdown(false);
+      }
+    } else if (e.key === "Escape") {
+      setShowDestinationDropdown(false);
+    }
+  };
 
   useEffect(() => {
     const fetchOrgs = async () => {
@@ -331,23 +743,32 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
                       setShowDropdown(true);
                     }}
                     onFocus={() => setShowDropdown(true)}
+                    onKeyDown={handleOrgKeyDown}
                     placeholder="Select from directory or type manually"
                     autoComplete="off"
                   />
                   <span style={s.comboIcon}>▼</span>
                   {showDropdown && (
-                    <div style={s.dropdownList}>
+                    <div
+                      style={s.dropdownList}
+                      ref={orgListRef}
+                      onMouseLeave={() => setActiveOrgIndex(-1)}
+                    >
                       {loadingOrgs ? (
                         <div style={{ padding: "8px", color: "#9ca3af" }}>Loading...</div>
                       ) : organizations.length ? (
                         organizations.map((org, i) => (
                           <div
                             key={`${org.organization}-${i}`}
-                            style={s.dropdownItem}
+                            style={{
+                              ...s.dropdownItem,
+                              ...(activeOrgIndex === i ? s.dropdownItemActive : {})
+                            }}
                             onMouseDown={() => {
                               handleChange("organization_name", org.organization || "");
                               setShowDropdown(false);
                             }}
+                            onMouseEnter={() => setActiveOrgIndex(i)}
                           >
                             {toUpper(org.organization || "")}
                           </div>
@@ -430,21 +851,30 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
                       setShowLoadingDropdown(true);
                     }}
                     onFocus={() => setShowLoadingDropdown(true)}
+                    onKeyDown={handleLoadingPortKeyDown}
                     placeholder={formData.shipment_type ? "Search port..." : "Select type first..."}
                     autoComplete="off"
                   />
                   <span style={s.comboIcon}>▼</span>
                   {showLoadingDropdown && (
-                    <div style={s.dropdownList}>
+                    <div
+                      style={s.dropdownList}
+                      ref={loadingPortListRef}
+                      onMouseLeave={() => setActiveLoadingPortIndex(-1)}
+                    >
                       {loadingPorts.length > 0 ? (
                         loadingPorts.map((p, i) => (
                           <div
                             key={`${p}-${i}`}
-                            style={s.dropdownItem}
+                            style={{
+                              ...s.dropdownItem,
+                              ...(activeLoadingPortIndex === i ? s.dropdownItemActive : {})
+                            }}
                             onMouseDown={() => {
                               handleChange("port_of_loading", p);
                               setShowLoadingDropdown(false);
                             }}
+                            onMouseEnter={() => setActiveLoadingPortIndex(i)}
                           >
                             {p}
                           </div>
@@ -467,21 +897,30 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
                       setShowDestinationDropdown(true);
                     }}
                     onFocus={() => setShowDestinationDropdown(true)}
+                    onKeyDown={handleDestinationPortKeyDown}
                     placeholder={formData.shipment_type ? "Search port..." : "Select type first..."}
                     autoComplete="off"
                   />
                   <span style={s.comboIcon}>▼</span>
                   {showDestinationDropdown && (
-                    <div style={s.dropdownList}>
+                    <div
+                      style={s.dropdownList}
+                      ref={destinationPortListRef}
+                      onMouseLeave={() => setActiveDestinationPortIndex(-1)}
+                    >
                       {destinationPorts.length > 0 ? (
                         destinationPorts.map((p, i) => (
                           <div
                             key={`${p}-${i}`}
-                            style={s.dropdownItem}
+                            style={{
+                              ...s.dropdownItem,
+                              ...(activeDestinationPortIndex === i ? s.dropdownItemActive : {})
+                            }}
                             onMouseDown={() => {
                               handleChange("port_of_destination", p);
                               setShowDestinationDropdown(false);
                             }}
+                            onMouseEnter={() => setActiveDestinationPortIndex(i)}
                           >
                             {p}
                           </div>
@@ -513,42 +952,170 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
                 />
               </div>
             </div>
-            <div style={s.row}>
-              <div style={s.col}>
-                <label style={s.label}>Net Weight</label>
-                <input
-                  style={s.input}
-                  value={formData.net_weight}
-                  onChange={(e) => handleChange("net_weight", e.target.value)}
-                  placeholder="Net weight"
-                />
+            <div style={{ marginTop: "15px", marginBottom: "15px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "#374151" }}>Dimensions & Weight Grid</span>
+                <button
+                  type="button"
+                  style={s.btnAddRow}
+                  onClick={handleAddDimensionRow}
+                >
+                  + Add Row
+                </button>
               </div>
-              <div style={s.col}>
-                <label style={s.label}>Gross Weight</label>
-                <input
-                  style={s.input}
-                  value={formData.gross_weight}
-                  onChange={(e) => handleChange("gross_weight", e.target.value)}
-                  placeholder="Gross weight"
-                />
+
+              <div style={{ overflowX: "auto", border: "1px solid #e5e7eb", borderRadius: "4px" }}>
+                <table style={s.table}>
+                  <thead>
+                    <tr>
+                      <th style={s.th}>Length</th>
+                      <th style={s.th}>Breadth</th>
+                      <th style={s.th}>Height</th>
+                      <th style={s.th}>UOM</th>
+                      <th style={s.th}>No Packages</th>
+                      <th style={s.th}>Net Wt (Kg)</th>
+                      <th style={s.th}>Gross Wt (Kg)</th>
+                      <th style={s.th}>Calculated CBM</th>
+                      <th style={{ ...s.th, width: "50px", textAlign: "center" }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {formData.dimensions.map((row, index) => (
+                      <tr key={index}>
+                        <td style={s.td}>
+                          <input
+                            type="number"
+                            style={s.input}
+                            value={row.length}
+                            onChange={(e) => handleDimensionChange(index, "length", e.target.value)}
+                            placeholder="L"
+                            min="0"
+                            step="any"
+                          />
+                        </td>
+                        <td style={s.td}>
+                          <input
+                            type="number"
+                            style={s.input}
+                            value={row.breadth}
+                            onChange={(e) => handleDimensionChange(index, "breadth", e.target.value)}
+                            placeholder="B"
+                            min="0"
+                            step="any"
+                          />
+                        </td>
+                        <td style={s.td}>
+                          <input
+                            type="number"
+                            style={s.input}
+                            value={row.height}
+                            onChange={(e) => handleDimensionChange(index, "height", e.target.value)}
+                            placeholder="H"
+                            min="0"
+                            step="any"
+                          />
+                        </td>
+                        <td style={s.td}>
+                          <select
+                            style={s.select}
+                            value={row.uom}
+                            onChange={(e) => handleDimensionChange(index, "uom", e.target.value)}
+                          >
+                            <option value="cm">cm</option>
+                            <option value="inch">inch</option>
+                            <option value="m">m</option>
+                            <option value="ft">ft</option>
+                          </select>
+                        </td>
+                        <td style={s.td}>
+                          <input
+                            type="number"
+                            style={s.input}
+                            value={row.no_packages}
+                            onChange={(e) => handleDimensionChange(index, "no_packages", e.target.value)}
+                            placeholder="Pkgs"
+                            min="0"
+                          />
+                        </td>
+                        <td style={s.td}>
+                          <input
+                            type="number"
+                            style={s.input}
+                            value={row.net_weight}
+                            onChange={(e) => handleDimensionChange(index, "net_weight", e.target.value)}
+                            placeholder="Net weight"
+                            min="0"
+                            step="any"
+                          />
+                        </td>
+                        <td style={s.td}>
+                          <input
+                            type="number"
+                            style={s.input}
+                            value={row.gross_weight}
+                            onChange={(e) => handleDimensionChange(index, "gross_weight", e.target.value)}
+                            placeholder="Gross weight"
+                            min="0"
+                            step="any"
+                          />
+                        </td>
+                        <td style={s.td}>
+                          <div style={s.calcField}>
+                            {row.calculated_cbm ? row.calculated_cbm.toFixed(4) : "0.0000"}
+                          </div>
+                        </td>
+                        <td style={{ ...s.td, textAlign: "center" }}>
+                          <button
+                            type="button"
+                            style={s.btnDanger}
+                            onClick={() => handleRemoveDimensionRow(index)}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <div style={s.col}>
-                <label style={s.label}>Dimension</label>
-                <input
-                  style={s.input}
-                  value={formData.dimension}
-                  onChange={(e) => handleChange("dimension", e.target.value)}
-                  placeholder="L x W x H"
-                />
+            </div>
+
+            <div style={{
+              display: "flex",
+              gap: "10px",
+              flexWrap: "wrap",
+              backgroundColor: "#f9fafb",
+              border: "1px solid #e5e7eb",
+              borderRadius: "4px",
+              padding: "12px",
+              marginBottom: "15px",
+              marginTop: "10px"
+            }}>
+              <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Packages</span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{totalPackages}</span>
               </div>
-              <div style={s.col}>
-                <label style={s.label}>No Packages</label>
-                <input
-                  style={s.input}
-                  value={formData.no_packages}
-                  onChange={(e) => handleChange("no_packages", e.target.value)}
-                  placeholder="No of packages"
-                />
+              <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Net Wt (Kg)</span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{totalNetWeight.toFixed(2)}</span>
+              </div>
+              <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Gross Wt (Kg)</span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{totalGrossWeight.toFixed(2)}</span>
+              </div>
+              <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Volume (CBM)</span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: "#16408f" }}>{totalVolumeCbm.toFixed(4)}</span>
+              </div>
+              <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>
+                  Volumetric Wt ({formData.shipment_type && formData.shipment_type.includes("Air") ? "Air: 1:167" : "Sea: 1:1000"})
+                </span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: "#4b5563" }}>{volumetricWeight.toFixed(2)} Kg</span>
+              </div>
+              <div style={{ flex: "1 1 150px", display: "flex", flexDirection: "column", borderLeft: "2px solid #16408f", paddingLeft: "10px" }}>
+                <span style={{ fontSize: "10px", fontWeight: 700, color: "#16408f", textTransform: "uppercase" }}>Chargeable Weight</span>
+                <span style={{ fontSize: "16px", fontWeight: 800, color: "#16408f" }}>{chargeableWeight.toFixed(2)} Kg</span>
               </div>
             </div>
             <div style={s.row}>

@@ -5,11 +5,14 @@ import jsPDF from "jspdf";
 import DocumentEditorDialog from "./DocumentEditorDialog";
 import thatLogo from "../../../../assets/images/that-logo.png";
 import { imageToBase64 } from "../../../../utils/imageUtils";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [htmlContent, setHtmlContent] = useState("");
   const [choiceOpen, setChoiceOpen] = useState(false);
+  const [jobData, setJobData] = useState(null);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -361,11 +364,615 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
 
       `;
 
+      setJobData({
+        consignorName,
+        vesselName,
+        Bookingno,
+        agentCha,
+        cutOffDate,
+        portofLoading,
+        dischargeCountry,
+        exporterAddress,
+        gatewayPort,
+        shippingBillNo,
+        portOfDischarge,
+        stuffingType,
+        shippingLineName,
+        fobvalue,
+        hsnList,
+        descriptionOfGoods,
+        containers,
+        generatedBy,
+        logoSrc,
+        sb_date: data.sb_date,
+        total_no_of_pkgs: data.total_no_of_pkgs,
+        gross_weight_kg: data.gross_weight_kg,
+        invoiceNumber: data.invoices?.[0]?.invoiceNumber || "",
+        exporter_ref_no: data.exporter_ref_no || "",
+        railRoad: statusDetails.railRoad || "RAIL"
+      });
+
       setHtmlContent(template);
       setChoiceOpen(true);
     } catch (err) {
       console.error("Error generating Forwarding Note:", err);
       alert("Failed to generate Forwarding Note");
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    setChoiceOpen(false);
+    if (!jobData) {
+      alert("No job data loaded.");
+      return;
+    }
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Consignment Note");
+
+      // 1. Column Widths
+      worksheet.columns = [
+        { width: 6 },   // A: Sr No
+        { width: 18 },  // B: Container No
+        { width: 8 },   // C: Size
+        { width: 14 },  // D: No & Type of Pkgs.
+        { width: 35 },  // E: Description of Goods
+        { width: 14 },  // F: Cargo Weight (MT)
+        { width: 12 },  // G: TARE WT
+        { width: 18 },  // H: Customs Seal No.
+        { width: 18 },  // I: Shipping Line Seal No.
+        { width: 18 }   // J: SB NO.: & DATE
+      ];
+
+      // Row heights defaults
+      for (let r = 1; r <= 100; r++) {
+        worksheet.getRow(r).height = 20;
+      }
+
+      // Add logo image if exists
+      if (jobData.logoSrc && jobData.logoSrc.startsWith("data:image")) {
+        try {
+          const base64Data = jobData.logoSrc.split(",")[1];
+          const extension = jobData.logoSrc.match(/image\/(\w+)/)?.[1] || "png";
+          const imageId = workbook.addImage({
+            base64: base64Data,
+            extension: extension
+          });
+          worksheet.addImage(imageId, {
+            tl: { col: 0.3, row: 0.5 },
+            ext: { width: 150, height: 75 },
+            editAs: 'oneCell'
+          });
+        } catch (err) {
+          console.warn("Failed to add image to Excel", err);
+        }
+      }
+
+      // Merges
+      worksheet.mergeCells("A1:D5"); // Logo
+      worksheet.mergeCells("E1:H5"); // Title
+      worksheet.mergeCells("I1:J1"); // HPCSL USE
+      worksheet.mergeCells("I2:J2"); // CCN No. & Date :
+      worksheet.mergeCells("I3:J3"); // To :
+      worksheet.mergeCells("I4:J4"); // Rail Operator (Please Specify)
+      // I5 and J5 are not merged (HPCSL | blank)
+
+      // Row heights specifically
+      worksheet.getRow(1).height = 20;
+      worksheet.getRow(2).height = 20;
+      worksheet.getRow(3).height = 20;
+      worksheet.getRow(4).height = 20;
+      worksheet.getRow(5).height = 20;
+
+      // Values
+      worksheet.getCell("E1").value = "HPCSL CONSIGNMENT NOTE";
+      worksheet.getCell("E1").font = { name: "Arial", bold: true, size: 16 };
+      worksheet.getCell("E1").alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.getCell("I1").value = "HPCSL USE";
+      worksheet.getCell("I1").font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell("I1").alignment = { vertical: "middle", horizontal: "center" };
+      worksheet.getCell("I1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAEAEA" } };
+      worksheet.getCell("J1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAEAEA" } };
+
+      worksheet.getCell("I2").value = "CCN No. & Date :";
+      worksheet.getCell("I2").font = { name: "Arial", size: 8 };
+      worksheet.getCell("I2").alignment = { vertical: "middle", horizontal: "left" };
+
+      worksheet.getCell("I3").value = "To :";
+      worksheet.getCell("I3").font = { name: "Arial", size: 8 };
+      worksheet.getCell("I3").alignment = { vertical: "middle", horizontal: "left" };
+
+      worksheet.getCell("I4").value = "Rail Operator (Please Specify)";
+      worksheet.getCell("I4").font = { name: "Arial", size: 8 };
+      worksheet.getCell("I4").alignment = { vertical: "middle", horizontal: "left" };
+
+      worksheet.getCell("I5").value = "HPCSL";
+      worksheet.getCell("I5").font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell("I5").alignment = { vertical: "middle", horizontal: "center" };
+
+      // Row 6 & 7: Destination and Invoice
+      worksheet.mergeCells("A6:D7");
+      worksheet.mergeCells("E6:G7");
+      worksheet.mergeCells("H6:J7");
+      worksheet.getRow(6).height = 18;
+      worksheet.getRow(7).height = 18;
+
+      worksheet.getCell("A6").value = "To,\nThe Terminal Manager,\nHPCSL, The Thar Dry Port, ICD-Sanand";
+      worksheet.getCell("A6").font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell("A6").alignment = { vertical: "top", horizontal: "left", wrapText: true };
+
+      worksheet.getCell("E6").value = `Mode By : ${jobData.railRoad}`;
+      worksheet.getCell("E6").font = { name: "Arial", bold: true, size: 11 };
+      worksheet.getCell("E6").alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.getCell("H6").value = `INVOICE NO.: ${jobData.invoiceNumber}\nEXPORTER REF NO.: ${jobData.exporter_ref_no}\nCargo : Non Hazardous`;
+      worksheet.getCell("H6").font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell("H6").alignment = { vertical: "top", horizontal: "right", wrapText: true };
+
+      // Row 8: Disclaimer
+      worksheet.mergeCells("A8:J8");
+      worksheet.getRow(8).height = 35;
+      worksheet.getCell("A8").value = "Please receive the under mentioned container stuffed at ICD/Factory. We accept the all Transportation and/or provision of Containers of business incidental there to have been under taken by HPCSL-THE THAR DRY PORT on the basis of their standard terms and conditions which have been read by us and understood. No servant or agent of the company has any authority to vary or waive conditions or any part there of.";
+      worksheet.getCell("A8").font = { name: "Arial", size: 7.5 };
+      worksheet.getCell("A8").alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+
+      // Row 9 & 10: Consignor and Vessel
+      worksheet.mergeCells("A9:E10");
+      worksheet.mergeCells("F9:J10");
+      worksheet.getRow(9).height = 18;
+      worksheet.getRow(10).height = 18;
+
+      worksheet.getCell("A9").value = {
+        richText: [
+          { text: "Name of Consignor (S/Line) :\n", font: { name: "Arial", size: 8, color: { argb: "FF333333" } } },
+          { text: jobData.shippingLineName, font: { name: "Arial", bold: true, size: 10 } }
+        ]
+      };
+      worksheet.getCell("A9").alignment = { vertical: "top", horizontal: "left", wrapText: true };
+
+      worksheet.getCell("F9").value = {
+        richText: [
+          { text: "VESSEL NAME : ", font: { name: "Arial", bold: true, size: 9 } },
+          { text: jobData.vesselName + "\n", font: { name: "Arial", bold: true, size: 9 } },
+          { text: "BOOKING NO : ", font: { name: "Arial", bold: true, size: 9 } },
+          { text: jobData.Bookingno, font: { name: "Arial", bold: true, size: 9 } }
+        ]
+      };
+      worksheet.getCell("F9").alignment = { vertical: "top", horizontal: "left", wrapText: true };
+
+      // Row 11: Agent, Cut-off date, Country
+      worksheet.mergeCells("A11:E11");
+      worksheet.mergeCells("F11:H11");
+      worksheet.mergeCells("I11:J11");
+      worksheet.getRow(11).height = 30;
+
+      worksheet.getCell("A11").value = `Agent/CHA : ${jobData.agentCha}`;
+      worksheet.getCell("A11").font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell("A11").alignment = { vertical: "middle", horizontal: "left" };
+
+      worksheet.getCell("F11").value = `Cut-Off Date.: ${jobData.cutOffDate}`;
+      worksheet.getCell("F11").font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell("F11").alignment = { vertical: "middle", horizontal: "left" };
+
+      worksheet.getCell("I11").value = {
+        richText: [
+          { text: "Country\n", font: { name: "Arial", size: 8, color: { argb: "FF333333" } } },
+          { text: jobData.dischargeCountry, font: { name: "Arial", bold: true, size: 9 } }
+        ]
+      };
+      worksheet.getCell("I11").alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+
+      // Row 12 & 13: Exporter and Gateway Port
+      worksheet.mergeCells("A12:E13");
+      worksheet.mergeCells("F12:J13");
+      worksheet.getRow(12).height = 18;
+      worksheet.getRow(13).height = 18;
+
+      worksheet.getCell("A12").value = {
+        richText: [
+          { text: "Name and Address of Exporter :\n", font: { name: "Arial", size: 8, color: { argb: "FF333333" } } },
+          { text: jobData.exporterAddress, font: { name: "Arial", bold: true, size: 10 } }
+        ]
+      };
+      worksheet.getCell("A12").alignment = { vertical: "top", horizontal: "left", wrapText: true };
+
+      worksheet.getCell("F12").value = {
+        richText: [
+          { text: "Gateway Port;  ", font: { name: "Arial", bold: true, size: 11 } },
+          { text: jobData.gatewayPort, font: { name: "Arial", bold: true, size: 20 } }
+        ]
+      };
+      worksheet.getCell("F12").alignment = { vertical: "middle", horizontal: "center" };
+
+      const yellowFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
+      for (let r = 12; r <= 13; r++) {
+        for (let c = 6; c <= 10; c++) {
+          worksheet.getCell(r, c).fill = yellowFill;
+        }
+      }
+
+      // Row 14: SB No and Port of Discharge
+      worksheet.mergeCells("A14:E14");
+      worksheet.mergeCells("F14:J14");
+      worksheet.getRow(14).height = 32;
+
+      worksheet.getCell("A14").value = {
+        richText: [
+          { text: "SHIPPING BILL NO.\n", font: { name: "Arial", size: 8, color: { argb: "FF333333" } } },
+          { text: jobData.shippingBillNo, font: { name: "Arial", bold: true, size: 10 } }
+        ]
+      };
+      worksheet.getCell("A14").alignment = { vertical: "top", horizontal: "left", wrapText: true };
+
+      worksheet.getCell("F14").value = {
+        richText: [
+          { text: "Port of Discharge : ", font: { name: "Arial", size: 9 } },
+          { text: jobData.portOfDischarge, font: { name: "Arial", bold: true, size: 10 } }
+        ]
+      };
+      worksheet.getCell("F14").alignment = { vertical: "middle", horizontal: "left" };
+
+      // Row 15: Stuffing and FOB value
+      worksheet.mergeCells("A15:E15");
+      worksheet.mergeCells("F15:J15");
+      worksheet.getRow(15).height = 32;
+
+      worksheet.getCell("A15").value = {
+        richText: [
+          { text: "Stuffing (Please Tick) F/S\n", font: { name: "Arial", size: 8, color: { argb: "FF333333" } } },
+          { text: jobData.stuffingType, font: { name: "Arial", bold: true, size: 10 } }
+        ]
+      };
+      worksheet.getCell("A15").alignment = { vertical: "top", horizontal: "left", wrapText: true };
+
+      worksheet.getCell("F15").value = {
+        richText: [
+          { text: "F.O.B./C.I.F. Value : ", font: { name: "Arial", size: 9 } },
+          { text: String(jobData.fobvalue), font: { name: "Arial", bold: true, size: 10 } }
+        ]
+      };
+      worksheet.getCell("F15").alignment = { vertical: "middle", horizontal: "left" };
+
+      // Row 16: Payment Type
+      worksheet.mergeCells("A16:J16");
+      worksheet.getRow(16).height = 22;
+      worksheet.getCell("A16").value = "e:LCL/FCL/ODC:Yes/No.Payment Type:PAID / TO PAY";
+      worksheet.getCell("A16").font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell("A16").alignment = { vertical: "middle", horizontal: "left" };
+
+      // Row 17: Container Headers
+      const headers = ["Sr No", "Container No", "Size", "No & Type of Pkgs.", "Description of Goods", "Cargo Weight (MT)", "TARE WT", "Customs Seal No.", "Shipping Line Seal No.", "SB NO.: & DATE"];
+      worksheet.getRow(17).height = 28;
+      headers.forEach((h, cidx) => {
+        const cell = worksheet.getCell(17, cidx + 1);
+        cell.value = h;
+        cell.font = { name: "Arial", bold: true, size: 9 };
+        cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAEAEA" } };
+      });
+
+      // Row 18 onwards: Containers
+      let currentRow = 18;
+      let totalPkgs = 0;
+      let totalWeight = 0;
+
+      jobData.containers.forEach((c, i) => {
+        worksheet.getRow(currentRow).height = 60;
+        const pkgs = Number(c.pkgsStuffed) || 0;
+        const weight = Number(c.grossWeight) || 0;
+        const tareWeight = Number(c.tareWeightKgs) || 0;
+        totalPkgs += pkgs;
+        totalWeight += weight;
+
+        worksheet.getCell(currentRow, 1).value = i + 1;
+        worksheet.getCell(currentRow, 2).value = c.containerNo || "";
+        worksheet.getCell(currentRow, 3).value = c.type?.match(/\d+/)?.[0] || "20";
+        worksheet.getCell(currentRow, 4).value = pkgs || "";
+        worksheet.getCell(currentRow, 4).numFormat = '#,##0';
+        
+        if (i === 0) {
+          worksheet.getCell(currentRow, 5).value = {
+            richText: [
+              { text: jobData.descriptionOfGoods + "\n", font: { name: "Arial", bold: true, size: 9 } },
+              { text: "HSN: " + jobData.hsnList, font: { name: "Arial", size: 8, color: { argb: "FF333333" } } }
+            ]
+          };
+        } else {
+          worksheet.getCell(currentRow, 5).value = "";
+        }
+        
+        worksheet.getCell(currentRow, 6).value = weight || "";
+        worksheet.getCell(currentRow, 6).numFormat = '#,##0';
+        worksheet.getCell(currentRow, 7).value = tareWeight || "";
+        worksheet.getCell(currentRow, 7).numFormat = '#,##0';
+        worksheet.getCell(currentRow, 8).value = c.sealNo || "";
+        worksheet.getCell(currentRow, 9).value = c.shippingLineSealNo || "";
+
+        if (i === 0) {
+          worksheet.getCell(currentRow, 10).value = {
+            richText: [
+              { text: jobData.shippingBillNo + "\n\n", font: { name: "Arial", bold: true, size: 9 } },
+              { text: "dt " + formatDate(jobData.sb_date), font: { name: "Arial", bold: true, size: 9 } }
+            ]
+          };
+        } else {
+          worksheet.getCell(currentRow, 10).value = "";
+        }
+
+        // Alignments
+        worksheet.getRow(currentRow).eachCell((cell, colNum) => {
+          cell.font = cell.font || { name: "Arial", size: 9 };
+          if (colNum === 2) cell.font.bold = true;
+          cell.alignment = { vertical: "middle", horizontal: colNum === 5 ? "left" : "center", wrapText: true };
+        });
+
+        currentRow++;
+      });
+
+      // Total Row
+      worksheet.getRow(currentRow).height = 24;
+      worksheet.mergeCells(`A${currentRow}:C${currentRow}`);
+      worksheet.getCell(`A${currentRow}`).value = "Total:";
+      worksheet.getCell(`A${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "middle", horizontal: "right" };
+
+      worksheet.getCell(`D${currentRow}`).value = totalPkgs || "";
+      worksheet.getCell(`D${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`D${currentRow}`).numFormat = '#,##0';
+      worksheet.getCell(`D${currentRow}`).alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.getCell(`F${currentRow}`).value = totalWeight || "";
+      worksheet.getCell(`F${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`F${currentRow}`).numFormat = '#,##0.000';
+      worksheet.getCell(`F${currentRow}`).alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.mergeCells(`G${currentRow}:J${currentRow}`);
+
+      currentRow++;
+
+      // Certifications Table (6 items)
+      const certs = [
+        "I do hereby certify that I have satisfied by self description, marks, quantity, measurement and weight of goods consigned by me have been correctly entered in the note.",
+        "I hereby certify that the goods described above are in goods order and condition at the time of dispatch.",
+        "I hereby certify that goods are not classified as dangerous in Indian Railway. Road Tariff of my IMO regulations.",
+        "It is certify that rated tonnage of the commitment (5) has been exceeded.",
+        "IF THE CONTAINER WEIGHT, IS NOT SPECIFIED THEIR TARE WEIGHT, IT WILL BE TAKEN AS 2.3 TONS FOR 20' & 4.6 TONS FOR 40'",
+        "I understand that the principal terms and conditions applying to the carriage of above containers are subject to the conditions and liabilities as specified in the Indian Railway Act 1989, as amended from time to time."
+      ];
+
+      certs.forEach((cert, cidx) => {
+        worksheet.getRow(currentRow).height = 26;
+        worksheet.getCell(currentRow, 1).value = cidx + 1;
+        worksheet.getCell(currentRow, 1).font = { name: "Arial", bold: true, size: 8 };
+        worksheet.getCell(currentRow, 1).alignment = { vertical: "middle", horizontal: "center" };
+
+        worksheet.mergeCells(`B${currentRow}:J${currentRow}`);
+        worksheet.getCell(`B${currentRow}`).value = cert;
+        worksheet.getCell(`B${currentRow}`).font = { name: "Arial", bold: cidx > 0, size: 8 };
+        worksheet.getCell(`B${currentRow}`).alignment = { 
+          vertical: "middle", 
+          horizontal: cidx === 0 ? "left" : "center", 
+          wrapText: true 
+        };
+        currentRow++;
+      });
+
+      // Footer - Remarks & Signature
+      worksheet.getRow(currentRow).height = 20;
+      worksheet.getRow(currentRow + 1).height = 20;
+      worksheet.getRow(currentRow + 2).height = 20;
+
+      worksheet.mergeCells(`A${currentRow}:E${currentRow+2}`);
+      worksheet.getCell(`A${currentRow}`).value = {
+        richText: [
+          { text: "PDA A/C/Cheque No):\n\n\n", font: { name: "Arial", bold: true, size: 9 } },
+          { text: jobData.shippingLineName, font: { name: "Arial", bold: true, size: 12 } }
+        ]
+      };
+      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "top", horizontal: "left", wrapText: true };
+
+      worksheet.mergeCells(`F${currentRow}:J${currentRow+2}`);
+      worksheet.getCell(`F${currentRow}`).value = {
+        richText: [
+          { text: `PDA/PDC ${jobData.shippingLineName}\n\n\n`, font: { name: "Arial", bold: true, size: 9 } },
+          { text: jobData.generatedBy.toUpperCase(), font: { name: "Arial", bold: true, size: 11 } }
+        ]
+      };
+      worksheet.getCell(`F${currentRow}`).alignment = { vertical: "top", horizontal: "right", wrapText: true };
+      
+      currentRow += 3;
+
+      // Date / Stamp Sign
+      worksheet.getRow(currentRow).height = 22;
+      worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
+      worksheet.getCell(`A${currentRow}`).value = `DATE : ${formatDate(new Date())}`;
+      worksheet.getCell(`A${currentRow}`).font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "middle", horizontal: "left" };
+
+      worksheet.mergeCells(`H${currentRow}:J${currentRow}`);
+      worksheet.getCell(`H${currentRow}`).value = "STAMP AND SIGNATURE";
+      worksheet.getCell(`H${currentRow}`).font = { name: "Arial", bold: true, size: 9 };
+      worksheet.getCell(`H${currentRow}`).alignment = { vertical: "middle", horizontal: "center" };
+
+      currentRow++;
+
+      // HPCSL USE
+      worksheet.getRow(currentRow).height = 20;
+      worksheet.getRow(currentRow + 1).height = 20;
+      worksheet.mergeCells(`A${currentRow}:J${currentRow+1}`);
+      worksheet.getCell(`A${currentRow}`).value = {
+        richText: [
+          { text: "(HPCSL USE ONLY)\n", font: { name: "Arial", bold: true, size: 9, underline: true } },
+          { text: "DATE & TIME OF BOOKING OR (EA) :", font: { name: "Arial", bold: true, size: 9 } }
+        ]
+      };
+      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "top", horizontal: "left", wrapText: true };
+
+      currentRow += 2;
+
+      // 4. Apply thin borders around all cells
+      const borderStyle = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } }
+      };
+
+      for (let r = 1; r < currentRow; r++) {
+        const rowObj = worksheet.getRow(r);
+        for (let c = 1; c <= 10; c++) {
+          const cell = rowObj.getCell(c);
+          cell.border = borderStyle;
+        }
+      }
+
+      // Write buffer and save
+      const buffer = await workbook.xlsx.writeBuffer();
+      saveAs(new Blob([buffer]), `HPCSL_Consignment_Note_${jobNo}.xlsx`);
+    } catch (error) {
+      console.error("Error generating Excel:", error);
+      alert("Failed to generate Excel file.");
+    }
+  };
+
+  const handleDownloadFNTable = async () => {
+    setChoiceOpen(false);
+    if (!jobData) {
+      alert("No job data loaded.");
+      return;
+    }
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("FN Table");
+
+      // 1. Column Widths
+      worksheet.columns = [
+        { width: 6 },   // A: Sr No
+        { width: 18 },  // B: Container No
+        { width: 8 },   // C: Size
+        { width: 14 },  // D: No & Type of Pkgs.
+        { width: 35 },  // E: Description of Goods
+        { width: 14 },  // F: Cargo Weight (MT)
+        { width: 12 },  // G: TARE WT
+        { width: 18 },  // H: Customs Seal No.
+        { width: 18 },  // I: Shipping Line Seal No.
+        { width: 18 }   // J: SB NO.: & DATE
+      ];
+
+      // Row 1: Headers
+      const headers = ["Sr No", "Container No", "Size", "No & Type of Pkgs.", "Description of Goods", "Cargo Weight (MT)", "TARE WT", "Customs Seal No.", "Shipping Line Seal No.", "SB NO.: & DATE"];
+      worksheet.getRow(1).height = 28;
+      headers.forEach((h, cidx) => {
+        const cell = worksheet.getCell(1, cidx + 1);
+        cell.value = h;
+        cell.font = { name: "Arial", bold: true, size: 9 };
+        cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAEAEA" } };
+      });
+
+      // Rows 2 onwards: Containers
+      let currentRow = 2;
+      let totalPkgs = 0;
+      let totalWeight = 0;
+
+      jobData.containers.forEach((c, i) => {
+        worksheet.getRow(currentRow).height = 60;
+        const pkgs = Number(c.pkgsStuffed) || 0;
+        const weight = Number(c.grossWeight) || 0;
+        const tareWeight = Number(c.tareWeightKgs) || 0;
+        totalPkgs += pkgs;
+        totalWeight += weight;
+
+        worksheet.getCell(currentRow, 1).value = i + 1;
+        worksheet.getCell(currentRow, 2).value = c.containerNo || "";
+        worksheet.getCell(currentRow, 3).value = c.type?.match(/\d+/)?.[0] || "20";
+        worksheet.getCell(currentRow, 4).value = pkgs || "";
+        worksheet.getCell(currentRow, 4).numFormat = '#,##0';
+        
+        if (i === 0) {
+          worksheet.getCell(currentRow, 5).value = {
+            richText: [
+              { text: jobData.descriptionOfGoods + "\n", font: { name: "Arial", bold: true, size: 9 } },
+              { text: "HSN: " + jobData.hsnList, font: { name: "Arial", size: 8, color: { argb: "FF333333" } } }
+            ]
+          };
+        } else {
+          worksheet.getCell(currentRow, 5).value = "";
+        }
+        
+        worksheet.getCell(currentRow, 6).value = weight || "";
+        worksheet.getCell(currentRow, 6).numFormat = '#,##0';
+        worksheet.getCell(currentRow, 7).value = tareWeight || "";
+        worksheet.getCell(currentRow, 7).numFormat = '#,##0';
+        worksheet.getCell(currentRow, 8).value = c.sealNo || "";
+        worksheet.getCell(currentRow, 9).value = c.shippingLineSealNo || "";
+
+        if (i === 0) {
+          worksheet.getCell(currentRow, 10).value = {
+            richText: [
+              { text: jobData.shippingBillNo + "\n\n", font: { name: "Arial", bold: true, size: 9 } },
+              { text: "dt " + formatDate(jobData.sb_date), font: { name: "Arial", bold: true, size: 9 } }
+            ]
+          };
+        } else {
+          worksheet.getCell(currentRow, 10).value = "";
+        }
+
+        // Alignments
+        worksheet.getRow(currentRow).eachCell((cell, colNum) => {
+          cell.font = cell.font || { name: "Arial", size: 9 };
+          if (colNum === 2) cell.font.bold = true;
+          cell.alignment = { vertical: "middle", horizontal: colNum === 5 ? "left" : "center", wrapText: true };
+        });
+
+        currentRow++;
+      });
+
+      // Total Row
+      worksheet.getRow(currentRow).height = 24;
+      worksheet.mergeCells(`A${currentRow}:C${currentRow}`);
+      worksheet.getCell(`A${currentRow}`).value = "Total:";
+      worksheet.getCell(`A${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "middle", horizontal: "right" };
+
+      worksheet.getCell(`D${currentRow}`).value = totalPkgs || "";
+      worksheet.getCell(`D${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`D${currentRow}`).numFormat = '#,##0';
+      worksheet.getCell(`D${currentRow}`).alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.getCell(`F${currentRow}`).value = totalWeight || "";
+      worksheet.getCell(`F${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
+      worksheet.getCell(`F${currentRow}`).numFormat = '#,##0.000';
+      worksheet.getCell(`F${currentRow}`).alignment = { vertical: "middle", horizontal: "center" };
+
+      worksheet.mergeCells(`G${currentRow}:J${currentRow}`);
+
+      currentRow++;
+
+      // Apply borders
+      const borderStyle = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } }
+      };
+
+      for (let r = 1; r < currentRow; r++) {
+        const rowObj = worksheet.getRow(r);
+        for (let c = 1; c <= 10; c++) {
+          rowObj.getCell(c).border = borderStyle;
+        }
+      }
+
+      // Write buffer and save
+      const buffer = await workbook.xlsx.writeBuffer();
+      saveAs(new Blob([buffer]), `FN_Table_${jobNo}.xlsx`);
+    } catch (error) {
+      console.error("Error generating FN Table Excel:", error);
+      alert("Failed to generate FN Table Excel file.");
     }
   };
 
@@ -419,7 +1026,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         <DialogTitle>Document Action</DialogTitle>
         <DialogContent>
           <div style={{ marginBottom: "10px" }}>
-            Do you want to edit the document inline or download it directly?
+            Do you want to edit the document inline, download PDF directly, or download Excel?
           </div>
         </DialogContent>
         <DialogActions>
@@ -430,7 +1037,13 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
             Edit
           </Button>
           <Button onClick={handleDownloadDirectly} variant="contained" color="primary">
-            Download Directly
+            Download PDF
+          </Button>
+          <Button onClick={handleDownloadExcel} variant="contained" color="success">
+            Download Excel
+          </Button>
+          <Button onClick={handleDownloadFNTable} variant="contained" color="warning">
+            Download FN Table
           </Button>
         </DialogActions>
       </Dialog>

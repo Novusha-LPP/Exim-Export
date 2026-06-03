@@ -19,6 +19,18 @@ const freightEnquirySchema = new mongoose.Schema(
     gross_weight: { type: String },
     dimension: { type: String },
     no_packages: { type: String },
+    dimensions: [
+      {
+        length: { type: Number },
+        breadth: { type: Number },
+        height: { type: Number },
+        uom: { type: String },
+        no_packages: { type: Number },
+        net_weight: { type: Number },
+        gross_weight: { type: Number },
+        calculated_cbm: { type: Number }
+      }
+    ],
     remarks: { type: String },
     source_job_no: { type: String },
     status: { type: String, default: "Open" },

@@ -4,21 +4,65 @@ import CreateFreightEnquiry from "./CreateFreightEnquiry";
 import FreightQuotation from "./FreightQuotation";
 
 const THEME = {
-  blue: "#2563eb",
-  border: "#e5e7eb",
-  text: "#111827",
-  textMuted: "#6b7280",
+  blue: "#16408f",
+  border: "#cbd5e1",
+  text: "#0f172a",
+  textMuted: "#64748b",
 };
 
 const s = {
-  section: { marginBottom: "20px" },
-  title: { fontSize: "14px", fontWeight: 700, borderBottom: `1px solid ${THEME.border}`, paddingBottom: "5px", marginBottom: "10px" },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "10px" },
-  label: { fontSize: "11px", color: THEME.textMuted },
-  value: { fontSize: "13px", fontWeight: 600 },
-  input: { width: "100%", height: "30px", border: `1px solid ${THEME.border}`, borderRadius: "4px", padding: "0 8px", fontSize: "12px" },
-  btn: { padding: "6px 12px", borderRadius: "5px", border: "none", fontWeight: 700, cursor: "pointer", fontSize: "12px" },
-  btnPrimary: { backgroundColor: THEME.blue, color: "#fff" },
+  section: { marginBottom: "24px", padding: "12px 0px" },
+  title: {
+    fontSize: "13px",
+    fontWeight: 700,
+    borderBottom: `2px solid ${THEME.border}`,
+    paddingBottom: "8px",
+    marginBottom: "16px",
+    color: "#1e293b",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+    gap: "16px",
+    backgroundColor: "#f8fafc",
+    padding: "16px 20px",
+    borderRadius: "3px",
+    border: "1px solid #cbd5e1",
+  },
+  label: { fontSize: "11px", color: THEME.textMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.3px", marginBottom: "2px" },
+  value: { fontSize: "13px", fontWeight: 700, color: "#1e293b" },
+  input: {
+    width: "100%",
+    height: "34px",
+    border: `1px solid ${THEME.border}`,
+    borderRadius: "3px",
+    padding: "0 12px",
+    fontSize: "12.5px",
+    backgroundColor: "#fff",
+    outline: "none",
+    transition: "all 0.15s ease",
+    color: "#0f172a",
+  },
+  btn: {
+    padding: "0 16px",
+    height: "32px",
+    borderRadius: "3px",
+    border: "none",
+    fontWeight: 700,
+    cursor: "pointer",
+    fontSize: "12px",
+    transition: "all 0.15s ease",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "6px",
+  },
+  btnPrimary: {
+    backgroundColor: THEME.blue,
+    color: "#fff",
+  },
 };
 
 function CaptureRates({ enquiry, onUpdate, forwarders }) {
@@ -243,7 +287,7 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
             {!isEditingDetails && (
               <button
                 onClick={() => setIsEditingDetails(true)}
-                style={{ ...s.btn, backgroundColor: "#6366f1", color: "#fff" }}
+                style={{ ...s.btn, backgroundColor: "#16408f", color: "#fff" }}
               >
                 Edit Info
               </button>
@@ -252,7 +296,7 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
         </div>
 
         {isEditingDetails ? (
-          <div style={{ background: "#fff", border: `1px solid ${THEME.border}`, borderRadius: "8px", overflow: "hidden" }}>
+          <div style={{ background: "#fff", border: `1px solid ${THEME.border}`, borderRadius: "3px", overflow: "hidden" }}>
             <CreateFreightEnquiry
               initialData={enquiry}
               submitLabel="Save Changes"
@@ -291,7 +335,7 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
         </div>
 
         {showAdd && (
-          <div style={{ background: "#f9fafb", padding: "15px", borderRadius: "8px", marginBottom: "20px" }}>
+          <div style={{ background: "#f9fafb", padding: "15px", borderRadius: "3px", marginBottom: "20px" }}>
             <div style={{ marginBottom: "15px" }}>
               <label style={s.label}>Forwarder</label>
               <select
@@ -310,7 +354,7 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
                   <button 
                     type="button" 
                     onClick={() => handleAddCharge('base_rates')}
-                    style={{ fontSize: 10, padding: '2px 6px', cursor: 'pointer', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 3 }}
+                    style={{ fontSize: 10, padding: '2px 6px', cursor: 'pointer', background: '#16408f', color: '#fff', border: 'none', borderRadius: 3 }}
                   >
                     + Add
                   </button>
@@ -353,7 +397,7 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
                   <button 
                     type="button" 
                     onClick={() => handleAddCharge('shipping_line_rates')}
-                    style={{ fontSize: 10, padding: '2px 6px', cursor: 'pointer', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 3 }}
+                    style={{ fontSize: 10, padding: '2px 6px', cursor: 'pointer', background: '#16408f', color: '#fff', border: 'none', borderRadius: 3 }}
                   >
                     + Add
                   </button>
@@ -417,41 +461,50 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
           </div>
         )}
 
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ backgroundColor: "#f3f4f6" }}>
-              <th style={{ textAlign: "left", padding: "8px", fontSize: "12px" }}>Forwarder</th>
-              <th style={{ textAlign: "right", padding: "8px", fontSize: "12px" }}>Total Amount</th>
-              <th style={{ textAlign: "right", padding: "8px", fontSize: "12px" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(enquiry.received_rates || []).map((r, i) => (
-              <tr key={i} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                <td style={{ padding: "8px", fontSize: "13px" }}>{r.forwarder_name}</td>
-                <td style={{ padding: "8px", fontSize: "13px", textAlign: "right", fontWeight: 700 }}>₹{r.total?.toLocaleString()}</td>
-                <td style={{ padding: "8px", fontSize: "13px", textAlign: "right" }}>
-                  <div style={{ display: "flex", gap: "5px", justifyContent: "flex-end" }}>
-                    {enquiry.status === "Converted" && (
-                      <button
-                        onClick={() => handlePushChargesToJob(r)}
-                        style={{ ...s.btn, backgroundColor: "#2563eb", color: "#fff" }}
-                      >
-                        Push to Job
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setSelectedRateForQuote(r)}
-                      style={{ ...s.btn, backgroundColor: "#10b981", color: "#fff" }}
-                    >
-                      Prepare Quote
-                    </button>
-                  </div>
-                </td>
+        <div style={{ border: "1px solid #cbd5e1", borderRadius: "3px", overflow: "hidden", marginTop: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12.5px" }}>
+            <thead>
+              <tr style={{ backgroundColor: "#19448aff", borderBottom: "2px solid #cbd5e1" }}>
+                <th style={{ textAlign: "left", padding: "12px 16px", fontSize: "11px", fontWeight: 700, color: "#ffffff", textTransform: "uppercase", letterSpacing: "0.5px" }}>Forwarder</th>
+                <th style={{ textAlign: "right", padding: "12px 16px", fontSize: "11px", fontWeight: 700, color: "#ffffff", textTransform: "uppercase", letterSpacing: "0.5px" }}>Total Amount</th>
+                <th style={{ textAlign: "right", padding: "12px 16px", fontSize: "11px", fontWeight: 700, color: "#ffffff", textTransform: "uppercase", letterSpacing: "0.5px" }}>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(enquiry.received_rates || []).map((r, i) => (
+                <tr key={i} style={{ borderBottom: "1px solid #cbd5e1", transition: "background-color 0.15s ease" }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: 600, color: "#1e293b" }}>{r.forwarder_name}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", textAlign: "right", fontWeight: 700, color: "#16408f" }}>₹{r.total?.toLocaleString()}</td>
+                  <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                    <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                      {enquiry.status === "Converted" && (
+                        <button
+                          onClick={() => handlePushChargesToJob(r)}
+                          style={{ ...s.btn, backgroundColor: "#16408f", color: "#fff" }}
+                        >
+                          Push to Job
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setSelectedRateForQuote(r)}
+                        style={{ ...s.btn, backgroundColor: "#059669", color: "#fff" }}
+                      >
+                        Prepare Quote
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {(!enquiry.received_rates || enquiry.received_rates.length === 0) && (
+                <tr>
+                  <td colSpan={3} style={{ textAlign: "center", padding: "30px 16px", color: THEME.textMuted }}>
+                    No rates received yet. Click <strong>+ Add Rate</strong> to record.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

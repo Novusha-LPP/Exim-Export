@@ -1516,7 +1516,7 @@ const statusDetailsSchema = new Schema(
     movementCopyUpload: [String],
     shippingInstructionsUpload: [String],
     form13CopyUpload: [String],
-    assemtnCopy: [String],
+    assessmentCopy: [String],
     forwarderName: { type: String, trim: true },
     handoverConcorTharSanganaRailRoadDate: { type: String, trim: true },
     billingDocsSentDt: { type: String, trim: true },
