@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Container,
   Paper,
   Typography,
   Button,
@@ -27,7 +26,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Toolbar,
   Avatar,
   Divider,
 } from "@mui/material";
@@ -45,39 +43,11 @@ import {
   FileDownload as FileDownloadIcon,
   Email as EmailIcon,
 } from "@mui/icons-material";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
 import DirectoryForm from "./DirectoryForm.js";
 import axios from "axios"; // For testing API call
 import DirectoryService from "../Directories/DirectoryService";
 import { formatDate } from "../../../utils/dateUtils";
 
-// Professional Logistics Theme
-const logisticsTheme = createTheme({
-  palette: {
-    primary: { main: "#2c5aa0", light: "#5a7bc4", dark: "#1e3a6f" },
-    secondary: { main: "#ff6b35", light: "#ff8a65", dark: "#e64a19" },
-    background: { default: "#f5f7fa", paper: "#ffffff" },
-    text: { primary: "#2c3e50", secondary: "#546e7a" },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h4: { fontWeight: 600, color: "#2c3e50" },
-    h6: { fontWeight: 500, color: "#34495e" },
-  },
-  components: {
-    MuiCard: {
-      styleOverrides: {
-        root: { boxShadow: "0 2px 8px rgba(0,0,0,0.08)", borderRadius: 8 },
-      },
-    },
-    MuiButton: {
-      styleOverrides: {
-        contained: { borderRadius: 6, textTransform: "none", fontWeight: 500 },
-      },
-    },
-    MuiTableHead: { styleOverrides: { root: { backgroundColor: "#f8fafc" } } },
-  },
-});
 
 // Directory Listing Table Columns (Compact, dense structure)
 const TABLE_COLUMNS = [
@@ -536,328 +506,288 @@ const ExportDirectory = () => {
   );
 
   return (
-    <ThemeProvider theme={logisticsTheme}>
-      <Box sx={{ bgcolor: "background.default", minHeight: "100vh" }}>
-        <Container maxWidth="xxl" sx={{ py: 4 }}>
-          {/* Header */}
-          <Paper
-            sx={{
-              mb: 3,
-              background: "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
-            }}
+    <Box>
+      <Paper sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, gap: 2 }}>
+        {/* Search */}
+        <TextField
+          size="small"
+          placeholder="Search organizations, IE codes, PAN, AD codes..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          sx={{ flexGrow: 1, maxWidth: 400 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="action" />
+              </InputAdornment>
+            ),
+          }}
+        />
+
+        {/* Status Filter */}
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <InputLabel>Status</InputLabel>
+          <Select
+            value={statusFilter}
+            label="Status"
+            onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <Toolbar sx={{ color: "white", py: 2 }}>
-              <BusinessIcon sx={{ mr: 2, fontSize: 32 }} />
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="h4" component="h1" color="white">
-                  Export Directory Management
-                </Typography>
-                <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
-                  Comprehensive logistics directory system
-                </Typography>
-              </Box>
-              <Box sx={{ display: "flex", gap: 1 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<FileDownloadIcon />}
-                  onClick={handleExportToExcel}
-                  sx={{
-                    bgcolor: "rgba(255,255,255,0.15)",
-                    "&:hover": { bgcolor: "rgba(255,255,255,0.25)" },
-                  }}
-                >
-                  Export to Excel
-                </Button>
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={handleAdd}
-                  sx={{
-                    bgcolor: "rgba(255,255,255,0.2)",
-                    "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
-                  }}
-                >
-                  Add Directory
-                </Button>
-              </Box>
-            </Toolbar>
-          </Paper>
+            <MenuItem value="">All Status</MenuItem>
+            <MenuItem value="Pending">Pending</MenuItem>
+            <MenuItem value="Approved">Approved</MenuItem>
+            <MenuItem value="Rejected">Rejected</MenuItem>
+          </Select>
+        </FormControl>
 
-          {/* Search & Filter Controls */}
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={5}>
-                <TextField
-                  size="small"
-                  fullWidth
-                  placeholder="Search organizations, IE codes, PAN, AD codes..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon color="primary" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Status</InputLabel>
-                  <Select
-                    value={statusFilter}
-                    label="Status"
-                    onChange={(e) => setStatusFilter(e.target.value)}
+        {/* Count */}
+        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+          {filteredDirectories.length} record{filteredDirectories.length !== 1 ? 's' : ''}
+        </Typography>
+
+        {/* Actions */}
+        <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+          <Button
+            variant="outlined"
+            startIcon={<FileDownloadIcon />}
+            onClick={handleExportToExcel}
+            size="small"
+          >
+            Export CSV
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAdd}
+            size="small"
+          >
+            Add Directory
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* Directory Table */}
+      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+        <TableContainer sx={{ maxHeight: "70vh" }}>
+          <Table stickyHeader size="small">
+            <TableHead>
+              <TableRow>
+                {TABLE_COLUMNS.map((col) => (
+                  <TableCell
+                    key={col.key}
+                    sx={{ fontWeight: 600, minWidth: col.minWidth, background: '#f5f5f5' }}
+                    align={col.align || "left"}
                   >
-                    <MenuItem value="">All Status</MenuItem>
-                    <MenuItem value="Pending">Pending</MenuItem>
-                    <MenuItem value="Approved">Approved</MenuItem>
-                    <MenuItem value="Rejected">Rejected</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Box sx={{ textAlign: "center" }}>
-                  <Typography variant="h6" color="primary">
-                    {filteredDirectories.length}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Total Directories
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </Paper>
-
-          {/* Directory Table - Compact, Professional, Dense */}
-          <Paper>
-            <TableContainer sx={{ maxHeight: "70vh" }}>
-              <Table stickyHeader size="small">
-                <TableHead>
-                  <TableRow>
-                    {TABLE_COLUMNS.map((col) => (
-                      <TableCell
-                        key={col.key}
-                        sx={{ fontWeight: 600, minWidth: col.minWidth }}
-                        align={col.align || "left"}
-                      >
-                        {col.label}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={TABLE_COLUMNS.length}
-                        align="center"
-                        sx={{ py: 4 }}
-                      >
-                        Loading directories...
-                      </TableCell>
-                    </TableRow>
-                  ) : paginatedDirectories.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={TABLE_COLUMNS.length}
-                        align="center"
-                        sx={{ py: 4 }}
-                      >
-                        <Box sx={{ textAlign: "center" }}>
-                          <BusinessIcon
-                            sx={{
-                              fontSize: 48,
-                              color: "text.secondary",
-                              mb: 2,
-                            }}
-                          />
-                          <Typography variant="h6" color="textSecondary">
-                            No directories found
-                          </Typography>
-                          <Typography variant="body2" color="textSecondary">
-                            Try adjusting your search filters
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedDirectories.map((directory) => (
-                      <TableRow
-                        key={directory._id}
-                        hover
+                    {col.label}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={TABLE_COLUMNS.length}
+                    align="center"
+                    sx={{ py: 4 }}
+                  >
+                    Loading directories...
+                  </TableCell>
+                </TableRow>
+              ) : paginatedDirectories.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={TABLE_COLUMNS.length}
+                    align="center"
+                    sx={{ py: 4 }}
+                  >
+                    <BusinessIcon
+                      sx={{
+                        fontSize: 48,
+                        color: "text.secondary",
+                        mb: 2,
+                        display: 'block',
+                        mx: 'auto',
+                      }}
+                    />
+                    <Typography variant="h6" color="textSecondary">
+                      No directories found
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Try adjusting your search filters
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedDirectories.map((directory) => (
+                  <TableRow
+                    key={directory._id}
+                    hover
+                    sx={{
+                      "&:hover": { bgcolor: "rgba(0,0,0,0.02)" },
+                      height: 48,
+                    }}
+                  >
+                    <TableCell>
+                      <Box
                         sx={{
-                          "&:hover": { bgcolor: "rgba(44,90,160,0.05)" },
-                          height: 48,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
                         }}
                       >
-                        <TableCell>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1,
-                            }}
+                        {getEntityIcon(directory.generalInfo?.entityType)}
+                        <Box>
+                          <Typography variant="body2" fontWeight={500}>
+                            {directory.organization}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="textSecondary"
                           >
-                            {getEntityIcon(directory.generalInfo?.entityType)}
-                            <Box>
-                              <Typography variant="body2" fontWeight={500}>
-                                {directory.organization}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="textSecondary"
-                              >
-                                {directory.generalInfo?.exporterType || "-"}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={directory.approvalStatus}
-                            color={getStatusColor(directory.approvalStatus)}
+                            {directory.generalInfo?.exporterType || "-"}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={directory.approvalStatus}
+                        color={getStatusColor(directory.approvalStatus)}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontFamily="monospace">
+                        {getFirstGstNo(directory.branchInfo)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontFamily="monospace">
+                        {directory.registrationDetails?.ieCode || "-"}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontFamily="monospace">
+                        {getFirstAdCode(directory.bankDetails)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontFamily="monospace">
+                        {directory.registrationDetails?.panNo || "-"}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {directory.createdAt
+                          ? formatDate(directory.createdAt)
+                          : "-"}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "center",
+                          gap: 0.5,
+                        }}
+                      >
+                        <IconButton
+                            onClick={() => handleTestEmail(directory)}
                             size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontFamily="monospace">
-                            {getFirstGstNo(directory.branchInfo)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontFamily="monospace">
-                            {directory.registrationDetails?.ieCode || "-"}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontFamily="monospace">
-                            {getFirstAdCode(directory.bankDetails)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontFamily="monospace">
-                            {directory.registrationDetails?.panNo || "-"}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {directory.createdAt
-                              ? formatDate(directory.createdAt)
-                              : "-"}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "center",
-                              gap: 0.5,
-                            }}
+                            title="Send Test DSR Email"
+                            color="secondary"
                           >
-                            <IconButton
-                                onClick={() => handleTestEmail(directory)}
-                                size="small"
-                                title="Send Test DSR Email"
-                                color="secondary"
-                                sx={{ "&:hover": { color: "#ff6b35" } }}
-                              >
-                                <EmailIcon fontSize="small" />
-                              </IconButton>
-                            <IconButton
-                              onClick={() => handleView(directory)}
-                              size="small"
-                              title="View"
-                              color="primary"
-                            >
-                              <ViewIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              onClick={() => handleEdit(directory)}
-                              size="small"
-                              title="Edit"
-                              color="info"
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              onClick={() => handleDelete(directory._id)}
-                              size="small"
-                              title="Delete"
-                              color="error"
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <TablePagination
-              rowsPerPageOptions={[10, 25, 50, 100]}
-              component="div"
-              count={filteredDirectories.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              sx={{ borderTop: 1, borderColor: "divider" }}
-            />
-          </Paper>
-
-          {/* Directory Dialog */}
-          <Dialog
-            open={openDialog}
-            onClose={() => setOpenDialog(false)}
-            maxWidth="xl"
-            fullWidth
-          >
-            <DialogTitle
-              sx={{ bgcolor: "primary.main", color: "white", pb: 1 }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <BusinessIcon />
-                {viewMode
-                  ? "View Directory"
-                  : selectedDirectory
-                    ? "Edit Directory"
-                    : "Add Directory"}
-              </Box>
-            </DialogTitle>
-            <DialogContent sx={{ p: 0 }}>
-              {viewMode && selectedDirectory ? (
-                <DirectoryDetailView directory={selectedDirectory} />
-              ) : (
-                <DirectoryForm
-                  directory={selectedDirectory}
-                  onSave={handleSave}
-                  onCancel={() => setOpenDialog(false)}
-                  readOnly={viewMode}
-                />
+                            <EmailIcon fontSize="small" />
+                          </IconButton>
+                        <IconButton
+                          onClick={() => handleView(directory)}
+                          size="small"
+                          title="View"
+                          color="primary"
+                        >
+                          <ViewIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          onClick={() => handleEdit(directory)}
+                          size="small"
+                          title="Edit"
+                          color="info"
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          onClick={() => handleDelete(directory._id)}
+                          size="small"
+                          title="Delete"
+                          color="error"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
-            </DialogContent>
-            <DialogActions sx={{ p: 2 }}>
-              <Button onClick={() => setOpenDialog(false)}>Close</Button>
-            </DialogActions>
-          </Dialog>
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          component="div"
+          count={filteredDirectories.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          sx={{ borderTop: 1, borderColor: "divider" }}
+        />
+      </Paper>
 
-          {/* Snackbar */}
-          <Snackbar
-            open={snackbar.open}
-            autoHideDuration={6000}
-            onClose={() => setSnackbar({ ...snackbar, open: false })}
-          >
-            <Alert severity={snackbar.severity} sx={{ width: "100%" }}>
-              {snackbar.message}
-            </Alert>
-          </Snackbar>
-        </Container>
-      </Box>
-    </ThemeProvider>
+      {/* Directory Dialog */}
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="xl"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <BusinessIcon />
+            {viewMode
+              ? "View Directory"
+              : selectedDirectory
+                ? "Edit Directory"
+                : "Add Directory"}
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          {viewMode && selectedDirectory ? (
+            <DirectoryDetailView directory={selectedDirectory} />
+          ) : (
+            <DirectoryForm
+              directory={selectedDirectory}
+              onSave={handleSave}
+              onCancel={() => setOpenDialog(false)}
+              readOnly={viewMode}
+            />
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpenDialog(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert severity={snackbar.severity} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 };
 
