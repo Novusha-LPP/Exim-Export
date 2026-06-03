@@ -1516,6 +1516,7 @@ const statusDetailsSchema = new Schema(
     movementCopyUpload: [String],
     shippingInstructionsUpload: [String],
     form13CopyUpload: [String],
+    assemtnCopy: [String],
     forwarderName: { type: String, trim: true },
     handoverConcorTharSanganaRailRoadDate: { type: String, trim: true },
     billingDocsSentDt: { type: String, trim: true },
@@ -2082,13 +2083,13 @@ exportJobSchema.pre("save", function (next) {
   const isFCL = this.consignmentType === "FCL";
   const handoverDate = op0Status ? op0Status.handoverForwardingNoteDate : null;
   const railOutDate = op0Status ? op0Status.railOutReachedDate : null;
-  
+
   const hasCompleteAgencyBill = op0Status?.billing_details?.agency_bill_date && op0Status?.billing_details?.agency_bill_no;
   const hasCompleteReimbursementBill = op0Status?.billing_details?.reimbursement_bill_date && op0Status?.billing_details?.reimbursement_bill_no;
 
-  const billingDateVal = (hasCompleteAgencyBill ? op0Status.billing_details.agency_bill_date : null) || 
-                         (hasCompleteReimbursementBill ? op0Status.billing_details.reimbursement_bill_date : null) || 
-                         (op0Status ? op0Status.billingDocsSentDt : null);
+  const billingDateVal = (hasCompleteAgencyBill ? op0Status.billing_details.agency_bill_date : null) ||
+    (hasCompleteReimbursementBill ? op0Status.billing_details.reimbursement_bill_date : null) ||
+    (op0Status ? op0Status.billingDocsSentDt : null);
 
   const syncMap = [
     { date: this.sb_date, name: "SB Filed" },
