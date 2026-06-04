@@ -33,6 +33,9 @@ const purchaseBookEntrySchema = new mongoose.Schema({
     total: { type: Number },
     status: { type: String, default: '' },
     chargeHeadCategory: { type: String },
+    isClubJob: { type: Boolean, default: false },
+    clubbedJobs: { type: [String], default: [] },
+    jobDetails: { type: Array, default: [] },
     createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

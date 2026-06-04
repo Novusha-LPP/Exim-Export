@@ -92,10 +92,17 @@ async function getImpexCubeAccessToken(financialYear, branchCode) {
 // GET /api/job-numbers-search - Search for job numbers for 'Copy From' feature
 router.get("/job-numbers-search", async (req, res) => {
   try {
-    const { q = "" } = req.query;
+    const { q = "", year = "" } = req.query;
     const filter = { job_no: { $not: /^FF/i } };
+    const andConditions = [];
     if (q) {
-      filter.$and = [{ job_no: { $regex: q, $options: "i" } }];
+      andConditions.push({ job_no: { $regex: q, $options: "i" } });
+    }
+    if (year) {
+      andConditions.push({ year: year });
+    }
+    if (andConditions.length > 0) {
+      filter.$and = andConditions;
     }
 
     const jobs = await ExJobModel.find(filter)

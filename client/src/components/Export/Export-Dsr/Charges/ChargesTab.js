@@ -54,7 +54,6 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
           hideTabs={false}
           isEditable={true}
           onChargesCountChange={setChargesCount}
-          job={jobData}
         />
 
         {/* Fine Section */}

@@ -41,7 +41,9 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
         "TDS Category": '',
         "chargeRef": '',
         "jobRef": '',
-        "apiKeyName": ''
+        "apiKeyName": '',
+        isClubJob: false,
+        clubbedJobs: []
     });
 
     useEffect(() => {
@@ -166,7 +168,9 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     "Charge Head Category": initialData.chargeType || '',
                     "TDS Category": initialData.tdsCategory || '',
                     "chargeRef": initialData.chargeId || '',
-                    "jobRef": initialData.jobId || ''
+                    "jobRef": initialData.jobId || '',
+                    isClubJob: initialData.isClubJob || false,
+                    clubbedJobs: initialData.clubbedJobs || []
                 }));
             }
         };
