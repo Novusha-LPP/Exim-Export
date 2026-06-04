@@ -430,6 +430,22 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         worksheet.getRow(r).height = 20;
       }
 
+      // Helper to draw outer borders for unmerged cell ranges (prevents image stretching in Google Sheets/Excel)
+      const setOuterBorder = (ws, startRow, startCol, endRow, endCol) => {
+        const borderStyle = { style: 'thin', color: { argb: 'FF000000' } };
+        for (let r = startRow; r <= endRow; r++) {
+          for (let c = startCol; c <= endCol; c++) {
+            const cell = ws.getCell(r, c);
+            const border = {};
+            if (r === startRow) border.top = borderStyle;
+            if (r === endRow) border.bottom = borderStyle;
+            if (c === startCol) border.left = borderStyle;
+            if (c === endCol) border.right = borderStyle;
+            cell.border = border;
+          }
+        }
+      };
+
       // Add logo image if exists
       if (jobData.logoSrc && jobData.logoSrc.startsWith("data:image")) {
         try {
@@ -441,7 +457,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
           });
           worksheet.addImage(imageId, {
             tl: { col: 0.3, row: 0.5 },
-            ext: { width: 150, height: 75 },
+            ext: { width: 150, height: 44 },
             editAs: 'oneCell'
           });
         } catch (err) {
@@ -450,7 +466,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       }
 
       // Merges
-      worksheet.mergeCells("A1:D5"); // Logo
+      setOuterBorder(worksheet, 1, 1, 5, 4); // Logo border box without merging
       worksheet.mergeCells("E1:H5"); // Title
       worksheet.mergeCells("I1:J1"); // HPCSL USE
       worksheet.mergeCells("I2:J2"); // CCN No. & Date :
@@ -820,7 +836,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         right: { style: 'thin', color: { argb: 'FF000000' } }
       };
 
-      for (let r = 1; r < currentRow; r++) {
+      for (let r = 6; r < currentRow; r++) {
         const rowObj = worksheet.getRow(r);
         for (let c = 1; c <= 10; c++) {
           const cell = rowObj.getCell(c);

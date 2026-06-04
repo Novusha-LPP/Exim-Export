@@ -296,7 +296,7 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
         </div>
 
         {isEditingDetails ? (
-          <div style={{ background: "#fff", border: `1px solid ${THEME.border}`, borderRadius: "3px", overflow: "hidden" }}>
+          <div style={{ background: "#fff", border: `1px solid ${THEME.border}`, borderRadius: "3px", overflow: "visible" }}>
             <CreateFreightEnquiry
               initialData={enquiry}
               submitLabel="Save Changes"
@@ -308,14 +308,17 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
           <div style={s.grid}>
             {Object.entries({
               "No": enquiry.enquiry_no,
-              "Org": enquiry.organization_name,
+              "Shipper/Org": enquiry.organization_name,
               "POL": enquiry.port_of_loading,
               "POD": enquiry.port_of_destination,
               "Type": enquiry.consignment_type,
               "Stuffing": enquiry.goods_stuffed,
-              "Pkgs": enquiry.no_packages,
-              "G.W": enquiry.gross_weight,
-              "N.W": enquiry.net_weight
+              "Movement": enquiry.movement_type,
+              "Pkgs": `${enquiry.no_packages || "-"} ${enquiry.package_unit || ""}`,
+              "G.W": `${enquiry.gross_weight || "-"} ${enquiry.gross_weight_unit || ""}`,
+              "N.W": `${enquiry.net_weight || "-"} ${enquiry.net_weight_unit || ""}`,
+              "Volume": `${enquiry.volume_cbm || "-"} ${enquiry.volume_unit || ""}`,
+              "Vol. Wt": `${enquiry.volume_weight || "-"} ${enquiry.gross_weight_unit || ""}`,
             }).map(([k, v]) => (
               <div key={k}>
                 <div style={s.label}>{k}</div>

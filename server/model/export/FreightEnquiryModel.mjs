@@ -19,6 +19,15 @@ const freightEnquirySchema = new mongoose.Schema(
     gross_weight: { type: String },
     dimension: { type: String },
     no_packages: { type: String },
+    volume_cbm: { type: String },
+    is_manual_cbm: { type: Boolean, default: false },
+    movement_type: { type: String },
+    volume_weight: { type: String },
+    gross_weight_unit: { type: String },
+    chargeable_weight_unit: { type: String },
+    volume_unit: { type: String },
+    package_unit: { type: String },
+    net_weight_unit: { type: String },
     dimensions: [
       {
         length: { type: Number },

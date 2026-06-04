@@ -197,12 +197,25 @@ router.put("/freight-enquiries/:id", async (req, res) => {
           year: String(new Date().getFullYear()).slice(-2) + "-" + String(new Date().getFullYear() + 1).slice(-2),
           job_date: updated.enquiry_date || new Date().toISOString().split("T")[0],
           exporter: updated.organization_name,
+          shipper: updated.organization_name,
           consignmentType: updated.consignment_type,
           port_of_loading: updated.port_of_loading,
           port_of_discharge: updated.port_of_destination,
           isGeneralJob: false,
           status: "Pending",
-          detailedStatus: "Created from Freight Enquiry"
+          detailedStatus: "Created from Freight Enquiry",
+          movement_type: updated.movement_type,
+          gross_weight_kg: updated.gross_weight,
+          gross_weight_unit: updated.gross_weight_unit,
+          net_weight_kg: updated.net_weight,
+          net_weight_unit: updated.net_weight_unit,
+          chargeable_weight: updated.chargeable_weight,
+          chargeable_weight_unit: updated.chargeable_weight_unit,
+          volume_cbm: updated.volume_cbm,
+          volume_unit: updated.volume_unit,
+          total_no_of_pkgs: updated.no_packages,
+          package_unit: updated.package_unit,
+          volume_weight: updated.volume_weight,
         });
         await newJob.save();
       }

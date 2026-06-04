@@ -597,7 +597,12 @@ function JobNoCell({ row, navigate }) {
         <Button
           variant="text"
           sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 700, justifyContent: "flex-start", fontSize: '11px' }}
-          onClick={() => navigate(`/export-charges/job/${encodeURIComponent(row.job_no)}`)}
+          onClick={() => {
+            const path = row.job_no?.startsWith("FF")
+              ? `/freight-forwarding/job/${encodeURIComponent(row.job_no)}`
+              : `/export-charges/job/${encodeURIComponent(row.job_no)}`;
+            navigate(path);
+          }}
         >
           {row.job_no}
         </Button>

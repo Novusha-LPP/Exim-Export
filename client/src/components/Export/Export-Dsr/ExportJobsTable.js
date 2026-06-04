@@ -557,9 +557,9 @@ const QuickDeleteButton = ({ job, field, url, uploadType = "status", idx = 0, on
   };
 
   return (
-      <IconButton
-        size="small"
-        onClick={(e) => handleDelete(e)}
+    <IconButton
+      size="small"
+      onClick={(e) => handleDelete(e)}
       disabled={deleting}
       style={{ padding: "1px", marginLeft: "2px" }}
       title="Delete Document"

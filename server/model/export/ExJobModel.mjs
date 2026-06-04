@@ -1684,6 +1684,18 @@ const exportJobSchema = new mongoose.Schema(
     chargeable_weight: { type: String, trim: true },
     chargeable_weight_unit: { type: String, trim: true },
 
+    consol_no: { type: String, trim: true },
+    consol_date: { type: String, trim: true },
+    eta_date: { type: String, trim: true },
+    booking_thru: { type: String, trim: true },
+    sales_person: { type: String, trim: true },
+    freight_type: { type: String, trim: true },
+    cargo_type: { type: String, trim: true },
+    movement_type: { type: String, trim: true },
+    volume_weight: { type: String, trim: true },
+    shipment_terms: { type: String, trim: true },
+    container_qty_type: { type: String, trim: true },
+
     // Boolean Control Fields (Missing)
     buyer_other_than_consignee: { type: Boolean, default: false },
 

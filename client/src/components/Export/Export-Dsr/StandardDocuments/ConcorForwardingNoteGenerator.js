@@ -565,6 +565,22 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
         worksheet.getRow(r).height = 20;
       }
 
+      // Helper to draw outer borders for unmerged cell ranges (prevents image stretching in Google Sheets/Excel)
+      const setOuterBorder = (ws, startRow, startCol, endRow, endCol) => {
+        const borderStyle = { style: 'thin', color: { argb: 'FF000000' } };
+        for (let r = startRow; r <= endRow; r++) {
+          for (let c = startCol; c <= endCol; c++) {
+            const cell = ws.getCell(r, c);
+            const border = {};
+            if (r === startRow) border.top = borderStyle;
+            if (r === endRow) border.bottom = borderStyle;
+            if (c === startCol) border.left = borderStyle;
+            if (c === endCol) border.right = borderStyle;
+            cell.border = border;
+          }
+        }
+      };
+
       // Add logo images
       try {
         const base64Logo = await imageToBase64(concorLogo);
@@ -576,12 +592,12 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
           
           worksheet.addImage(imageId1, {
             tl: { col: 0.3, row: 0.3 },
-            ext: { width: 50, height: 50 },
+            ext: { width: 44, height: 50 },
             editAs: 'oneCell'
           });
           worksheet.addImage(imageId2, {
             tl: { col: 12.3, row: 0.3 },
-            ext: { width: 50, height: 50 },
+            ext: { width: 44, height: 50 },
             editAs: 'oneCell'
           });
         }
@@ -589,9 +605,8 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
         console.warn("Failed to add logos to CONCOR Excel", err);
       }
 
-      // Merges for header
-      worksheet.mergeCells("A1:B3"); // Left logo placeholder
-      worksheet.mergeCells("M1:N3"); // Right logo placeholder
+      setOuterBorder(worksheet, 1, 1, 3, 2); // Left logo box
+      setOuterBorder(worksheet, 1, 13, 3, 14); // Right logo box
       worksheet.mergeCells("C1:L1"); // Company name
       worksheet.mergeCells("C2:L2"); // Subtitle
       worksheet.mergeCells("C3:L3"); // CONCOR USE
@@ -924,7 +939,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
         right: { style: 'thin', color: { argb: 'FF000000' } }
       };
 
-      for (let r = 1; r < currentRow; r++) {
+      for (let r = 4; r < currentRow; r++) {
         const rowObj = worksheet.getRow(r);
         for (let c = 1; c <= 14; c++) {
           rowObj.getCell(c).border = borderStyle;

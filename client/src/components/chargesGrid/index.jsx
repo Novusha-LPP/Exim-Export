@@ -9,6 +9,11 @@ import ConfirmDialog from './ConfirmDialog';
 import { useCharges } from './useCharges';
 import './charges.css';
 
+import { buildCostSheetTemplate } from './buildCostSheetTemplate';
+import DocumentEditorDialog from '../Export/Export-Dsr/StandardDocuments/DocumentEditorDialog';
+import logo from '../../assets/images/surajCompanyLogo.jpeg';
+import { imageToBase64 } from '../../utils/imageUtils';
+
 const ChargesGrid = ({
   parentId,
   parentModule,
@@ -28,7 +33,8 @@ const ChargesGrid = ({
   invoiceCount = 1,
   containerCount = 0,
   cthNo = '',
-  onChargesCountChange = () => {}
+  onChargesCountChange = () => {},
+  job = {}
 }) => {
   const finalReadOnly = readOnly || !isEditable;
   const { charges, loading, error, addChargesBulk, updateCharge, deleteCharge } = useCharges(parentId, parentModule);
@@ -47,6 +53,21 @@ const ChargesGrid = ({
 
   const [fileModalCharge, setFileModalCharge] = useState(null); // { charge: object, tab: 'revenue' | 'cost' | 'particulars' }
   const [confirmState, setConfirmState] = useState({ open: false, title: '', message: '', onConfirm: null });
+
+  const [costSheetOpen, setCostSheetOpen] = useState(false);
+  const [costSheetHtml, setCostSheetHtml] = useState("");
+
+  const handleCostSheetClick = async () => {
+    let logoSrc = "";
+    try {
+      logoSrc = await imageToBase64(logo);
+    } catch (err) {
+      console.warn("Failed to convert logo to base64", err);
+    }
+    const html = buildCostSheetTemplate(job, charges, logoSrc);
+    setCostSheetHtml(html);
+    setCostSheetOpen(true);
+  };
 
   const handleSelectCharge = (id) => {
     const newSel = new Set(selectedIds);
@@ -179,6 +200,7 @@ const ChargesGrid = ({
         onDeleteSelected={handleDeleteSelected}
         readOnly={finalReadOnly}
         isDeleteDisabled={isDeleteDisabled}
+        onCostSheetClick={jobNumber && (jobNumber.startsWith('FF') || jobNumber.startsWith('FF-SUC')) ? handleCostSheetClick : null}
       />
 
       <div style={{ position: 'relative' }}>
@@ -243,6 +265,20 @@ const ChargesGrid = ({
         message={confirmState.message}
         onConfirm={confirmState.onConfirm}
         onCancel={() => setConfirmState(prev => ({ ...prev, open: false }))}
+      />
+
+      <DocumentEditorDialog
+        open={costSheetOpen}
+        onClose={() => setCostSheetOpen(false)}
+        initialContent={costSheetHtml}
+        title={`Freight Forwarding Cost Sheet - ${jobNumber}`}
+        pdfOptions={{
+          orientation: "landscape",
+          format: "a4",
+          width: 790,
+          windowWidth: 1100,
+          margin: [20, 20, 20, 20],
+        }}
       />
     </div>
   );

@@ -19,6 +19,7 @@ import EximOperationModule from "../components/Export/Export-Dsr/EximOperationMo
 import ExportChargesModule from "../components/Export/Export-Dsr/ExportChargesModule.js";
 import ExportBillingPage from "../components/Export/Export-Billing/ExportBillingPage.jsx";
 import FreightForwardingModule from "../components/Export/FreightForwarding/FreightForwardingModule.js";
+import FreightForwardingJobDetail from "../components/Export/FreightForwarding/FreightForwardingJobDetail.js";
 import { AnalyticsProvider } from "../components/Export/Export-Dsr/analytics/AnalyticsContext.js";
 // import AnalyticsLayout from "../components/Export/Export-Dsr/analytics/AnalyticsLayout.js"; // Removed
 // import OverviewDashboard from "../components/Export/Export-Dsr/analytics/OverviewDashboard.js"; // Removed
@@ -203,6 +204,14 @@ function HomePage() {
               element={
                 <ProtectedRoute requiredModule="Freight Forwarding">
                   <FreightForwardingModule />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/freight-forwarding/job/:jobNo"
+              element={
+                <ProtectedRoute requiredModule="Freight Forwarding">
+                  <FreightForwardingJobDetail />
                 </ProtectedRoute>
               }
             />
