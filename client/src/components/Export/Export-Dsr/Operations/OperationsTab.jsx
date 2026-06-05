@@ -659,7 +659,8 @@ function GatewayPortDropdown({
   );
 }
 
-const OperationsTab = ({ formik, isEditable = true }) => {
+const OperationsTab = ({ formik, isEditable = true, isAdmin = false }) => {
+  const effectiveIsEditable = isEditable && (!formik.values.operational_lock || isAdmin);
   const operations = formik.values.operations || [];
   const [activeOpIndex, setActiveOpIndex] = useState(0);
 
@@ -929,7 +930,7 @@ const OperationsTab = ({ formik, isEditable = true }) => {
       onAdd={addItem}
       onDelete={deleteItem}
       defaultOpen={true}
-      isEditable={isEditable}
+      isEditable={effectiveIsEditable}
     />
   );
 
@@ -946,7 +947,7 @@ const OperationsTab = ({ formik, isEditable = true }) => {
       onDelete={deleteItem}
       formik={formik}
       activeOpIndex={activeOpIndex}
-      isEditable={isEditable}
+      isEditable={effectiveIsEditable}
       isAir={isAir}
       consignmentType={toUpper(formik.values.consignmentType || "")}
       stuffedAt={toUpper(formik.values.goods_stuffed_at || "")}
@@ -983,7 +984,7 @@ const OperationsTab = ({ formik, isEditable = true }) => {
   }
 
   return (
-    <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
+    <fieldset disabled={!effectiveIsEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%', background: 'transparent' }}>
       <div style={styles.container}>
 
         {/* Main Content Area */}

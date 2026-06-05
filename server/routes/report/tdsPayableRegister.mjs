@@ -7,11 +7,32 @@ import ExcelJS from "exceljs";
 
 const router = express.Router();
 
+const formatDateToDDMMYYYY = (dateVal) => {
+    if (!dateVal) return "";
+    const str = String(dateVal).trim();
+    const ymdMatch = str.match(/^(\d{4})[\-\/](\d{2})[\-\/](\d{2})/);
+    if (ymdMatch) {
+        return `${ymdMatch[3]}-${ymdMatch[2]}-${ymdMatch[1]}`;
+    }
+    const dmyMatch = str.match(/^(\d{2})[\-\/](\d{2})[\-\/](\d{4})/);
+    if (dmyMatch) {
+        return `${dmyMatch[1]}-${dmyMatch[2]}-${dmyMatch[3]}`;
+    }
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}-${month}-${year}`;
+    }
+    return str;
+};
+
 router.get("/api/report/tds-payable-register", async (req, res) => {
   const { year, branchId, startDate, endDate } = req.query;
 
   try {
-    const query = {};
+    const query = { tds: { $gt: 0 } };
     if (branchId && branchId !== "all") {
         // We might need to join with Job to get branch_code/branch_id
     }
@@ -22,8 +43,16 @@ router.get("/api/report/tds-payable-register", async (req, res) => {
         $gte: new Date(startDate),
         $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
       };
-    } else if (year) {
-        // Financial year logic if needed, but usually startDate/endDate is safer
+    } else if (year && year !== "all") {
+      const parts = year.split("-");
+      if (parts.length === 2) {
+        const startY = 2000 + parseInt(parts[0], 10);
+        const endY = 2000 + parseInt(parts[1], 10);
+        query.createdAt = {
+          $gte: new Date(`${startY}-04-01T00:00:00.000Z`),
+          $lte: new Date(`${endY}-03-31T23:59:59.999Z`),
+        };
+      }
     }
 
     const entries = await PurchaseBookEntryModel.find(query).lean();
@@ -33,15 +62,14 @@ router.get("/api/report/tds-payable-register", async (req, res) => {
 
     worksheet.columns = [
       { header: "Org Type", key: "orgType", width: 15 },
+      { header: "Purchase Book Date", key: "pbDate", width: 15 },
       { header: "Type", key: "type", width: 10 },
       { header: "Trans No.", key: "transNo", width: 25 },
       { header: "Party Name", key: "partyName", width: 30 },
       { header: "Deductee PAN", key: "pan", width: 15 },
       { header: "Vendor Ref No.", key: "vendorRefNo", width: 20 },
-      { header: "Vendor Ref Date", key: "vendorRefDate", width: 15 },
       { header: "Vendor Bill Amount (INR)", key: "total", width: 20 },
       { header: "Taxable Amount (INR)", key: "taxableValue", width: 20 },
-      { header: "Non Taxable/Exempt Amount (INR)", key: "exemptAmount", width: 20 },
       { header: "GST Amount (INR)", key: "gstAmount", width: 15 },
       { header: "TDS Code", key: "tdsCode", width: 15 },
       { header: "TDS Section Code", key: "tdsSection", width: 15 },
@@ -104,17 +132,25 @@ router.get("/api/report/tds-payable-register", async (req, res) => {
 
       const exemptAmount = (entry.total || 0) - (taxableValue || 0) - gstAmount + (entry.tds || 0);
 
+      const panVal = String(entry.pan || "").trim();
+      let orgType = "Proprietor";
+      if (panVal.length >= 4) {
+        const fourthLetter = panVal[3].toUpperCase();
+        if (fourthLetter === 'C' || fourthLetter === 'F') {
+          orgType = "Company";
+        }
+      }
+
       worksheet.addRow({
-        orgType: party?.generalInfo?.entityType || "Organization",
+        orgType: orgType,
+        pbDate: formatDateToDDMMYYYY(entry.entryDate),
         type: "Purchase",
         transNo: entry.entryNo,
         partyName: entry.supplierName,
         pan: entry.pan,
         vendorRefNo: entry.supplierInvNo,
-        vendorRefDate: entry.supplierInvDate,
         total: entry.total,
         taxableValue: entry.taxableValue,
-        exemptAmount: Math.max(0, parseFloat(exemptAmount.toFixed(2))),
         gstAmount: gstAmount,
         tdsCode: tdsCategory,
         tdsSection: tdsCategory ? tdsCategory.split(' ').pop() : '', // e.g. "94C" -> "94C" or "TDS... 94C" -> "94C"
@@ -151,6 +187,16 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
         $gte: new Date(startDate),
         $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
       };
+    } else if (year && year !== "all") {
+      const parts = year.split("-");
+      if (parts.length === 2) {
+        const startY = 2000 + parseInt(parts[0], 10);
+        const endY = 2000 + parseInt(parts[1], 10);
+        query.createdAt = {
+          $gte: new Date(`${startY}-04-01T00:00:00.000Z`),
+          $lte: new Date(`${endY}-03-31T23:59:59.999Z`),
+        };
+      }
     }
 
     const workbook = new ExcelJS.Workbook();
@@ -170,6 +216,7 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
         { header: "GST", key: "gst", width: 15 },
         { header: "TDS", key: "tds", width: 15 },
         { header: "Total", key: "total", width: 15 },
+        { header: "Net Amount", key: "netAmount", width: 15 },
         { header: "Charge Category", key: "chargeCategory", width: 20 },
         { header: "Status", key: "status", width: 15 },
       ];
@@ -214,18 +261,28 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
             taxableValue = parseFloat((entry.total - gst).toFixed(2));
         }
 
+        let totalVal = entry.total;
+        if (!isReimbursement) {
+            totalVal = (taxableValue || 0) + (gst || 0);
+        }
+
+        const netAmount = entry.netAmount !== undefined && entry.netAmount !== null
+            ? entry.netAmount
+            : (totalVal - (entry.tds || 0));
+
         worksheet.addRow({
           entryNo: entry.entryNo,
-          entryDate: entry.entryDate,
+          entryDate: formatDateToDDMMYYYY(entry.entryDate),
           jobNo: entry.jobNo,
           supplierName: entry.supplierName,
           gstinNo: entry.gstinNo,
           supplierInvNo: entry.supplierInvNo,
-          supplierInvDate: entry.supplierInvDate,
+          supplierInvDate: formatDateToDDMMYYYY(entry.supplierInvDate),
           taxableValue: taxableValue,
           gst: gst,
           tds: entry.tds,
-          total: entry.total,
+          total: totalVal,
+          netAmount: netAmount,
           chargeCategory: chargeCategory || '',
           status: entry.status || 'Finalized',
         });
@@ -249,24 +306,7 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
       ];
 
       const formatToDDMMYYYY = (dateVal) => {
-        if (!dateVal) return "-";
-        const str = String(dateVal).trim();
-        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-          const parts = str.split("-");
-          return `${parts[2]}/${parts[1]}/${parts[0]}`;
-        }
-        const dmyMatch = str.match(/^(\d{2})[\-\/](\d{2})[\-\/](\d{4})/);
-        if (dmyMatch) {
-          return `${dmyMatch[1]}/${dmyMatch[2]}/${dmyMatch[3]}`;
-        }
-        const d = new Date(str);
-        if (!isNaN(d.getTime())) {
-          const day = String(d.getDate()).padStart(2, '0');
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const year = d.getFullYear();
-          return `${day}/${month}/${year}`;
-        }
-        return str;
+        return formatDateToDDMMYYYY(dateVal) || "-";
       };
 
       const normalizeDate = (dateVal) => {

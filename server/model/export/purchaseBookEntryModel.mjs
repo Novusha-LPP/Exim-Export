@@ -31,6 +31,7 @@ const purchaseBookEntrySchema = new mongoose.Schema({
     igstAmt: { type: Number },
     tds: { type: Number },
     total: { type: Number },
+    netAmount: { type: Number },
     status: { type: String, default: '' },
     chargeHeadCategory: { type: String },
     isClubJob: { type: Boolean, default: false },

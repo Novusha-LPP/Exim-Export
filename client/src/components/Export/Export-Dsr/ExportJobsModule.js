@@ -607,7 +607,7 @@ function ExportJobsModule() {
 
             {
               label: "Operations",
-              component: <OperationsTab formik={formik} isEditable={isEditable} />,
+              component: <OperationsTab formik={formik} isEditable={isEditable} isAdmin={user?.role === "Admin"} />,
             },
             {
               label: "Tracking Completed",

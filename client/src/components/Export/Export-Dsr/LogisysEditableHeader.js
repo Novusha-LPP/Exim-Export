@@ -1029,16 +1029,38 @@ const LogisysEditableHeader = ({
           />
         </div>
 
-        {/* SB No */}
+        {/* SB No (Reference No) */}
         <div style={{ flex: "0 0 auto", minWidth: 50 }}>
           <div style={styles.label}>SB No</div>
-          <input
-            name="sb_no"
-            value={formik.values.sb_no}
-            onChange={formik.handleChange}
-            disabled={!isEditable}
-            style={!isEditable ? styles.inputDisabled : styles.input}
-          />
+          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <input
+              name="sb_no"
+              value={formik.values.sb_no}
+              onChange={formik.handleChange}
+              disabled={!isEditable}
+              style={!isEditable ? { ...styles.inputDisabled, flex: 1 } : { ...styles.input, flex: 1 }}
+            />
+            <button
+              type="button"
+              title="Copy SB No"
+              onClick={() => handleCopyText(formik.values.sb_no)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 11,
+                color: "#94a3b8",
+                padding: "0 2px",
+                display: "flex",
+                alignItems: "center",
+                transition: "color 0.2s",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.color = "#64748b")}
+              onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+            >
+              📋
+            </button>
+          </div>
         </div>
 
         {/* SB Date */}
@@ -1075,17 +1097,39 @@ const LogisysEditableHeader = ({
           />
         </div>
 
-        {/* Shipper */}
+        {/* Shipper (Exporter Name) */}
         <div style={{ flex: "1 1 auto", minWidth: 80, maxWidth: 130 }}>
           <div style={styles.label}>Shipper</div>
-          <input
-            name="shipper"
-            list="shipper-list"
-            value={formik.values.exporter}
-            onChange={formik.handleChange}
-            disabled={!isEditable}
-            style={!isEditable ? styles.inputDisabled : styles.input}
-          />
+          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <input
+              name="shipper"
+              list="shipper-list"
+              value={formik.values.exporter}
+              onChange={formik.handleChange}
+              disabled={!isEditable}
+              style={!isEditable ? { ...styles.inputDisabled, flex: 1 } : { ...styles.input, flex: 1 }}
+            />
+            <button
+              type="button"
+              title="Copy Exporter Name"
+              onClick={() => handleCopyText(formik.values.exporter)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 11,
+                color: "#94a3b8",
+                padding: "0 2px",
+                display: "flex",
+                alignItems: "center",
+                transition: "color 0.2s",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.color = "#64748b")}
+              onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+            >
+              📋
+            </button>
+          </div>
           <datalist id="shipper-list">
             {shipperOpts.map((opt, i) => (
               <option key={`${opt.value}_${i}`} value={opt.value}>
@@ -1108,35 +1152,81 @@ const LogisysEditableHeader = ({
         {/* Custom House */}
         <div style={{ flex: "1 1 auto", minWidth: 70, maxWidth: 130 }}>
           <div style={styles.label}>Custom House</div>
-          <CustomHouseDropdown
-            name="custom_house"
-            value={formik.values.custom_house || ""}
-            onChange={formik.handleChange}
-            placeholder="Select"
-            disabled={!isEditable}
-            branchCode={formik.values.branch_code || ""}
-          />
+          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <div style={{ flex: 1 }}>
+              <CustomHouseDropdown
+                name="custom_house"
+                value={formik.values.custom_house || ""}
+                onChange={formik.handleChange}
+                placeholder="Select"
+                disabled={!isEditable}
+                branchCode={formik.values.branch_code || ""}
+              />
+            </div>
+            <button
+              type="button"
+              title="Copy Custom House"
+              onClick={() => handleCopyText(formik.values.custom_house)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 11,
+                color: "#94a3b8",
+                padding: "0 2px",
+                display: "flex",
+                alignItems: "center",
+                transition: "color 0.2s",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.color = "#64748b")}
+              onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+            >
+              📋
+            </button>
+          </div>
         </div>
 
         {/* Loading Port - Only show for non-AIR */}
         {!isAirType && (
           <div style={{ flex: "1 1 auto", minWidth: 70, maxWidth: 110 }}>
             <div style={styles.label}>Port Of Loading</div>
-            <select
-              name="port_of_loading"
-              value={formik.values.port_of_loading || ""}
-              onChange={(e) => formik.setFieldValue("port_of_loading", e.target.value)}
-              disabled={!isEditable}
-              style={!isEditable ? styles.inputDisabled : { ...styles.input, cursor: "pointer" }}
-            >
-              <option value="">Select</option>
-              <option value="INMUN1 - MUNDRA">Mundra (INMUN1)</option>
-              <option value="INIXY1 - KANDLA">Kandla (INIXY1)</option>
-              <option value="INPAV1 - PIPAVAV">Pipavav (INPAV1)</option>
-              <option value="INHZA1 - HAZIRA">Hazira (INHZA1)</option>
-              <option value="INNSA1 - NHAVA SHEVA">Nhava Sheva (INNSA1)</option>
-              <option value="INAMD4 - AHMEDABAD AIR PORT">Ahmedabad Air Port</option>
-            </select>
+            <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <select
+                name="port_of_loading"
+                value={formik.values.port_of_loading || ""}
+                onChange={(e) => formik.setFieldValue("port_of_loading", e.target.value)}
+                disabled={!isEditable}
+                style={!isEditable ? { ...styles.inputDisabled, flex: 1 } : { ...styles.input, flex: 1, cursor: "pointer" }}
+              >
+                <option value="">Select</option>
+                <option value="INMUN1 - MUNDRA">Mundra (INMUN1)</option>
+                <option value="INIXY1 - KANDLA">Kandla (INIXY1)</option>
+                <option value="INPAV1 - PIPAVAV">Pipavav (INPAV1)</option>
+                <option value="INHZA1 - HAZIRA">Hazira (INHZA1)</option>
+                <option value="INNSA1 - NHAVA SHEVA">Nhava Sheva (INNSA1)</option>
+                <option value="INAMD4 - AHMEDABAD AIR PORT">Ahmedabad Air Port</option>
+              </select>
+              <button
+                type="button"
+                title="Copy Port of Loading"
+                onClick={() => handleCopyText(formik.values.port_of_loading)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 11,
+                  color: "#94a3b8",
+                  padding: "0 2px",
+                  display: "flex",
+                  alignItems: "center",
+                  transition: "color 0.2s",
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.color = "#64748b")}
+                onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+              >
+                📋
+              </button>
+            </div>
           </div>
         )}
 

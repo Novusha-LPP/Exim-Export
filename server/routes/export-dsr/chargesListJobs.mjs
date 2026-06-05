@@ -220,8 +220,10 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
                     { job_no: { $regex: search, $options: "i" } },
                     { exporter: { $regex: search, $options: "i" } },
                     { ieCode: { $regex: search, $options: "i" } },
+                    { exporter_ref_no: { $regex: search, $options: "i" } },
                     { sb_no: { $regex: search, $options: "i" } },
                     { custom_house: { $regex: search, $options: "i" } },
+                    { port_of_discharge: { $regex: search, $options: "i" } }
                 ]
             });
         }

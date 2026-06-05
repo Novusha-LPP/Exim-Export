@@ -827,6 +827,14 @@ function PortField({
             } else if (e.key === "Escape") d.setOpen(false);
           }}
         />
+        <button
+          type="button"
+          style={{ ...styles.acIcon, right: 30, cursor: 'pointer', background: 'none', border: 'none' }}
+          onClick={() => navigator.clipboard.writeText(d.query)}
+          title="Copy to clipboard"
+        >
+          📋
+        </button>
         <span style={styles.acIcon}>▼</span>
         {d.open && d.opts.length > 0 && (
           <div style={styles.acMenu}>

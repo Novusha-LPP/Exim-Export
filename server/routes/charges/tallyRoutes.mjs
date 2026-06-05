@@ -287,6 +287,7 @@ const mapPurchaseEntryData = (data) => {
         igstAmt: data["IGST"] || data.igstAmt,
         tds: data["TDS"] || data.tds,
         total: data["Total"] || data.total,
+        netAmount: data["Net Amount"] || data.netAmount,
         chargeRef: data.chargeRef,
         jobRef: data.jobRef,
         status: data["Status"] || data.status || '',
@@ -451,6 +452,14 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             supplierInvDate = clubInvDate;
         }
 
+        const tdsVal = Number(entry.tds || 0);
+        let grossTotal = entry.total;
+        let netAmount = entry.netAmount;
+        if (netAmount === undefined || netAmount === null) {
+            netAmount = entry.total;
+            grossTotal = netAmount + tdsVal;
+        }
+
         const formattedData = {
             "Entry No": entry.entryNo,
             "Entry Date": normalizeDate(entry.entryDate),
@@ -479,7 +488,8 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "SGST": entry.sgstAmt,
             "IGST": entry.igstAmt,
             "TDS": entry.tds,
-            "Total": entry.total,
+            "Total": grossTotal,
+            "Net Amount": netAmount,
             "Charge Description": entry.chargeDescription || '',
             "Charge Head Category": chargeCategory || '',
             "TDS Category": entry.tdsCategory || '94C',

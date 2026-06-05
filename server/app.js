@@ -86,6 +86,7 @@ import chargesListJobs from "./routes/export-dsr/chargesListJobs.mjs";
 import exportBillingJobs from "./routes/export-dsr/exportBillingJobs.mjs";
 import exportAnalyticsRoutes from "./routes/export-dsr/exportAnalyticsRoutes.mjs";
 import queryRoutes from "./routes/export-dsr/queryRoutes.mjs";
+import clientQueryRoutes from "./routes/export-dsr/clientQueryRoutes.mjs";
 import chargesRoute from "./routes/charges/chargesRoute.mjs";
 import tallyRoutes from "./routes/charges/tallyRoutes.mjs";
 import { initDsrCronJob } from "./jobs/dsrJob.mjs"; // Import DSR Job
@@ -253,6 +254,7 @@ app.use(chargesListJobs);
 app.use(exportBillingJobs);
 app.use(exportAnalyticsRoutes);
 app.use(queryRoutes);
+app.use(clientQueryRoutes);
 app.use(testDsrEmailRoute);
 app.use(apiKeyRoutes);
 app.use("/api", forwarderRoutes);

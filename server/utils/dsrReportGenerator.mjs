@@ -7,17 +7,64 @@ import ExportJob from "../model/export/ExJobModel.mjs";
  * @param {boolean} onlyPending - If true, only include pending jobs
  * @returns {Promise<Buffer>} - Excel workbook buffer
  */
-export const generateDSRBuffer = async (exporter, onlyPending = false, year = "") => {
+export const generateDSRBuffer = async (exporter, onlyPending = false, year = "", startDate = "", endDate = "") => {
   try {
     const isAll = String(exporter).toLowerCase() === "all";
-    const filter = isAll ? {} : { exporter };
+    const filter = {};
+    if (!filter.$and) filter.$and = [];
+
+    if (!isAll) {
+      filter.$and.push({ exporter });
+    }
 
     if (year && year !== "" && year.toLowerCase() !== "all") {
-      filter.year = year;
+      filter.$and.push({ year });
     }
 
     if (onlyPending) {
-      filter.status = { $nin: ["Completed", "Cancelled"] };
+      filter.$and.push({ status: { $nin: ["Completed", "Cancelled"] } });
+    }
+
+    if (startDate || endDate) {
+      const getEffDateExpr = () => ({
+        $cond: {
+          if: {
+            $and: [
+              { $ne: ["$job_date", null] },
+              { $ne: ["$job_date", ""] },
+              { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } }
+            ]
+          },
+          then: {
+            $dateFromString: {
+              dateString: "$job_date",
+              format: "%d-%m-%Y",
+              onError: "$createdAt"
+            }
+          },
+          else: "$createdAt"
+        }
+      });
+
+      filter.$and.push({
+        $expr: {
+          $let: {
+            vars: {
+              effDate: getEffDateExpr()
+            },
+            in: {
+              $and: [
+                ...(startDate ? [{ $gte: ["$$effDate", new Date(startDate + "T00:00:00.000Z")] }] : []),
+                ...(endDate ? [{ $lte: ["$$effDate", new Date(endDate + "T23:59:59.999Z")] }] : [])
+              ]
+            }
+          }
+        }
+      });
+    }
+
+    if (filter.$and.length === 0) {
+      delete filter.$and;
     }
 
     const MAX_JOBS_FOR_REPORT = 5000; // Increased for background job

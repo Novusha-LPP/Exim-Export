@@ -603,7 +603,8 @@ router.get("/global-search-jobs", async (req, res) => {
           { "consignees.consignee_name": { $regex: search, $options: "i" } },
           { sb_no: { $regex: search, $options: "i" } },
           { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
-          { "containers.containerNo": { $regex: search, $options: "i" } }
+          { "containers.containerNo": { $regex: search, $options: "i" } },
+          { port_of_discharge: { $regex: search, $options: "i" } }
         ],
       });
     }
@@ -632,16 +633,43 @@ router.get("/global-search-jobs", async (req, res) => {
           statusArray = [...statusArray, "Road Out", "Road out", "road out", "RAIL OUT", "ROAD OUT"];
         }
 
-        if (statusArray.includes("Pending")) {
-          filter.$and.push({
-            $or: [
-              { detailedStatus: { $in: statusArray } },
+        // Handle "Send for Billing" as a virtual status (not stored in detailedStatus field)
+        const hasSendForBilling = statusArray.includes("Send for Billing");
+        const filteredStatusArray = statusArray.filter(s => s !== "Send for Billing");
+
+        const orConditions = [];
+
+        if (filteredStatusArray.length > 0) {
+          if (filteredStatusArray.includes("Pending")) {
+            orConditions.push(
+              { detailedStatus: { $in: filteredStatusArray } },
               { detailedStatus: { $in: [null, "", "Pending"] } },
               { detailedStatus: { $exists: false } }
+            );
+          } else {
+            orConditions.push({ detailedStatus: { $in: filteredStatusArray } });
+          }
+        }
+
+        if (hasSendForBilling) {
+          orConditions.push({
+            send_for_billing: true,
+            send_for_billing_date: { $exists: true, $nin: [null, ""] }
+          });
+        }
+
+        if (orConditions.length > 0) {
+          filter.$and.push({ $or: orConditions });
+        }
+
+        if (!hasSendForBilling && filteredStatusArray.length > 0) {
+          filter.$and.push({
+            $or: [
+              { send_for_billing: { $ne: true } },
+              { send_for_billing_date: { $exists: false } },
+              { send_for_billing_date: { $in: [null, ""] } }
             ]
           });
-        } else {
-          filter.$and.push({ detailedStatus: { $in: statusArray } });
         }
       }
 
@@ -845,6 +873,8 @@ router.get("/exports/:status?", async (req, res) => {
       jobOwner = "",
       month = "",
       pendingQueries = false,
+      startDate = "",
+      endDate = "",
     } = { ...req.params, ...req.query };
 
     const filter = {};
@@ -1080,10 +1110,12 @@ router.get("/exports/:status?", async (req, res) => {
           { job_no: { $regex: search, $options: "i" } },
           { exporter: { $regex: search, $options: "i" } },
           { ieCode: { $regex: search, $options: "i" } },
+          { exporter_ref_no: { $regex: search, $options: "i" } },
           { "consignees.consignee_name": { $regex: search, $options: "i" } },
           { sb_no: { $regex: search, $options: "i" } },
           { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
-          { "containers.containerNo": { $regex: search, $options: "i" } }
+          { "containers.containerNo": { $regex: search, $options: "i" } },
+          { port_of_discharge: { $regex: search, $options: "i" } }
         ],
       });
     }
@@ -1123,6 +1155,44 @@ router.get("/exports/:status?", async (req, res) => {
     // Year filter - matches exact string "YY-YY" format (e.g. "25-26")
     if (year && year !== "all") {
       filter.$and.push({ year: year });
+    }
+
+    if (startDate || endDate) {
+      const getEffDateExpr = () => ({
+        $cond: {
+          if: {
+            $and: [
+              { $ne: ["$job_date", null] },
+              { $ne: ["$job_date", ""] },
+              { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } }
+            ]
+          },
+          then: {
+            $dateFromString: {
+              dateString: "$job_date",
+              format: "%d-%m-%Y",
+              onError: "$createdAt"
+            }
+          },
+          else: "$createdAt"
+        }
+      });
+
+      filter.$and.push({
+        $expr: {
+          $let: {
+            vars: {
+              effDate: getEffDateExpr()
+            },
+            in: {
+              $and: [
+                ...(startDate ? [{ $gte: ["$$effDate", new Date(startDate + "T00:00:00.000Z")] }] : []),
+                ...(endDate ? [{ $lte: ["$$effDate", new Date(endDate + "T23:59:59.999Z")] }] : [])
+              ]
+            }
+          }
+        }
+      });
     }
 
     if (month) {
@@ -1193,17 +1263,42 @@ router.get("/exports/:status?", async (req, res) => {
         statusArray = [...statusArray, "Road Out"];
       }
 
-      if (statusArray.includes("Pending")) {
-        filter.$and.push({
-          $or: [
-            { detailedStatus: { $in: statusArray } },
+      // Handle "Send for Billing" as a virtual status
+      const hasSendForBilling = statusArray.includes("Send for Billing");
+      const filteredStatusArray = statusArray.filter(s => s !== "Send for Billing");
+
+      const orConditions = [];
+
+      if (filteredStatusArray.length > 0) {
+        if (filteredStatusArray.includes("Pending")) {
+          orConditions.push(
+            { detailedStatus: { $in: filteredStatusArray } },
             { detailedStatus: { $in: [null, "", "Pending"] } },
             { detailedStatus: { $exists: false } }
-          ]
+          );
+        } else {
+          orConditions.push({ detailedStatus: { $in: filteredStatusArray } });
+        }
+      }
+
+      if (hasSendForBilling) {
+        orConditions.push({
+          send_for_billing: true,
+          send_for_billing_date: { $exists: true, $nin: [null, ""] }
         });
-      } else {
+      }
+
+      if (orConditions.length > 0) {
+        filter.$and.push({ $or: orConditions });
+      }
+
+      if (!hasSendForBilling && filteredStatusArray.length > 0) {
         filter.$and.push({
-          detailedStatus: { $in: statusArray },
+          $or: [
+            { send_for_billing: { $ne: true } },
+            { send_for_billing_date: { $exists: false } },
+            { send_for_billing_date: { $in: [null, ""] } }
+          ]
         });
       }
     }
@@ -1597,7 +1692,8 @@ router.get("/filtered-exporters", async (req, res) => {
           { "consignees.consignee_name": { $regex: search, $options: "i" } },
           { sb_no: { $regex: search, $options: "i" } },
           { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
-          { "containers.containerNo": { $regex: search, $options: "i" } }
+          { "containers.containerNo": { $regex: search, $options: "i" } },
+          { port_of_discharge: { $regex: search, $options: "i" } }
         ],
       });
     }
@@ -1612,16 +1708,43 @@ router.get("/filtered-exporters", async (req, res) => {
         statusArray = [...statusArray, "Road Out"];
       }
 
-      if (statusArray.includes("Pending")) {
-        filter.$and.push({
-          $or: [
-            { detailedStatus: { $in: statusArray } },
+      // Handle "Send for Billing" as a virtual status
+      const hasSendForBilling = statusArray.includes("Send for Billing");
+      const filteredStatusArray = statusArray.filter(s => s !== "Send for Billing");
+
+      const orConditions = [];
+
+      if (filteredStatusArray.length > 0) {
+        if (filteredStatusArray.includes("Pending")) {
+          orConditions.push(
+            { detailedStatus: { $in: filteredStatusArray } },
             { detailedStatus: { $in: [null, "", "Pending"] } },
             { detailedStatus: { $exists: false } }
+          );
+        } else {
+          orConditions.push({ detailedStatus: { $in: filteredStatusArray } });
+        }
+      }
+
+      if (hasSendForBilling) {
+        orConditions.push({
+          send_for_billing: true,
+          send_for_billing_date: { $exists: true, $nin: [null, ""] }
+        });
+      }
+
+      if (orConditions.length > 0) {
+        filter.$and.push({ $or: orConditions });
+      }
+
+      if (!hasSendForBilling && filteredStatusArray.length > 0) {
+        filter.$and.push({
+          $or: [
+            { send_for_billing: { $ne: true } },
+            { send_for_billing_date: { $exists: false } },
+            { send_for_billing_date: { $in: [null, ""] } }
           ]
         });
-      } else {
-        filter.$and.push({ detailedStatus: { $in: statusArray } });
       }
     }
     if (customHouse) filter.$and.push({ custom_house: { $regex: customHouse, $options: "i" } });
