@@ -676,7 +676,8 @@ export function generateSBFlatFile(job) {
             const uom = clean(p.qtyUnit || "KGS");
             const qty = parseFloat(p.quantity || 0).toFixed(3);
             const upr = parseFloat(p.unitPrice || 0).toFixed(5);
-            const pmv = parseFloat((p.pmvInfo || {}).pmvPerUnit || 0).toFixed(2);
+            const pmvVal = parseFloat((p.pmvInfo || {}).pmvPerUnit || 0);
+            const pmv = (pmvVal <= 0 ? 0.01 : pmvVal).toFixed(2);
             const sc = (p.eximCode || "19").split(" ")[0];
 
             out += row(PD,

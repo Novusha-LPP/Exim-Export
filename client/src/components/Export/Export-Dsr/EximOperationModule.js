@@ -321,7 +321,7 @@ function EximOperationModule() {
         </Box>
 
         <TabPanel value={activeTab} index={0}>
-          <OperationsTab job={data} formik={formik} isEditable={isEditable} />
+          <OperationsTab job={data} formik={formik} isEditable={isEditable} isAdmin={user?.role === "Admin"} />
         </TabPanel>
 
         {data.custom_house === "ICD SABARMATI" ? (

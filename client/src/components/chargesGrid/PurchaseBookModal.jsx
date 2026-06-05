@@ -36,12 +36,15 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
         "IGST": '',
         "TDS": '',
         "Total": '',
+        "Net Amount": '',
         "Status": '',
         "Charge Head Category": '',
         "TDS Category": '',
         "chargeRef": '',
         "jobRef": '',
-        "apiKeyName": ''
+        "apiKeyName": '',
+        isClubJob: false,
+        clubbedJobs: []
     });
 
     useEffect(() => {
@@ -162,11 +165,14 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     "SGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
                     "IGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? '' : (!isReimbursement && initialData.gstAmount > 0 ? Number(initialData.gstAmount).toFixed(2) : ''),
                     "TDS": initialData.tdsAmount ? String(Math.round(Number(initialData.tdsAmount))) : '',
-                    "Total": initialData.netPayable ? Math.round(initialData.netPayable) : (initialData.totalAmount ? Math.round(initialData.totalAmount) : ''),
+                    "Total": initialData.amountINR ? Math.round(initialData.amountINR) : (initialData.totalAmount ? Math.round(initialData.totalAmount) : ''),
+                    "Net Amount": initialData.netPayable ? Math.round(initialData.netPayable) : '',
                     "Charge Head Category": initialData.chargeType || '',
                     "TDS Category": initialData.tdsCategory || '',
                     "chargeRef": initialData.chargeId || '',
-                    "jobRef": initialData.jobId || ''
+                    "jobRef": initialData.jobId || '',
+                    isClubJob: initialData.isClubJob || false,
+                    clubbedJobs: initialData.clubbedJobs || []
                 }));
             }
         };
@@ -184,7 +190,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
             // IF GST NO STARTS WITH 24 AND ITS A MARGIN CHARGE (or any taxable charge)
             // WE WILL SHOW GST AS CGST AND SGST 18 PERCENT DEVIDE BY 2 EACH 9%
             // BUT IF IT IS EMPTY OR NOT STARTS WITH 24 THEN SHOW GST IN ONE FIELD ONLY WHICH IS IGST
-            if (name === "GSTIN NO" || name === "Taxable Value" || name === "GST%" || name === "TDS") {
+            if (name === "GSTIN NO" || name === "Taxable Value" || name === "GST%" || name === "TDS" || name === "Total") {
                 const gstin = updated["GSTIN NO"] || "";
                 const taxable = parseFloat(updated["Taxable Value"]) || 0;
                 const gstRate = !isReimbursement ? (parseFloat(updated["GST%"]) || 0) : 0;
@@ -200,7 +206,15 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     updated["SGST"] = "";
                     updated["IGST"] = totalGst > 0 ? totalGst.toFixed(2) : "";
                 }
-                updated["Total"] = Math.round(taxable + totalGst - tds);
+                
+                if (isReimbursement) {
+                    const totalVal = name === "Total" ? (parseFloat(value) || 0) : (parseFloat(updated["Total"]) || taxable);
+                    updated["Total"] = totalVal;
+                    updated["Net Amount"] = Math.round(totalVal - tds);
+                } else {
+                    updated["Total"] = Math.round(taxable + totalGst);
+                    updated["Net Amount"] = Math.round(taxable + totalGst - tds);
+                }
             }
             return updated;
         });
@@ -396,6 +410,10 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                             <div className="ep-row">
                                 <span className="ep-label">Total</span>
                                 <input type="number" name="Total" className="ep-desc-input" value={formData["Total"]} onChange={handleInputChange} />
+                            </div>
+                            <div className="ep-row">
+                                <span className="ep-label">Net Amount</span>
+                                <input type="number" name="Net Amount" className="ep-desc-input" value={formData["Net Amount"]} onChange={handleInputChange} />
                             </div>
                             <div className="ep-row">
                                 <span className="ep-label">Status</span>

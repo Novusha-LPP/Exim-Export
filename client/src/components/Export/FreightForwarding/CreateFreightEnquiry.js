@@ -15,7 +15,7 @@ const s = {
     boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
     marginBottom: "16px",
     border: "1px solid #cbd5e1",
-    overflow: "hidden",
+    overflow: "visible",
   },
   cardHeader: {
     padding: "12px 20px",
@@ -29,6 +29,8 @@ const s = {
     letterSpacing: "0.5px",
     color: "#334155",
     backgroundColor: "#f8fafc",
+    borderTopLeftRadius: "3px",
+    borderTopRightRadius: "3px",
   },
   cardBody: {
     padding: "16px 20px",
@@ -247,6 +249,15 @@ const emptyForm = {
   dimension: "",
   no_packages: "",
   dimensions: [],
+  volume_cbm: "",
+  is_manual_cbm: false,
+  movement_type: "",
+  volume_weight: "",
+  gross_weight_unit: "KG",
+  chargeable_weight_unit: "KG",
+  volume_unit: "CBM",
+  package_unit: "PKGS",
+  net_weight_unit: "KG",
 };
 
 const seaPortOptions = [
@@ -442,15 +453,52 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
     return formData.dimensions.reduce((acc, row) => acc + (parseInt(row.no_packages) || 0), 0);
   }, [formData.dimensions]);
 
+  const hasGridRows = useMemo(() => {
+    if (formData.dimensions.length > 1) return true;
+    if (formData.dimensions.length === 1) {
+      const r = formData.dimensions[0];
+      return !!(r.length || r.breadth || r.height || r.net_weight || r.gross_weight || r.no_packages);
+    }
+    return false;
+  }, [formData.dimensions]);
+
+  const finalPackages = useMemo(() => {
+    if (formData.is_manual_cbm && !hasGridRows) {
+      return parseInt(formData.no_packages) || 0;
+    }
+    return totalPackages;
+  }, [formData.is_manual_cbm, hasGridRows, totalPackages, formData.no_packages]);
+
+  const finalNetWeight = useMemo(() => {
+    if (formData.is_manual_cbm && !hasGridRows) {
+      return parseFloat(formData.net_weight) || 0;
+    }
+    return totalNetWeight;
+  }, [formData.is_manual_cbm, hasGridRows, totalNetWeight, formData.net_weight]);
+
+  const finalGrossWeight = useMemo(() => {
+    if (formData.is_manual_cbm && !hasGridRows) {
+      return parseFloat(formData.gross_weight) || 0;
+    }
+    return totalGrossWeight;
+  }, [formData.is_manual_cbm, hasGridRows, totalGrossWeight, formData.gross_weight]);
+
+  const finalVolumeCbm = useMemo(() => {
+    if (formData.is_manual_cbm) {
+      return parseFloat(formData.volume_cbm) || 0;
+    }
+    return totalVolumeCbm;
+  }, [formData.is_manual_cbm, formData.volume_cbm, totalVolumeCbm]);
+
   const volumetricWeight = useMemo(() => {
     const isAir = formData.shipment_type && formData.shipment_type.includes("Air");
     const factor = isAir ? 167 : 1000;
-    return totalVolumeCbm * factor;
-  }, [totalVolumeCbm, formData.shipment_type]);
+    return finalVolumeCbm * factor;
+  }, [finalVolumeCbm, formData.shipment_type]);
 
   const chargeableWeight = useMemo(() => {
-    return Math.max(totalGrossWeight, volumetricWeight);
-  }, [totalGrossWeight, volumetricWeight]);
+    return Math.max(finalGrossWeight, volumetricWeight);
+  }, [finalGrossWeight, volumetricWeight]);
 
   const [loadingPorts, setLoadingPorts] = useState([]);
   const [destinationPorts, setDestinationPorts] = useState([]);
@@ -692,8 +740,12 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
   }, [formData.port_of_loading, formData.port_of_destination, formData.shipment_type, showLoadingDropdown, showDestinationDropdown]);
 
   const requiredMissing = useMemo(() => {
-    return !formData.organization_name || !formData.shipment_type || !formData.port_of_loading;
-  }, [formData.organization_name, formData.shipment_type, formData.port_of_loading]);
+    const basic = !formData.organization_name || !formData.shipment_type || !formData.port_of_loading;
+    if (formData.is_manual_cbm) {
+      return basic || !formData.volume_cbm;
+    }
+    return basic;
+  }, [formData.organization_name, formData.shipment_type, formData.port_of_loading, formData.is_manual_cbm, formData.volume_cbm]);
 
   const handleChange = (field, value) => {
     const upperFields = ["organization_name", "consignment_type", "goods_stuffed", "port_of_loading", "port_of_destination", "dimension", "remarks"];
@@ -712,8 +764,13 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
       setIsSubmitting(true);
       const payload = {
         ...formData,
-        enquiry_date: new Date().toISOString().split("T")[0],
-        status: "Open",
+        net_weight: String(finalNetWeight),
+        gross_weight: String(finalGrossWeight),
+        no_packages: String(finalPackages),
+        volume_cbm: String(finalVolumeCbm),
+        volume_weight: String(volumetricWeight.toFixed(2)),
+        enquiry_date: formData.enquiry_date || new Date().toISOString().split("T")[0],
+        status: formData.status || "Open",
       };
       console.log("Calling onCreate with:", payload);
       await onCreate(payload);
@@ -733,7 +790,7 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
           <div style={s.cardBody}>
             <div style={s.row}>
               <div style={{ ...s.col, flex: 2 }} ref={wrapperRef}>
-                <label style={s.label}>Organization Name *</label>
+                <label style={s.label}>Shipper Name (Organization Name) *</label>
                 <div style={s.comboWrapper}>
                   <input
                     style={s.inputWithIcon}
@@ -831,6 +888,15 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
                   <option value="FACTORY STUFFED">FACTORY STUFFED</option>
                   <option value="DOCK STUFFED">DOCK STUFFED</option>
                 </select>
+              </div>
+              <div style={s.col}>
+                <label style={s.label}>Movement Type</label>
+                <input
+                  style={s.input}
+                  value={formData.movement_type || ""}
+                  onChange={(e) => handleChange("movement_type", e.target.value)}
+                  placeholder="e.g. FCL/FCL, Door to Door"
+                />
               </div>
             </div>
           </div>
@@ -953,8 +1019,19 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
               </div>
             </div>
             <div style={{ marginTop: "15px", marginBottom: "15px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "#374151" }}>Dimensions & Weight Grid</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#374151" }}>Dimensions & Weight Grid</span>
+                  <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 700, color: "#16408f", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.is_manual_cbm || false}
+                      onChange={(e) => handleChange("is_manual_cbm", e.target.checked)}
+                      style={{ cursor: "pointer" }}
+                    />
+                    Manual CBM
+                  </label>
+                </div>
                 <button
                   type="button"
                   style={s.btnAddRow}
@@ -963,6 +1040,79 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
                   + Add Row
                 </button>
               </div>
+
+              {formData.is_manual_cbm && (
+                <div style={{
+                  display: "flex",
+                  gap: "16px",
+                  backgroundColor: "#eff6ff",
+                  border: "1px solid #bfdbfe",
+                  borderRadius: "4px",
+                  padding: "12px 16px",
+                  marginBottom: "16px",
+                  flexWrap: "wrap"
+                }}>
+                  <div style={{ flex: 1, minWidth: "140px", display: "flex", flexDirection: "column" }}>
+                    <label style={{ ...s.label, color: "#1e40af" }}>
+                      Manual Net Weight (Kg) {hasGridRows && <span style={{ fontSize: "10px", color: "#6b7280" }}>(Row Sum)</span>}
+                    </label>
+                    <input
+                      type="number"
+                      style={{ ...s.input, backgroundColor: hasGridRows ? "#f1f5f9" : "#fff" }}
+                      value={hasGridRows ? totalNetWeight.toFixed(2) : formData.net_weight}
+                      disabled={hasGridRows}
+                      onChange={(e) => handleChange("net_weight", e.target.value)}
+                      placeholder="Enter Total Net Wt"
+                      min="0"
+                      step="any"
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: "140px", display: "flex", flexDirection: "column" }}>
+                    <label style={{ ...s.label, color: "#1e40af" }}>
+                      Manual Gross Weight (Kg) {hasGridRows && <span style={{ fontSize: "10px", color: "#6b7280" }}>(Row Sum)</span>}
+                    </label>
+                    <input
+                      type="number"
+                      style={{ ...s.input, backgroundColor: hasGridRows ? "#f1f5f9" : "#fff" }}
+                      value={hasGridRows ? totalGrossWeight.toFixed(2) : formData.gross_weight}
+                      disabled={hasGridRows}
+                      onChange={(e) => handleChange("gross_weight", e.target.value)}
+                      placeholder="Enter Total Gross Wt"
+                      min="0"
+                      step="any"
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: "140px", display: "flex", flexDirection: "column" }}>
+                    <label style={{ ...s.label, color: "#1e40af" }}>
+                      Manual No of Packages {hasGridRows && <span style={{ fontSize: "10px", color: "#6b7280" }}>(Row Sum)</span>}
+                    </label>
+                    <input
+                      type="number"
+                      style={{ ...s.input, backgroundColor: hasGridRows ? "#f1f5f9" : "#fff" }}
+                      value={hasGridRows ? totalPackages : formData.no_packages}
+                      disabled={hasGridRows}
+                      onChange={(e) => handleChange("no_packages", e.target.value)}
+                      placeholder="Enter Total Packages"
+                      min="0"
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: "140px", display: "flex", flexDirection: "column" }}>
+                    <label style={{ ...s.label, color: "#1e40af", fontWeight: 700 }}>
+                      Manual Volume (CBM) *
+                    </label>
+                    <input
+                      type="number"
+                      style={s.input}
+                      value={formData.volume_cbm}
+                      onChange={(e) => handleChange("volume_cbm", e.target.value)}
+                      placeholder="Enter Total CBM"
+                      min="0"
+                      step="any"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
 
               <div style={{ overflowX: "auto", border: "1px solid #e5e7eb", borderRadius: "4px" }}>
                 <table style={s.table}>
@@ -1093,29 +1243,71 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
             }}>
               <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
                 <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Packages</span>
-                <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{totalPackages}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
+                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{finalPackages}</span>
+                  <input
+                    value={formData.package_unit || ""}
+                    onChange={(e) => handleChange("package_unit", e.target.value)}
+                    style={{ width: "50px", height: "20px", fontSize: "10px", fontWeight: 600, padding: "0 4px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
+                    placeholder="Unit"
+                  />
+                </div>
               </div>
               <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Net Wt (Kg)</span>
-                <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{totalNetWeight.toFixed(2)}</span>
+                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Net Wt</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
+                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{finalNetWeight.toFixed(2)}</span>
+                  <input
+                    value={formData.net_weight_unit || ""}
+                    onChange={(e) => handleChange("net_weight_unit", e.target.value)}
+                    style={{ width: "40px", height: "20px", fontSize: "10px", fontWeight: 600, padding: "0 4px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
+                    placeholder="Unit"
+                  />
+                </div>
               </div>
               <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Gross Wt (Kg)</span>
-                <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{totalGrossWeight.toFixed(2)}</span>
+                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Gross Wt</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
+                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{finalGrossWeight.toFixed(2)}</span>
+                  <input
+                    value={formData.gross_weight_unit || ""}
+                    onChange={(e) => handleChange("gross_weight_unit", e.target.value)}
+                    style={{ width: "40px", height: "20px", fontSize: "10px", fontWeight: 600, padding: "0 4px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
+                    placeholder="Unit"
+                  />
+                </div>
               </div>
               <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Volume (CBM)</span>
-                <span style={{ fontSize: "14px", fontWeight: 700, color: "#16408f" }}>{totalVolumeCbm.toFixed(4)}</span>
+                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Volume</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
+                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#16408f" }}>{finalVolumeCbm.toFixed(4)}</span>
+                  <input
+                    value={formData.volume_unit || ""}
+                    onChange={(e) => handleChange("volume_unit", e.target.value)}
+                    style={{ width: "45px", height: "20px", fontSize: "10px", fontWeight: 600, padding: "0 4px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
+                    placeholder="Unit"
+                  />
+                </div>
               </div>
               <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
                 <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>
                   Volumetric Wt ({formData.shipment_type && formData.shipment_type.includes("Air") ? "Air: 1:167" : "Sea: 1:1000"})
                 </span>
-                <span style={{ fontSize: "14px", fontWeight: 700, color: "#4b5563" }}>{volumetricWeight.toFixed(2)} Kg</span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: "#4b5563", marginTop: "4px" }}>
+                  {volumetricWeight.toFixed(2)} {formData.gross_weight_unit || "KG"}
+                </span>
               </div>
               <div style={{ flex: "1 1 150px", display: "flex", flexDirection: "column", borderLeft: "2px solid #16408f", paddingLeft: "10px" }}>
                 <span style={{ fontSize: "10px", fontWeight: 700, color: "#16408f", textTransform: "uppercase" }}>Chargeable Weight</span>
-                <span style={{ fontSize: "16px", fontWeight: 800, color: "#16408f" }}>{chargeableWeight.toFixed(2)} Kg</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
+                  <span style={{ fontSize: "16px", fontWeight: 800, color: "#16408f" }}>{chargeableWeight.toFixed(2)}</span>
+                  <input
+                    value={formData.chargeable_weight_unit || ""}
+                    onChange={(e) => handleChange("chargeable_weight_unit", e.target.value)}
+                    style={{ width: "40px", height: "20px", fontSize: "10px", fontWeight: 600, padding: "0 4px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
+                    placeholder="Unit"
+                  />
+                </div>
               </div>
             </div>
             <div style={s.row}>

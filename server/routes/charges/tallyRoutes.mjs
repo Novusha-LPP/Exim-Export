@@ -160,7 +160,8 @@ router.get("/next-sequence", authApiKey, async (req, res) => {
         let count = 0;
         let prefix = "";
         if (type === "purchase") {
-            count = await PurchaseBookEntryModel.countDocuments({ jobNo });
+            const jobNoRegex = { $regex: new RegExp("^" + jobNo.split(",")[0].trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "(,|$)", "i") };
+            count = await PurchaseBookEntryModel.countDocuments({ jobNo: jobNoRegex });
             prefix = "PB";
         } else if (type === "payment") {
             count = await PaymentRequestModel.countDocuments({ jobNo });
@@ -194,47 +195,195 @@ router.get("/next-sequence", authApiKey, async (req, res) => {
     }
 });
 
+// Helper to join unique non-empty strings with a comma
+const joinUniqueStrings = (arr) => {
+    const unique = [...new Set(arr.map(s => String(s || '').trim()).filter(Boolean))];
+    return unique.join(", ");
+};
+
+// Helper to join unique container numbers
+const joinUniqueContainers = (arr) => {
+    const allContainers = [];
+    arr.forEach(s => {
+        if (s) {
+            s.split(",").forEach(c => {
+                const trimmed = c.trim();
+                if (trimmed && !allContainers.includes(trimmed)) {
+                    allContainers.push(trimmed);
+                }
+            });
+        }
+    });
+    return allContainers.join(", ");
+};
+
+// Helper to look up supplier invoice details from clubbed jobs
+const getSupplierInvoiceDetails = async (mainJobNo, clubbedJobs, chargeHeading, mainInvNo, mainInvDate) => {
+    let invNos = [mainInvNo].filter(Boolean);
+    let invDates = [normalizeDate(mainInvDate)].filter(Boolean);
+
+    if (clubbedJobs && clubbedJobs.length > 0 && chargeHeading) {
+        const normHeading = chargeHeading.trim().toLowerCase();
+        for (const jNo of clubbedJobs) {
+            try {
+                const job = await ExJobModel.findOne({ job_no: jNo }).lean();
+                if (job && job.charges) {
+                    const charge = job.charges.find(c => (c.chargeHead || '').trim().toLowerCase() === normHeading);
+                    if (charge) {
+                        const invNo = charge.invoice_number || charge.cost?.invoiceNo || '';
+                        const invDate = charge.invoice_date || charge.cost?.invoiceDate || '';
+                        if (invNo && !invNos.includes(invNo)) {
+                            invNos.push(invNo);
+                        }
+                        const normD = normalizeDate(invDate);
+                        if (normD && !invDates.includes(normD)) {
+                            invDates.push(normD);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error(`Error fetching supplier inv details for job ${jNo}:`, err);
+            }
+        }
+    }
+    return {
+        supplierInvNo: invNos.join(", "),
+        supplierInvDate: invDates.join(", ")
+    };
+};
+
 // Helper to map Tally keys
-const mapPurchaseEntryData = (data) => ({
-    entryNo: data["Entry No"] || data.entryNo,
-    entryDate: normalizeDate(data["Entry Date"] || data.entryDate),
-    supplierInvNo: data["Supplier Inv No"] || data.supplierInvNo,
-    supplierInvDate: normalizeDate(data["Supplier Inv Date"] || data.supplierInvDate),
-    jobNo: data["Job No"] || data.jobNo,
-    supplierName: data["Supplier Name"] || data.supplierName,
-    address1: data["Address 1"] || data.address1,
-    address2: data["Address 2"] || data.address2,
-    address3: data["Address 3"] || data.address3,
-    state: data["State"] || data.state,
-    country: data["Country"] || data.country,
-    pinCode: data["Pin Code"] || data.pinCode,
-    registrationType: data["Registration Type"] || data.registrationType,
-    gstinNo: data["GSTIN NO"] || data["GSTIN No"] || data.gstinNo,
-    pan: data["PAN"] || data.pan,
-    cin: data["CIN"] || data.cin,
-    placeOfSupply: data["Place of Supply"] || data.placeOfSupply,
-    creditTerms: data["Credit Terms"] || data.creditTerms,
-    descriptionOfServices: data["Description of Services"] || data.descriptionOfServices,
-    chargeHeading: data["Charge Heading"] || data.chargeHeading,
-    sac: data["SAC"] || data.sac,
-    taxableValue: data["Taxable Value"] || data.taxableValue,
-    gstPercent: data["GST%"] || data.gstPercent,
-    cgstAmt: data["CGST"] || data.cgstAmt,
-    sgstAmt: data["SGST"] || data.sgstAmt,
-    igstAmt: data["IGST"] || data.igstAmt,
-    tds: data["TDS"] || data.tds,
-    total: data["Total"] || data.total,
-    chargeRef: data.chargeRef,
-    jobRef: data.jobRef,
-    status: data["Status"] || data.status || '',
-    chargeHeadCategory: data["Charge Head Category"] || data.chargeHeadCategory || ''
-});
+const mapPurchaseEntryData = (data) => {
+    const rawEntryNo = data["Entry No"] || data.entryNo || "";
+    const entryNo = String(rawEntryNo).split(",")[0].trim();
+    const jobNo = (data["Job No"] || data.jobNo || "").trim();
+
+    return {
+        entryNo,
+        entryDate: normalizeDate(data["Entry Date"] || data.entryDate),
+        supplierInvNo: data["Supplier Inv No"] || data.supplierInvNo,
+        supplierInvDate: normalizeDate(data["Supplier Inv Date"] || data.supplierInvDate),
+        jobNo,
+        supplierName: data["Supplier Name"] || data.supplierName,
+        address1: data["Address 1"] || data.address1,
+        address2: data["Address 2"] || data.address2,
+        address3: data["Address 3"] || data.address3,
+        state: data["State"] || data.state,
+        country: data["Country"] || data.country,
+        pinCode: data["Pin Code"] || data.pinCode,
+        registrationType: data["Registration Type"] || data.registrationType,
+        gstinNo: data["GSTIN NO"] || data["GSTIN No"] || data.gstinNo,
+        pan: data["PAN"] || data.pan,
+        cin: data["CIN"] || data.cin,
+        placeOfSupply: data["Place of Supply"] || data.placeOfSupply,
+        creditTerms: data["Credit Terms"] || data.creditTerms,
+        descriptionOfServices: data["Description of Services"] || data.descriptionOfServices,
+        chargeHeading: data["Charge Heading"] || data.chargeHeading,
+        sac: data["SAC"] || data.sac,
+        taxableValue: data["Taxable Value"] || data.taxableValue,
+        gstPercent: data["GST%"] || data.gstPercent,
+        cgstAmt: data["CGST"] || data.cgstAmt,
+        sgstAmt: data["SGST"] || data.sgstAmt,
+        igstAmt: data["IGST"] || data.igstAmt,
+        tds: data["TDS"] || data.tds,
+        total: data["Total"] || data.total,
+        netAmount: data["Net Amount"] || data.netAmount,
+        chargeRef: data.chargeRef,
+        jobRef: data.jobRef,
+        status: data["Status"] || data.status || '',
+        chargeHeadCategory: data["Charge Head Category"] || data.chargeHeadCategory || '',
+        isClubJob: data.isClubJob !== undefined ? data.isClubJob : false,
+        clubbedJobs: Array.isArray(data.clubbedJobs) ? data.clubbedJobs : []
+    };
+};
 
 router.post("/purchase-entry", authApiKey, async (req, res) => {
     try {
         const data = mapPurchaseEntryData(req.body);
+
+        // Populate combined jobDetails for club job
+        if (data.isClubJob && data.clubbedJobs?.length > 0) {
+            // Append suffix ONLY to jobNo, NOT to entryNo
+            const clubSuffix = `, ${data.clubbedJobs.join(", ")}`;
+            if (!data.jobNo.includes(clubSuffix)) {
+                data.jobNo = data.jobNo + clubSuffix;
+            }
+
+            const mainJobNo = String(data.jobNo).split(",")[0].trim();
+            const mainDetails = await getJobDetailsInternal(mainJobNo);
+            if (mainDetails && mainDetails.length > 0) {
+                const allJobNos = [mainJobNo, ...data.clubbedJobs].filter(Boolean);
+                let combinedDetails = [];
+                for (const jNo of allJobNos) {
+                    const details = await getJobDetailsInternal(jNo);
+                    if (details) {
+                        combinedDetails.push(...details);
+                    }
+                }
+
+                let totalGrossWeight = 0;
+                let totalNetWeight = 0;
+                let totalPackageCount = 0;
+                let totalInvoiceValue = 0;
+                let totalFobValue = 0;
+                let mainCurrency = mainDetails[0]["Invoice Currency"] || "USD";
+
+                combinedDetails.forEach((det) => {
+                    totalGrossWeight += parseFloat(det["Gross Weight"]) || 0;
+                    totalNetWeight += parseFloat(det["Net Wt"]) || 0;
+                    totalPackageCount += parseFloat(det["Package Count"]) || 0;
+                    
+                    const invValStr = det["Invoice Value"] || "";
+                    const invValMatch = invValStr.match(/^([\d\.]+)/);
+                    if (invValMatch) {
+                        totalInvoiceValue += parseFloat(invValMatch[1]) || 0;
+                    }
+                    totalFobValue += parseFloat(det["FOB Value"]) || 0;
+                });
+
+                // Gather comma-separated lists across all jobs/invoices
+                const jobNumbers = joinUniqueStrings(combinedDetails.map(d => d["Job Number"]));
+                const exporterNames = joinUniqueStrings(combinedDetails.map(d => d["ImporterExporter Name"]));
+                const containerCounts = joinUniqueStrings(combinedDetails.map(d => d["Container Count"]));
+                const containers = joinUniqueContainers(combinedDetails.map(d => d["Containers"]));
+                const sbNos = joinUniqueStrings(combinedDetails.map(d => d["SB No"]));
+                const sbDates = joinUniqueStrings(combinedDetails.map(d => d["SB Date"]));
+                const invNos = joinUniqueStrings(combinedDetails.map(d => d["Invoice Number"]));
+                const invDates = joinUniqueStrings(combinedDetails.map(d => d["Inv Date"]));
+
+                mainDetails[0]["Gross Weight"] = String(Math.round(totalGrossWeight));
+                mainDetails[0]["Net Wt"] = String(Math.round(totalNetWeight));
+                mainDetails[0]["Package Count"] = String(Math.round(totalPackageCount));
+                mainDetails[0]["Invoice Value"] = `${totalInvoiceValue.toFixed(2).replace(/\.00$/, '')}(${mainCurrency})`;
+                mainDetails[0]["FOB Value"] = totalFobValue.toFixed(2);
+
+                // Assign comma-separated fields
+                mainDetails[0]["Job Number"] = jobNumbers;
+                mainDetails[0]["ImporterExporter Name"] = exporterNames;
+                mainDetails[0]["Container Count"] = containerCounts;
+                mainDetails[0]["Containers"] = containers;
+                mainDetails[0]["SB No"] = sbNos;
+                mainDetails[0]["SB Date"] = sbDates;
+                mainDetails[0]["Invoice Number"] = invNos;
+                mainDetails[0]["Inv Date"] = invDates;
+
+                data.jobDetails = mainDetails;
+            } else {
+                data.jobDetails = [];
+            }
+        } else {
+            const firstJob = String(data.jobNo).split(",")[0].trim();
+            const details = await getJobDetailsInternal(firstJob);
+            if (details) {
+                data.jobDetails = details;
+            }
+        }
+
         const entry = await PurchaseBookEntryModel.create(data);
-        res.status(201).json({ success: true, "Entry No": entry.entryNo });
+        res.status(201).json({
+            success: true,
+            "Entry No": entry.entryNo
+        });
     } catch (error) {
         if (error.code === 11000) return res.status(400).json({ error: "Duplicate entry." });
         res.status(500).send({ error: "Internal Server Error" });
@@ -245,7 +394,16 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
     try {
         const entryNo = req.query.entry_no || req.query.entryNo;
         if (!entryNo) return res.status(400).json({ error: "entry_no is a required query parameter" });
-        const entry = await PurchaseBookEntryModel.findOne({ entryNo }).lean();
+        
+        // Find using either the exact entryNo, or the first part if it's comma-separated
+        const firstPart = String(entryNo).split(",")[0].trim();
+        const entry = await PurchaseBookEntryModel.findOne({
+            $or: [
+                { entryNo: entryNo },
+                { entryNo: firstPart }
+            ]
+        }).lean();
+        
         if (!entry) return res.status(404).json({ error: "Purchase Book Entry not found." });
 
         // Fallback for Charge Head Category if missing
@@ -257,7 +415,8 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     job = await ExJobModel.findById(entry.jobRef).lean();
                 }
                 if (!job && entry.jobNo) {
-                    job = await ExJobModel.findOne({ job_no: entry.jobNo }).lean();
+                    const firstJob = String(entry.jobNo).split(",")[0].trim();
+                    job = await ExJobModel.findOne({ job_no: firstJob }).lean();
                 }
                 if (job) {
                     let charge = null;
@@ -277,11 +436,35 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             }
         }
 
+        // Get comma-separated supplier invoice numbers & dates if clubbed
+        let supplierInvNo = entry.supplierInvNo;
+        let supplierInvDate = normalizeDate(entry.supplierInvDate);
+        if (entry.isClubJob && entry.clubbedJobs?.length > 0 && entry.chargeHeading) {
+            const mainJobNo = String(entry.jobNo).split(",")[0].trim();
+            const { supplierInvNo: clubInvNo, supplierInvDate: clubInvDate } = await getSupplierInvoiceDetails(
+                mainJobNo,
+                entry.clubbedJobs,
+                entry.chargeHeading,
+                entry.supplierInvNo,
+                entry.supplierInvDate
+            );
+            supplierInvNo = clubInvNo;
+            supplierInvDate = clubInvDate;
+        }
+
+        const tdsVal = Number(entry.tds || 0);
+        let grossTotal = entry.total;
+        let netAmount = entry.netAmount;
+        if (netAmount === undefined || netAmount === null) {
+            netAmount = entry.total;
+            grossTotal = netAmount + tdsVal;
+        }
+
         const formattedData = {
             "Entry No": entry.entryNo,
             "Entry Date": normalizeDate(entry.entryDate),
-            "Supplier Inv No": entry.supplierInvNo,
-            "Supplier Inv Date": normalizeDate(entry.supplierInvDate),
+            "Supplier Inv No": supplierInvNo,
+            "Supplier Inv Date": supplierInvDate,
             "Job No": entry.jobNo,
             "Supplier Name": entry.supplierName,
             "Address 1": entry.address1,
@@ -305,11 +488,14 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "SGST": entry.sgstAmt,
             "IGST": entry.igstAmt,
             "TDS": entry.tds,
-            "Total": entry.total,
+            "Total": grossTotal,
+            "Net Amount": netAmount,
             "Charge Description": entry.chargeDescription || '',
             "Charge Head Category": chargeCategory || '',
             "TDS Category": entry.tdsCategory || '94C',
-            "Status": entry.status
+            "Status": entry.status,
+            "isClubJob": entry.isClubJob || false,
+            "clubbedJobs": entry.clubbedJobs || []
         };
 
         // SAFETY: If it's a reimbursement, zero out GST fields for Tally even if saved in DB
@@ -334,11 +520,76 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         }
 
         // Include Job Details
-        const job_number = entry.jobNo;
-        const jobDetails = await getJobDetailsInternal(job_number);
-        if (jobDetails) {
-            formattedData["Job Details"] = jobDetails;
+        if (entry.isClubJob && entry.clubbedJobs?.length > 0) {
+            const mainJobNo = String(entry.jobNo).split(",")[0].trim();
+            const mainDetails = await getJobDetailsInternal(mainJobNo);
+            if (mainDetails && mainDetails.length > 0) {
+                const allJobNos = [mainJobNo, ...entry.clubbedJobs].filter(Boolean);
+                let combinedDetails = [];
+                for (const jNo of allJobNos) {
+                    const details = await getJobDetailsInternal(jNo);
+                    if (details) {
+                        combinedDetails.push(...details);
+                    }
+                }
+
+                let totalGrossWeight = 0;
+                let totalNetWeight = 0;
+                let totalPackageCount = 0;
+                let totalInvoiceValue = 0;
+                let totalFobValue = 0;
+                let mainCurrency = mainDetails[0]["Invoice Currency"] || "USD";
+
+                combinedDetails.forEach((det) => {
+                    totalGrossWeight += parseFloat(det["Gross Weight"]) || 0;
+                    totalNetWeight += parseFloat(det["Net Wt"]) || 0;
+                    totalPackageCount += parseFloat(det["Package Count"]) || 0;
+                    
+                    const invValStr = det["Invoice Value"] || "";
+                    const invValMatch = invValStr.match(/^([\d\.]+)/);
+                    if (invValMatch) {
+                        totalInvoiceValue += parseFloat(invValMatch[1]) || 0;
+                    }
+                    totalFobValue += parseFloat(det["FOB Value"]) || 0;
+                });
+
+                // Gather comma-separated lists across all jobs/invoices
+                const jobNumbers = joinUniqueStrings(combinedDetails.map(d => d["Job Number"]));
+                const exporterNames = joinUniqueStrings(combinedDetails.map(d => d["ImporterExporter Name"]));
+                const containerCounts = joinUniqueStrings(combinedDetails.map(d => d["Container Count"]));
+                const containers = joinUniqueContainers(combinedDetails.map(d => d["Containers"]));
+                const sbNos = joinUniqueStrings(combinedDetails.map(d => d["SB No"]));
+                const sbDates = joinUniqueStrings(combinedDetails.map(d => d["SB Date"]));
+                const invNos = joinUniqueStrings(combinedDetails.map(d => d["Invoice Number"]));
+                const invDates = joinUniqueStrings(combinedDetails.map(d => d["Inv Date"]));
+
+                mainDetails[0]["Gross Weight"] = String(Math.round(totalGrossWeight));
+                mainDetails[0]["Net Wt"] = String(Math.round(totalNetWeight));
+                mainDetails[0]["Package Count"] = String(Math.round(totalPackageCount));
+                mainDetails[0]["Invoice Value"] = `${totalInvoiceValue.toFixed(2).replace(/\.00$/, '')}(${mainCurrency})`;
+                mainDetails[0]["FOB Value"] = totalFobValue.toFixed(2);
+
+                // Assign comma-separated fields
+                mainDetails[0]["Job Number"] = jobNumbers;
+                mainDetails[0]["ImporterExporter Name"] = exporterNames;
+                mainDetails[0]["Container Count"] = containerCounts;
+                mainDetails[0]["Containers"] = containers;
+                mainDetails[0]["SB No"] = sbNos;
+                mainDetails[0]["SB Date"] = sbDates;
+                mainDetails[0]["Invoice Number"] = invNos;
+                mainDetails[0]["Inv Date"] = invDates;
+
+                formattedData["Job Details"] = mainDetails;
+            } else {
+                formattedData["Job Details"] = [];
+            }
+        } else {
+            const jobDetails = await getJobDetailsInternal(entry.jobNo);
+            if (jobDetails) {
+                formattedData["Job Details"] = jobDetails;
+            }
         }
+
 
         res.status(200).json(formattedData);
     } catch (error) {

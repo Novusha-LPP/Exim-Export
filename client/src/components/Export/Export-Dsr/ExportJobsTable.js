@@ -386,6 +386,7 @@ const statusThemes = {
   "File Handover to IATA": { bg: "#f0fdf4", border: "#22c55e", text: "#15803d", light: "#dcfce7" },
   "Rail Out": { bg: "#f5f3ff", border: "#8b5cf6", text: "#6d28d9", light: "#ede9fe" },
   "Departure": { bg: "#f5f3ff", border: "#8b5cf6", text: "#6d28d9", light: "#ede9fe" },
+  "Send for Billing": { bg: "#fdf2f8", border: "#ec4899", text: "#be185d", light: "#fce7f3" },
   "Billing Pending": { bg: "#fff7ed", border: "#f59e0b", text: "#b45309", light: "#ffedd5" },
   "Billing Done": { bg: "#f0fdfa", border: "#14b8a6", text: "#0f766e", light: "#ccfbf1" },
   "Completed": { bg: "#f1f5f9", border: "#64748b", text: "#334155", light: "#e2e8f0" },
@@ -421,8 +422,14 @@ const buildShippingLineUrls = (num, containerFirst = "") => ({
 
 const getContainerSizeLabel = (value) => {
   const raw = (value || "").toString().toUpperCase().trim();
-  const sizeMatch = raw.match(/\b(20|40|45)\b/);
-  return sizeMatch ? sizeMatch[1] : raw;
+  if (!raw) return "";
+  let label = raw;
+  label = label.replace(/HIGH CUBE/g, "HC");
+  label = label.replace(/STANDARD/g, "STD");
+  label = label.replace(/OPEN TOP/g, "OT");
+  label = label.replace(/FLAT RACK/g, "FR");
+  label = label.replace(/REEFER/g, "RF");
+  return label;
 };
 
 const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSuccess }) => {
@@ -557,9 +564,9 @@ const QuickDeleteButton = ({ job, field, url, uploadType = "status", idx = 0, on
   };
 
   return (
-      <IconButton
-        size="small"
-        onClick={(e) => handleDelete(e)}
+    <IconButton
+      size="small"
+      onClick={(e) => handleDelete(e)}
       disabled={deleting}
       style={{ padding: "1px", marginLeft: "2px" }}
       title="Delete Document"
@@ -991,6 +998,8 @@ const ExportJobsTable = () => {
   const [dsrYear, setDsrYear] = useState(getCurrentFinancialYear());
   const [dsrOnlyPending, setDsrOnlyPending] = useState(false);
   const [dsrLoading, setDSRLoading] = useState(false);
+  const [dsrStartDate, setDsrStartDate] = useState("");
+  const [dsrEndDate, setDsrEndDate] = useState("");
 
   // Documents Expand/Collapse State
   const [expandedDocs, setExpandedDocs] = useState({});
@@ -1051,8 +1060,10 @@ const ExportJobsTable = () => {
   const [queryChatOpen, setQueryChatOpen] = useState(false);
   const [queryChatJob, setQueryChatJob] = useState(null);
   const [queryChatData, setQueryChatData] = useState([]);
+  const [clientQueryChatData, setClientQueryChatData] = useState([]);
   const [queryChatLoading, setQueryChatLoading] = useState(false);
   const [queryChatReply, setQueryChatReply] = useState("");
+  const [clientQueryChatReply, setClientQueryChatReply] = useState("");
   const [queryChatSending, setQueryChatSending] = useState(false);
 
   // Fetch Filtered Exporters based on other criteria
@@ -1128,7 +1139,9 @@ const ExportJobsTable = () => {
           params: {
             exporter: isAll ? "All" : selectedExporter,
             year: dsrYear,
-            onlyPending: dsrOnlyPending
+            onlyPending: dsrOnlyPending,
+            startDate: dsrStartDate,
+            endDate: dsrEndDate
           },
           responseType: "blob",
         },
@@ -1170,6 +1183,8 @@ const ExportJobsTable = () => {
             year: dsrYear,
             status: dsrOnlyPending ? "Pending" : "all",
             limit: 5000,
+            startDate: dsrStartDate,
+            endDate: dsrEndDate
           },
         }
       );
@@ -2584,7 +2599,7 @@ const ExportJobsTable = () => {
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedDetailedStatus([
-                        "Pending", "SB Filed", "L.E.O", "Container HO", "File Handover to IATA", "Rail Out", "Departure", "Billing Pending", "Billing Done"
+                        "Pending", "SB Filed", "L.E.O", "Container HO", "File Handover to IATA", "Rail Out", "Departure", "Send for Billing", "Billing Pending", "Billing Done"
                       ]);
                       setPage(1);
                     }}
@@ -2611,6 +2626,7 @@ const ExportJobsTable = () => {
                   "File Handover to IATA",
                   "Rail Out",
                   "Departure",
+                  "Send for Billing",
                   "Billing Pending",
                   "Billing Done",
                 ].map((status) => (
@@ -2734,7 +2750,7 @@ const ExportJobsTable = () => {
                   color: searchQuery ? "#1e40af" : "#333",
                   fontWeight: searchQuery ? "600" : "normal",
                 }}
-                placeholder="Search by Job No, Exporter, Consignee..."
+                placeholder="Search by Job No, Exporter, Port of Discharge..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -2910,10 +2926,21 @@ const ExportJobsTable = () => {
                                 backgroundColor: "#f3f4f6",
                                 padding: "2px 4px",
                                 borderRadius: "3px",
-                                width: "fit-content"
+                                width: "fit-content",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "2px",
                               }}
                             >
                               REF: {job.exporter_ref_no}
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleCopyText(job.exporter_ref_no, e)}
+                                style={{ padding: 0, marginLeft: 1 }}
+                                title="Copy Ref No"
+                              >
+                                <ContentCopyIcon style={{ fontSize: 9, color: "#6b7280" }} />
+                              </IconButton>
                             </div>
                           )}
 
@@ -2991,6 +3018,12 @@ const ExportJobsTable = () => {
                               </span>
                             )}
                           </div>
+                          {/* IE Code below exporter name */}
+                          {job.ieCode && (
+                            <div style={{ fontSize: "10px", color: "#64748b", marginBottom: "4px", fontWeight: "600" }}>
+                              IE: {job.ieCode}
+                            </div>
+                          )}
                           <div style={{ fontSize: "10px", color: "#475569", display: "flex", flexDirection: "column", gap: "2px" }}>
                             {job.consignees?.[0]?.consignee_name && (
                               <div style={{ display: "flex", gap: "4px", alignItems: "baseline" }}>
@@ -3328,13 +3361,15 @@ const ExportJobsTable = () => {
                                                 <ContentCopyIcon style={{ fontSize: 10, color: "#64748b" }} />
                                               </IconButton>
                                             </div>
-
-                                            {container.type && (
-                                              <span style={{ fontSize: '9px', color: '#445566', fontWeight: "900", backgroundColor: "#e2e8f0", padding: "1px 6px", borderRadius: "3px", flexShrink: 0, minWidth: "24px", textAlign: "center" }}>
+                                          </div>
+                                          {/* Container type shown below the container no */}
+                                          {container.type && (
+                                            <div style={{ marginTop: "2px" }}>
+                                              <span style={{ fontSize: '9px', color: '#445566', fontWeight: "900", backgroundColor: "#e2e8f0", padding: "1px 6px", borderRadius: "3px", display: "inline-block" }}>
                                                 {getContainerSizeLabel(container.type)}
                                               </span>
-                                            )}
-                                          </div>
+                                            </div>
+                                          )}
                                         </div>
                                       ))}
                                       {hiddenCount > 0 && (
@@ -3368,11 +3403,30 @@ const ExportJobsTable = () => {
                           )}
                           {!(job.isGeneralJob || job.exporter === "GENERAL JOB") && (
                             <div style={{ color: "#475569", fontSize: "10px", marginTop: "6px", backgroundColor: "#f1f5f9", padding: "4px", borderRadius: "4px" }}>
-                              <div style={{ fontWeight: "800", color: "#1e293b", marginBottom: "2px" }}>
-                                {job.total_no_of_pkgs} {job.package_unit}
+                              <div style={{ display: "flex", alignItems: "center", gap: "2px", fontWeight: "800", color: "#1e293b", marginBottom: "2px" }}>
+                                <span>{job.total_no_of_pkgs} {job.package_unit}</span>
+                                {job.total_no_of_pkgs && (
+                                  <IconButton size="small" onClick={(e) => handleCopyText(`${job.total_no_of_pkgs} ${job.package_unit || ""}`.trim(), e)} style={{ padding: 0 }} title="Copy No of Packages">
+                                    <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
+                                  </IconButton>
+                                )}
                               </div>
-                              <div style={{ fontSize: "9px" }}>
-                                <span style={{ fontWeight: "700" }}>G:</span> {job.gross_weight_kg} kg | <span style={{ fontWeight: "700" }}>N:</span> {job.net_weight_kg} kg
+                              <div style={{ fontSize: "9px", display: "flex", alignItems: "center", gap: "4px" }}>
+                                <span style={{ fontWeight: "700" }}>G:</span>
+                                <span>{job.gross_weight_kg} kg</span>
+                                {job.gross_weight_kg && (
+                                  <IconButton size="small" onClick={(e) => handleCopyText(String(job.gross_weight_kg), e)} style={{ padding: 0 }} title="Copy Gross Weight">
+                                    <ContentCopyIcon style={{ fontSize: 8, color: "#94a3b8" }} />
+                                  </IconButton>
+                                )}
+                                <span style={{ color: "#cbd5e1" }}>|</span>
+                                <span style={{ fontWeight: "700" }}>N:</span>
+                                <span>{job.net_weight_kg} kg</span>
+                                {job.net_weight_kg && (
+                                  <IconButton size="small" onClick={(e) => handleCopyText(String(job.net_weight_kg), e)} style={{ padding: 0 }} title="Copy Net Weight">
+                                    <ContentCopyIcon style={{ fontSize: 8, color: "#94a3b8" }} />
+                                  </IconButton>
+                                )}
                               </div>
                             </div>
                           )}
@@ -3576,12 +3630,20 @@ const ExportJobsTable = () => {
                                         setQueryChatOpen(true);
                                         setQueryChatLoading(true);
                                         try {
-                                          const resp = await axios.get(
-                                            `${import.meta.env.VITE_API_STRING}/queries`,
-                                            { params: { job_no: job.job_no } }
-                                          );
+                                          const [resp, clientResp] = await Promise.all([
+                                            axios.get(
+                                              `${import.meta.env.VITE_API_STRING}/queries`,
+                                              { params: { job_no: job.job_no } }
+                                            ),
+                                            axios.get(
+                                              `${import.meta.env.VITE_API_STRING}/client-queries`,
+                                              { params: { job_no: job.job_no } }
+                                            ).catch(() => ({ data: { queries: [] } }))
+                                          ]);
+
                                           const queriesFetched = resp.data?.data?.queries || resp.data?.data || [];
                                           setQueryChatData(queriesFetched);
+                                          setClientQueryChatData(clientResp.data?.queries || []);
 
                                           if (queriesFetched.length > 0) {
                                             axios.put(`${import.meta.env.VITE_API_STRING}/queries/mark-seen`, {
@@ -3596,6 +3658,7 @@ const ExportJobsTable = () => {
                                         } catch (err) {
                                           console.error(err);
                                           setQueryChatData([]);
+                                          setClientQueryChatData([]);
                                         } finally {
                                           setQueryChatLoading(false);
                                         }
@@ -3937,7 +4000,11 @@ const ExportJobsTable = () => {
       {/* DSR Report Dialog */}
       <Dialog
         open={openDSRDialog}
-        onClose={() => setOpenDSRDialog(false)}
+        onClose={() => {
+          setOpenDSRDialog(false);
+          setDsrStartDate("");
+          setDsrEndDate("");
+        }}
         maxWidth="xs"
         fullWidth
       >
@@ -4020,6 +4087,63 @@ const ExportJobsTable = () => {
             </select>
           </div>
 
+          <div style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
+            <div style={{ flex: 1 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  color: "#374151",
+                  marginBottom: "5px",
+                }}
+              >
+                From Date
+              </label>
+              <input
+                type="date"
+                style={{
+                  width: "100%",
+                  height: "35px",
+                  padding: "5px 10px",
+                  fontSize: "12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "4px",
+                  outline: "none",
+                }}
+                value={dsrStartDate}
+                onChange={(e) => setDsrStartDate(e.target.value)}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  color: "#374151",
+                  marginBottom: "5px",
+                }}
+              >
+                To Date
+              </label>
+              <input
+                type="date"
+                style={{
+                  width: "100%",
+                  height: "35px",
+                  padding: "5px 10px",
+                  fontSize: "12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "4px",
+                  outline: "none",
+                }}
+                value={dsrEndDate}
+                onChange={(e) => setDsrEndDate(e.target.value)}
+              />
+            </div>
+          </div>
+
           <div style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
             <input
               type="checkbox"
@@ -4045,7 +4169,11 @@ const ExportJobsTable = () => {
           >
             <button
               style={{ ...modalStyles.cancelButton, padding: "8px 20px" }}
-              onClick={() => setOpenDSRDialog(false)}
+              onClick={() => {
+                setOpenDSRDialog(false);
+                setDsrStartDate("");
+                setDsrEndDate("");
+              }}
             >
               Cancel
             </button>
@@ -4279,7 +4407,7 @@ const ExportJobsTable = () => {
       {/* Query Chat Dialog (Yellow - view replies) */}
       <Dialog
         open={queryChatOpen}
-        onClose={() => { setQueryChatOpen(false); setQueryChatJob(null); setQueryChatData([]); setQueryChatReply(""); }}
+        onClose={() => { setQueryChatOpen(false); setQueryChatJob(null); setQueryChatData([]); setClientQueryChatData([]); setQueryChatReply(""); setClientQueryChatReply(""); }}
         maxWidth="sm"
         fullWidth
         PaperProps={{ sx: { borderRadius: "10px", overflow: "hidden" } }}
@@ -4289,17 +4417,18 @@ const ExportJobsTable = () => {
             <div style={{ fontSize: 14, fontWeight: 700 }}>Queries &amp; Replies</div>
             {queryChatJob?.job_no && <div style={{ fontSize: 11, opacity: 0.85 }}>Job: {queryChatJob.job_no}</div>}
           </div>
-          <IconButton onClick={() => { setQueryChatOpen(false); setQueryChatJob(null); setQueryChatData([]); setQueryChatReply(""); }} size="small" sx={{ color: "#fff" }}>
+          <IconButton onClick={() => { setQueryChatOpen(false); setQueryChatJob(null); setQueryChatData([]); setClientQueryChatData([]); setQueryChatReply(""); setClientQueryChatReply(""); }} size="small" sx={{ color: "#fff" }}>
             <CloseIcon fontSize="small" />
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ p: 0, display: "flex", flexDirection: "column", height: 420 }}>
           {queryChatLoading ? (
             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", flex: 1, color: "#9ca3af" }}>Loading...</div>
-          ) : queryChatData.length === 0 ? (
+          ) : queryChatData.length === 0 && clientQueryChatData.length === 0 ? (
             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", flex: 1, color: "#9ca3af", fontStyle: "italic", fontSize: 13 }}>No queries raised for this job yet.</div>
           ) : (
             <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+              {/* Internal Queries */}
               {queryChatData.map((q, qi) => (
                 <div key={q._id || qi} style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
                   {/* Query header */}
@@ -4378,6 +4507,110 @@ const ExportJobsTable = () => {
                   )}
                 </div>
               ))}
+
+              {/* Client Queries */}
+              {clientQueryChatData.length > 0 && (
+                <>
+                  <div style={{ marginTop: 8, paddingBottom: 4, borderBottom: "2px solid #e5e7eb", fontWeight: 700, fontSize: 13, color: "#4b5563" }}>
+                    External Client Queries
+                  </div>
+                  {clientQueryChatData.map((q, qi) => (
+                    <div key={q._id || qi} style={{ border: "1px solid #c7d2fe", borderRadius: 8, overflow: "hidden" }}>
+                      {/* Query header */}
+                      <div style={{ background: q.status === "resolved" ? "#dcfce7" : q.status === "rejected" ? "#fee2e2" : "#e0e7ff", padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: 12, color: "#111" }}>{q.client_name || q.client_id || "Client"}</span>
+                          <span style={{ fontSize: 10, color: "#6b7280", marginLeft: 6 }}>External Query</span>
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: q.status === "resolved" ? "#22c55e" : q.status === "rejected" ? "#ef4444" : "#6366f1", color: "#fff", textTransform: "uppercase" }}>{q.status}</span>
+                      </div>
+                      {/* Query message */}
+                      <div style={{ padding: "8px 12px", fontSize: 12, color: "#374151", background: "#fff", borderBottom: q.replies?.length ? "1px solid #f3f4f6" : "none" }}>
+                        <div style={{ fontWeight: 600, fontSize: 11, color: "#6b7280", marginBottom: 2 }}>{q.subject}</div>
+                        {q.message}
+                        <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>{new Date(q.createdAt).toLocaleString()}</div>
+                      </div>
+                      {/* Replies */}
+                      {q.replies && q.replies.map((r, ri) => (
+                        <div key={r._id || ri} style={{ padding: "6px 12px 6px 24px", fontSize: 12, borderBottom: "1px solid #f9fafb", background: ri % 2 === 0 ? "#f9fafb" : "#fff" }}>
+                          <span style={{ fontWeight: 600, color: r.senderType === "client" ? "#6366f1" : "#2563eb" }}>{r.repliedByName || r.repliedBy}: </span>
+                          <span style={{ color: "#374151" }}>{r.message}</span>
+                          <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>{new Date(r.repliedAt).toLocaleString()}</div>
+                        </div>
+                      ))}
+                      {/* Quick reply box for open queries */}
+                      {q.status === "open" && (
+                        <div style={{ display: "flex", gap: 6, padding: "6px 12px", background: "#fafafa", borderTop: "1px solid #e5e7eb" }}>
+                          <input
+                            type="text"
+                            placeholder="Reply to client..."
+                            value={clientQueryChatReply}
+                            onChange={(e) => setClientQueryChatReply(e.target.value)}
+                            onKeyDown={async (e) => {
+                              if (e.key === "Enter" && clientQueryChatReply.trim()) {
+                                setQueryChatSending(true);
+                                try {
+                                  await axios.put(`${import.meta.env.VITE_API_STRING}/client-queries/${q._id}/reply`, {
+                                    message: clientQueryChatReply.trim(),
+                                    repliedBy: user?.username || "Admin",
+                                    senderType: "admin",
+                                  });
+                                  // Refresh
+                                  const resp = await axios.get(`${import.meta.env.VITE_API_STRING}/client-queries`, { params: { job_no: queryChatJob.job_no } });
+                                  setClientQueryChatData(resp.data?.queries || []);
+                                  setClientQueryChatReply("");
+                                } catch (err) { console.error(err); }
+                                finally { setQueryChatSending(false); }
+                              }
+                            }}
+                            style={{ flex: 1, padding: "6px 10px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 12, outline: "none" }}
+                          />
+                          <button
+                            onClick={async () => {
+                              if (!clientQueryChatReply.trim()) return;
+                              setQueryChatSending(true);
+                              try {
+                                await axios.put(`${import.meta.env.VITE_API_STRING}/client-queries/${q._id}/reply`, {
+                                  message: clientQueryChatReply.trim(),
+                                  repliedBy: user?.username || "Admin",
+                                  senderType: "admin",
+                                });
+                                const resp = await axios.get(`${import.meta.env.VITE_API_STRING}/client-queries`, { params: { job_no: queryChatJob.job_no } });
+                                setClientQueryChatData(resp.data?.queries || []);
+                                setClientQueryChatReply("");
+                              } catch (err) { console.error(err); }
+                              finally { setQueryChatSending(false); }
+                            }}
+                            disabled={queryChatSending}
+                            style={{ padding: "6px 14px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                          >
+                            {queryChatSending ? "..." : "Send"}
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (window.confirm("Are you sure you want to resolve this client query?")) {
+                                setQueryChatSending(true);
+                                try {
+                                  await axios.put(`${import.meta.env.VITE_API_STRING}/client-queries/${q._id}/resolve`, {
+                                    resolvedBy: user?.username || "Admin",
+                                  });
+                                  const resp = await axios.get(`${import.meta.env.VITE_API_STRING}/client-queries`, { params: { job_no: queryChatJob.job_no } });
+                                  setClientQueryChatData(resp.data?.queries || []);
+                                } catch (err) { console.error(err); }
+                                finally { setQueryChatSending(false); }
+                              }
+                            }}
+                            disabled={queryChatSending}
+                            style={{ padding: "6px 14px", background: "#22c55e", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", marginLeft: "4px" }}
+                          >
+                            Resolve
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </DialogContent>

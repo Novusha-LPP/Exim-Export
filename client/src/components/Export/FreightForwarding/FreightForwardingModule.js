@@ -215,12 +215,24 @@ function DocsUploadCell({ row, onUpdate }) {
 function FreightForwardingModule() {
   const [rows, setRows] = useState([]);
   const [openCreate, setOpenCreate] = useState(false);
-  const [filters, setFilters] = useState({
-    search: "",
-    shipment_type: "",
-    status: "",
+  const [filters, setFilters] = useState(() => {
+    try {
+      const saved = localStorage.getItem("ff_filters");
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("Error reading ff_filters:", e);
+    }
+    return {
+      search: "",
+      shipment_type: "",
+      status: "",
+    };
   });
-  const [activeTab, setActiveTab] = useState("Enquiry");
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem("ff_active_tab") || "Enquiry";
+  });
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
   const [forwarders, setForwarders] = useState([]);
@@ -230,6 +242,14 @@ function FreightForwardingModule() {
     fetchEnquiries();
     fetchForwarders();
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("ff_active_tab", activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    localStorage.setItem("ff_filters", JSON.stringify(filters));
+  }, [filters]);
 
   const fetchEnquiries = async () => {
     try {
@@ -300,7 +320,7 @@ function FreightForwardingModule() {
     e.stopPropagation();
     const jobNo = row.success_no || row.enquiry_no;
     const encodedJobNo = encodeURIComponent(jobNo);
-    navigate(`/export-charges/job/${encodedJobNo}`);
+    navigate(`/freight-forwarding/job/${encodedJobNo}`);
   };
 
   return (

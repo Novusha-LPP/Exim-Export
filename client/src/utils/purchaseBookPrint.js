@@ -96,8 +96,17 @@ export const generatePurchaseBookPDF = (data, logoUrl) => {
     const taxable = Number(data.taxableValue || 0);
     const gst = Number(data.igstAmt || 0) + Number(data.cgstAmt || 0) + Number(data.sgstAmt || 0);
     const tds = Number(data.tds || 0);
-    const net = Number(data.total || 0);
-    const grossVal = net + tds;
+
+    let grossVal = 0;
+    let net = 0;
+    const netAmtVal = data.netAmount !== undefined ? data.netAmount : data["Net Amount"];
+    if (netAmtVal !== undefined && netAmtVal !== null) {
+      net = Number(netAmtVal);
+      grossVal = Number(data.total || 0);
+    } else {
+      net = Number(data.total || 0);
+      grossVal = net + tds;
+    }
 
     const drawDetailRow = (label, value, y) => {
       doc.text(label, rx, y);

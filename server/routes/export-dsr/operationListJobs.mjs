@@ -293,18 +293,47 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         // --------------------------------------------------------
 
         if (jobOwner) filter.$and.push({ job_owner: { $regex: jobOwner, $options: "i" } });
+
         if (detailedStatus) {
             const statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
-            if (statusArray.includes("Pending")) {
-                filter.$and.push({
-                    $or: [
-                        { detailedStatus: { $in: statusArray } },
+
+            // Handle "Send for Billing" as a virtual status
+            const hasSendForBilling = statusArray.includes("Send for Billing");
+            const filteredStatusArray = statusArray.filter(s => s !== "Send for Billing");
+
+            const orConditions = [];
+
+            if (filteredStatusArray.length > 0) {
+                if (filteredStatusArray.includes("Pending")) {
+                    orConditions.push(
+                        { detailedStatus: { $in: filteredStatusArray } },
                         { detailedStatus: { $in: [null, "", "Pending"] } },
                         { detailedStatus: { $exists: false } }
+                    );
+                } else {
+                    orConditions.push({ detailedStatus: { $in: filteredStatusArray } });
+                }
+            }
+
+            if (hasSendForBilling) {
+                orConditions.push({
+                    send_for_billing: true,
+                    send_for_billing_date: { $exists: true, $nin: [null, ""] }
+                });
+            }
+
+            if (orConditions.length > 0) {
+                filter.$and.push({ $or: orConditions });
+            }
+
+            if (!hasSendForBilling && filteredStatusArray.length > 0) {
+                filter.$and.push({
+                    $or: [
+                        { send_for_billing: { $ne: true } },
+                        { send_for_billing_date: { $exists: false } },
+                        { send_for_billing_date: { $in: [null, ""] } }
                     ]
                 });
-            } else {
-                filter.$and.push({ detailedStatus: { $in: statusArray } });
             }
         }
 
@@ -314,11 +343,17 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                     { job_no: { $regex: search, $options: "i" } },
                     { exporter: { $regex: search, $options: "i" } },
                     { ieCode: { $regex: search, $options: "i" } },
+                    { exporter_ref_no: { $regex: search, $options: "i" } },
                     { "consignees.consignee_name": { $regex: search, $options: "i" } },
                     { sb_no: { $regex: search, $options: "i" } },
+                    { awb_bl_no: { $regex: search, $options: "i" } },
+                    { custom_house: { $regex: search, $options: "i" } },
+                    { booking_no: { $regex: search, $options: "i" } },
                     { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
+                    { "invoices.invoiceNo": { $regex: search, $options: "i" } },
                     { "containers.containerNo": { $regex: search, $options: "i" } },
-                    { "containers.containerNo": { $regex: search, $options: "i" } }
+                    { port_of_discharge: { $regex: search, $options: "i" } },
+                    { port_of_loading: { $regex: search, $options: "i" } }
                 ],
             });
         }

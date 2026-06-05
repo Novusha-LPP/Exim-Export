@@ -42,6 +42,9 @@ const EditChargeModal = ({
   const [uploadSection, setUploadSection] = useState(null); // 'revenue' | 'cost'
   const [paymentRequestData, setPaymentRequestData] = useState(null);
   const [purchaseBookData, setPurchaseBookData] = useState(null);
+  const [jobSearch, setJobSearch] = useState('');
+  const [jobOptions, setJobOptions] = useState([]);
+  const [showJobDropdown, setShowJobDropdown] = useState(null); // rowIndex
   const [shippingLines, setShippingLines] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [organizations, setOrganizations] = useState([]);
@@ -61,6 +64,38 @@ const EditChargeModal = ({
       sourceLabel
     }));
 
+  const handleJobSearchFocus = async (rowIndex) => {
+    setShowJobDropdown(rowIndex);
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/job-numbers-search`, {
+        params: { q: jobSearch, year: jobYear }
+      });
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setJobOptions(res.data.data);
+      }
+    } catch (err) {
+      console.error("Error searching jobs on focus", err);
+    }
+  };
+
+  const handleAddClubbedJob = (rowIndex, selectedJob) => {
+    const updated = [...formData];
+    const currentList = updated[rowIndex].clubbedJobs || [];
+    if (!currentList.includes(selectedJob)) {
+      updated[rowIndex].clubbedJobs = [...currentList, selectedJob];
+      setFormData(updated);
+    }
+    setJobSearch('');
+    setShowJobDropdown(null);
+  };
+
+  const handleRemoveClubbedJob = (rowIndex, jobToRemove) => {
+    const updated = [...formData];
+    const currentList = updated[rowIndex].clubbedJobs || [];
+    updated[rowIndex].clubbedJobs = currentList.filter(j => j !== jobToRemove);
+    setFormData(updated);
+  };
+
   // Lock body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -77,10 +112,33 @@ const EditChargeModal = ({
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setActiveDropdown({ index: null, section: null });
       }
+      if (showJobDropdown !== null && !event.target.closest('.ep-search-container')) {
+        setShowJobDropdown(null);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [showJobDropdown]);
+
+  useEffect(() => {
+    const searchJobs = async () => {
+      if (showJobDropdown === null) return;
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/job-numbers-search`, {
+          params: { q: jobSearch, year: jobYear }
+        });
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setJobOptions(res.data.data);
+        }
+      } catch (err) {
+        console.error("Error searching jobs", err);
+      }
+    };
+    const delayDebounce = setTimeout(() => {
+      searchJobs();
+    }, 300);
+    return () => clearTimeout(delayDebounce);
+  }, [jobSearch, showJobDropdown]);
 
   useEffect(() => {
     const fetchMasterData = async () => {
@@ -410,7 +468,7 @@ const EditChargeModal = ({
     try {
       const endpoint = type === 'PB' ? '/reject-purchase-entry' : '/reject-payment-request';
       await axios.post(`${import.meta.env.VITE_API_STRING}${endpoint}`, { requestNo, reason });
-      
+
       // Update local state
       const updated = [...formData];
       formData.forEach((row, i) => {
@@ -481,46 +539,53 @@ const EditChargeModal = ({
           {formData.map((row, i) => (
             <div key={row._id || i} style={{ marginBottom: formData.length > 1 ? '30px' : '0' }}>
               <div className="form-section-new">
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px 20px' }}>
-                  <div className="form-row" style={{ gridColumn: 'span 2', alignItems: 'center' }}>
-                    <span className="form-label" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      CHARGE
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <span style={{ fontSize: '10px', color: '#1565c0', fontWeight: 'bold', border: '1px solid currentColor', padding: '0 2px', borderRadius: '2px' }}>PB</span>
-                        {row.isPbMandatory && <span style={{ fontSize: '8px', color: '#d32f2f', fontWeight: 'bold' }}>MANDATORY</span>}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {/* Row 1: CHARGE + CATEGORY */}
+                  <div style={{ display: 'flex', gap: '20px' }}>
+                    <div className="form-row" style={{ flex: 3 }}>
+                      <span className="form-label" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        CHARGE
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <span style={{ fontSize: '10px', color: '#1565c0', fontWeight: 'bold', border: '1px solid currentColor', padding: '0 2px', borderRadius: '2px' }}>PB</span>
+                          {row.isPbMandatory && <span style={{ fontSize: '8px', color: '#d32f2f', fontWeight: 'bold' }}>MANDATORY</span>}
+                        </div>
+                      </span>
+                      <div className="form-input-search">
+                        <input type="text" readOnly className="form-input" style={{ background: '#f5f8fc', color: '#1a3a5c', fontWeight: 'bold' }} value={row.name || row.chargeHead || ''} />
+                        <button type="button" className="search-btn">🔍</button>
                       </div>
-                    </span>
-                    <div className="form-input-search">
-                      <input type="text" readOnly className="form-input" style={{ background: '#f5f8fc', color: '#1a3a5c', fontWeight: 'bold' }} value={row.name || row.chargeHead || ''} />
-                      <button type="button" className="search-btn">🔍</button>
+                    </div>
+                    <div className="form-row" style={{ flex: 2 }}>
+                      <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>CATEGORY <span style={{ color: 'red' }}>*</span></span>
+                      <select className="form-input" value={row.chargeType || 'Margin'} onChange={e => handleFieldChange(i, 'chargeType', e.target.value)}>
+                        <option value="Margin">Margin</option>
+                        <option value="Reimbursement">Reimbursement</option>
+                      </select>
                     </div>
                   </div>
-                  <div className="form-row" style={{ gridColumn: 'span 2' }}>
-                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>CATEGORY <span style={{ color: 'red' }}>*</span></span>
-                    <select className="form-input" value={row.chargeType || 'Margin'} onChange={e => handleFieldChange(i, 'chargeType', e.target.value)}>
-                      <option value="Margin">Margin</option>
-                      <option value="Reimbursement">Reimbursement</option>
-                    </select>
+
+                  {/* Row 2: INVOICE NUMBER + INV DATE + SAC/HSN */}
+                  <div style={{ display: 'flex', gap: '20px' }}>
+                    <div className="form-row" style={{ flex: 3 }}>
+                      <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INVOICE NUMBER <span style={{ color: 'red' }}>*</span></span>
+                      <input type="text" className="form-input" value={row.invoice_number || ''} onChange={e => handleFieldChange(i, 'invoice_number', e.target.value)} />
+                    </div>
+                    <div className="form-row" style={{ flex: 1 }}>
+                      <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INV DATE <span style={{ color: 'red' }}>*</span></span>
+                      <DateInput className="form-input" value={row.invoice_date || ''} onChange={e => handleFieldChange(i, 'invoice_date', e.target.value)} />
+                    </div>
+                    <div className="form-row" style={{ flex: 1 }}>
+                      <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>SAC/HSN {row.chargeType !== 'Reimbursement' && <span style={{ color: 'red' }}>*</span>}</span>
+                      <input type="text" className="form-input" placeholder="HSN" value={row.hsnCode || ''} onChange={e => handleFieldChange(i, 'hsnCode', e.target.value)} />
+                    </div>
                   </div>
 
-                  <div className="form-row" style={{ gridColumn: 'span 2' }}>
-                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INVOICE NUMBER <span style={{ color: 'red' }}>*</span></span>
-                    <input type="text" className="form-input" value={row.invoice_number || ''} onChange={e => handleFieldChange(i, 'invoice_number', e.target.value)} />
-                  </div>
-                  <div className="form-row" style={{ gridColumn: 'span 1' }}>
-                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INV DATE <span style={{ color: 'red' }}>*</span></span>
-                    <DateInput className="form-input" value={row.invoice_date || ''} onChange={e => handleFieldChange(i, 'invoice_date', e.target.value)} />
-                  </div>
-                  <div className="form-row" style={{ gridColumn: 'span 1' }}>
-                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>SAC/HSN {row.chargeType !== 'Reimbursement' && <span style={{ color: 'red' }}>*</span>}</span>
-                    <input type="text" className="form-input" placeholder="HSN" value={row.hsnCode || ''} onChange={e => handleFieldChange(i, 'hsnCode', e.target.value)} />
-                  </div>
-
-                  {/* Tally Numbers & Status Row */}
-                  <div className="form-row" style={{ gridColumn: 'span 2' }}>
-                    <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold' }}>PB No</span>
-                    <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', margin: 0, fontWeight: 'bold', minWidth: '150px' }} value={row.purchase_book_no || ''} />
+                  {/* Row 3: PB No + PR NO */}
+                  <div style={{ display: 'flex', gap: '20px' }}>
+                    <div className="form-row" style={{ flex: 1 }}>
+                      <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold' }}>PB NO</span>
+                      <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+                        <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', margin: 0, fontWeight: 'bold', flex: 1, minWidth: 0 }} value={row.purchase_book_no || ''} />
                       {row.purchase_book_no && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                           <IconButton
@@ -558,86 +623,164 @@ const EditChargeModal = ({
                       <span className="ep-status-pill" style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: row.purchase_book_status ? '#e8f5e9' : '#f5f5f5', color: row.purchase_book_status === 'Active' ? '#2e7d32' : '#757575', border: '1px solid #ddd', whiteSpace: 'nowrap' }}>
                         {row.purchase_book_status || 'PENDING'}
                       </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="form-row" style={{ gridColumn: 'span 2' }}>
-                    <span className="form-label" style={{ color: '#d32f2f', fontWeight: 'bold' }}>PR NO</span>
-                    <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', margin: 0, fontWeight: 'bold', minWidth: '150px' }} value={row.payment_request_no || ''} />
-                      {row.payment_request_no && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => {
-                              navigator.clipboard.writeText(row.payment_request_no);
-                              alert("PR No copied to clipboard!");
-                            }}
-                            title="Copy PR No"
-                            style={{ padding: '4px' }}
-                          >
-                            <ContentCopyIcon style={{ fontSize: '16px' }} />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={async () => {
-                              let data = paymentDetailsAudit[row.payment_request_no];
-                              if (!data) {
-                                try {
-                                  const res = await axios.get(`${import.meta.env.VITE_API_STRING}/get-payment-request-details/${encodeURIComponent(row.payment_request_no)}`);
-                                  data = res.data;
-                                  setPaymentDetailsAudit(prev => ({ ...prev, [row.payment_request_no]: data }));
-                                } catch (err) { console.error(err); alert('Could not fetch details'); return; }
-                              }
-                              generatePurchaseBookPDF(data, logo);
-                            }}
-                            style={{ padding: '4px' }}
-                            title="Print Payment Advice"
-                          >
-                            <PrintIcon style={{ fontSize: '18px' }} />
-                          </IconButton>
+                    <div className="form-row" style={{ flex: 1 }}>
+                      <span className="form-label" style={{ color: '#d32f2f', fontWeight: 'bold' }}>PR NO</span>
+                      <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+                        <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', margin: 0, fontWeight: 'bold', flex: 1, minWidth: 0 }} value={row.payment_request_no || ''} />
+                        {row.payment_request_no && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => {
+                                navigator.clipboard.writeText(row.payment_request_no);
+                                alert("PR No copied to clipboard!");
+                              }}
+                              title="Copy PR No"
+                              style={{ padding: '4px' }}
+                            >
+                              <ContentCopyIcon style={{ fontSize: '16px' }} />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={async () => {
+                                let data = paymentDetailsAudit[row.payment_request_no];
+                                if (!data) {
+                                  try {
+                                    const res = await axios.get(`${import.meta.env.VITE_API_STRING}/get-payment-request-details/${encodeURIComponent(row.payment_request_no)}`);
+                                    data = res.data;
+                                    setPaymentDetailsAudit(prev => ({ ...prev, [row.payment_request_no]: data }));
+                                  } catch (err) { console.error(err); alert('Could not fetch details'); return; }
+                                }
+                                generatePurchaseBookPDF(data, logo);
+                              }}
+                              style={{ padding: '4px' }}
+                              title="Print Payment Advice"
+                            >
+                              <PrintIcon style={{ fontSize: '18px' }} />
+                            </IconButton>
+                          </div>
+                        )}
+                        <span className="ep-status-pill" style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          background: (row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? '#e8f5e9' : '#fff3e0',
+                          color: (row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? '#2e7d32' : '#ef6c00',
+                          border: '1px solid #ffe0e0',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {(row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? 'PAYMENT DONE' : (row.payment_request_status || 'PENDING')}
+                        </span>
+                      </div>
+                      {paymentDetailsAudit[row.payment_request_no]?.utrNumber && (
+                        <div style={{ fontSize: '10px', color: '#2e7d32', marginTop: '4px', fontWeight: '500', display: 'flex', flexDirection: 'column' }}>
+                          <span>UTR: {paymentDetailsAudit[row.payment_request_no].utrNumber}</span>
+                          <span style={{ opacity: 0.8 }}>By {paymentDetailsAudit[row.payment_request_no].utrAddedBy || 'Accounts'} on {new Date(paymentDetailsAudit[row.payment_request_no].utrAddedAt).toLocaleString('en-GB')}</span>
+                          {paymentDetailsAudit[row.payment_request_no].paymentReceiptUrl && (
+                            <a
+                              href={paymentDetailsAudit[row.payment_request_no].paymentReceiptUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                color: '#1565c0',
+                                textDecoration: 'underline',
+                                marginTop: '4px',
+                                fontWeight: 'bold',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <DescriptionIcon style={{ fontSize: '12px' }} /> VIEW PAYMENT RECEIPT
+                            </a>
+                          )}
                         </div>
                       )}
-                      <span className="ep-status-pill" style={{
-                        fontSize: '11px',
-                        padding: '2px 8px',
-                        borderRadius: '10px',
-                        background: (row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? '#e8f5e9' : '#fff3e0',
-                        color: (row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? '#2e7d32' : '#ef6c00',
-                        border: '1px solid #ffe0e0',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {(row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? 'PAYMENT DONE' : (row.payment_request_status || 'PENDING')}
-                      </span>
                     </div>
-                    {paymentDetailsAudit[row.payment_request_no]?.utrNumber && (
-                      <div style={{ fontSize: '10px', color: '#2e7d32', marginTop: '4px', fontWeight: '500', display: 'flex', flexDirection: 'column' }}>
-                        <span>UTR: {paymentDetailsAudit[row.payment_request_no].utrNumber}</span>
-                        <span style={{ opacity: 0.8 }}>By {paymentDetailsAudit[row.payment_request_no].utrAddedBy || 'Accounts'} on {new Date(paymentDetailsAudit[row.payment_request_no].utrAddedAt).toLocaleString('en-GB')}</span>
-                        {paymentDetailsAudit[row.payment_request_no].paymentReceiptUrl && (
-                          <a
-                            href={paymentDetailsAudit[row.payment_request_no].paymentReceiptUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              color: '#1565c0',
-                              textDecoration: 'underline',
-                              marginTop: '4px',
-                              fontWeight: 'bold',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <DescriptionIcon style={{ fontSize: '12px' }} /> VIEW PAYMENT RECEIPT
-                          </a>
-                        )}
-                      </div>
-                    )}
                   </div>
 
-                  <div className="form-row" style={{ gridColumn: 'span 4' }}>
+                  {/* Row 4: CLUB JOB + SELECT CLUBBED JOBS */}
+                  <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                    <div className="form-row" style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', margin: 0 }}>CLUB JOB?</span>
+                      <input
+                        type="checkbox"
+                        checked={row.isClubJob || false}
+                        onChange={e => handleFieldChange(i, 'isClubJob', e.target.checked)}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      />
+                    </div>
+
+                    <div style={{ flex: 1, display: row.isClubJob ? 'block' : 'none', position: 'relative' }}>
+                      <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold' }}>SELECT CLUBBED JOBS</span>
+                      <div className="ep-search-container" style={{ width: '100%' }}>
+                        <div className="ep-search-wrap" style={{ width: '100%' }}>
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Type to search job numbers..."
+                            value={jobSearch}
+                            onChange={e => setJobSearch(e.target.value)}
+                            onFocus={() => handleJobSearchFocus(i)}
+                            onKeyDown={e => {
+                              if (e.key === 'Escape' || e.key === 'Enter') {
+                                setShowJobDropdown(null);
+                              }
+                            }}
+                            style={{ width: '100%' }}
+                          />
+                          <button
+                            type="button"
+                            className="ep-search-btn"
+                            onClick={() => setShowJobDropdown(showJobDropdown === i ? null : i)}
+                          >
+                            🔍
+                          </button>
+                        </div>
+                        {showJobDropdown === i && (
+                          <ul className="ep-dropdown-list" style={{ width: '100%', maxHeight: '200px', overflowY: 'auto', zIndex: 1000 }}>
+                            {jobOptions
+                              .filter(jNo => jNo !== jobNumber && !(row.clubbedJobs || []).includes(jNo))
+                              .map((jNo, idx) => (
+                                <li
+                                  key={idx}
+                                  className="ep-dropdown-item"
+                                  onClick={() => handleAddClubbedJob(i, jNo)}
+                                  style={{ padding: '8px 12px', cursor: 'pointer' }}
+                                >
+                                  <span className="ep-item-name">{jNo}</span>
+                                </li>
+                              ))}
+                            {jobOptions.filter(jNo => jNo !== jobNumber && !(row.clubbedJobs || []).includes(jNo)).length === 0 && (
+                              <li className="ep-dropdown-item" style={{ padding: '8px 12px', color: '#999' }}>
+                                No other jobs found
+                              </li>
+                            )}
+                          </ul>
+                        )}
+                      </div>
+
+                      {/* Selected Job Chips */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                        {(row.clubbedJobs || []).map((jNo, idx) => (
+                          <Chip
+                            key={idx}
+                            label={jNo}
+                            size="small"
+                            onDelete={() => handleRemoveClubbedJob(i, jNo)}
+                            sx={{ backgroundColor: '#e3f2fd', color: '#1565c0', fontWeight: 'bold' }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 5: REMARK */}
+                  <div className="form-row">
                     <span className="form-label">REMARK</span>
                     <input type="text" className="form-input" style={{ flex: 1 }} value={row.remark || ''} onChange={e => handleFieldChange(i, 'remark', e.target.value)} />
                   </div>
@@ -1170,7 +1313,8 @@ const EditChargeModal = ({
                                             igst: cost.igst,
                                             tdsAmount: cost.tdsAmount,
                                             netPayable: cost.netPayable,
-                                            totalAmount: cost.amount,
+                                            amountINR: cost.amountINR,
+                                            totalAmount: cost.amountINR,
                                             chargeHead: row.name || row.chargeHead,
                                             chargeType: row.chargeType,
                                             category: row.category,
@@ -1181,7 +1325,9 @@ const EditChargeModal = ({
                                             cthNo: row.hsnCode,
                                             chargeId: row._id,
                                             jobId: parentId,
-                                            branchIndex: cost.branchIndex || 0
+                                            branchIndex: cost.branchIndex || 0,
+                                            isClubJob: row.isClubJob || false,
+                                            clubbedJobs: row.clubbedJobs || []
                                           };
                                         });
                                       }}
