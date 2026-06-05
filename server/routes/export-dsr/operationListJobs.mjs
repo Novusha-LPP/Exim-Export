@@ -346,9 +346,14 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                     { exporter_ref_no: { $regex: search, $options: "i" } },
                     { "consignees.consignee_name": { $regex: search, $options: "i" } },
                     { sb_no: { $regex: search, $options: "i" } },
+                    { awb_bl_no: { $regex: search, $options: "i" } },
+                    { custom_house: { $regex: search, $options: "i" } },
+                    { booking_no: { $regex: search, $options: "i" } },
                     { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
+                    { "invoices.invoiceNo": { $regex: search, $options: "i" } },
                     { "containers.containerNo": { $regex: search, $options: "i" } },
-                    { port_of_discharge: { $regex: search, $options: "i" } }
+                    { port_of_discharge: { $regex: search, $options: "i" } },
+                    { port_of_loading: { $regex: search, $options: "i" } }
                 ],
             });
         }
