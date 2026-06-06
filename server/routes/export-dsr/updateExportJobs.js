@@ -5,8 +5,27 @@ import ExJobModel from "../../model/export/ExJobModel.mjs";
 import FreightEnquiryModel from "../../model/export/FreightEnquiryModel.mjs";
 import auditMiddleware from "../../middleware/auditTrail.mjs";
 import UserModel from "../../model/userModel.mjs";
+import importDbConnection from "../../model/importDB.js";
 
 const router = express.Router();
+
+async function syncToClientDatabase(jobNo, updateObject) {
+  try {
+    if (!jobNo || !updateObject || Object.keys(updateObject).length === 0) return;
+    if (importDbConnection.readyState !== 1) {
+      console.log("[Client Sync] Import DB connection is not ready. Skipping sync.");
+      return;
+    }
+    const clientJobsColl = importDbConnection.db.collection("jobs");
+    const matchingJob = await clientJobsColl.findOne({ job_no: jobNo });
+    if (matchingJob) {
+      console.log(`[Client Sync] Found matching Client job for job_no: ${jobNo}. Mirroring updates.`);
+      await clientJobsColl.updateOne({ job_no: jobNo }, { $set: updateObject });
+    }
+  } catch (err) {
+    console.error("[Client Sync] Failed to sync update to Client database:", err.message);
+  }
+}
 
 const IMPEXCUBE_BASE_URL =
   process.env.IMPEXCUBE_BASE_URL || "http://testimpexapi.impexcube.in";
@@ -2417,6 +2436,60 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
   }
 });
 
+// PATCH fields by id
+router.patch(
+  "/id/:id/fields",
+  auditMiddleware("Job"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { fieldUpdates } = req.body;
+      const updateObject = {};
+      (fieldUpdates || []).forEach(({ field, value }) => {
+        updateObject[field] = value;
+      });
+      updateObject.updatedAt = new Date();
+
+      if (Array.isArray(updateObject.detailedStatus)) {
+        updateObject.detailedStatus = updateObject.detailedStatus.length > 0
+          ? String(updateObject.detailedStatus[updateObject.detailedStatus.length - 1])
+          : "";
+      }
+
+      const updatedExportJob = await ExJobModel.findByIdAndUpdate(
+        id,
+        { $set: updateObject },
+        { new: true }
+      );
+
+      if (!updatedExportJob) {
+        return res.status(404).json({ message: "Export job not found" });
+      }
+
+      updatedExportJob.markModified("milestones");
+      updatedExportJob.markModified("detailedStatus");
+      updatedExportJob.markModified("vgm_done");
+      updatedExportJob.markModified("form13_done");
+      updatedExportJob.markModified("shipping_bill_done");
+      updatedExportJob.markModified("isBuyer");
+      await updatedExportJob.save();
+
+      if (updatedExportJob.job_no) {
+        await syncToClientDatabase(updatedExportJob.job_no, updateObject);
+      }
+
+      res.json({
+        message: "Fields updated successfully",
+        updatedFields: Object.keys(updateObject),
+        data: updatedExportJob,
+      });
+    } catch (error) {
+      console.error("Error updating export job fields by id:", error);
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  }
+);
+
 // PATCH fields
 router.patch(
   "/:job_no(.*)/fields",
@@ -2461,6 +2534,8 @@ router.patch(
       updatedExportJob.markModified("isBuyer");
       await updatedExportJob.save();
 
+      await syncToClientDatabase(updatedExportJob.job_no, updateObject);
+
       res.json({
         message: "Fields updated successfully",
         updatedFields: Object.keys(updateObject),
@@ -2494,6 +2569,8 @@ router.put(
         return res.status(404).json({ message: "Export job not found" });
       }
 
+      await syncToClientDatabase(updatedExportJob.job_no, { export_documents });
+
       res.json({
         message: "Documents updated successfully",
         data: updatedExportJob,
@@ -2525,6 +2602,8 @@ router.put(
       if (!updatedExportJob) {
         return res.status(404).json({ message: "Export job not found" });
       }
+
+      await syncToClientDatabase(updatedExportJob.job_no, { containers });
 
       res.json({
         message: "Containers updated successfully",
