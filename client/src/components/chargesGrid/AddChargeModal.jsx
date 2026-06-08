@@ -13,7 +13,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
   const [customHsnCode, setCustomHsnCode] = useState('');
   const [customChargeType, setCustomChargeType] = useState('Margin');
   const [customIsPbMandatory, setCustomIsPbMandatory] = useState(false);
-  const [customTdsCategory, setCustomTdsCategory] = useState('');
+  const [customTdsCategory, setCustomTdsCategory] = useState('TDS ON CONTRACT 94C');
 
   const [editingChargeId, setEditingChargeId] = useState(null);
   const [editName, setEditName] = useState('');
@@ -21,7 +21,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
   const [editHsnCode, setEditHsnCode] = useState('');
   const [editChargeType, setEditChargeType] = useState('Margin');
   const [editIsPbMandatory, setEditIsPbMandatory] = useState(false);
-  const [editTdsCategory, setEditTdsCategory] = useState('');
+  const [editTdsCategory, setEditTdsCategory] = useState('TDS ON CONTRACT 94C');
 
   useEffect(() => {
     if (isOpen) {
@@ -32,7 +32,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
       setCustomHsnCode('');
       setCustomChargeType('Margin');
       setCustomIsPbMandatory(false);
-      setCustomTdsCategory('');
+      setCustomTdsCategory('TDS ON CONTRACT 94C');
       setSelectedNames(new Set());
     }
   }, [isOpen, fetchChargeHeads]);
@@ -66,7 +66,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
       setCustomHsnCode('');
       setCustomChargeType('Margin');
       setCustomIsPbMandatory(false);
-      setCustomTdsCategory('');
+      setCustomTdsCategory('TDS ON CONTRACT 94C');
       const newSelected = new Set(selectedNames);
       newSelected.add(name);
       setSelectedNames(newSelected);
@@ -89,7 +89,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
     setEditHsnCode(ch.hsnCode || '');
     setEditChargeType(ch.chargeType || 'Margin');
     setEditIsPbMandatory(ch.isPbMandatory || false);
-    setEditTdsCategory(ch.tdsCategory || '');
+    setEditTdsCategory(ch.tdsCategory || 'TDS ON CONTRACT 94C');
   };
 
   const handleSaveEdit = async (ch, e) => {

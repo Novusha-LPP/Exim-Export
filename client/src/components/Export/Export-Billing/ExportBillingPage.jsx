@@ -79,6 +79,7 @@ const PAYMENT_TABS = [
   { key: "payment-requested", label: "Payment Requested" },
   { key: "payment", label: "Payment" },
   { key: "payment-completed", label: "Payment Completed" },
+  { key: "club-jobs", label: "Club Jobs" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
   { key: "general-jobs", label: "Gen/Freight Jobs" },
 ];
@@ -88,6 +89,7 @@ const PURCHASE_TABS = [
   { key: "purchase-book-requested", label: "Purchase Book Requested" },
   { key: "purchase-book", label: "Purchase Book" },
   { key: "purchase-book-completed", label: "Purchase Book Completed" },
+  { key: "club-jobs", label: "Club Jobs" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
   { key: "general-jobs", label: "Gen/Freight Jobs" },
 ];
@@ -591,6 +593,7 @@ const EditableDateCell = ({ row, field, initialValue, onSuccess }) => {
 };
 
 function JobNoCell({ row, navigate }) {
+  const displayNo = (row.is_club_job_parent && row.tally_club_ref_no) ? row.tally_club_ref_no : row.job_no;
   return (
     <Box sx={{ py: 0.5 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -604,14 +607,14 @@ function JobNoCell({ row, navigate }) {
             navigate(path);
           }}
         >
-          {row.job_no}
+          {displayNo}
         </Button>
         <IconButton
           size="small"
           sx={{ p: 0.2, opacity: 0.6, "&:hover": { opacity: 1 } }}
           onClick={(e) => {
             e.stopPropagation();
-            copyText(row.job_no);
+            copyText(displayNo);
           }}
           title="Copy Job No"
         >
@@ -1149,6 +1152,7 @@ function ExportBillingPage() {
   const [selectedRow, setSelectedRow] = useState(null);
   const [selectedRequestNo, setSelectedRequestNo] = useState(null);
   const [jobQueriesStatus, setJobQueriesStatus] = useState({});
+  const [expandedRows, setExpandedRows] = useState({});
   const [reportsHubOpen, setReportsHubOpen] = useState(false);
   const [queryDialogOpen, setQueryDialogOpen] = useState(false);
   const [queryDialogJob, setQueryDialogJob] = useState(null);
@@ -1209,6 +1213,10 @@ function ExportBillingPage() {
       prevWorkMode.current = workMode;
     }
   }, [workMode]);
+
+  useEffect(() => {
+    setExpandedRows({});
+  }, [tabIndex, workMode]);
 
   useEffect(() => {
     // Replace dynamic year fetching with static financial years
@@ -1411,7 +1419,16 @@ function ExportBillingPage() {
   }, [fetchRows]);
 
   useEffect(() => {
-    const jobNos = rows.map(r => r.job_no).filter(Boolean);
+    const jobNos = [];
+    rows.forEach(r => {
+      if (r.job_no) jobNos.push(r.job_no);
+      if (r.subRows && Array.isArray(r.subRows)) {
+        r.subRows.forEach(child => {
+          if (child.job_no) jobNos.push(child.job_no);
+        });
+      }
+    });
+
     if (jobNos.length === 0) {
       setJobQueriesStatus({});
       return;
@@ -1502,7 +1519,25 @@ function ExportBillingPage() {
         size: 80,
         Cell: ({ row }) => {
           const job = row.original;
-          const status = jobQueriesStatus[job.job_no] || {};
+          const getJobStatus = (jNo) => jobQueriesStatus[jNo] || {};
+
+          // Collect parent and child job numbers
+          const jobNos = [job.job_no];
+          if (job.subRows && Array.isArray(job.subRows)) {
+            job.subRows.forEach(child => {
+              if (child.job_no) jobNos.push(child.job_no);
+            });
+          }
+
+          // Combine statuses
+          const status = { hasQueries: false, hasOpenQueries: false, hasUnseen: false };
+          jobNos.forEach(jNo => {
+            const js = getJobStatus(jNo);
+            if (js.hasQueries) status.hasQueries = true;
+            if (js.hasOpenQueries) status.hasOpenQueries = true;
+            if (js.hasUnseen) status.hasUnseen = true;
+          });
+
           const isDull = status.hasQueries && !status.hasOpenQueries;
 
           return (
@@ -1537,9 +1572,15 @@ function ExportBillingPage() {
                         setQueryChatOpen(true);
                         setQueryChatLoading(true);
                         try {
+                          const queryJobNos = [job.job_no];
+                          if (job.subRows && Array.isArray(job.subRows)) {
+                            job.subRows.forEach(child => {
+                              if (child.job_no) queryJobNos.push(child.job_no);
+                            });
+                          }
                           const resp = await axios.get(
                             `${import.meta.env.VITE_API_STRING}/queries`,
-                            { params: { job_no: job.job_no } }
+                            { params: { job_no: queryJobNos.join(",") } }
                           );
                           const queriesData = resp.data?.data?.queries || resp.data?.data || [];
                           setQueryChatData(queriesData);
@@ -1547,10 +1588,16 @@ function ExportBillingPage() {
                             axios.put(`${import.meta.env.VITE_API_STRING}/queries/mark-seen`, {
                               queryIds: queriesData.map(q => q._id)
                             }).catch(console.error);
-                            setJobQueriesStatus(prev => ({
-                              ...prev,
-                              [job.job_no]: { ...prev[job.job_no], hasUnseen: false }
-                            }));
+                            
+                            setJobQueriesStatus(prev => {
+                              const updated = { ...prev };
+                              queryJobNos.forEach(jNo => {
+                                if (updated[jNo]) {
+                                  updated[jNo] = { ...updated[jNo], hasUnseen: false };
+                                }
+                              });
+                              return updated;
+                            });
                           }
                         } catch (err) {
                           console.error(err);
@@ -1585,11 +1632,19 @@ function ExportBillingPage() {
                       onClick={async (e) => {
                         e.stopPropagation();
                         const localUser = JSON.parse(localStorage.getItem("exim_user") || "{}");
-                        if (!window.confirm(`Mark all open queries for ${job.job_no} as resolved?`)) return;
+                        
+                        const queryJobNos = [job.job_no];
+                        if (job.subRows && Array.isArray(job.subRows)) {
+                          job.subRows.forEach(child => {
+                            if (child.job_no) queryJobNos.push(child.job_no);
+                          });
+                        }
+
+                        if (!window.confirm(`Mark all open queries for ${job.is_club_job_parent ? 'this club job' : job.job_no} as resolved?`)) return;
                         try {
                           const resp = await axios.get(
                             `${import.meta.env.VITE_API_STRING}/queries`,
-                            { params: { job_no: job.job_no, status: "open" } }
+                            { params: { job_no: queryJobNos.join(","), status: "open" } }
                           );
                           const openQueries = resp.data?.data?.queries || resp.data?.data || [];
                           if (openQueries.length === 0) {
@@ -1606,10 +1661,16 @@ function ExportBillingPage() {
                             )
                           );
                           alert(`${openQueries.length} query(ies) resolved.`);
-                          setJobQueriesStatus(prev => ({
-                            ...prev,
-                            [job.job_no]: { ...prev[job.job_no], hasOpenQueries: false }
-                          }));
+                          
+                          setJobQueriesStatus(prev => {
+                            const updated = { ...prev };
+                            queryJobNos.forEach(jNo => {
+                              if (updated[jNo]) {
+                                updated[jNo] = { ...updated[jNo], hasOpenQueries: false };
+                              }
+                            });
+                            return updated;
+                          });
                         } catch (err) {
                           console.error(err);
                           alert("Failed to resolve queries.");
@@ -1877,7 +1938,10 @@ function ExportBillingPage() {
         key={`${activeTab}-${workMode}`}
         columns={columns}
         data={rows}
-        state={{ showProgressBars: loading }}
+        state={{ showProgressBars: loading, expanded: expandedRows }}
+        onExpandedChange={setExpandedRows}
+        enableExpanding={activeTab === "club-jobs"}
+        getSubRows={(row) => row.subRows}
         enableColumnActions={false}
         enableColumnFilters={false}
         enableDensityToggle={false}
@@ -2261,7 +2325,13 @@ function ExportBillingPage() {
                                 repliedByName: user?.fullName || user?.username || "Unknown",
                                 fromModule: currentModuleForQueries,
                               });
-                              const resp = await axios.get(`${import.meta.env.VITE_API_STRING}/queries`, { params: { job_no: queryChatJob.job_no } });
+                              const queryJobNos = [queryChatJob.job_no];
+                              if (queryChatJob.subRows && Array.isArray(queryChatJob.subRows)) {
+                                queryChatJob.subRows.forEach(child => {
+                                  if (child.job_no) queryJobNos.push(child.job_no);
+                                });
+                              }
+                              const resp = await axios.get(`${import.meta.env.VITE_API_STRING}/queries`, { params: { job_no: queryJobNos.join(",") } });
                               setQueryChatData(resp.data?.data?.queries || resp.data?.data || []);
                               setQueryChatReply("");
                             } catch (err) { console.error(err); }
@@ -2281,7 +2351,13 @@ function ExportBillingPage() {
                               repliedByName: user?.fullName || user?.username || "Unknown",
                               fromModule: currentModuleForQueries,
                             });
-                            const resp = await axios.get(`${import.meta.env.VITE_API_STRING}/queries`, { params: { job_no: queryChatJob.job_no } });
+                            const queryJobNos = [queryChatJob.job_no];
+                            if (queryChatJob.subRows && Array.isArray(queryChatJob.subRows)) {
+                              queryChatJob.subRows.forEach(child => {
+                                if (child.job_no) queryJobNos.push(child.job_no);
+                              });
+                            }
+                            const resp = await axios.get(`${import.meta.env.VITE_API_STRING}/queries`, { params: { job_no: queryJobNos.join(",") } });
                             setQueryChatData(resp.data?.data?.queries || resp.data?.data || []);
                             setQueryChatReply("");
                           } catch (err) { console.error(err); }

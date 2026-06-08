@@ -13,12 +13,8 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
   const [jobData, setJobData] = useState(null);
 
   const [isClubJob, setIsClubJob] = useState(false);
-  const [clubbedJobs, setClubbedJobs] = useState([]);
-  const [clubbedJobsData, setClubbedJobsData] = useState([]);
-  const [jobSearch, setJobSearch] = useState("");
-  const [jobOptions, setJobOptions] = useState([]);
-  const [showJobDropdown, setShowJobDropdown] = useState(false);
-  const [exchangeRate, setExchangeRate] = useState(1);
+    const [clubbedJobsData, setClubbedJobsData] = useState([]);
+        const [exchangeRate, setExchangeRate] = useState(1);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -43,48 +39,8 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
     return `${day}-${month}-${year}`;
   };
 
-  // Search jobs debounced
-  React.useEffect(() => {
-    const searchJobs = async () => {
-      if (!showJobDropdown) return;
-      try {
-        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/job-numbers-search`, {
-          params: { q: jobSearch }
-        });
-        if (res.data?.success && Array.isArray(res.data.data)) {
-          setJobOptions(res.data.data);
-        }
-      } catch (err) {
-        console.error("Error searching jobs", err);
-      }
-    };
-    const delayDebounce = setTimeout(() => {
-      searchJobs();
-    }, 300);
-    return () => clearTimeout(delayDebounce);
-  }, [jobSearch, showJobDropdown]);
-
-  // Fetch details of clubbed jobs when selected
-  React.useEffect(() => {
-    const fetchClubbedData = async () => {
-      if (!isClubJob || clubbedJobs.length === 0) {
-        setClubbedJobsData([]);
-        return;
-      }
-      try {
-        const promises = clubbedJobs.map(async (jNo) => {
-          const res = await axios.get(`${import.meta.env.VITE_API_STRING}/get-export-job/${encodeURIComponent(jNo)}`);
-          return res.data;
-        });
-        const results = await Promise.all(promises);
-        setClubbedJobsData(results);
-      } catch (err) {
-        console.error("Error fetching clubbed jobs data", err);
-      }
-    };
-    fetchClubbedData();
-  }, [isClubJob, clubbedJobs]);
-
+  
+  
   // Regenerate htmlContent when jobData, isClubJob, or clubbedJobsData changes
   React.useEffect(() => {
     if (!jobData) return;
@@ -92,59 +48,36 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
     setHtmlContent(template);
   }, [jobData, exchangeRate, isClubJob, clubbedJobsData]);
 
-  // Click outside to close dropdown
-  React.useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showJobDropdown && !event.target.closest('.ep-search-container')) {
-        setShowJobDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showJobDropdown]);
-
+  
   const getAggregatedContainers = (primaryJob, isClubActive, clubbedJobsList) => {
-    if (!primaryJob) return [];
-    const primaryContainers = primaryJob.containers || [];
-    const invoice = primaryJob.invoices?.[0] || {};
-    const product = invoice.products?.[0] || {};
-    const descriptionPrimary = product.description || "";
-
-    let result = [];
-    primaryContainers.forEach(c => {
-      result.push({
-        ...c,
-        jobNo: primaryJob.job_no,
-        descriptionOfGoods: descriptionPrimary,
-        sb_no: primaryJob.sb_no || "",
-        sb_date: primaryJob.sb_date || "",
-        invoiceNumber: invoice.invoiceNumber || "",
-        invoiceValue: invoice.invoiceValue || "",
-      });
-    });
-
-    if (isClubActive && Array.isArray(clubbedJobsList)) {
-      clubbedJobsList.forEach(cJobData => {
-        const cJobContainers = cJobData.containers || [];
-        const cJobInvoice = cJobData.invoices?.[0] || {};
-        const cJobProduct = cJobInvoice.products?.[0] || {};
-        const cJobDescription = cJobProduct.description || "";
-
-        cJobContainers.forEach(c => {
-          result.push({
-            ...c,
-            jobNo: cJobData.job_no,
-            descriptionOfGoods: cJobDescription,
-            sb_no: cJobData.sb_no || "",
-            sb_date: cJobData.sb_date || "",
-            invoiceNumber: cJobInvoice.invoiceNumber || "",
-            invoiceValue: cJobInvoice.invoiceValue || "",
-          });
+    // If this is a club parent, the server already pre-merged all child containers
+    // into primaryJob.containers. Don't add children again to avoid double-counting.
+    const allJobsToProcess = [primaryJob];
+    if (isClubActive && !primaryJob.is_club_job_parent && Array.isArray(clubbedJobsList)) {
+        clubbedJobsList.forEach(j => {
+            if (j && j.job_no !== primaryJob.job_no) {
+                if (!allJobsToProcess.some(existing => existing.job_no === j.job_no)) {
+                    allJobsToProcess.push(j);
+                }
+            }
         });
-      });
     }
 
-    // Group/Aggregate by containerNo (case-insensitive)
+    let result = [];
+    allJobsToProcess.forEach(job => {
+        const containers = job.containers?.length > 0 ? job.containers : (job.operations?.[0]?.containerDetails || []);
+        containers.forEach(c => {
+            result.push({
+                ...c,
+                jobNo: c._sourceJobNo || job.job_no,
+                shippingBillNo: c._sourceSbNo || job.custom_house_details?.shipping_bill_no || job.sb_no || job.shippingBillNo,
+                sb_date: c._sourceSbDate || job.custom_house_details?.sb_date || job.sb_date,
+                hsn: c.hsn || c._sourceHsnList || job.custom_house_details?.hsn_code,
+                pkgsStuffed: c.pkgsStuffed || c.pkgs || 0
+            });
+        });
+    });
+
     const grouped = {};
     result.forEach(c => {
       const key = (c.containerNo || "").trim().toUpperCase();
@@ -171,9 +104,9 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       group.grossWeight += Number(c.grossWeight) || 0;
       group.grWtPlusTrWt += Number(c.grWtPlusTrWt) || 0;
       
-      const desc = c.descriptionOfGoods || c.description || "";
-      const hsn = c.hsnList || c.ritc || "";
-      const sbNo = c.sb_no || c.shippingBillNo || "";
+      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || "";
+      const hsn = c.hsn || c._sourceHsnList || c.hsnList || c.ritc || "";
+      const sbNo = c.shippingBillNo || c.sb_no || "";
       const sbDate = c.sb_date || "";
 
       group.uniqueSBs.push({
@@ -186,8 +119,8 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         description: desc,
         sealNo: c.sealNo || "",
         shippingLineSealNo: c.shippingLineSealNo || "",
-        invoiceValue: Number(c.invoiceValue) || 0,
-        leoDate: c.leoDate || ""
+        invoiceValue: Number(c.invoiceValue || c._sourceInvoiceValue) || 0,
+        leoDate: c.leoDate || c._sourceLeoDate || ""
       });
 
       if (desc && !group.uniqueDescriptions.includes(desc)) {
@@ -196,17 +129,21 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       if (hsn && !group.uniqueHsnCodes.includes(hsn)) {
         group.uniqueHsnCodes.push(hsn);
       }
-      if (c.sealNo && !group.uniqueSealNos.includes(c.sealNo)) {
-        group.uniqueSealNos.push(c.sealNo);
+      const trimmedSeal = c.sealNo ? String(c.sealNo).trim() : "";
+      if (trimmedSeal && !group.uniqueSealNos.includes(trimmedSeal)) {
+        group.uniqueSealNos.push(trimmedSeal);
       }
-      if (c.shippingLineSealNo && !group.uniqueShippingLineSealNos.includes(c.shippingLineSealNo)) {
-        group.uniqueShippingLineSealNos.push(c.shippingLineSealNo);
+      const trimmedAgentSeal = c.shippingLineSealNo ? String(c.shippingLineSealNo).trim() : "";
+      if (trimmedAgentSeal && !group.uniqueShippingLineSealNos.includes(trimmedAgentSeal)) {
+        group.uniqueShippingLineSealNos.push(trimmedAgentSeal);
       }
-      if (c.leoDate && !group.uniqueLeoDates.includes(c.leoDate)) {
-        group.uniqueLeoDates.push(c.leoDate);
+      const leoDate = c.leoDate || c._sourceLeoDate || "";
+      if (leoDate && !group.uniqueLeoDates.includes(leoDate)) {
+        group.uniqueLeoDates.push(leoDate);
       }
-      if (c.invoiceValue) {
-        group.invoiceValues.push(Number(c.invoiceValue) || 0);
+      const invVal = Number(c.invoiceValue || c._sourceInvoiceValue) || 0;
+      if (invVal) {
+        group.invoiceValues.push(invVal);
       }
     });
 
@@ -259,12 +196,32 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       }
       setExchangeRate(rate);
 
-      setIsClubJob(false);
-      setClubbedJobs([]);
-      setClubbedJobsData([]);
+      
+      let fetchedClubbedJobsData = [];
+      let isClubActive = false;
+
+      // If this is a child job, use the parent's pre-merged data to avoid double-counting.
+      // The server already merges all child containers into the parent's containers array.
+      if (data.parent_club_job) {
+          try {
+            const parentRes = await axios.get(`${import.meta.env.VITE_API_STRING}/get-export-job/${encodeURIComponent(data.parent_club_job)}`);
+            if (parentRes.data) {
+                // Replace current data with parent's pre-merged data
+                Object.assign(data, parentRes.data);
+                isClubActive = true;
+            }
+          } catch(e) { console.warn(e); }
+      } else if (data.is_club_job_parent && Array.isArray(data.clubbed_jobs) && data.clubbed_jobs.length > 0) {
+          // Parent job: server already merged all children into data.containers
+          isClubActive = true;
+      }
+
+      setIsClubJob(isClubActive);
+      setClubbedJobsData(fetchedClubbedJobsData);
+
       setJobData(data);
 
-      const template = buildTemplate(data, rate, false, []);
+      const template = buildTemplate(data, rate, isClubActive, fetchedClubbedJobsData);
       setHtmlContent(template);
       setChoiceOpen(true);
     } catch (err) {
@@ -302,6 +259,18 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
     let totalWeight = 0;
 
     aggregatedContainers.forEach((c, idx) => {
+      const uniqueSBsList = [];
+      const seenSBs = new Set();
+      if (c.uniqueSBs) {
+          c.uniqueSBs.forEach((sb, idx) => {
+             const key = sb.sbNo ? `${sb.sbNo}-${sb.sbDate}` : `__empty_${idx}`;
+             if (!seenSBs.has(key)) {
+                 seenSBs.add(key);
+                 uniqueSBsList.push(sb);
+             }
+          });
+      }
+
       const pkgs = Number(c.pkgsStuffed) || 0;
       const weight = Number(c.grossWeight) || 0;
       const weightMT = (weight / 1000).toFixed(3);
@@ -312,28 +281,32 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         ? c.uniqueDescriptions.map(d => `<div>${d}</div>`).join("")
         : (c.descriptionOfGoods || "");
 
-      const pkgsDisplay = c.uniqueSBs && c.uniqueSBs.length > 0
-        ? c.uniqueSBs.map(sb => `<div>${sb.pkgs || ""}</div>`).join("")
+      const pkgsDisplay = uniqueSBsList && uniqueSBsList.length > 0
+        ? uniqueSBsList.map(sb => `<div>${sb.pkgs || ""}</div>`).join("")
         : (pkgs ? `<div>${pkgs}</div>` : "");
 
-      const weightDisplay = c.uniqueSBs && c.uniqueSBs.length > 0
-        ? c.uniqueSBs.map(sb => `<div>${(Number(sb.weight) / 1000).toFixed(3)}</div>`).join("")
+      const weightDisplay = uniqueSBsList && uniqueSBsList.length > 0
+        ? uniqueSBsList.map(sb => `<div>${(Number(sb.weight) / 1000).toFixed(3)}</div>`).join("")
         : (Number(c.grossWeight || 0) / 1000).toFixed(3);
 
-      const sealDisplay = c.uniqueSBs && c.uniqueSBs.length > 0
-        ? c.uniqueSBs.map(sb => `<div>${sb.sealNo || ""}</div>`).join("")
+      const uniqueSeals = c.uniqueSBs ? [...new Set(c.uniqueSBs.map(sb => sb.sealNo ? String(sb.sealNo).trim() : '').filter(Boolean))] : [];
+      const sealDisplay = uniqueSeals.length > 0
+        ? uniqueSeals.map(s => `<div>${s}</div>`).join("<div style='height: 8px;'></div>")
         : (c.sealNo || "");
 
-      const agentSealDisplay = c.uniqueSBs && c.uniqueSBs.length > 0
-        ? c.uniqueSBs.map(sb => `<div>${sb.shippingLineSealNo || ""}</div>`).join("")
+      const uniqueAgentSeals = c.uniqueSBs ? [...new Set(c.uniqueSBs.map(sb => sb.shippingLineSealNo ? String(sb.shippingLineSealNo).trim() : '').filter(Boolean))] : [];
+      const agentSealDisplay = uniqueAgentSeals.length > 0
+        ? uniqueAgentSeals.map(s => `<div>${s}</div>`).join("<div style='height: 8px;'></div>")
         : (c.shippingLineSealNo || "");
 
-      const sbNoDisplay = c.uniqueSBs && c.uniqueSBs.length > 0
-        ? c.uniqueSBs.map(sb => `<div>${sb.sbNo || ""}</div>`).join("")
+      const uniqueSBNoList = c.uniqueSBs ? [...new Set(c.uniqueSBs.map(sb => sb.sbNo).filter(Boolean))] : [];
+      const sbNoDisplay = uniqueSBNoList.length > 0
+        ? uniqueSBNoList.map(sb => `<div>${sb}</div>`).join("")
         : (c.sb_no || "");
 
-      const sbDateDisplay = c.uniqueSBs && c.uniqueSBs.length > 0
-        ? c.uniqueSBs.map(sb => `<div>${formatDate(sb.sbDate)}</div>`).join("")
+      const uniqueSBDateList = c.uniqueSBs ? [...new Set(c.uniqueSBs.map(sb => formatDate(sb.sbDate)).filter(Boolean))] : [];
+      const sbDateDisplay = uniqueSBDateList.length > 0
+        ? uniqueSBDateList.map(sb => `<div>${sb}</div>`).join("")
         : formatDate(c.sb_date);
 
       containersRows += `
@@ -756,6 +729,18 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       const aggregatedContainers = getAggregatedContainers(jobData, isClubJob, clubbedJobsData);
 
       aggregatedContainers.forEach((c, idx) => {
+      const uniqueSBsList = [];
+      const seenSBs = new Set();
+      if (c.uniqueSBs) {
+          c.uniqueSBs.forEach(sb => {
+             const key = `${sb.sbNo}-${sb.sbDate}`;
+             if (!seenSBs.has(key)) {
+                 seenSBs.add(key);
+                 uniqueSBsList.push(sb);
+             }
+          });
+      }
+
         worksheet.getRow(currentRow).height = 45;
         const pkgs = Number(c.pkgsStuffed) || 0;
         const weight = Number(c.grossWeight) || 0;
@@ -767,25 +752,29 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         worksheet.getCell(currentRow, 2).value = c.containerNo || "";
         worksheet.getCell(currentRow, 3).value = c.type?.match(/\d+/)?.[0] || "20";
 
-        const pkgsText = c.uniqueSBs && c.uniqueSBs.length > 0 ? c.uniqueSBs.map(sb => sb.pkgs || "").join("\n") : (pkgs || "");
+        const uniqueSBsListExcel = []; const seenSBsExcel = new Set(); if (c.uniqueSBs) { c.uniqueSBs.forEach((sb, idx) => { const key = sb.sbNo ? `${sb.sbNo}-${sb.sbDate}` : `__empty_${idx}`; if (!seenSBsExcel.has(key)) { seenSBsExcel.add(key); uniqueSBsListExcel.push(sb); } }); } const pkgsText = uniqueSBsListExcel.length > 0 ? uniqueSBsListExcel.map(sb => sb.pkgs || "").join("\n") : (pkgs || "");
         worksheet.getCell(currentRow, 4).value = pkgsText;
 
         const descText = c.uniqueDescriptions && c.uniqueDescriptions.length > 0 ? c.uniqueDescriptions.join("\n") : (c.descriptionOfGoods || "");
         worksheet.getCell(currentRow, 5).value = descText;
 
-        const weightText = c.uniqueSBs && c.uniqueSBs.length > 0 ? c.uniqueSBs.map(sb => (Number(sb.weight) / 1000).toFixed(3)).join("\n") : (weightMT || "");
+        const weightText = uniqueSBsListExcel.length > 0 ? uniqueSBsListExcel.map(sb => (Number(sb.weight) / 1000).toFixed(3)).join("\n") : (weightMT || "");
         worksheet.getCell(currentRow, 6).value = weightText;
 
-        const sealText = c.uniqueSBs && c.uniqueSBs.length > 0 ? c.uniqueSBs.map(sb => sb.sealNo || "").join("\n") : (c.sealNo || "");
+        const uniqueSealsExcel = c.uniqueSBs ? [...new Set(c.uniqueSBs.map(sb => sb.sealNo ? String(sb.sealNo).trim() : '').filter(Boolean))] : [];
+        const sealText = uniqueSealsExcel.length > 0 ? uniqueSealsExcel.join("\n") : (c.sealNo || "");
         worksheet.getCell(currentRow, 7).value = sealText;
 
-        const agentSealText = c.uniqueSBs && c.uniqueSBs.length > 0 ? c.uniqueSBs.map(sb => sb.shippingLineSealNo || "").join("\n") : (c.shippingLineSealNo || "");
+        const uniqueAgentSealsExcel = c.uniqueSBs ? [...new Set(c.uniqueSBs.map(sb => sb.shippingLineSealNo ? String(sb.shippingLineSealNo).trim() : '').filter(Boolean))] : [];
+        const agentSealText = uniqueAgentSealsExcel.length > 0 ? uniqueAgentSealsExcel.join("\n") : (c.shippingLineSealNo || "");
         worksheet.getCell(currentRow, 8).value = agentSealText;
 
-        const sbNoText = c.uniqueSBs && c.uniqueSBs.length > 0 ? c.uniqueSBs.map(sb => sb.sbNo).filter(Boolean).join("\n") : (c.sb_no || "");
+        const uniqueSBNoListExcel = uniqueSBsListExcel.length > 0 ? [...new Set(uniqueSBsListExcel.map(sb => sb.sbNo).filter(Boolean))] : [];
+        const sbNoText = uniqueSBNoListExcel.length > 0 ? uniqueSBNoListExcel.join("\n") : (c.sb_no || "");
         worksheet.getCell(currentRow, 9).value = sbNoText;
 
-        const sbDateText = c.uniqueSBs && c.uniqueSBs.length > 0 ? c.uniqueSBs.map(sb => formatDate(sb.sbDate)).filter(Boolean).join("\n") : formatDate(c.sb_date);
+        const uniqueSBDatesExcel = uniqueSBsListExcel.length > 0 ? [...new Set(uniqueSBsListExcel.map(sb => formatDate(sb.sbDate)).filter(Boolean))] : [];
+        const sbDateText = uniqueSBDatesExcel.length > 0 ? uniqueSBDatesExcel.join("\n") : formatDate(c.sb_date);
         worksheet.getCell(currentRow, 10).value = sbDateText;
 
         worksheet.getRow(currentRow).eachCell((cell, colNum) => {
@@ -960,142 +949,6 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
           Document Actions
         </DialogTitle>
         <DialogContent sx={{ p: 3, overflow: 'visible' }}>
-          {/* Club Job Section */}
-          <div style={{
-            background: '#f8fafc',
-            border: '1.5px solid #e2e8f0',
-            borderRadius: '10px',
-            padding: '16px',
-            marginBottom: '20px',
-            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '20px' }}>🔗</span>
-                <div>
-                  <div style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '14px' }}>Club Multiple Jobs?</div>
-                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Aggregate container details across multiple shipments</div>
-                </div>
-              </div>
-              <Switch
-                checked={isClubJob}
-                onChange={e => setIsClubJob(e.target.checked)}
-                color="primary"
-                id={`club-job-checkbox-${jobNo}`}
-              />
-            </div>
-
-            {isClubJob && (
-              <div className="ep-search-container" style={{ position: 'relative', width: '100%', marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
-                <span style={{ display: 'block', fontSize: '12px', color: '#1e293b', fontWeight: 'bold', marginBottom: '8px' }}>
-                  SELECT CLUBBED JOBS
-                </span>
-                <div style={{ display: 'flex', width: '100%', gap: '6px', marginBottom: '8px' }}>
-                  <input
-                    type="text"
-                    placeholder="Search and add job numbers (e.g. EXP/...)"
-                    value={jobSearch}
-                    onChange={e => setJobSearch(e.target.value)}
-                    onFocus={() => setShowJobDropdown(true)}
-                    style={{
-                      flex: 1,
-                      padding: '10px 12px',
-                      border: '1.5px solid #cbd5e1',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      transition: 'border-color 0.2s',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowJobDropdown(!showJobDropdown)}
-                    style={{
-                      padding: '10px 14px',
-                      background: '#f1f5f9',
-                      border: '1.5px solid #cbd5e1',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#475569'
-                    }}
-                  >
-                    🔍
-                  </button>
-                </div>
-
-                {showJobDropdown && (
-                  <ul style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    width: '100%',
-                    maxHeight: '180px',
-                    overflowY: 'auto',
-                    zIndex: 9999,
-                    background: 'white',
-                    border: '1.5px solid #e2e8f0',
-                    borderRadius: '8px',
-                    listStyle: 'none',
-                    padding: '6px 0',
-                    margin: '4px 0 0 0',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)'
-                  }}>
-                    {jobOptions
-                      .filter(jNo => jNo !== jobNo && !clubbedJobs.includes(jNo))
-                      .map((jNo, idx) => (
-                        <li
-                          key={idx}
-                          onClick={() => {
-                            if (!clubbedJobs.includes(jNo)) {
-                              setClubbedJobs(prev => [...prev, jNo]);
-                            }
-                            setJobSearch('');
-                            setShowJobDropdown(false);
-                          }}
-                          style={{
-                            padding: '8px 16px',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            color: '#334155',
-                            transition: 'background 0.2s',
-                            fontWeight: '500'
-                          }}
-                          onMouseEnter={e => e.target.style.background = '#f1f5f9'}
-                          onMouseLeave={e => e.target.style.background = 'white'}
-                        >
-                          {jNo}
-                        </li>
-                      ))}
-                    {jobOptions.filter(jNo => jNo !== jobNo && !clubbedJobs.includes(jNo)).length === 0 && (
-                      <li style={{ padding: '8px 16px', color: '#94a3b8', fontSize: '13px', textAlign: 'center' }}>
-                        No other jobs found
-                      </li>
-                    )}
-                  </ul>
-                )}
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
-                  {clubbedJobs.map((jNo, idx) => (
-                    <Chip
-                      key={idx}
-                      label={jNo}
-                      size="small"
-                      onDelete={() => {
-                        setClubbedJobs(prev => prev.filter(j => j !== jNo));
-                      }}
-                      sx={{ backgroundColor: '#e2f0fd', color: '#1d4ed8', fontWeight: 'bold' }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Action Cards Grid */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {/* Edit Card */}

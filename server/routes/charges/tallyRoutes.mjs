@@ -37,7 +37,7 @@ router.get("/test", (req, res) => res.json({ status: "Tally API is connected and
  */
 const mapJobAndInvoiceToTally = (job, inv) => {
     return {
-        "Job Number": job.job_no,
+        "Job Number": job.tally_club_ref_no || job.job_no,
         "Job Year": job.year || "",
         "Job Type": "EXPORT",
         "Job Date": normalizeDate(job.createdAt),
@@ -92,6 +92,7 @@ const mapJobAndInvoiceToTally = (job, inv) => {
         "Invoice Currency": inv?.currency || "",
         "FOB Value": (() => {
             if (!inv) return "0.00";
+            if (inv.precalculatedFob) return inv.precalculatedFob;
             const fob = inv.freightInsuranceCharges?.fobValue?.amount || inv.invoiceValue || 0;
             const rate = parseFloat(job.exchange_rate || inv.freightInsuranceCharges?.freight?.exchangeRate || 1);
             return (fob * rate).toFixed(2);
@@ -105,8 +106,73 @@ const mapJobAndInvoiceToTally = (job, inv) => {
  */
 const getJobDetailsInternal = async (job_number) => {
     if (!job_number) return null;
-    const job = await ExJobModel.findOne({ job_no: job_number }).lean();
+    const job = await ExJobModel.findOne({
+        $or: [{ job_no: job_number }, { tally_club_ref_no: job_number }]
+    }).sort({ is_club_job_parent: -1 }).lean();
     if (!job) return null;
+
+    if (job.is_club_job_parent && Array.isArray(job.clubbed_jobs) && job.clubbed_jobs.length > 0) {
+        const childJobs = await ExJobModel.find({ job_no: { $in: job.clubbed_jobs } }).lean();
+
+        let totalNetWeight = 0;
+        let totalGrossWeight = 0;
+        let totalPkgs = 0;
+        let allSbNos = [];
+
+        childJobs.forEach(j => {
+            const nw = parseFloat(j.net_weight_kg);
+            const gw = parseFloat(j.gross_weight_kg);
+            const pkgs = parseInt(j.total_no_of_pkgs, 10);
+            if (!isNaN(nw)) totalNetWeight += nw;
+            if (!isNaN(gw)) totalGrossWeight += gw;
+            if (!isNaN(pkgs)) totalPkgs += pkgs;
+            if (j.sb_no) allSbNos.push(j.sb_no);
+        });
+
+        job.net_weight_kg = totalNetWeight.toFixed(3);
+        job.gross_weight_kg = totalGrossWeight.toFixed(3);
+        job.total_no_of_pkgs = totalPkgs.toString();
+        job.sb_no = [...new Set(allSbNos)].filter(Boolean).join(", ");
+
+        const uniqueContainersMap = new Map();
+        childJobs.flatMap(j => j.containers || []).forEach(c => {
+            if (c && c.containerNo) {
+                uniqueContainersMap.set(c.containerNo, c);
+            }
+        });
+        job.containers = Array.from(uniqueContainersMap.values());
+
+        const allInvoices = childJobs.flatMap(j => j.invoices || []);
+        let invNumbers = [];
+        let invDates = [];
+        let totalInvValue = 0;
+        let totalFobValue = 0;
+        let currency = "";
+
+        allInvoices.forEach(inv => {
+            if (inv.invoiceNumber) invNumbers.push(inv.invoiceNumber);
+            if (inv.invoiceDate) invDates.push(normalizeDate(inv.invoiceDate));
+
+            const invVal = parseFloat(inv.invoiceValue) || 0;
+            totalInvValue += invVal;
+
+            const fob = parseFloat(inv.freightInsuranceCharges?.fobValue?.amount || invVal);
+            const rate = parseFloat(inv.freightInsuranceCharges?.freight?.exchangeRate || job.exchange_rate || 1);
+            totalFobValue += (fob * rate);
+
+            if (!currency && inv.currency) currency = inv.currency;
+        });
+
+        job.invoices = [{
+            invoiceNumber: [...new Set(invNumbers)].filter(Boolean).join(", "),
+            invoiceDate: [...new Set(invDates)].filter(Boolean).join(", "),
+            invoiceValue: totalInvValue,
+            currency: currency || "USD",
+            precalculatedFob: totalFobValue.toFixed(2),
+            products: allInvoices[0]?.products || [],
+            termsOfInvoice: allInvoices[0]?.termsOfInvoice || ""
+        }];
+    }
 
     const invoices = job.invoices || [];
     if (invoices.length === 0) {
@@ -301,82 +367,13 @@ router.post("/purchase-entry", authApiKey, async (req, res) => {
     try {
         const data = mapPurchaseEntryData(req.body);
 
-        // Populate combined jobDetails for club job
-        if (data.isClubJob && data.clubbedJobs?.length > 0) {
-            // Append suffix ONLY to jobNo, NOT to entryNo
-            const clubSuffix = `, ${data.clubbedJobs.join(", ")}`;
-            if (!data.jobNo.includes(clubSuffix)) {
-                data.jobNo = data.jobNo + clubSuffix;
-            }
-
-            const mainJobNo = String(data.jobNo).split(",")[0].trim();
-            const mainDetails = await getJobDetailsInternal(mainJobNo);
-            if (mainDetails && mainDetails.length > 0) {
-                const allJobNos = [mainJobNo, ...data.clubbedJobs].filter(Boolean);
-                let combinedDetails = [];
-                for (const jNo of allJobNos) {
-                    const details = await getJobDetailsInternal(jNo);
-                    if (details) {
-                        combinedDetails.push(...details);
-                    }
-                }
-
-                let totalGrossWeight = 0;
-                let totalNetWeight = 0;
-                let totalPackageCount = 0;
-                let totalInvoiceValue = 0;
-                let totalFobValue = 0;
-                let mainCurrency = mainDetails[0]["Invoice Currency"] || "USD";
-
-                combinedDetails.forEach((det) => {
-                    totalGrossWeight += parseFloat(det["Gross Weight"]) || 0;
-                    totalNetWeight += parseFloat(det["Net Wt"]) || 0;
-                    totalPackageCount += parseFloat(det["Package Count"]) || 0;
-                    
-                    const invValStr = det["Invoice Value"] || "";
-                    const invValMatch = invValStr.match(/^([\d\.]+)/);
-                    if (invValMatch) {
-                        totalInvoiceValue += parseFloat(invValMatch[1]) || 0;
-                    }
-                    totalFobValue += parseFloat(det["FOB Value"]) || 0;
-                });
-
-                // Gather comma-separated lists across all jobs/invoices
-                const jobNumbers = joinUniqueStrings(combinedDetails.map(d => d["Job Number"]));
-                const exporterNames = joinUniqueStrings(combinedDetails.map(d => d["ImporterExporter Name"]));
-                const containerCounts = joinUniqueStrings(combinedDetails.map(d => d["Container Count"]));
-                const containers = joinUniqueContainers(combinedDetails.map(d => d["Containers"]));
-                const sbNos = joinUniqueStrings(combinedDetails.map(d => d["SB No"]));
-                const sbDates = joinUniqueStrings(combinedDetails.map(d => d["SB Date"]));
-                const invNos = joinUniqueStrings(combinedDetails.map(d => d["Invoice Number"]));
-                const invDates = joinUniqueStrings(combinedDetails.map(d => d["Inv Date"]));
-
-                mainDetails[0]["Gross Weight"] = String(Math.round(totalGrossWeight));
-                mainDetails[0]["Net Wt"] = String(Math.round(totalNetWeight));
-                mainDetails[0]["Package Count"] = String(Math.round(totalPackageCount));
-                mainDetails[0]["Invoice Value"] = `${totalInvoiceValue.toFixed(2).replace(/\.00$/, '')}(${mainCurrency})`;
-                mainDetails[0]["FOB Value"] = totalFobValue.toFixed(2);
-
-                // Assign comma-separated fields
-                mainDetails[0]["Job Number"] = jobNumbers;
-                mainDetails[0]["ImporterExporter Name"] = exporterNames;
-                mainDetails[0]["Container Count"] = containerCounts;
-                mainDetails[0]["Containers"] = containers;
-                mainDetails[0]["SB No"] = sbNos;
-                mainDetails[0]["SB Date"] = sbDates;
-                mainDetails[0]["Invoice Number"] = invNos;
-                mainDetails[0]["Inv Date"] = invDates;
-
-                data.jobDetails = mainDetails;
-            } else {
-                data.jobDetails = [];
-            }
+        // Include Job Details
+        const firstJob = String(data.jobNo).split(",")[0].trim();
+        const details = await getJobDetailsInternal(firstJob);
+        if (details) {
+            data.jobDetails = details;
         } else {
-            const firstJob = String(data.jobNo).split(",")[0].trim();
-            const details = await getJobDetailsInternal(firstJob);
-            if (details) {
-                data.jobDetails = details;
-            }
+            data.jobDetails = [];
         }
 
         const entry = await PurchaseBookEntryModel.create(data);
@@ -394,7 +391,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
     try {
         const entryNo = req.query.entry_no || req.query.entryNo;
         if (!entryNo) return res.status(400).json({ error: "entry_no is a required query parameter" });
-        
+
         // Find using either the exact entryNo, or the first part if it's comma-separated
         const firstPart = String(entryNo).split(",")[0].trim();
         const entry = await PurchaseBookEntryModel.findOne({
@@ -403,7 +400,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 { entryNo: firstPart }
             ]
         }).lean();
-        
+
         if (!entry) return res.status(404).json({ error: "Purchase Book Entry not found." });
 
         // Fallback for Charge Head Category if missing
@@ -416,7 +413,9 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 }
                 if (!job && entry.jobNo) {
                     const firstJob = String(entry.jobNo).split(",")[0].trim();
-                    job = await ExJobModel.findOne({ job_no: firstJob }).lean();
+                    job = await ExJobModel.findOne({
+                        $or: [{ job_no: firstJob }, { tally_club_ref_no: firstJob }]
+                    }).sort({ is_club_job_parent: -1 }).lean();
                 }
                 if (job) {
                     let charge = null;
@@ -439,11 +438,33 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         // Get comma-separated supplier invoice numbers & dates if clubbed
         let supplierInvNo = entry.supplierInvNo;
         let supplierInvDate = normalizeDate(entry.supplierInvDate);
-        if (entry.isClubJob && entry.clubbedJobs?.length > 0 && entry.chargeHeading) {
-            const mainJobNo = String(entry.jobNo).split(",")[0].trim();
+        let c1ParentJobNo = null;
+
+        const firstJobRaw = String(entry.jobNo).split(",")[0].trim();
+        let rawJobDB = null;
+        try {
+            rawJobDB = await ExJobModel.findOne({
+                $or: [{ job_no: firstJobRaw }, { tally_club_ref_no: firstJobRaw }]
+            }).sort({ is_club_job_parent: -1 }).lean();
+        } catch (e) { }
+
+        let isClub = entry.isClubJob;
+        let clubbedList = entry.clubbedJobs || [];
+
+        if (rawJobDB) {
+            if (rawJobDB.is_club_job_parent && rawJobDB.clubbed_jobs?.length > 0) {
+                isClub = true;
+                clubbedList = rawJobDB.clubbed_jobs;
+                c1ParentJobNo = rawJobDB.tally_club_ref_no || rawJobDB.job_no;
+            } else if (rawJobDB.parent_club_job) {
+                c1ParentJobNo = rawJobDB.tally_club_ref_no || rawJobDB.parent_club_job;
+            }
+        }
+
+        if (isClub && clubbedList?.length > 0 && entry.chargeHeading) {
             const { supplierInvNo: clubInvNo, supplierInvDate: clubInvDate } = await getSupplierInvoiceDetails(
-                mainJobNo,
-                entry.clubbedJobs,
+                firstJobRaw,
+                clubbedList,
                 entry.chargeHeading,
                 entry.supplierInvNo,
                 entry.supplierInvDate
@@ -465,7 +486,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "Entry Date": normalizeDate(entry.entryDate),
             "Supplier Inv No": supplierInvNo,
             "Supplier Inv Date": supplierInvDate,
-            "Job No": entry.jobNo,
+            "Job No": c1ParentJobNo ? c1ParentJobNo : entry.jobNo,
             "Supplier Name": entry.supplierName,
             "Address 1": entry.address1,
             "Address 2": entry.address2,
@@ -492,7 +513,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "Net Amount": netAmount,
             "Charge Description": entry.chargeDescription || '',
             "Charge Head Category": chargeCategory || '',
-            "TDS Category": entry.tdsCategory || '94C',
+            "TDS Category": entry.tdsCategory || 'TDS ON CONTRACT 94C',
             "Status": entry.status,
             "isClubJob": entry.isClubJob || false,
             "clubbedJobs": entry.clubbedJobs || []
@@ -520,74 +541,12 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         }
 
         // Include Job Details
-        if (entry.isClubJob && entry.clubbedJobs?.length > 0) {
-            const mainJobNo = String(entry.jobNo).split(",")[0].trim();
-            const mainDetails = await getJobDetailsInternal(mainJobNo);
-            if (mainDetails && mainDetails.length > 0) {
-                const allJobNos = [mainJobNo, ...entry.clubbedJobs].filter(Boolean);
-                let combinedDetails = [];
-                for (const jNo of allJobNos) {
-                    const details = await getJobDetailsInternal(jNo);
-                    if (details) {
-                        combinedDetails.push(...details);
-                    }
-                }
-
-                let totalGrossWeight = 0;
-                let totalNetWeight = 0;
-                let totalPackageCount = 0;
-                let totalInvoiceValue = 0;
-                let totalFobValue = 0;
-                let mainCurrency = mainDetails[0]["Invoice Currency"] || "USD";
-
-                combinedDetails.forEach((det) => {
-                    totalGrossWeight += parseFloat(det["Gross Weight"]) || 0;
-                    totalNetWeight += parseFloat(det["Net Wt"]) || 0;
-                    totalPackageCount += parseFloat(det["Package Count"]) || 0;
-                    
-                    const invValStr = det["Invoice Value"] || "";
-                    const invValMatch = invValStr.match(/^([\d\.]+)/);
-                    if (invValMatch) {
-                        totalInvoiceValue += parseFloat(invValMatch[1]) || 0;
-                    }
-                    totalFobValue += parseFloat(det["FOB Value"]) || 0;
-                });
-
-                // Gather comma-separated lists across all jobs/invoices
-                const jobNumbers = joinUniqueStrings(combinedDetails.map(d => d["Job Number"]));
-                const exporterNames = joinUniqueStrings(combinedDetails.map(d => d["ImporterExporter Name"]));
-                const containerCounts = joinUniqueStrings(combinedDetails.map(d => d["Container Count"]));
-                const containers = joinUniqueContainers(combinedDetails.map(d => d["Containers"]));
-                const sbNos = joinUniqueStrings(combinedDetails.map(d => d["SB No"]));
-                const sbDates = joinUniqueStrings(combinedDetails.map(d => d["SB Date"]));
-                const invNos = joinUniqueStrings(combinedDetails.map(d => d["Invoice Number"]));
-                const invDates = joinUniqueStrings(combinedDetails.map(d => d["Inv Date"]));
-
-                mainDetails[0]["Gross Weight"] = String(Math.round(totalGrossWeight));
-                mainDetails[0]["Net Wt"] = String(Math.round(totalNetWeight));
-                mainDetails[0]["Package Count"] = String(Math.round(totalPackageCount));
-                mainDetails[0]["Invoice Value"] = `${totalInvoiceValue.toFixed(2).replace(/\.00$/, '')}(${mainCurrency})`;
-                mainDetails[0]["FOB Value"] = totalFobValue.toFixed(2);
-
-                // Assign comma-separated fields
-                mainDetails[0]["Job Number"] = jobNumbers;
-                mainDetails[0]["ImporterExporter Name"] = exporterNames;
-                mainDetails[0]["Container Count"] = containerCounts;
-                mainDetails[0]["Containers"] = containers;
-                mainDetails[0]["SB No"] = sbNos;
-                mainDetails[0]["SB Date"] = sbDates;
-                mainDetails[0]["Invoice Number"] = invNos;
-                mainDetails[0]["Inv Date"] = invDates;
-
-                formattedData["Job Details"] = mainDetails;
-            } else {
-                formattedData["Job Details"] = [];
-            }
+        const jobNoToFetch = (isClub && c1ParentJobNo) ? c1ParentJobNo : entry.jobNo;
+        const jobDetails = await getJobDetailsInternal(jobNoToFetch);
+        if (jobDetails) {
+            formattedData["Job Details"] = jobDetails;
         } else {
-            const jobDetails = await getJobDetailsInternal(entry.jobNo);
-            if (jobDetails) {
-                formattedData["Job Details"] = jobDetails;
-            }
+            formattedData["Job Details"] = [];
         }
 
 

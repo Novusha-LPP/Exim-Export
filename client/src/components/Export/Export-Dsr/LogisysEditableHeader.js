@@ -20,6 +20,7 @@ import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingN
 import VGMAuthorizationGenerator from "./StandardDocuments/VGMAuthorizationGenerator";
 import FreightCertificateGenerator from "./StandardDocuments/FreightCertificateGenerator";
 import BillOfLadingGenerator from "./StandardDocuments/BillOfLadingGenerator";
+import CreateClubJobModal from "./CreateClubJobModal.jsx";
 
 // Helper function
 const toUpper = (str) => (str || "").toUpperCase();
@@ -364,6 +365,7 @@ const LogisysEditableHeader = ({
   const [searchJobOptions, setSearchJobOptions] = useState([]);
   const [searchJobLoading, setSearchJobLoading] = useState(false);
   const [searchJobInputValue, setSearchJobInputValue] = useState("");
+  const [clubJobModalOpen, setClubJobModalOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -1416,6 +1418,34 @@ const LogisysEditableHeader = ({
           {!isNewJob && (
             <button
               style={{
+                background: "#0284c7",
+                border: "none",
+                color: "#fff",
+                padding: "3px 12px",
+                borderRadius: 3,
+                fontWeight: 600,
+                fontSize: 11,
+                cursor: "pointer",
+                height: 24,
+                whiteSpace: "nowrap",
+              }}
+              type="button"
+              onClick={() => setClubJobModalOpen(true)}
+              title={
+                formik.values.is_club_job_parent || formik.values.parent_club_job
+                  ? "Manage members of this club job"
+                  : "Create a new Club Job using this job as a template"
+              }
+            >
+              {formik.values.is_club_job_parent || formik.values.parent_club_job
+                ? "Manage Club Job"
+                : "Create Club Job"}
+            </button>
+          )}
+
+          {!isNewJob && (
+            <button
+              style={{
                 background: "#1976d2",
                 border: "none",
                 color: "#fff",
@@ -1669,6 +1699,18 @@ const LogisysEditableHeader = ({
         >
           {impexCubeToast.message}
         </div>
+      )}
+
+      {clubJobModalOpen && (
+        <CreateClubJobModal
+          open={clubJobModalOpen}
+          onClose={() => setClubJobModalOpen(false)}
+          currentJob={formik.values}
+          onSuccess={(newJobNo) => {
+            alert(`Club Job updated successfully!`);
+            window.location.reload();
+          }}
+        />
       )}
     </div>
   );

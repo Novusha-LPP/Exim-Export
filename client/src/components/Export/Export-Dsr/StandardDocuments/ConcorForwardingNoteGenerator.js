@@ -2,10 +2,8 @@ import React, { useState } from "react";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import axios from "axios";
-import { MenuItem, Button, Dialog, DialogTitle, DialogContent, DialogActions, Chip, Switch } from "@mui/material";
+import { MenuItem, Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import DocumentEditorDialog from "./DocumentEditorDialog";
-import ExcelJS from "exceljs";
-import { saveAs } from "file-saver";
 
 // Import the logo properly for Vite
 import concorLogo from "../../../../assets/images/concor.png";
@@ -16,14 +14,8 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
   const [htmlContent, setHtmlContent] = useState("");
   const [choiceOpen, setChoiceOpen] = useState(false);
   const [jobData, setJobData] = useState(null);
-
   const [isClubJob, setIsClubJob] = useState(false);
-  const [clubbedJobs, setClubbedJobs] = useState([]);
   const [clubbedJobsData, setClubbedJobsData] = useState([]);
-  const [jobSearch, setJobSearch] = useState("");
-  const [jobOptions, setJobOptions] = useState([]);
-  const [showJobDropdown, setShowJobDropdown] = useState(false);
-  const [logoSrc, setLogoSrc] = useState(concorLogo);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -35,195 +27,113 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
     return `${day}.${month}.${year}`;
   };
 
-  // Convert logo on mount
-  React.useEffect(() => {
-    const loadLogo = async () => {
-      try {
-        const base64 = await imageToBase64(concorLogo);
-        setLogoSrc(base64);
-      } catch (err) {
-        console.warn("Failed to convert concorLogo to base64, using original path", err);
-      }
-    };
-    loadLogo();
-  }, []);
-
-  // Search jobs debounced
-  React.useEffect(() => {
-    const searchJobs = async () => {
-      if (!showJobDropdown) return;
-      try {
-        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/job-numbers-search`, {
-          params: { q: jobSearch }
-        });
-        if (res.data?.success && Array.isArray(res.data.data)) {
-          setJobOptions(res.data.data);
+  const getAggregatedContainers = (primaryJob, isClubActive, clubbedJobsList) => {
+    const allJobsToProcess = [primaryJob];
+    if (isClubActive && !primaryJob.is_club_job_parent && Array.isArray(clubbedJobsList)) {
+      clubbedJobsList.forEach(j => {
+        if (j && j.job_no !== primaryJob.job_no) {
+          if (!allJobsToProcess.some(existing => existing.job_no === j.job_no)) {
+            allJobsToProcess.push(j);
+          }
         }
-      } catch (err) {
-        console.error("Error searching jobs", err);
-      }
-    };
-    const delayDebounce = setTimeout(() => {
-      searchJobs();
-    }, 300);
-    return () => clearTimeout(delayDebounce);
-  }, [jobSearch, showJobDropdown]);
-
-  // Fetch details of clubbed jobs when selected
-  React.useEffect(() => {
-    const fetchClubbedData = async () => {
-      if (!isClubJob || clubbedJobs.length === 0) {
-        setClubbedJobsData([]);
-        return;
-      }
-      try {
-        const promises = clubbedJobs.map(async (jNo) => {
-          const res = await axios.get(`${import.meta.env.VITE_API_STRING}/get-export-job/${encodeURIComponent(jNo)}`);
-          return res.data;
-        });
-        const results = await Promise.all(promises);
-        setClubbedJobsData(results);
-      } catch (err) {
-        console.error("Error fetching clubbed jobs data", err);
-      }
-    };
-    fetchClubbedData();
-  }, [isClubJob, clubbedJobs]);
-
-  // Regenerate htmlContent when jobData, isClubJob, or clubbedJobsData changes
-  React.useEffect(() => {
-    if (!jobData) return;
-    const template = buildTemplate(jobData, logoSrc, isClubJob ? clubbedJobsData : []);
-    setHtmlContent(template);
-  }, [jobData, isClubJob, clubbedJobsData, logoSrc]);
-
-  // Click outside to close dropdown
-  React.useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showJobDropdown && !event.target.closest('.ep-search-container')) {
-        setShowJobDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showJobDropdown]);
-
-  const getAggregatedContainers = (primaryJob, validClubbedJobs) => {
-    if (!primaryJob) return [];
-    const primaryContainers = primaryJob.containers || [];
-    const invoice = primaryJob.invoices?.[0] || {};
-    const product = invoice.products?.[0] || {};
-    const operations = primaryJob.operations?.[0] || {};
-    const statusDetails = operations.statusDetails?.[0] || {};
-
-    let result = [];
-    primaryContainers.forEach(cnt => {
-      result.push({
-        ...cnt,
-        jobNo: primaryJob.job_no,
-        description: product.description || "",
-        ritc: product.ritc || "",
-        invoiceValue: invoice.invoiceValue || "",
-        leoDate: statusDetails.leoDate || "",
-      });
-    });
-
-    if (Array.isArray(validClubbedJobs)) {
-      validClubbedJobs.forEach(cJobData => {
-        const cJobContainers = cJobData.containers || [];
-        const cJobInvoice = cJobData.invoices?.[0] || {};
-        const cJobProduct = cJobInvoice.products?.[0] || {};
-        const cJobOperations = cJobData.operations?.[0] || {};
-        const cJobStatusDetails = cJobOperations.statusDetails?.[0] || {};
-
-        cJobContainers.forEach(cnt => {
-          result.push({
-            ...cnt,
-            jobNo: cJobData.job_no,
-            description: cJobProduct.description || "",
-            ritc: cJobProduct.ritc || "",
-            invoiceValue: cJobInvoice.invoiceValue || "",
-            leoDate: cJobStatusDetails.leoDate || "",
-          });
-        });
       });
     }
 
-    // Group/Aggregate by containerNo (case-insensitive)
+    let result = [];
+    allJobsToProcess.forEach(job => {
+      const containers = job.containers?.length > 0 ? job.containers : (job.operations?.[0]?.containerDetails || []);
+      containers.forEach(c => {
+        result.push({
+          ...c,
+          jobNo: c._sourceJobNo || job.job_no,
+          shippingBillNo: c._sourceSbNo || job.custom_house_details?.shipping_bill_no || job.sb_no || job.shippingBillNo,
+          sb_date: c._sourceSbDate || job.custom_house_details?.sb_date || job.sb_date,
+          hsn: c.hsn || c._sourceHsnList || job.custom_house_details?.hsn_code,
+          pkgsStuffed: c.pkgsStuffed || c.pkgs || 0
+        });
+      });
+    });
+
     const grouped = {};
-    result.forEach(cnt => {
-      const key = (cnt.containerNo || "").trim().toUpperCase();
+    result.forEach(c => {
+      const key = (c.containerNo || "").trim().toUpperCase();
       const groupKey = key || `EMPTY_${Math.random()}`;
-      
+
       if (!grouped[groupKey]) {
         grouped[groupKey] = {
-          ...cnt,
+          ...c,
           uniqueDescriptions: [],
           uniqueHsnCodes: [],
           uniqueSBs: [],
           uniqueSealNos: [],
           uniqueShippingLineSealNos: [],
           uniqueLeoDates: [],
-          uniqueInvoiceValues: [],
           pkgsStuffed: 0,
           grossWeight: 0,
           grWtPlusTrWt: 0,
+          invoiceValues: []
         };
       }
-      
+
       const group = grouped[groupKey];
-      group.pkgsStuffed += Number(cnt.pkgsStuffed) || 0;
-      group.grossWeight += Number(cnt.grossWeight) || 0;
-      group.grWtPlusTrWt += Number(cnt.grWtPlusTrWt || 0);
-      
-      const desc = cnt.description || "";
-      const hsn = cnt.ritc || "";
-      const sbNo = cnt.jobNo || "";
-      const sbDate = cnt.sb_date || "";
+      group.pkgsStuffed += Number(c.pkgsStuffed) || 0;
+      group.grossWeight += Number(c.grossWeight) || 0;
+      group.grWtPlusTrWt += Number(c.grWtPlusTrWt) || 0;
+
+      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || "";
+      if (desc && !group.uniqueDescriptions.includes(desc)) {
+        group.uniqueDescriptions.push(desc);
+      }
+      const hsn = c.hsn || c._sourceHsnList || c.hsnList || c.ritc || "";
+      if (hsn && !group.uniqueHsnCodes.includes(hsn)) {
+        group.uniqueHsnCodes.push(hsn);
+      }
+      const sbNo = c.shippingBillNo || c.sb_no || "";
+      const sbDate = c.sb_date || "";
 
       group.uniqueSBs.push({
         sbNo,
         sbDate,
-        pkgs: Number(cnt.pkgsStuffed) || 0,
-        weight: Number(cnt.grossWeight) || 0,
-        tareWeight: Number(cnt.tareWeightKgs) || 0,
+        pkgs: Number(c.pkgsStuffed) || 0,
+        weight: Number(c.grossWeight) || 0,
+        tareWeight: Number(c.tareWeightKgs) || 0,
         ritc: hsn,
         description: desc,
-        sealNo: cnt.sealNo || "",
-        shippingLineSealNo: cnt.shippingLineSealNo || "",
-        invoiceValue: Number(cnt.invoiceValue) || 0,
-        leoDate: cnt.leoDate || ""
+        sealNo: c.sealNo || "",
+        shippingLineSealNo: c.shippingLineSealNo || "",
+        invoiceValue: Number(c.invoiceValue || c._sourceInvoiceValue) || 0,
+        leoDate: c.leoDate || c._sourceLeoDate || ""
       });
 
-      if (desc && !group.uniqueDescriptions.includes(desc)) {
-        group.uniqueDescriptions.push(desc);
+      const trimmedSeal = c.sealNo ? String(c.sealNo).trim() : "";
+      if (trimmedSeal && !group.uniqueSealNos.includes(trimmedSeal)) {
+        group.uniqueSealNos.push(trimmedSeal);
       }
-      if (hsn && !group.uniqueHsnCodes.includes(hsn)) {
-        group.uniqueHsnCodes.push(hsn);
+      const trimmedAgentSeal = c.shippingLineSealNo ? String(c.shippingLineSealNo).trim() : "";
+      if (trimmedAgentSeal && !group.uniqueShippingLineSealNos.includes(trimmedAgentSeal)) {
+        group.uniqueShippingLineSealNos.push(trimmedAgentSeal);
       }
-      if (cnt.sealNo && !group.uniqueSealNos.includes(cnt.sealNo)) {
-        group.uniqueSealNos.push(cnt.sealNo);
+      const leoDate = c.leoDate || c._sourceLeoDate || "";
+      if (leoDate && !group.uniqueLeoDates.includes(leoDate)) {
+        group.uniqueLeoDates.push(leoDate);
       }
-      if (cnt.shippingLineSealNo && !group.uniqueShippingLineSealNos.includes(cnt.shippingLineSealNo)) {
-        group.uniqueShippingLineSealNos.push(cnt.shippingLineSealNo);
-      }
-      if (cnt.leoDate && !group.uniqueLeoDates.includes(cnt.leoDate)) {
-        group.uniqueLeoDates.push(cnt.leoDate);
-      }
-      if (cnt.invoiceValue) {
-        group.uniqueInvoiceValues.push(Number(cnt.invoiceValue) || 0);
+      const invVal = Number(c.invoiceValue || c._sourceInvoiceValue) || 0;
+      if (invVal) {
+        group.invoiceValues.push(invVal);
       }
     });
 
     return Object.values(grouped).map(group => {
       return {
         ...group,
+        descriptionOfGoods: group.uniqueDescriptions.join(", "),
         description: group.uniqueDescriptions.join(", "),
+        hsnList: group.uniqueHsnCodes.join(", "),
         ritc: group.uniqueHsnCodes.join(", "),
         sealNo: group.uniqueSealNos.join(", "),
         shippingLineSealNo: group.uniqueShippingLineSealNos.join(", "),
         leoDate: group.uniqueLeoDates[0] || "",
-        invoiceValue: group.uniqueInvoiceValues.length > 0 ? group.uniqueInvoiceValues.reduce((a, b) => a + b, 0) : ""
+        invoiceValue: group.invoiceValues.length > 0 ? group.invoiceValues.reduce((a, b) => a + b, 0) : ""
       };
     });
   };
@@ -236,14 +146,37 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       const response = await axios.get(
         `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`
       );
-      const exportJob = response.data;
+      const data = response.data;
 
-      setIsClubJob(false);
-      setClubbedJobs([]);
-      setClubbedJobsData([]);
-      setJobData(exportJob);
+      let fetchedClubbedJobsData = [];
+      let isClubActive = false;
 
-      const template = buildTemplate(exportJob, logoSrc, []);
+      if (data.parent_club_job) {
+        try {
+          const parentRes = await axios.get(`${import.meta.env.VITE_API_STRING}/get-export-job/${encodeURIComponent(data.parent_club_job)}`);
+          if (parentRes.data) {
+            Object.assign(data, parentRes.data);
+            isClubActive = true;
+          }
+        } catch (e) { console.warn(e); }
+      } else if (data.is_club_job_parent && Array.isArray(data.clubbed_jobs) && data.clubbed_jobs.length > 0) {
+        isClubActive = true;
+      }
+
+      setIsClubJob(isClubActive);
+      setClubbedJobsData(fetchedClubbedJobsData);
+      setJobData(data);
+
+      // Pre-load logo as base64
+      let logoBase64 = concorLogo;
+      try {
+        logoBase64 = await imageToBase64(concorLogo);
+      } catch (err) {
+        console.warn("Failed to convert concorLogo to base64", err);
+      }
+
+      // Generate HTML for the editor
+      const template = generateHTML(data, logoBase64, isClubActive, fetchedClubbedJobsData);
       setHtmlContent(template);
       setChoiceOpen(true);
     } catch (err) {
@@ -252,54 +185,85 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
     }
   };
 
-  const buildTemplate = (exportJob, logoSrc = concorLogo, validClubbedJobs = []) => {
-    const containers = getAggregatedContainers(exportJob, validClubbedJobs);
-    const operations = exportJob.operations?.[0] || {};
+  const generateHTML = (exportJob, logoSrc = concorLogo, isClubActive, clubbedJobsList) => {
+    const aggregatedContainers = getAggregatedContainers(exportJob, isClubActive, clubbedJobsList);
     const invoice = exportJob.invoices?.[0] || {};
-    const statusDetails = operations.statusDetails?.[0] || {};
+    const product = invoice.products?.[0] || {};
 
-    const totalPackages = containers.reduce((sum, cnt) => sum + (Number(cnt.pkgsStuffed) || 0), 0);
-    const totalCargoWeight = containers.reduce((sum, cnt) => sum + parseFloat(cnt.grossWeight || 0) / 1000, 0);
+    const totalPackages = aggregatedContainers.reduce((sum, cnt) => sum + (Number(cnt.pkgsStuffed) || 0), 0);
+    const totalCargoWeight = aggregatedContainers.reduce((sum, cnt) => sum + parseFloat(cnt.grossWeight || 0) / 1000, 0);
+
+    let sbNoText = exportJob.sb_no || "";
+    let sbDateText = formatDate(exportJob.sb_date);
+
+    if (isClubActive && exportJob.containers?.length > 0) {
+      const allSBs = [];
+      const seenSBs = new Set();
+      exportJob.containers.forEach(c => {
+        const sbNo = c._sourceSbNo || c.shippingBillNo || exportJob.sb_no;
+        const sbDate = c._sourceSbDate || c.sb_date || exportJob.sb_date;
+        if (sbNo) {
+          const key = `${sbNo}-${sbDate}`;
+          if (!seenSBs.has(key)) {
+            seenSBs.add(key);
+            allSBs.push({ sbNo, sbDate });
+          }
+        }
+      });
+      if (allSBs.length > 0) {
+        sbNoText = allSBs.map(sb => sb.sbNo).join(", ");
+        sbDateText = allSBs.map(sb => formatDate(sb.sbDate)).join(", ");
+      }
+    }
 
     let containerRows = "";
-    containers.forEach((cnt, i) => {
+    aggregatedContainers.forEach((cnt, i) => {
       const sizeMatch = (cnt.type || "").match(/^(\d+)/);
       const size = sizeMatch ? sizeMatch[1] : "";
 
+      const uniqueSBsList = [];
+      const seenSBs = new Set();
+      if (cnt.uniqueSBs) {
+        cnt.uniqueSBs.forEach((sb, idx) => {
+          const key = sb.sbNo ? `${sb.sbNo}-${sb.sbDate}` : `__empty_${idx}`;
+          if (!seenSBs.has(key)) {
+            seenSBs.add(key);
+            uniqueSBsList.push(sb);
+          }
+        });
+      }
+
+      const pkgsDisplay = uniqueSBsList.length > 0
+        ? uniqueSBsList.map(sb => `<div>${sb.pkgs || ""}</div>`).join("")
+        : (cnt.pkgsStuffed ? `<div>${cnt.pkgsStuffed}</div>` : "");
+
       const descDisplay = cnt.uniqueDescriptions && cnt.uniqueDescriptions.length > 0
         ? cnt.uniqueDescriptions.map(d => `<div>${d}</div>`).join("")
-        : (cnt.description || "");
+        : (product.description || "");
 
-      const ritcDisplay = cnt.uniqueHsnCodes && cnt.uniqueHsnCodes.length > 0
-        ? cnt.uniqueHsnCodes.join("<br/>")
-        : (cnt.ritc || "");
+      const hsnDisplay = cnt.uniqueHsnCodes && cnt.uniqueHsnCodes.length > 0
+        ? cnt.uniqueHsnCodes.join(", ")
+        : (product.ritc || "");
 
-      const tareDisplay = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-        ? cnt.uniqueSBs.map(sb => `<div>${sb.tareWeight || ""}</div>`).join("")
-        : (cnt.tareWeightKgs || "");
-
-      const pkgsDisplay = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-        ? cnt.uniqueSBs.map(sb => `<div>${sb.pkgs || ""}</div>`).join("")
-        : (cnt.pkgsStuffed || "");
-
-      const weightDisplay = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-        ? cnt.uniqueSBs.map(sb => `<div>${(Number(sb.weight) / 1000).toFixed(1)}</div>`).join("")
+      const weightDisplay = uniqueSBsList.length > 0
+        ? uniqueSBsList.map(sb => `<div>${(parseFloat(sb.weight || 0) / 1000).toFixed(1)}</div>`).join("")
         : (parseFloat(cnt.grossWeight || 0) / 1000).toFixed(1);
 
-      const vgmDisplay = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-        ? cnt.uniqueSBs.map(sb => `<div>${((Number(sb.weight) + Number(sb.tareWeight)) / 1000).toFixed(1)}</div>`).join("")
+      const vgmDisplay = uniqueSBsList.length > 0
+        ? uniqueSBsList.map(sb => `<div>${sb.tareWeight ? ((parseFloat(sb.weight || 0) + parseFloat(sb.tareWeight || 0)) / 1000).toFixed(1) : ""}</div>`).join("")
         : (cnt.grWtPlusTrWt ? (parseFloat(cnt.grWtPlusTrWt) / 1000).toFixed(1) : "");
 
-      const invoiceValDisplay = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-        ? cnt.uniqueSBs.map(sb => `<div>${sb.invoiceValue || ""}</div>`).join("")
-        : (cnt.invoiceValue || "");
+      const invoiceValueDisplay = uniqueSBsList.length > 0
+        ? uniqueSBsList.map(sb => `<div>${sb.invoiceValue || ""}</div>`).join("")
+        : (invoice.invoiceValue || "");
 
-      const leoDisplay = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-        ? cnt.uniqueSBs.map(sb => `<div>${formatDate(sb.leoDate)}</div>`).join("")
-        : formatDate(cnt.leoDate);
+      const leoDateDisplay = uniqueSBsList.length > 0
+        ? uniqueSBsList.map(sb => `<div>${formatDate(sb.leoDate)}</div>`).join("")
+        : formatDate(exportJob.operations?.[0]?.statusDetails?.[0]?.leoDate);
 
-      const sealDisplay = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-        ? cnt.uniqueSBs.map(sb => `<div>${sb.sealNo || ""}</div>`).join("")
+      const uniqueSeals = cnt.uniqueSBs ? [...new Set(cnt.uniqueSBs.map(sb => sb.sealNo ? String(sb.sealNo).trim() : '').filter(Boolean))] : [];
+      const sealDisplay = uniqueSeals.length > 0
+        ? uniqueSeals.map(s => `<div>${s}</div>`).join("")
         : (cnt.sealNo || "");
 
       containerRows += `
@@ -308,26 +272,19 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
           <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${cnt.containerNo || ""}</td>
           <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${cnt.sealType || "RFID"}</td>
           <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${size}</td>
-          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${tareDisplay}</td>
+          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${cnt.tareWeightKgs || ""}</td>
           <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${pkgsDisplay}</td>
           <td style="border: 1px solid black; padding: 1px 2px 3px 2px; vertical-align: middle; font-size: 10px;">${descDisplay}</td>
-          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${ritcDisplay}</td>
+          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${hsnDisplay}</td>
           <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${weightDisplay}</td>
           <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${vgmDisplay}</td>
           <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">NO</td>
-          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${invoiceValDisplay}</td>
-          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${leoDisplay}</td>
+          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${invoiceValueDisplay}</td>
+          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${leoDateDisplay}</td>
           <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${sealDisplay}</td>
         </tr>
       `;
     });
-
-    let jobNosInfo = exportJob.job_no || "";
-    let invNosInfo = invoice.invoiceNumber || "";
-    if (validClubbedJobs.length > 0) {
-      jobNosInfo = [exportJob.job_no, ...validClubbedJobs.map(j => j.job_no)].filter(Boolean).join(", ");
-      invNosInfo = [invoice.invoiceNumber, ...validClubbedJobs.map(j => j.invoices?.[0]?.invoiceNumber)].filter(Boolean).join(", ");
-    }
 
     return `
       <div style="width: 1140px; margin: 5px auto; font-family: Helvetica, Arial, sans-serif; color: black; background: white;">
@@ -339,8 +296,8 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
               <div style="font-size: 8px; margin-top: 1px;">FORWARDING NOTE FOR GENERAL AND DANGEROUS MERCHANDISE</div>
               <div style="font-size: 7px;">(FOR CONCOR USE ONLY)</div>
               <div style="margin-top: 6px; font-size: 14px; font-weight: bold;">
-                <span style="display: inline-block; width: 45%; text-align: right; padding-right: 20px; margin-bottom: 10px;">JOB  ${jobNosInfo}</span>
-                <span style="display: inline-block; width: 45%; text-align: left; padding-left: 20px; margin-bottom: 10px;">INV  ${invNosInfo}</span>
+                <span style="display: inline-block; width: 45%; text-align: right; padding-right: 20px; margin-bottom: 10px;">JOB  ${exportJob.job_no || ""}</span>
+                <span style="display: inline-block; width: 45%; text-align: left; padding-left: 20px; margin-bottom: 10px;">INV  ${invoice.invoiceNumber || ""}</span>
               </div>
             </td>
             <td style="width: 70px; text-align: right; vertical-align: middle; border: none; padding: 0;"><img src="${logoSrc}" style="height: 50px; width: auto;"/></td>
@@ -389,473 +346,465 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
             </td>
           </tr>
           <tr>
-            <td colspan="3" style="border: 1px solid black; font-size: 10px; padding: 0;">
-              <table style="width: 100%; border-collapse: collapse; height: 100%;">
-                 <tr>
-                    <td style="border: none; border-right: 1px solid black; width: 50%; padding: 1px 5px 4px 5px; vertical-align: middle;">NAME OF CUSTOMER / ASSOCIATE PARTNER:&nbsp;&nbsp;<b>${exportJob.exporter || ""}</b></td>
-                    <td style="border: none; width: 50%; padding: 1px 5px 4px 5px; vertical-align: middle;">GST REGISTRATION NO.:&nbsp;&nbsp;<b>${exportJob.gstin || ""}</b></td>
-                 </tr>
-              </table>
+            <td colspan="3" style="border: 1px solid black; vertical-align: middle; padding: 1px 5px 4px 5px; font-weight: bold; font-size: 13px;">
+              CHA NAME &amp; CODE:  SURAJ FORWARDERS AND SHIPPING AGENCIES
             </td>
           </tr>
           <tr>
-             <td colspan="3" style="border: 1px solid black; font-size: 10px; padding: 0;">
-               <table style="width: 100%; border-collapse: collapse; height: 100%;">
-                 <tr>
-                    <td style="border: none; border-right: 1px solid black; width: 50%; padding: 1px 5px 4px 5px; vertical-align: middle;">ADDRESS OF CUSTOMER:&nbsp;&nbsp;<b>${exportJob.exporter || ""}</b></td>
-                    <td style="border: none; width: 50%; padding: 1px 5px 4px 5px; vertical-align: middle;">PAN NO.:&nbsp;&nbsp;<b>${exportJob.panNo || ""}</b></td>
-                 </tr>
-              </table>
+             <td colspan="3" style="border: 1px solid black; font-size: 9px; vertical-align: middle; padding: 0px 5px 2px 5px;">
+              TRANSPORTED BY: SELF TPT | CONCOR
              </td>
           </tr>
           <tr>
-            <td colspan="3" style="border: 1px solid black; font-size: 10px; padding: 0;">
-              <table style="width: 100%; border-collapse: collapse; height: 100%;">
-                 <tr>
-                   <td style="border: none; border-right: 1px solid black; width: 25%; padding: 1px 5px 4px 5px; vertical-align: middle;">BOOKING NO.:&nbsp;&nbsp;<b>${exportJob.booking_no || ""}</b></td>
-                   <td style="border: none; border-right: 1px solid black; width: 25%; padding: 1px 5px 4px 5px; vertical-align: middle;">BOOKING DT:&nbsp;&nbsp;<b>${formatDate(exportJob.booking_date)}</b></td>
-                   <td style="border: none; border-right: 1px solid black; width: 25%; padding: 1px 5px 4px 5px; vertical-align: middle;">EXPORTER REF NO.:&nbsp;&nbsp;<b>${exportJob.exporter_ref_no || ""}</b></td>
-                   <td style="border: none; width: 25%; padding: 1px 5px 4px 5px; vertical-align: middle;">CHA / AGENT NAME:&nbsp;&nbsp;<b>SURAJ FORWARDERS & SHIPPING AGENCIES</b></td>
-                 </tr>
-              </table>
+             <td colspan="3" style="border: 1px solid black; font-size: 8px; vertical-align: middle; padding: 0px 5px 2px 5px;">
+              <i>In case of CONCOR service, Kindly provide</i>
+             </td>
+          </tr>
+          <tr>
+             <td colspan="3" style="border: 1px solid black; font-size: 9px; vertical-align: middle; padding: 0px 5px 2px 5px;">
+              PICK UP POINT/KM: ${exportJob.factory_address || ""}
+             </td>
+          </tr>
+          <tr>
+             <td colspan="3" style="border: 1px solid black; font-size: 9px; vertical-align: middle; padding: 0px 5px 2px 5px;">
+              DELIVER POINT/KM:
+             </td>
+          </tr>
+          <tr>
+            <td colspan="3" style="border: 1px solid black; vertical-align: middle; padding: 2px 5px 5px 5px; font-weight: bold; font-size: 14px;">
+              SHIPPING BILL NO. ${sbNoText} DATE ${sbDateText}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" style="border: 1px solid black; font-size: 10px; vertical-align: middle; padding: 1px 5px 4px 5px;">
+              STUFFING TYPE: ${exportJob.goods_stuffed_at === "Factory" ? "FCL" : "ICD"}
+            </td>
+            <td style="border: 1px solid black; font-size: 10px; vertical-align: middle; padding: 1px 5px 4px 5px;">
+              GST IN INVOICE NAME: ${exportJob.exporter || ""}
+            </td>
+          </tr>
+           <tr>
+            <td colspan="3" style="border: 1px solid black; font-size: 9px; vertical-align: middle; padding: 1px 5px 4px 5px;">
+              PAYMENT MODE (PDA) &amp; NO.: SURAJ FORWARDERS PVT. LTD.
+            </td>
+          </tr>
+          <tr>
+            <td colspan="3" style="border: 1px solid black; vertical-align: middle; padding: 2px 5px 5px 5px; font-weight: bold; font-size: 14px;">
+              EXPORTER NAME : ${exportJob.exporter || ""}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="3" style="border: 1px solid black; vertical-align: middle; padding: 1px 5px 4px 5px; font-size: 12px;">
+              NAME IN INVOICE GSTIN NO : ${exportJob.gstin || ""}
             </td>
           </tr>
         </table>
 
-        <!-- Table of containers -->
-        <table style="width: 100%; border: 1px solid black; border-collapse: collapse; margin-top: 5px; table-layout: fixed;">
-          <thead>
-            <tr style="background-color: #f2f2f2; font-weight: bold; text-align: center; height: 35px;">
-              <th style="border: 1px solid black; width: 3%; font-size: 9px; padding: 2px;">Sr.<br/>No.</th>
-              <th style="border: 1px solid black; width: 12%; font-size: 9px; padding: 2px;">CONTAINER NO.</th>
-              <th style="border: 1px solid black; width: 7%; font-size: 9px; padding: 2px;">TYPE<br/>RFID/OTH</th>
-              <th style="border: 1px solid black; width: 5%; font-size: 9px; padding: 2px;">SIZE</th>
-              <th style="border: 1px solid black; width: 6%; font-size: 9px; padding: 2px;">TARE WT.<br/>(In KGS)</th>
-              <th style="border: 1px solid black; width: 6%; font-size: 9px; padding: 2px;">NO. OF<br/>PACKAGES</th>
-              <th style="border: 1px solid black; width: 17%; font-size: 9px; padding: 2px;">COMMODITY NAME / DESCRIPTION</th>
-              <th style="border: 1px solid black; width: 9%; font-size: 9px; padding: 2px;">COMMODITY<br/>HSN CODE</th>
-              <th style="border: 1px solid black; width: 7%; font-size: 9px; padding: 2px;">CARGO WT<br/>(In MTS)</th>
-              <th style="border: 1px solid black; width: 7%; font-size: 9px; padding: 2px;">VGM<br/>CARGO+TARE</th>
-              <th style="border: 1px solid black; width: 6%; font-size: 9px; padding: 2px;">HAZAR-<br/>DOUS</th>
-              <th style="border: 1px solid black; width: 6%; font-size: 9px; padding: 2px;">VALUE/<br/>FOB</th>
-              <th style="border: 1px solid black; width: 8%; font-size: 9px; padding: 2px;">LEO DT</th>
-              <th style="border: 1px solid black; width: 10%; font-size: 9px; padding: 2px;">SEAL NO.</th>
+        <table style="width: 100%; border: 1px solid black; border-collapse: collapse; font-size: 10px; table-layout: fixed; margin-top: -1px;">
+          <thead style="background: white;">
+            <tr>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 3%; vertical-align: middle; text-align: center; font-size: 10px;">Sr.<br/>No.</th>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 8.5%; vertical-align: middle; text-align: center; font-size: 10px;">CONTAINER NO.</th>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 4%; vertical-align: middle; text-align: center; font-size: 10px;">TYPE</th>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 4%; vertical-align: middle; text-align: center; font-size: 10px;">SIZE</th>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 6%; vertical-align: middle; text-align: center; font-size: 10px;">TARE WT.</th>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 6%; vertical-align: middle; text-align: center; font-size: 10px;">NO. OF<br/>PACKAGE<br/>S</th>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 18%; vertical-align: middle; text-align: left; font-size: 10px;">COMMODITY NAME</th>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 7%; vertical-align: middle; text-align: center; font-size: 9px;">COMMODIT<br/>Y<br/>HSN CODE</th>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 6%; vertical-align: middle; text-align: center; font-size: 10px;">CARGO WT<br/>(In MTS)</th>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 6%; vertical-align: middle; text-align: center; font-size: 10px;">VGM</th>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 7%; vertical-align: middle; text-align: center; font-size: 10px;">HAZARDOUS</th>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 8%; vertical-align: middle; text-align: center; font-size: 10px;">VALUE/FOB</th>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 7%; vertical-align: middle; text-align: center; font-size: 10px;">LEO DT</th>
+              <th style="border: 1px solid black; padding: 1px 2px 4px 2px; width: 9%; vertical-align: middle; text-align: center; font-size: 10px;">SEAL NO.</th>
             </tr>
           </thead>
           <tbody>
             ${containerRows}
-            <tr style="font-weight: bold; background-color: #f9f9f9; height: 25px;">
-              <td colspan="5" style="border: 1px solid black; text-align: right; padding-right: 10px; font-size: 10px;">Total</td>
-              <td style="border: 1px solid black; text-align: center; font-size: 10px;">${totalPackages || ""}</td>
-              <td colspan="2" style="border: 1px solid black;"></td>
-              <td style="border: 1px solid black; text-align: center; font-size: 10px;">${totalCargoWeight.toFixed(1)}</td>
-              <td colspan="5" style="border: 1px solid black;"></td>
-            </tr>
           </tbody>
+          <tfoot>
+            <tr style="font-weight: bold;">
+              <td colspan="5" style="border: 1px solid black; text-align: right; vertical-align: middle; padding: 1px 4px 4px 4px; font-size: 10px;">Total:</td>
+              <td style="border: 1px solid black; text-align: center; vertical-align: middle; padding: 1px 2px 4px 2px; font-size: 10px;">${totalPackages}</td>
+              <td colspan="2" style="border: 1px solid black; padding: 1px 2px 4px 2px;"></td>
+              <td style="border: 1px solid black; text-align: center; vertical-align: middle; padding: 1px 2px 4px 2px; font-size: 10px;">${totalCargoWeight.toFixed(1)}</td>
+              <td colspan="5" style="border: 1px solid black; padding: 1px 2px 4px 2px;"></td>
+            </tr>
+          </tfoot>
         </table>
 
-        <!-- bottom instructions -->
-        <table style="width: 100%; border: 1px solid black; border-collapse: collapse; margin-top: 5px; font-size: 8px; table-layout: fixed;">
-          <tr>
-            <td style="border: 1px solid black; width: 50%; vertical-align: top; padding: 4px 6px;">
-               <div style="font-weight: bold; font-size: 9px; text-decoration: underline; margin-bottom: 2px;">TERMS AND CONDITIONS</div>
-               1. We agree to pay all charges to CONCOR as per current tariff.<br/>
-               2. We certify that description and weight of goods have been correctly entered in this forwarding note.<br/>
-               3. We certify that the container(s) has/have been stuffed in compliance with all safety regulations.<br/>
-               4. We certify that the seals have been verified and found intact.<br/>
-               5. We accept the liabilities and terms as specified under CONCOR Rules & Regulations.
-            </td>
-            <td style="border: 1px solid black; width: 50%; vertical-align: top; padding: 4px 6px;">
-               <div style="font-weight: bold; font-size: 9px; text-decoration: underline; margin-bottom: 2px;">STUFFING CERTIFICATE (FOR FACTORY / CFS STUFFED)</div>
-               Stuffed Container(s) described above has/have been sealed in my/our presence after verifying container condition.<br/><br/>
-               <table style="width: 100%; border: none; margin-top: 8px;">
-                 <tr>
-                   <td style="border: none; text-align: left; font-size: 8px; font-weight: bold; vertical-align: bottom;">DATE : ${formatDate(new Date())}</td>
-                   <td style="border: none; text-align: right; font-size: 8px; font-weight: bold; vertical-align: bottom;">SIGNATURE OF EXPORTER / CHA / AGENT</td>
-                 </tr>
-               </table>
-            </td>
-          </tr>
-        </table>
+
+        <div style="margin-top: 4px; font-size: 9px; line-height: 1.4;">
+          <div>(Accepted on said to contain Basis)</div>
+          <div>1. I declare that each consignment is of value Rs._________________ and engage**/do not engage** to pay percentage charge on excess value for the increased risk as required by CONCOR...</div>
+          <div>&nbsp;&nbsp;&nbsp;Alternative CONCOR risk and Owner's risk being available, I elect to pay ________________ rates.</div>
+          <div>2. Please declare whether above container/contains high value cargo YES/NO</div>
+          <div>3. I do hereby certify that I have satisfied myself that the description, marks &amp; weights or quantity of goods consigned by me have been correctly entered in the Forwarding Note...</div>
+          
+          <div style="margin-top: 4px;">Tick the appropriate option shown above.</div>
+          
+          <div style="float: right; text-align: right; width: 240px; font-size: 10px;">
+            <b>Signature &amp; Seal of the Customer</b><br/>
+            DATE: ${formatDate(new Date())}
+          </div>
+          <div style="clear: both;"></div>
+        </div>
+
+        <div style="margin-top: 10px; text-align: center; font-size: 13px; font-weight: bold;">TERMS AND CONDITIONS</div>
+        <div style="font-size: 9px; margin-top: 4px; line-height: 1.3;">
+          <div>1. Unless the consignor declares in clause(1) overleaf the value of any consignment &amp; pays percentage charge on excess value as required by CONCOR, the maximum limit of liability shall not exceed Rs. 50 per kg.</div>
+          <div>2. When alternative 'CONCOR Risk' and 'Owner Risk' rates are quoted, the latter will apply unless sender elects 'CONCOR Risk'.</div>
+          <div>3. I accept responsibility for any consequences to the property of CONCOR or others caused by this consignment Note - Attention is invited to terms for dangerous goods in I.R.C.A Red Tariff and IMDG.</div>
+        </div>
+        
+        <div style="margin-top: 8px; border: 1px solid black; padding: 5px 8px; font-size: 10px; font-weight: bold; min-height: 25px;">
+          Additional declarations for Dangerous Goods (I.R.C.A / IMDG)
+        </div>
+        
+        <div style="margin-top: -1px; border: 1px solid black; padding: 5px 8px; font-size: 11px; font-weight: bold; min-height: 35px;">
+          FOR OFFICE USE
+        </div>
       </div>
     `;
   };
 
   const downloadDirectly = async () => {
     setChoiceOpen(false);
-    const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
-    const pageWidth = doc.internal.pageSize.getWidth(); // 297mm
-    const leftMargin = 5;
-    const rightMargin = 5;
-    const contentWidth = pageWidth - leftMargin - rightMargin; // 287mm
+    const exportJob = jobData;
+    if (!exportJob) return;
 
     try {
-      await doc.html(htmlContent, {
-        callback: function (doc) {
-          doc.save(`CONCOR_Forwarding_Note_${jobNo}.pdf`);
-        },
-        x: leftMargin,
-        y: 5,
-        width: contentWidth,
-        windowWidth: 1150,
-        autoPaging: "slice",
-      });
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF");
-    }
-  };
+      const operations = exportJob.operations?.[0] || {};
+      const invoice = exportJob.invoices?.[0] || {};
+      const product = invoice.products?.[0] || {};
+      const statusDetails = operations.statusDetails?.[0] || {};
 
-  const handleDownloadExcel = async () => {
-    setChoiceOpen(false);
-    if (!jobData) {
-      alert("No job data loaded.");
-      return;
-    }
+      const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
 
-    try {
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("CONCOR Note");
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const leftMargin = 5;
+      const rightMargin = 5;
+      const topMargin = 5;
+      const contentWidth = pageWidth - leftMargin - rightMargin;
 
-      // Column Widths for 14 columns
-      worksheet.columns = [
-        { width: 5 },   // A: Sr No
-        { width: 18 },  // B: Container No
-        { width: 10 },  // C: Type
-        { width: 8 },   // D: Size
-        { width: 12 },  // E: Tare Wt
-        { width: 12 },  // F: No of Packages
-        { width: 35 },  // G: Commodity Name
-        { width: 14 },  // H: HSN Code
-        { width: 12 },  // I: Cargo Wt (MT)
-        { width: 12 },  // J: VGM
-        { width: 12 },  // K: Hazardous
-        { width: 14 },  // L: Value/FOB
-        { width: 14 },  // M: LEO Dt
-        { width: 16 }   // N: Seal No
-      ];
+      const aggregatedContainers = getAggregatedContainers(exportJob, isClubJob, clubbedJobsData);
+      const containerCount = aggregatedContainers.length;
+      const isCompact = containerCount > 6;
+      const headerScale = isCompact ? 1.1 : 1.25;
+      const rowScale = isCompact ? 1.05 : 1.2;
 
-      for (let r = 1; r <= 100; r++) {
-        worksheet.getRow(r).height = 18;
-      }
+      let yPos = topMargin;
 
-      // Add logo
-      if (logoSrc && logoSrc.startsWith("data:image")) {
-        try {
-          const base64Data = logoSrc.split(",")[1];
-          const extension = logoSrc.match(/image\/(\w+)/)?.[1] || "png";
-          const imageId = workbook.addImage({
-            base64: base64Data,
-            extension: extension
-          });
-          worksheet.addImage(imageId, {
-            tl: { col: 0.1, row: 0.5 },
-            ext: { width: 50, height: 36 },
-            editAs: 'oneCell'
-          });
-          worksheet.addImage(imageId, {
-            tl: { col: 12.9, row: 0.5 },
-            ext: { width: 50, height: 36 },
-            editAs: 'oneCell'
-          });
-        } catch (err) {
-          console.warn("Failed to add concor image to Excel", err);
-        }
-      }
-
-      // Title Block
-      worksheet.mergeCells("B1:M1");
-      worksheet.getCell("B1").value = "CONTAINER CORPORATION OF INDIA LIMITED (CONCOR)";
-      worksheet.getCell("B1").font = { name: "Arial", bold: true, size: 14 };
-      worksheet.getCell("B1").alignment = { vertical: "middle", horizontal: "center" };
-
-      worksheet.mergeCells("B2:M2");
-      worksheet.getCell("B2").value = "FORWARDING NOTE FOR GENERAL AND DANGEROUS MERCHANDISE";
-      worksheet.getCell("B2").font = { name: "Arial", bold: true, size: 8 };
-      worksheet.getCell("B2").alignment = { vertical: "middle", horizontal: "center" };
-
-      worksheet.mergeCells("B3:M3");
-      worksheet.getCell("B3").value = "(FOR CONCOR USE ONLY)";
-      worksheet.getCell("B3").font = { name: "Arial", size: 7.5 };
-      worksheet.getCell("B3").alignment = { vertical: "middle", horizontal: "center" };
-
-      worksheet.mergeCells("B4:G4");
-      let jobNosInfo = jobData.job_no || "";
-      if (isClubJob && clubbedJobsData.length > 0) {
-        jobNosInfo = [jobData.job_no, ...clubbedJobsData.map(j => j.job_no)].filter(Boolean).join(", ");
-      }
-      worksheet.getCell("B4").value = `JOB: ${jobNosInfo}`;
-      worksheet.getCell("B4").font = { name: "Arial", bold: true, size: 11 };
-      worksheet.getCell("B4").alignment = { vertical: "middle", horizontal: "right" };
-
-      worksheet.mergeCells("H4:M4");
-      const invoice = jobData.invoices?.[0] || {};
-      let invNosInfo = invoice.invoiceNumber || "";
-      if (isClubJob && clubbedJobsData.length > 0) {
-        invNosInfo = [invoice.invoiceNumber, ...clubbedJobsData.map(j => j.invoices?.[0]?.invoiceNumber)].filter(Boolean).join(", ");
-      }
-      worksheet.getCell("H4").value = `INV: ${invNosInfo}`;
-      worksheet.getCell("H4").font = { name: "Arial", bold: true, size: 11 };
-      worksheet.getCell("H4").alignment = { vertical: "middle", horizontal: "left" };
-
-      // Row 5: Segment
-      worksheet.getRow(5).height = 24;
-      worksheet.mergeCells("A5:B5");
-      worksheet.getCell("A5").value = "SEGMENT";
-      worksheet.getCell("A5").font = { name: "Arial", bold: true, size: 9 };
-      worksheet.getCell("A5").alignment = { vertical: "middle", horizontal: "center" };
-
-      worksheet.mergeCells("C5:D5");
-      worksheet.getCell("C5").value = "EXIM";
-      worksheet.getCell("C5").font = { name: "Arial", bold: true, size: 9 };
-      worksheet.getCell("C5").alignment = { vertical: "middle", horizontal: "center" };
-
-      worksheet.mergeCells("E5:N5");
-      worksheet.getCell("E5").value = "MODE (TICK ONE):    BY    RAIL / ROAD";
-      worksheet.getCell("E5").font = { name: "Arial", bold: true, size: 9.5 };
-      worksheet.getCell("E5").alignment = { vertical: "middle", horizontal: "left" };
-
-      // Row 6: From/To Headers
-      worksheet.mergeCells("A6:D6");
-      worksheet.getCell("A6").value = "FROM";
-      worksheet.getCell("A6").font = { name: "Arial", bold: true, size: 9 };
-      worksheet.getCell("A6").alignment = { vertical: "middle", horizontal: "center" };
-
-      worksheet.mergeCells("E6:N6");
-      worksheet.getCell("E6").value = "TO";
-      worksheet.getCell("E6").font = { name: "Arial", bold: true, size: 9 };
-      worksheet.getCell("E6").alignment = { vertical: "middle", horizontal: "center" };
-
-      // Row 7: Labels
-      worksheet.getRow(7).height = 20;
-      worksheet.mergeCells("A7:B7");
-      worksheet.getCell("A7").value = "TERMINAL";
-      worksheet.mergeCells("C7:D7");
-      worksheet.getCell("C7").value = "GATEWAY PORT";
-
-      worksheet.mergeCells("E7:H7");
-      worksheet.getCell("E7").value = "SHIPPING LINE";
-
-      worksheet.mergeCells("I7:K7");
-      worksheet.getCell("I7").value = "PORT OF DISCHARGE";
-
-      worksheet.mergeCells("L7:N7");
-      worksheet.getCell("L7").value = "COUNTRY";
-
-      ["A7", "C7", "E7", "I7", "L7"].forEach(cid => {
-        worksheet.getCell(cid).font = { name: "Arial", size: 8 };
-        worksheet.getCell(cid).alignment = { vertical: "middle", horizontal: "center" };
-      });
-
-      // Row 8: Value
-      worksheet.getRow(8).height = 26;
-      worksheet.mergeCells("A8:B8");
-      worksheet.getCell("A8").value = jobData.branchCode || "KHDB";
-      worksheet.mergeCells("C8:D8");
-      worksheet.getCell("C8").value = jobData.gateway_port || jobData.port_of_loading || "";
-
-      worksheet.mergeCells("E8:H8");
-      worksheet.getCell("E8").value = jobData.shipping_line_airline || "";
-
-      worksheet.mergeCells("I8:K8");
-      worksheet.getCell("I8").value = jobData.port_of_discharge || "";
-
-      worksheet.mergeCells("L8:N8");
-      worksheet.getCell("L8").value = jobData.discharge_country || "";
-
-      ["A8", "C8", "E8", "I8", "L8"].forEach(cid => {
-        worksheet.getCell(cid).font = { name: "Arial", bold: true, size: 10.5 };
-        worksheet.getCell(cid).alignment = { vertical: "middle", horizontal: "center" };
-      });
-
-      // Row 9: Cust Type
-      worksheet.mergeCells("A9:N9");
-      worksheet.getCell("A9").value = "CUSTOMER TYPE: (TICK ONE) EXPORTER | IMPORTER | ASSOCIATE PARTNER | CORPORATE CUSTOMER";
-      worksheet.getCell("A9").font = { name: "Arial", size: 8.5 };
-      worksheet.getCell("A9").alignment = { vertical: "middle", horizontal: "left" };
-
-      // Row 10: Cust Name
-      worksheet.mergeCells("A10:G10");
-      worksheet.getCell("A10").value = `NAME OF CUSTOMER / ASSOCIATE PARTNER:  ${jobData.exporter || ""}`;
-      worksheet.getCell("A10").font = { name: "Arial", size: 9 };
-      worksheet.getCell("A10").alignment = { vertical: "middle", horizontal: "left" };
-
-      worksheet.mergeCells("H10:N10");
-      worksheet.getCell("H10").value = `GST REGISTRATION NO.:  ${jobData.gstin || ""}`;
-      worksheet.getCell("H10").font = { name: "Arial", size: 9 };
-      worksheet.getCell("H10").alignment = { vertical: "middle", horizontal: "left" };
-
-      // Row 11: Cust Address
-      worksheet.mergeCells("A11:G11");
-      worksheet.getCell("A11").value = `ADDRESS OF CUSTOMER:  ${jobData.exporter || ""}`;
-      worksheet.getCell("A11").font = { name: "Arial", size: 9 };
-      worksheet.getCell("A11").alignment = { vertical: "middle", horizontal: "left" };
-
-      worksheet.mergeCells("H11:N11");
-      worksheet.getCell("H11").value = `PAN NO.:  ${jobData.panNo || ""}`;
-      worksheet.getCell("H11").font = { name: "Arial", size: 9 };
-      worksheet.getCell("H11").alignment = { vertical: "middle", horizontal: "left" };
-
-      // Row 12: Booking details
-      worksheet.getRow(12).height = 22;
-      worksheet.mergeCells("A12:C12");
-      worksheet.getCell("A12").value = `BOOKING NO.: ${jobData.booking_no || ""}`;
-      worksheet.mergeCells("D12:F12");
-      worksheet.getCell("D12").value = `BOOKING DT: ${formatDate(jobData.booking_date)}`;
-      worksheet.mergeCells("G12:J12");
-      worksheet.getCell("G12").value = `EXPORTER REF NO.: ${jobData.exporter_ref_no || ""}`;
-      worksheet.mergeCells("K12:N12");
-      worksheet.getCell("K12").value = `CHA / AGENT: SURAJ FORWARDERS`;
-
-      ["A12", "D12", "G12", "K12"].forEach(cid => {
-        worksheet.getCell(cid).font = { name: "Arial", size: 8.5 };
-        worksheet.getCell(cid).alignment = { vertical: "middle", horizontal: "left" };
-      });
-
-      // Row 13: Container Headers
-      const tableHeaders = ["Sr. No.", "CONTAINER NO.", "TYPE", "SIZE", "TARE WT.", "NO. OF PACKAGES", "COMMODITY NAME", "COMMODITY HSN CODE", "CARGO WT (In MTS)", "VGM", "HAZARDOUS", "VALUE/FOB", "LEO DT", "SEAL NO."];
-      worksheet.getRow(13).height = 28;
-      tableHeaders.forEach((h, cidx) => {
-        const cell = worksheet.getCell(13, cidx + 1);
-        cell.value = h;
-        cell.font = { name: "Arial", bold: true, size: 9 };
-        cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAEAEA" } };
-      });
-
-      // Containers Rows
-      let currentRow = 14;
-      let totalPackages = 0;
-      let totalCargoWeight = 0;
-
-      const aggregatedContainers = getAggregatedContainers(jobData, isClubJob ? clubbedJobsData : []);
-
-      aggregatedContainers.forEach((cnt, i) => {
-        worksheet.getRow(currentRow).height = 45;
-        const pkgs = Number(cnt.pkgsStuffed) || 0;
-        const weight = Number(cnt.grossWeight) || 0;
-        const cargoWeightMT = weight / 1000;
-        const tareWeight = Number(cnt.tareWeightKgs) || 0;
-        const sizeMatch = (cnt.type || "").match(/^(\d+)/);
-        const size = sizeMatch ? sizeMatch[1] : "";
-
-        totalPackages += pkgs;
-        totalCargoWeight += cargoWeightMT;
-
-        worksheet.getCell(currentRow, 1).value = i + 1;
-        worksheet.getCell(currentRow, 2).value = cnt.containerNo || "";
-        worksheet.getCell(currentRow, 3).value = cnt.sealType || "RFID";
-        worksheet.getCell(currentRow, 4).value = size;
-
-        const tareText = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-          ? cnt.uniqueSBs.map(sb => sb.tareWeight || "").join("\n")
-          : (tareWeight || "");
-        worksheet.getCell(currentRow, 5).value = tareText;
-
-        const pkgsText = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-          ? cnt.uniqueSBs.map(sb => sb.pkgs || "").join("\n")
-          : (pkgs || "");
-        worksheet.getCell(currentRow, 6).value = pkgsText;
-
-        const descText = cnt.uniqueDescriptions && cnt.uniqueDescriptions.length > 0 ? cnt.uniqueDescriptions.join("\n") : (cnt.description || "");
-        worksheet.getCell(currentRow, 7).value = descText;
-
-        const ritcText = cnt.uniqueHsnCodes && cnt.uniqueHsnCodes.length > 0 ? cnt.uniqueHsnCodes.join("\n") : (cnt.ritc || "");
-        worksheet.getCell(currentRow, 8).value = ritcText;
-
-        const weightText = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-          ? cnt.uniqueSBs.map(sb => (Number(sb.weight) / 1000).toFixed(1)).join("\n")
-          : (cargoWeightMT || "");
-        worksheet.getCell(currentRow, 9).value = weightText;
-
-        const vgmText = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-          ? cnt.uniqueSBs.map(sb => ((Number(sb.weight) + Number(sb.tareWeight)) / 1000).toFixed(1)).join("\n")
-          : (cnt.grWtPlusTrWt ? Number(cnt.grWtPlusTrWt) / 1000 : "");
-        worksheet.getCell(currentRow, 10).value = vgmText;
-
-        worksheet.getCell(currentRow, 11).value = "NO";
-
-        const valText = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-          ? cnt.uniqueSBs.map(sb => sb.invoiceValue || "").join("\n")
-          : (cnt.invoiceValue || "");
-        worksheet.getCell(currentRow, 12).value = valText;
-
-        const leoText = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-          ? cnt.uniqueSBs.map(sb => formatDate(sb.leoDate)).join("\n")
-          : formatDate(cnt.leoDate);
-        worksheet.getCell(currentRow, 13).value = leoText;
-
-        const sealText = cnt.uniqueSBs && cnt.uniqueSBs.length > 0
-          ? cnt.uniqueSBs.map(sb => sb.sealNo || "").join("\n")
-          : (cnt.sealNo || "");
-        worksheet.getCell(currentRow, 14).value = sealText;
-
-        // Alignments
-        worksheet.getRow(currentRow).eachCell((cell, colNum) => {
-          cell.font = cell.font || { name: "Arial", size: 9 };
-          if (colNum === 2) cell.font.bold = true;
-          cell.alignment = { vertical: "middle", horizontal: colNum === 7 ? "left" : "center", wrapText: true };
+      const drawContentBox = (startY, columns, minHeight) => {
+        let maxLines = 1;
+        const processedCols = columns.map((col) => {
+          const fontSize = col.fontSize || 8 * rowScale;
+          doc.setFontSize(fontSize);
+          doc.setFont(col.font || "helvetica", col.style || "normal");
+          const padding = 1.0;
+          const availableWidth = col.width - padding * 2;
+          const text = String(col.text || "");
+          const textLines = doc.splitTextToSize(text, availableWidth);
+          if (textLines.length > maxLines) maxLines = textLines.length;
+          return { ...col, textLines, fontSize };
         });
 
-        currentRow++;
-      });
+        const refFontSize = processedCols[0]?.fontSize || 8 * rowScale;
+        const lineHeightMm = refFontSize * 0.3527 * 1.1;
+        const dynamicHeight = Math.max(minHeight, maxLines * lineHeightMm + 1.0);
 
-      // Total Row
-      worksheet.getRow(currentRow).height = 24;
-      worksheet.mergeCells(`A${currentRow}:E${currentRow}`);
-      worksheet.getCell(`A${currentRow}`).value = "Total:";
-      worksheet.getCell(`A${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
-      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "middle", horizontal: "right" };
-
-      worksheet.getCell(`F${currentRow}`).value = totalPackages || "";
-      worksheet.getCell(`F${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
-      worksheet.getCell(`F${currentRow}`).numFormat = '#,##0';
-      worksheet.getCell(`F${currentRow}`).alignment = { vertical: "middle", horizontal: "center" };
-
-      worksheet.getCell(`I${currentRow}`).value = totalCargoWeight || "";
-      worksheet.getCell(`I${currentRow}`).font = { name: "Arial", bold: true, size: 10 };
-      worksheet.getCell(`I${currentRow}`).numFormat = '#,##0.0';
-      worksheet.getCell(`I${currentRow}`).alignment = { vertical: "middle", horizontal: "center" };
-
-      worksheet.mergeCells(`J${currentRow}:N${currentRow}`);
-
-      currentRow++;
-
-      // Terms & Stuffing Instructions
-      worksheet.getRow(currentRow).height = 100;
-      worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
-      worksheet.getCell(`A${currentRow}`).value = "TERMS AND CONDITIONS\n1. We agree to pay all charges to CONCOR as per current tariff.\n2. We certify that description and weight of goods have been correctly entered in this forwarding note.\n3. We certify that the container(s) has/have been stuffed in compliance with all safety regulations.\n4. We certify that the seals have been verified and found intact.\n5. We accept the liabilities and terms as specified under CONCOR Rules & Regulations.";
-      worksheet.getCell(`A${currentRow}`).font = { name: "Arial", size: 7.5 };
-      worksheet.getCell(`A${currentRow}`).alignment = { vertical: "top", horizontal: "left", wrapText: true };
-
-      worksheet.mergeCells(`H${currentRow}:N${currentRow}`);
-      worksheet.getCell(`H${currentRow}`).value = `STUFFING CERTIFICATE\nStuffed Container(s) described above has/have been sealed in my/our presence after verifying container condition.\n\nDATE : ${formatDate(new Date())}\n\nSIGNATURE OF EXPORTER / CHA / AGENT`;
-      worksheet.getCell(`H${currentRow}`).font = { name: "Arial", bold: true, size: 8 };
-      worksheet.getCell(`H${currentRow}`).alignment = { vertical: "top", horizontal: "left", wrapText: true };
-
-      currentRow++;
-
-      // Apply borders
-      const borderStyle = {
-        top: { style: 'thin', color: { argb: 'FF000000' } },
-        left: { style: 'thin', color: { argb: 'FF000000' } },
-        bottom: { style: 'thin', color: { argb: 'FF000000' } },
-        right: { style: 'thin', color: { argb: 'FF000000' } }
+        let currentX = leftMargin;
+        processedCols.forEach((col) => {
+          doc.rect(currentX, startY, col.width, dynamicHeight);
+          doc.setFontSize(col.fontSize);
+          doc.setFont(col.font || "helvetica", col.style || "normal");
+          const textX = col.align === "center" ? currentX + col.width / 2 : currentX + 2;
+          const colLineHeight = col.fontSize * 0.3527 * 1.1;
+          const textBlockHeight = col.textLines.length * colLineHeight;
+          const textY = startY + (dynamicHeight - textBlockHeight) / 2;
+          doc.text(col.textLines, textX, textY, { align: col.align || "left", baseline: "top" });
+          currentX += col.width;
+        });
+        return dynamicHeight;
       };
 
-      for (let r = 5; r < currentRow; r++) {
-        const rowObj = worksheet.getRow(r);
-        for (let c = 1; c <= 14; c++) {
-          rowObj.getCell(c).border = borderStyle;
+      const headerHeight = 12 * headerScale;
+      const logoSize = 10 * headerScale;
+
+      try {
+        const logoBase64 = await imageToBase64(concorLogo);
+        doc.addImage(logoBase64, "PNG", leftMargin + 1, yPos + 0.5, logoSize, logoSize);
+        doc.addImage(logoBase64, "PNG", pageWidth - rightMargin - logoSize - 1, yPos + 1, logoSize, logoSize);
+      } catch (err) {
+        console.warn("Failed to pre-load logo for addImage, trying direct URL", err);
+        try {
+          doc.addImage(concorLogo, "PNG", leftMargin + 1, yPos + 0.5, logoSize, logoSize);
+          doc.addImage(concorLogo, "PNG", pageWidth - rightMargin - logoSize - 1, yPos + 1, logoSize, logoSize);
+        } catch (innerErr) {
+          console.error("Critical logo loading failure", innerErr);
         }
       }
 
-      // Write buffer and save
-      const buffer = await workbook.xlsx.writeBuffer();
-      saveAs(new Blob([buffer]), `CONCOR_Forwarding_Note_${jobNo}.xlsx`);
-    } catch (error) {
-      console.error("Error generating CONCOR Excel:", error);
-      alert("Failed to generate CONCOR Excel file.");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11 * headerScale);
+      doc.text("CONTAINER CORPORATION OF INDIA LIMITED (CONCOR)", pageWidth / 2, yPos + 4, { align: "center" });
+      doc.setFontSize(5 * headerScale);
+      doc.text("FORWARDING NOTE FOR GENERAL AND DANGEROUS MERCHANDISE", pageWidth / 2, yPos + 7, { align: "center" });
+      doc.setFontSize(4 * headerScale);
+      doc.text("(FOR CONCOR USE ONLY)", pageWidth / 2, yPos + 10, { align: "center" });
+
+      yPos += headerHeight;
+      doc.setFontSize(9 * headerScale);
+      doc.text(`JOB  ${exportJob.job_no || ""}`, pageWidth / 2 - 40, yPos);
+      doc.text(`INV  ${invoice.invoiceNumber || ""}`, pageWidth / 2 + 20, yPos);
+
+      yPos += 3 * headerScale;
+      let boxY = yPos;
+      const rowH = 4.5 * rowScale;
+      const smallRowH = 2.5 * rowScale;
+      doc.setLineWidth(0.2);
+
+      doc.rect(leftMargin, boxY, 30, rowH);
+      doc.rect(leftMargin + 30, boxY, 30, rowH);
+      doc.rect(leftMargin + 60, boxY, contentWidth - 60, rowH);
+      doc.setFontSize(6 * rowScale);
+      doc.text("SEGMENT", leftMargin + 15, boxY + rowH * 0.7, { align: "center" });
+      doc.text("EXIM", leftMargin + 45, boxY + rowH * 0.7, { align: "center" });
+      doc.setFontSize(7 * rowScale);
+      doc.text("MODE (TICK ONE):    BY    RAIL /ROAD", leftMargin + 65, boxY + rowH * 0.7);
+
+      boxY += rowH;
+      const fromWidth = contentWidth * 0.35;
+      const toWidth = contentWidth * 0.65;
+      doc.rect(leftMargin, boxY, fromWidth, rowH);
+      doc.rect(leftMargin + fromWidth, boxY, toWidth, rowH);
+      doc.text("FROM", leftMargin + fromWidth / 2, boxY + rowH * 0.7, { align: "center" });
+      doc.text("TO", leftMargin + fromWidth + toWidth / 2, boxY + rowH * 0.7, { align: "center" });
+
+      boxY += rowH;
+      const col1 = fromWidth / 2, col2 = fromWidth / 2, col3 = toWidth * 0.35, col4 = toWidth * 0.35, col5 = toWidth * 0.3;
+      doc.rect(leftMargin, boxY, col1, rowH);
+      doc.rect(leftMargin + col1, boxY, col2, rowH);
+      doc.rect(leftMargin + fromWidth, boxY, col3, rowH);
+      doc.rect(leftMargin + fromWidth + col3, boxY, col4, rowH);
+      doc.rect(leftMargin + fromWidth + col3 + col4, boxY, col5, rowH);
+      doc.setFontSize(5.5 * rowScale);
+      doc.text("TERMINAL", leftMargin + col1 / 2, boxY + rowH * 0.7, { align: "center" });
+      doc.text("GATEWAY PORT", leftMargin + col1 + col2 / 2, boxY + rowH * 0.7, { align: "center" });
+      doc.text("SHIPPING LINE", leftMargin + fromWidth + col3 / 2, boxY + rowH * 0.7, { align: "center" });
+      doc.text("PORT OF DISCHARGE", leftMargin + fromWidth + col3 + col4 / 2, boxY + rowH * 0.7, { align: "center" });
+      doc.text("COUNTRY", leftMargin + fromWidth + col3 + col4 + col5 / 2, boxY + rowH * 0.7, { align: "center" });
+
+      boxY += rowH;
+      const valuesHeight = drawContentBox(boxY, [
+        { width: col1, text: exportJob.branchCode || "KHDB", align: "center", style: "bold" },
+        { width: col2, text: exportJob.gateway_port || exportJob.port_of_loading || "", align: "center", style: "bold" },
+        { width: col3, text: exportJob.shipping_line_airline || "", align: "center", style: "bold" },
+        { width: col4, text: exportJob.port_of_discharge || "", align: "center", style: "bold" },
+        { width: col5, text: exportJob.discharge_country || "", align: "center", style: "bold" },
+      ], rowH);
+      boxY += valuesHeight;
+
+      doc.rect(leftMargin, boxY, contentWidth, rowH);
+      doc.setFontSize(6 * rowScale);
+      doc.text("CUSTOMER TYPE: (TICK ONE) EXPORTER | IMPORTER | ASSOCIATE PARTNER | CORPORATE CUSTOMER", leftMargin + 3, boxY + rowH * 0.7);
+      boxY += rowH;
+
+      doc.rect(leftMargin, boxY, contentWidth, rowH + 1);
+      doc.setFontSize(9 * rowScale);
+      doc.text("CHA NAME & CODE:  SURAJ FORWARDERS AND SHIPPING AGENCIES", leftMargin + 3, boxY + (rowH + 1) * 0.7);
+      boxY += rowH + 1;
+
+      doc.rect(leftMargin, boxY, contentWidth, smallRowH);
+      doc.setFontSize(5.5 * rowScale);
+      doc.text("TRANSPORTED BY: SELF TPT | CONCOR", leftMargin + 3, boxY + smallRowH * 0.75);
+      boxY += smallRowH;
+
+      doc.rect(leftMargin, boxY, contentWidth, smallRowH);
+      doc.setFontSize(5 * rowScale);
+      doc.text("In case of CONCOR service, Kindly provide", leftMargin + 3, boxY + smallRowH * 0.75);
+      boxY += smallRowH;
+
+      boxY += drawContentBox(boxY, [{ width: contentWidth, text: `PICK UP POINT/KM:    ${exportJob.factory_address || ""}`, fontSize: 6 * rowScale }], smallRowH);
+      doc.rect(leftMargin, boxY, contentWidth, smallRowH);
+      doc.text("DELIVER POINT/KM:", leftMargin + 3, boxY + smallRowH * 0.75);
+      boxY += smallRowH;
+
+      let sbNoText = exportJob.sb_no || "";
+      let sbDateText = formatDate(exportJob.sb_date);
+      if (isClubJob && exportJob.containers?.length > 0) {
+        const allSBs = [];
+        const seenSBs = new Set();
+        exportJob.containers.forEach(c => {
+          const sbNo = c._sourceSbNo || c.shippingBillNo || exportJob.sb_no;
+          const sbDate = c._sourceSbDate || c.sb_date || exportJob.sb_date;
+          if (sbNo) {
+            const key = `${sbNo}-${sbDate}`;
+            if (!seenSBs.has(key)) {
+              seenSBs.add(key);
+              allSBs.push({ sbNo, sbDate });
+            }
+          }
+        });
+        if (allSBs.length > 0) {
+          sbNoText = allSBs.map(sb => sb.sbNo).join(", ");
+          sbDateText = allSBs.map(sb => formatDate(sb.sbDate)).join(", ");
+        }
+      }
+
+      boxY += drawContentBox(boxY, [{ width: contentWidth, text: `SHIPPING BILL NO. ${sbNoText} DATE ${sbDateText}`, fontSize: 10 * rowScale, style: "bold" }], rowH + 1);
+      boxY += drawContentBox(boxY, [
+        { width: contentWidth / 2, text: `STUFFING TYPE: ${exportJob.goods_stuffed_at === "Factory" ? "FCL" : "ICD"}`, fontSize: 6 * rowScale },
+        { width: contentWidth / 2, text: `GST IN INVOICE NAME: ${exportJob.exporter || ""}`, fontSize: 6 * rowScale },
+      ], rowH);
+
+      doc.rect(leftMargin, boxY, contentWidth, rowH);
+      doc.text("PAYMENT MODE (PDA) & NO.: SURAJ FORWARDERS PVT. LTD.", leftMargin + 3, boxY + rowH * 0.7);
+      boxY += rowH;
+
+      boxY += drawContentBox(boxY, [{ width: contentWidth, text: `EXPORTER NAME : ${exportJob.exporter || ""}`, fontSize: 10 * rowScale, style: "bold" }], rowH + 1);
+      boxY += drawContentBox(boxY, [{ width: contentWidth, text: `NAME IN INVOICE GSTIN NO : ${exportJob.gstin || ""}`, fontSize: 8 * rowScale }], rowH);
+      boxY += 2;
+
+      const tableHeaders = ["Sr.\nNo.", "CONTAINER NO.", "TYPE", "SIZE", "TARE WT.", "NO. OF\nPACKAGES", "COMMODITY NAME", "COMMODITY\nHSN CODE", "CARGO WT\n(In MTS)", "VGM", "HAZARDOUS", "VALUE/FOB", "LEO DT", "SEAL NO."];
+
+      const tableBody = aggregatedContainers.map((cnt, i) => {
+        const uniqueSBsList = [];
+        const seenSBs = new Set();
+        if (cnt.uniqueSBs) {
+          cnt.uniqueSBs.forEach((sb, idx) => {
+            const key = sb.sbNo ? `${sb.sbNo}-${sb.sbDate}` : `__empty_${idx}`;
+            if (!seenSBs.has(key)) {
+              seenSBs.add(key);
+              uniqueSBsList.push(sb);
+            }
+          });
+        }
+
+        const pkgsText = uniqueSBsList.length > 0
+          ? uniqueSBsList.map(sb => sb.pkgs || "").join("\n")
+          : (cnt.pkgsStuffed || "");
+
+        const descText = cnt.uniqueDescriptions && cnt.uniqueDescriptions.length > 0
+          ? cnt.uniqueDescriptions.join("\n")
+          : (product.description || "");
+
+        const hsnText = cnt.uniqueHsnCodes && cnt.uniqueHsnCodes.length > 0
+          ? cnt.uniqueHsnCodes.join(", ")
+          : (product.ritc || "");
+
+        const weightText = uniqueSBsList.length > 0
+          ? uniqueSBsList.map(sb => (parseFloat(sb.weight || 0) / 1000).toFixed(1)).join("\n")
+          : (parseFloat(cnt.grossWeight || 0) / 1000).toFixed(1);
+
+        const vgmText = uniqueSBsList.length > 0
+          ? uniqueSBsList.map(sb => sb.tareWeight ? ((parseFloat(sb.weight || 0) + parseFloat(sb.tareWeight || 0)) / 1000).toFixed(1) : "").join("\n")
+          : (cnt.grWtPlusTrWt ? (parseFloat(cnt.grWtPlusTrWt) / 1000).toFixed(1) : "");
+
+        const invoiceValueText = uniqueSBsList.length > 0
+          ? uniqueSBsList.map(sb => sb.invoiceValue || "").join("\n")
+          : (invoice.invoiceValue || "");
+
+        const leoDateText = uniqueSBsList.length > 0
+          ? uniqueSBsList.map(sb => formatDate(sb.leoDate)).join("\n")
+          : formatDate(statusDetails.leoDate);
+
+        const uniqueSeals = cnt.uniqueSBs ? [...new Set(cnt.uniqueSBs.map(sb => sb.sealNo ? String(sb.sealNo).trim() : '').filter(Boolean))] : [];
+        const sealText = uniqueSeals.length > 0
+          ? uniqueSeals.join("\n")
+          : (cnt.sealNo || "");
+
+        return [
+          i + 1,
+          cnt.containerNo || "",
+          cnt.sealType || "RFID",
+          (cnt.type || "").match(/^(\d+)/)?.[1] || "",
+          cnt.tareWeightKgs || "",
+          pkgsText,
+          descText,
+          hsnText,
+          weightText,
+          vgmText,
+          "NO",
+          invoiceValueText,
+          leoDateText,
+          sealText
+        ];
+      });
+
+      const totalPackages = aggregatedContainers.reduce((sum, cnt) => sum + (Number(cnt.pkgsStuffed) || 0), 0);
+      const totalCargoWeight = aggregatedContainers.reduce((sum, cnt) => sum + parseFloat(cnt.grossWeight || 0) / 1000, 0);
+
+      tableBody.push([
+        { content: "Total:", colSpan: 5, styles: { halign: "right", fontStyle: "bold" } },
+        { content: String(totalPackages || ""), styles: { fontStyle: "bold" } },
+        "",
+        "",
+        { content: totalCargoWeight.toFixed(1), styles: { fontStyle: "bold" } },
+        "", "", "", "", ""
+      ]);
+
+      const totalWidth = contentWidth;
+      const colWidths = {
+        0: { cellWidth: totalWidth * 0.03 },
+        1: { cellWidth: totalWidth * 0.09 },
+        2: { cellWidth: totalWidth * 0.04 },
+        3: { cellWidth: totalWidth * 0.04 },
+        4: { cellWidth: totalWidth * 0.06 },
+        5: { cellWidth: totalWidth * 0.05 },
+        6: { cellWidth: totalWidth * 0.20 },
+        7: { cellWidth: totalWidth * 0.06 },
+        8: { cellWidth: totalWidth * 0.06 },
+        9: { cellWidth: totalWidth * 0.06 },
+        10: { cellWidth: totalWidth * 0.07 },
+        11: { cellWidth: totalWidth * 0.08 },
+        12: { cellWidth: totalWidth * 0.07 },
+        13: { cellWidth: totalWidth * 0.09 },
+      };
+
+      doc.autoTable({
+        startY: boxY, head: [tableHeaders], body: tableBody, theme: "grid",
+        styles: { fontSize: (isCompact ? 7.5 : 8.5), cellPadding: (isCompact ? 0.5 : 0.7), lineColor: [0, 0, 0], lineWidth: 0.1, halign: "center", font: "helvetica" },
+        headStyles: { fillColor: [255, 255, 255], textColor: 0, fontStyle: "bold" },
+        margin: { left: leftMargin, right: rightMargin }, tableWidth: contentWidth,
+        columnStyles: colWidths
+      });
+
+      yPos = doc.lastAutoTable.finalY + 3;
+      doc.setFontSize(7); doc.setFont("helvetica", "normal");
+      doc.text("(Accepted on said to contain Basis)", leftMargin, yPos);
+      yPos += 3;
+      const declarations = [
+        "1. I declare that each consignment is of value Rs._________________ and engage**/do not engage** to pay percentage charge on excess value for the increased risk as required by CONCOR...",
+        "   Alternative CONCOR risk and Owner's risk being available, I elect to pay ________________ rates.",
+        "2. Please declare whether above container/contains high value cargo YES/NO",
+        "3. I do hereby certify that I have satisfied myself that the description,marks & weights or quantity of goods consigned by me have been correctly entered in the Forwarding Note..."
+      ];
+      declarations.forEach(line => { doc.text(line, leftMargin, yPos); yPos += 3.5; });
+      yPos += 2; doc.text("Tick the appropriate option shown above.", leftMargin, yPos);
+      doc.setFont("helvetica", "bold");
+      doc.text("Signature & Seal of the Customer", pageWidth - rightMargin - 65, yPos);
+      doc.text(`DATE: ${formatDate(new Date())}`, pageWidth - rightMargin - 65, yPos + 5);
+
+      yPos += 12;
+      doc.setFontSize(10); doc.setFont("helvetica", "bold");
+      doc.text("TERMS AND CONDITIONS", pageWidth / 2, yPos, { align: "center" });
+      yPos += 5; doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+      const terms = [
+        "1. Unless the consignor declares in clause(1) overleaf the value of any consignment & pays percentage charge on excess value as required by CONCOR, the maximum limit of liability shall not exceed Rs. 50 per kg.",
+        "2. When alternative 'CONCOR Risk' and 'Owner Risk' rates are quoted, the latter will apply unless sender elects 'CONCOR Risk'.",
+        "3. I accept responsibility for any consequences to the property of CONCOR or others caused by this consignment Note - Attention is invited to terms for dangerous goods in I.R.C.A Red Tariff and IMDG."
+      ];
+      terms.forEach(line => { doc.text(line, leftMargin, yPos); yPos += 3; });
+      yPos += 2; doc.rect(leftMargin, yPos, contentWidth, 10);
+      doc.setFont("helvetica", "bold"); doc.text("Additional declarations for Dangerous Goods (I.R.C.A / IMDG)", leftMargin + 3, yPos + 5);
+      yPos += 12; doc.rect(leftMargin, yPos, contentWidth, 12);
+      doc.setFontSize(9); doc.text("FOR OFFICE USE", leftMargin + 3, yPos + 6);
+
+      window.open(doc.output("bloburl"), "_blank");
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      alert("Error: " + err.message);
     }
   };
 
@@ -897,285 +846,15 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
         <MenuItem onClick={handleAction}>Concor Forwarding Note (PDF)</MenuItem>
       )}
 
-      <Dialog 
-        open={choiceOpen} 
-        onClose={() => setChoiceOpen(false)} 
-        maxWidth="sm" 
-        fullWidth
-        PaperProps={{
-          style: { overflow: 'visible', borderRadius: '12px' }
-        }}
-      >
-        <DialogTitle sx={{ 
-          m: 0, 
-          p: 3, 
-          pb: 2,
-          fontWeight: 'bold',
-          fontSize: '18px',
-          color: '#1e293b',
-          borderBottom: '1px solid #f1f5f9'
-        }}>
-          Document Actions
-        </DialogTitle>
-        <DialogContent sx={{ p: 3, overflow: 'visible' }}>
-          {/* Club Job Section */}
-          <div style={{
-            background: '#f8fafc',
-            border: '1.5px solid #e2e8f0',
-            borderRadius: '10px',
-            padding: '16px',
-            marginBottom: '20px',
-            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '20px' }}>🔗</span>
-                <div>
-                  <div style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '14px' }}>Club Multiple Jobs?</div>
-                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Aggregate container details across multiple shipments</div>
-                </div>
-              </div>
-              <Switch
-                checked={isClubJob}
-                onChange={e => setIsClubJob(e.target.checked)}
-                color="primary"
-                id={`club-job-checkbox-${jobNo}`}
-              />
-            </div>
-
-            {isClubJob && (
-              <div className="ep-search-container" style={{ position: 'relative', width: '100%', marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
-                <span style={{ display: 'block', fontSize: '12px', color: '#1e293b', fontWeight: 'bold', marginBottom: '8px' }}>
-                  SELECT CLUBBED JOBS
-                </span>
-                <div style={{ display: 'flex', width: '100%', gap: '6px', marginBottom: '8px' }}>
-                  <input
-                    type="text"
-                    placeholder="Search and add job numbers (e.g. EXP/...)"
-                    value={jobSearch}
-                    onChange={e => setJobSearch(e.target.value)}
-                    onFocus={() => setShowJobDropdown(true)}
-                    style={{
-                      flex: 1,
-                      padding: '10px 12px',
-                      border: '1.5px solid #cbd5e1',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      transition: 'border-color 0.2s',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowJobDropdown(!showJobDropdown)}
-                    style={{
-                      padding: '10px 14px',
-                      background: '#f1f5f9',
-                      border: '1.5px solid #cbd5e1',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#475569'
-                    }}
-                  >
-                    🔍
-                  </button>
-                </div>
-
-                {showJobDropdown && (
-                  <ul style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    width: '100%',
-                    maxHeight: '180px',
-                    overflowY: 'auto',
-                    zIndex: 9999,
-                    background: 'white',
-                    border: '1.5px solid #e2e8f0',
-                    borderRadius: '8px',
-                    listStyle: 'none',
-                    padding: '6px 0',
-                    margin: '4px 0 0 0',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)'
-                  }}>
-                    {jobOptions
-                      .filter(jNo => jNo !== jobNo && !clubbedJobs.includes(jNo))
-                      .map((jNo, idx) => (
-                        <li
-                          key={idx}
-                          onClick={() => {
-                            if (!clubbedJobs.includes(jNo)) {
-                              setClubbedJobs(prev => [...prev, jNo]);
-                            }
-                            setJobSearch('');
-                            setShowJobDropdown(false);
-                          }}
-                          style={{
-                            padding: '8px 16px',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            color: '#334155',
-                            transition: 'background 0.2s',
-                            fontWeight: '500'
-                          }}
-                          onMouseEnter={e => e.target.style.background = '#f1f5f9'}
-                          onMouseLeave={e => e.target.style.background = 'white'}
-                        >
-                          {jNo}
-                        </li>
-                      ))}
-                    {jobOptions.filter(jNo => jNo !== jobNo && !clubbedJobs.includes(jNo)).length === 0 && (
-                      <li style={{ padding: '8px 16px', color: '#94a3b8', fontSize: '13px', textAlign: 'center' }}>
-                        No other jobs found
-                      </li>
-                    )}
-                  </ul>
-                )}
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
-                  {clubbedJobs.map((jNo, idx) => (
-                    <Chip
-                      key={idx}
-                      label={jNo}
-                      size="small"
-                      onDelete={() => {
-                        setClubbedJobs(prev => prev.filter(j => j !== jNo));
-                      }}
-                      sx={{ backgroundColor: '#e2f0fd', color: '#1d4ed8', fontWeight: 'bold' }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Action Cards Grid */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {/* Edit Card */}
-            <div 
-              onClick={handleEdit}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-                padding: '16px',
-                borderRadius: '10px',
-                border: '1.5px solid #e2e8f0',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease-in-out',
-                background: 'white'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#2563eb';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.08)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = '#e2e8f0';
-                e.currentTarget.style.boxShadow = 'none';
-                e.currentTarget.style.transform = 'none';
-              }}
-            >
-              <div style={{ fontSize: '24px', background: '#eff6ff', padding: '10px', borderRadius: '8px', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                📝
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '14px' }}>Edit Inline</div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Modify the document content in an interactive editor before saving</div>
-              </div>
-              <div style={{ fontSize: '16px', color: '#94a3b8' }}>➔</div>
-            </div>
-
-            {/* Download PDF Card */}
-            <div 
-              onClick={downloadDirectly}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-                padding: '16px',
-                borderRadius: '10px',
-                border: '1.5px solid #e2e8f0',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease-in-out',
-                background: 'white'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#059669';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.08)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = '#e2e8f0';
-                e.currentTarget.style.boxShadow = 'none';
-                e.currentTarget.style.transform = 'none';
-              }}
-            >
-              <div style={{ fontSize: '24px', background: '#ecfdf5', padding: '10px', borderRadius: '8px', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                📄
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '14px' }}>Download PDF</div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Generate and download the formatted PDF file directly</div>
-              </div>
-              <div style={{ fontSize: '16px', color: '#94a3b8' }}>➔</div>
-            </div>
-
-            {/* Download Excel Card */}
-            <div 
-              onClick={handleDownloadExcel}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-                padding: '16px',
-                borderRadius: '10px',
-                border: '1.5px solid #e2e8f0',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease-in-out',
-                background: 'white'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#d97706';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(217, 119, 6, 0.08)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = '#e2e8f0';
-                e.currentTarget.style.boxShadow = 'none';
-                e.currentTarget.style.transform = 'none';
-              }}
-            >
-              <div style={{ fontSize: '24px', background: '#fffbeb', padding: '10px', borderRadius: '8px', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                📊
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '14px' }}>Download Excel</div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Export the consolidated container tables to a spreadsheet</div>
-              </div>
-              <div style={{ fontSize: '16px', color: '#94a3b8' }}>➔</div>
-            </div>
-          </div>
+      <Dialog open={choiceOpen} onClose={() => setChoiceOpen(false)}>
+        <DialogTitle>Document Action</DialogTitle>
+        <DialogContent>
+          <div>Do you want to edit the CONCOR document inline or download the precise version directly?</div>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, pt: 1, borderTop: '1px solid #f1f5f9' }}>
-          <Button 
-            onClick={() => setChoiceOpen(false)} 
-            sx={{ 
-              color: '#64748b', 
-              fontWeight: 'bold', 
-              textTransform: 'none',
-              padding: '6px 16px',
-              borderRadius: '6px',
-              '&:hover': { background: '#f1f5f9' }
-            }}
-          >
-            Cancel
-          </Button>
+        <DialogActions>
+          <Button onClick={() => setChoiceOpen(false)}>Cancel</Button>
+          <Button onClick={handleEdit} color="primary" variant="outlined">Edit</Button>
+          <Button onClick={downloadDirectly} color="primary" variant="contained">Download Directly</Button>
         </DialogActions>
       </Dialog>
 

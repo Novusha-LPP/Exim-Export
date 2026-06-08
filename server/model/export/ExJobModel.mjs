@@ -1379,8 +1379,6 @@ const chargeSchema = new Schema(
     hsnCode: { type: String, trim: true },
     tdsCategory: { type: String, trim: true },
     isPbMandatory: { type: Boolean, default: false },
-    isClubJob: { type: Boolean, default: false },
-    clubbedJobs: { type: [String], default: [] },
 
     // Top-level fields
     invoice_number: { type: String, trim: true },
@@ -1967,6 +1965,10 @@ const exportJobSchema = new mongoose.Schema(
     imexcube_last_action: { type: String, trim: true },
     imexcube_last_status_code: { type: Number },
     imexcube_last_message: { type: String, trim: true },
+    is_club_job_parent: { type: Boolean, default: false },
+    clubbed_jobs: [{ type: String }],
+    parent_club_job: { type: String, trim: true },
+    tally_club_ref_no: { type: String, trim: true },
   },
 
   {
@@ -2288,51 +2290,7 @@ exportJobSchema.pre("save", async function (next) {
     }
   }
 
-  // 5. Sync Clubbed Jobs Billing Status and Details
-  if (this._isSyncing) {
-    return next();
-  }
 
-  const clubbedCharges = (this.charges || []).filter(c => c.isClubJob && c.clubbedJobs?.length > 0);
-  if (clubbedCharges.length > 0) {
-    const allClubbedJobNos = [...new Set(clubbedCharges.flatMap(c => c.clubbedJobs))].filter(Boolean);
-    if (allClubbedJobNos.length > 0) {
-      try {
-        const isSentForBilling = this.send_for_billing;
-        const sendForBillingDate = this.send_for_billing_date;
-        const mainBillingDetails = stat0?.billing_details;
-
-        const clubbedJobs = await this.constructor.find({ job_no: { $in: allClubbedJobNos } });
-        
-        for (const clubJob of clubbedJobs) {
-          clubJob._isSyncing = true;
-          clubJob.send_for_billing = isSentForBilling;
-          clubJob.send_for_billing_date = sendForBillingDate;
-
-          if (!clubJob.operations || clubJob.operations.length === 0) {
-            clubJob.operations = [{ transporterDetails: [], statusDetails: [{}] }];
-          }
-          if (!clubJob.operations[0].statusDetails || clubJob.operations[0].statusDetails.length === 0) {
-            clubJob.operations[0].statusDetails = [{}];
-          }
-
-          const cStat = clubJob.operations[0].statusDetails[0];
-          if (mainBillingDetails) {
-            cStat.billing_details = {
-              agency_bill_date: mainBillingDetails.agency_bill_date || "",
-              agency_bill_no: mainBillingDetails.agency_bill_no || "",
-              reimbursement_bill_date: mainBillingDetails.reimbursement_bill_date || "",
-              reimbursement_bill_no: mainBillingDetails.reimbursement_bill_no || "",
-            };
-          }
-          
-          await clubJob.save();
-        }
-      } catch (err) {
-        console.error("Error syncing clubbed jobs billing details:", err);
-      }
-    }
-  }
 
   next();
 });

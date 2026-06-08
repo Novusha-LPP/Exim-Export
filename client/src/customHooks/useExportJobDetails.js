@@ -732,6 +732,12 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
       updatedBy: "",
       createdAt: "",
       updatedAt: "",
+
+      // Club Job Fields
+      is_club_job_parent: false,
+      parent_club_job: "",
+      clubbed_jobs: [],
+      tally_club_ref_no: "",
     },
     enableReinitialize: true,
     onSubmit: async (values) => {
@@ -1222,6 +1228,10 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         updatedBy: safeValue(data.updatedBy),
         createdAt: safeValue(data.createdAt),
         updatedAt: safeValue(data.updatedAt),
+        is_club_job_parent: safeValue(data.is_club_job_parent, false),
+        parent_club_job: safeValue(data.parent_club_job, ""),
+        clubbed_jobs: safeValue(data.clubbed_jobs, []),
+        tally_club_ref_no: safeValue(data.tally_club_ref_no, ""),
       });
     }
   }, [data]);
