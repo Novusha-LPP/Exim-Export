@@ -943,7 +943,8 @@ const EditChargeModal = ({
                                       <span style={{ fontSize: '11px' }}>%</span>
                                       <select className="ep-select" style={{ width: '70px', marginLeft: '6px', fontSize: '10px' }} value={row.revenue?.tdsCategory || ''} onChange={e => handleFieldChange(i, 'tdsCategory', e.target.value, 'revenue')}>
                                         <option value="">--</option>
-                                        <option value="TDS ON CONTRACT 94C">TDS ON CONTRACT 94C</option>
+                                        <option value="TDS ON CONTRACT 94C - 1023- 1%">TDS ON CONTRACT 94C - 1023- 1%</option>
+                                        <option value="TDS ON CONTRACT 94C - 1024 -2%">TDS ON CONTRACT 94C - 1024 -2%</option>
                                         <option value="TDS ON PROFESSIONAL FEES 94J">TDS ON PROFESSIONAL FEES 94J</option>
                                         <option value="TDS ON RENT 94I">TDS ON RENT 94I</option>
                                         <option value="TDS ON COMMISSION 94H">TDS ON COMMISSION 94H</option>
@@ -1182,7 +1183,8 @@ const EditChargeModal = ({
                                       <span style={{ fontSize: '11px' }}>%</span>
                                       <select className="ep-select" style={{ width: '70px', marginLeft: '6px', fontSize: '10px' }} value={row.cost?.tdsCategory || ''} onChange={e => handleFieldChange(i, 'tdsCategory', e.target.value, 'cost')}>
                                         <option value="">--</option>
-                                        <option value="TDS ON CONTRACT 94C">TDS ON CONTRACT 94C</option>
+                                        <option value="TDS ON CONTRACT 94C - 1023- 1%">TDS ON CONTRACT 94C - 1023- 1%</option>
+                                        <option value="TDS ON CONTRACT 94C - 1024 -2%">TDS ON CONTRACT 94C - 1024 -2%</option>
                                         <option value="TDS ON PROFESSIONAL FEES 94J">TDS ON PROFESSIONAL FEES 94J</option>
                                         <option value="TDS ON RENT 94I">TDS ON RENT 94I</option>
                                         <option value="TDS ON COMMISSION 94H">TDS ON COMMISSION 94H</option>

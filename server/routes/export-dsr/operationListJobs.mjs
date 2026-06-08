@@ -102,10 +102,14 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         // EXCLUDE Freight Forwarding Jobs (FF) from Operation Module
         filter.$and.push({ job_no: { $not: /^FF/i } });
 
-        // Globally exclude parent club jobs from all tabs except "club-jobs"
-        if (normalizedStatus !== "club-jobs") {
-            filter.$and.push({ is_club_job_parent: { $ne: true } });
-        }
+        // Globally exclude child club jobs from all tabs since they are represented by their parent club job
+        filter.$and.push({
+            $or: [
+                { parent_club_job: { $exists: false } },
+                { parent_club_job: null },
+                { parent_club_job: "" }
+            ]
+        });
 
 
         // 2. Handle main document status
