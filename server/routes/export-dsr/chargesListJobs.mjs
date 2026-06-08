@@ -101,10 +101,11 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
         }
 
         // --- MANDATORY BASE CONDITION FOR CHARGES MODULE ---
-        // Must have completed operational milestones based on job type, UNLESS it's a general job
+        // Must have completed operational milestones based on job type, UNLESS it's a general job OR a parent club job
         filter.$and.push({
             $or: [
                 { isGeneralJob: true },
+                { is_club_job_parent: true },
                 {
                     $or: [
                         // For Air/LCL jobs: require Handover Date and LEO Date
@@ -133,6 +134,15 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
                         }
                     ]
                 }
+            ]
+        });
+
+        // Globally exclude child club jobs from all tabs since they are represented by their parent club job
+        filter.$and.push({
+            $or: [
+                { parent_club_job: { $exists: false } },
+                { parent_club_job: null },
+                { parent_club_job: "" }
             ]
         });
 

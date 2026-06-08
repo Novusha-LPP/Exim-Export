@@ -282,6 +282,10 @@ router.post(
       delete sourceData.financial_lock;
       delete sourceData.send_for_billing;
       delete sourceData.send_for_billing_date;
+      delete sourceData.isLocked;
+      delete sourceData.lockedBy;
+      delete sourceData.lockedAt;
+      delete sourceData.operational_lock;
 
       // Remove branch-specific metadata and custom house configurations to avoid leakage
       delete sourceData.cha_branch_code;
@@ -312,6 +316,10 @@ router.post(
         financial_lock: false,
         send_for_billing: false,
         send_for_billing_date: undefined,
+        isLocked: false,
+        lockedBy: undefined,
+        lockedAt: undefined,
+        operational_lock: false,
       });
 
       await newExportJob.save();

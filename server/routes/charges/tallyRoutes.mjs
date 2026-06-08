@@ -513,7 +513,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "Net Amount": netAmount,
             "Charge Description": entry.chargeDescription || '',
             "Charge Head Category": chargeCategory || '',
-            "TDS Category": entry.tdsCategory || 'TDS ON CONTRACT 94C',
+            "TDS Category": entry.tdsCategory || 'TDS ON CONTRACT 94C - 1023- 1%',
             "Status": entry.status,
             "isClubJob": entry.isClubJob || false,
             "clubbedJobs": entry.clubbedJobs || []
