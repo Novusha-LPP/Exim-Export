@@ -79,6 +79,7 @@ const PAYMENT_TABS = [
   { key: "payment-requested", label: "Payment Requested" },
   { key: "payment", label: "Payment" },
   { key: "payment-completed", label: "Payment Completed" },
+  { key: "club-jobs", label: "Club Jobs" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
   { key: "general-jobs", label: "Gen/Freight Jobs" },
 ];
@@ -88,6 +89,7 @@ const PURCHASE_TABS = [
   { key: "purchase-book-requested", label: "Purchase Book Requested" },
   { key: "purchase-book", label: "Purchase Book" },
   { key: "purchase-book-completed", label: "Purchase Book Completed" },
+  { key: "club-jobs", label: "Club Jobs" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
   { key: "general-jobs", label: "Gen/Freight Jobs" },
 ];
@@ -591,6 +593,7 @@ const EditableDateCell = ({ row, field, initialValue, onSuccess }) => {
 };
 
 function JobNoCell({ row, navigate }) {
+  const displayNo = (row.is_club_job_parent && row.tally_club_ref_no) ? row.tally_club_ref_no : row.job_no;
   return (
     <Box sx={{ py: 0.5 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -604,14 +607,14 @@ function JobNoCell({ row, navigate }) {
             navigate(path);
           }}
         >
-          {row.job_no}
+          {displayNo}
         </Button>
         <IconButton
           size="small"
           sx={{ p: 0.2, opacity: 0.6, "&:hover": { opacity: 1 } }}
           onClick={(e) => {
             e.stopPropagation();
-            copyText(row.job_no);
+            copyText(displayNo);
           }}
           title="Copy Job No"
         >
@@ -1878,6 +1881,8 @@ function ExportBillingPage() {
         columns={columns}
         data={rows}
         state={{ showProgressBars: loading }}
+        enableExpanding={activeTab === "club-jobs"}
+        getSubRows={(row) => row.subRows}
         enableColumnActions={false}
         enableColumnFilters={false}
         enableDensityToggle={false}

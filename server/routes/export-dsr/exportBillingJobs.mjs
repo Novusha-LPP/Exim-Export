@@ -13,6 +13,7 @@ const PAYMENT_TABS = [
   "export-completed-billing",
   "general-jobs",
   "General Jobs",
+  "club-jobs"
 ];
 
 const PURCHASE_TABS = [
@@ -23,6 +24,7 @@ const PURCHASE_TABS = [
   "export-completed-billing",
   "general-jobs",
   "General Jobs",
+  "club-jobs"
 ];
 
 const JOBS_WITHOUT_BRANCH_OR_CUSTOM_HOUSE_VALIDATION = [
@@ -117,6 +119,7 @@ function summarizeJob(job) {
   return {
     _id: job._id,
     job_no: job.job_no,
+    tally_club_ref_no: job.tally_club_ref_no || "",
     year: job.year,
     exporter: job.exporter || "",
     custom_house: job.custom_house || "",
@@ -152,6 +155,8 @@ function summarizeJob(job) {
     financial_lock: Boolean(job.financial_lock),
     send_for_billing: Boolean(job.send_for_billing),
     isGeneralJob: Boolean(job.isGeneralJob),
+    is_club_job_parent: Boolean(job.is_club_job_parent),
+    parent_club_job: job.parent_club_job || null,
     isFreightForwarding: String(job.job_no || "").toUpperCase().startsWith("FF"),
     unresolved_queries: 0,
     // Add flags for tab logic
@@ -210,6 +215,12 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
     if (tab === "purchase-book") return job.hasApprovedPb;
     if (tab === "purchase-book-completed") return job.pbCompleted;
   }
+
+  if (tab === "club-jobs") {
+    return job.is_club_job_parent || !!job.parent_club_job;
+  }
+
+  if (job.is_club_job_parent) return false;
 
   return true;
 }
@@ -363,12 +374,20 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       });
     }
 
-    if (baseFilter.$and.length === 0) {
+    if (normalizedTab === "club-jobs") {
+      baseFilter.$and = baseFilter.$and || [];
+      baseFilter.$and.push({
+        $or: [{ is_club_job_parent: true }, { parent_club_job: { $ne: null } }]
+      });
+    }
+
+    if (baseFilter.$and && baseFilter.$and.length === 0) {
       delete baseFilter.$and;
     }
 
     const projection = {
       job_no: 1,
+      tally_club_ref_no: 1,
       year: 1,
       exporter: 1,
       custom_house: 1,
@@ -381,6 +400,8 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       financial_lock: 1,
       send_for_billing: 1,
       isGeneralJob: 1,
+      is_club_job_parent: 1,
+      parent_club_job: 1,
       "invoices.invoiceNumber": 1,
       "containers.containerNo": 1,
       "containers.type": 1,
@@ -407,10 +428,22 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       ? { job_no: 1 }
       : { updatedAt: -1, job_date: -1 };
 
-    const jobs = await ExportJobModel.find(baseFilter)
+    let jobs = await ExportJobModel.find(baseFilter)
       .select(projection)
       .sort(sortCriteria)
       .lean();
+
+    if (normalizedTab === "club-jobs" && jobs.length > 0) {
+      console.log("exportBillingJobs: club-jobs base jobs count:", jobs.length);
+      const parentIds = [...new Set(jobs.map(j => j.is_club_job_parent ? j.job_no : j.parent_club_job))].filter(Boolean);
+      jobs = await ExportJobModel.find({
+        $or: [{ job_no: { $in: parentIds } }, { parent_club_job: { $in: parentIds } }]
+      })
+        .select(projection)
+        .lean();
+      console.log("exportBillingJobs: club-jobs full family count:", jobs.length);
+    }
+    console.log("exportBillingJobs: final jobs count before summarize:", jobs.length);
 
     const summarizedBase = jobs.map(summarizeJob);
     const jobNos = summarizedBase.map((job) => job.job_no).filter(Boolean);
@@ -440,12 +473,13 @@ router.get("/api/export-billing-jobs", async (req, res) => {
         unresolved_queries: unresolvedByJob[job.job_no] || 0,
       }))
       .filter((job) => matchesTab(job, normalizedWorkMode, normalizedTab, String(jobTypeFilter).trim().toLowerCase()))
-      .filter((job) =>
-        String(unresolvedOnly).toLowerCase() === "true" ? job.unresolved_queries > 0 : true
-      );
+      .filter((job) => {
+        if (normalizedTab === "club-jobs") return true; // Defer unresolved check for club jobs to preserve parents
+        return String(unresolvedOnly).toLowerCase() === "true" ? job.unresolved_queries > 0 : true;
+      });
 
     // If search is active, apply prioritized sort in memory
-    if (search) {
+    if (search && normalizedTab !== "club-jobs") {
       const s = String(search).toLowerCase();
       summarized.sort((a, b) => {
         const getPriority = (job) => {
@@ -461,6 +495,42 @@ router.get("/api/export-billing-jobs", async (req, res) => {
         if (priorityDifference !== 0) return priorityDifference;
         return String(a.job_no || "").localeCompare(String(b.job_no || ""));
       });
+    }
+
+    if (normalizedTab === "club-jobs") {
+      const groups = {};
+      summarized.forEach(job => {
+        const parentId = job.is_club_job_parent ? job.job_no : (job.parent_club_job || "UNKNOWN");
+        if (!groups[parentId]) {
+          groups[parentId] = { parent: null, children: [] };
+        }
+        if (job.is_club_job_parent) {
+          groups[parentId].parent = job;
+        } else {
+          groups[parentId].children.push(job);
+        }
+      });
+      
+      const sortedClubJobs = [];
+      const parentIds = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+      parentIds.forEach(pid => {
+        const group = groups[pid];
+        if (group.parent) {
+          group.children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
+          group.parent.subRows = group.children;
+          sortedClubJobs.push(group.parent);
+        } else {
+          sortedClubJobs.push(...group.children);
+        }
+      });
+      if (String(unresolvedOnly).toLowerCase() === "true") {
+        summarized.splice(0, summarized.length, ...sortedClubJobs.filter(parent => 
+           parent.unresolved_queries > 0 || 
+           (parent.subRows && parent.subRows.some(child => child.unresolved_queries > 0))
+        ));
+      } else {
+        summarized.splice(0, summarized.length, ...sortedClubJobs);
+      }
     }
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);

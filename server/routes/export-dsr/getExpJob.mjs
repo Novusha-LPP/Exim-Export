@@ -98,7 +98,36 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
       return res.status(404).json({ message: "Job not found" });
     }
 
-    res.json(job);
+    let jobData = job.toObject();
+
+    if (jobData.is_club_job_parent && Array.isArray(jobData.clubbed_jobs) && jobData.clubbed_jobs.length > 0) {
+      const childJobs = await ExJobModel.find({ job_no: { $in: jobData.clubbed_jobs } }).lean();
+      
+      jobData.containers = childJobs.flatMap(j => {
+        const inv = j.invoices?.[0] || {};
+        const op = j.operations?.[0] || {};
+        const st = op.statusDetails?.[0] || {};
+        const product = inv.products?.[0] || {};
+        const hsnList = [...new Set((inv.products || []).map(p => p.hsn_code || p.hsnCode || p.hsn || (p.ritc?.hsnCode || p.ritc?.ritcCode || p.ritc)).filter(Boolean))].join(", ");
+        return (j.containers || []).map(c => ({
+          ...c,
+          _sourceJobNo: j.job_no,
+          _sourceSbNo: j.sb_no || j.shippingBillNo,
+          _sourceSbDate: j.sb_date,
+          _sourceInvoiceNumber: inv.invoiceNumber,
+          _sourceInvoiceValue: inv.invoiceValue,
+          _sourceLeoDate: st.leoDate,
+          _sourceDescription: product.description,
+          _sourceHsnList: hsnList,
+          _sourceFobValue: j.invoices?.[0]?.freightInsuranceCharges?.fobValue?.amount || ""
+        }));
+      });
+
+      jobData.invoices = childJobs.flatMap(j => j.invoices || []);
+      jobData.operations = childJobs.flatMap(j => j.operations || []);
+    }
+
+    res.json(jobData);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });

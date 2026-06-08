@@ -14,6 +14,8 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
   const [htmlContent, setHtmlContent] = useState("");
   const [choiceOpen, setChoiceOpen] = useState(false);
   const [jobData, setJobData] = useState(null);
+  const [isClubJob, setIsClubJob] = useState(false);
+  const [clubbedJobsData, setClubbedJobsData] = useState([]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -25,6 +27,117 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
     return `${day}.${month}.${year}`;
   };
 
+  const getAggregatedContainers = (primaryJob, isClubActive, clubbedJobsList) => {
+    const allJobsToProcess = [primaryJob];
+    if (isClubActive && !primaryJob.is_club_job_parent && Array.isArray(clubbedJobsList)) {
+      clubbedJobsList.forEach(j => {
+        if (j && j.job_no !== primaryJob.job_no) {
+          if (!allJobsToProcess.some(existing => existing.job_no === j.job_no)) {
+            allJobsToProcess.push(j);
+          }
+        }
+      });
+    }
+
+    let result = [];
+    allJobsToProcess.forEach(job => {
+      const containers = job.containers?.length > 0 ? job.containers : (job.operations?.[0]?.containerDetails || []);
+      containers.forEach(c => {
+        result.push({
+          ...c,
+          jobNo: c._sourceJobNo || job.job_no,
+          shippingBillNo: c._sourceSbNo || job.custom_house_details?.shipping_bill_no || job.sb_no || job.shippingBillNo,
+          sb_date: c._sourceSbDate || job.custom_house_details?.sb_date || job.sb_date,
+          hsn: c.hsn || c._sourceHsnList || job.custom_house_details?.hsn_code,
+          pkgsStuffed: c.pkgsStuffed || c.pkgs || 0
+        });
+      });
+    });
+
+    const grouped = {};
+    result.forEach(c => {
+      const key = (c.containerNo || "").trim().toUpperCase();
+      const groupKey = key || `EMPTY_${Math.random()}`;
+
+      if (!grouped[groupKey]) {
+        grouped[groupKey] = {
+          ...c,
+          uniqueDescriptions: [],
+          uniqueHsnCodes: [],
+          uniqueSBs: [],
+          uniqueSealNos: [],
+          uniqueShippingLineSealNos: [],
+          uniqueLeoDates: [],
+          pkgsStuffed: 0,
+          grossWeight: 0,
+          grWtPlusTrWt: 0,
+          invoiceValues: []
+        };
+      }
+
+      const group = grouped[groupKey];
+      group.pkgsStuffed += Number(c.pkgsStuffed) || 0;
+      group.grossWeight += Number(c.grossWeight) || 0;
+      group.grWtPlusTrWt += Number(c.grWtPlusTrWt) || 0;
+
+      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || "";
+      if (desc && !group.uniqueDescriptions.includes(desc)) {
+        group.uniqueDescriptions.push(desc);
+      }
+      const hsn = c.hsn || c._sourceHsnList || c.hsnList || c.ritc || "";
+      if (hsn && !group.uniqueHsnCodes.includes(hsn)) {
+        group.uniqueHsnCodes.push(hsn);
+      }
+      const sbNo = c.shippingBillNo || c.sb_no || "";
+      const sbDate = c.sb_date || "";
+
+      group.uniqueSBs.push({
+        sbNo,
+        sbDate,
+        pkgs: Number(c.pkgsStuffed) || 0,
+        weight: Number(c.grossWeight) || 0,
+        tareWeight: Number(c.tareWeightKgs) || 0,
+        ritc: hsn,
+        description: desc,
+        sealNo: c.sealNo || "",
+        shippingLineSealNo: c.shippingLineSealNo || "",
+        invoiceValue: Number(c.invoiceValue || c._sourceInvoiceValue) || 0,
+        leoDate: c.leoDate || c._sourceLeoDate || ""
+      });
+
+      const trimmedSeal = c.sealNo ? String(c.sealNo).trim() : "";
+      if (trimmedSeal && !group.uniqueSealNos.includes(trimmedSeal)) {
+        group.uniqueSealNos.push(trimmedSeal);
+      }
+      const trimmedAgentSeal = c.shippingLineSealNo ? String(c.shippingLineSealNo).trim() : "";
+      if (trimmedAgentSeal && !group.uniqueShippingLineSealNos.includes(trimmedAgentSeal)) {
+        group.uniqueShippingLineSealNos.push(trimmedAgentSeal);
+      }
+      const leoDate = c.leoDate || c._sourceLeoDate || "";
+      if (leoDate && !group.uniqueLeoDates.includes(leoDate)) {
+        group.uniqueLeoDates.push(leoDate);
+      }
+      const invVal = Number(c.invoiceValue || c._sourceInvoiceValue) || 0;
+      if (invVal) {
+        group.invoiceValues.push(invVal);
+      }
+    });
+
+    return Object.values(grouped).map(group => {
+      return {
+        ...group,
+        descriptionOfGoods: group.uniqueDescriptions.join(", "),
+        description: group.uniqueDescriptions.join(", "),
+        hsnList: group.uniqueHsnCodes.join(", "),
+        ritc: group.uniqueHsnCodes.join(", "),
+        sealNo: group.uniqueSealNos.join(", "),
+        shippingLineSealNo: group.uniqueShippingLineSealNos.join(", "),
+        leoDate: group.uniqueLeoDates[0] || "",
+        invoiceValue: group.invoiceValues.length > 0 ? group.invoiceValues.reduce((a, b) => a + b, 0) : ""
+      };
+    });
+  };
+
   const handleAction = async (e) => {
     if (e) e.stopPropagation();
     const encodedJobNo = encodeURIComponent(jobNo);
@@ -33,8 +146,26 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       const response = await axios.get(
         `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`
       );
-      const exportJob = response.data;
-      setJobData(exportJob);
+      const data = response.data;
+
+      let fetchedClubbedJobsData = [];
+      let isClubActive = false;
+
+      if (data.parent_club_job) {
+        try {
+          const parentRes = await axios.get(`${import.meta.env.VITE_API_STRING}/get-export-job/${encodeURIComponent(data.parent_club_job)}`);
+          if (parentRes.data) {
+            Object.assign(data, parentRes.data);
+            isClubActive = true;
+          }
+        } catch (e) { console.warn(e); }
+      } else if (data.is_club_job_parent && Array.isArray(data.clubbed_jobs) && data.clubbed_jobs.length > 0) {
+        isClubActive = true;
+      }
+
+      setIsClubJob(isClubActive);
+      setClubbedJobsData(fetchedClubbedJobsData);
+      setJobData(data);
 
       // Pre-load logo as base64
       let logoBase64 = concorLogo;
@@ -45,7 +176,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       }
 
       // Generate HTML for the editor
-      const template = generateHTML(exportJob, logoBase64);
+      const template = generateHTML(data, logoBase64, isClubActive, fetchedClubbedJobsData);
       setHtmlContent(template);
       setChoiceOpen(true);
     } catch (err) {
@@ -54,20 +185,87 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
     }
   };
 
-  const generateHTML = (exportJob, logoSrc = concorLogo) => {
-    const containers = exportJob.containers || [];
-    const operations = exportJob.operations?.[0] || {};
+  const generateHTML = (exportJob, logoSrc = concorLogo, isClubActive, clubbedJobsList) => {
+    const aggregatedContainers = getAggregatedContainers(exportJob, isClubActive, clubbedJobsList);
     const invoice = exportJob.invoices?.[0] || {};
     const product = invoice.products?.[0] || {};
-    const statusDetails = operations.statusDetails?.[0] || {};
 
-    const totalPackages = containers.reduce((sum, cnt) => sum + (Number(cnt.pkgsStuffed) || 0), 0);
-    const totalCargoWeight = containers.reduce((sum, cnt) => sum + parseFloat(cnt.grossWeight || 0) / 1000, 0);
+    const totalPackages = aggregatedContainers.reduce((sum, cnt) => sum + (Number(cnt.pkgsStuffed) || 0), 0);
+    const totalCargoWeight = aggregatedContainers.reduce((sum, cnt) => sum + parseFloat(cnt.grossWeight || 0) / 1000, 0);
+
+    let sbNoText = exportJob.sb_no || "";
+    let sbDateText = formatDate(exportJob.sb_date);
+
+    if (isClubActive && exportJob.containers?.length > 0) {
+      const allSBs = [];
+      const seenSBs = new Set();
+      exportJob.containers.forEach(c => {
+        const sbNo = c._sourceSbNo || c.shippingBillNo || exportJob.sb_no;
+        const sbDate = c._sourceSbDate || c.sb_date || exportJob.sb_date;
+        if (sbNo) {
+          const key = `${sbNo}-${sbDate}`;
+          if (!seenSBs.has(key)) {
+            seenSBs.add(key);
+            allSBs.push({ sbNo, sbDate });
+          }
+        }
+      });
+      if (allSBs.length > 0) {
+        sbNoText = allSBs.map(sb => sb.sbNo).join(", ");
+        sbDateText = allSBs.map(sb => formatDate(sb.sbDate)).join(", ");
+      }
+    }
 
     let containerRows = "";
-    containers.forEach((cnt, i) => {
+    aggregatedContainers.forEach((cnt, i) => {
       const sizeMatch = (cnt.type || "").match(/^(\d+)/);
       const size = sizeMatch ? sizeMatch[1] : "";
+
+      const uniqueSBsList = [];
+      const seenSBs = new Set();
+      if (cnt.uniqueSBs) {
+        cnt.uniqueSBs.forEach((sb, idx) => {
+          const key = sb.sbNo ? `${sb.sbNo}-${sb.sbDate}` : `__empty_${idx}`;
+          if (!seenSBs.has(key)) {
+            seenSBs.add(key);
+            uniqueSBsList.push(sb);
+          }
+        });
+      }
+
+      const pkgsDisplay = uniqueSBsList.length > 0
+        ? uniqueSBsList.map(sb => `<div>${sb.pkgs || ""}</div>`).join("")
+        : (cnt.pkgsStuffed ? `<div>${cnt.pkgsStuffed}</div>` : "");
+
+      const descDisplay = cnt.uniqueDescriptions && cnt.uniqueDescriptions.length > 0
+        ? cnt.uniqueDescriptions.map(d => `<div>${d}</div>`).join("")
+        : (product.description || "");
+
+      const hsnDisplay = cnt.uniqueHsnCodes && cnt.uniqueHsnCodes.length > 0
+        ? cnt.uniqueHsnCodes.join(", ")
+        : (product.ritc || "");
+
+      const weightDisplay = uniqueSBsList.length > 0
+        ? uniqueSBsList.map(sb => `<div>${(parseFloat(sb.weight || 0) / 1000).toFixed(1)}</div>`).join("")
+        : (parseFloat(cnt.grossWeight || 0) / 1000).toFixed(1);
+
+      const vgmDisplay = uniqueSBsList.length > 0
+        ? uniqueSBsList.map(sb => `<div>${sb.tareWeight ? ((parseFloat(sb.weight || 0) + parseFloat(sb.tareWeight || 0)) / 1000).toFixed(1) : ""}</div>`).join("")
+        : (cnt.grWtPlusTrWt ? (parseFloat(cnt.grWtPlusTrWt) / 1000).toFixed(1) : "");
+
+      const invoiceValueDisplay = uniqueSBsList.length > 0
+        ? uniqueSBsList.map(sb => `<div>${sb.invoiceValue || ""}</div>`).join("")
+        : (invoice.invoiceValue || "");
+
+      const leoDateDisplay = uniqueSBsList.length > 0
+        ? uniqueSBsList.map(sb => `<div>${formatDate(sb.leoDate)}</div>`).join("")
+        : formatDate(exportJob.operations?.[0]?.statusDetails?.[0]?.leoDate);
+
+      const uniqueSeals = cnt.uniqueSBs ? [...new Set(cnt.uniqueSBs.map(sb => sb.sealNo ? String(sb.sealNo).trim() : '').filter(Boolean))] : [];
+      const sealDisplay = uniqueSeals.length > 0
+        ? uniqueSeals.map(s => `<div>${s}</div>`).join("")
+        : (cnt.sealNo || "");
+
       containerRows += `
         <tr>
           <td style="text-align: center; vertical-align: middle; border: 1px solid black; padding: 1px 2px 3px 2px; font-size: 10px;">${i + 1}</td>
@@ -75,15 +273,15 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
           <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${cnt.sealType || "RFID"}</td>
           <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${size}</td>
           <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${cnt.tareWeightKgs || ""}</td>
-          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${cnt.pkgsStuffed || ""}</td>
-          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; vertical-align: middle; font-size: 10px;">${product.description || ""}</td>
-          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${product.ritc || ""}</td>
-          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${(parseFloat(cnt.grossWeight || 0) / 1000).toFixed(1)}</td>
-          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${cnt.grWtPlusTrWt ? (parseFloat(cnt.grWtPlusTrWt) / 1000).toFixed(1) : ""}</td>
+          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${pkgsDisplay}</td>
+          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; vertical-align: middle; font-size: 10px;">${descDisplay}</td>
+          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${hsnDisplay}</td>
+          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${weightDisplay}</td>
+          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${vgmDisplay}</td>
           <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">NO</td>
-          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${invoice.invoiceValue || ""}</td>
-          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${formatDate(statusDetails.leoDate)}</td>
-          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${cnt.sealNo || ""}</td>
+          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${invoiceValueDisplay}</td>
+          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${leoDateDisplay}</td>
+          <td style="border: 1px solid black; padding: 1px 2px 3px 2px; text-align: center; vertical-align: middle; font-size: 10px;">${sealDisplay}</td>
         </tr>
       `;
     });
@@ -155,26 +353,26 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
           <tr>
              <td colspan="3" style="border: 1px solid black; font-size: 9px; vertical-align: middle; padding: 0px 5px 2px 5px;">
               TRANSPORTED BY: SELF TPT | CONCOR
-            </td>
+             </td>
           </tr>
           <tr>
              <td colspan="3" style="border: 1px solid black; font-size: 8px; vertical-align: middle; padding: 0px 5px 2px 5px;">
               <i>In case of CONCOR service, Kindly provide</i>
-            </td>
+             </td>
           </tr>
           <tr>
              <td colspan="3" style="border: 1px solid black; font-size: 9px; vertical-align: middle; padding: 0px 5px 2px 5px;">
               PICK UP POINT/KM: ${exportJob.factory_address || ""}
-            </td>
+             </td>
           </tr>
           <tr>
              <td colspan="3" style="border: 1px solid black; font-size: 9px; vertical-align: middle; padding: 0px 5px 2px 5px;">
               DELIVER POINT/KM:
-            </td>
+             </td>
           </tr>
           <tr>
             <td colspan="3" style="border: 1px solid black; vertical-align: middle; padding: 2px 5px 5px 5px; font-weight: bold; font-size: 14px;">
-              SHIPPING BILL NO.${exportJob.sb_no || ""} DATE ${formatDate(exportJob.sb_date)}
+              SHIPPING BILL NO. ${sbNoText} DATE ${sbDateText}
             </td>
           </tr>
           <tr>
@@ -276,7 +474,6 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
     if (!exportJob) return;
 
     try {
-      const containers = exportJob.containers || [];
       const operations = exportJob.operations?.[0] || {};
       const invoice = exportJob.invoices?.[0] || {};
       const product = invoice.products?.[0] || {};
@@ -285,16 +482,15 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
 
       const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
       const leftMargin = 5;
       const rightMargin = 5;
       const topMargin = 5;
-      const bottomMargin = 2;
       const contentWidth = pageWidth - leftMargin - rightMargin;
 
-      const containerCount = containers.length;
+      const aggregatedContainers = getAggregatedContainers(exportJob, isClubJob, clubbedJobsData);
+      const containerCount = aggregatedContainers.length;
       const isCompact = containerCount > 6;
-      const headerScale = isCompact ? 1.1 : 1.25; // Further increased scale
+      const headerScale = isCompact ? 1.1 : 1.25;
       const rowScale = isCompact ? 1.05 : 1.2;
 
       let yPos = topMargin;
@@ -336,7 +532,6 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       const logoSize = 10 * headerScale;
 
       try {
-        // Pre-load logo for addImage
         const logoBase64 = await imageToBase64(concorLogo);
         doc.addImage(logoBase64, "PNG", leftMargin + 1, yPos + 0.5, logoSize, logoSize);
         doc.addImage(logoBase64, "PNG", pageWidth - rightMargin - logoSize - 1, yPos + 1, logoSize, logoSize);
@@ -435,7 +630,29 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       doc.text("DELIVER POINT/KM:", leftMargin + 3, boxY + smallRowH * 0.75);
       boxY += smallRowH;
 
-      boxY += drawContentBox(boxY, [{ width: contentWidth, text: `SHIPPING BILL NO.${exportJob.sb_no || ""} DATE ${formatDate(exportJob.sb_date)}`, fontSize: 10 * rowScale, style: "bold" }], rowH + 1);
+      let sbNoText = exportJob.sb_no || "";
+      let sbDateText = formatDate(exportJob.sb_date);
+      if (isClubJob && exportJob.containers?.length > 0) {
+        const allSBs = [];
+        const seenSBs = new Set();
+        exportJob.containers.forEach(c => {
+          const sbNo = c._sourceSbNo || c.shippingBillNo || exportJob.sb_no;
+          const sbDate = c._sourceSbDate || c.sb_date || exportJob.sb_date;
+          if (sbNo) {
+            const key = `${sbNo}-${sbDate}`;
+            if (!seenSBs.has(key)) {
+              seenSBs.add(key);
+              allSBs.push({ sbNo, sbDate });
+            }
+          }
+        });
+        if (allSBs.length > 0) {
+          sbNoText = allSBs.map(sb => sb.sbNo).join(", ");
+          sbDateText = allSBs.map(sb => formatDate(sb.sbDate)).join(", ");
+        }
+      }
+
+      boxY += drawContentBox(boxY, [{ width: contentWidth, text: `SHIPPING BILL NO. ${sbNoText} DATE ${sbDateText}`, fontSize: 10 * rowScale, style: "bold" }], rowH + 1);
       boxY += drawContentBox(boxY, [
         { width: contentWidth / 2, text: `STUFFING TYPE: ${exportJob.goods_stuffed_at === "Factory" ? "FCL" : "ICD"}`, fontSize: 6 * rowScale },
         { width: contentWidth / 2, text: `GST IN INVOICE NAME: ${exportJob.exporter || ""}`, fontSize: 6 * rowScale },
@@ -450,12 +667,74 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       boxY += 2;
 
       const tableHeaders = ["Sr.\nNo.", "CONTAINER NO.", "TYPE", "SIZE", "TARE WT.", "NO. OF\nPACKAGES", "COMMODITY NAME", "COMMODITY\nHSN CODE", "CARGO WT\n(In MTS)", "VGM", "HAZARDOUS", "VALUE/FOB", "LEO DT", "SEAL NO."];
-      const tableBody = containers.map((cnt, i) => [
-        i + 1, cnt.containerNo || "", (cnt.sealType || ""), (cnt.type || "").match(/^(\d+)/)?.[1] || "", cnt.tareWeightKgs || "", cnt.pkgsStuffed || "", product.description || "", product.ritc || "", (parseFloat(cnt.grossWeight || 0) / 1000).toFixed(1), cnt.grWtPlusTrWt ? (parseFloat(cnt.grWtPlusTrWt) / 1000).toFixed(1) : "", "NO", invoice.invoiceValue || "", formatDate(statusDetails.leoDate), cnt.sealNo || ""
-      ]);
 
-      const totalPackages = containers.reduce((sum, cnt) => sum + (Number(cnt.pkgsStuffed) || 0), 0);
-      const totalCargoWeight = containers.reduce((sum, cnt) => sum + parseFloat(cnt.grossWeight || 0) / 1000, 0);
+      const tableBody = aggregatedContainers.map((cnt, i) => {
+        const uniqueSBsList = [];
+        const seenSBs = new Set();
+        if (cnt.uniqueSBs) {
+          cnt.uniqueSBs.forEach((sb, idx) => {
+            const key = sb.sbNo ? `${sb.sbNo}-${sb.sbDate}` : `__empty_${idx}`;
+            if (!seenSBs.has(key)) {
+              seenSBs.add(key);
+              uniqueSBsList.push(sb);
+            }
+          });
+        }
+
+        const pkgsText = uniqueSBsList.length > 0
+          ? uniqueSBsList.map(sb => sb.pkgs || "").join("\n")
+          : (cnt.pkgsStuffed || "");
+
+        const descText = cnt.uniqueDescriptions && cnt.uniqueDescriptions.length > 0
+          ? cnt.uniqueDescriptions.join("\n")
+          : (product.description || "");
+
+        const hsnText = cnt.uniqueHsnCodes && cnt.uniqueHsnCodes.length > 0
+          ? cnt.uniqueHsnCodes.join(", ")
+          : (product.ritc || "");
+
+        const weightText = uniqueSBsList.length > 0
+          ? uniqueSBsList.map(sb => (parseFloat(sb.weight || 0) / 1000).toFixed(1)).join("\n")
+          : (parseFloat(cnt.grossWeight || 0) / 1000).toFixed(1);
+
+        const vgmText = uniqueSBsList.length > 0
+          ? uniqueSBsList.map(sb => sb.tareWeight ? ((parseFloat(sb.weight || 0) + parseFloat(sb.tareWeight || 0)) / 1000).toFixed(1) : "").join("\n")
+          : (cnt.grWtPlusTrWt ? (parseFloat(cnt.grWtPlusTrWt) / 1000).toFixed(1) : "");
+
+        const invoiceValueText = uniqueSBsList.length > 0
+          ? uniqueSBsList.map(sb => sb.invoiceValue || "").join("\n")
+          : (invoice.invoiceValue || "");
+
+        const leoDateText = uniqueSBsList.length > 0
+          ? uniqueSBsList.map(sb => formatDate(sb.leoDate)).join("\n")
+          : formatDate(statusDetails.leoDate);
+
+        const uniqueSeals = cnt.uniqueSBs ? [...new Set(cnt.uniqueSBs.map(sb => sb.sealNo ? String(sb.sealNo).trim() : '').filter(Boolean))] : [];
+        const sealText = uniqueSeals.length > 0
+          ? uniqueSeals.join("\n")
+          : (cnt.sealNo || "");
+
+        return [
+          i + 1,
+          cnt.containerNo || "",
+          cnt.sealType || "RFID",
+          (cnt.type || "").match(/^(\d+)/)?.[1] || "",
+          cnt.tareWeightKgs || "",
+          pkgsText,
+          descText,
+          hsnText,
+          weightText,
+          vgmText,
+          "NO",
+          invoiceValueText,
+          leoDateText,
+          sealText
+        ];
+      });
+
+      const totalPackages = aggregatedContainers.reduce((sum, cnt) => sum + (Number(cnt.pkgsStuffed) || 0), 0);
+      const totalCargoWeight = aggregatedContainers.reduce((sum, cnt) => sum + parseFloat(cnt.grossWeight || 0) / 1000, 0);
+
       tableBody.push([
         { content: "Total:", colSpan: 5, styles: { halign: "right", fontStyle: "bold" } },
         { content: String(totalPackages || ""), styles: { fontStyle: "bold" } },

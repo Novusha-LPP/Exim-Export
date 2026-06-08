@@ -834,7 +834,9 @@ router.get("/global-search-jobs", async (req, res) => {
           "operations.statusDetails.status": 1,
           "operations.transporterDetails.images": 1,
           lockedBy: 1,
-          lockedAt: 1
+          lockedAt: 1,
+          is_club_job_parent: 1,
+          parent_club_job: 1
         })
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -959,6 +961,11 @@ router.get("/exports/:status?", async (req, res) => {
 
     // Exclude Freight Forwarding jobs (FF) from Export module
     filter.$and.push({ job_no: { $not: /^FF/i } });
+
+    // Globally exclude parent club jobs from all tabs except "club-jobs"
+    if (String(status || "").toLowerCase() !== "club-jobs") {
+      filter.$and.push({ is_club_job_parent: { $ne: true } });
+    }
 
     // Status filtering logic with job tracking consideration
     // Job is considered "completed" if:
@@ -1101,6 +1108,10 @@ router.get("/exports/:status?", async (req, res) => {
             { "operations.statusDetails.billingDocsSentDt": "" },
             { "operations.statusDetails": { $size: 0 } }
           ]
+        });
+      } else if (statusLower === "club-jobs") {
+        filter.$and.push({
+          $or: [{ is_club_job_parent: true }, { parent_club_job: { $ne: null } }]
         });
       } else {
         filter.$and.push({
@@ -1425,11 +1436,16 @@ router.get("/exports/:status?", async (req, res) => {
       "operations.statusDetails.status": 1,
       "operations.transporterDetails.images": 1,
       lockedBy: 1,
-      lockedAt: 1
+      lockedAt: 1,
+      is_club_job_parent: 1,
+      parent_club_job: 1
     };
 
     // When search is active, use aggregation to prioritize results by match type
     // Priority: 1=job_no, 2=sb_no, 3=container, 4=invoice, 5=exporter/other
+    let finalJobs = [];
+    let finalTotalCount = 0;
+
     if (search) {
       const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const aggPipeline = [
@@ -1452,62 +1468,75 @@ router.get("/exports/:status?", async (req, res) => {
         { $sort: { _searchPriority: 1, ...sort } },
         { $project: selectProjection },
       ];
+        finalTotalCount = await ExportJobModel.countDocuments(filter);
+        finalJobs = await ExportJobModel.aggregate([
+          ...aggPipeline,
+          { $skip: skip },
+          { $limit: parseInt(limit) },
+        ]);
+      } else {
+        console.log("updateExportJobs filter:", JSON.stringify(filter, null, 2));
+        const [jobs, totalCount] = await Promise.all([
+          ExportJobModel.find(filter)
+            .select(selectProjection)
+            .sort(sort)
+            .skip(skip)
+            .limit(parseInt(limit))
+            .lean(),
+          ExportJobModel.countDocuments(filter),
+        ]);
+        finalJobs = jobs;
+        finalTotalCount = totalCount;
+      }
 
-      const totalCount = await ExportJobModel.countDocuments(filter);
-      const jobs = await ExportJobModel.aggregate([
-        ...aggPipeline,
-        { $skip: skip },
-        { $limit: parseInt(limit) },
-      ]);
+      if (String(status || "").toLowerCase() === "club-jobs" && finalJobs.length > 0) {
+        const parentIds = [...new Set(finalJobs.map(j => j.is_club_job_parent ? j.job_no : j.parent_club_job))].filter(Boolean);
+        const families = await ExportJobModel.find({
+          $or: [{ job_no: { $in: parentIds } }, { parent_club_job: { $in: parentIds } }]
+        }).select(selectProjection).lean();
 
-      return res.json({
+        const finalParents = [];
+        const groups = {};
+        families.forEach(j => {
+          const pid = j.is_club_job_parent ? j.job_no : j.parent_club_job;
+          if (!groups[pid]) groups[pid] = { parent: null, children: [] };
+          if (j.is_club_job_parent) groups[pid].parent = j;
+          else groups[pid].children.push(j);
+        });
+
+        Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(pid => {
+          if (groups[pid].parent) {
+            groups[pid].parent.subRows = groups[pid].children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
+            finalParents.push(groups[pid].parent);
+          }
+        });
+
+        finalJobs = finalParents;
+        finalTotalCount = finalParents.length;
+      }
+
+      res.json({
         success: true,
         data: {
-          jobs,
+          jobs: finalJobs,
           pagination: {
             currentPage: parseInt(page),
-            totalPages: Math.ceil(totalCount / parseInt(limit)),
-            totalCount,
-            hasNextPage: page < Math.ceil(totalCount / parseInt(limit)),
+            totalPages: Math.ceil(finalTotalCount / parseInt(limit)),
+            totalCount: finalTotalCount,
+            hasNextPage: page < Math.ceil(finalTotalCount / parseInt(limit)),
             hasPrevPage: page > 1,
           },
         },
       });
+    } catch (error) {
+      console.error("Error fetching export jobs:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error fetching export jobs",
+        error: error.message,
+      });
     }
-
-    // No search - use standard find with sort
-    const [jobs, totalCount] = await Promise.all([
-      ExportJobModel.find(filter)
-        .select(selectProjection)
-        .sort(sort)
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(),
-      ExportJobModel.countDocuments(filter),
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        jobs,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(totalCount / parseInt(limit)),
-          totalCount,
-          hasNextPage: page < Math.ceil(totalCount / parseInt(limit)),
-          hasPrevPage: page > 1,
-        },
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching export jobs:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching export jobs",
-      error: error.message,
-    });
-  }
-});
+  });
 
 // GET /api/filtered-exporters - Get unique list of exporters matching current filters
 router.get("/filtered-exporters", async (req, res) => {

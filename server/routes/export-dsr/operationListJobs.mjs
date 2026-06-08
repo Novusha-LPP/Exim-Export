@@ -102,6 +102,11 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         // EXCLUDE Freight Forwarding Jobs (FF) from Operation Module
         filter.$and.push({ job_no: { $not: /^FF/i } });
 
+        // Globally exclude parent club jobs from all tabs except "club-jobs"
+        if (normalizedStatus !== "club-jobs") {
+            filter.$and.push({ is_club_job_parent: { $ne: true } });
+        }
+
 
         // 2. Handle main document status
         if (normalizedStatus === "cancelled") {
@@ -285,8 +290,9 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                     { "operations.statusDetails": { $size: 0 } }
                 ]
             });
-        }
-        else if (normalizedStatus === "cancelled") {
+        } else if (normalizedStatus === "club-jobs") {
+             filter.$and.push({ $or: [{ is_club_job_parent: true }, { parent_club_job: { $ne: null } }] });
+        } else if (normalizedStatus === "cancelled") {
             // Cancelled jobs shouldn't filter out anything specific by default, 
             // but we might want to exclude billed ones if desired. Usually cancelled just means status = cancelled.
         }
@@ -508,6 +514,9 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             isGeneralJob: 1
         };
 
+        let finalJobs = [];
+        let finalTotalCount = 0;
+
         // When search is active, use aggregation to prioritize results by match type
         // Priority: 1=job_no, 2=sb_no, 3=container, 4=invoice, 5=exporter/other
         if (search) {
@@ -533,48 +542,63 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 { $project: selectProjection },
             ];
 
-            const totalCount = await ExportJobModel.countDocuments(filter);
-            const jobs = await ExportJobModel.aggregate([
+            finalTotalCount = await ExportJobModel.countDocuments(filter);
+            finalJobs = await ExportJobModel.aggregate([
                 ...aggPipeline,
                 { $skip: skip },
                 { $limit: parseInt(limit) },
             ]);
-
-            return res.json({
-                success: true,
-                data: {
-                    jobs,
-                    pagination: {
-                        currentPage: parseInt(page),
-                        totalPages: Math.ceil(totalCount / parseInt(limit)),
-                        totalCount,
-                        hasNextPage: page < Math.ceil(totalCount / parseInt(limit)),
-                        hasPrevPage: page > 1,
-                    },
-                },
-            });
+        } else {
+            // No search - use standard find with sort
+            const [jobsResult, countResult] = await Promise.all([
+                ExportJobModel.find(filter)
+                    .select(selectProjection)
+                    .sort(sort)
+                    .skip(skip)
+                    .limit(parseInt(limit))
+                    .lean(),
+                ExportJobModel.countDocuments(filter),
+            ]);
+            finalJobs = jobsResult;
+            finalTotalCount = countResult;
         }
 
-        // No search - use standard find with sort
-        const [jobs, totalCount] = await Promise.all([
-            ExportJobModel.find(filter)
-                .select(selectProjection)
-                .sort(sort)
-                .skip(skip)
-                .limit(parseInt(limit))
-                .lean(),
-            ExportJobModel.countDocuments(filter),
-        ]);
+        if (normalizedStatus === "club-jobs" && finalJobs.length > 0) {
+            const parentIds = [...new Set(finalJobs.map(j => j.is_club_job_parent ? j.job_no : j.parent_club_job))].filter(Boolean);
+            
+            const families = await ExportJobModel.find({
+                $or: [ { job_no: { $in: parentIds } }, { parent_club_job: { $in: parentIds } } ]
+            }).select(selectProjection).lean();
+            
+            const finalParents = [];
+            const groups = {};
+            families.forEach(j => {
+                const pid = j.is_club_job_parent ? j.job_no : j.parent_club_job;
+                if (!groups[pid]) groups[pid] = { parent: null, children: [] };
+                if (j.is_club_job_parent) groups[pid].parent = j;
+                else groups[pid].children.push(j);
+            });
+            
+            Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(pid => {
+                if (groups[pid].parent) {
+                    groups[pid].parent.subRows = groups[pid].children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
+                    finalParents.push(groups[pid].parent);
+                }
+            });
+            
+            finalJobs = finalParents;
+            finalTotalCount = finalParents.length;
+        }
 
         res.json({
             success: true,
             data: {
-                jobs,
+                jobs: finalJobs,
                 pagination: {
                     currentPage: parseInt(page),
-                    totalPages: Math.ceil(totalCount / parseInt(limit)),
-                    totalCount,
-                    hasNextPage: page < Math.ceil(totalCount / parseInt(limit)),
+                    totalPages: Math.ceil(finalTotalCount / parseInt(limit)),
+                    totalCount: finalTotalCount,
+                    hasNextPage: page < Math.ceil(finalTotalCount / parseInt(limit)),
                     hasPrevPage: page > 1,
                 },
             },

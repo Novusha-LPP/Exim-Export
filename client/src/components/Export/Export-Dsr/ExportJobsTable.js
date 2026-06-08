@@ -2336,6 +2336,14 @@ const ExportJobsTable = () => {
             )}
             <button
               style={
+                activeTab === "club-jobs" ? { ...s.tab, ...s.activeTab } : s.tab
+              }
+              onClick={() => setActiveTab("club-jobs")}
+            >
+              Club Jobs
+            </button>
+            <button
+              style={
                 activeTab === "Completed" ? { ...s.tab, ...s.activeTab } : s.tab
               }
               onClick={() => setActiveTab("Completed")}
@@ -2366,6 +2374,14 @@ const ExportJobsTable = () => {
                   onClick={() => setActiveTab("Freight Forwarding")}
                 >
                   Freight Forwarding
+                </button>
+                <button
+                  style={
+                    activeTab === "club-jobs" ? { ...s.tab, ...s.activeTab } : s.tab
+                  }
+                  onClick={() => setActiveTab("club-jobs")}
+                >
+                  Club Jobs
                 </button>
               </>
             )}
@@ -2813,8 +2829,8 @@ const ExportJobsTable = () => {
                   <th style={{ ...s.th, width: "10%", minWidth: "95px" }}>Invoice</th>
                   <th style={{ ...s.th, width: "8%", minWidth: "65px" }}>SB No</th>
                   <th style={{ ...s.th, width: "16%", minWidth: "150px" }}>Port</th>
-                  <th style={{ ...s.th, width: "8%", minWidth: "100px" }}>Container</th>
-                  <th style={{ ...s.th, width: "10%", minWidth: "110px" }}>Handover</th>
+                  <th style={{ ...s.th, width: "16%", minWidth: "170px" }}>Container</th>
+                  <th style={{ ...s.th, width: "3%", minWidth: "40px" }}>Handover</th>
                   <th style={{ ...s.th, width: "4%", minWidth: "60px" }}>Docs</th>
                   <th style={{ ...s.th, width: "5%", minWidth: "65px", textAlign: "center" }}>Status</th>
                 </tr>
@@ -2833,7 +2849,13 @@ const ExportJobsTable = () => {
                     </td>
                   </tr>
                 ) : (
-                  jobs.map((job, idx) => {
+                  jobs.reduce((acc, job) => {
+                    acc.push(job);
+                    if (job.subRows && job.subRows.length > 0) {
+                      acc.push(...job.subRows.map(subJob => ({ ...subJob, isSubRow: true })));
+                    }
+                    return acc;
+                  }, []).map((job, idx) => {
                     const currentStatus = (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
                       ? job.detailedStatus[job.detailedStatus.length - 1]
                       : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status) || "";
@@ -2843,8 +2865,8 @@ const ExportJobsTable = () => {
                       <tr
                         key={job._id || idx}
                         style={{
-                          backgroundColor: theme.bg,
-                          borderLeft: `4px solid ${theme.border}`,
+                          backgroundColor: job.isSubRow ? "#f1f5f9" : theme.bg,
+                          borderLeft: `4px solid ${job.isSubRow ? "#94a3b8" : theme.border}`,
                           cursor: "default",
                           transition: "all 0.2s ease",
                         }}
@@ -2868,6 +2890,7 @@ const ExportJobsTable = () => {
                             backgroundColor: job.operational_lock ? "#fffebccc" : "inherit",
                             position: "sticky",
                             cursor: "pointer", // Make the whole cell look clickable
+                            paddingLeft: job.parent_club_job && activeTab === "club-jobs" ? "24px" : "15px"
                           }}
                           onClick={(e) => navigateToJob(job, e)} // Click anywhere in cell navigates
                         >
@@ -2881,14 +2904,28 @@ const ExportJobsTable = () => {
                           >
                             <div
                               style={{
-                                fontWeight: "800",
-                                color: "#1e40af",
-                                fontSize: "12px",
-                                letterSpacing: "0.2px",
-                                whiteSpace: "nowrap"
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px"
                               }}
                             >
-                              {job.job_no}
+                              {job.parent_club_job && activeTab === "club-jobs" && (
+                                <span style={{ color: "#9ca3af", fontWeight: "bold" }}>↳</span>
+                              )}
+                              <div
+                                style={{
+                                  fontWeight: "800",
+                                  color: "#1e40af",
+                                  fontSize: "12px",
+                                  letterSpacing: "0.2px",
+                                  whiteSpace: "nowrap"
+                                }}
+                              >
+                                {job.job_no}
+                              </div>
+                              {job.is_club_job_parent && (
+                                <span style={{ fontSize: "9px", background: "#dbeafe", color: "#1e40af", padding: "1px 4px", borderRadius: "4px", fontWeight: "bold" }}>CLUB</span>
+                              )}
                             </div>
                             {job.isLocked && (
                               <Tooltip title="Job is Locked">
@@ -2944,19 +2981,38 @@ const ExportJobsTable = () => {
                             </div>
                           )}
 
-                          <div
-                            style={{
-                              marginTop: "2px",
-                              padding: "2px 6px",
-                              width: "fit-content",
-                              borderRadius: "3px",
-                              fontSize: "10px",
-                              fontWeight: "600",
-                              color: "#030303ff",
-                            }}
-                          >
-                            {job.custom_house || "-"}
-                          </div>
+                          {job.custom_house && (
+                            <div
+                              style={{
+                                marginTop: "2px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "2px"
+                              }}
+                            >
+                              <div
+                                style={{
+                                  padding: "2px 6px",
+                                  borderRadius: "3px",
+                                  fontSize: "10px",
+                                  fontWeight: "600",
+                                  color: "#030303ff",
+                                  backgroundColor: "#f3f4f6",
+                                  width: "fit-content",
+                                }}
+                              >
+                                {job.custom_house}
+                              </div>
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleCopyText(job.custom_house, e)}
+                                style={{ padding: 2 }}
+                                title="Copy Custom House"
+                              >
+                                <ContentCopyIcon style={{ fontSize: 9, color: "#6b7280" }} />
+                              </IconButton>
+                            </div>
+                          )}
                           <div
                             style={{
                               display: "flex",
@@ -3004,35 +3060,68 @@ const ExportJobsTable = () => {
                         <td style={s.td}>
                           <div
                             style={{
-                              fontWeight: "700",
-                              color: "rgba(0,0,0,0.85)",
-                              fontSize: "12px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "4px",
                               marginBottom: "4px",
-                              lineHeight: "1.3",
                             }}
                           >
-                            {job.exporter}
-                            {job.exporter_branch_name && job.exporter_branch_name.toLowerCase() !== "main" && (
-                              <span style={{ fontWeight: "500", color: "#64748b", fontSize: "10px" }}>
-                                {` (${job.exporter_branch_name})`}
-                              </span>
-                            )}
+                            <div
+                              style={{
+                                fontWeight: "700",
+                                color: "rgba(0,0,0,0.85)",
+                                fontSize: "12px",
+                                lineHeight: "1.3",
+                              }}
+                            >
+                              {job.exporter}
+                              {job.exporter_branch_name && job.exporter_branch_name.toLowerCase() !== "main" && (
+                                <span style={{ fontWeight: "500", color: "#64748b", fontSize: "10px" }}>
+                                  {` (${job.exporter_branch_name})`}
+                                </span>
+                              )}
+                            </div>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => handleCopyText(job.exporter, e)}
+                              style={{ padding: 2, flexShrink: 0 }}
+                              title="Copy Exporter"
+                            >
+                              <ContentCopyIcon style={{ fontSize: 11, color: "#6b7280" }} />
+                            </IconButton>
                           </div>
                           {/* IE Code below exporter name */}
                           {job.ieCode && (
-                            <div style={{ fontSize: "10px", color: "#64748b", marginBottom: "4px", fontWeight: "600" }}>
+                            <div style={{ fontSize: "10px", color: "#64748b", marginBottom: "4px", fontWeight: "600", display: "flex", alignItems: "center", gap: "2px" }}>
                               IE: {job.ieCode}
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleCopyText(job.ieCode, e)}
+                                style={{ padding: 0, marginLeft: 2 }}
+                                title="Copy IE Code"
+                              >
+                                <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
+                              </IconButton>
                             </div>
                           )}
                           <div style={{ fontSize: "10px", color: "#475569", display: "flex", flexDirection: "column", gap: "2px" }}>
                             {job.consignees?.[0]?.consignee_name && (
-                              <div style={{ display: "flex", gap: "4px", alignItems: "baseline" }}>
+                              <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                                 <span style={{ fontWeight: "700", color: "#94a3b8", fontSize: "9px" }}>CONS:</span>
-                                <span style={{ color: "#334155", fontWeight: "500" }}>
+                                <span style={{ color: "#334155", fontWeight: "500", fontSize: "10px" }}>
                                   {job.consignees[0].consignee_name.length > 35
                                     ? `${job.consignees[0].consignee_name.substring(0, 35)}...`
                                     : job.consignees[0].consignee_name}
                                 </span>
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => handleCopyText(job.consignees[0].consignee_name, e)}
+                                  style={{ padding: 0, marginLeft: 2 }}
+                                  title="Copy Consignee"
+                                >
+                                  <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
+                                </IconButton>
                               </div>
                             )}
 
@@ -3219,22 +3308,52 @@ const ExportJobsTable = () => {
                           {!(job.isGeneralJob || job.exporter === "GENERAL JOB") ? (
                             <>
                               <div style={{ marginBottom: "6px", display: "flex", flexDirection: "column", gap: "1px" }}>
-                                <div style={{ display: "flex", gap: "6px", alignItems: "baseline" }}>
+                                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                                   <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>DEST</span>
                                   <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.destination_port || "-"}</span>
+                                  {job.destination_port && (
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => handleCopyText(job.destination_port, e)}
+                                      style={{ padding: 0, marginLeft: 2 }}
+                                      title="Copy Destination Port"
+                                    >
+                                      <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
+                                    </IconButton>
+                                  )}
                                 </div>
                                 <div style={{ fontSize: "10px", color: "#64748b", fontStyle: "italic", paddingLeft: "41px" }}>
                                   {job.destination_country || "-"}
                                 </div>
                               </div>
                               <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
-                                <div style={{ display: "flex", gap: "6px", alignItems: "baseline" }}>
+                                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                                   <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>POL</span>
                                   <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.port_of_loading || "-"}</span>
+                                  {job.port_of_loading && (
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => handleCopyText(job.port_of_loading, e)}
+                                      style={{ padding: 0, marginLeft: 2 }}
+                                      title="Copy Port of Loading"
+                                    >
+                                      <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
+                                    </IconButton>
+                                  )}
                                 </div>
-                                <div style={{ display: "flex", gap: "6px", alignItems: "baseline" }}>
+                                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                                   <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>DISCH</span>
                                   <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.port_of_discharge || "-"}</span>
+                                  {job.port_of_discharge && (
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => handleCopyText(job.port_of_discharge, e)}
+                                      style={{ padding: 0, marginLeft: 2 }}
+                                      title="Copy Port of Discharge"
+                                    >
+                                      <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
+                                    </IconButton>
+                                  )}
                                 </div>
                               </div>
                             </>
