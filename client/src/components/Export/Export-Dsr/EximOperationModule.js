@@ -46,12 +46,31 @@ function EximOperationModule() {
     navigate
   );
 
-  const getInitialTab = () => {
-    const tabFromUrl = searchParams.get("tab");
-    return tabFromUrl ? parseInt(tabFromUrl) : 0;
-  };
+  const [activeTab, setActiveTab] = useState("operation");
+  const hasSetInitialTab = React.useRef(false);
 
-  const [activeTab, setActiveTab] = useState(getInitialTab());
+  // Set initial tab from URL once data is loaded
+  useEffect(() => {
+    if (data && !loading && !hasSetInitialTab.current) {
+      const tabFromUrl = searchParams.get("tab");
+      const showContainer = formik.values.custom_house === "ICD SABARMATI" || (formik.values.goods_stuffed_at || "").toUpperCase() === "DOCK";
+      let initialTab = "operation";
+      if (tabFromUrl === "0" || tabFromUrl === "operation") {
+        initialTab = "operation";
+      } else if (tabFromUrl === "1") {
+        initialTab = showContainer ? "container" : "tracking";
+      } else if (tabFromUrl === "2" || tabFromUrl === "tracking") {
+        initialTab = "tracking";
+      } else if (tabFromUrl === "container") {
+        initialTab = showContainer ? "container" : "operation";
+      }
+      if (initialTab === "container" && !showContainer) {
+        initialTab = "operation";
+      }
+      setActiveTab(initialTab);
+      hasSetInitialTab.current = true;
+    }
+  }, [loading, data, searchParams, formik.values.custom_house, formik.values.goods_stuffed_at]);
   const [isLocked, setIsLocked] = useState(false);
   const [lockDialogOpen, setLockDialogOpen] = useState(false);
   const [lockedByUser, setLockedByUser] = useState(null);
@@ -178,7 +197,7 @@ function EximOperationModule() {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
-    setSearchParams({ tab: newValue.toString() });
+    setSearchParams({ tab: newValue });
   };
 
   const handleLockDialogClose = () => {
@@ -194,6 +213,18 @@ function EximOperationModule() {
       navigate("/export-operation");
     }
   };
+
+  const showContainerTab =
+    formik?.values?.custom_house === "ICD SABARMATI" ||
+    (formik?.values?.goods_stuffed_at || "").toUpperCase() === "DOCK";
+
+  // Redirect from container tab if it gets hidden dynamically
+  useEffect(() => {
+    if (!showContainerTab && activeTab === "container") {
+      setActiveTab("operation");
+      setSearchParams({ tab: "operation" });
+    }
+  }, [showContainerTab, activeTab, setSearchParams]);
 
   if (loading) {
     return (
@@ -314,30 +345,25 @@ function EximOperationModule() {
               mb: 0,
             }}
           >
-            <Tab label="Operation" />
-            {data.custom_house === "ICD SABARMATI" && <Tab label="Container" />}
-            <Tab label="Tracking Completed" />
+            <Tab label="Operation" value="operation" />
+            {showContainerTab && <Tab label="Container" value="container" />}
+            <Tab label="Tracking Completed" value="tracking" />
           </Tabs>
         </Box>
 
-        <TabPanel value={activeTab} index={0}>
+        <TabPanel value={activeTab} index="operation">
           <OperationsTab job={data} formik={formik} isEditable={isEditable} isAdmin={user?.role === "Admin"} />
         </TabPanel>
 
-        {data.custom_house === "ICD SABARMATI" ? (
-          <>
-            <TabPanel value={activeTab} index={1}>
-              <ContainerTab formik={formik} isEditable={isEditable} />
-            </TabPanel>
-            <TabPanel value={activeTab} index={2}>
-              <TrackingCompletedTab job={data} formik={formik} isEditable={isEditable} isAdmin={user?.role === "Admin"} />
-            </TabPanel>
-          </>
-        ) : (
-          <TabPanel value={activeTab} index={1}>
-            <TrackingCompletedTab job={data} formik={formik} isEditable={isEditable} isAdmin={user?.role === "Admin"} />
+        {showContainerTab && (
+          <TabPanel value={activeTab} index="container">
+            <ContainerTab formik={formik} isEditable={isEditable} />
           </TabPanel>
         )}
+
+        <TabPanel value={activeTab} index="tracking">
+          <TrackingCompletedTab job={data} formik={formik} isEditable={isEditable} isAdmin={user?.role === "Admin"} />
+        </TabPanel>
 
         <ExportJobFooter
           onUpdate={formik.handleSubmit}

@@ -80,12 +80,12 @@ function DsrTabs() {
             <ExportDashboard />
           </CustomTabPanel>
           <CustomTabPanel value={tabValue} index={1}>
-            <ExportJobsTable />
+            <ExportJobsTable key={location.pathname} />
           </CustomTabPanel>
 
         </Box>
       ) : (
-        <ExportJobsTable />
+        <ExportJobsTable key={location.pathname} />
       )}
     </SelectedYearContext.Provider>
   );

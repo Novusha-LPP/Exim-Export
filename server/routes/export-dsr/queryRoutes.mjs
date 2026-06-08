@@ -129,7 +129,13 @@ router.get("/api/queries", async (req, res) => {
     
     if (raisedBy) filter.raisedBy = raisedBy;
     if (status) filter.status = status;
-    if (job_no) filter.job_no = job_no;
+    if (job_no) {
+      if (typeof job_no === 'string' && job_no.includes(',')) {
+        filter.job_no = { $in: job_no.split(',').map(j => j.trim()).filter(Boolean) };
+      } else {
+        filter.job_no = job_no;
+      }
+    }
 
     // --- APPLY USER RESTRICTIONS ---
     const requesterUsername = req.headers["username"] || req.headers["x-username"];

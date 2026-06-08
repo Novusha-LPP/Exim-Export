@@ -614,7 +614,19 @@ const ExportJobsTable = () => {
 
   const navigate = useNavigate();
 
-  const FILTER_STORAGE_KEY = "export_jobs_filters";
+  // Determine active module path prefixes
+  const isOperationModule = window.location.pathname.startsWith("/export-operation");
+  const isChargesModule = window.location.pathname.startsWith("/export-charges");
+
+  const getModuleSuffix = () => {
+    if (isOperationModule) return "operation";
+    if (window.location.pathname.startsWith("/export-documentation")) return "documentation";
+    if (window.location.pathname.startsWith("/export-esanchit")) return "esanchit";
+    if (isChargesModule) return "charges";
+    return "dsr";
+  };
+
+  const FILTER_STORAGE_KEY = `export_jobs_filters_${getModuleSuffix()}`;
   const savedFilters = (() => {
     try {
       const saved = localStorage.getItem(FILTER_STORAGE_KEY);
@@ -627,18 +639,25 @@ const ExportJobsTable = () => {
   const isInitialMount = useRef(true);
   const isInitialSave = useRef(true);
 
-  // Determine if it's the export operation module early
-  const isOperationModule = window.location.pathname.startsWith("/export-operation");
-  const isChargesModule = window.location.pathname.startsWith("/export-charges");
-
   // State
   const [activeTab, setActiveTab] = useState(() => {
     const saved = savedFilters.activeTab || "Pending";
-    if (isOperationModule && (saved === "Completed" || saved === "Billing Ready")) return "Op Completed";
-    if (isChargesModule && !["Pending", "Completed"].includes(saved)) return "Pending";
-    if (!isOperationModule && !isChargesModule && (saved === "Op Completed" || saved === "Billing Ready")) return "Completed";
-    if (!isOperationModule && isChargesModule && (saved === "Op Completed" || saved === "Billing Ready")) return "Completed";
-    return saved;
+    if (isOperationModule) {
+      const allowedOpsTabs = ["Pending", "Op Completed", "Completed"];
+      if (allowedOpsTabs.includes(saved)) return saved;
+      if (saved === "Completed" || saved === "Billing Ready") return "Op Completed";
+      return "Pending";
+    }
+    if (isChargesModule) {
+      const allowedChargesTabs = ["Pending", "Completed", "General Jobs", "Freight Forwarding"];
+      if (allowedChargesTabs.includes(saved)) return saved;
+      return "Pending";
+    }
+    // Default module (Jobs, Documentation, ESanchit)
+    const allowedDefaultTabs = ["Pending", "Booking Pending", "Handover Pending", "Billing Pending", "club-jobs", "Completed", "Cancelled"];
+    if (allowedDefaultTabs.includes(saved)) return saved;
+    if (saved === "Op Completed" || saved === "Billing Ready") return "Completed";
+    return "Pending";
   });
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2334,14 +2353,16 @@ const ExportJobsTable = () => {
                 ></span>
               </button>
             )}
-            <button
-              style={
-                activeTab === "club-jobs" ? { ...s.tab, ...s.activeTab } : s.tab
-              }
-              onClick={() => setActiveTab("club-jobs")}
-            >
-              Club Jobs
-            </button>
+            {!isOperationModule && !isChargesModule && (
+              <button
+                style={
+                  activeTab === "club-jobs" ? { ...s.tab, ...s.activeTab } : s.tab
+                }
+                onClick={() => setActiveTab("club-jobs")}
+              >
+                Club Jobs
+              </button>
+            )}
             <button
               style={
                 activeTab === "Completed" ? { ...s.tab, ...s.activeTab } : s.tab
@@ -2374,14 +2395,6 @@ const ExportJobsTable = () => {
                   onClick={() => setActiveTab("Freight Forwarding")}
                 >
                   Freight Forwarding
-                </button>
-                <button
-                  style={
-                    activeTab === "club-jobs" ? { ...s.tab, ...s.activeTab } : s.tab
-                  }
-                  onClick={() => setActiveTab("club-jobs")}
-                >
-                  Club Jobs
                 </button>
               </>
             )}

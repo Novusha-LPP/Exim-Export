@@ -1487,75 +1487,74 @@ router.get("/exports/:status?", async (req, res) => {
         { $sort: { _searchPriority: 1, ...sort } },
         { $project: selectProjection },
       ];
-        finalTotalCount = await ExportJobModel.countDocuments(filter);
-        finalJobs = await ExportJobModel.aggregate([
-          ...aggPipeline,
-          { $skip: skip },
-          { $limit: parseInt(limit) },
-        ]);
-      } else {
-        console.log("updateExportJobs filter:", JSON.stringify(filter, null, 2));
-        const [jobs, totalCount] = await Promise.all([
-          ExportJobModel.find(filter)
-            .select(selectProjection)
-            .sort(sort)
-            .skip(skip)
-            .limit(parseInt(limit))
-            .lean(),
-          ExportJobModel.countDocuments(filter),
-        ]);
-        finalJobs = jobs;
-        finalTotalCount = totalCount;
-      }
-
-      if (String(status || "").toLowerCase() === "club-jobs" && finalJobs.length > 0) {
-        const parentIds = [...new Set(finalJobs.map(j => j.is_club_job_parent ? j.job_no : j.parent_club_job))].filter(Boolean);
-        const families = await ExportJobModel.find({
-          $or: [{ job_no: { $in: parentIds } }, { parent_club_job: { $in: parentIds } }]
-        }).select(selectProjection).lean();
-
-        const finalParents = [];
-        const groups = {};
-        families.forEach(j => {
-          const pid = j.is_club_job_parent ? j.job_no : j.parent_club_job;
-          if (!groups[pid]) groups[pid] = { parent: null, children: [] };
-          if (j.is_club_job_parent) groups[pid].parent = j;
-          else groups[pid].children.push(j);
-        });
-
-        Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(pid => {
-          if (groups[pid].parent) {
-            groups[pid].parent.subRows = groups[pid].children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
-            finalParents.push(groups[pid].parent);
-          }
-        });
-
-        finalJobs = finalParents;
-        finalTotalCount = finalParents.length;
-      }
-
-      res.json({
-        success: true,
-        data: {
-          jobs: finalJobs,
-          pagination: {
-            currentPage: parseInt(page),
-            totalPages: Math.ceil(finalTotalCount / parseInt(limit)),
-            totalCount: finalTotalCount,
-            hasNextPage: page < Math.ceil(finalTotalCount / parseInt(limit)),
-            hasPrevPage: page > 1,
-          },
-        },
-      });
-    } catch (error) {
-      console.error("Error fetching export jobs:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error fetching export jobs",
-        error: error.message,
-      });
+      finalTotalCount = await ExportJobModel.countDocuments(filter);
+      finalJobs = await ExportJobModel.aggregate([
+        ...aggPipeline,
+        { $skip: skip },
+        { $limit: parseInt(limit) },
+      ]);
+    } else {
+      const [jobs, totalCount] = await Promise.all([
+        ExportJobModel.find(filter)
+          .select(selectProjection)
+          .sort(sort)
+          .skip(skip)
+          .limit(parseInt(limit))
+          .lean(),
+        ExportJobModel.countDocuments(filter),
+      ]);
+      finalJobs = jobs;
+      finalTotalCount = totalCount;
     }
-  });
+
+    if (String(status || "").toLowerCase() === "club-jobs" && finalJobs.length > 0) {
+      const parentIds = [...new Set(finalJobs.map(j => j.is_club_job_parent ? j.job_no : j.parent_club_job))].filter(Boolean);
+      const families = await ExportJobModel.find({
+        $or: [{ job_no: { $in: parentIds } }, { parent_club_job: { $in: parentIds } }]
+      }).select(selectProjection).lean();
+
+      const finalParents = [];
+      const groups = {};
+      families.forEach(j => {
+        const pid = j.is_club_job_parent ? j.job_no : j.parent_club_job;
+        if (!groups[pid]) groups[pid] = { parent: null, children: [] };
+        if (j.is_club_job_parent) groups[pid].parent = j;
+        else groups[pid].children.push(j);
+      });
+
+      Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(pid => {
+        if (groups[pid].parent) {
+          groups[pid].parent.subRows = groups[pid].children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
+          finalParents.push(groups[pid].parent);
+        }
+      });
+
+      finalJobs = finalParents;
+      finalTotalCount = finalParents.length;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        jobs: finalJobs,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(finalTotalCount / parseInt(limit)),
+          totalCount: finalTotalCount,
+          hasNextPage: page < Math.ceil(finalTotalCount / parseInt(limit)),
+          hasPrevPage: page > 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching export jobs:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching export jobs",
+      error: error.message,
+    });
+  }
+});
 
 // GET /api/filtered-exporters - Get unique list of exporters matching current filters
 router.get("/filtered-exporters", async (req, res) => {

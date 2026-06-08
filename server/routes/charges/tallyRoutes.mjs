@@ -141,7 +141,7 @@ const getJobDetailsInternal = async (job_number) => {
             }
         });
         job.containers = Array.from(uniqueContainersMap.values());
-        
+
         const allInvoices = childJobs.flatMap(j => j.invoices || []);
         let invNumbers = [];
         let invDates = [];
@@ -152,14 +152,14 @@ const getJobDetailsInternal = async (job_number) => {
         allInvoices.forEach(inv => {
             if (inv.invoiceNumber) invNumbers.push(inv.invoiceNumber);
             if (inv.invoiceDate) invDates.push(normalizeDate(inv.invoiceDate));
-            
+
             const invVal = parseFloat(inv.invoiceValue) || 0;
             totalInvValue += invVal;
-            
+
             const fob = parseFloat(inv.freightInsuranceCharges?.fobValue?.amount || invVal);
             const rate = parseFloat(inv.freightInsuranceCharges?.freight?.exchangeRate || job.exchange_rate || 1);
             totalFobValue += (fob * rate);
-            
+
             if (!currency && inv.currency) currency = inv.currency;
         });
 
@@ -513,7 +513,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "Net Amount": netAmount,
             "Charge Description": entry.chargeDescription || '',
             "Charge Head Category": chargeCategory || '',
-            "TDS Category": entry.tdsCategory || '94C',
+            "TDS Category": entry.tdsCategory || 'TDS ON CONTRACT 94C',
             "Status": entry.status,
             "isClubJob": entry.isClubJob || false,
             "clubbedJobs": entry.clubbedJobs || []
