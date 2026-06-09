@@ -6,6 +6,8 @@ const clientReplySchema = new mongoose.Schema(
     repliedBy: { type: String, required: true }, // username or client name
     senderType: { type: String, enum: ["client", "admin"], required: true },
     repliedAt: { type: Date, default: Date.now },
+    email: { type: String }, // client/admin email
+    username: { type: String }, // client/admin username
   },
   { _id: true }
 );
@@ -19,6 +21,8 @@ const clientQuerySchema = new mongoose.Schema(
     // Client details
     client_id: { type: String }, // optional client identification
     client_name: { type: String }, // name of the client raising the query
+    client_email: { type: String }, // client email
+    client_username: { type: String }, // client username
 
     // Query details
     subject: { type: String, required: true },

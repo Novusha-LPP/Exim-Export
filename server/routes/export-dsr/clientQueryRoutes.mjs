@@ -11,6 +11,8 @@ router.post("/api/client-queries", async (req, res) => {
       job_id,
       client_id,
       client_name,
+      client_email,
+      client_username,
       subject,
       message,
     } = req.body;
@@ -27,6 +29,8 @@ router.post("/api/client-queries", async (req, res) => {
       job_id,
       client_id,
       client_name,
+      client_email,
+      client_username,
       subject,
       message,
       status: "open",
@@ -98,7 +102,7 @@ router.get("/api/client-queries/:id", async (req, res) => {
 // ─── REPLY TO A CLIENT QUERY ───────────────────────────────────────────────
 router.put("/api/client-queries/:id/reply", async (req, res) => {
   try {
-    const { message, repliedBy, senderType } = req.body;
+    const { message, repliedBy, senderType, email, username } = req.body;
 
     if (!message || !repliedBy || !senderType) {
       return res.status(400).json({
@@ -124,6 +128,8 @@ router.put("/api/client-queries/:id/reply", async (req, res) => {
       message,
       repliedBy,
       senderType,
+      email,
+      username,
       repliedAt: new Date(),
     };
 
@@ -195,6 +201,64 @@ router.put("/api/client-queries/:id/resolve", async (req, res) => {
   } catch (error) {
     console.error("Error resolving client query:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+// ─── GET CLIENT JOBS QUERY STATUS ─────────────────────────────────────────────
+router.post("/api/client-queries/jobs-status", async (req, res) => {
+  try {
+    const { jobNos, isClient } = req.body;
+    if (!jobNos || !Array.isArray(jobNos)) {
+      return res.status(400).json({ success: false, message: "Valid jobNos array required" });
+    }
+
+    const queries = await ClientQueryModel.find({ job_no: { $in: jobNos } }).lean();
+
+    const statusMap = {};
+    jobNos.forEach(j => {
+      statusMap[j] = { hasQueries: false, hasUnseen: false, hasOpenQueries: false };
+    });
+
+    queries.forEach(q => {
+      if (!statusMap[q.job_no]) statusMap[q.job_no] = { hasQueries: true, hasUnseen: false, hasOpenQueries: false };
+      statusMap[q.job_no].hasQueries = true;
+      if (q.status === "open") statusMap[q.job_no].hasOpenQueries = true;
+
+      // Check unseen replies/queries from client vs admin perspective
+      if (isClient) {
+        if (!q.seenByClient) {
+          statusMap[q.job_no].hasUnseen = true;
+        }
+      } else {
+        if (!q.seenByAdmin) {
+          statusMap[q.job_no].hasUnseen = true;
+        }
+      }
+    });
+
+    return res.status(200).json({ success: true, data: statusMap });
+  } catch (err) {
+    console.error("Error fetching client jobs queries status:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// ─── MARK CLIENT QUERIES AS SEEN ─────────────────────────────────────────────
+router.put("/api/client-queries/mark-seen", async (req, res) => {
+  try {
+    const { queryIds, isClient } = req.body;
+
+    if (!queryIds || !Array.isArray(queryIds) || queryIds.length === 0) {
+      return res.status(400).json({ success: false, message: "queryIds array required" });
+    }
+
+    const updateField = isClient ? { seenByClient: true } : { seenByAdmin: true };
+    await ClientQueryModel.updateMany({ _id: { $in: queryIds } }, { $set: updateField });
+
+    return res.status(200).json({ success: true, message: "Client queries marked as seen" });
+  } catch (err) {
+    console.error("Error marking client queries as seen:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
