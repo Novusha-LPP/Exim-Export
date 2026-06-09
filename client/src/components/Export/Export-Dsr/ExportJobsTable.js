@@ -28,6 +28,8 @@ import {
   Divider,
   DialogActions,
   ListSubheader,
+  Popover,
+  Typography,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -140,6 +142,23 @@ const ResponsiveStyles = () => (
         background: #94a3b8;
       }
 
+      @keyframes pulse-dot {
+        0% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+        }
+        70% {
+          transform: scale(1);
+          box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+        }
+        100% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        }
+      }
+      .flashing-pulse-dot {
+        animation: pulse-dot 2s infinite;
+      }
     `}
   </style>
 );
@@ -591,9 +610,167 @@ const getCurrentFinancialYear = () => {
   return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
 };
 
+const PulseOverviewHover = ({ exporter }) => {
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const fetchPulse = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/export-analytics/pulse`, {
+          params: { exporter }
+        });
+        if (active && response.data.success) {
+          setSummary(response.data.summary);
+        }
+      } catch (error) {
+        console.error("Pulse fetch error in hover overview:", error);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchPulse();
+    return () => { active = false; };
+  }, [exporter]);
+
+  if (loading || !summary) {
+    return (
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '200px', bgcolor: '#0b0f19', color: '#94a3b8', borderRadius: '8px', border: '1px solid #1e293b' }}>
+        <CircularProgress size={16} sx={{ color: '#f87171', mr: 1.5 }} />
+        <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.5px' }}>FETCHING OVERVIEW...</span>
+      </Box>
+    );
+  }
+
+  const getSeverity = (title, value) => {
+    if (title === "CREATED TODAY") {
+      return value > 0 ? 'green' : 'amber';
+    }
+    return value === 0 ? 'green' : value <= 10 ? 'amber' : 'red';
+  };
+
+  const getSeverityColor = (severity) => {
+    if (severity === 'green') return '#10b981';
+    if (severity === 'amber') return '#f59e0b';
+    return '#ef4444';
+  };
+
+  const getSeverityBg = (severity) => {
+    if (severity === 'green') return 'rgba(16, 185, 129, 0.1)';
+    if (severity === 'amber') return 'rgba(245, 158, 11, 0.1)';
+    return 'rgba(239, 68, 68, 0.1)';
+  };
+
+  const getSeverityGlow = (severity) => {
+    if (severity === 'green') return '#34d399';
+    if (severity === 'amber') return '#fbbf24';
+    return '#f87171';
+  };
+
+  const getStatusLabel = (severity) => {
+    if (severity === 'green') return '🏆 ALL CLEAR';
+    if (severity === 'amber') return '⚡ PENDING';
+    return '🚨 ACTION REQUIRED';
+  };
+
+  const metrics = [
+    { title: "TOTAL PENDING JOBS", value: summary.totalPending },
+    { title: "HANDOVER PENDING", value: summary.handover },
+    { title: "BILLING PENDING", value: summary.billing },
+    { title: "OPERATIONS PENDING", value: summary.ops },
+    { title: "CREATED TODAY", value: summary.createdToday },
+  ];
+
+  return (
+    <Box sx={{
+      p: 2.5,
+      bgcolor: '#0a0f1d',
+      borderRadius: '12px',
+      border: '1px solid #1e293b',
+      boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
+      width: '450px',
+      fontFamily: '"Outfit", "Roboto", sans-serif'
+    }}>
+      <Box sx={{ mb: 2, textAlign: 'center' }}>
+        <Typography sx={{ fontSize: '13px', fontWeight: 800, color: '#f3f4f6', letterSpacing: '1px', mb: 0.2 }}>
+          ALVISION — PULSE OVERVIEW
+        </Typography>
+        <Typography sx={{ fontSize: '10px', color: '#64748b', letterSpacing: '0.5px' }}>
+          Real-time monitoring across all modules
+        </Typography>
+      </Box>
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.5 }}>
+        {metrics.map((m, idx) => {
+          const severity = getSeverity(m.title, m.value);
+          const color = getSeverityColor(severity);
+          const bg = getSeverityBg(severity);
+          const glow = getSeverityGlow(severity);
+          
+          const gridColumn = idx === 4 ? 'span 2' : 'span 1';
+
+          return (
+            <Box key={m.title} sx={{
+              gridColumn,
+              p: 1.5,
+              bgcolor: 'rgba(17, 24, 39, 0.7)',
+              borderRadius: '8px',
+              border: `1.5px solid rgba(30, 41, 59, 0.5)`,
+              borderTop: `3px solid ${color}`,
+              boxShadow: `0 4px 15px rgba(0, 0, 0, 0.25)`,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <Typography sx={{ fontSize: '9px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.5px', mb: 0.8, textAlign: 'center' }}>
+                {m.title}
+              </Typography>
+              <Typography sx={{
+                fontSize: '28px',
+                fontWeight: 900,
+                color: glow,
+                textShadow: `0 0 10px ${color}40`,
+                lineHeight: 1,
+                mb: 1
+              }}>
+                {m.value}
+              </Typography>
+              <Box sx={{
+                px: 1,
+                py: 0.2,
+                bgcolor: bg,
+                borderRadius: '4px',
+                border: `1px solid ${color}30`
+              }}>
+                <Typography sx={{ fontSize: '7.5px', fontWeight: 700, color, letterSpacing: '0.3px' }}>
+                  {getStatusLabel(severity)}
+                </Typography>
+              </Box>
+            </Box>
+          );
+        })}
+      </Box>
+    </Box>
+  );
+};
+
 const ExportJobsTable = () => {
   const { user } = useContext(UserContext);
   const isAdmin = user?.role === "Admin";
+  const [pulseAnchorEl, setPulseAnchorEl] = useState(null);
+  const pulseOpen = Boolean(pulseAnchorEl);
+
+  const handlePulseHover = (event) => {
+    setPulseAnchorEl(event.currentTarget);
+  };
+
+  const handlePulseClose = () => {
+    setPulseAnchorEl(null);
+  };
 
   const getFilterSelectStyle = (isNotDefault, widthVal) => ({
     ...s.select,
@@ -2183,12 +2360,79 @@ const ExportJobsTable = () => {
             </div>
             {/* Action Buttons - Only for Export - Jobs */}
             {window.location.pathname.startsWith("/export-dsr") && (
-              <div style={{ display: "flex", gap: "10px" }}>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <div
+                  onMouseEnter={handlePulseHover}
+                  onMouseLeave={handlePulseClose}
+                  style={{ display: "flex", alignItems: "center" }}
+                >
+                  <button
+                    style={{
+                      ...s.btnPrimary,
+                      padding: "8px 15px",
+                      backgroundColor: "#0f172a",
+                      color: "#fda4af",
+                      border: "1.5px solid rgba(244, 63, 94, 0.4)",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontWeight: "700",
+                      fontSize: "13px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      boxShadow: "0 0 10px rgba(244, 63, 94, 0.15)",
+                      transition: "all 0.2s ease",
+                      height: "32px",
+                      boxSizing: "border-box"
+                    }}
+                  >
+                    <span 
+                      className="flashing-pulse-dot"
+                      style={{ 
+                        width: "8px", 
+                        height: "8px", 
+                        borderRadius: "50%", 
+                        backgroundColor: "#ef4444", 
+                        boxShadow: "0 0 8px #ef4444",
+                        display: "inline-block"
+                      }} 
+                    />
+                    Pulse
+                  </button>
+                </div>
+
+                <Popover
+                  id="mouse-over-popover"
+                  sx={{
+                    pointerEvents: 'none',
+                  }}
+                  open={pulseOpen}
+                  anchorEl={pulseAnchorEl}
+                  anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'center',
+                  }}
+                  transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'center',
+                  }}
+                  onClose={handlePulseClose}
+                  disableRestoreFocus
+                  PaperProps={{
+                    style: {
+                      background: 'transparent',
+                      boxShadow: 'none',
+                      border: 'none',
+                    },
+                  }}
+                >
+                  <PulseOverviewHover exporter={selectedExporterFilter} />
+                </Popover>
+
                 <button
                   style={{
                     ...s.btnPrimary,
                     padding: "8px 20px",
-                    height: "auto",
                     backgroundColor: "#fff",
                     color: "#2563eb",
                     border: "1px solid #2563eb",
@@ -2196,6 +2440,8 @@ const ExportJobsTable = () => {
                     cursor: "pointer",
                     fontWeight: "600",
                     fontSize: "13px",
+                    height: "32px",
+                    boxSizing: "border-box"
                   }}
                   onClick={() => setOpenDSRDialog(true)}
                 >
@@ -2205,7 +2451,6 @@ const ExportJobsTable = () => {
                   style={{
                     ...s.btnPrimary,
                     padding: "8px 20px",
-                    height: "auto",
                     backgroundColor: "#2563eb",
                     color: "#fff",
                     border: "none",
@@ -2213,6 +2458,8 @@ const ExportJobsTable = () => {
                     cursor: "pointer",
                     fontWeight: "600",
                     fontSize: "13px",
+                    height: "32px",
+                    boxSizing: "border-box"
                   }}
                   className="create-btn-responsive"
                   onClick={() => setOpenAddDialog(true)}

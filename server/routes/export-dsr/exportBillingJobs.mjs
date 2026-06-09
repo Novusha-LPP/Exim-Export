@@ -48,6 +48,62 @@ function isApprovedRequest(isApproved, status) {
   return Boolean(isApproved) || /approved/i.test(String(status || ""));
 }
 
+const formatClubJobSeries = (clubbedJobs, defaultVal = "") => {
+  if (!Array.isArray(clubbedJobs) || clubbedJobs.length === 0) {
+    return defaultVal;
+  }
+  const uniqueJobs = [...new Set(clubbedJobs.map(j => String(j || '').trim()).filter(Boolean))];
+  if (uniqueJobs.length === 0) return defaultVal;
+  if (uniqueJobs.length === 1) return uniqueJobs[0];
+
+  const parsed = [];
+  for (const job of uniqueJobs) {
+    const parts = job.split('/');
+    if (parts.length === 5) {
+      const numStr = parts[3];
+      const num = parseInt(numStr, 10);
+      if (!isNaN(num)) {
+        parsed.push({
+          num,
+          padLength: numStr.length,
+          prefix: parts.slice(0, 3).join('/'),
+          suffix: parts[4],
+          original: job
+        });
+        continue;
+      }
+    }
+    return uniqueJobs.join(', ');
+  }
+
+  const firstPrefix = parsed[0].prefix;
+  const firstSuffix = parsed[0].suffix;
+  const allSamePrefixSuffix = parsed.every(p => p.prefix === firstPrefix && p.suffix === firstSuffix);
+
+  if (!allSamePrefixSuffix) {
+    return uniqueJobs.join(', ');
+  }
+
+  parsed.sort((a, b) => a.num - b.num);
+
+  let isContinuous = true;
+  for (let i = 1; i < parsed.length; i++) {
+    if (parsed[i].num !== parsed[i - 1].num + 1) {
+      isContinuous = false;
+      break;
+    }
+  }
+
+  if (isContinuous) {
+    const firstPadded = String(parsed[0].num).padStart(parsed[0].padLength, '0');
+    const lastPadded = String(parsed[parsed.length - 1].num).padStart(parsed[parsed.length - 1].padLength, '0');
+    return `${firstPrefix}/${firstPadded} TO ${lastPadded}/${firstSuffix}`;
+  } else {
+    const numString = parsed.map(p => p.num).join(',');
+    return `${firstPrefix}/${numString}/${firstSuffix}`;
+  }
+};
+
 function summarizeRequestState(charges, refField, statusField, approvalField) {
   const groups = new Map();
 
@@ -119,7 +175,9 @@ function summarizeJob(job) {
   return {
     _id: job._id,
     job_no: job.job_no,
-    tally_club_ref_no: job.tally_club_ref_no || "",
+    tally_club_ref_no: (job.is_club_job_parent && Array.isArray(job.clubbed_jobs) && job.clubbed_jobs.length > 0)
+      ? formatClubJobSeries(job.clubbed_jobs, job.tally_club_ref_no || job.job_no)
+      : (job.tally_club_ref_no || ""),
     year: job.year,
     exporter: job.exporter || "",
     custom_house: job.custom_house || "",
@@ -402,6 +460,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       isGeneralJob: 1,
       is_club_job_parent: 1,
       parent_club_job: 1,
+      clubbed_jobs: 1,
       "invoices.invoiceNumber": 1,
       "containers.containerNo": 1,
       "containers.type": 1,
@@ -434,7 +493,6 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       .lean();
 
     if (normalizedTab === "club-jobs" && jobs.length > 0) {
-      console.log("exportBillingJobs: club-jobs base jobs count:", jobs.length);
       const parentIds = [...new Set(jobs.map(j => j.is_club_job_parent ? j.job_no : j.parent_club_job))].filter(Boolean);
       jobs = await ExportJobModel.find({
         $or: [{ job_no: { $in: parentIds } }, { parent_club_job: { $in: parentIds } }]
@@ -510,7 +568,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
           groups[parentId].children.push(job);
         }
       });
-      
+
       const sortedClubJobs = [];
       const parentIds = Object.keys(groups).sort((a, b) => b.localeCompare(a));
       parentIds.forEach(pid => {
@@ -524,9 +582,9 @@ router.get("/api/export-billing-jobs", async (req, res) => {
         }
       });
       if (String(unresolvedOnly).toLowerCase() === "true") {
-        summarized.splice(0, summarized.length, ...sortedClubJobs.filter(parent => 
-           parent.unresolved_queries > 0 || 
-           (parent.subRows && parent.subRows.some(child => child.unresolved_queries > 0))
+        summarized.splice(0, summarized.length, ...sortedClubJobs.filter(parent =>
+          parent.unresolved_queries > 0 ||
+          (parent.subRows && parent.subRows.some(child => child.unresolved_queries > 0))
         ));
       } else {
         summarized.splice(0, summarized.length, ...sortedClubJobs);

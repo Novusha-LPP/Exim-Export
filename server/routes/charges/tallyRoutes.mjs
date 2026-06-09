@@ -27,6 +27,109 @@ const normalizeDate = (dateVal) => {
     return str;
 };
 
+/**
+ * Format a list of clubbed jobs into a range or a list.
+ * Expects job format: PREFIX/SERIAL/SUFFIX, e.g. AMD/EXP/SEA/00302/26-27
+ */
+const formatClubJobSeries = (clubbedJobs, defaultVal = "") => {
+    if (!Array.isArray(clubbedJobs) || clubbedJobs.length === 0) {
+        return defaultVal;
+    }
+    const uniqueJobs = [...new Set(clubbedJobs.map(j => String(j || '').trim()).filter(Boolean))];
+    if (uniqueJobs.length === 0) return defaultVal;
+    if (uniqueJobs.length === 1) return uniqueJobs[0];
+
+    const parsed = [];
+    for (const job of uniqueJobs) {
+        const parts = job.split('/');
+        if (parts.length === 5) {
+            const numStr = parts[3];
+            const num = parseInt(numStr, 10);
+            if (!isNaN(num)) {
+                parsed.push({
+                    num,
+                    padLength: numStr.length,
+                    prefix: parts.slice(0, 3).join('/'),
+                    suffix: parts[4],
+                    original: job
+                });
+                continue;
+            }
+        }
+        // Fallback if formatting fails for any item
+        return uniqueJobs.join(', ');
+    }
+
+    // Ensure all items have the same prefix and suffix
+    const firstPrefix = parsed[0].prefix;
+    const firstSuffix = parsed[0].suffix;
+    const allSamePrefixSuffix = parsed.every(p => p.prefix === firstPrefix && p.suffix === firstSuffix);
+
+    if (!allSamePrefixSuffix) {
+        return uniqueJobs.join(', ');
+    }
+
+    // Sort by numeric value ascending
+    parsed.sort((a, b) => a.num - b.num);
+
+    // Check if continuous
+    let isContinuous = true;
+    for (let i = 1; i < parsed.length; i++) {
+        if (parsed[i].num !== parsed[i - 1].num + 1) {
+            isContinuous = false;
+            break;
+        }
+    }
+
+    if (isContinuous) {
+        const firstPadded = String(parsed[0].num).padStart(parsed[0].padLength, '0');
+        const lastPadded = String(parsed[parsed.length - 1].num).padStart(parsed[parsed.length - 1].padLength, '0');
+        return `${firstPrefix}/${firstPadded} TO ${lastPadded}/${firstSuffix}`;
+    } else {
+        const numString = parsed.map(p => p.num).join(',');
+        return `${firstPrefix}/${numString}/${firstSuffix}`;
+    }
+};
+
+/**
+ * Resolves a potentially formatted club job series (or standard job number)
+ * into a query conditions array for $or.
+ */
+const resolveJobNumberQuery = (jobNo) => {
+    if (!jobNo) return [];
+    const cleanJobNo = String(jobNo).trim();
+    
+    // Check for "TO" format: e.g. AMD/EXP/SEA/00463 TO 00466/26-27
+    const toMatch = cleanJobNo.match(/^(.*)\/(\d+)\s+TO\s+(\d+)\/([^\/]+)$/i);
+    if (toMatch) {
+        const prefix = toMatch[1];
+        const startNum = toMatch[2];
+        const suffix = toMatch[4];
+        const candidate1 = `${prefix}/${startNum}/${suffix}`;
+        return [
+            { job_no: candidate1 },
+            { job_no: { $regex: new RegExp("^" + prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "/0*" + parseInt(startNum, 10) + "/" + suffix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "$", "i") } }
+        ];
+    }
+
+    // Check for comma-separated format: e.g. AMD/EXP/SEA/302,303,304,306,309/26-27
+    const commaMatch = cleanJobNo.match(/^(.*)\/(\d+(?:,\d+)+)\/([^\/]+)$/i);
+    if (commaMatch) {
+        const prefix = commaMatch[1];
+        const firstNum = commaMatch[2].split(',')[0].trim();
+        const suffix = commaMatch[3];
+        return [
+            { job_no: { $regex: new RegExp("^" + prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "/0*" + parseInt(firstNum, 10) + "/" + suffix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "$", "i") } }
+        ];
+    }
+
+    // Standard case
+    return [
+        { job_no: cleanJobNo },
+        { tally_club_ref_no: cleanJobNo }
+    ];
+};
+
 router.get("/test", (req, res) => res.json({ status: "Tally API is connected and working!" }));
 
 /**
@@ -106,12 +209,26 @@ const mapJobAndInvoiceToTally = (job, inv) => {
  */
 const getJobDetailsInternal = async (job_number) => {
     if (!job_number) return null;
-    const job = await ExJobModel.findOne({
-        $or: [{ job_no: job_number }, { tally_club_ref_no: job_number }]
+    let job = await ExJobModel.findOne({
+        $or: resolveJobNumberQuery(job_number)
     }).sort({ is_club_job_parent: -1 }).lean();
     if (!job) return null;
 
+    // If it's a child job of a club job, resolve and retrieve the parent job details instead
+    if (!job.is_club_job_parent && job.parent_club_job) {
+        const parentJob = await ExJobModel.findOne({
+            $or: [{ job_no: job.parent_club_job }, { tally_club_ref_no: job.parent_club_job }]
+        }).lean();
+        if (parentJob) {
+            job = parentJob;
+        }
+    }
+
     if (job.is_club_job_parent && Array.isArray(job.clubbed_jobs) && job.clubbed_jobs.length > 0) {
+        // Format the club job series
+        const clubJobSeries = formatClubJobSeries(job.clubbed_jobs, job.tally_club_ref_no || job.job_no);
+        job.tally_club_ref_no = clubJobSeries;
+
         const childJobs = await ExJobModel.find({ job_no: { $in: job.clubbed_jobs } }).lean();
 
         let totalNetWeight = 0;
@@ -223,26 +340,73 @@ router.get("/next-sequence", authApiKey, async (req, res) => {
             return res.status(400).json({ error: "type (purchase/payment) and jobNo are required" });
         }
 
+        let resolvedJobNo = jobNo;
+        let job = await ExJobModel.findOne({
+            $or: resolveJobNumberQuery(jobNo)
+        }).sort({ is_club_job_parent: -1 }).lean();
+
+        if (job) {
+            if (!job.is_club_job_parent && job.parent_club_job) {
+                const parentJob = await ExJobModel.findOne({
+                    $or: [{ job_no: job.parent_club_job }, { tally_club_ref_no: job.parent_club_job }]
+                }).lean();
+                if (parentJob) {
+                    job = parentJob;
+                }
+            }
+        }
+
+        let countQuery = {};
+        if (job && job.is_club_job_parent && Array.isArray(job.clubbed_jobs) && job.clubbed_jobs.length > 0) {
+            const formattedSeries = formatClubJobSeries(job.clubbed_jobs, job.tally_club_ref_no || job.job_no);
+            resolvedJobNo = formattedSeries;
+
+            // Generate candidates matching legacy/new patterns
+            const candidates = new Set([
+                job.job_no,
+                job.tally_club_ref_no,
+                formattedSeries,
+                ...job.clubbed_jobs
+            ].filter(Boolean));
+
+            const orConditions = [];
+            for (const cand of candidates) {
+                const escapedCand = cand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                orConditions.push({ jobNo: { $regex: new RegExp("^" + escapedCand + "$", "i") } });
+
+                const parts = cand.split('/');
+                if (parts.length === 5 && !cand.includes(" TO ") && !cand.includes(",")) {
+                    orConditions.push({ jobNo: { $regex: new RegExp("(^|,|\\s)" + escapedCand + "(\\s|,|$)", "i") } });
+                }
+            }
+            countQuery = { $or: orConditions };
+        } else {
+            if (type === "purchase") {
+                countQuery = { jobNo: { $regex: new RegExp("^" + jobNo.split(",")[0].trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "(,|$)", "i") } };
+            } else {
+                countQuery = { jobNo: { $regex: new RegExp("^" + jobNo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "$", "i") } };
+            }
+        }
+
         let count = 0;
         let prefix = "";
         if (type === "purchase") {
-            const jobNoRegex = { $regex: new RegExp("^" + jobNo.split(",")[0].trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "(,|$)", "i") };
-            count = await PurchaseBookEntryModel.countDocuments({ jobNo: jobNoRegex });
+            count = await PurchaseBookEntryModel.countDocuments(countQuery);
             prefix = "PB";
         } else if (type === "payment") {
-            count = await PaymentRequestModel.countDocuments({ jobNo });
+            count = await PaymentRequestModel.countDocuments(countQuery);
             prefix = "R1";
         } else {
             return res.status(400).json({ error: "Invalid type." });
         }
 
         const nextIndex = (count + 1).toString().padStart(2, '0');
-        let fullNo = `${prefix}/${nextIndex}/${jobNo}`;
+        let fullNo = `${prefix}/${nextIndex}/${resolvedJobNo}`;
 
-        const parts = jobNo.split('/');
+        const parts = resolvedJobNo.split('/');
         if (parts.length === 5 && parts[1].toUpperCase() === 'EXP') {
             // Already in BRANCH/EXP/MODE/SERIAL/YEAR format
-            fullNo = `${prefix}/${nextIndex}/${jobNo}`.toUpperCase();
+            fullNo = `${prefix}/${nextIndex}/${resolvedJobNo}`.toUpperCase();
         } else if (parts.length === 5 && parts[2].toUpperCase() === 'EXP') {
             // In OLD format: BRANCH/MODE/EXP/SERIAL/YEAR
             fullNo = `${prefix}/${nextIndex}/${parts[0]}/${parts[2]}/${parts[1]}/${parts[3]}/${parts[4]}`.toUpperCase();
@@ -252,7 +416,7 @@ router.get("/next-sequence", authApiKey, async (req, res) => {
             success: true,
             nextIndex,
             fullNo,
-            jobNo
+            jobNo: resolvedJobNo
         });
 
     } catch (error) {
@@ -403,37 +567,54 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
 
         if (!entry) return res.status(404).json({ error: "Purchase Book Entry not found." });
 
-        // Fallback for Charge Head Category if missing
+        // Fetch Charge Head Category and TDS Rate from Job & Charge details
         let chargeCategory = entry.chargeHeadCategory;
-        if (!chargeCategory) {
-            try {
-                let job = null;
-                if (entry.jobRef) {
-                    job = await ExJobModel.findById(entry.jobRef).lean();
+        let tdsRate = 0;
+        try {
+            let job = null;
+            if (entry.jobRef) {
+                job = await ExJobModel.findById(entry.jobRef).lean();
+            }
+            if (!job && entry.jobNo) {
+                const firstJob = String(entry.jobNo).split(",")[0].trim();
+                job = await ExJobModel.findOne({
+                    $or: [{ job_no: firstJob }, { tally_club_ref_no: firstJob }]
+                }).sort({ is_club_job_parent: -1 }).lean();
+            }
+            if (job) {
+                let charge = null;
+                if (entry.chargeRef) {
+                    charge = job.charges?.find(c => c._id?.toString() === entry.chargeRef);
                 }
-                if (!job && entry.jobNo) {
-                    const firstJob = String(entry.jobNo).split(",")[0].trim();
-                    job = await ExJobModel.findOne({
-                        $or: [{ job_no: firstJob }, { tally_club_ref_no: firstJob }]
-                    }).sort({ is_club_job_parent: -1 }).lean();
+                if (!charge && entry.chargeHeading) {
+                    const normHeading = entry.chargeHeading.trim().toLowerCase();
+                    charge = job.charges?.find(c => c.chargeHead?.trim().toLowerCase() === normHeading);
                 }
-                if (job) {
-                    let charge = null;
-                    if (entry.chargeRef) {
-                        charge = job.charges?.find(c => c._id?.toString() === entry.chargeRef);
-                    }
-                    if (!charge && entry.chargeHeading) {
-                        const normHeading = entry.chargeHeading.trim().toLowerCase();
-                        charge = job.charges?.find(c => c.chargeHead?.trim().toLowerCase() === normHeading);
-                    }
-                    if (charge) {
+                if (charge) {
+                    if (!chargeCategory) {
                         chargeCategory = charge.chargeType || charge.category;
                     }
+                    if (charge.cost && charge.cost.tdsPercent !== undefined) {
+                        tdsRate = Number(charge.cost.tdsPercent);
+                    }
                 }
-            } catch (err) {
-                console.error("Error fetching fallback category for purchase entry:", err);
             }
+        } catch (err) {
+            console.error("Error fetching job/charge details for purchase entry:", err);
         }
+
+        // Fallback calculation if tdsRate is not retrieved
+        if (!tdsRate && entry.tds && entry.taxableValue) {
+            const calculated = (entry.tds / entry.taxableValue) * 100;
+            tdsRate = Math.round(calculated);
+        }
+
+        // Ensure tdsRate is either 1 or 2
+        if (tdsRate !== 2) {
+            tdsRate = 1;
+        }
+
+        const tdsKey = tdsRate === 2 ? "TDS ON CONTRACT 94C - 1024 -2%" : "TDS ON CONTRACT 94C - 1023- 1%";
 
         // Get comma-separated supplier invoice numbers & dates if clubbed
         let supplierInvNo = entry.supplierInvNo;
@@ -444,7 +625,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         let rawJobDB = null;
         try {
             rawJobDB = await ExJobModel.findOne({
-                $or: [{ job_no: firstJobRaw }, { tally_club_ref_no: firstJobRaw }]
+                $or: resolveJobNumberQuery(firstJobRaw)
             }).sort({ is_club_job_parent: -1 }).lean();
         } catch (e) { }
 
@@ -457,7 +638,20 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 clubbedList = rawJobDB.clubbed_jobs;
                 c1ParentJobNo = rawJobDB.tally_club_ref_no || rawJobDB.job_no;
             } else if (rawJobDB.parent_club_job) {
-                c1ParentJobNo = rawJobDB.tally_club_ref_no || rawJobDB.parent_club_job;
+                try {
+                    const parentJob = await ExJobModel.findOne({
+                        $or: [{ job_no: rawJobDB.parent_club_job }, { tally_club_ref_no: rawJobDB.parent_club_job }]
+                    }).lean();
+                    if (parentJob) {
+                        isClub = true;
+                        clubbedList = parentJob.clubbed_jobs || [];
+                        c1ParentJobNo = parentJob.tally_club_ref_no || parentJob.job_no;
+                    } else {
+                        c1ParentJobNo = rawJobDB.tally_club_ref_no || rawJobDB.parent_club_job;
+                    }
+                } catch (err) {
+                    c1ParentJobNo = rawJobDB.tally_club_ref_no || rawJobDB.parent_club_job;
+                }
             }
         }
 
@@ -486,7 +680,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "Entry Date": normalizeDate(entry.entryDate),
             "Supplier Inv No": supplierInvNo,
             "Supplier Inv Date": supplierInvDate,
-            "Job No": c1ParentJobNo ? c1ParentJobNo : entry.jobNo,
+            "Job No": (isClub && clubbedList.length > 0) ? formatClubJobSeries(clubbedList, c1ParentJobNo || entry.jobNo) : (c1ParentJobNo ? c1ParentJobNo : entry.jobNo),
             "Supplier Name": entry.supplierName,
             "Address 1": entry.address1,
             "Address 2": entry.address2,
@@ -508,12 +702,12 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "CGST": entry.cgstAmt,
             "SGST": entry.sgstAmt,
             "IGST": entry.igstAmt,
-            "TDS": entry.tds,
+            [tdsKey]: entry.tds,
             "Total": grossTotal,
             "Net Amount": netAmount,
             "Charge Description": entry.chargeDescription || '',
             "Charge Head Category": chargeCategory || '',
-            "TDS Category": entry.tdsCategory || 'TDS ON CONTRACT 94C - 1023- 1%',
+            "TDS Category": tdsKey,
             "Status": entry.status,
             "isClubJob": entry.isClubJob || false,
             "clubbedJobs": entry.clubbedJobs || []
@@ -531,13 +725,20 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 formattedData["Description of Services"] = `REIMBURSEMENT - ${entry.supplierName}`;
             }
 
-            // For reimbursements, the taxable value should be the gross amount.
-            // We use Math.max to ensure we pick the gross amount, 
-            // whether it's from the saved taxableValue or reconstructed from Total + TDS.
-            const savedTaxable = Number(entry.taxableValue) || 0;
-            const total = Number(formattedData["Total"]) || 0;
-            const tds = Number(formattedData["TDS"]) || 0;
-            formattedData["Taxable Value"] = Math.max(savedTaxable, total + tds).toFixed(2);
+            // For reimbursements, the taxable value should be the total value before TDS.
+            const taxable = Number(entry.taxableValue || entry.total || 0);
+            formattedData["Taxable Value"] = taxable.toFixed(2);
+
+            // The total value should be the net value (after TDS deduction)
+            const net = entry.netAmount !== undefined && entry.netAmount !== null
+                ? Number(entry.netAmount)
+                : (Number(entry.total || 0) - Number(entry.tds || 0));
+
+            formattedData["Total"] = net;
+            formattedData["Net Amount"] = net;
+        } else if (String(formattedData["Charge Head Category"]).toLowerCase() === "margin") {
+            // For Margin, do not change the logic of taxable value, but ensure Total is set to netAmount
+            formattedData["Total"] = netAmount;
         }
 
         // Include Job Details

@@ -40,10 +40,11 @@ const CreateClubJobModal = ({ open, onClose, currentJob, onSuccess }) => {
       
       if (res.data?.success) {
         const targetParentJobNo = currentJob.is_club_job_parent ? currentJob.job_no : currentJob.parent_club_job;
+        const excludeJobNo = targetParentJobNo || currentJob.job_no;
 
         const eligibleJobs = res.data.data.jobs.filter(
           (j) =>
-            j.job_no !== currentJob.job_no &&
+            j.job_no !== excludeJobNo &&
             !j.is_club_job_parent &&
             (!j.parent_club_job || (targetParentJobNo && j.parent_club_job === targetParentJobNo))
         );
@@ -55,7 +56,7 @@ const CreateClubJobModal = ({ open, onClose, currentJob, onSuccess }) => {
               `${import.meta.env.VITE_API_STRING}/get-export-job/${encodeURIComponent(targetParentJobNo)}`
             );
             if (parentRes.data?.clubbed_jobs) {
-              setSelectedJobs(parentRes.data.clubbed_jobs.filter(j => j !== currentJob.job_no && j !== targetParentJobNo));
+              setSelectedJobs(parentRes.data.clubbed_jobs.filter(j => j !== targetParentJobNo));
             }
           } catch (err) {
             console.error("Failed to fetch parent job details", err);
@@ -88,8 +89,14 @@ const CreateClubJobModal = ({ open, onClose, currentJob, onSuccess }) => {
 
     try {
       setLoading(true);
-      // Always include parent and current job, plus any other selected jobs
-      const finalSelectedJobs = [...new Set([parentJobNo, currentJob?.job_no, ...selectedJobs])];
+      // If the current job is the parent, always include it.
+      // If it is a child, only include it if it's checked (present in selectedJobs).
+      const includeCurrent = currentJob?.job_no === parentJobNo || selectedJobs.includes(currentJob?.job_no);
+      const finalSelectedJobs = [...new Set([
+        parentJobNo,
+        ...(includeCurrent ? [currentJob?.job_no] : []),
+        ...selectedJobs
+      ])];
       
       const res = await axios.post(`${import.meta.env.VITE_API_STRING}/create-club-job`, {
         selected_job_nos: finalSelectedJobs,
