@@ -15,7 +15,7 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
     formik?.values?.id ||
     null;
 
-  const jobData = job || formik?.values || {};
+  const jobData = formik?.values || job || {};
   const jobNo = jobData.job_no || jobData.jobNumber || "";
   const jobYear = jobData.year || "";
   const shippingLine = jobData.shipping_line_airline || "";
@@ -54,6 +54,7 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
           hideTabs={false}
           isEditable={true}
           onChargesCountChange={setChargesCount}
+          job={jobData}
         />
 
         {/* Fine Section */}
