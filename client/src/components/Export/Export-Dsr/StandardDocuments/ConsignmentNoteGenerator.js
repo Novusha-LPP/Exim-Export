@@ -104,7 +104,7 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       group.grossWeight += Number(c.grossWeight) || 0;
       group.grWtPlusTrWt += Number(c.grWtPlusTrWt) || 0;
       
-      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || "";
+      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || primaryJob.descriptionOfGoods || "";
       const hsn = c.hsn || c._sourceHsnList || c.hsnList || c.ritc || "";
       const sbNo = c.shippingBillNo || c.sb_no || "";
       const sbDate = c.sb_date || "";

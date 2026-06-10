@@ -321,7 +321,9 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
                     const day = String(d.getDate()).padStart(2, "0");
                     const month = String(d.getMonth() + 1).padStart(2, "0");
                     const year = d.getFullYear();
-                    formik.setFieldValue("send_for_billing_date", `${day}-${month}-${year}`);
+                    const hours = String(d.getHours()).padStart(2, "0");
+                    const minutes = String(d.getMinutes()).padStart(2, "0");
+                    formik.setFieldValue("send_for_billing_date", `${day}-${month}-${year} ${hours}:${minutes}`);
                   }
                 }}
                 disabled={!isEditable || (chargesCount === 0 && (formik.values.charges || []).length === 0)}

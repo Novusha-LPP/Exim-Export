@@ -80,7 +80,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       group.grossWeight += Number(c.grossWeight) || 0;
       group.grWtPlusTrWt += Number(c.grWtPlusTrWt) || 0;
 
-      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || "";
+      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || primaryJob.descriptionOfGoods || "";
       if (desc && !group.uniqueDescriptions.includes(desc)) {
         group.uniqueDescriptions.push(desc);
       }
