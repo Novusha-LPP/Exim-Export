@@ -27,6 +27,72 @@ async function syncToClientDatabase(jobNo, updateObject) {
   }
 }
 
+async function syncClubBillingDetails(jobNo, updateObject) {
+  try {
+    if (!jobNo || !updateObject || Object.keys(updateObject).length === 0) return;
+
+    // Filter the updates to only include billing details fields
+    const billingUpdates = {};
+    Object.keys(updateObject).forEach(key => {
+      if (
+        key.includes("billing_details") ||
+        key.includes("billingDocsSentDt") ||
+        key.includes("billingDocsSentUpload")
+      ) {
+        billingUpdates[key] = updateObject[key];
+      }
+    });
+
+    if (Object.keys(billingUpdates).length === 0) return;
+
+    // Find the current job to check if it's clubbed
+    const job = await ExJobModel.findOne({ job_no: jobNo }).lean();
+    if (!job) return;
+
+    const isClubJob = job.is_club_job_parent || !!job.parent_club_job;
+    if (!isClubJob) return;
+
+    const parentJobNo = job.is_club_job_parent ? job.job_no : job.parent_club_job;
+
+    // Find all sibling jobs in the same club (including parent if current is child)
+    const siblingJobs = await ExJobModel.find({
+      $or: [
+        { job_no: parentJobNo },
+        { parent_club_job: parentJobNo }
+      ],
+      job_no: { $ne: jobNo }
+    }).select("job_no").lean();
+
+    if (siblingJobs.length === 0) return;
+
+    const siblingJobNos = siblingJobs.map(sj => sj.job_no);
+    console.log(`[Club Billing Sync] Propagating billing updates for ${jobNo} to club siblings:`, siblingJobNos);
+
+    // Update the fields directly in the database first
+    await ExJobModel.updateMany(
+      { job_no: { $in: siblingJobNos } },
+      { $set: billingUpdates }
+    );
+
+    // Load each sibling, trigger save (to run pre-save logic for milestones/detailedStatus), and run client database sync
+    for (const siblingNo of siblingJobNos) {
+      const fullSibling = await ExJobModel.findOne({ job_no: siblingNo });
+      if (fullSibling) {
+        fullSibling.markModified("milestones");
+        fullSibling.markModified("detailedStatus");
+        fullSibling.markModified("vgm_done");
+        fullSibling.markModified("form13_done");
+        fullSibling.markModified("shipping_bill_done");
+        fullSibling.markModified("isBuyer");
+        await fullSibling.save();
+        await syncToClientDatabase(siblingNo, billingUpdates);
+      }
+    }
+  } catch (err) {
+    console.error("[Club Billing Sync] Error syncing club billing details:", err);
+  }
+}
+
 const IMPEXCUBE_BASE_URL =
   process.env.IMPEXCUBE_BASE_URL || "http://testimpexapi.impexcube.in";
 const IMPEXCUBE_LOGIN_PATH =
@@ -981,10 +1047,7 @@ router.get("/exports/:status?", async (req, res) => {
     // Exclude Freight Forwarding jobs (FF) from Export module
     filter.$and.push({ job_no: { $not: /^FF/i } });
 
-    // Globally exclude parent club jobs from all tabs except "club-jobs"
-    if (String(status || "").toLowerCase() !== "club-jobs") {
-      filter.$and.push({ is_club_job_parent: { $ne: true } });
-    }
+
 
     // Status filtering logic with job tracking consideration
     // Job is considered "completed" if:
@@ -994,17 +1057,10 @@ router.get("/exports/:status?", async (req, res) => {
       const statusLower = status.toLowerCase();
 
       if (statusLower === "pending") {
-        // Pending: Status is pending or not set
+        // Pending: Status is strictly pending
         filter.$and.push({
           $and: [
-            {
-              $or: [
-                { status: { $regex: "^pending$", $options: "i" } },
-                { status: { $exists: false } },
-                { status: null },
-                { status: "" },
-              ],
-            },
+            { status: { $regex: "^pending$", $options: "i" } },
             { detailedStatus: { $ne: "Billing Done" } },
             { isJobCanceled: { $ne: true } },
           ],
@@ -1078,7 +1134,7 @@ router.get("/exports/:status?", async (req, res) => {
             { "operations.statusDetails": { $size: 0 } }
           ]
         });
-      } else if (statusLower === "billing pending") {
+      } else if (statusLower === "prepare for billing") {
         filter.$and.push({
           $and: [
             {
@@ -1122,16 +1178,45 @@ router.get("/exports/:status?", async (req, res) => {
         });
         filter.$and.push({
           $or: [
-            { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
-            { "operations.statusDetails.billingDocsSentDt": null },
-            { "operations.statusDetails.billingDocsSentDt": "" },
-            { "operations.statusDetails": { $size: 0 } }
+            { send_for_billing: { $exists: false } },
+            { send_for_billing: null },
+            { send_for_billing: false },
           ]
+        });
+      } else if (statusLower === "sent for billing") {
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ]
+        });
+        filter.$and.push({
+          send_for_billing: true
         });
       } else if (statusLower === "club-jobs") {
         filter.$and.push({
-          $or: [{ is_club_job_parent: true }, { parent_club_job: { $ne: null } }]
+          $or: [
+            { is_club_job_parent: true },
+            { parent_club_job: { $exists: true, $ne: null, $ne: "" } }
+          ]
         });
+        filter.$and.push({
+          $or: [
+            { status: { $regex: "^pending$", $options: "i" } },
+            { status: { $exists: false } },
+            { status: null },
+            { status: "" },
+          ]
+        });
+        filter.$and.push({ detailedStatus: { $ne: "Billing Done" } });
+        filter.$and.push({ isJobCanceled: { $ne: true } });
       } else {
         filter.$and.push({
           status: { $regex: `^${status}$`, $options: "i" },
@@ -1161,13 +1246,7 @@ router.get("/exports/:status?", async (req, res) => {
       });
     }
 
-    if (pendingQueries === "true" || pendingQueries === true) {
-      const QueryModel = (await import("../../model/export/QueryModel.mjs")).default;
-      const queryFilter = { status: "open" };
-      const openQueries = await QueryModel.find(queryFilter).select("job_no").lean();
-      const openJobNos = [...new Set(openQueries.map(q => q.job_no))];
-      filter.$and.push({ job_no: { $in: openJobNos } });
-    }
+
 
     // Additional filters
     if (exporter && exporter.toLowerCase() !== "all") {
@@ -1348,6 +1427,27 @@ router.get("/exports/:status?", async (req, res) => {
       filter.$and.push({
         goods_stuffed_at: req.query.goods_stuffed_at,
       });
+    }
+
+    const currentModule = req.query.currentModule || "export-dsr";
+
+    // Find all job numbers matching the current tab and filters (excluding pendingQueries filter)
+    const matchingJobsForCount = await ExportJobModel.find(filter).select("job_no").lean();
+    const allJobNos = matchingJobsForCount.map(j => j.job_no).filter(Boolean);
+
+    const QueryModel = (await import("../../model/export/QueryModel.mjs")).default;
+    const jobsWithOpenQueries = await QueryModel.find({
+        job_no: { $in: allJobNos },
+        status: "open",
+        targetModule: currentModule
+    }).distinct("job_no");
+
+    const pendingQueriesCount = jobsWithOpenQueries.length;
+
+    // Apply pendingQueries filter if active
+    if (pendingQueries === "true" || pendingQueries === true) {
+        if (!filter.$and) filter.$and = [];
+        filter.$and.push({ job_no: { $in: jobsWithOpenQueries } });
     }
 
     // Remove empty $and array if no conditions were added
@@ -1544,6 +1644,7 @@ router.get("/exports/:status?", async (req, res) => {
           hasNextPage: page < Math.ceil(finalTotalCount / parseInt(limit)),
           hasPrevPage: page > 1,
         },
+        pendingQueriesCount,
       },
     });
   } catch (error) {
@@ -2504,6 +2605,7 @@ router.patch(
 
       if (updatedExportJob.job_no) {
         await syncToClientDatabase(updatedExportJob.job_no, updateObject);
+        await syncClubBillingDetails(updatedExportJob.job_no, updateObject);
       }
 
       res.json({
@@ -2563,6 +2665,7 @@ router.patch(
       await updatedExportJob.save();
 
       await syncToClientDatabase(updatedExportJob.job_no, updateObject);
+      await syncClubBillingDetails(updatedExportJob.job_no, updateObject);
 
       res.json({
         message: "Fields updated successfully",

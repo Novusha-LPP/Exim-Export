@@ -245,12 +245,7 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             });
         }
 
-        if (pendingQueries === "true" || pendingQueries === true) {
-            const QueryModel = (await import("../../model/export/QueryModel.mjs")).default;
-            const openQueries = await QueryModel.find({ status: "open" }).select("job_no").lean();
-            const openJobNos = [...new Set(openQueries.map(q => q.job_no))];
-            filter.$and.push({ job_no: { $in: openJobNos } });
-        }
+
 
         if (year && year !== "all") filter.$and.push({ year });
         if (exporter) filter.$and.push({ exporter: { $regex: exporter, $options: "i" } });
@@ -284,6 +279,35 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
                     { job_date: { $gte: startDate, $lte: endDate } }
                 ]
             });
+        }
+
+        // Ensure array is removed if empty
+        if (filter.$and && filter.$and.length === 0) {
+            delete filter.$and;
+        }
+
+        // Find all job numbers matching the current tab and filters (excluding pendingQueries filter)
+        const matchingJobsForCount = await ExportJobModel.find(filter).select("job_no").lean();
+        const allJobNos = matchingJobsForCount.map(j => j.job_no).filter(Boolean);
+
+        const QueryModel = (await import("../../model/export/QueryModel.mjs")).default;
+        const jobsWithOpenQueries = await QueryModel.find({
+            job_no: { $in: allJobNos },
+            status: "open",
+            targetModule: "export-charges"
+        }).distinct("job_no");
+
+        const pendingQueriesCount = jobsWithOpenQueries.length;
+
+        // Apply pendingQueries filter if active
+        if (pendingQueries === "true" || pendingQueries === true) {
+            if (!filter.$and) filter.$and = [];
+            filter.$and.push({ job_no: { $in: jobsWithOpenQueries } });
+        }
+
+        // Re-ensure array is removed if empty after modification
+        if (filter.$and && filter.$and.length === 0) {
+            delete filter.$and;
         }
 
         const skip = (page - 1) * limit;
@@ -359,7 +383,8 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
                 jobs,
                 total: totalCount,
                 page: parseInt(page),
-                limit: parseInt(limit)
+                limit: parseInt(limit),
+                pendingQueriesCount
             }
         });
 

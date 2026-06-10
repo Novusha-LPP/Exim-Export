@@ -92,6 +92,63 @@ const formatClubJobSeries = (clubbedJobs, defaultVal = "") => {
 };
 
 /**
+ * Format a list of invoice numbers into a series.
+ * Expects format: PREFIX/SERIAL, e.g. EIN26-27/00092
+ */
+const formatInvoiceSeries = (invoiceList) => {
+    if (!Array.isArray(invoiceList) || invoiceList.length === 0) return "";
+    const uniqueInvs = [...new Set(invoiceList.map(j => String(j || '').trim()).filter(Boolean))];
+    if (uniqueInvs.length === 0) return "";
+    if (uniqueInvs.length === 1) return uniqueInvs[0];
+
+    const parsed = [];
+    for (const inv of uniqueInvs) {
+        const parts = inv.split('/');
+        if (parts.length === 2) {
+            const numStr = parts[1];
+            const num = parseInt(numStr, 10);
+            if (!isNaN(num)) {
+                parsed.push({
+                    num,
+                    padLength: numStr.length,
+                    prefix: parts[0],
+                    original: inv
+                });
+                continue;
+            }
+        }
+        return uniqueInvs.join(', ');
+    }
+
+    const firstPrefix = parsed[0].prefix;
+    const allSamePrefix = parsed.every(p => p.prefix === firstPrefix);
+
+    if (!allSamePrefix) return uniqueInvs.join(', ');
+
+    parsed.sort((a, b) => a.num - b.num);
+
+    let isContinuous = true;
+    for (let i = 1; i < parsed.length; i++) {
+        if (parsed[i].num !== parsed[i - 1].num + 1) {
+            isContinuous = false;
+            break;
+        }
+    }
+
+    if (isContinuous) {
+        const firstPadded = String(parsed[0].num).padStart(parsed[0].padLength, '0');
+        const lastPadded = String(parsed[parsed.length - 1].num).padStart(parsed[parsed.length - 1].padLength, '0');
+        return `${firstPrefix}/${firstPadded} TO ${firstPrefix}/${lastPadded}`;
+    } else {
+        const numStringList = parsed.map((p, index) => {
+            if (index === 0) return String(p.num).padStart(p.padLength, '0');
+            return String(p.num);
+        }).join(',');
+        return `${firstPrefix}/${numStringList}`;
+    }
+};
+
+/**
  * Resolves a potentially formatted club job series (or standard job number)
  * into a query conditions array for $or.
  */
@@ -281,7 +338,7 @@ const getJobDetailsInternal = async (job_number) => {
         });
 
         job.invoices = [{
-            invoiceNumber: [...new Set(invNumbers)].filter(Boolean).join(", "),
+            invoiceNumber: formatInvoiceSeries([...new Set(invNumbers)].filter(Boolean)),
             invoiceDate: [...new Set(invDates)].filter(Boolean).join(", "),
             invoiceValue: totalInvValue,
             currency: currency || "USD",
@@ -702,7 +759,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "CGST": entry.cgstAmt,
             "SGST": entry.sgstAmt,
             "IGST": entry.igstAmt,
-            [tdsKey]: entry.tds,
+            "TDS": entry.tds,
             "Total": grossTotal,
             "Net Amount": netAmount,
             "Charge Description": entry.chargeDescription || '',

@@ -295,7 +295,12 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 ]
             });
         } else if (normalizedStatus === "club-jobs") {
-             filter.$and.push({ $or: [{ is_club_job_parent: true }, { parent_club_job: { $ne: null } }] });
+             filter.$and.push({
+                 $or: [
+                     { is_club_job_parent: true },
+                     { parent_club_job: { $exists: true, $ne: null, $ne: "" } }
+                 ]
+             });
         } else if (normalizedStatus === "cancelled") {
             // Cancelled jobs shouldn't filter out anything specific by default, 
             // but we might want to exclude billed ones if desired. Usually cancelled just means status = cancelled.
@@ -368,15 +373,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             });
         }
 
-        if (pendingQueries === "true" || pendingQueries === true) {
-            // Import QueryModel dynamically if not at top
-            const QueryModel = (await import("../../model/export/QueryModel.mjs")).default;
-            const queryFilter = { status: "open" };
-            // Optional: filter by current module if needed
-            const openQueries = await QueryModel.find(queryFilter).select("job_no").lean();
-            const openJobNos = [...new Set(openQueries.map(q => q.job_no))];
-            filter.$and.push({ job_no: { $in: openJobNos } });
-        }
+
 
         if (ieCode) {
             const ieCodeArray = ieCode.split(",").map(c => c.trim()).filter(Boolean);
@@ -450,6 +447,25 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                     }
                 });
             }
+        }
+
+        // Find all job numbers matching the current tab and filters (excluding pendingQueries filter)
+        const matchingJobsForCount = await ExportJobModel.find(filter).select("job_no").lean();
+        const allJobNos = matchingJobsForCount.map(j => j.job_no).filter(Boolean);
+
+        const QueryModel = (await import("../../model/export/QueryModel.mjs")).default;
+        const jobsWithOpenQueries = await QueryModel.find({
+            job_no: { $in: allJobNos },
+            status: "open",
+            targetModule: "export-operation"
+        }).distinct("job_no");
+
+        const pendingQueriesCount = jobsWithOpenQueries.length;
+
+        // Apply pendingQueries filter if active
+        if (pendingQueries === "true" || pendingQueries === true) {
+            if (!filter.$and) filter.$and = [];
+            filter.$and.push({ job_no: { $in: jobsWithOpenQueries } });
         }
 
         // Ensure array is removed if empty
@@ -605,6 +621,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                     hasNextPage: page < Math.ceil(finalTotalCount / parseInt(limit)),
                     hasPrevPage: page > 1,
                 },
+                pendingQueriesCount,
             },
         });
     } catch (error) {

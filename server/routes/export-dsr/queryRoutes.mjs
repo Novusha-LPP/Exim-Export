@@ -268,6 +268,10 @@ router.post("/api/queries/jobs-status", async (req, res) => {
     });
 
     queries.forEach(q => {
+      if (currentModule && q.targetModule !== currentModule && q.raisedFromModule !== currentModule) {
+        return; // ignore queries not relevant to the current module
+      }
+
       if (!statusMap[q.job_no]) statusMap[q.job_no] = { hasQueries: true, hasUnseen: false, hasOpenQueries: false };
       statusMap[q.job_no].hasQueries = true;
       if (q.status === "open") statusMap[q.job_no].hasOpenQueries = true;

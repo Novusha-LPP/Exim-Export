@@ -278,8 +278,6 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
     return job.is_club_job_parent || !!job.parent_club_job;
   }
 
-  if (job.is_club_job_parent) return false;
-
   return true;
 }
 
@@ -435,7 +433,10 @@ router.get("/api/export-billing-jobs", async (req, res) => {
     if (normalizedTab === "club-jobs") {
       baseFilter.$and = baseFilter.$and || [];
       baseFilter.$and.push({
-        $or: [{ is_club_job_parent: true }, { parent_club_job: { $ne: null } }]
+        $or: [
+          { is_club_job_parent: true },
+          { parent_club_job: { $exists: true, $ne: null, $ne: "" } }
+        ]
       });
     }
 
@@ -499,9 +500,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       })
         .select(projection)
         .lean();
-      console.log("exportBillingJobs: club-jobs full family count:", jobs.length);
     }
-    console.log("exportBillingJobs: final jobs count before summarize:", jobs.length);
 
     const summarizedBase = jobs.map(summarizeJob);
     const jobNos = summarizedBase.map((job) => job.job_no).filter(Boolean);
@@ -511,10 +510,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       const unresolvedQueries = await QueryModel.find({
         job_no: { $in: jobNos },
         status: "open",
-        $or: [
-          { targetModule: "export-billing" },
-          { raisedFromModule: "export-billing" },
-        ],
+        targetModule: "export-billing",
       })
         .select("job_no")
         .lean();
@@ -524,6 +520,11 @@ router.get("/api/export-billing-jobs", async (req, res) => {
         return acc;
       }, {});
     }
+
+    const jobsWithQueries = summarizedBase
+      .filter((job) => matchesTab(job, normalizedWorkMode, normalizedTab, String(jobTypeFilter).trim().toLowerCase()))
+      .filter((job) => (unresolvedByJob[job.job_no] || 0) > 0);
+    const pendingQueriesCount = jobsWithQueries.length;
 
     const summarized = summarizedBase
       .map((job) => ({
@@ -604,6 +605,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
         page: pageNum,
         limit: limitNum,
         totalPages: Math.max(1, Math.ceil(summarized.length / limitNum)),
+        pendingQueriesCount,
       },
     });
   } catch (error) {

@@ -24,6 +24,8 @@ router.get("/api/export-analytics/overview", async (req, res) => {
 
         if (!filter.$and) filter.$and = [];
 
+
+
         // Fetch user restrictions
         const requesterUsername = req.headers["username"] || req.headers["x-username"];
         if (requesterUsername) {
@@ -103,9 +105,10 @@ router.get("/api/export-analytics/overview", async (req, res) => {
             // 1. Total Pending
             ExJobModel.find({
                 ...baseFilter,
-                job_no: { $not: /^FF\//i },
+                job_no: { $not: /^FF/i },
                 $and: [
-                    { $or: [{ status: { $regex: "^pending$", $options: "i" } }, { status: { $exists: false } }, { status: null }, { status: "" }] },
+                    ...(baseFilter.$and || []),
+                    { status: { $regex: "^pending$", $options: "i" } },
                     { detailedStatus: { $ne: "Billing Done" } },
                     { isJobCanceled: { $ne: true } },
                 ],
@@ -114,10 +117,11 @@ router.get("/api/export-analytics/overview", async (req, res) => {
             // 2. Pending Operations
             ExJobModel.find({
                 ...baseFilter,
-                job_no: { $not: /^FF\//i },
+                job_no: { $not: /^FF/i },
                 sb_no: { $exists: true, $nin: [null, ""] },
                 $and: [
-                    { $or: [{ status: { $regex: "^pending$", $options: "i" } }, { status: { $exists: false } }, { status: null }, { status: "" }] },
+                    ...(baseFilter.$and || []),
+                    { status: { $regex: "^pending$", $options: "i" } },
                     { detailedStatus: { $ne: "Billing Done" } }
                 ],
                  $or: [
@@ -173,6 +177,7 @@ router.get("/api/export-analytics/overview", async (req, res) => {
                 ...filter,
                 send_for_billing: true,
                 $and: [
+                    ...(filter.$and || []),
                     {
                         $or: [
                             { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
@@ -209,9 +214,10 @@ router.get("/api/export-analytics/overview", async (req, res) => {
             // 5. LEO Pending (Backlog)
             ExJobModel.find({
                 ...baseFilter,
-                job_no: { $not: /^FF\//i },
+                job_no: { $not: /^FF/i },
                 $and: [
-                    { $or: [{ status: { $regex: "^pending$", $options: "i" } }, { status: { $exists: false } }, { status: null }, { status: "" }] },
+                    ...(baseFilter.$and || []),
+                    { status: { $regex: "^pending$", $options: "i" } },
                     { detailedStatus: { $ne: "Billing Done" } },
                 ],
                 "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
@@ -226,7 +232,7 @@ router.get("/api/export-analytics/overview", async (req, res) => {
             // 6. FF Jobs (Pending)
             ExJobModel.find({
                 ...filter,
-                job_no: /^FF\//i,
+                job_no: /^FF/i,
                 isJobCanceled: { $ne: true },
                 detailedStatus: { $ne: "Billing Done" }
             }).select("job_no exporter createdAt").lean(),
@@ -294,6 +300,8 @@ router.get("/api/export-analytics/pulse", async (req, res) => {
 
         if (!filter.$and) filter.$and = [];
 
+
+
         // Fetch user restrictions
         const requesterUsername = req.headers["username"] || req.headers["x-username"];
         if (requesterUsername) {
@@ -359,16 +367,10 @@ router.get("/api/export-analytics/pulse", async (req, res) => {
         // 1. Total Pending Jobs (Matches 'Pending' tab in Jobs module)
         const totalPendingJobs = await ExJobModel.countDocuments({
             ...baseFilter,
-            job_no: { $not: /^FF\//i },
+            job_no: { $not: /^FF/i },
             $and: [
-                {
-                    $or: [
-                        { status: { $regex: "^pending$", $options: "i" } },
-                        { status: { $exists: false } },
-                        { status: null },
-                        { status: "" },
-                    ],
-                },
+                ...(baseFilter.$and || []),
+                { status: { $regex: "^pending$", $options: "i" } },
                 { detailedStatus: { $ne: "Billing Done" } },
                 { isJobCanceled: { $ne: true } },
             ],
@@ -377,16 +379,10 @@ router.get("/api/export-analytics/pulse", async (req, res) => {
         // 2. Handover Pending (Matches 'Handover Pending' tab in Jobs)
         const handoverPendingCount = await ExJobModel.countDocuments({
             ...baseFilter,
-            job_no: { $not: /^FF\//i },
+            job_no: { $not: /^FF/i },
             $and: [
-                {
-                    $or: [
-                        { status: { $regex: "^pending$", $options: "i" } },
-                        { status: { $exists: false } },
-                        { status: null },
-                        { status: "" },
-                    ],
-                },
+                ...(baseFilter.$and || []),
+                { status: { $regex: "^pending$", $options: "i" } },
                 { detailedStatus: { $ne: "Billing Done" } },
             ],
             "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
@@ -403,6 +399,7 @@ router.get("/api/export-analytics/pulse", async (req, res) => {
             ...filter, // Use filter instead of baseFilter to include General Jobs
             send_for_billing: true,
             $and: [
+                ...(filter.$and || []),
                 {
                     $or: [
                         { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
@@ -439,17 +436,11 @@ router.get("/api/export-analytics/pulse", async (req, res) => {
         // 4. Ops Pending (Matches 'Pending' tab in Ops module)
         const opsPendingCount = await ExJobModel.countDocuments({
             ...baseFilter,
-            job_no: { $not: /^FF\//i },
+            job_no: { $not: /^FF/i },
             sb_no: { $exists: true, $nin: [null, ""] },
             $and: [
-                {
-                    $or: [
-                        { status: { $regex: "^pending$", $options: "i" } },
-                        { status: { $exists: false } },
-                        { status: null },
-                        { status: "" },
-                    ]
-                },
+                ...(baseFilter.$and || []),
+                { status: { $regex: "^pending$", $options: "i" } },
                 { detailedStatus: { $ne: "Billing Done" } }
             ],
              $or: [

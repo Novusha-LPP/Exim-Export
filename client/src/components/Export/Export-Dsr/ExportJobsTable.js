@@ -831,7 +831,7 @@ const ExportJobsTable = () => {
       return "Pending";
     }
     // Default module (Jobs, Documentation, ESanchit)
-    const allowedDefaultTabs = ["Pending", "Booking Pending", "Handover Pending", "Billing Pending", "club-jobs", "Completed", "Cancelled"];
+    const allowedDefaultTabs = ["Pending", "Booking Pending", "Handover Pending", "Prepare for Billing", "Sent for Billing", "club-jobs", "Completed", "Cancelled"];
     if (allowedDefaultTabs.includes(saved)) return saved;
     if (saved === "Op Completed" || saved === "Billing Ready") return "Completed";
     return "Pending";
@@ -862,29 +862,7 @@ const ExportJobsTable = () => {
     });
   }, [jobs, jobQueriesStatus]);
 
-  useEffect(() => {
-    const fetchUnresolvedCount = async () => {
-      try {
-        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/queries/count`, {
-          params: {
-            targetModule: currentModuleForQueries,
-            status: "open",
-          },
-          headers: {
-            username: user?.username || "",
-          },
-        });
-        setUnresolvedCount(res.data?.count || 0);
-      } catch (error) {
-        setUnresolvedCount(0);
-      }
-    };
 
-    fetchUnresolvedCount();
-    // Refresh every minute
-    const interval = setInterval(fetchUnresolvedCount, 60000);
-    return () => clearInterval(interval);
-  }, [user?.username, currentModuleForQueries]);
 
   useEffect(() => {
     const jobNos = jobs.map(j => j.job_no).filter(Boolean);
@@ -1660,6 +1638,7 @@ const ExportJobsTable = () => {
             exporter: selectedExporterFilter,
             detailedStatus: selectedDetailedStatus,
             pendingQueries: onlyPendingQueries,
+            currentModule: currentModuleForQueries,
             customHouse: selectedCustomHouse,
             month: selectedMonth,
             goods_stuffed_at: selectedGoodsStuffedAt,
@@ -1678,6 +1657,9 @@ const ExportJobsTable = () => {
           response.data.data.pagination?.totalCount ||
           0,
         );
+        if (response.data.data.pendingQueriesCount !== undefined) {
+          setUnresolvedCount(response.data.data.pendingQueriesCount);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -2626,14 +2608,31 @@ const ExportJobsTable = () => {
             {!isOperationModule && !isChargesModule && (
               <button
                 style={
-                  activeTab === "Billing Pending" ? { ...s.tab, ...s.activeTab } : s.tab
+                  activeTab === "Prepare for Billing" ? { ...s.tab, ...s.activeTab } : s.tab
                 }
-                onClick={() => setActiveTab("Billing Pending")}
+                onClick={() => setActiveTab("Prepare for Billing")}
               >
-                Billing Pending{" "}
+                Prepare for Billing{" "}
                 <span
                   style={
-                    activeTab === "Billing Pending"
+                    activeTab === "Prepare for Billing"
+                      ? { ...s.badge, ...s.activeBadge }
+                      : s.badge
+                  }
+                ></span>
+              </button>
+            )}
+            {!isOperationModule && !isChargesModule && (
+              <button
+                style={
+                  activeTab === "Sent for Billing" ? { ...s.tab, ...s.activeTab } : s.tab
+                }
+                onClick={() => setActiveTab("Sent for Billing")}
+              >
+                Sent for Billing{" "}
+                <span
+                  style={
+                    activeTab === "Sent for Billing"
                       ? { ...s.badge, ...s.activeBadge }
                       : s.badge
                   }
@@ -3182,7 +3181,7 @@ const ExportJobsTable = () => {
                       <tr
                         key={job._id || idx}
                         style={{
-                          backgroundColor: job.isSubRow ? "#f1f5f9" : theme.bg,
+                          backgroundColor: theme.bg,
                           borderLeft: `4px solid ${job.isSubRow ? "#94a3b8" : theme.border}`,
                           cursor: "default",
                           transition: "all 0.2s ease",
@@ -4858,7 +4857,7 @@ const ExportJobsTable = () => {
         }}
         job={queryDialogJob}
         onQueryRaised={() => {
-          console.log("Query raised successfully");
+          fetchJobs();
         }}
       />
 
