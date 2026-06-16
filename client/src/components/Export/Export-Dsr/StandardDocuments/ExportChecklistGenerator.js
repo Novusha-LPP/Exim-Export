@@ -59,6 +59,7 @@ const ExportChecklistGenerator = ({
   jobNo,
   renderAsIcon = false,
   children,
+  onTrackSuccess,
 }) => {
   // ==================== CONSTANTS ====================
   const PAGE_CONFIG = {
@@ -2566,6 +2567,18 @@ const ExportChecklistGenerator = ({
         setTimeout(() => {
           URL.revokeObjectURL(blobUrl);
         }, 300000);
+      }
+
+      try {
+        const trackRes = await axios.put(
+          `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(jobNo)}/track-click`,
+          { docType: "checklist" }
+        );
+        if (onTrackSuccess) {
+          onTrackSuccess(trackRes.data.docClicks);
+        }
+      } catch (trackErr) {
+        console.error("Failed to track checklist click:", trackErr);
       }
     } catch (error) {
       console.error("Error generating export checklist PDF:", error);

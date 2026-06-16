@@ -1144,6 +1144,7 @@ function ExportBillingPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalJobs, setTotalJobs] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [tabCounts, setTabCounts] = useState({});
   const [showUnresolvedOnly, setShowUnresolvedOnly] = useState(() => {
     return localStorage.getItem("billing_showUnresolvedOnly") === "true";
   });
@@ -1268,8 +1269,43 @@ function ExportBillingPage() {
     fetchExporters();
   }, [selectedYear]);
 
+  const fetchTabCounts = useCallback(async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/export-jobs-tab-counts`, {
+        params: {
+          module: "billing",
+          workMode,
+          search: debouncedSearch,
+          exporter: selectedExporter || "",
+          branch: selectedBranch || "",
+          year: selectedYear || "",
+          unresolvedOnly: showUnresolvedOnly,
+          jobTypeFilter: jobTypeFilter,
+        },
+        headers: {
+          username: user?.username || "",
+        },
+      });
+      if (res.data.success) {
+        setTabCounts(res.data.data || {});
+      }
+    } catch (error) {
+      console.error("Error fetching billing tab counts:", error);
+    }
+  }, [
+    workMode,
+    debouncedSearch,
+    selectedExporter,
+    selectedBranch,
+    selectedYear,
+    showUnresolvedOnly,
+    jobTypeFilter,
+    user?.username,
+  ]);
+
   const fetchRows = useCallback(async () => {
     setLoading(true);
+    fetchTabCounts();
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_STRING}/export-billing-jobs`, {
         params: {
@@ -1315,6 +1351,7 @@ function ExportBillingPage() {
     showUnresolvedOnly,
     jobTypeFilter,
     user?.username,
+    fetchTabCounts,
   ]);
 
   const handleDownloadExcel = async () => {
@@ -1805,7 +1842,7 @@ function ExportBillingPage() {
           const val = row.original.send_for_billing_date;
           return (
             <div style={{ fontWeight: "600", color: "#4b5563" }}>
-              {val || "-"}
+              {formatDate(val)}
             </div>
           );
         }
@@ -1910,9 +1947,10 @@ function ExportBillingPage() {
             }
           }}
         >
-          {tabs.map((tab) => (
-            <Tab key={tab.key} label={tab.label} />
-          ))}
+          {tabs.map((tab) => {
+            const count = tabCounts[tab.key] ?? 0;
+            return <Tab key={tab.key} label={`${tab.label} (${count})`} />;
+          })}
         </Tabs>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>

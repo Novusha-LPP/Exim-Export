@@ -904,6 +904,7 @@ router.get("/global-search-jobs", async (req, res) => {
           "operations.statusDetails.odexForm13Upload": 1,
           "operations.statusDetails.cmaForwardingNoteUpload": 1,
           "operations.statusDetails.otherDocUpload": 1,
+          "operations.statusDetails.otherDocsCustom": 1,
           "operations.statusDetails.stuffingSheetUpload": 1,
           "operations.statusDetails.stuffingPhotoUpload": 1,
           "operations.statusDetails.eGatePassUpload": 1,
@@ -1470,6 +1471,7 @@ router.get("/exports/:status?", async (req, res) => {
     // Selected fields to reduce payload size for the frontend table
     const selectProjection = {
       job_no: 1,
+      docClicks: 1,
       custom_house: 1,
       job_date: 1,
       consignmentType: 1,
@@ -1540,6 +1542,7 @@ router.get("/exports/:status?", async (req, res) => {
       "operations.statusDetails.odexForm13Upload": 1,
       "operations.statusDetails.cmaForwardingNoteUpload": 1,
       "operations.statusDetails.otherDocUpload": 1,
+      "operations.statusDetails.otherDocsCustom": 1,
       "operations.statusDetails.stuffingSheetUpload": 1,
       "operations.statusDetails.stuffingPhotoUpload": 1,
       "operations.statusDetails.eGatePassUpload": 1,
@@ -2479,6 +2482,43 @@ router.route("/:job_no(.*)/unlock").all(async (req, res) => {
     // Explicitly allow non-lockers to "succeed" during cleanup to prevent frontend errors
     return res.json({ message: "Job released" });
   } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// Track click on a document (esanchit, checklist, file_cover)
+router.put("/:job_no(.*)/track-click", async (req, res) => {
+  try {
+    const raw = req.params.job_no || "";
+    const job_no = decodeURIComponent(raw);
+    const { docType } = req.body;
+    const username = req.headers["username"] || "unknown";
+
+    if (!docType || !["checklist", "file_cover", "esanchit"].includes(docType)) {
+      return res.status(400).json({ message: "Invalid or missing docType" });
+    }
+
+    const job = await ExJobModel.findOne({
+      job_no: { $regex: `^${job_no}$`, $options: "i" },
+    });
+
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    if (!job.docClicks) {
+      job.docClicks = {};
+    }
+
+    job.docClicks[docType] = {
+      clickedBy: username,
+      clickedAt: new Date()
+    };
+
+    job.markModified("docClicks");
+    await job.save();
+
+    res.json({ message: "Click tracked successfully", docClicks: job.docClicks });
+  } catch (error) {
+    console.error("Error tracking doc click:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });

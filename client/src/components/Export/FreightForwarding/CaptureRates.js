@@ -305,27 +305,55 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
             />
           </div>
         ) : (
-          <div style={s.grid}>
-            {Object.entries({
-              "No": enquiry.enquiry_no,
-              "Shipper/Org": enquiry.organization_name,
-              "POL": enquiry.port_of_loading,
-              "POD": enquiry.port_of_destination,
-              "Type": enquiry.consignment_type,
-              "Stuffing": enquiry.goods_stuffed,
-              "Movement": enquiry.movement_type,
-              "Pkgs": `${enquiry.no_packages || "-"} ${enquiry.package_unit || ""}`,
-              "G.W": `${enquiry.gross_weight || "-"} ${enquiry.gross_weight_unit || ""}`,
-              "N.W": `${enquiry.net_weight || "-"} ${enquiry.net_weight_unit || ""}`,
-              "Volume": `${enquiry.volume_cbm || "-"} ${enquiry.volume_unit || ""}`,
-              "Vol. Wt": `${enquiry.volume_weight || "-"} ${enquiry.gross_weight_unit || ""}`,
-            }).map(([k, v]) => (
-              <div key={k}>
-                <div style={s.label}>{k}</div>
-                <div style={s.value}>{v || "-"}</div>
+          <>
+            <div style={s.grid}>
+              {Object.entries({
+                "No": enquiry.enquiry_no,
+                "Shipper/Org": enquiry.organization_name,
+                "POL": enquiry.port_of_loading,
+                "POD": enquiry.port_of_destination,
+                "Type": enquiry.consignment_type,
+                "Stuffing": enquiry.goods_stuffed,
+                "Movement": enquiry.movement_type,
+                "Pkgs": `${enquiry.no_packages || "-"} ${enquiry.package_unit || ""}`,
+                "G.W": `${enquiry.gross_weight || "-"} ${enquiry.gross_weight_unit || ""}`,
+                "N.W": `${enquiry.net_weight || "-"} ${enquiry.net_weight_unit || ""}`,
+                "Volume": `${enquiry.volume_cbm || "-"} ${enquiry.volume_unit || ""}`,
+                "Vol. Wt": `${enquiry.volume_weight || "-"} ${enquiry.gross_weight_unit || ""}`,
+              }).map(([k, v]) => (
+                <div key={k}>
+                  <div style={s.label}>{k}</div>
+                  <div style={s.value}>{v || "-"}</div>
+                </div>
+              ))}
+            </div>
+
+            {enquiry.containers && enquiry.containers.length > 0 && enquiry.containers.some(c => c.container_number || c.custom_seal || c.line_seal) && (
+              <div style={{ marginTop: "16px" }}>
+                <div style={{ ...s.label, marginBottom: "6px" }}>Containers</div>
+                <div style={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: "3px" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                    <thead>
+                      <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #cbd5e1" }}>
+                        <th style={{ padding: "6px 10px", textAlign: "left", fontWeight: "700", color: "#475569", fontSize: "10.5px", textTransform: "uppercase" }}>Container No</th>
+                        <th style={{ padding: "6px 10px", textAlign: "left", fontWeight: "700", color: "#475569", fontSize: "10.5px", textTransform: "uppercase" }}>Custom Seal</th>
+                        <th style={{ padding: "6px 10px", textAlign: "left", fontWeight: "700", color: "#475569", fontSize: "10.5px", textTransform: "uppercase" }}>Line Seal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {enquiry.containers.map((c, idx) => (
+                        <tr key={idx} style={{ borderBottom: idx < enquiry.containers.length - 1 ? "1px solid #e2e8f0" : "none" }}>
+                          <td style={{ padding: "8px 10px", fontWeight: "600", color: "#0f172a" }}>{c.container_number || "-"}</td>
+                          <td style={{ padding: "8px 10px", color: "#334155" }}>{c.custom_seal || "-"}</td>
+                          <td style={{ padding: "8px 10px", color: "#334155" }}>{c.line_seal || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 

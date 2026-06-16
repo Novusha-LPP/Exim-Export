@@ -167,10 +167,8 @@ export const buildCostSheetTemplate = (job = {}, charges = [], logoSrc = '') => 
             <td style="padding: 4px 6px; border: 1px solid #ccc;"><b>Voyage</b><br/>: ${job.voyage_no || ""}</td>
           </tr>
           <tr>
-            <td style="padding: 4px 6px; border: 1px solid #ccc;"><b>Consol No.</b><br/>: ${job.consol_no || ""}</td>
-            <td style="padding: 4px 6px; border: 1px solid #ccc;"><b>dt</b><br/>: ${formatDate(job.consol_date)}</td>
-            <td style="padding: 4px 6px; border: 1px solid #ccc;"><b>Volume/Unit</b><br/>: ${job.volume_cbm || ""} ${job.volume_unit || ""}</td>
-            <td style="padding: 4px 6px; border: 1px solid #ccc;"><b>Loading Port</b><br/>: ${job.port_of_loading || ""}</td>
+            <td style="padding: 4px 6px; border: 1px solid #ccc;" colspan="2"><b>Volume/Unit</b><br/>: ${job.volume_cbm || ""} ${job.volume_unit || ""}</td>
+            <td style="padding: 4px 6px; border: 1px solid #ccc;" colspan="2"><b>Loading Port</b><br/>: ${job.port_of_loading || ""}</td>
             <td style="padding: 4px 6px; border: 1px solid #ccc;"><b>Booking Thru</b><br/>: ${job.booking_thru || ""}</td>
             <td style="padding: 4px 6px; border: 1px solid #ccc;"><b>ETA (Dest)</b><br/>: ${formatDate(job.eta_date)}</td>
           </tr>

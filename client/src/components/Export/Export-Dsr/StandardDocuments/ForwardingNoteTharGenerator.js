@@ -132,7 +132,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       group.grossWeight += Number(c.grossWeight) || 0;
       group.grWtPlusTrWt += Number(c.grWtPlusTrWt) || 0;
       
-      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || primaryJob.descriptionOfGoods || "";
+      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || primaryJob.descriptionOfGoods || primaryJob.description || "";
       if (desc && !group.uniqueDescriptions.includes(desc)) {
         group.uniqueDescriptions.push(desc);
       }
@@ -598,7 +598,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         return null;
       }).filter(Boolean))].join(", ");
 
-      const descriptionOfGoods = products[0]?.description || "";
+      const descriptionOfGoods = products[0]?.description || data.description || "";
 
       
       let fetchedClubbedJobsData = [];

@@ -6,7 +6,7 @@ import { IconButton, Button } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import logo from "../../../../assets/images/surajLogo.jpeg";
 
-const FileCoverGenerator = ({ jobNo, children }) => {
+const FileCoverGenerator = ({ jobNo, children, onTrackSuccess }) => {
   const generateFileCover = async (e) => {
     if (e) e.stopPropagation();
 
@@ -351,6 +351,18 @@ const FileCoverGenerator = ({ jobNo, children }) => {
         setTimeout(() => {
           URL.revokeObjectURL(blobUrl);
         }, 300000); // Revoke after 5 minutes
+      }
+
+      try {
+        const trackRes = await axios.put(
+          `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(jobNo)}/track-click`,
+          { docType: "file_cover" }
+        );
+        if (onTrackSuccess) {
+          onTrackSuccess(trackRes.data.docClicks);
+        }
+      } catch (trackErr) {
+        console.error("Failed to track file_cover click:", trackErr);
       }
     } catch (error) {
       console.error("Error generating File Cover:", error);

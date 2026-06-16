@@ -485,7 +485,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
 
 
         const selectProjection = {
-            job_no: 1, custom_house: 1, job_date: 1, consignmentType: 1, job_owner: 1,
+            job_no: 1, docClicks: 1, custom_house: 1, job_date: 1, consignmentType: 1, job_owner: 1,
             exporter: 1, exporter_ref_no: 1, exporter_branch_name: 1, "consignees.consignee_name": 1, "buyerThirdPartyInfo.buyer.name": 1,
             ieCode: 1, panNo: 1, gstin: 1, adCode: 1,
             "invoices.invoiceNumber": 1, "invoices.invoiceDate": 1, "invoices.termsOfInvoice": 1,
@@ -511,6 +511,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             "operations.statusDetails.odexForm13Upload": 1,
             "operations.statusDetails.cmaForwardingNoteUpload": 1,
             "operations.statusDetails.otherDocUpload": 1,
+            "operations.statusDetails.otherDocsCustom": 1,
             "operations.statusDetails.stuffingSheetUpload": 1,
             "operations.statusDetails.stuffingPhotoUpload": 1,
             "operations.statusDetails.eGatePassUpload": 1,

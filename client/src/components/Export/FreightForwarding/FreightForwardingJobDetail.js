@@ -156,7 +156,7 @@ function FreightForwardingJobDetail() {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
-    setSearchParams({ tab: newValue.toString() });
+    setSearchParams({ tab: newValue.toString() }, { replace: true });
   };
 
   const handleLockDialogClose = () => {
@@ -484,22 +484,16 @@ function FreightForwardingJobDetail() {
 
             {/* Row 3 */}
             <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
-              <Grid item xs={12} md={2} sm={4}>
-                {renderInputBox("Consol No.", "consol_no")}
-              </Grid>
-              <Grid item xs={12} md={2} sm={4}>
-                {renderInputBox("dt (Consol Date)", "consol_date")}
-              </Grid>
-              <Grid item xs={12} md={2} sm={4}>
+              <Grid item xs={12} md={3} sm={6}>
                 {renderCombinedBox("Volume/Unit", "volume_cbm", "volume_unit")}
               </Grid>
-              <Grid item xs={12} md={2} sm={4}>
+              <Grid item xs={12} md={3} sm={6}>
                 {renderInputBox("Loading Port", "port_of_loading")}
               </Grid>
-              <Grid item xs={12} md={2} sm={4}>
+              <Grid item xs={12} md={3} sm={6}>
                 {renderInputBox("Booking Thru", "booking_thru")}
               </Grid>
-              <Grid item xs={12} md={2} sm={4}>
+              <Grid item xs={12} md={3} sm={6}>
                 {renderInputBox("ETA (Dest)", "eta_date")}
               </Grid>
             </Grid>

@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import axios from "axios";
-import { Dialog, DialogContent, DialogTitle, IconButton, Menu, MenuItem, Typography, CircularProgress, Tooltip, Box, Button } from "@mui/material";
+import { Dialog, DialogContent, DialogTitle, IconButton, Menu, MenuItem, Typography, CircularProgress, Tooltip, Box, Button, TextField, FormControl, InputLabel, Select, DialogActions } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import GetAppIcon from "@mui/icons-material/GetApp";
@@ -215,6 +215,70 @@ function DocsUploadCell({ row, onUpdate }) {
 function FreightForwardingModule() {
   const [rows, setRows] = useState([]);
   const [openCreate, setOpenCreate] = useState(false);
+  const [openDSRDialog, setOpenDSRDialog] = useState(false);
+  const [dsrMode, setDsrMode] = useState("Export");
+  const [dsrYear, setDsrYear] = useState(() => {
+    const today = new Date();
+    const month = today.getMonth(); // 0-based
+    const year = today.getFullYear();
+    if (month < 3) {
+      return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+    }
+    return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+  });
+  const [dsrShipmentType, setDsrShipmentType] = useState("all");
+  const [dsrStartDate, setDsrStartDate] = useState("");
+  const [dsrEndDate, setDsrEndDate] = useState("");
+  const [dsrLoading, setDsrLoading] = useState(false);
+
+  const handleDownloadDSR = async () => {
+    setDsrLoading(true);
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_STRING}/freight-forwarding/generate-dsr`,
+        {
+          params: {
+            year: dsrYear,
+            shipment_type: dsrShipmentType,
+            startDate: dsrStartDate,
+            endDate: dsrEndDate,
+            mode: dsrMode
+          },
+          responseType: "blob",
+        }
+      );
+      
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      
+      const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      link.setAttribute("download", `Freight_Forwarding_${dsrMode}_DSR_${dateStr}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      setOpenDSRDialog(false);
+    } catch (err) {
+      console.error("Error downloading Freight Forwarding DSR:", err);
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text);
+          alert(parsed.error || parsed.message || "Failed to download DSR report");
+        } catch (e) {
+          alert("Failed to download DSR report");
+        }
+      } else {
+        alert(err.response?.data?.error || "Failed to download DSR report");
+      }
+    } finally {
+      setDsrLoading(false);
+    }
+  };
   const [filters, setFilters] = useState(() => {
     try {
       const saved = localStorage.getItem("ff_filters");
@@ -331,23 +395,69 @@ function FreightForwardingModule() {
             Freight Forwarding
           </Typography>
         </div>
-        <Button
-          variant="contained"
-          size="small"
-          onClick={() => setOpenCreate(true)}
-          sx={{
-            backgroundColor: "#16408f",
-            fontWeight: "600",
-            textTransform: "none",
-            borderRadius: "3px",
-            height: 28,
-            fontSize: "12px",
-            px: 1.5,
-            "&:hover": { backgroundColor: "#19448a" }
-          }}
-        >
-          + Create Enquiry
-        </Button>
+        <Box sx={{ display: "flex", gap: "8px" }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => {
+              setDsrMode("Import");
+              setDsrShipmentType("all");
+              setOpenDSRDialog(true);
+            }}
+            sx={{
+              borderColor: "#16408f",
+              color: "#16408f",
+              fontWeight: "600",
+              textTransform: "none",
+              borderRadius: "3px",
+              height: 28,
+              fontSize: "12px",
+              px: 1.5,
+              "&:hover": { borderColor: "#19448a", backgroundColor: "#eff6ff" }
+            }}
+          >
+            Import DSR
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => {
+              setDsrMode("Export");
+              setDsrShipmentType("all");
+              setOpenDSRDialog(true);
+            }}
+            sx={{
+              borderColor: "#16408f",
+              color: "#16408f",
+              fontWeight: "600",
+              textTransform: "none",
+              borderRadius: "3px",
+              height: 28,
+              fontSize: "12px",
+              px: 1.5,
+              "&:hover": { borderColor: "#19448a", backgroundColor: "#eff6ff" }
+            }}
+          >
+            Export DSR
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => setOpenCreate(true)}
+            sx={{
+              backgroundColor: "#16408f",
+              fontWeight: "600",
+              textTransform: "none",
+              borderRadius: "3px",
+              height: 28,
+              fontSize: "12px",
+              px: 1.5,
+              "&:hover": { backgroundColor: "#19448a" }
+            }}
+          >
+            + Create Enquiry
+          </Button>
+        </Box>
       </Box>
 
       {/* Tabs */}
@@ -625,6 +735,144 @@ function FreightForwardingModule() {
             />
           )}
         </DialogContent>
+      </Dialog>
+
+      {/* DSR Report Dialog */}
+      <Dialog
+        open={openDSRDialog}
+        onClose={() => {
+          setOpenDSRDialog(false);
+          setDsrStartDate("");
+          setDsrEndDate("");
+        }}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ style: { borderRadius: "3px" } }}
+      >
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 1, borderBottom: "1px solid #e2e8f0" }}>
+          <span style={{ fontSize: "15px", fontWeight: "700", color: "#1e293b" }}>Freight Forwarding {dsrMode} DSR Report</span>
+          <IconButton
+            size="small"
+            onClick={() => {
+              setOpenDSRDialog(false);
+              setDsrStartDate("");
+              setDsrEndDate("");
+            }}
+            sx={{ color: "#64748b" }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+            
+            <FormControl size="small" fullWidth>
+              <InputLabel id="dsr-year-label">Financial Year</InputLabel>
+              <Select
+                labelId="dsr-year-label"
+                value={dsrYear}
+                label="Financial Year"
+                onChange={(e) => setDsrYear(e.target.value)}
+                sx={{ borderRadius: "3px", fontSize: "12px" }}
+              >
+                <MenuItem value="all" style={{ fontSize: "12px" }}>All Years</MenuItem>
+                <MenuItem value="26-27" style={{ fontSize: "12px" }}>2026-2027 (26-27)</MenuItem>
+                <MenuItem value="25-26" style={{ fontSize: "12px" }}>2025-2026 (25-26)</MenuItem>
+                <MenuItem value="24-25" style={{ fontSize: "12px" }}>2024-2025 (24-25)</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" fullWidth>
+              <InputLabel id="dsr-shipment-label">Shipment Type</InputLabel>
+              <Select
+                labelId="dsr-shipment-label"
+                value={dsrShipmentType}
+                label="Shipment Type"
+                onChange={(e) => setDsrShipmentType(e.target.value)}
+                sx={{ borderRadius: "3px", fontSize: "12px" }}
+              >
+                {dsrMode === "Import" ? (
+                  <>
+                    <MenuItem value="all" style={{ fontSize: "12px" }}>All Import Shipments</MenuItem>
+                    <MenuItem value="Import-Sea" style={{ fontSize: "12px" }}>Import - Sea</MenuItem>
+                    <MenuItem value="Import-Air" style={{ fontSize: "12px" }}>Import - Air</MenuItem>
+                  </>
+                ) : (
+                  <>
+                    <MenuItem value="all" style={{ fontSize: "12px" }}>All Export Shipments</MenuItem>
+                    <MenuItem value="Export-Sea" style={{ fontSize: "12px" }}>Export - Sea</MenuItem>
+                    <MenuItem value="Export-Air" style={{ fontSize: "12px" }}>Export - Air</MenuItem>
+                  </>
+                )}
+              </Select>
+            </FormControl>
+
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <TextField
+                label="Start Date"
+                type="date"
+                size="small"
+                value={dsrStartDate}
+                onChange={(e) => setDsrStartDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+                inputProps={{ style: { fontSize: "12px" } }}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "3px" } }}
+              />
+              <TextField
+                label="End Date"
+                type="date"
+                size="small"
+                value={dsrEndDate}
+                onChange={(e) => setDsrEndDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+                inputProps={{ style: { fontSize: "12px" } }}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "3px" } }}
+              />
+            </Box>
+
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 0, borderTop: "1px solid #e2e8f0" }}>
+          <Button
+            onClick={() => {
+              setOpenDSRDialog(false);
+              setDsrStartDate("");
+              setDsrEndDate("");
+            }}
+            variant="outlined"
+            size="small"
+            sx={{
+              borderColor: "#cbd5e1",
+              color: "#475569",
+              textTransform: "none",
+              borderRadius: "3px",
+              height: 32,
+              fontSize: "12px",
+              "&:hover": { borderColor: "#94a3b8", backgroundColor: "#f8fafc" }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDownloadDSR}
+            variant="contained"
+            size="small"
+            disabled={dsrLoading}
+            sx={{
+              backgroundColor: dsrLoading ? "#cbd5e1" : "#16408f",
+              textTransform: "none",
+              borderRadius: "3px",
+              height: 32,
+              fontSize: "12px",
+              fontWeight: "600",
+              "&:hover": { backgroundColor: "#19448a" }
+            }}
+          >
+            {dsrLoading ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : "Download Excel"}
+          </Button>
+        </DialogActions>
       </Dialog>
     </div>
   );

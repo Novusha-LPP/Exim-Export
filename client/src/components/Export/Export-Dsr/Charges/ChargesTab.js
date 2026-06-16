@@ -324,12 +324,19 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
                     const hours = String(d.getHours()).padStart(2, "0");
                     const minutes = String(d.getMinutes()).padStart(2, "0");
                     formik.setFieldValue("send_for_billing_date", `${day}-${month}-${year} ${hours}:${minutes}`);
+                  } else {
+                    formik.setFieldValue("send_for_billing_date", "");
                   }
                 }}
                 disabled={!isEditable || (chargesCount === 0 && (formik.values.charges || []).length === 0)}
                 style={{ width: '16px', height: '16px', cursor: (!isEditable || (chargesCount === 0 && (formik.values.charges || []).length === 0)) ? 'not-allowed' : 'pointer' }}
               />
               Send for Billing
+              {formik.values.send_for_billing && formik.values.send_for_billing_date && (
+                <span style={{ fontSize: '11px', color: '#475569', fontWeight: 500, marginLeft: '6px' }}>
+                  ({formik.values.send_for_billing_date})
+                </span>
+              )}
             </label>
           </div>
         </div>

@@ -5,26 +5,26 @@ const s = {
   wrapper: {
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
     backgroundColor: "#f8fafc",
-    padding: "20px 24px",
+    padding: "10px 16px",
     color: "#0f172a",
-    fontSize: "12.5px",
+    fontSize: "12px",
   },
   card: {
     backgroundColor: "#fff",
     borderRadius: "3px",
     boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-    marginBottom: "16px",
+    marginBottom: "10px",
     border: "1px solid #cbd5e1",
     overflow: "visible",
   },
   cardHeader: {
-    padding: "12px 20px",
+    padding: "8px 16px",
     borderBottom: "1px solid #cbd5e1",
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    gap: "6px",
     fontWeight: 700,
-    fontSize: "12.5px",
+    fontSize: "12px",
     textTransform: "uppercase",
     letterSpacing: "0.5px",
     color: "#334155",
@@ -33,32 +33,32 @@ const s = {
     borderTopRightRadius: "3px",
   },
   cardBody: {
-    padding: "16px 20px",
+    padding: "10px 16px",
   },
   borderBlue: { borderLeft: "3px solid #16408f" },
   borderTeal: { borderLeft: "3px solid #16408f" },
   row: {
     display: "flex",
-    gap: "16px",
-    marginBottom: "12px",
+    gap: "12px",
+    marginBottom: "8px",
     flexWrap: "wrap",
   },
   col: {
     flex: 1,
-    minWidth: "180px",
+    minWidth: "150px",
     display: "flex",
     flexDirection: "column",
   },
   label: {
-    fontSize: "11.5px",
+    fontSize: "11px",
     fontWeight: 600,
     color: "#475569",
-    marginBottom: "4px",
+    marginBottom: "2px",
   },
   input: {
-    height: "34px",
-    padding: "0 12px",
-    fontSize: "12.5px",
+    height: "28px",
+    padding: "0 8px",
+    fontSize: "12px",
     border: "1px solid #cbd5e1",
     borderRadius: "3px",
     outline: "none",
@@ -69,9 +69,9 @@ const s = {
     transition: "all 0.15s ease",
   },
   select: {
-    height: "34px",
-    padding: "0 10px",
-    fontSize: "12.5px",
+    height: "28px",
+    padding: "0 6px",
+    fontSize: "12px",
     border: "1px solid #cbd5e1",
     borderRadius: "3px",
     backgroundColor: "#fff",
@@ -82,9 +82,9 @@ const s = {
     transition: "all 0.15s ease",
   },
   textarea: {
-    minHeight: "75px",
-    padding: "8px 12px",
-    fontSize: "12.5px",
+    minHeight: "50px",
+    padding: "6px 10px",
+    fontSize: "12px",
     border: "1px solid #cbd5e1",
     borderRadius: "3px",
     backgroundColor: "#fff",
@@ -98,9 +98,9 @@ const s = {
     width: "100%",
   },
   inputWithIcon: {
-    height: "34px",
-    padding: "0 28px 0 12px",
-    fontSize: "12.5px",
+    height: "28px",
+    padding: "0 22px 0 8px",
+    fontSize: "12px",
     border: "1px solid #cbd5e1",
     borderRadius: "3px",
     width: "100%",
@@ -147,38 +147,38 @@ const s = {
   btnPrimary: {
     backgroundColor: "#16408f",
     color: "#fff",
-    padding: "0 24px",
-    height: "36px",
+    padding: "0 18px",
+    height: "30px",
     borderRadius: "3px",
     border: "none",
     fontWeight: 600,
     cursor: "pointer",
-    fontSize: "12.5px",
+    fontSize: "12px",
     transition: "all 0.15s ease",
   },
   btnClear: {
     backgroundColor: "#fff",
     color: "#475569",
-    padding: "0 20px",
-    height: "36px",
+    padding: "0 16px",
+    height: "30px",
     borderRadius: "3px",
     border: "1px solid #cbd5e1",
     fontWeight: 600,
     cursor: "pointer",
-    fontSize: "12.5px",
+    fontSize: "12px",
     marginRight: "8px",
     transition: "all 0.15s ease",
   },
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    marginTop: "8px",
-    marginBottom: "8px",
+    marginTop: "6px",
+    marginBottom: "6px",
   },
   th: {
     textAlign: "left",
-    padding: "10px 12px",
-    fontSize: "11px",
+    padding: "6px 8px",
+    fontSize: "10.5px",
     fontWeight: 700,
     color: "#ffffff",
     textTransform: "uppercase",
@@ -187,15 +187,27 @@ const s = {
     backgroundColor: "#19448aff",
   },
   td: {
-    padding: "8px 12px",
+    padding: "4px 8px",
     borderBottom: "1px solid #cbd5e1",
     verticalAlign: "middle",
   },
   btnDanger: {
     backgroundColor: "#ef4444",
     color: "#fff",
+    padding: "0 10px",
+    height: "24px",
+    borderRadius: "3px",
+    border: "none",
+    fontWeight: 600,
+    cursor: "pointer",
+    fontSize: "10.5px",
+    transition: "all 0.15s ease",
+  },
+  btnAddRow: {
+    backgroundColor: "#10b981",
+    color: "#fff",
     padding: "0 12px",
-    height: "30px",
+    height: "24px",
     borderRadius: "3px",
     border: "none",
     fontWeight: 600,
@@ -203,22 +215,10 @@ const s = {
     fontSize: "11px",
     transition: "all 0.15s ease",
   },
-  btnAddRow: {
-    backgroundColor: "#10b981",
-    color: "#fff",
-    padding: "0 16px",
-    height: "30px",
-    borderRadius: "3px",
-    border: "none",
-    fontWeight: 600,
-    cursor: "pointer",
-    fontSize: "11.5px",
-    transition: "all 0.15s ease",
-  },
   calcField: {
-    height: "34px",
-    padding: "0 12px",
-    fontSize: "12.5px",
+    height: "28px",
+    padding: "0 8px",
+    fontSize: "12px",
     border: "1px solid #cbd5e1",
     borderRadius: "3px",
     backgroundColor: "#f1f5f9",
@@ -249,6 +249,7 @@ const emptyForm = {
   dimension: "",
   no_packages: "",
   dimensions: [],
+  containers: [],
   volume_cbm: "",
   is_manual_cbm: false,
   movement_type: "",
@@ -305,6 +306,13 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
         net_weight: initial.net_weight || "",
         gross_weight: initial.gross_weight || "",
         calculated_cbm: 0
+      }];
+    }
+    if (!initial.containers || initial.containers.length === 0) {
+      initial.containers = [{
+        container_number: "",
+        custom_seal: "",
+        line_seal: ""
       }];
     }
     return initial;
@@ -433,6 +441,55 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
         gross_weight: totalGross > 0 ? String(parseFloat(totalGross.toFixed(3))) : "",
         no_packages: totalPkgs > 0 ? String(totalPkgs) : "",
         dimension: dimensionText,
+      };
+    });
+  };
+
+  const handleContainerChange = (index, field, value) => {
+    setFormData((prev) => {
+      const updatedContainers = prev.containers.map((row, i) => {
+        if (i === index) {
+          return { ...row, [field]: value.toUpperCase() };
+        }
+        return row;
+      });
+      return {
+        ...prev,
+        containers: updatedContainers,
+      };
+    });
+  };
+
+  const handleAddContainerRow = () => {
+    setFormData((prev) => {
+      const newRow = {
+        container_number: "",
+        custom_seal: "",
+        line_seal: ""
+      };
+      return {
+        ...prev,
+        containers: [...prev.containers, newRow],
+      };
+    });
+  };
+
+  const handleRemoveContainerRow = (index) => {
+    setFormData((prev) => {
+      if (prev.containers.length <= 1) {
+        const clearedRow = {
+          container_number: "",
+          custom_seal: "",
+          line_seal: ""
+        };
+        return {
+          ...prev,
+          containers: [clearedRow],
+        };
+      }
+      return {
+        ...prev,
+        containers: prev.containers.filter((_, i) => i !== index),
       };
     });
   };
@@ -889,15 +946,7 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
                   <option value="DOCK STUFFED">DOCK STUFFED</option>
                 </select>
               </div>
-              <div style={s.col}>
-                <label style={s.label}>Movement Type</label>
-                <input
-                  style={s.input}
-                  value={formData.movement_type || ""}
-                  onChange={(e) => handleChange("movement_type", e.target.value)}
-                  placeholder="e.g. FCL/FCL, Door to Door"
-                />
-              </div>
+
             </div>
           </div>
         </div>
@@ -1044,12 +1093,12 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
               {formData.is_manual_cbm && (
                 <div style={{
                   display: "flex",
-                  gap: "16px",
+                  gap: "10px",
                   backgroundColor: "#eff6ff",
                   border: "1px solid #bfdbfe",
                   borderRadius: "4px",
-                  padding: "12px 16px",
-                  marginBottom: "16px",
+                  padding: "8px 12px",
+                  marginBottom: "8px",
                   flexWrap: "wrap"
                 }}>
                   <div style={{ flex: 1, minWidth: "140px", display: "flex", flexDirection: "column" }}>
@@ -1230,81 +1279,149 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
               </div>
             </div>
 
+            <div style={{ marginTop: "20px", marginBottom: "15px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "10px" }}>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "#374151" }}>Container Details</span>
+                <button
+                  type="button"
+                  style={s.btnAddRow}
+                  onClick={handleAddContainerRow}
+                >
+                  + Add More
+                </button>
+              </div>
+
+              <div style={{ overflowX: "auto", border: "1px solid #e5e7eb", borderRadius: "4px" }}>
+                <table style={s.table}>
+                  <thead>
+                    <tr>
+                      <th style={s.th}>Container No.</th>
+                      <th style={s.th}>Custom Seal</th>
+                      <th style={s.th}>Line seal</th>
+                      <th style={{ ...s.th, width: "50px", textAlign: "center" }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {formData.containers.map((cRow, index) => (
+                      <tr key={index}>
+                        <td style={s.td}>
+                          <input
+                            type="text"
+                            style={s.input}
+                            value={cRow.container_number || ""}
+                            onChange={(e) => handleContainerChange(index, "container_number", e.target.value)}
+                            placeholder="Container No"
+                          />
+                        </td>
+                        <td style={s.td}>
+                          <input
+                            type="text"
+                            style={s.input}
+                            value={cRow.custom_seal || ""}
+                            onChange={(e) => handleContainerChange(index, "custom_seal", e.target.value)}
+                            placeholder="Custom Seal"
+                          />
+                        </td>
+                        <td style={s.td}>
+                          <input
+                            type="text"
+                            style={s.input}
+                            value={cRow.line_seal || ""}
+                            onChange={(e) => handleContainerChange(index, "line_seal", e.target.value)}
+                            placeholder="Line Seal"
+                          />
+                        </td>
+                        <td style={{ ...s.td, textAlign: "center" }}>
+                          <button
+                            type="button"
+                            style={s.btnDanger}
+                            onClick={() => handleRemoveContainerRow(index)}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             <div style={{
               display: "flex",
-              gap: "10px",
+              gap: "8px",
               flexWrap: "wrap",
               backgroundColor: "#f9fafb",
               border: "1px solid #e5e7eb",
               borderRadius: "4px",
-              padding: "12px",
-              marginBottom: "15px",
-              marginTop: "10px"
+              padding: "8px 10px",
+              marginBottom: "8px",
+              marginTop: "6px"
             }}>
-              <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Packages</span>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
-                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{finalPackages}</span>
+              <div style={{ flex: "1 1 100px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "9.5px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Packages</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#111827" }}>{finalPackages}</span>
                   <input
                     value={formData.package_unit || ""}
                     onChange={(e) => handleChange("package_unit", e.target.value)}
-                    style={{ width: "50px", height: "20px", fontSize: "10px", fontWeight: 600, padding: "0 4px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
+                    style={{ width: "45px", height: "18px", fontSize: "9.5px", fontWeight: 600, padding: "0 3px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
                     placeholder="Unit"
                   />
                 </div>
               </div>
-              <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Net Wt</span>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
-                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{finalNetWeight.toFixed(2)}</span>
+              <div style={{ flex: "1 1 100px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "9.5px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Net Wt</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#111827" }}>{finalNetWeight.toFixed(2)}</span>
                   <input
                     value={formData.net_weight_unit || ""}
                     onChange={(e) => handleChange("net_weight_unit", e.target.value)}
-                    style={{ width: "40px", height: "20px", fontSize: "10px", fontWeight: 600, padding: "0 4px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
+                    style={{ width: "35px", height: "18px", fontSize: "9.5px", fontWeight: 600, padding: "0 3px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
                     placeholder="Unit"
                   />
                 </div>
               </div>
-              <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Gross Wt</span>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
-                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{finalGrossWeight.toFixed(2)}</span>
+              <div style={{ flex: "1 1 100px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "9.5px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Gross Wt</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#111827" }}>{finalGrossWeight.toFixed(2)}</span>
                   <input
                     value={formData.gross_weight_unit || ""}
                     onChange={(e) => handleChange("gross_weight_unit", e.target.value)}
-                    style={{ width: "40px", height: "20px", fontSize: "10px", fontWeight: 600, padding: "0 4px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
+                    style={{ width: "35px", height: "18px", fontSize: "9.5px", fontWeight: 600, padding: "0 3px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
                     placeholder="Unit"
                   />
                 </div>
               </div>
-              <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Volume</span>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
-                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#16408f" }}>{finalVolumeCbm.toFixed(4)}</span>
+              <div style={{ flex: "1 1 100px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "9.5px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Volume</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#16408f" }}>{finalVolumeCbm.toFixed(4)}</span>
                   <input
                     value={formData.volume_unit || ""}
                     onChange={(e) => handleChange("volume_unit", e.target.value)}
-                    style={{ width: "45px", height: "20px", fontSize: "10px", fontWeight: 600, padding: "0 4px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
+                    style={{ width: "40px", height: "18px", fontSize: "9.5px", fontWeight: 600, padding: "0 3px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
                     placeholder="Unit"
                   />
                 </div>
               </div>
-              <div style={{ flex: "1 1 120px", display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>
+              <div style={{ flex: "1 1 100px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "9.5px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>
                   Volumetric Wt ({formData.shipment_type && formData.shipment_type.includes("Air") ? "Air: 1:167" : "Sea: 1:1000"})
                 </span>
-                <span style={{ fontSize: "14px", fontWeight: 700, color: "#4b5563", marginTop: "4px" }}>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "#4b5563", marginTop: "2px" }}>
                   {volumetricWeight.toFixed(2)} {formData.gross_weight_unit || "KG"}
                 </span>
               </div>
-              <div style={{ flex: "1 1 150px", display: "flex", flexDirection: "column", borderLeft: "2px solid #16408f", paddingLeft: "10px" }}>
-                <span style={{ fontSize: "10px", fontWeight: 700, color: "#16408f", textTransform: "uppercase" }}>Chargeable Weight</span>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
-                  <span style={{ fontSize: "16px", fontWeight: 800, color: "#16408f" }}>{chargeableWeight.toFixed(2)}</span>
+              <div style={{ flex: "1 1 130px", display: "flex", flexDirection: "column", borderLeft: "2px solid #16408f", paddingLeft: "10px" }}>
+                <span style={{ fontSize: "9.5px", fontWeight: 700, color: "#16408f", textTransform: "uppercase" }}>Chargeable Weight</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+                  <span style={{ fontSize: "13px", fontWeight: 800, color: "#16408f" }}>{chargeableWeight.toFixed(2)}</span>
                   <input
                     value={formData.chargeable_weight_unit || ""}
                     onChange={(e) => handleChange("chargeable_weight_unit", e.target.value)}
-                    style={{ width: "40px", height: "20px", fontSize: "10px", fontWeight: 600, padding: "0 4px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
+                    style={{ width: "35px", height: "18px", fontSize: "9.5px", fontWeight: 600, padding: "0 3px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none" }}
                     placeholder="Unit"
                   />
                 </div>

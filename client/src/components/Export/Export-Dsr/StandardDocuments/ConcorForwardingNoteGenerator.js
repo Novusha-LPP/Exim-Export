@@ -80,7 +80,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       group.grossWeight += Number(c.grossWeight) || 0;
       group.grWtPlusTrWt += Number(c.grWtPlusTrWt) || 0;
 
-      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || primaryJob.descriptionOfGoods || "";
+      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || primaryJob.descriptionOfGoods || primaryJob.description || "";
       if (desc && !group.uniqueDescriptions.includes(desc)) {
         group.uniqueDescriptions.push(desc);
       }
@@ -239,7 +239,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
 
       const descDisplay = cnt.uniqueDescriptions && cnt.uniqueDescriptions.length > 0
         ? cnt.uniqueDescriptions.map(d => `<div>${d}</div>`).join("")
-        : (product.description || "");
+        : (product.description || exportJob.description || "");
 
       const hsnDisplay = cnt.uniqueHsnCodes && cnt.uniqueHsnCodes.length > 0
         ? cnt.uniqueHsnCodes.join(", ")

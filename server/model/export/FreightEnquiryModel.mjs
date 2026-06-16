@@ -40,6 +40,13 @@ const freightEnquirySchema = new mongoose.Schema(
         calculated_cbm: { type: Number }
       }
     ],
+    containers: [
+      {
+        container_number: { type: String, default: "" },
+        custom_seal: { type: String, default: "" },
+        line_seal: { type: String, default: "" }
+      }
+    ],
     remarks: { type: String },
     source_job_no: { type: String },
     status: { type: String, default: "Open" },

@@ -119,8 +119,11 @@ const CreateClubJobModal = ({ open, onClose, currentJob, onSuccess }) => {
     const searchLower = searchQuery.toLowerCase();
     const jobNo = (job.job_no || "").toLowerCase();
     const sbNo = (job.sb_no || "").toLowerCase();
+    const matchesContainer = Array.isArray(job.containers) && job.containers.some(c => 
+      (c.containerNo || "").toLowerCase().includes(searchLower)
+    );
     
-    return jobNo.includes(searchLower) || sbNo.includes(searchLower);
+    return jobNo.includes(searchLower) || sbNo.includes(searchLower) || matchesContainer;
   });
 
   const sortedFilteredJobs = [...filteredJobs].sort((a, b) => {
@@ -192,7 +195,7 @@ const CreateClubJobModal = ({ open, onClose, currentJob, onSuccess }) => {
               fullWidth
               size="small"
               variant="outlined"
-              placeholder="Search by Job No or SB No..."
+              placeholder="Search by Job No, SB No or Container No..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               InputProps={{

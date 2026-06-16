@@ -1526,9 +1526,29 @@ const StatusSection = ({
         <input
           type="checkbox"
           checked={formik.values.operational_lock || false}
-          onChange={(e) =>
-            formik.setFieldValue("operational_lock", e.target.checked)
-          }
+          onChange={(e) => {
+            if (e.target.checked) {
+              const hasEmptyDates = displayData.some((row) => {
+                const isDispatchActive = row.railRoad === "rail" || row.railRoad === "road";
+                if (isDispatchActive) {
+                  const outDate = row.handoverConcorTharSanganaRailRoadDate;
+                  const reachedDate = row.railOutReachedDate;
+                  const isOutDateEmpty = !outDate || !outDate.toString().trim();
+                  const isReachedDateEmpty = !reachedDate || !reachedDate.toString().trim();
+                  return isOutDateEmpty || isReachedDateEmpty;
+                }
+                return false;
+              });
+
+              if (hasEmptyDates) {
+                alert(
+                  "Warning: Cannot lock operations. Please ensure both Dispatch Out Date and Reached/Road Reached Date are filled for all active rail/road tracking entries."
+                );
+                return;
+              }
+            }
+            formik.setFieldValue("operational_lock", e.target.checked);
+          }}
           style={{ transform: "scale(1.2)", cursor: "pointer" }}
         />
       </div>

@@ -1528,6 +1528,13 @@ const statusDetailsSchema = new Schema(
       reimbursement_bill_no: { type: String, trim: true },
     },
     otherDocUpload: [String],
+    otherDocsCustom: [
+      {
+        name: { type: String, trim: true },
+        url: { type: String, trim: true },
+        uploadedAt: { type: Date, default: Date.now }
+      }
+    ],
     forwardingNoteDocUpload: [String],
     billingDocsStatus: { type: String, trim: true },
     railRoad: { type: String, trim: true },
@@ -1814,6 +1821,20 @@ const exportJobSchema = new mongoose.Schema(
       aeoCode: String,
       aeoCountry: { type: String, ref: "Country", default: "IN" },
       aeoRole: String,
+    },
+    docClicks: {
+      checklist: {
+        clickedBy: { type: String, trim: true },
+        clickedAt: { type: Date }
+      },
+      file_cover: {
+        clickedBy: { type: String, trim: true },
+        clickedAt: { type: Date }
+      },
+      esanchit: {
+        clickedBy: { type: String, trim: true },
+        clickedAt: { type: Date }
+      }
     },
     // Missing Global Fields from UI
     bank_dealer: { type: String, trim: true },

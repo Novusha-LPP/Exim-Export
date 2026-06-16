@@ -545,27 +545,37 @@ const QuickDeleteButton = ({ job, field, url, uploadType = "status", idx = 0, on
       let dotPath = "";
       let currentFiles = [];
 
+      let newValue = [];
+
       if (uploadType === "toplevel") {
         dotPath = field;
         currentFiles = Array.isArray(job[field]) ? [...job[field]] : [];
+        newValue = currentFiles.filter(f => f !== url);
       } else if (uploadType === "section") {
         dotPath = `operations.0.${field}.${idx}.images`;
         const ops = job.operations?.[0] || {};
         const section = Array.isArray(ops[field]) ? ops[field] : [];
         const item = section[idx] || {};
         currentFiles = Array.isArray(item.images) ? [...item.images] : [];
+        newValue = currentFiles.filter(f => f !== url);
       } else if (uploadType === "container") {
         dotPath = `containers.${idx}.${field}`;
         const container = job.containers?.[idx] || {};
         currentFiles = Array.isArray(container[field]) ? [...container[field]] : [];
+        newValue = currentFiles.filter(f => f !== url);
+      } else if (uploadType === "custom") {
+        dotPath = `operations.0.statusDetails.0.otherDocsCustom`;
+        const ops = job.operations?.[0] || {};
+        const status = (ops.statusDetails && ops.statusDetails[0]) || {};
+        currentFiles = Array.isArray(status.otherDocsCustom) ? [...status.otherDocsCustom] : [];
+        newValue = currentFiles.filter(f => f.url !== url);
       } else {
         dotPath = `operations.0.statusDetails.0.${field}`;
         const ops = job.operations?.[0] || {};
         const status = (ops.statusDetails && ops.statusDetails[0]) || {};
         currentFiles = Array.isArray(status[field]) ? [...status[field]] : [];
+        newValue = currentFiles.filter(f => f !== url);
       }
-
-      const newValue = currentFiles.filter(f => f !== url);
 
       await axios.patch(
         `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(job.job_no)}/fields`,
@@ -596,6 +606,112 @@ const QuickDeleteButton = ({ job, field, url, uploadType = "status", idx = 0, on
         <DeleteIcon style={{ fontSize: "14px", color: "#dc2626" }} />
       )}
     </IconButton>
+  );
+};
+
+const CustomDocCreatorItem = ({ job, onSuccess }) => {
+  const [customName, setCustomName] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleUploadClick = (e) => {
+    e.stopPropagation();
+    if (!customName.trim()) {
+      alert("Please enter a document name first.");
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const result = await uploadFileToS3(file, "export_docs");
+      const url = result.Location;
+
+      const ops = job.operations?.[0] || {};
+      const status = (ops.statusDetails && ops.statusDetails[0]) || {};
+      const currentItems = Array.isArray(status.otherDocsCustom) ? [...status.otherDocsCustom] : [];
+
+      const newItem = {
+        name: customName.trim(),
+        url: url,
+        uploadedAt: new Date()
+      };
+
+      const dotPath = "operations.0.statusDetails.0.otherDocsCustom";
+      const newValue = [...currentItems, newItem];
+
+      const res = await axios.patch(
+        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(job.job_no)}/fields`,
+        {
+          fieldUpdates: [{ field: dotPath, value: newValue }]
+        }
+      );
+
+      setCustomName("");
+      if (onSuccess) onSuccess(res.data.data);
+    } catch (err) {
+      console.error("Custom doc upload err:", err);
+      alert("Failed to upload custom document.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      style={{
+        padding: '6px 12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        borderTop: '1px solid #e2e8f0',
+        backgroundColor: '#f8fafc'
+      }}
+    >
+      <input
+        type="text"
+        placeholder="Custom doc name..."
+        value={customName}
+        onChange={(e) => setCustomName(e.target.value)}
+        style={{
+          flex: 1,
+          fontSize: '12px',
+          padding: '4px 8px',
+          borderRadius: '4px',
+          border: '1px solid #cbd5e1',
+          outline: 'none',
+          minWidth: 0
+        }}
+      />
+      <IconButton
+        size="small"
+        onClick={handleUploadClick}
+        disabled={uploading}
+        style={{ padding: "4px" }}
+        title="Upload Custom Document"
+      >
+        {uploading ? (
+          <CircularProgress size={16} />
+        ) : (
+          <CloudUploadIcon style={{ fontSize: "16px", color: "#0284c7" }} />
+        )}
+      </IconButton>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,application/pdf,image/jpeg,image/png,video/mp4"
+        style={{ display: "none" }}
+      />
+    </div>
   );
 };
 
@@ -838,6 +954,7 @@ const ExportJobsTable = () => {
   });
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [tabCounts, setTabCounts] = useState({});
 
   // Queries status for individual jobs
   const currentModuleForQueries = window.location.pathname.startsWith("/export-operation")
@@ -1215,6 +1332,7 @@ const ExportJobsTable = () => {
   const [selectedExporter, setSelectedExporter] = useState("All Exporters");
   const [dsrYear, setDsrYear] = useState(getCurrentFinancialYear());
   const [dsrOnlyPending, setDsrOnlyPending] = useState(false);
+  const [dsrTab, setDsrTab] = useState("all");
   const [dsrLoading, setDSRLoading] = useState(false);
   const [dsrStartDate, setDsrStartDate] = useState("");
   const [dsrEndDate, setDsrEndDate] = useState("");
@@ -1370,7 +1488,8 @@ const ExportJobsTable = () => {
           params: {
             exporter: isAll ? "All" : selectedExporter,
             year: dsrYear,
-            onlyPending: dsrOnlyPending,
+            onlyPending: dsrTab === "only-pending",
+            status: dsrTab === "only-pending" ? "all" : dsrTab,
             startDate: dsrStartDate,
             endDate: dsrEndDate
           },
@@ -1412,7 +1531,7 @@ const ExportJobsTable = () => {
           params: {
             exporter: isAll ? "all" : selectedExporter,
             year: dsrYear,
-            status: dsrOnlyPending ? "Pending" : "all",
+            status: dsrTab === "only-pending" ? "Pending" : dsrTab,
             limit: 5000,
             startDate: dsrStartDate,
             endDate: dsrEndDate
@@ -1612,9 +1731,47 @@ const ExportJobsTable = () => {
     }
   };
 
+  const fetchTabCounts = async () => {
+    try {
+      let module = "jobs";
+      if (isOperationModule) {
+        module = "operation";
+      } else if (isChargesModule) {
+        module = "charges";
+      }
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_STRING}/export-jobs-tab-counts`,
+        {
+          params: {
+            module,
+            search: searchQuery,
+            year: selectedYear === "all" ? "" : selectedYear,
+            consignmentType: selectedMovementType,
+            branch: selectedBranch,
+            exporter: selectedExporterFilter,
+            detailedStatus: selectedDetailedStatus,
+            pendingQueries: onlyPendingQueries,
+            currentModule: currentModuleForQueries,
+            customHouse: selectedCustomHouse,
+            month: selectedMonth,
+            goods_stuffed_at: selectedGoodsStuffedAt,
+            jobOwner: selectedJobOwner,
+          },
+        }
+      );
+      if (response.data.success) {
+        setTabCounts(response.data.data || {});
+      }
+    } catch (err) {
+      console.error("Error fetching tab counts:", err);
+    }
+  };
+
   // --- Fetch Jobs ---
   const fetchJobs = async () => {
     setLoading(true);
+    fetchTabCounts();
     try {
       let endpoint = `${import.meta.env.VITE_API_STRING}/exports`;
       if (isOperationModule) {
@@ -2016,6 +2173,15 @@ const ExportJobsTable = () => {
     }
   };
 
+  const handleTrackDocClick = (jobNo, docType, updatedDocClicks) => {
+    setJobs(prevJobs => prevJobs.map(j => {
+      if (j.job_no === jobNo) {
+        return { ...j, docClicks: updatedDocClicks };
+      }
+      return j;
+    }));
+  };
+
   // --- DSC Signing Handler ---
   const handleSignFlatFile = async () => {
     if (!selectedSignJob) return;
@@ -2227,8 +2393,27 @@ const ExportJobsTable = () => {
           } else {
             links.push({ title: f.title, url: null, field: f.field, uploadType: "status" });
           }
+
+          if (f.field === "otherDocUpload") {
+            const customDocs = Array.isArray(status.otherDocsCustom) ? status.otherDocsCustom : [];
+            customDocs.forEach((doc, cIdx) => {
+              if (doc.url) {
+                links.push({
+                  title: doc.name || "Custom Doc",
+                  url: doc.url,
+                  field: "otherDocsCustom",
+                  uploadType: "custom",
+                  idx: cIdx
+                });
+              }
+            });
+          }
         }
       });
+    });
+
+    links.push({
+      isCustomCreator: true
     });
 
     return links;
@@ -2569,7 +2754,9 @@ const ExportJobsTable = () => {
                     ? { ...s.badge, ...s.activeBadge }
                     : s.badge
                 }
-              ></span>
+              >
+                {tabCounts["Pending"] ?? 0}
+              </span>
             </button>
             {!isOperationModule && !isChargesModule && (
               <button
@@ -2585,7 +2772,9 @@ const ExportJobsTable = () => {
                       ? { ...s.badge, ...s.activeBadge }
                       : s.badge
                   }
-                ></span>
+                >
+                  {tabCounts["Booking Pending"] ?? 0}
+                </span>
               </button>
             )}
             {!isOperationModule && !isChargesModule && (
@@ -2602,7 +2791,9 @@ const ExportJobsTable = () => {
                       ? { ...s.badge, ...s.activeBadge }
                       : s.badge
                   }
-                ></span>
+                >
+                  {tabCounts["Handover Pending"] ?? 0}
+                </span>
               </button>
             )}
             {!isOperationModule && !isChargesModule && (
@@ -2619,7 +2810,9 @@ const ExportJobsTable = () => {
                       ? { ...s.badge, ...s.activeBadge }
                       : s.badge
                   }
-                ></span>
+                >
+                  {tabCounts["Prepare for Billing"] ?? 0}
+                </span>
               </button>
             )}
             {!isOperationModule && !isChargesModule && (
@@ -2636,7 +2829,9 @@ const ExportJobsTable = () => {
                       ? { ...s.badge, ...s.activeBadge }
                       : s.badge
                   }
-                ></span>
+                >
+                  {tabCounts["Sent for Billing"] ?? 0}
+                </span>
               </button>
             )}
             {isOperationModule && (
@@ -2653,7 +2848,9 @@ const ExportJobsTable = () => {
                       ? { ...s.badge, ...s.activeBadge }
                       : s.badge
                   }
-                ></span>
+                >
+                  {tabCounts["Op Completed"] ?? 0}
+                </span>
               </button>
             )}
             {!isOperationModule && !isChargesModule && (
@@ -2663,7 +2860,16 @@ const ExportJobsTable = () => {
                 }
                 onClick={() => setActiveTab("club-jobs")}
               >
-                Club Jobs
+                Club Jobs{" "}
+                <span
+                  style={
+                    activeTab === "club-jobs"
+                      ? { ...s.badge, ...s.activeBadge }
+                      : s.badge
+                  }
+                >
+                  {tabCounts["club-jobs"] ?? 0}
+                </span>
               </button>
             )}
             <button
@@ -2679,7 +2885,9 @@ const ExportJobsTable = () => {
                     ? { ...s.badge, ...s.activeBadge }
                     : s.badge
                 }
-              ></span>
+              >
+                {tabCounts["Completed"] ?? 0}
+              </span>
             </button>
             {isChargesModule && (
               <>
@@ -2689,7 +2897,16 @@ const ExportJobsTable = () => {
                   }
                   onClick={() => setActiveTab("General Jobs")}
                 >
-                  General Jobs
+                  General Jobs{" "}
+                  <span
+                    style={
+                      activeTab === "General Jobs"
+                        ? { ...s.badge, ...s.activeBadge }
+                        : s.badge
+                    }
+                  >
+                    {tabCounts["General Jobs"] ?? 0}
+                  </span>
                 </button>
                 <button
                   style={
@@ -2697,7 +2914,16 @@ const ExportJobsTable = () => {
                   }
                   onClick={() => setActiveTab("Freight Forwarding")}
                 >
-                  Freight Forwarding
+                  Freight Forwarding{" "}
+                  <span
+                    style={
+                      activeTab === "Freight Forwarding"
+                        ? { ...s.badge, ...s.activeBadge }
+                        : s.badge
+                    }
+                  >
+                    {tabCounts["Freight Forwarding"] ?? 0}
+                  </span>
                 </button>
               </>
             )}
@@ -2715,7 +2941,9 @@ const ExportJobsTable = () => {
                       ? { ...s.badge, ...s.activeBadge }
                       : s.badge
                   }
-                ></span>
+                >
+                  {tabCounts["Cancelled"] ?? 0}
+                </span>
               </button>
             )}
           </div>
@@ -3203,11 +3431,19 @@ const ExportJobsTable = () => {
                           style={{
                             ...s.td,
                             left: 0,
-                            backgroundColor: jobQueriesStatus[job.job_no]?.hasOpenClientQueries
-                              ? "#fee2e2"
-                              : job.operational_lock
-                              ? "#f7f6d3cc"
-                              : "inherit",
+                            backgroundColor: (() => {
+                              const docClicks = job.docClicks || {};
+                              const checklistUser = docClicks.checklist?.clickedBy;
+                              const fileCoverUser = docClicks.file_cover?.clickedBy;
+                              const esanchitUser = docClicks.esanchit?.clickedBy;
+                              const hasCustomFileGenerated = checklistUser && fileCoverUser && esanchitUser &&
+                                checklistUser === fileCoverUser && checklistUser === esanchitUser;
+
+                              if (hasCustomFileGenerated) return "#e6f4ea";
+                              if (jobQueriesStatus[job.job_no]?.hasOpenClientQueries) return "#fee2e2";
+                              if (job.operational_lock) return "#f7f6d3cc";
+                              return "inherit";
+                            })(),
                             position: "sticky",
                             cursor: "pointer", // Make the whole cell look clickable
                             paddingLeft: job.parent_club_job && activeTab === "club-jobs" ? "24px" : "15px"
@@ -3275,6 +3511,35 @@ const ExportJobsTable = () => {
                           >
                             {formatDate(job.job_date)}
                           </div>
+                          {(() => {
+                            const docClicks = job.docClicks || {};
+                            const checklistUser = docClicks.checklist?.clickedBy;
+                            const fileCoverUser = docClicks.file_cover?.clickedBy;
+                            const esanchitUser = docClicks.esanchit?.clickedBy;
+                            const hasCustomFileGenerated = checklistUser && fileCoverUser && esanchitUser &&
+                              checklistUser === fileCoverUser && checklistUser === esanchitUser;
+
+                            if (hasCustomFileGenerated) {
+                              return (
+                                <div style={{
+                                  color: "#065f46",
+                                  fontSize: "9.5px",
+                                  fontWeight: "bold",
+                                  backgroundColor: "#a7f3d0",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  marginTop: "4px",
+                                  display: "inline-block",
+                                  width: "fit-content",
+                                  whiteSpace: "nowrap",
+                                  border: "1px solid #6ee7b7"
+                                }}>
+                                  Custome file generated: {checklistUser}
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                           {job.exporter_ref_no && job.exporter_ref_no !== (job.invoices?.[0]?.invoiceNumber || job.invoices?.[0]?.invoiceNo) && (
                             <div
                               style={{
@@ -4461,6 +4726,7 @@ const ExportJobsTable = () => {
           setOpenDSRDialog(false);
           setDsrStartDate("");
           setDsrEndDate("");
+          setDsrTab("all");
         }}
         maxWidth="xs"
         fullWidth
@@ -4601,25 +4867,40 @@ const ExportJobsTable = () => {
             </div>
           </div>
 
-          <div style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
-            <input
-              type="checkbox"
-              id="dsr-only-pending"
-              checked={dsrOnlyPending}
-              onChange={(e) => setDsrOnlyPending(e.target.checked)}
-              style={{ cursor: "pointer" }}
-            />
+          <div style={{ marginBottom: "15px" }}>
             <label
-              htmlFor="dsr-only-pending"
               style={{
+                display: "block",
                 fontSize: "12px",
                 fontWeight: "600",
                 color: "#374151",
-                cursor: "pointer",
+                marginBottom: "5px",
               }}
             >
-              Only Pending Jobs
+              Select Tab / Status
             </label>
+            <select
+              style={{
+                ...s.select,
+                width: "100%",
+                height: "35px",
+              }}
+              value={dsrTab}
+              onChange={(e) => setDsrTab(e.target.value)}
+            >
+              <option value="all">All Jobs</option>
+              <option value="only-pending">Only Pending Jobs</option>
+              <option value="Pending">Pending</option>
+              <option value="Booking Pending">Booking Pending</option>
+              <option value="Handover Pending">Handover Pending</option>
+              <option value="Prepare for Billing">Prepare for Billing</option>
+              <option value="Sent for Billing">Sent for Billing</option>
+              <option value="Op Completed">Op Completed</option>
+              <option value="Completed">Completed</option>
+              <option value="club-jobs">Club Jobs</option>
+              <option value="General Jobs">General Jobs</option>
+              <option value="Freight Forwarding">Freight Forwarding</option>
+            </select>
           </div>
           <div
             style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}
@@ -4630,6 +4911,7 @@ const ExportJobsTable = () => {
                 setOpenDSRDialog(false);
                 setDsrStartDate("");
                 setDsrEndDate("");
+                setDsrTab("all");
               }}
             >
               Cancel
@@ -5432,7 +5714,7 @@ const ExportJobsTable = () => {
         PaperProps={{
           style: {
             maxHeight: 450,
-            width: '220px',
+            width: '260px',
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
             borderRadius: '12px',
             border: '1px solid #e2e8f0',
@@ -5461,6 +5743,19 @@ const ExportJobsTable = () => {
               );
             }
 
+            if (link.isCustomCreator) {
+              return (
+                <CustomDocCreatorItem
+                  key="custom-creator"
+                  job={selectedDocJob}
+                  onSuccess={(updatedJob) => {
+                    setJobs((prevJobs) => prevJobs.map(j => j._id === updatedJob._id ? updatedJob : j));
+                    setSelectedDocJob(updatedJob);
+                  }}
+                />
+              );
+            }
+
             return (
               <MenuItem
                 key={idx}
@@ -5479,7 +5774,19 @@ const ExportJobsTable = () => {
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (link.title && link.title.startsWith("ESANCHIT ")) {
+                          axios.put(
+                            `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(selectedDocJob.job_no)}/track-click`,
+                            { docType: "esanchit" }
+                          )
+                          .then(response => {
+                            handleTrackDocClick(selectedDocJob.job_no, "esanchit", response.data.docClicks);
+                          })
+                          .catch(err => console.error("Error tracking esanchit click:", err));
+                        }
+                      }}
                       style={{
                         fontSize: '13px',
                         color: '#2563eb',
@@ -5518,6 +5825,8 @@ const ExportJobsTable = () => {
                                 updatedJob.operations[0][link.field][link.idx].images = updatedJob.operations[0][link.field][link.idx].images.filter(u => u !== link.url);
                               } else if (link.uploadType === "container") {
                                 updatedJob.containers[link.idx][link.field] = updatedJob.containers[link.idx][link.field].filter(u => u !== link.url);
+                              } else if (link.uploadType === "custom") {
+                                updatedJob.operations[0].statusDetails[0].otherDocsCustom = updatedJob.operations[0].statusDetails[0].otherDocsCustom.filter(doc => doc.url !== link.url);
                               } else {
                                 updatedJob.operations[0].statusDetails[0][link.field] = updatedJob.operations[0].statusDetails[0][link.field].filter(u => u !== link.url);
                               }
@@ -5530,41 +5839,43 @@ const ExportJobsTable = () => {
                       }}
                     />
                   )}
-                  <QuickUploadButton
-                    job={selectedDocJob}
-                    field={link.field}
-                    uploadType={link.uploadType || "status"}
-                    idx={link.idx || 0}
-                    onSuccess={(url) => {
-                      setJobs((prevJobs) =>
-                        prevJobs.map((j) => {
-                          if (j._id === selectedDocJob._id) {
-                            const updatedJob = JSON.parse(JSON.stringify(j));
-                            if (link.uploadType === "toplevel") {
-                              if (!Array.isArray(updatedJob[link.field])) updatedJob[link.field] = [];
-                              updatedJob[link.field].push(url);
-                            } else if (link.uploadType === "section") {
-                              if (!Array.isArray(updatedJob.operations[0][link.field])) updatedJob.operations[0][link.field] = [];
-                              if (!updatedJob.operations[0][link.field][link.idx]) updatedJob.operations[0][link.field][link.idx] = { images: [] };
-                              if (!Array.isArray(updatedJob.operations[0][link.field][link.idx].images)) updatedJob.operations[0][link.field][link.idx].images = [];
-                              updatedJob.operations[0][link.field][link.idx].images.push(url);
-                            } else if (link.uploadType === "container") {
-                              if (!updatedJob.containers[link.idx]) updatedJob.containers[link.idx] = {};
-                              if (!Array.isArray(updatedJob.containers[link.idx][link.field])) updatedJob.containers[link.idx][link.field] = [];
-                              updatedJob.containers[link.idx][link.field].push(url);
-                            } else {
-                              if (!updatedJob.operations[0].statusDetails[0]) updatedJob.operations[0].statusDetails[0] = {};
-                              if (!Array.isArray(updatedJob.operations[0].statusDetails[0][link.field])) updatedJob.operations[0].statusDetails[0][link.field] = [];
-                              updatedJob.operations[0].statusDetails[0][link.field].push(url);
+                  {link.uploadType !== "custom" && (
+                    <QuickUploadButton
+                      job={selectedDocJob}
+                      field={link.field}
+                      uploadType={link.uploadType || "status"}
+                      idx={link.idx || 0}
+                      onSuccess={(url) => {
+                        setJobs((prevJobs) =>
+                          prevJobs.map((j) => {
+                            if (j._id === selectedDocJob._id) {
+                              const updatedJob = JSON.parse(JSON.stringify(j));
+                              if (link.uploadType === "toplevel") {
+                                if (!Array.isArray(updatedJob[link.field])) updatedJob[link.field] = [];
+                                updatedJob[link.field].push(url);
+                              } else if (link.uploadType === "section") {
+                                if (!Array.isArray(updatedJob.operations[0][link.field])) updatedJob.operations[0][link.field] = [];
+                                if (!updatedJob.operations[0][link.field][link.idx]) updatedJob.operations[0][link.field][link.idx] = { images: [] };
+                                if (!Array.isArray(updatedJob.operations[0][link.field][link.idx].images)) updatedJob.operations[0][link.field][link.idx].images = [];
+                                updatedJob.operations[0][link.field][link.idx].images.push(url);
+                              } else if (link.uploadType === "container") {
+                                if (!updatedJob.containers[link.idx]) updatedJob.containers[link.idx] = {};
+                                if (!Array.isArray(updatedJob.containers[link.idx][link.field])) updatedJob.containers[link.idx][link.field] = [];
+                                updatedJob.containers[link.idx][link.field].push(url);
+                              } else {
+                                if (!updatedJob.operations[0].statusDetails[0]) updatedJob.operations[0].statusDetails[0] = {};
+                                if (!Array.isArray(updatedJob.operations[0].statusDetails[0][link.field])) updatedJob.operations[0].statusDetails[0][link.field] = [];
+                                updatedJob.operations[0].statusDetails[0][link.field].push(url);
+                              }
+                              setSelectedDocJob(updatedJob);
+                              return updatedJob;
                             }
-                            setSelectedDocJob(updatedJob);
-                            return updatedJob;
-                          }
-                          return j;
-                        })
-                      );
-                    }}
-                  />
+                            return j;
+                          })
+                        );
+                      }}
+                    />
+                  )}
                 </div>
               </MenuItem>
             );
@@ -5602,11 +5913,11 @@ const ExportJobsTable = () => {
             }}>
             </ListSubheader>
 
-            <ExportChecklistGenerator jobNo={selectedGenDocJob?.job_no} renderAsIcon={false}>
+            <ExportChecklistGenerator jobNo={selectedGenDocJob?.job_no} renderAsIcon={false} onTrackSuccess={(clicks) => handleTrackDocClick(selectedGenDocJob.job_no, "checklist", clicks)}>
               <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CHECKLIST</MenuItem>
             </ExportChecklistGenerator>
 
-            <FileCoverGenerator jobNo={selectedGenDocJob?.job_no}>
+            <FileCoverGenerator jobNo={selectedGenDocJob?.job_no} onTrackSuccess={(clicks) => handleTrackDocClick(selectedGenDocJob.job_no, "file_cover", clicks)}>
               <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FILE COVER</MenuItem>
             </FileCoverGenerator>
 

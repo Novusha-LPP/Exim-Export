@@ -7,7 +7,7 @@ import ExportJob from "../model/export/ExJobModel.mjs";
  * @param {boolean} onlyPending - If true, only include pending jobs
  * @returns {Promise<Buffer>} - Excel workbook buffer
  */
-export const generateDSRBuffer = async (exporter, onlyPending = false, year = "", startDate = "", endDate = "") => {
+export const generateDSRBuffer = async (exporter, onlyPending = false, year = "", startDate = "", endDate = "", status = "all") => {
   try {
     const isAll = String(exporter).toLowerCase() === "all";
     const filter = {};
@@ -21,8 +21,179 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
       filter.$and.push({ year });
     }
 
-    if (onlyPending) {
-      filter.$and.push({ status: { $nin: ["Completed", "Cancelled"] } });
+    const statusLower = (status || "all").toLowerCase();
+
+    // 1. Exclude/Include General Jobs & Freight Forwarding based on status selection
+    if (statusLower === "general jobs" || statusLower === "general-jobs") {
+      filter.$and.push({ isGeneralJob: true });
+      filter.$and.push({ job_no: { $regex: "^GEN/", $options: "i" } });
+    } else if (statusLower === "freight forwarding" || statusLower === "freight-forwarding") {
+      filter.$and.push({ job_no: { $regex: "^FF", $options: "i" } });
+    } else {
+      filter.$and.push({ job_no: { $regex: "^(?!GEN|FF).*", $options: "i" } });
+      filter.$and.push({ isGeneralJob: { $ne: true } });
+    }
+
+    // 2. Status specific queries
+    if (statusLower === "pending") {
+      filter.$and.push({
+        $and: [
+          { status: { $regex: "^pending$", $options: "i" } },
+          { detailedStatus: { $ne: "Billing Done" } },
+          { isJobCanceled: { $ne: true } },
+        ],
+      });
+    } else if (statusLower === "completed") {
+      filter.$and.push({
+        $and: [
+          {
+            $and: [
+              { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
+              { isJobCanceled: { $ne: true } },
+            ],
+          },
+          {
+            $or: [
+              { status: { $regex: "^completed$", $options: "i" } },
+              { detailedStatus: "Billing Done" },
+            ],
+          },
+        ],
+      });
+    } else if (statusLower === "cancelled") {
+      filter.$and.push({
+        $or: [
+          { status: { $regex: "^cancelled$", $options: "i" } },
+          { isJobCanceled: true },
+        ],
+      });
+    } else if (statusLower === "booking pending") {
+      filter.$and.push({
+        $and: [
+          {
+            $or: [
+              { status: { $regex: "^pending$", $options: "i" } },
+              { status: { $exists: false } },
+              { status: null },
+              { status: "" },
+            ],
+          },
+          { detailedStatus: { $ne: "Billing Done" } },
+        ],
+        goods_stuffed_at: "DOCK",
+        consignmentType: "FCL",
+        sb_no: { $type: "string", $ne: "" },
+        $or: [
+          { "operations.statusDetails.leoDate": { $exists: false } },
+          { "operations.statusDetails.leoDate": null },
+          { "operations.statusDetails.leoDate": "" },
+          { "operations.statusDetails": { $size: 0 } }
+        ]
+      });
+    } else if (statusLower === "handover pending") {
+      filter.$and.push({
+        $and: [
+          {
+            $or: [
+              { status: { $regex: "^pending$", $options: "i" } },
+              { status: { $exists: false } },
+              { status: null },
+              { status: "" },
+            ],
+          },
+          { detailedStatus: { $ne: "Billing Done" } },
+        ],
+        "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
+        $or: [
+          { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
+          { "operations.statusDetails": { $size: 0 } }
+        ]
+      });
+    } else if (statusLower === "prepare for billing" || statusLower === "op completed" || statusLower === "op-completed") {
+      filter.$and.push({
+        $and: [
+          {
+            $or: [
+              { status: { $regex: "^pending$", $options: "i" } },
+              { status: { $exists: false } },
+              { status: null },
+              { status: "" },
+            ],
+          },
+          { detailedStatus: { $ne: "Billing Done" } },
+        ]
+      });
+      filter.$and.push({
+        $or: [
+          {
+            $and: [
+              { consignmentType: { $ne: "LCL" } },
+              { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+              { "operations.statusDetails.leoDate": { $exists: true, $nin: [null, ""] } },
+              { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
+              { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: true, $nin: [null, ""] } },
+              { "operations.statusDetails.railOutReachedDate": { $exists: true, $nin: [null, ""] } }
+            ]
+          },
+          {
+            $and: [
+              {
+                $or: [
+                  { consignmentType: "LCL" },
+                  { job_no: { $regex: "/AIR/", $options: "i" } }
+                ]
+              },
+              { "operations.statusDetails.leoDate": { $exists: true, $nin: [null, ""] } },
+              { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } }
+            ]
+          }
+        ]
+      });
+      filter.$and.push({
+        $or: [
+          { send_for_billing: { $exists: false } },
+          { send_for_billing: null },
+          { send_for_billing: false },
+        ]
+      });
+    } else if (statusLower === "sent for billing") {
+      filter.$and.push({
+        $and: [
+          {
+            $or: [
+              { status: { $regex: "^pending$", $options: "i" } },
+              { status: { $exists: false } },
+              { status: null },
+              { status: "" },
+            ],
+          },
+          { detailedStatus: { $ne: "Billing Done" } },
+        ]
+      });
+      filter.$and.push({
+        send_for_billing: true
+      });
+    } else if (statusLower === "club-jobs") {
+      filter.$and.push({
+        $or: [
+          { is_club_job_parent: true },
+          { parent_club_job: { $exists: true, $ne: null, $ne: "" } }
+        ]
+      });
+      filter.$and.push({
+        $or: [
+          { status: { $regex: "^pending$", $options: "i" } },
+          { status: { $exists: false } },
+          { status: null },
+          { status: "" },
+        ]
+      });
+      filter.$and.push({ detailedStatus: { $ne: "Billing Done" } });
+      filter.$and.push({ isJobCanceled: { $ne: true } });
+    } else {
+      if (onlyPending) {
+        filter.$and.push({ status: { $nin: ["Completed", "Cancelled"] } });
+      }
     }
 
     if (startDate || endDate) {
