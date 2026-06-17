@@ -18,7 +18,7 @@
  * Maximum number of documents that can be returned without pagination
  * Any query that could return more will be auto-limited
  */
-export const MAX_UNBOUNDED_RESULTS = 100;
+export const MAX_UNBOUNDED_RESULTS = 50;
 
 /**
  * Default page size for paginated queries

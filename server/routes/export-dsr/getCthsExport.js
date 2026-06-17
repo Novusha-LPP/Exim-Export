@@ -11,7 +11,7 @@ router.get("/", async (req, res) => {
     const { search = "", page = 1, limit = 20 } = req.query;
 
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
-    const perPage = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100); // cap at 100
+    const perPage = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 50); // cap at 50
     const skip = (pageNum - 1) * perPage;
 
     const filter = {};

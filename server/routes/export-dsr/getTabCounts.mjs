@@ -217,6 +217,7 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
 
     if (!matchesType) return false;
     if (isCompleted) return false;
+    if (!job.send_for_billing) return false;
 
     if (jobTypeFilter === "gen") return isGenJob && !isFreightJob;
     if (jobTypeFilter === "freight") return isFreightJob;
@@ -245,7 +246,14 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
   }
 
   if (tab === "club-jobs") {
-    return (job.is_club_job_parent || !!job.parent_club_job) && !isCompleted;
+    const isParent = job.is_club_job_parent === true;
+    const isChild = !!job.parent_club_job;
+    if (!isParent && !isChild) return false;
+    if (isCompleted) return false;
+    if (isParent) {
+      return job.send_for_billing === true;
+    }
+    return true;
   }
 
   return true;
@@ -542,11 +550,14 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
 
         // Apply Module and Tab specific logic
         if (module === "jobs") {
-          // General conditions for Jobs module
-          filter.$and.push({ isGeneralJob: { $ne: true } });
-          filter.$and.push({ job_no: { $not: /^FF/i } });
-
           const tabKeyLower = tabKey.toLowerCase();
+          const isCompletedTab = tabKeyLower === "completed";
+
+          // General conditions for Jobs module
+          if (!isCompletedTab) {
+            filter.$and.push({ isGeneralJob: { $ne: true } });
+            filter.$and.push({ job_no: { $not: /^FF/i } });
+          }
           if (tabKeyLower === "pending") {
             filter.$and.push({
               status: { $regex: "^pending$", $options: "i" },
@@ -652,7 +663,6 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
           // General conditions for Operation module
           filter.$and.push({ isGeneralJob: { $ne: true } });
           filter.$and.push({ job_no: { $not: /^FF/i } });
-          filter.$and.push({ $or: [{ parent_club_job: { $exists: false } }, { parent_club_job: null }, { parent_club_job: "" }] });
           filter.$and.push({ sb_no: { $exists: true, $nin: [null, ""] } });
 
           const tabKeyLower = tabKey.toLowerCase();

@@ -71,12 +71,7 @@ router.get("/api/operation-pending-jobs", async (req, res) => {
         const matchQuery = {
             ...branchFilter,
             status: { $regex: "^pending$", $options: "i" },
-            sb_no: { $exists: true, $nin: [null, ""] },
-            $or: [
-                { parent_club_job: { $exists: false } },
-                { parent_club_job: null },
-                { parent_club_job: "" }
-            ]
+            sb_no: { $exists: true, $nin: [null, ""] }
         };
 
         // Get jobs that match this base condition

@@ -247,6 +247,7 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
 
     if (!matchesType) return false;
     if (isCompleted) return false;
+    if (!job.send_for_billing) return false;
 
     // Apply sub-filter if provided
     if (jobTypeFilter === "gen") return isGenJob && !isFreightJob;
@@ -277,7 +278,14 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
   }
 
   if (tab === "club-jobs") {
-    return (job.is_club_job_parent || !!job.parent_club_job) && !isCompleted;
+    const isParent = job.is_club_job_parent === true;
+    const isChild = !!job.parent_club_job;
+    if (!isParent && !isChild) return false;
+    if (isCompleted) return false;
+    if (isParent) {
+      return job.send_for_billing === true;
+    }
+    return true;
   }
 
   return true;
@@ -436,10 +444,16 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       baseFilter.$and = baseFilter.$and || [];
       baseFilter.$and.push({
         status: { $ne: "Completed" },
+        send_for_billing: true,
         $or: [
           { is_club_job_parent: true },
           { parent_club_job: { $exists: true, $ne: null, $ne: "" } }
         ]
+      });
+    } else if (normalizedTab === "general-jobs" || normalizedTab === "general jobs") {
+      baseFilter.$and = baseFilter.$and || [];
+      baseFilter.$and.push({
+        send_for_billing: true
       });
     }
 

@@ -102,14 +102,6 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         // EXCLUDE Freight Forwarding Jobs (FF) from Operation Module
         filter.$and.push({ job_no: { $not: /^FF/i } });
 
-        // Globally exclude child club jobs from all tabs since they are represented by their parent club job
-        filter.$and.push({
-            $or: [
-                { parent_club_job: { $exists: false } },
-                { parent_club_job: null },
-                { parent_club_job: "" }
-            ]
-        });
 
 
         // 2. Handle main document status
@@ -152,6 +144,8 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             sb_no: { $exists: true, $nin: [null, ""] }
         });
 
+
+
         // 3. Status-specific additional Conditions
         if (normalizedStatus === "billing ready") {
             // For "Billing Ready", the job must be pending, BUT it must have BOTH
@@ -177,8 +171,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 ]
             });
         } else if (normalizedStatus === "pending") {
-            // Pending shows jobs that have NOT reached their completion milestone and NOT yet billed
-             filter.$and.push({
+            const selfPendingCondition = {
                 $or: [
                     // For FCL: Pending if any of the 4 milestones is missing
                     {
@@ -215,7 +208,8 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                         ]
                     }
                 ]
-            });
+            };
+            filter.$and.push(selfPendingCondition);
             filter.$and.push({
                 $or: [
                     { "operations.statusDetails.billingDocsSentDt": { $in: [null, ""] } },
@@ -246,6 +240,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 ]
             });
         } else if (normalizedStatus === "billing pending" || normalizedStatus === "op completed") {
+
              filter.$and.push({
                 $or: [
                     // FCL jobs completed ONLY if LEO, Handover, Rail Out, and Rail Reached dates are all set
@@ -451,11 +446,11 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
 
         // Find all job numbers matching the current tab and filters (excluding pendingQueries filter)
         const matchingJobsForCount = await ExportJobModel.find(filter).select("job_no").lean();
-        const allJobNos = matchingJobsForCount.map(j => j.job_no).filter(Boolean);
+        const jobNos = matchingJobsForCount.map(j => j.job_no).filter(Boolean);
 
         const QueryModel = (await import("../../model/export/QueryModel.mjs")).default;
         const jobsWithOpenQueries = await QueryModel.find({
-            job_no: { $in: allJobNos },
+            job_no: { $in: jobNos },
             status: "open",
             targetModule: "export-operation"
         }).distinct("job_no");
@@ -532,7 +527,11 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             otherInfo: 1, annexC1Details: 1,
             total_ar_amount: 1, outstanding_balance: 1, cha: 1,
             lockedBy: 1, lockedAt: 1,
-            isGeneralJob: 1
+            isGeneralJob: 1,
+            is_club_job_parent: 1,
+            parent_club_job: 1,
+            clubbed_jobs: 1,
+            tally_club_ref_no: 1
         };
 
         let finalJobs = [];
@@ -584,32 +583,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             finalTotalCount = countResult;
         }
 
-        if (normalizedStatus === "club-jobs" && finalJobs.length > 0) {
-            const parentIds = [...new Set(finalJobs.map(j => j.is_club_job_parent ? j.job_no : j.parent_club_job))].filter(Boolean);
-            
-            const families = await ExportJobModel.find({
-                $or: [ { job_no: { $in: parentIds } }, { parent_club_job: { $in: parentIds } } ]
-            }).select(selectProjection).lean();
-            
-            const finalParents = [];
-            const groups = {};
-            families.forEach(j => {
-                const pid = j.is_club_job_parent ? j.job_no : j.parent_club_job;
-                if (!groups[pid]) groups[pid] = { parent: null, children: [] };
-                if (j.is_club_job_parent) groups[pid].parent = j;
-                else groups[pid].children.push(j);
-            });
-            
-            Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(pid => {
-                if (groups[pid].parent) {
-                    groups[pid].parent.subRows = groups[pid].children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
-                    finalParents.push(groups[pid].parent);
-                }
-            });
-            
-            finalJobs = finalParents;
-            finalTotalCount = finalParents.length;
-        }
+
 
         res.json({
             success: true,

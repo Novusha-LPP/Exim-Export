@@ -769,7 +769,7 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
       try {
         const endpoint = isAir ? "airPorts" : (type.includes("Sea") ? "seaPorts" : "ports");
         const res = await axios.get(`${import.meta.env.VITE_API_STRING}/${endpoint}`, {
-          params: { search: search.trim(), limit: 100 }
+          params: { search: search.trim(), limit: 50 }
         });
 
         const data = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : [];

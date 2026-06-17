@@ -1044,7 +1044,7 @@ const ExportJobsTable = () => {
   // Pagination State
   const [page, setPage] = useState(savedFilters.page || 1);
   const [totalRecords, setTotalRecords] = useState(0);
-  const LIMIT = 100;
+  const LIMIT = 50;
 
   // Sorting State
   const [sortConfig, setSortConfig] = useState(savedFilters.sortConfig || { key: 'createdAt', direction: 'desc' });
@@ -3641,24 +3641,26 @@ const ExportJobsTable = () => {
                                 {job.goods_stuffed_at}
                               </div>
                             )}
-
-                            {/* Job Owner */}
-                            {job.job_owner && (
-                              <div
-                                style={{
-                                  padding: "2px 6px",
-                                  background: "#f3f4f6",
-                                  border: "1px solid #e5e7eb",
-                                  borderRadius: "3px",
-                                  fontSize: "10px",
-                                  fontWeight: "600",
-                                  color: "#030303ff",
-                                }}
-                              >
-                                {getOwnerName(job.job_owner)}
-                              </div>
-                            )}
                           </div>
+
+                          {/* Job Owner */}
+                          {job.job_owner && (
+                            <div
+                              style={{
+                                marginTop: "4px",
+                                padding: "2px 6px",
+                                background: "#f3f4f6",
+                                border: "1px solid #e5e7eb",
+                                borderRadius: "3px",
+                                fontSize: "10px",
+                                fontWeight: "600",
+                                color: "#030303ff",
+                                width: "fit-content",
+                              }}
+                            >
+                              {getOwnerName(job.job_owner)}
+                            </div>
+                          )}
 
                         </td>
 
