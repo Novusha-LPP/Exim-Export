@@ -20,6 +20,8 @@ import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingN
 import VGMAuthorizationGenerator from "./StandardDocuments/VGMAuthorizationGenerator";
 import FreightCertificateGenerator from "./StandardDocuments/FreightCertificateGenerator";
 import BillOfLadingGenerator from "./StandardDocuments/BillOfLadingGenerator";
+import ConcorPltLetterGenerator from "./StandardDocuments/ConcorPltLetterGenerator";
+import AnnexureDGenerator from "./StandardDocuments/AnnexureDGenerator";
 import CreateClubJobModal from "./CreateClubJobModal.jsx";
 
 // Helper function
@@ -1630,6 +1632,32 @@ const LogisysEditableHeader = ({
                 FORWARDING NOTE (CONCOR)
               </MenuItem>
             </ConcorForwardingNoteGenerator>
+
+            {(formik.values.custom_house?.toUpperCase().includes("SABARMATI")) && (
+              <ConcorPltLetterGenerator jobNo={formik.values.job_no}>
+                <MenuItem
+                  disableRipple
+                  onClick={() => setAnchorEl(null)}
+                  sx={{ fontSize: 12, minWidth: 140 }}
+                >
+                  CONCOR PLT LETTER
+                </MenuItem>
+              </ConcorPltLetterGenerator>
+            )}
+
+            {(formik.values.custom_house?.toUpperCase().includes("SANAND") ||
+              formik.values.custom_house?.toUpperCase().includes("THAR") ||
+              formik.values.custom_house?.toUpperCase().includes("ICD")) && (
+              <AnnexureDGenerator jobNo={formik.values.job_no}>
+                <MenuItem
+                  disableRipple
+                  onClick={() => setAnchorEl(null)}
+                  sx={{ fontSize: 12, minWidth: 140 }}
+                >
+                  ANNEXURE D
+                </MenuItem>
+              </AnnexureDGenerator>
+            )}
 
             <VGMAuthorizationGenerator jobNo={formik.values.job_no}>
               <MenuItem

@@ -217,6 +217,362 @@ function FreightForwardingJobDetail() {
     );
   };
 
+  const renderTextAreaBox = (label, name, rows = 3, disabled = false) => {
+    const isNested = name.includes(".");
+    let value = "";
+    if (isNested) {
+      const parts = name.split(".");
+      if (parts.length === 3) {
+        value = formik.values[parts[0]]?.[parts[1]]?.[parts[2]] || "";
+      } else {
+        value = formik.values[parts[0]]?.[parts[1]] || "";
+      }
+    } else {
+      value = formik.values[name] || "";
+    }
+
+    return (
+      <Box sx={{
+        border: "1px solid #cbd5e1",
+        p: "6px 8px",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: disabled || !isEditable ? "#f8fafc" : "#fff",
+        minHeight: "72px",
+        boxSizing: "border-box"
+      }}>
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "9px", textTransform: "uppercase", mb: 0.5, letterSpacing: "0.2px" }}>
+          {label}
+        </Typography>
+        <textarea
+          name={name}
+          rows={rows}
+          value={value}
+          onChange={formik.handleChange}
+          disabled={disabled || !isEditable}
+          style={{
+            border: "none",
+            outline: "none",
+            fontSize: "11px",
+            fontWeight: "600",
+            color: disabled || !isEditable ? "#64748b" : "#1e293b",
+            width: "100%",
+            backgroundColor: "transparent",
+            fontFamily: "inherit",
+            resize: "vertical"
+          }}
+        />
+      </Box>
+    );
+  };
+
+  const renderSelectBox = (label, name, options, disabled = false) => {
+    const isNested = name.includes(".");
+    let value = "";
+    if (isNested) {
+      const parts = name.split(".");
+      if (parts.length === 3) {
+        value = formik.values[parts[0]]?.[parts[1]]?.[parts[2]] || "";
+      } else {
+        value = formik.values[parts[0]]?.[parts[1]] || "";
+      }
+    } else {
+      value = formik.values[name] || "";
+    }
+
+    return (
+      <Box sx={{
+        border: "1px solid #cbd5e1",
+        p: "6px 8px",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: disabled || !isEditable ? "#f8fafc" : "#fff",
+        minHeight: "52px",
+        boxSizing: "border-box"
+      }}>
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "9px", textTransform: "uppercase", mb: 0.5, letterSpacing: "0.2px" }}>
+          {label}
+        </Typography>
+        <select
+          name={name}
+          value={value}
+          onChange={formik.handleChange}
+          disabled={disabled || !isEditable}
+          style={{
+            border: "none",
+            outline: "none",
+            fontSize: "11px",
+            fontWeight: "600",
+            color: disabled || !isEditable ? "#64748b" : "#1e293b",
+            width: "100%",
+            backgroundColor: "transparent",
+            fontFamily: "inherit"
+          }}
+        >
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </Box>
+    );
+  };
+
+  const calculateRowCbm = (row) => {
+    const l = parseFloat(row.length) || 0;
+    const b = parseFloat(row.breadth) || 0;
+    const h = parseFloat(row.height) || 0;
+    const qty = parseFloat(row.no_packages) || 0;
+    const uom = row.uom || "cm";
+
+    let cbm = 0;
+    if (uom === "cm") {
+      cbm = (l * b * h * qty) / 1000000;
+    } else if (uom === "inch") {
+      cbm = (l * b * h * qty) * 0.000016387064;
+    } else if (uom === "m") {
+      cbm = (l * b * h * qty);
+    } else if (uom === "ft") {
+      cbm = (l * b * h * qty) * 0.028316846592;
+    }
+    return parseFloat(cbm.toFixed(4));
+  };
+
+  const handleDimensionChange = (index, field, value) => {
+    const updatedDimensions = [...(formik.values.dimensions || [])];
+    const row = { ...updatedDimensions[index], [field]: value };
+    row.calculated_cbm = calculateRowCbm(row);
+    updatedDimensions[index] = row;
+    formik.setFieldValue("dimensions", updatedDimensions);
+  };
+
+  const handleAddDimensionRow = () => {
+    const updatedDimensions = [...(formik.values.dimensions || [])];
+    updatedDimensions.push({
+      length: "",
+      breadth: "",
+      height: "",
+      uom: "cm",
+      no_packages: "",
+      net_weight: "",
+      gross_weight: "",
+      calculated_cbm: 0
+    });
+    formik.setFieldValue("dimensions", updatedDimensions);
+  };
+
+  const handleRemoveDimensionRow = (index) => {
+    const updatedDimensions = (formik.values.dimensions || []).filter((_, i) => i !== index);
+    if (updatedDimensions.length === 0) {
+      updatedDimensions.push({
+        length: "",
+        breadth: "",
+        height: "",
+        uom: "cm",
+        no_packages: "",
+        net_weight: "",
+        gross_weight: "",
+        calculated_cbm: 0
+      });
+    }
+    formik.setFieldValue("dimensions", updatedDimensions);
+  };
+
+  const handleContainerChange = (index, field, value) => {
+    const updatedContainers = [...(formik.values.containers || [])];
+    updatedContainers[index] = {
+      ...updatedContainers[index],
+      [field]: value.toUpperCase()
+    };
+    formik.setFieldValue("containers", updatedContainers);
+  };
+
+  const handleAddContainerRow = () => {
+    const updatedContainers = [...(formik.values.containers || [])];
+    updatedContainers.push({
+      containerNo: "",
+      customSealNo: "",
+      shippingLineSealNo: ""
+    });
+    formik.setFieldValue("containers", updatedContainers);
+  };
+
+  const handleRemoveContainerRow = (index) => {
+    const updatedContainers = (formik.values.containers || []).filter((_, i) => i !== index);
+    if (updatedContainers.length === 0) {
+      updatedContainers.push({
+        containerNo: "",
+        customSealNo: "",
+        shippingLineSealNo: ""
+      });
+    }
+    formik.setFieldValue("containers", updatedContainers);
+  };
+
+  const totalVolumeCbm = React.useMemo(() => {
+    return (formik.values.dimensions || []).reduce((acc, row) => acc + (row.calculated_cbm || 0), 0);
+  }, [formik.values.dimensions]);
+
+  const totalGrossWeight = React.useMemo(() => {
+    return (formik.values.dimensions || []).reduce((acc, row) => acc + (parseFloat(row.gross_weight) || 0), 0);
+  }, [formik.values.dimensions]);
+
+  const totalNetWeight = React.useMemo(() => {
+    return (formik.values.dimensions || []).reduce((acc, row) => acc + (parseFloat(row.net_weight) || 0), 0);
+  }, [formik.values.dimensions]);
+
+  const totalPackages = React.useMemo(() => {
+    return (formik.values.dimensions || []).reduce((acc, row) => acc + (parseInt(row.no_packages) || 0), 0);
+  }, [formik.values.dimensions]);
+
+  const hasGridRows = React.useMemo(() => {
+    const dims = formik.values.dimensions || [];
+    if (dims.length > 1) return true;
+    if (dims.length === 1) {
+      const r = dims[0];
+      return !!(r.length || r.breadth || r.height || r.net_weight || r.gross_weight || r.no_packages);
+    }
+    return false;
+  }, [formik.values.dimensions]);
+
+  const finalPackages = React.useMemo(() => {
+    if (formik.values.is_manual_cbm && !hasGridRows) {
+      return parseInt(formik.values.total_no_of_pkgs) || 0;
+    }
+    return totalPackages;
+  }, [formik.values.is_manual_cbm, hasGridRows, totalPackages, formik.values.total_no_of_pkgs]);
+
+  const finalNetWeight = React.useMemo(() => {
+    if (formik.values.is_manual_cbm && !hasGridRows) {
+      return parseFloat(formik.values.net_weight_kg) || 0;
+    }
+    return totalNetWeight;
+  }, [formik.values.is_manual_cbm, hasGridRows, totalNetWeight, formik.values.net_weight_kg]);
+
+  const finalGrossWeight = React.useMemo(() => {
+    if (formik.values.is_manual_cbm && !hasGridRows) {
+      return parseFloat(formik.values.gross_weight_kg) || 0;
+    }
+    return totalGrossWeight;
+  }, [formik.values.is_manual_cbm, hasGridRows, totalGrossWeight, formik.values.gross_weight_kg]);
+
+  const finalVolumeCbm = React.useMemo(() => {
+    if (formik.values.is_manual_cbm) {
+      return parseFloat(formik.values.volume_cbm) || 0;
+    }
+    return totalVolumeCbm;
+  }, [formik.values.is_manual_cbm, formik.values.volume_cbm, totalVolumeCbm]);
+
+  const volumetricWeight = React.useMemo(() => {
+    const isAir = formik.values.shipment_type && formik.values.shipment_type.includes("Air");
+    const factor = isAir ? 167 : 1000;
+    return finalVolumeCbm * factor;
+  }, [finalVolumeCbm, formik.values.shipment_type]);
+
+  const chargeableWeight = React.useMemo(() => {
+    return Math.max(finalGrossWeight, volumetricWeight);
+  }, [finalGrossWeight, volumetricWeight]);
+
+  useEffect(() => {
+    if (!isEditable) return;
+    if (!formik.values.is_manual_cbm) {
+      formik.setFieldValue("total_no_of_pkgs", finalPackages > 0 ? String(finalPackages) : "");
+      formik.setFieldValue("net_weight_kg", finalNetWeight > 0 ? String(parseFloat(finalNetWeight.toFixed(3))) : "");
+      formik.setFieldValue("gross_weight_kg", finalGrossWeight > 0 ? String(parseFloat(finalGrossWeight.toFixed(3))) : "");
+      formik.setFieldValue("volume_cbm", finalVolumeCbm > 0 ? String(parseFloat(finalVolumeCbm.toFixed(4))) : "");
+      formik.setFieldValue("chargeable_weight", chargeableWeight > 0 ? String(parseFloat(chargeableWeight.toFixed(3))) : "");
+    } else if (hasGridRows) {
+      formik.setFieldValue("total_no_of_pkgs", finalPackages > 0 ? String(finalPackages) : "");
+      formik.setFieldValue("net_weight_kg", finalNetWeight > 0 ? String(parseFloat(finalNetWeight.toFixed(3))) : "");
+      formik.setFieldValue("gross_weight_kg", finalGrossWeight > 0 ? String(parseFloat(finalGrossWeight.toFixed(3))) : "");
+      formik.setFieldValue("volume_cbm", finalVolumeCbm > 0 ? String(parseFloat(finalVolumeCbm.toFixed(4))) : "");
+      formik.setFieldValue("chargeable_weight", chargeableWeight > 0 ? String(parseFloat(chargeableWeight.toFixed(3))) : "");
+    }
+  }, [finalPackages, finalNetWeight, finalGrossWeight, finalVolumeCbm, chargeableWeight, formik.values.is_manual_cbm, hasGridRows, isEditable]);
+
+  const gridStyles = {
+    table: {
+      width: "100%",
+      borderCollapse: "collapse",
+      marginTop: "6px",
+      marginBottom: "6px",
+    },
+    th: {
+      textAlign: "left",
+      padding: "6px 8px",
+      fontSize: "10px",
+      fontWeight: 700,
+      color: "#ffffff",
+      textTransform: "uppercase",
+      letterSpacing: "0.5px",
+      borderBottom: "2px solid #cbd5e1",
+      backgroundColor: "#16408f",
+    },
+    td: {
+      padding: "4px 8px",
+      borderBottom: "1px solid #cbd5e1",
+      verticalAlign: "middle",
+    },
+    input: {
+      width: "100%",
+      height: "26px",
+      border: "1px solid #cbd5e1",
+      borderRadius: "3px",
+      padding: "0 6px",
+      fontSize: "11px",
+      boxSizing: "border-box",
+      outline: "none"
+    },
+    select: {
+      width: "100%",
+      height: "26px",
+      border: "1px solid #cbd5e1",
+      borderRadius: "3px",
+      padding: "0 4px",
+      fontSize: "11px",
+      boxSizing: "border-box",
+      outline: "none",
+      backgroundColor: "#fff"
+    },
+    btnAddRow: {
+      backgroundColor: "#10b981",
+      color: "#fff",
+      padding: "0 10px",
+      height: "24px",
+      borderRadius: "3px",
+      border: "none",
+      fontWeight: 600,
+      cursor: "pointer",
+      fontSize: "11px",
+    },
+    btnDanger: {
+      backgroundColor: "#ef4444",
+      color: "#fff",
+      padding: "0 10px",
+      height: "24px",
+      borderRadius: "3px",
+      border: "none",
+      fontWeight: 600,
+      cursor: "pointer",
+      fontSize: "10px",
+    },
+    calcField: {
+      height: "26px",
+      padding: "0 6px",
+      fontSize: "11px",
+      border: "1px solid #cbd5e1",
+      borderRadius: "3px",
+      backgroundColor: "#f1f5f9",
+      width: "100%",
+      boxSizing: "border-box",
+      color: "#334155",
+      display: "flex",
+      alignItems: "center",
+      fontWeight: "bold",
+    }
+  };
+
   // Helper function to render combined value + unit inputs (e.g., Gross Weight + Unit)
   const renderCombinedBox = (label, nameVal, nameUnit, disabled = false) => {
     return (
@@ -431,6 +787,7 @@ function FreightForwardingJobDetail() {
           >
             <Tab label="Other Details" />
             <Tab label="Charges" />
+            <Tab label="BL Instructions" />
           </Tabs>
         </Box>
 
@@ -543,7 +900,7 @@ function FreightForwardingJobDetail() {
             </Grid>
 
             {/* Row 6 */}
-            <Grid container spacing={0.5}>
+            <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
               <Grid item xs={12} md={4} sm={6}>
                 {renderInputBox("Shipment Terms", "shipment_terms")}
               </Grid>
@@ -555,6 +912,519 @@ function FreightForwardingJobDetail() {
               </Grid>
             </Grid>
 
+            {/* Row 7: Organization basics & contact info */}
+            <Grid container spacing={0.5} sx={{ mb: 1.5 }}>
+              <Grid item xs={12} md={2} sm={4}>
+                {renderSelectBox("Shipment Type", "shipment_type", [
+                  { label: "SELECT", value: "" },
+                  { label: "Import-Sea", value: "Import-Sea" },
+                  { label: "Export-Sea", value: "Export-Sea" },
+                  { label: "Import-Air", value: "Import-Air" },
+                  { label: "Export-Air", value: "Export-Air" }
+                ])}
+              </Grid>
+              <Grid item xs={12} md={2} sm={4}>
+                {renderInputBox("Container Size", "container_size")}
+              </Grid>
+              <Grid item xs={12} md={2} sm={4}>
+                {renderSelectBox("Consignment Type", "consignmentType", [
+                  { label: "SELECT", value: "" },
+                  { label: "LCL", value: "LCL" },
+                  { label: "FCL", value: "FCL" },
+                  { label: "AIR", value: "AIR" }
+                ])}
+              </Grid>
+              <Grid item xs={12} md={2} sm={4}>
+                {renderSelectBox("Goods Stuffed", "goods_stuffed", [
+                  { label: "SELECT", value: "" },
+                  { label: "FACTORY STUFFED", value: "FACTORY STUFFED" },
+                  { label: "DOCK STUFFED", value: "DOCK STUFFED" }
+                ])}
+              </Grid>
+              <Grid item xs={12} md={2} sm={4}>
+                {renderInputBox("Contact No", "contact_no")}
+              </Grid>
+              <Grid item xs={12} md={2} sm={4}>
+                {renderInputBox("Email", "email")}
+              </Grid>
+            </Grid>
+
+            {/* Dimensions & Weight Grid Section */}
+            <Box sx={{ mt: 2, mb: 2 }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <Typography variant="subtitle2" sx={{ fontSize: "11px", fontWeight: 700, color: "#374151", textTransform: "uppercase" }}>
+                    Dimensions & Weight Grid
+                  </Typography>
+                  <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", fontWeight: 700, color: "#16408f", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      name="is_manual_cbm"
+                      checked={formik.values.is_manual_cbm || false}
+                      onChange={(e) => {
+                        formik.setFieldValue("is_manual_cbm", e.target.checked);
+                      }}
+                      disabled={!isEditable}
+                      style={{ cursor: "pointer" }}
+                    />
+                    Manual CBM
+                  </label>
+                </Box>
+                {isEditable && (
+                  <button
+                    type="button"
+                    style={gridStyles.btnAddRow}
+                    onClick={handleAddDimensionRow}
+                  >
+                    + Add Row
+                  </button>
+                )}
+              </Box>
+
+              {formik.values.is_manual_cbm && (
+                <div style={{
+                  display: "flex",
+                  gap: "10px",
+                  backgroundColor: "#eff6ff",
+                  border: "1px solid #bfdbfe",
+                  borderRadius: "4px",
+                  padding: "8px 12px",
+                  marginBottom: "8px",
+                  flexWrap: "wrap"
+                }}>
+                  <div style={{ flex: 1, minWidth: "140px", display: "flex", flexDirection: "column" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e40af" }}>
+                      Manual Net Weight (Kg) {hasGridRows && <span style={{ fontSize: "10px", color: "#6b7280" }}>(Row Sum)</span>}
+                    </label>
+                    <input
+                      type="number"
+                      name="net_weight_kg"
+                      disabled={hasGridRows || !isEditable}
+                      style={{ ...gridStyles.input, backgroundColor: hasGridRows || !isEditable ? "#f1f5f9" : "#fff" }}
+                      value={formik.values.net_weight_kg || ""}
+                      onChange={formik.handleChange}
+                      placeholder="Enter Total Net Wt"
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: "140px", display: "flex", flexDirection: "column" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e40af" }}>
+                      Manual Gross Weight (Kg) {hasGridRows && <span style={{ fontSize: "10px", color: "#6b7280" }}>(Row Sum)</span>}
+                    </label>
+                    <input
+                      type="number"
+                      name="gross_weight_kg"
+                      disabled={hasGridRows || !isEditable}
+                      style={{ ...gridStyles.input, backgroundColor: hasGridRows || !isEditable ? "#f1f5f9" : "#fff" }}
+                      value={formik.values.gross_weight_kg || ""}
+                      onChange={formik.handleChange}
+                      placeholder="Enter Total Gross Wt"
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: "140px", display: "flex", flexDirection: "column" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e40af" }}>
+                      Manual No of Packages {hasGridRows && <span style={{ fontSize: "10px", color: "#6b7280" }}>(Row Sum)</span>}
+                    </label>
+                    <input
+                      type="number"
+                      name="total_no_of_pkgs"
+                      disabled={hasGridRows || !isEditable}
+                      style={{ ...gridStyles.input, backgroundColor: hasGridRows || !isEditable ? "#f1f5f9" : "#fff" }}
+                      value={formik.values.total_no_of_pkgs || ""}
+                      onChange={formik.handleChange}
+                      placeholder="Enter Total Packages"
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: "140px", display: "flex", flexDirection: "column" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e40af" }}>
+                      Manual Volume (CBM)
+                    </label>
+                    <input
+                      type="number"
+                      name="volume_cbm"
+                      disabled={!isEditable}
+                      style={{ ...gridStyles.input, backgroundColor: !isEditable ? "#f1f5f9" : "#fff" }}
+                      value={formik.values.volume_cbm || ""}
+                      onChange={formik.handleChange}
+                      placeholder="Enter Total CBM"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <Box sx={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: "3px" }}>
+                <table style={gridStyles.table}>
+                  <thead>
+                    <tr>
+                      <th style={gridStyles.th}>Length</th>
+                      <th style={gridStyles.th}>Breadth</th>
+                      <th style={gridStyles.th}>Height</th>
+                      <th style={gridStyles.th}>UOM</th>
+                      <th style={gridStyles.th}>No Packages</th>
+                      <th style={gridStyles.th}>Net Wt (Kg)</th>
+                      <th style={gridStyles.th}>Gross Wt (Kg)</th>
+                      <th style={gridStyles.th}>Calculated CBM</th>
+                      {isEditable && <th style={{ ...gridStyles.th, width: "50px", textAlign: "center" }}>Action</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(formik.values.dimensions || []).map((row, index) => (
+                      <tr key={index}>
+                        <td style={gridStyles.td}>
+                          <input
+                            type="number"
+                            disabled={!isEditable}
+                            style={gridStyles.input}
+                            value={row.length || ""}
+                            onChange={(e) => handleDimensionChange(index, "length", e.target.value)}
+                            placeholder="L"
+                          />
+                        </td>
+                        <td style={gridStyles.td}>
+                          <input
+                            type="number"
+                            disabled={!isEditable}
+                            style={gridStyles.input}
+                            value={row.breadth || ""}
+                            onChange={(e) => handleDimensionChange(index, "breadth", e.target.value)}
+                            placeholder="B"
+                          />
+                        </td>
+                        <td style={gridStyles.td}>
+                          <input
+                            type="number"
+                            disabled={!isEditable}
+                            style={gridStyles.input}
+                            value={row.height || ""}
+                            onChange={(e) => handleDimensionChange(index, "height", e.target.value)}
+                            placeholder="H"
+                          />
+                        </td>
+                        <td style={gridStyles.td}>
+                          <select
+                            disabled={!isEditable}
+                            style={gridStyles.select}
+                            value={row.uom || "cm"}
+                            onChange={(e) => handleDimensionChange(index, "uom", e.target.value)}
+                          >
+                            <option value="cm">cm</option>
+                            <option value="inch">inch</option>
+                            <option value="m">m</option>
+                            <option value="ft">ft</option>
+                          </select>
+                        </td>
+                        <td style={gridStyles.td}>
+                          <input
+                            type="number"
+                            disabled={!isEditable}
+                            style={gridStyles.input}
+                            value={row.no_packages || ""}
+                            onChange={(e) => handleDimensionChange(index, "no_packages", e.target.value)}
+                            placeholder="Pkgs"
+                          />
+                        </td>
+                        <td style={gridStyles.td}>
+                          <input
+                            type="number"
+                            disabled={!isEditable}
+                            style={gridStyles.input}
+                            value={row.net_weight || ""}
+                            onChange={(e) => handleDimensionChange(index, "net_weight", e.target.value)}
+                            placeholder="Net weight"
+                          />
+                        </td>
+                        <td style={gridStyles.td}>
+                          <input
+                            type="number"
+                            disabled={!isEditable}
+                            style={gridStyles.input}
+                            value={row.gross_weight || ""}
+                            onChange={(e) => handleDimensionChange(index, "gross_weight", e.target.value)}
+                            placeholder="Gross weight"
+                          />
+                        </td>
+                        <td style={gridStyles.td}>
+                          <div style={gridStyles.calcField}>
+                            {row.calculated_cbm ? row.calculated_cbm.toFixed(4) : "0.0000"}
+                          </div>
+                        </td>
+                        {isEditable && (
+                          <td style={{ ...gridStyles.td, textAlign: "center" }}>
+                            <button
+                              type="button"
+                              style={gridStyles.btnDanger}
+                              onClick={() => handleRemoveDimensionRow(index)}
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Box>
+            </Box>
+
+            {/* Container Details Section */}
+            <Box sx={{ mt: 3, mb: 2 }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+                <Typography variant="subtitle2" sx={{ fontSize: "11px", fontWeight: 700, color: "#374151", textTransform: "uppercase" }}>
+                  Container Details
+                </Typography>
+                {isEditable && (
+                  <button
+                    type="button"
+                    style={gridStyles.btnAddRow}
+                    onClick={handleAddContainerRow}
+                  >
+                    + Add More
+                  </button>
+                )}
+              </Box>
+
+              <Box sx={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: "3px" }}>
+                <table style={gridStyles.table}>
+                  <thead>
+                    <tr>
+                      <th style={gridStyles.th}>Container No.</th>
+                      <th style={gridStyles.th}>Custom Seal</th>
+                      <th style={gridStyles.th}>Line Seal</th>
+                      {isEditable && <th style={{ ...gridStyles.th, width: "50px", textAlign: "center" }}>Action</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(formik.values.containers || []).map((cRow, index) => (
+                      <tr key={index}>
+                        <td style={gridStyles.td}>
+                          <input
+                            type="text"
+                            disabled={!isEditable}
+                            style={gridStyles.input}
+                            value={cRow.containerNo || ""}
+                            onChange={(e) => handleContainerChange(index, "containerNo", e.target.value)}
+                            placeholder="Container No"
+                          />
+                        </td>
+                        <td style={gridStyles.td}>
+                          <input
+                            type="text"
+                            disabled={!isEditable}
+                            style={gridStyles.input}
+                            value={cRow.customSealNo || ""}
+                            onChange={(e) => handleContainerChange(index, "customSealNo", e.target.value)}
+                            placeholder="Custom Seal"
+                          />
+                        </td>
+                        <td style={gridStyles.td}>
+                          <input
+                            type="text"
+                            disabled={!isEditable}
+                            style={gridStyles.input}
+                            value={cRow.shippingLineSealNo || ""}
+                            onChange={(e) => handleContainerChange(index, "shippingLineSealNo", e.target.value)}
+                            placeholder="Line Seal"
+                          />
+                        </td>
+                        {isEditable && (
+                          <td style={{ ...gridStyles.td, textAlign: "center" }}>
+                            <button
+                              type="button"
+                              style={gridStyles.btnDanger}
+                              onClick={() => handleRemoveContainerRow(index)}
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Box>
+            </Box>
+
+            {/* Summary calculations block */}
+            <div style={{
+              display: "flex",
+              gap: "8px",
+              flexWrap: "wrap",
+              backgroundColor: "#f9fafb",
+              border: "1px solid #e5e7eb",
+              borderRadius: "4px",
+              padding: "8px 10px",
+              marginBottom: "8px",
+              marginTop: "12px"
+            }}>
+              <div style={{ flex: "1 1 100px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "9px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Packages</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#111827" }}>{finalPackages}</span>
+                  <input
+                    name="package_unit"
+                    value={formik.values.package_unit || ""}
+                    onChange={formik.handleChange}
+                    disabled={!isEditable}
+                    style={{ width: "45px", height: "18px", fontSize: "9.5px", fontWeight: 600, padding: "0 3px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none", backgroundColor: !isEditable ? "#f1f5f9" : "#fff" }}
+                    placeholder="Unit"
+                  />
+                </div>
+              </div>
+              <div style={{ flex: "1 1 100px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "9px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Net Wt</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#111827" }}>{finalNetWeight.toFixed(2)}</span>
+                  <input
+                    name="net_weight_unit"
+                    value={formik.values.net_weight_unit || ""}
+                    onChange={formik.handleChange}
+                    disabled={!isEditable}
+                    style={{ width: "35px", height: "18px", fontSize: "9.5px", fontWeight: 600, padding: "0 3px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none", backgroundColor: !isEditable ? "#f1f5f9" : "#fff" }}
+                    placeholder="Unit"
+                  />
+                </div>
+              </div>
+              <div style={{ flex: "1 1 100px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "9px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Gross Wt</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#111827" }}>{finalGrossWeight.toFixed(2)}</span>
+                  <input
+                    name="gross_weight_unit"
+                    value={formik.values.gross_weight_unit || ""}
+                    onChange={formik.handleChange}
+                    disabled={!isEditable}
+                    style={{ width: "35px", height: "18px", fontSize: "9.5px", fontWeight: 600, padding: "0 3px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none", backgroundColor: !isEditable ? "#f1f5f9" : "#fff" }}
+                    placeholder="Unit"
+                  />
+                </div>
+              </div>
+              <div style={{ flex: "1 1 100px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "9px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Total Volume</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#16408f" }}>{finalVolumeCbm.toFixed(4)}</span>
+                  <input
+                    name="volume_unit"
+                    value={formik.values.volume_unit || ""}
+                    onChange={formik.handleChange}
+                    disabled={!isEditable}
+                    style={{ width: "40px", height: "18px", fontSize: "9.5px", fontWeight: 600, padding: "0 3px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none", backgroundColor: !isEditable ? "#f1f5f9" : "#fff" }}
+                    placeholder="Unit"
+                  />
+                </div>
+              </div>
+              <div style={{ flex: "1 1 100px", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "9px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>
+                  Volumetric Wt ({formik.values.shipment_type && formik.values.shipment_type.includes("Air") ? "Air: 1:167" : "Sea: 1:1000"})
+                </span>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "#4b5563", marginTop: "2px" }}>
+                  {volumetricWeight.toFixed(2)} {formik.values.gross_weight_unit || "KG"}
+                </span>
+              </div>
+              <div style={{ flex: "1 1 130px", display: "flex", flexDirection: "column", borderLeft: "2px solid #16408f", paddingLeft: "10px" }}>
+                <span style={{ fontSize: "9px", fontWeight: 700, color: "#16408f", textTransform: "uppercase" }}>Chargeable Weight</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+                  <span style={{ fontSize: "13px", fontWeight: 800, color: "#16408f" }}>{chargeableWeight.toFixed(2)}</span>
+                  <input
+                    name="chargeable_weight_unit"
+                    value={formik.values.chargeable_weight_unit || ""}
+                    onChange={formik.handleChange}
+                    disabled={!isEditable}
+                    style={{ width: "35px", height: "18px", fontSize: "9.5px", fontWeight: 600, padding: "0 3px", border: "1px solid #cbd5e1", borderRadius: "2px", outline: "none", backgroundColor: !isEditable ? "#f1f5f9" : "#fff" }}
+                    placeholder="Unit"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Remarks Textarea */}
+            <Box sx={{ mt: 2 }}>
+              {renderTextAreaBox("Remarks", "remarks", 3)}
+            </Box>
+
+          </Box>
+        </TabPanel>
+
+        {/* Tab panel: BL Instructions */}
+        <TabPanel value={activeTab} index={2}>
+          <Box sx={{ border: "1.5px solid #e2e8f0", borderRadius: "4px", overflow: "hidden", backgroundColor: "#f8fafc", p: 1.5 }}>
+            <Typography variant="h6" sx={{ fontSize: "13px", fontWeight: 700, color: "#16408f", mb: 1.5, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Bill of Lading Instructions
+            </Typography>
+            <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
+              <Grid item xs={12} md={8}>
+                {renderTextAreaBox("Consignor (Exporter)", "bl_details.consignor", 3)}
+              </Grid>
+              <Grid item xs={12} md={4}>
+                {renderInputBox("Shipment Ref. No.", "bl_details.shipment_ref_no")}
+              </Grid>
+            </Grid>
+            <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
+              <Grid item xs={12}>
+                {renderTextAreaBox("Consignee (Name & Address)", "bl_details.consignee", 3)}
+              </Grid>
+            </Grid>
+            <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
+              <Grid item xs={12}>
+                {renderTextAreaBox("Notify Address (Leave blank if Same as Consignee)", "bl_details.notify_party", 3)}
+              </Grid>
+            </Grid>
+            
+            <Typography variant="subtitle2" sx={{ fontSize: "11px", fontWeight: 700, color: "#475569", mt: 1.5, mb: 1, textTransform: "uppercase" }}>
+              Transport Details
+            </Typography>
+            <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
+              <Grid item xs={12} md={6}>
+                {renderInputBox("Vessel & Voyage No.", "bl_details.vessel_name")}
+              </Grid>
+              <Grid item xs={12} md={3}>
+                {renderSelectBox("Mode of Transport", "bl_details.mode_of_transport", [
+                  { label: "SEA", value: "SEA" },
+                  { label: "AIR", value: "AIR" },
+                  { label: "ROAD", value: "ROAD" }
+                ])}
+              </Grid>
+              <Grid item xs={12} md={3}>
+                {renderInputBox("Route / Transshipment", "bl_details.route_transshipment")}
+              </Grid>
+            </Grid>
+
+            <Typography variant="subtitle2" sx={{ fontSize: "11px", fontWeight: 700, color: "#475569", mt: 1.5, mb: 1, textTransform: "uppercase" }}>
+              Cargo Details
+            </Typography>
+            <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
+              <Grid item xs={12} md={6}>
+                {renderTextAreaBox("Container No (s)", "bl_details.container_numbers", 2)}
+              </Grid>
+              <Grid item xs={12} md={6}>
+                {renderTextAreaBox("Marks & Numbers", "bl_details.marks_numbers", 2)}
+              </Grid>
+            </Grid>
+            <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
+              <Grid item xs={12} md={4}>
+                {renderInputBox("Number and kind of packages", "bl_details.packages_description")}
+              </Grid>
+              <Grid item xs={12} md={8}>
+                {renderTextAreaBox("General Description of Goods", "bl_details.description_of_goods", 3)}
+              </Grid>
+            </Grid>
+            <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
+              <Grid item xs={12} md={3}>
+                {renderInputBox("HSN Code", "bl_details.hsn_code")}
+              </Grid>
+              <Grid item xs={12} md={3}>
+                {renderInputBox("Gross Weight", "bl_details.gross_weight")}
+              </Grid>
+              <Grid item xs={12} md={3}>
+                {renderInputBox("Measurement", "bl_details.measurement")}
+              </Grid>
+              <Grid item xs={12} md={3}>
+                {renderInputBox("Freight Amount", "bl_details.freight_amount")}
+              </Grid>
+            </Grid>
+            <Grid container spacing={0.5}>
+              <Grid item xs={12}>
+                {renderTextAreaBox("Other Particulars (If any)", "bl_details.other_particulars", 2)}
+              </Grid>
+            </Grid>
           </Box>
         </TabPanel>
 

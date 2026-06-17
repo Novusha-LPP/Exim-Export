@@ -105,15 +105,34 @@ function getCurrentFinancialYear() {
 
 function formatDate(value) {
   if (!value) return "-";
+
+  // Try parsing custom format DD-MM-YYYY or DD/MM/YYYY with optional time
+  const str = String(value).trim();
+  const dmyRegex = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:[\s,]+(\d{1,2}):(\d{1,2}))?/;
+  const match = str.match(dmyRegex);
+
+  if (match) {
+    const day = match[1].padStart(2, '0');
+    const month = match[2].padStart(2, '0');
+    const year = match[3];
+    const hour = match[4];
+    const minute = match[5];
+    if (hour && minute) {
+      return `${day}/${month}/${year}, ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+    }
+    return `${day}/${month}/${year}`;
+  }
+
+  // Try parsing ISO or other standard JS formats
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year}, ${hour}:${minute}`;
 }
 
 function copyText(text) {
@@ -1549,7 +1568,7 @@ function ExportBillingPage() {
           </Box>
         ),
       },
-      ...(activeTab === "billing-pending" ? [billingDetailsEditable] : []),
+      ...((activeTab === "billing-pending" || activeTab === "club-jobs" || activeTab === "general-jobs") ? [billingDetailsEditable] : []),
       {
         header: "Queries",
         size: 80,
@@ -1827,18 +1846,20 @@ function ExportBillingPage() {
       ];
     }
 
-    const refLabel = activeTab === "billing-pending" 
-      ? "Sent to Billing Date" 
+    const showSentToBillingDate = activeTab === "billing-pending" || activeTab === "club-jobs" || activeTab === "general-jobs";
+
+    const refLabel = showSentToBillingDate
+      ? "Sent to Billing Date"
       : (workMode === "purchase-book" ? "Purchase Book No" : "Payment Request No");
 
     const refCol = {
-      accessorKey: activeTab === "billing-pending"
+      accessorKey: showSentToBillingDate
         ? "send_for_billing_date"
         : (workMode === "purchase-book" ? "purchase_book_nos" : "payment_request_nos"),
       header: refLabel,
-      size: activeTab === "billing-pending" ? 150 : 200,
+      size: showSentToBillingDate ? 150 : 200,
       Cell: ({ row }) => {
-        if (activeTab === "billing-pending") {
+        if (showSentToBillingDate) {
           const val = row.original.send_for_billing_date;
           return (
             <div style={{ fontWeight: "600", color: "#4b5563" }}>

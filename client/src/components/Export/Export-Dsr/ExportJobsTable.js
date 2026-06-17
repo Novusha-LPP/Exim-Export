@@ -53,6 +53,8 @@ import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingN
 import VGMAuthorizationGenerator from "./StandardDocuments/VGMAuthorizationGenerator";
 import FreightCertificateGenerator from "./StandardDocuments/FreightCertificateGenerator";
 import BillOfLadingGenerator from "./StandardDocuments/BillOfLadingGenerator";
+import ConcorPltLetterGenerator from "./StandardDocuments/ConcorPltLetterGenerator";
+import AnnexureDGenerator from "./StandardDocuments/AnnexureDGenerator";
 import { CUSTOM_HOUSE_OPTIONS, getOptionsForBranch } from "../../common/CustomHouseDropdown";
 import { UserContext } from "../../../contexts/UserContext";
 import SBTrackDialog from "./SBTrackDialog";
@@ -823,7 +825,7 @@ const PulseOverviewHover = ({ exporter }) => {
           const color = getSeverityColor(severity);
           const bg = getSeverityBg(severity);
           const glow = getSeverityGlow(severity);
-          
+
           const gridColumn = idx === 4 ? 'span 2' : 'span 1';
 
           return (
@@ -2610,16 +2612,16 @@ const ExportJobsTable = () => {
                       boxSizing: "border-box"
                     }}
                   >
-                    <span 
+                    <span
                       className="flashing-pulse-dot"
-                      style={{ 
-                        width: "8px", 
-                        height: "8px", 
-                        borderRadius: "50%", 
-                        backgroundColor: "#ef4444", 
+                      style={{
+                        width: "8px",
+                        height: "8px",
+                        borderRadius: "50%",
+                        backgroundColor: "#ef4444",
                         boxShadow: "0 0 8px #ef4444",
                         display: "inline-block"
-                      }} 
+                      }}
                     />
                     Pulse
                   </button>
@@ -3556,7 +3558,7 @@ const ExportJobsTable = () => {
                                 gap: "2px",
                               }}
                             >
-                                REF: {job.exporter_ref_no}
+                              REF: {job.exporter_ref_no}
                               <IconButton
                                 size="small"
                                 onClick={(e) => handleCopyText(job.exporter_ref_no, e)}
@@ -3622,6 +3624,23 @@ const ExportJobsTable = () => {
                             >
                               {job.consignmentType || "-"}
                             </div>
+
+                            {/* Stuffing Location */}
+                            {job.goods_stuffed_at && (
+                              <div
+                                style={{
+                                  padding: "2px 6px",
+                                  background: "#f3f4f6",
+                                  border: "1px solid #e5e7eb",
+                                  borderRadius: "3px",
+                                  fontSize: "10px",
+                                  fontWeight: "600",
+                                  color: "#030303ff",
+                                }}
+                              >
+                                {job.goods_stuffed_at}
+                              </div>
+                            )}
 
                             {/* Job Owner */}
                             {job.job_owner && (
@@ -5171,8 +5190,8 @@ const ExportJobsTable = () => {
             return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
           };
 
-          const activeQuery = activeChatTab === "client" 
-            ? clientQueryChatData[activeQueryIndex] 
+          const activeQuery = activeChatTab === "client"
+            ? clientQueryChatData[activeQueryIndex]
             : queryChatData[activeQueryIndex];
 
           const activeQueriesList = activeChatTab === "client" ? clientQueryChatData : queryChatData;
@@ -5181,16 +5200,16 @@ const ExportJobsTable = () => {
           if (activeQuery) {
             chatMessages.push({
               id: "original",
-              senderName: activeChatTab === "client" 
-                ? (activeQuery.client_name || "Client") 
+              senderName: activeChatTab === "client"
+                ? (activeQuery.client_name || "Client")
                 : (activeQuery.raisedByName || activeQuery.raisedBy),
               senderEmail: activeChatTab === "client" ? activeQuery.client_email : "",
               senderUsername: activeChatTab === "client" ? activeQuery.client_username : "",
               message: activeQuery.message,
               subject: activeQuery.subject,
               createdAt: activeQuery.createdAt,
-              align: activeChatTab === "client" 
-                ? "left" 
+              align: activeChatTab === "client"
+                ? "left"
                 : (activeQuery.raisedBy === user?.username ? "right" : "left"),
               isReply: false,
               senderType: activeChatTab === "client" ? "client" : "admin"
@@ -5376,16 +5395,16 @@ const ExportJobsTable = () => {
                             fontWeight: "700",
                             fontSize: "15px"
                           }}>
-                            {activeChatTab === "client" 
+                            {activeChatTab === "client"
                               ? (activeQuery.client_name ? activeQuery.client_name[0].toUpperCase() : "C")
                               : (activeQuery.raisedByName ? activeQuery.raisedByName[0].toUpperCase() : (activeQuery.raisedBy ? activeQuery.raisedBy[0].toUpperCase() : "I"))
                             }
                           </div>
-                          
+
                           {/* Info Text */}
                           <div>
                             <div style={{ fontWeight: "700", fontSize: "13.5px", color: "#1f2937" }}>
-                              {activeChatTab === "client" 
+                              {activeChatTab === "client"
                                 ? (activeQuery.client_name || activeQuery.client_id || "Client")
                                 : (activeQuery.raisedByName || activeQuery.raisedBy || "Internal User")
                               }
@@ -5398,7 +5417,7 @@ const ExportJobsTable = () => {
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* Right Pill and Button */}
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                           <span style={{
@@ -5413,7 +5432,7 @@ const ExportJobsTable = () => {
                           }}>
                             {activeQuery.status}
                           </span>
-                          
+
                           {/* Resolve Button */}
                           {activeChatTab === "client" && activeQuery.status === "open" && (
                             <button
@@ -5460,9 +5479,9 @@ const ExportJobsTable = () => {
                       gap: "12px"
                     }}>
                       {chatMessages.map((msg, index) => {
-                        const showDateSeparator = index === 0 || 
+                        const showDateSeparator = index === 0 ||
                           getChatDateString(chatMessages[index - 1].createdAt) !== getChatDateString(msg.createdAt);
-                          
+
                         return (
                           <React.Fragment key={msg.id}>
                             {showDateSeparator && (
@@ -5480,7 +5499,7 @@ const ExportJobsTable = () => {
                                 </span>
                               </div>
                             )}
-                            
+
                             <div style={{
                               display: "flex",
                               justifyContent: msg.align === "right" ? "flex-end" : "flex-start",
@@ -5503,7 +5522,7 @@ const ExportJobsTable = () => {
                                 }}>
                                   {msg.senderName} {msg.senderEmail ? `(${msg.senderEmail})` : ""} {msg.senderUsername ? `[${msg.senderUsername}]` : ""}
                                 </div>
-                                
+
                                 {/* Subject Header */}
                                 {msg.subject && !msg.isReply && (
                                   <div style={{
@@ -5517,7 +5536,7 @@ const ExportJobsTable = () => {
                                     Subject: {msg.subject}
                                   </div>
                                 )}
-                                
+
                                 {/* Message text */}
                                 <div style={{
                                   fontSize: "13px",
@@ -5527,7 +5546,7 @@ const ExportJobsTable = () => {
                                 }}>
                                   {msg.message}
                                 </div>
-                                
+
                                 {/* Timestamp / double ticks */}
                                 <div style={{
                                   display: "flex",
@@ -5625,7 +5644,7 @@ const ExportJobsTable = () => {
                               color: "#374151"
                             }}
                           />
-                          
+
                           {/* Attachment Icon */}
                           <button
                             type="button"
@@ -5781,10 +5800,10 @@ const ExportJobsTable = () => {
                             `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(selectedDocJob.job_no)}/track-click`,
                             { docType: "esanchit" }
                           )
-                          .then(response => {
-                            handleTrackDocClick(selectedDocJob.job_no, "esanchit", response.data.docClicks);
-                          })
-                          .catch(err => console.error("Error tracking esanchit click:", err));
+                            .then(response => {
+                              handleTrackDocClick(selectedDocJob.job_no, "esanchit", response.data.docClicks);
+                            })
+                            .catch(err => console.error("Error tracking esanchit click:", err));
                         }
                       }}
                       style={{
@@ -5938,6 +5957,20 @@ const ExportJobsTable = () => {
                 <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (CONCOR)</MenuItem>
               </ConcorForwardingNoteGenerator>
             )}
+
+            {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SABARMATI")) && (
+              <ConcorPltLetterGenerator jobNo={selectedGenDocJob?.job_no}>
+                <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CONCOR PLT LETTER</MenuItem>
+              </ConcorPltLetterGenerator>
+            )}
+
+            {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SANAND") ||
+              selectedGenDocJob?.custom_house?.toUpperCase().includes("THAR") ||
+              selectedGenDocJob?.custom_house?.toUpperCase().includes("ICD")) && (
+                <AnnexureDGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>ANNEXURE D</MenuItem>
+                </AnnexureDGenerator>
+              )}
 
             {(!selectedGenDocJob?.custom_house?.toUpperCase().includes("ACC") &&
               !selectedGenDocJob?.custom_house?.toUpperCase().includes("AIRPORT") &&

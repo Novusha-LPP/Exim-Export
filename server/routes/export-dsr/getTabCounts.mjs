@@ -164,7 +164,7 @@ function summarizeJob(job) {
     handover_date: opStatus.handoverForwardingNoteDate || "",
     billing_date: (opStatus.billing_details?.agency_bill_date && opStatus.billing_details?.agency_bill_no ? opStatus.billing_details.agency_bill_date : "") ||
       (opStatus.billing_details?.reimbursement_bill_date && opStatus.billing_details?.reimbursement_bill_no ? opStatus.billing_details.reimbursement_bill_date : "") ||
-      opStatus.billingDocsSentDt || "",
+      "",
     billing_docs_count: Array.isArray(opStatus.billingDocsSentUpload)
       ? opStatus.billingDocsSentUpload.length
       : 0,
@@ -208,6 +208,7 @@ function summarizeJob(job) {
 function matchesTab(job, workMode, tab, jobTypeFilter = "") {
   const hasHandover = Boolean(job.handover_date);
   const hasBillingDone = Boolean(job.billing_date);
+  const isCompleted = isCompletedStatus(job.status);
 
   if (tab === "general-jobs" || tab === "General Jobs") {
     const isGenJob = job.isGeneralJob === true;
@@ -215,6 +216,7 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
     const matchesType = isGenJob || isFreightJob;
 
     if (!matchesType) return false;
+    if (isCompleted) return false;
 
     if (jobTypeFilter === "gen") return isGenJob && !isFreightJob;
     if (jobTypeFilter === "freight") return isFreightJob;
@@ -222,7 +224,8 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
   }
 
   if (tab === "billing-pending") {
-    return job.send_for_billing && !hasBillingDone;
+    const isGenOrFF = job.isGeneralJob === true || String(job.job_no || "").toUpperCase().startsWith("FF");
+    return (job.send_for_billing || isGenOrFF) && !hasBillingDone;
   }
 
   if (tab === "export-completed-billing") {
@@ -242,7 +245,7 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
   }
 
   if (tab === "club-jobs") {
-    return job.is_club_job_parent || !!job.parent_club_job;
+    return (job.is_club_job_parent || !!job.parent_club_job) && !isCompleted;
   }
 
   return true;
@@ -497,15 +500,20 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
 
       const counts = {};
       tabs.forEach((tabKey) => {
-        counts[tabKey] = summarizedBase
+        let list = summarizedBase
           .map(job => ({ ...job, unresolved_queries: unresolvedByJob[job.job_no] || 0 }))
-          .filter(job => matchesTab(job, workMode, tabKey, String(jobTypeFilter).trim().toLowerCase()))
-          .filter(job => {
-            if (pendingQueries === "true" || pendingQueries === true) {
-              return job.unresolved_queries > 0;
-            }
-            return true;
-          }).length;
+          .filter(job => matchesTab(job, workMode, tabKey, String(jobTypeFilter).trim().toLowerCase()));
+
+        if (tabKey === "club-jobs") {
+          list = list.filter(job => job.is_club_job_parent);
+        }
+
+        counts[tabKey] = list.filter(job => {
+          if (pendingQueries === "true" || pendingQueries === true) {
+            return job.unresolved_queries > 0;
+          }
+          return true;
+        }).length;
       });
 
       return res.status(200).json({ success: true, data: counts });

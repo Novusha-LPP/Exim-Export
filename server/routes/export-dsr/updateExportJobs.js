@@ -859,6 +859,7 @@ router.get("/global-search-jobs", async (req, res) => {
           "invoices.invoice_date": 1,
           "invoices.invValue": 1,
           sb_no: 1,
+          goods_stuffed_at: 1,
           sb_date: 1,
           destination_port: 1,
           destination_country: 1,
@@ -1438,17 +1439,17 @@ router.get("/exports/:status?", async (req, res) => {
 
     const QueryModel = (await import("../../model/export/QueryModel.mjs")).default;
     const jobsWithOpenQueries = await QueryModel.find({
-        job_no: { $in: allJobNos },
-        status: "open",
-        targetModule: currentModule
+      job_no: { $in: allJobNos },
+      status: "open",
+      targetModule: currentModule
     }).distinct("job_no");
 
     const pendingQueriesCount = jobsWithOpenQueries.length;
 
     // Apply pendingQueries filter if active
     if (pendingQueries === "true" || pendingQueries === true) {
-        if (!filter.$and) filter.$and = [];
-        filter.$and.push({ job_no: { $in: jobsWithOpenQueries } });
+      if (!filter.$and) filter.$and = [];
+      filter.$and.push({ job_no: { $in: jobsWithOpenQueries } });
     }
 
     // Remove empty $and array if no conditions were added
@@ -1496,6 +1497,7 @@ router.get("/exports/:status?", async (req, res) => {
       "invoices.invoice_date": 1,
       "invoices.invValue": 1,
       sb_no: 1,
+      goods_stuffed_at: 1,
       sb_date: 1,
       destination_port: 1,
       destination_country: 1,
@@ -2387,8 +2389,36 @@ router.get("/:job_no(.*)", async (req, res, next) => {
       }
     }
 
-    if (!exportJob) {
-      return res.status(404).json({ message: "Export job not found" });
+    let jobData = exportJob.toObject();
+
+    // Merge FreightEnquiry details if FF job
+    if (job_no.startsWith("FF")) {
+      const enquiry = await FreightEnquiryModel.findOne({
+        $or: [
+          { enquiry_no: job_no },
+          { success_no: job_no }
+        ],
+        status: "Converted"
+      }).lean();
+      if (enquiry) {
+        jobData.shipment_type = enquiry.shipment_type;
+        jobData.container_size = enquiry.container_size;
+        jobData.goods_stuffed = enquiry.goods_stuffed;
+        jobData.contact_no = enquiry.contact_no;
+        jobData.email = enquiry.email;
+        jobData.is_manual_cbm = enquiry.is_manual_cbm;
+        jobData.dimensions = enquiry.dimensions || [];
+        jobData.bl_details = enquiry.bl_details || {};
+        jobData.remarks = enquiry.remarks || jobData.remarks;
+        if (enquiry.containers && enquiry.containers.length > 0) {
+          jobData.containers = enquiry.containers.map((c, i) => ({
+            serialNumber: i + 1,
+            containerNo: c.container_number || "",
+            customSealNo: c.custom_seal || "",
+            shippingLineSealNo: c.line_seal || ""
+          }));
+        }
+      }
     }
 
     // Check for stale locks (e.g., older than 30 minutes)
@@ -2408,11 +2438,11 @@ router.get("/:job_no(.*)", async (req, res, next) => {
       return res.status(423).json({
         message: `Job is currently locked by ${exportJob.lockedBy}`,
         lockedBy: exportJob.lockedBy,
-        job: exportJob, // Still send data if they just want to "view" (optional, but 423 is standard for locked)
+        job: jobData, // Still send data if they just want to "view" (optional, but 423 is standard for locked)
       });
     }
 
-    res.json(exportJob);
+    res.json(jobData);
   } catch (error) {
     console.error("Error fetching export job:", error);
     res.status(500).json({ message: "Server error" });
@@ -2584,6 +2614,66 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
 
     if (!updatedExportJob) {
       return res.status(404).json({ message: "Export job not found" });
+    }
+
+    // Sync back to FreightEnquiry if it's a Freight Forwarding job
+    if (job_no.startsWith("FF")) {
+      const enquiryUpdates = {};
+      const fieldsToSync = [
+        "shipment_type",
+        "container_size",
+        "goods_stuffed",
+        "contact_no",
+        "email",
+        "is_manual_cbm",
+        "dimensions",
+        "bl_details",
+        "remarks",
+        "port_of_loading",
+        "port_of_destination",
+        "consignment_type"
+      ];
+      fieldsToSync.forEach(field => {
+        if (req.body[field] !== undefined) {
+          enquiryUpdates[field] = req.body[field];
+        }
+      });
+      if (req.body.shipper !== undefined) enquiryUpdates.organization_name = req.body.shipper;
+      if (req.body.movement_type !== undefined) enquiryUpdates.movement_type = req.body.movement_type;
+      if (req.body.gross_weight_kg !== undefined) enquiryUpdates.gross_weight = req.body.gross_weight_kg;
+      if (req.body.gross_weight_unit !== undefined) enquiryUpdates.gross_weight_unit = req.body.gross_weight_unit;
+      if (req.body.net_weight_kg !== undefined) enquiryUpdates.net_weight = req.body.net_weight_kg;
+      if (req.body.net_weight_unit !== undefined) enquiryUpdates.net_weight_unit = req.body.net_weight_unit;
+      if (req.body.chargeable_weight !== undefined) enquiryUpdates.chargeable_weight = req.body.chargeable_weight;
+      if (req.body.chargeable_weight_unit !== undefined) enquiryUpdates.chargeable_weight_unit = req.body.chargeable_weight_unit;
+      if (req.body.volume_cbm !== undefined) enquiryUpdates.volume_cbm = req.body.volume_cbm;
+      if (req.body.volume_unit !== undefined) enquiryUpdates.volume_unit = req.body.volume_unit;
+      if (req.body.total_no_of_pkgs !== undefined) enquiryUpdates.no_packages = req.body.total_no_of_pkgs;
+      if (req.body.package_unit !== undefined) enquiryUpdates.package_unit = req.body.package_unit;
+      if (req.body.volume_weight !== undefined) enquiryUpdates.volume_weight = req.body.volume_weight;
+      if (req.body.port_of_loading !== undefined) enquiryUpdates.port_of_loading = req.body.port_of_loading;
+      if (req.body.port_of_discharge !== undefined) enquiryUpdates.port_of_destination = req.body.port_of_discharge;
+      if (req.body.consignmentType !== undefined) enquiryUpdates.consignment_type = req.body.consignmentType;
+
+      if (req.body.containers !== undefined && Array.isArray(req.body.containers)) {
+        enquiryUpdates.containers = req.body.containers.map(c => ({
+          container_number: c.containerNo || c.container_number || "",
+          custom_seal: c.customSealNo || c.custom_seal || "",
+          line_seal: c.shippingLineSealNo || c.line_seal || ""
+        }));
+      }
+
+      if (Object.keys(enquiryUpdates).length > 0) {
+        await FreightEnquiryModel.updateOne(
+          {
+            $or: [
+              { enquiry_no: job_no },
+              { success_no: job_no }
+            ]
+          },
+          { $set: enquiryUpdates }
+        );
+      }
     }
 
     // Force Mongoose to run pre-save hook calculation for milestones and status

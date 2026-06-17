@@ -192,7 +192,7 @@ function summarizeJob(job) {
     handover_date: opStatus.handoverForwardingNoteDate || "",
     billing_date: (opStatus.billing_details?.agency_bill_date && opStatus.billing_details?.agency_bill_no ? opStatus.billing_details.agency_bill_date : "") ||
       (opStatus.billing_details?.reimbursement_bill_date && opStatus.billing_details?.reimbursement_bill_no ? opStatus.billing_details.reimbursement_bill_date : "") ||
-      opStatus.billingDocsSentDt || "",
+      "",
     billing_docs_count: Array.isArray(opStatus.billingDocsSentUpload)
       ? opStatus.billingDocsSentUpload.length
       : 0,
@@ -237,6 +237,7 @@ function summarizeJob(job) {
 function matchesTab(job, workMode, tab, jobTypeFilter = "") {
   const hasHandover = Boolean(job.handover_date);
   const hasBillingDone = Boolean(job.billing_date);
+  const isCompleted = isCompletedStatus(job.status);
 
   // General/Freight Jobs tab
   if (tab === "general-jobs" || tab === "General Jobs") {
@@ -245,6 +246,7 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
     const matchesType = isGenJob || isFreightJob;
 
     if (!matchesType) return false;
+    if (isCompleted) return false;
 
     // Apply sub-filter if provided
     if (jobTypeFilter === "gen") return isGenJob && !isFreightJob;
@@ -254,9 +256,8 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
 
   // Standard tabs logic
   if (tab === "billing-pending") {
-    // Show in billing-pending if flagged, but only if billing is not done
-    // This now allows general jobs to show up here too if flagged.
-    return job.send_for_billing && !hasBillingDone;
+    const isGenOrFF = job.isGeneralJob === true || String(job.job_no || "").toUpperCase().startsWith("FF");
+    return (job.send_for_billing || isGenOrFF) && !hasBillingDone;
   }
 
   if (tab === "export-completed-billing") {
@@ -276,7 +277,7 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
   }
 
   if (tab === "club-jobs") {
-    return job.is_club_job_parent || !!job.parent_club_job;
+    return (job.is_club_job_parent || !!job.parent_club_job) && !isCompleted;
   }
 
   return true;
@@ -434,6 +435,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
     if (normalizedTab === "club-jobs") {
       baseFilter.$and = baseFilter.$and || [];
       baseFilter.$and.push({
+        status: { $ne: "Completed" },
         $or: [
           { is_club_job_parent: true },
           { parent_club_job: { $exists: true, $ne: null, $ne: "" } }

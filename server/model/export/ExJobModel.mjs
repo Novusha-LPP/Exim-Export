@@ -2125,8 +2125,7 @@ exportJobSchema.pre("save", async function (next) {
   const hasCompleteReimbursementBill = op0Status?.billing_details?.reimbursement_bill_date && op0Status?.billing_details?.reimbursement_bill_no;
 
   const billingDateVal = (hasCompleteAgencyBill ? op0Status.billing_details.agency_bill_date : null) ||
-    (hasCompleteReimbursementBill ? op0Status.billing_details.reimbursement_bill_date : null) ||
-    (op0Status ? op0Status.billingDocsSentDt : null);
+    (hasCompleteReimbursementBill ? op0Status.billing_details.reimbursement_bill_date : null);
 
   const syncMap = [
     { date: this.sb_date, name: "SB Filed" },
@@ -2260,7 +2259,7 @@ exportJobSchema.pre("save", async function (next) {
   }
 
   // 2. Business Logic: Status transitions
-  if (this.detailedStatus.includes("Billing Done")) {
+  if (this.detailedStatus.includes("Billing Done") || billingDateVal) {
     this.status = "Completed";
   } else if (this.status === "Completed" && !this.isJobCanceled) {
     // Revert to Pending if Billing Done is removed and it was previously Completed

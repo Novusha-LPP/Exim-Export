@@ -100,6 +100,36 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
 
     let jobData = job.toObject();
 
+    // Merge FreightEnquiry details if FF job
+    if (String(jobNo).startsWith("FF")) {
+      const enquiry = await FreightEnquiryModel.findOne({
+        $or: [
+          { enquiry_no: jobNo },
+          { success_no: jobNo }
+        ],
+        status: "Converted"
+      }).lean();
+      if (enquiry) {
+        jobData.shipment_type = enquiry.shipment_type;
+        jobData.container_size = enquiry.container_size;
+        jobData.goods_stuffed = enquiry.goods_stuffed;
+        jobData.contact_no = enquiry.contact_no;
+        jobData.email = enquiry.email;
+        jobData.is_manual_cbm = enquiry.is_manual_cbm;
+        jobData.dimensions = enquiry.dimensions || [];
+        jobData.bl_details = enquiry.bl_details || {};
+        jobData.remarks = enquiry.remarks || jobData.remarks;
+        if (enquiry.containers && enquiry.containers.length > 0) {
+          jobData.containers = enquiry.containers.map((c, i) => ({
+            serialNumber: i + 1,
+            containerNo: c.container_number || "",
+            customSealNo: c.custom_seal || "",
+            shippingLineSealNo: c.line_seal || ""
+          }));
+        }
+      }
+    }
+
     if (jobData.is_club_job_parent && Array.isArray(jobData.clubbed_jobs) && jobData.clubbed_jobs.length > 0) {
       const childJobs = await ExJobModel.find({ job_no: { $in: jobData.clubbed_jobs } }).lean();
       
