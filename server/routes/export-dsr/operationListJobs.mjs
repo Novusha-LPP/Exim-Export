@@ -233,7 +233,6 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             });
         } else if (normalizedStatus === "handover pending") {
             filter.$and.push({
-                "operations.statusDetails.leoDate": { $exists: true, $nin: [null, ""] },
                 $or: [
                     { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                     { "operations.statusDetails": { $size: 0 } }

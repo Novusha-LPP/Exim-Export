@@ -586,7 +586,6 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
                 { $or: [{ status: { $regex: "^pending$", $options: "i" } }, { status: { $exists: false } }, { status: null }, { status: "" }] },
                 { detailedStatus: { $ne: "Billing Done" } }
               ],
-              "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
               $or: [
                 { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                 { "operations.statusDetails": { $size: 0 } }
@@ -728,7 +727,6 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
               });
             } else if (tabKeyLower === "handover pending") {
               filter.$and.push({
-                "operations.statusDetails.leoDate": { $exists: true, $nin: [null, ""] },
                 $or: [
                   { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                   { "operations.statusDetails": { $size: 0 } }
