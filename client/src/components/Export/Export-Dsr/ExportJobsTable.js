@@ -938,7 +938,7 @@ const ExportJobsTable = () => {
   const [activeTab, setActiveTab] = useState(() => {
     const saved = savedFilters.activeTab || "Pending";
     if (isOperationModule) {
-      const allowedOpsTabs = ["Pending", "Op Completed", "Completed"];
+      const allowedOpsTabs = ["Pending", "Handover Pending", "Op Completed", "Completed"];
       if (allowedOpsTabs.includes(saved)) return saved;
       if (saved === "Completed" || saved === "Billing Ready") return "Op Completed";
       return "Pending";
@@ -1221,6 +1221,28 @@ const ExportJobsTable = () => {
       console.error(e);
     } finally {
       setGateInLoading(false);
+    }
+  };
+
+  // Handover Pending modal states (only for operation module)
+  const [handoverModalOpen, setHandoverModalOpen] = useState(false);
+  const [handoverJobs, setHandoverJobs] = useState([]);
+  const [handoverLoading, setHandoverLoading] = useState(false);
+
+  const handleOpenHandoverPendingJobs = async () => {
+    setHandoverModalOpen(true);
+    setHandoverLoading(true);
+    try {
+      const resp = await axios.get(
+        `${import.meta.env.VITE_API_STRING}/operation-pending-jobs`
+      );
+      if (resp.data.success) {
+        setHandoverJobs(resp.data.data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setHandoverLoading(false);
     }
   };
 
@@ -2695,7 +2717,7 @@ const ExportJobsTable = () => {
               </div>
             )}
 
-            {/* Gate In Pending Button - Only for Export Operation module */}
+            {/* Gate In / Handover Pending Buttons - Only for Export Operation module */}
             {isOperationModule && (
               <div style={{ display: "flex", gap: "10px" }}>
                 <button
@@ -2714,6 +2736,23 @@ const ExportJobsTable = () => {
                   onClick={handleOpenGateInJobs}
                 >
                   Gate In Pending
+                </button>
+                <button
+                  style={{
+                    ...s.btnPrimary,
+                    padding: "8px 20px",
+                    height: "auto",
+                    backgroundColor: "#10b981",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    fontSize: "13px",
+                  }}
+                  onClick={handleOpenHandoverPendingJobs}
+                >
+                  Handover Pending
                 </button>
               </div>
             )}
@@ -2779,7 +2818,7 @@ const ExportJobsTable = () => {
                 </span>
               </button>
             )}
-            {!isOperationModule && !isChargesModule && (
+            {!isChargesModule && (
               <button
                 style={
                   activeTab === "Handover Pending" ? { ...s.tab, ...s.activeTab } : s.tab
@@ -5084,6 +5123,72 @@ const ExportJobsTable = () => {
         }}
         containers={containerTrackContainers}
       />
+
+      {/* Handover Pending Jobs Modal */}
+      <Dialog
+        open={handoverModalOpen}
+        onClose={() => setHandoverModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Handover Pending Jobs</DialogTitle>
+        <DialogContent>
+          {handoverLoading ? (
+            <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>
+              Loading jobs...
+            </div>
+          ) : handoverJobs.length === 0 ? (
+            <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>
+              No pending Handover jobs found.
+            </div>
+          ) : (
+            <div
+              style={{ border: "1px solid #e0e0e0", borderRadius: "4px", overflow: "hidden" }}
+            >
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                <thead style={{ backgroundColor: "#f5f5f5" }}>
+                  <tr>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>Job No</th>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>SB No</th>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>Exporter</th>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>Gate In Date</th>
+                    <th style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {handoverJobs.map((j, i) => (
+                    <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa", borderBottom: "1px solid #e0e0e0" }}>
+                      <td style={{ padding: "8px" }}>{j.job_no}</td>
+                      <td style={{ padding: "8px" }}>{j.sb_no}</td>
+                      <td style={{ padding: "8px" }}>{j.exporter}</td>
+                      <td style={{ padding: "8px" }}>{j.gateInDate}</td>
+                      <td style={{ padding: "8px" }}>
+                        <button
+                          style={{
+                            padding: "4px 10px",
+                            backgroundColor: "#fff",
+                            color: "#2563eb",
+                            border: "1px solid #2563eb",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            fontSize: "12px"
+                          }}
+                          onClick={() => {
+                            setHandoverModalOpen(false);
+                            navigate(`/export-operation/job/${encodeURIComponent(j.job_no)}`);
+                          }}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Gate In Pending Jobs Modal */}
       <Dialog

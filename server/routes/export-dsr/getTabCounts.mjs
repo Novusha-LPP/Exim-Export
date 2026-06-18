@@ -532,7 +532,7 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
     if (module === "jobs") {
       tabsList = ["Pending", "Booking Pending", "Handover Pending", "Prepare for Billing", "Sent for Billing", "club-jobs", "Completed", "Cancelled"];
     } else if (module === "operation") {
-      tabsList = ["Pending", "Op Completed", "Completed"];
+      tabsList = ["Pending", "Handover Pending", "Op Completed", "Completed"];
     } else if (module === "charges") {
       tabsList = ["Pending", "Completed", "General Jobs", "Freight Forwarding"];
     }
@@ -723,6 +723,14 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
                   { "operations.statusDetails.billing_details.agency_bill_no": { $in: [null, ""] } },
                   { "operations.statusDetails.billing_details.reimbursement_bill_date": { $in: [null, ""] } },
                   { "operations.statusDetails.billing_details.reimbursement_bill_no": { $in: [null, ""] } },
+                  { "operations.statusDetails": { $size: 0 } }
+                ]
+              });
+            } else if (tabKeyLower === "handover pending") {
+              filter.$and.push({
+                "operations.statusDetails.leoDate": { $exists: true, $nin: [null, ""] },
+                $or: [
+                  { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                   { "operations.statusDetails": { $size: 0 } }
                 ]
               });

@@ -41,6 +41,19 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
 
     let result = [];
     allJobsToProcess.forEach(job => {
+      const fallbackDesc = [...new Set((job.invoices || [])
+        .flatMap(inv => inv.products || [])
+        .map(p => p.description || p.product_description)
+        .filter(Boolean)
+        .map(d => String(d).trim())
+      )].join(", ") || job.descriptionOfGoods || job.description || "";
+      const fallbackHsn = [...new Set((job.invoices || [])
+        .flatMap(inv => inv.products || [])
+        .map(p => p.hsn_code || p.hsnCode || p.hsn || (p.ritc && typeof p.ritc === 'object' ? p.ritc.hsnCode || p.ritc.ritcCode : p.ritc))
+        .filter(Boolean)
+        .map(h => String(h).trim())
+      )].join(", ") || job.custom_house_details?.hsn_code || job.hsn || job.ritc || job.hsnList || job.hsnCode || job.hsn_code || "";
+
       const containers = job.containers?.length > 0 ? job.containers : (job.operations?.[0]?.containerDetails || []);
       containers.forEach(c => {
         result.push({
@@ -48,8 +61,10 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
           jobNo: c._sourceJobNo || job.job_no,
           shippingBillNo: c._sourceSbNo || job.custom_house_details?.shipping_bill_no || job.sb_no || job.shippingBillNo,
           sb_date: c._sourceSbDate || job.custom_house_details?.sb_date || job.sb_date,
-          hsn: c.hsn || c._sourceHsnList || job.custom_house_details?.hsn_code,
-          pkgsStuffed: c.pkgsStuffed || c.pkgs || 0
+          hsn: c.hsn || c._sourceHsnList || job.custom_house_details?.hsn_code || fallbackHsn,
+          pkgsStuffed: c.pkgsStuffed || c.pkgs || 0,
+          _fallbackDesc: fallbackDesc,
+          _fallbackHsn: fallbackHsn
         });
       });
     });
@@ -80,11 +95,11 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       group.grossWeight += Number(c.grossWeight) || 0;
       group.grWtPlusTrWt += Number(c.grWtPlusTrWt) || 0;
 
-      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || primaryJob.descriptionOfGoods || primaryJob.description || "";
+      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || c._fallbackDesc || "";
       if (desc && !group.uniqueDescriptions.includes(desc)) {
         group.uniqueDescriptions.push(desc);
       }
-      const hsn = c.hsn || c._sourceHsnList || c.hsnList || c.ritc || "";
+      const hsn = c.hsn || c._sourceHsnList || c.hsnList || c.ritc || c._fallbackHsn || "";
       if (hsn && !group.uniqueHsnCodes.includes(hsn)) {
         group.uniqueHsnCodes.push(hsn);
       }
@@ -124,12 +139,28 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
     });
 
     return Object.values(grouped).map(group => {
+      const cleanUniqueDescs = [...new Set(
+        group.uniqueDescriptions
+          .flatMap(d => String(d).split(","))
+          .map(d => d.trim())
+          .filter(Boolean)
+      )];
+      
+      const cleanUniqueHsn = [...new Set(
+        group.uniqueHsnCodes
+          .flatMap(h => String(h).split(","))
+          .map(h => h.trim())
+          .filter(Boolean)
+      )];
+
       return {
         ...group,
-        descriptionOfGoods: group.uniqueDescriptions.join(", "),
-        description: group.uniqueDescriptions.join(", "),
-        hsnList: group.uniqueHsnCodes.join(", "),
-        ritc: group.uniqueHsnCodes.join(", "),
+        uniqueDescriptions: cleanUniqueDescs,
+        uniqueHsnCodes: cleanUniqueHsn,
+        descriptionOfGoods: cleanUniqueDescs.join(", "),
+        description: cleanUniqueDescs.join(", "),
+        hsnList: cleanUniqueHsn.join(", "),
+        ritc: cleanUniqueHsn.join(", "),
         sealNo: group.uniqueSealNos.join(", "),
         shippingLineSealNo: group.uniqueShippingLineSealNos.join(", "),
         leoDate: group.uniqueLeoDates[0] || "",
@@ -243,7 +274,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
 
       const hsnDisplay = cnt.uniqueHsnCodes && cnt.uniqueHsnCodes.length > 0
         ? cnt.uniqueHsnCodes.join(", ")
-        : (product.ritc || "");
+        : (product.hsn_code || product.hsnCode || product.hsn || (product.ritc && typeof product.ritc === 'object' ? product.ritc.hsnCode || product.ritc.ritcCode : product.ritc) || "");
 
       const weightDisplay = uniqueSBsList.length > 0
         ? uniqueSBsList.map(sb => `<div>${(parseFloat(sb.weight || 0) / 1000).toFixed(1)}</div>`).join("")
@@ -691,7 +722,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
 
         const hsnText = cnt.uniqueHsnCodes && cnt.uniqueHsnCodes.length > 0
           ? cnt.uniqueHsnCodes.join(", ")
-          : (product.ritc || "");
+          : (product.hsn_code || product.hsnCode || product.hsn || (product.ritc && typeof product.ritc === 'object' ? product.ritc.hsnCode || product.ritc.ritcCode : product.ritc) || "");
 
         const weightText = uniqueSBsList.length > 0
           ? uniqueSBsList.map(sb => (parseFloat(sb.weight || 0) / 1000).toFixed(1)).join("\n")

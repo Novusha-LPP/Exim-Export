@@ -679,6 +679,7 @@ export function generateSBFlatFile(job) {
             const pmvVal = parseFloat((p.pmvInfo || {}).pmvPerUnit || 0);
             const pmv = (pmvVal <= 0 ? 0.01 : pmvVal).toFixed(2);
             const sc = (p.eximCode || "19").split(" ")[0];
+            const per = clean(String(p.per || "1"));
 
             out += row(PD,
                 String(ii + 1), String(pi + 1),
@@ -687,7 +688,7 @@ export function generateSBFlatFile(job) {
                 trunc(desc, 40).trimEnd(),           // [10] FIX 26
                 trunc(desc.slice(40), 40),            // [11]
                 trunc(desc.slice(80), 40),            // [12]
-                uom, qty, upr, uom, "1", pmv,
+                uom, qty, upr, uom, per, pmv,
                 "",                                   // [19] Job Work
                 "N",                                  // [20] Third Party
                 p.rewardItem ? "Y" : "N",            // [21] Reward

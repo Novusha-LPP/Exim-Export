@@ -373,8 +373,8 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
               `${branch.address || ""}${branch.postalCode ? `, ${branch.postalCode}` : ""}`,
             ),
             exporter_branch_name: toUpper(branch.branchName || ""),
-            marks_nos: (!formik.values.marks_nos || formik.values.marks_nos.trim() === "") 
-              ? toUpper(exp.registrationDetails?.aeoCode || "") 
+            marks_nos: (!formik.values.marks_nos || formik.values.marks_nos.trim() === "")
+              ? toUpper(exp.registrationDetails?.aeoCode || "")
               : formik.values.marks_nos
           };
 
@@ -705,7 +705,7 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
               marginBottom: 8,
             }}
           >
-            <div style={{ fontWeight: 700, color: "#2366b3", marginBottom: 8 }}>
+            <div style={{ fontWeight: 700, color: "#a37035", marginBottom: 8 }}>
               Exporter & Bank
             </div>
             {exporterInputField()}
@@ -831,7 +831,7 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
               marginBottom: 8,
             }}
           >
-            <div style={{ fontWeight: 700, color: "#2366b3", marginBottom: 8 }}>
+            <div style={{ fontWeight: 700, color: "#a37035", marginBottom: 8 }}>
               Reference Details
             </div>
             {field("Exporter Ref No.", "exporter_ref_no")}

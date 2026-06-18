@@ -65,6 +65,19 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
 
     let result = [];
     allJobsToProcess.forEach(job => {
+        const fallbackDesc = [...new Set((job.invoices || [])
+          .flatMap(inv => inv.products || [])
+          .map(p => p.description || p.product_description)
+          .filter(Boolean)
+          .map(d => String(d).trim())
+        )].join(", ") || job.descriptionOfGoods || job.description || "";
+        const fallbackHsn = [...new Set((job.invoices || [])
+          .flatMap(inv => inv.products || [])
+          .map(p => p.hsn_code || p.hsnCode || p.hsn || (p.ritc && typeof p.ritc === 'object' ? p.ritc.hsnCode || p.ritc.ritcCode : p.ritc))
+          .filter(Boolean)
+          .map(h => String(h).trim())
+        )].join(", ") || job.custom_house_details?.hsn_code || job.hsn || job.ritc || job.hsnList || job.hsnCode || job.hsn_code || "";
+
         const containers = job.containers?.length > 0 ? job.containers : (job.operations?.[0]?.containerDetails || []);
         containers.forEach(c => {
             result.push({
@@ -72,8 +85,10 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
                 jobNo: c._sourceJobNo || job.job_no,
                 shippingBillNo: c._sourceSbNo || job.custom_house_details?.shipping_bill_no || job.sb_no || job.shippingBillNo,
                 sb_date: c._sourceSbDate || job.custom_house_details?.sb_date || job.sb_date,
-                hsn: c.hsn || c._sourceHsnList || job.custom_house_details?.hsn_code,
-                pkgsStuffed: c.pkgsStuffed || c.pkgs || 0
+                hsn: c.hsn || c._sourceHsnList || job.custom_house_details?.hsn_code || fallbackHsn,
+                pkgsStuffed: c.pkgsStuffed || c.pkgs || 0,
+                _fallbackDesc: fallbackDesc,
+                _fallbackHsn: fallbackHsn
             });
         });
     });
@@ -104,8 +119,8 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       group.grossWeight += Number(c.grossWeight) || 0;
       group.grWtPlusTrWt += Number(c.grWtPlusTrWt) || 0;
       
-      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || primaryJob.descriptionOfGoods || primaryJob.description || "";
-      const hsn = c.hsn || c._sourceHsnList || c.hsnList || c.ritc || "";
+      const desc = c._sourceDescription || c.descriptionOfGoods || c.description || c._fallbackDesc || "";
+      const hsn = c.hsn || c._sourceHsnList || c.hsnList || c.ritc || c._fallbackHsn || "";
       const sbNo = c.shippingBillNo || c.sb_no || "";
       const sbDate = c.sb_date || "";
 
@@ -148,12 +163,28 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
     });
 
     return Object.values(grouped).map(group => {
+      const cleanUniqueDescs = [...new Set(
+        group.uniqueDescriptions
+          .flatMap(d => String(d).split(","))
+          .map(d => d.trim())
+          .filter(Boolean)
+      )];
+      
+      const cleanUniqueHsn = [...new Set(
+        group.uniqueHsnCodes
+          .flatMap(h => String(h).split(","))
+          .map(h => h.trim())
+          .filter(Boolean)
+      )];
+
       return {
         ...group,
-        descriptionOfGoods: group.uniqueDescriptions.join(", "),
-        description: group.uniqueDescriptions.join(", "),
-        hsnList: group.uniqueHsnCodes.join(", "),
-        ritc: group.uniqueHsnCodes.join(", "),
+        uniqueDescriptions: cleanUniqueDescs,
+        uniqueHsnCodes: cleanUniqueHsn,
+        descriptionOfGoods: cleanUniqueDescs.join(", "),
+        description: cleanUniqueDescs.join(", "),
+        hsnList: cleanUniqueHsn.join(", "),
+        ritc: cleanUniqueHsn.join(", "),
         sealNo: group.uniqueSealNos.join(", "),
         shippingLineSealNo: group.uniqueShippingLineSealNos.join(", "),
         leoDate: group.uniqueLeoDates[0] || "",
@@ -278,65 +309,68 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
       totalWeight += weight;
 
       const descDisplay = c.uniqueDescriptions && c.uniqueDescriptions.length > 0
-        ? c.uniqueDescriptions.map(d => `<div>${d}</div>`).join("")
+        ? c.uniqueDescriptions.filter(Boolean).join("<br/>")
         : (c.descriptionOfGoods || "");
 
       const pkgsDisplay = uniqueSBsList && uniqueSBsList.length > 0
-        ? uniqueSBsList.map(sb => `<div>${sb.pkgs || ""}</div>`).join("")
-        : (pkgs ? `<div>${pkgs}</div>` : "");
+        ? uniqueSBsList.map(sb => sb.pkgs || "").filter(Boolean).join("<br/>")
+        : (pkgs || "");
 
       const weightDisplay = uniqueSBsList && uniqueSBsList.length > 0
-        ? uniqueSBsList.map(sb => `<div>${(Number(sb.weight) / 1000).toFixed(3)}</div>`).join("")
+        ? uniqueSBsList.map(sb => (Number(sb.weight) / 1000).toFixed(3)).filter(Boolean).join("<br/>")
         : (Number(c.grossWeight || 0) / 1000).toFixed(3);
 
       const uniqueSeals = c.uniqueSBs ? [...new Set(c.uniqueSBs.map(sb => sb.sealNo ? String(sb.sealNo).trim() : '').filter(Boolean))] : [];
       const sealDisplay = uniqueSeals.length > 0
-        ? uniqueSeals.map(s => `<div>${s}</div>`).join("<div style='height: 8px;'></div>")
+        ? uniqueSeals.join("<br/>")
         : (c.sealNo || "");
 
       const uniqueAgentSeals = c.uniqueSBs ? [...new Set(c.uniqueSBs.map(sb => sb.shippingLineSealNo ? String(sb.shippingLineSealNo).trim() : '').filter(Boolean))] : [];
       const agentSealDisplay = uniqueAgentSeals.length > 0
-        ? uniqueAgentSeals.map(s => `<div>${s}</div>`).join("<div style='height: 8px;'></div>")
+        ? uniqueAgentSeals.join("<br/>")
         : (c.shippingLineSealNo || "");
 
       const uniqueSBNoList = c.uniqueSBs ? [...new Set(c.uniqueSBs.map(sb => sb.sbNo).filter(Boolean))] : [];
       const sbNoDisplay = uniqueSBNoList.length > 0
-        ? uniqueSBNoList.map(sb => `<div>${sb}</div>`).join("")
+        ? uniqueSBNoList.join("<br/>")
         : (c.sb_no || "");
 
       const uniqueSBDateList = c.uniqueSBs ? [...new Set(c.uniqueSBs.map(sb => formatDate(sb.sbDate)).filter(Boolean))] : [];
       const sbDateDisplay = uniqueSBDateList.length > 0
-        ? uniqueSBDateList.map(sb => `<div>${sb}</div>`).join("")
+        ? uniqueSBDateList.join("<br/>")
         : formatDate(c.sb_date);
 
       containersRows += `
         <tr>
-          <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${idx + 1}</td>
-          <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${c.containerNo || ""}</td>
-          <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${c.type?.match(/\d+/)?.[0] || "20"}</td>
-          <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${pkgsDisplay}</td>
-          <td style="border: 1px solid black; padding: 4px; text-align: left; vertical-align: middle;">${descDisplay}</td>
-          <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${weightDisplay}</td>
-          <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${sealDisplay}</td>
-          <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${agentSealDisplay}</td>
-          <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${sbNoDisplay}</td>
-          <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">${sbDateDisplay}</td>
+          <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">${idx + 1}</td>
+          <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">${c.containerNo || ""}</td>
+          <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">${c.type?.match(/\d+/)?.[0] || "20"}</td>
+          <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">${pkgsDisplay}</td>
+          <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; text-align: left; vertical-align: top !important; line-height: 1.3;">
+            <div style="margin-bottom: 4px;">${descDisplay}</div>
+            ${c.hsnList ? `<div style="font-weight: normal; font-size: 10px; color: #333;">HSN: ${c.hsnList}</div>` : ""}
+          </td>
+          <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">${weightDisplay}</td>
+          <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">${sealDisplay}</td>
+          <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">${agentSealDisplay}</td>
+          <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">${sbNoDisplay}</td>
+          <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">${sbDateDisplay}</td>
         </tr>
       `;
     });
 
     containersRows += `
       <tr style="font-weight: bold;">
-        <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
-        <td style="border: 1px solid black; text-align: left; vertical-align: middle; padding: 5px;">TOTAL</td>
-        <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
-        <td style="border: 1px solid black; vertical-align: middle; padding: 5px;">${totalPkgs || ""}</td>
-        <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
-        <td style="border: 1px solid black; vertical-align: middle; padding: 5px;">${(totalWeight / 1000).toFixed(3)}</td>
-        <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
-        <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
-        <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
-        <td style="border: 1px solid black; vertical-align: middle; padding: 5px;"></td>
+        <td valign="top" style="border: 1px solid black; vertical-align: top !important; padding: 4px 5px 6px 5px; line-height: 1.3;"></td>
+        <td valign="top" style="border: 1px solid black; text-align: left; vertical-align: top !important; padding: 4px 5px 6px 5px; line-height: 1.3;">TOTAL</td>
+        <td valign="top" style="border: 1px solid black; vertical-align: top !important; padding: 4px 5px 6px 5px; line-height: 1.3;"></td>
+        <td valign="top" style="border: 1px solid black; vertical-align: top !important; padding: 4px 5px 6px 5px; line-height: 1.3;">${totalPkgs || ""}</td>
+        <td valign="top" style="border: 1px solid black; vertical-align: top !important; padding: 4px 5px 6px 5px; line-height: 1.3;"></td>
+        <td valign="top" style="border: 1px solid black; vertical-align: top !important; padding: 4px 5px 6px 5px; line-height: 1.3;">${(totalWeight / 1000).toFixed(3)}</td>
+        <td valign="top" style="border: 1px solid black; vertical-align: top !important; padding: 4px 5px 6px 5px; line-height: 1.3;"></td>
+        <td valign="top" style="border: 1px solid black; vertical-align: top !important; padding: 4px 5px 6px 5px; line-height: 1.3;"></td>
+        <td valign="top" style="border: 1px solid black; vertical-align: top !important; padding: 4px 5px 6px 5px; line-height: 1.3;"></td>
+        <td valign="top" style="border: 1px solid black; vertical-align: top !important; padding: 4px 5px 6px 5px; line-height: 1.3;"></td>
       </tr>
     `;
 
@@ -356,58 +390,71 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
     }
 
     return `
-      <div style="font-family: 'Helvetica', 'Arial', sans-serif; max-width: 1100px; margin: 0 auto; padding: 5px;">
+      <div id="consignment-note-container" style="font-family: 'Helvetica', 'Arial', sans-serif; width: 900px; margin: 0 auto; padding: 0px;">
+        <style>
+          #consignment-note-container table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+          }
+          #consignment-note-container td, 
+          #consignment-note-container th {
+            vertical-align: top !important;
+          }
+          #consignment-note-container .valign-bottom {
+            vertical-align: bottom !important;
+          }
+        </style>
         
         <!-- Header Section -->
-        <div style="text-align: center; margin-bottom: 10px;">
-          <h2 style="margin: 0; font-weight: bold; font-size: 20px; text-transform: uppercase;">DP WORLD CONTINENTAL WAREHOUSING CORPORATION (NHAVA SEVA) PVT. LTD.</h2>
+        <div style="text-align: center; margin-bottom: 8px;">
+          <h2 style="margin: 0; font-weight: bold; font-size: 18px; text-transform: uppercase;">DP WORLD CONTINENTAL WAREHOUSING CORPORATION (NHAVA SEVA) PVT. LTD.</h2>
           <p style="font-size: 11px; margin: 2px 0 0 0; font-weight: normal;">Near Nirma Factory, Opposite Jakhwada Railway Station, Village Sachana, Viramgam Taluka, Ahmedabad - 382 150, Gujarat, India.</p>
         </div>
 
         <!-- Title and Top Right Box -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
           <div style="flex: 1;">
-            <h2 style="margin: 0; text-decoration: underline; font-size: 18px; font-weight: bold;">CONSIGNMENT NOTE</h2>
+            <h2 style="margin: 0; text-decoration: underline; font-size: 16px; font-weight: bold;">CONSIGNMENT NOTE</h2>
             <p style="margin: 2px 0; font-weight: bold;">Mode By : ${statusDetails.railRoad ? statusDetails.railRoad.toUpperCase() : "Rail / Road"}</p>
             <p style="margin: 2px 0; font-weight: bold;">INVOICE NO:- ${invoiceNosInfo}</p>
           </div>
-          <div style="border: 1px solid black; padding: 5px; width: 250px;">
+          <div style="border: 1px solid black; padding: 4px; width: 250px;">
             <div style="text-align: center; font-weight: bold; border-bottom: 1px solid black; padding-bottom: 2px; margin-bottom: 2px;">CWC (NS) PVT. LTD. USE</div>
-            <p style="margin: 2px 0; font-size: 12px;">CCN No. & Date :</p>
-            <p style="margin: 2px 0; font-size: 12px;">To :</p>
-            <p style="margin: 2px 0; font-size: 12px;">Rail Operator :</p>
+            <p style="margin: 2px 0; font-size: 11px;">CCN No. & Date :</p>
+            <p style="margin: 2px 0; font-size: 11px;">To :</p>
+            <p style="margin: 2px 0; font-size: 11px;">Rail Operator :</p>
           </div>
         </div>
 
         <!-- Address Block -->
-        <div style="margin-bottom: 10px;">
+        <div style="margin-bottom: 8px;">
           <p style="margin: 0;"><strong>To,</strong></p>
           <p style="margin: 0;"><strong>The Terminal Manager,</strong></p>
           <p style="margin: 2px 0;"><strong>CWC (NS) PVT. LTD. Sachana</strong></p>
           <p style="text-align: right; margin: 2px 0; font-weight: bold;">Cargo : Non Hazardous</p>
-          <p style="font-size: 11px; text-align: justify; margin: 5px 0; line-height: 1.2; font-weight: 600;">
+          <p style="font-size: 11px; text-align: justify; margin: 4px 0; line-height: 1.2; font-weight: 600;">
             Please receive the under mentioned container stuffed at ICD/Factory. We accept the all Transportation and/or provision of Containers of business incidental there to have been under taken by CWC(NS) PVT. LTD. on the basis of their standard terms and conditions which have been read by us and understood. No servant or agent of the company has any authority to vary or waive conditions or any part there of.
           </p>
         </div>
 
         <!-- Details Table -->
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px;">
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 12px;">
           <tr>
-            <td style="border: 1px solid black; padding: 4px; width: 50%; vertical-align: top;">
+            <td valign="top" style="border: 1px solid black; padding: 3px 4px 5px 4px; width: 50%; vertical-align: top !important;">
               <div style="margin-bottom: 2px;"><strong>Shipping Line</strong></div>
               <div>${data.shipping_line_airline || ""}</div>
             </td>
-            <td style="border: 1px solid black; padding: 4px; width: 50%; vertical-align: top;">
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 5px 4px; width: 50%; vertical-align: top !important;">
               <div style="margin-bottom: 2px;"><strong>Booking No</strong></div>
               <div>${data.booking_no || ""}</div>
             </td>
           </tr>
           <tr>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 5px 4px; vertical-align: top !important;">
                <div style="margin-bottom: 2px;"><strong>Agent / CHA</strong></div>
                <div>${data.cha || "SURAJ FORWARDERS & SHIPPING AGENCIES"}</div>
             </td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 5px 4px; vertical-align: top !important;">
               <div style="display: flex; gap: 10px;">
                 <div style="flex: 1;">
                    <div style="margin-bottom: 2px;"><strong>Final Destination</strong></div>
@@ -421,43 +468,43 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
             </td>
           </tr>
           <tr>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 5px 4px; vertical-align: top !important;">
                <div style="margin-bottom: 2px;"><strong>Name & Address of Exporter</strong></div>
                <div>${data.exporter || ""}</div>
                <div>${data.exporter_address || ""}</div>
             </td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 5px 4px; vertical-align: top !important;">
                <div style="margin-bottom: 2px;"><strong>Gateway Port</strong></div>
                <div>${data.gateway_port || data.port_of_loading || ""}</div>
             </td>
           </tr>
           <tr>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 5px 4px; vertical-align: top !important;">
                <div style="margin-bottom: 2px;"><strong>Shipping Bill No. & Date</strong></div>
                <div>${sbNosInfo}</div>
             </td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 5px 4px; vertical-align: top !important;">
                <div style="margin-bottom: 2px;"><strong>Port of Discharge</strong></div>
                <div>${data.port_of_discharge || ""}</div>
             </td>
           </tr>
           <tr>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 5px 4px; vertical-align: top !important;">
                <div style="margin-bottom: 2px;"><strong>Stuffing</strong></div>
                <div>${data.goods_stuffed_at === "Factory" ? "FACTORY (FS)" : "ICD (CFS)"}</div>
             </td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 5px 4px; vertical-align: top !important;">
                <div style="margin-bottom: 2px;"><strong>F.O.B./C.I.F. Value</strong></div>
                <div>FOB: ${fobInInr} INR</div>
                <div>INVVAL: ${invInInr} INR</div>
             </td>
           </tr>
           <tr>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 5px 4px; vertical-align: top !important;">
                <div style="margin-bottom: 2px;"><strong>VESSEL NAME AND VOYAGE</strong></div>
                <div>${data.vessel_name || ""} ${data.voyage_no || ""}</div>
             </td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: top;">
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 5px 4px; vertical-align: top !important;">
                <div style="margin-bottom: 2px;"><strong>LEO Date</strong></div>
                <div>${leoDatesInfo}</div>
             </td>
@@ -472,19 +519,19 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         </div>
 
         <!-- Container Table -->
-        <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; margin-bottom: 10px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; margin-bottom: 8px;">
           <thead>
             <tr style="background-color: #f0f0f0;">
-              <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">Sr No</th>
-              <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">Container No</th>
-              <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">Size</th>
-              <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">No & Type of Pkgs.</th>
-              <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">Description of Goods</th>
-              <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">Cargo Weight (MT)</th>
-              <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">Customs Seal No.</th>
-              <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">S.Line/Agent Seal No.</th>
-              <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">SB NO.</th>
-              <th style="border: 1px solid black; padding: 4px; vertical-align: middle;">SB DATE</th>
+              <th valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">Sr No</th>
+              <th valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">Container No</th>
+              <th valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">Size</th>
+              <th valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">No & Type of Pkgs.</th>
+              <th valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">Description of Goods</th>
+              <th valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">Cargo Weight (MT)</th>
+              <th valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">Customs Seal No.</th>
+              <th valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">S.Line/Agent Seal No.</th>
+              <th valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">SB NO.</th>
+              <th valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.3;">SB DATE</th>
             </tr>
           </thead>
           <tbody>
@@ -493,50 +540,50 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         </table>
 
         <!-- Certifications Table -->
-        <table style="width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 11px; font-weight: bold; border: 2px solid black;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 2px; font-size: 11px; font-weight: bold; border: 2px solid black;">
           <tr>
-            <td style="border: 1px solid black; width: 30px; text-align: center; vertical-align: middle; padding: 4px;">1</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle;">I do hereby certify that I have satisfied by self description, marks, quantity, measurement and weight of goods consigned by me have been correctly entered in the note.</td>
+            <td valign="top" style="border: 1px solid black; width: 30px; text-align: center; vertical-align: top !important; padding: 4px 4px 6px 4px; line-height: 1.4;">1</td>
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; line-height: 1.4;">I do hereby certify that I have satisfied by self description, marks, quantity, measurement and weight of goods consigned by me have been correctly entered in the note.</td>
           </tr>
           <tr>
-            <td style="border: 1px solid black; width: 30px; text-align: center; vertical-align: middle; padding: 4px;">2</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle; text-align: center;">I hereby certify that the goods described above are in good order and condition at the time of dispatch.</td>
+            <td valign="top" style="border: 1px solid black; width: 30px; text-align: center; vertical-align: top !important; padding: 4px 4px 6px 4px; line-height: 1.4;">2</td>
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; text-align: center; line-height: 1.4;">I hereby certify that the goods described above are in good order and condition at the time of dispatch.</td>
           </tr>
           <tr>
-            <td style="border: 1px solid black; width: 30px; text-align: center; vertical-align: middle; padding: 4px;">3</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle; text-align: center;">I hereby certify that goods are not classified as dangerous in Indian Railway / Road Tariff of my IMO regulations.</td>
+            <td valign="top" style="border: 1px solid black; width: 30px; text-align: center; vertical-align: top !important; padding: 4px 4px 6px 4px; line-height: 1.4;">3</td>
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; text-align: center; line-height: 1.4;">I hereby certify that goods are not classified as dangerous in Indian Railway / Road Tariff of my IMO regulations.</td>
           </tr>
           <tr>
-            <td style="border: 1px solid black; width: 30px; text-align: center; vertical-align: middle; padding: 4px;">4</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle; text-align: center;">It is certified that rated tonnage of the container (s) has not been exceeded.</td>
+            <td valign="top" style="border: 1px solid black; width: 30px; text-align: center; vertical-align: top !important; padding: 4px 4px 6px 4px; line-height: 1.4;">4</td>
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; text-align: center; line-height: 1.4;">It is certified that rated tonnage of the container (s) has not been exceeded.</td>
           </tr>
           <tr>
-            <td style="border: 1px solid black; width: 30px; text-align: center; vertical-align: middle; padding: 4px;">5</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle; text-align: center;">IF THE CONTAINER WEIGHT IS NOT SPECIFIED THEIR TARE WEIGHT WILL BE TAKEN AS 2.3 TONS FOR 20' & 4.6 TONS FOR 40'.</td>
+            <td valign="top" style="border: 1px solid black; width: 30px; text-align: center; vertical-align: top !important; padding: 4px 4px 6px 4px; line-height: 1.4;">5</td>
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; text-align: center; line-height: 1.4;">IF THE CONTAINER WEIGHT IS NOT SPECIFIED THEIR TARE WEIGHT WILL BE TAKEN AS 2.3 TONS FOR 20' & 4.6 TONS FOR 40'.</td>
           </tr>
           <tr>
-            <td style="border: 1px solid black; width: 30px; text-align: center; vertical-align: middle; padding: 4px;">6</td>
-            <td style="border: 1px solid black; padding: 4px; vertical-align: middle; text-align: center;">I understand that the principal terms and conditions applying to the carriage of above containers are subject to the conditions and liabilities as specified in the Indian Railway Act 1989, as amended from time to time.</td>
+            <td valign="top" style="border: 1px solid black; width: 30px; text-align: center; vertical-align: top !important; padding: 4px 4px 6px 4px; line-height: 1.4;">6</td>
+            <td valign="top" style="border: 1px solid black; padding: 4px 4px 6px 4px; vertical-align: top !important; text-align: center; line-height: 1.4;">I understand that the principal terms and conditions applying to the carriage of above containers are subject to the conditions and liabilities as specified in the Indian Railway Act 1989, as amended from time to time.</td>
           </tr>
         </table>
 
         <!-- Signatures Table -->
-        <table style="width: 100%; border-collapse: collapse; border: 2px solid black; border-top: none; font-size: 11px; font-weight: bold; height: 120px;">
+        <table style="width: 100%; border-collapse: collapse; border: 2px solid black; border-top: none; font-size: 11px; font-weight: bold; height: 95px;">
           <tr>
-            <td style="border: 1px solid black; width: 70%; padding: 5px; vertical-align: top;">
-               <div style="margin-bottom: 25px;">PDA A/C / Cheque No):</div>
+            <td valign="top" style="border: 1px solid black; width: 70%; padding: 4px; vertical-align: top !important;">
+               <div style="margin-bottom: 15px;">PDA A/C / Cheque No):</div>
                <div>PDA/PDC:</div>
             </td>
-            <td style="border: 1px solid black; width: 30%; padding: 5px; text-align: center; vertical-align: top;">
-               <div style="margin-bottom: 25px;">PDA/PDC SURAJ FORWARDERS</div>
+            <td valign="top" style="border: 1px solid black; width: 30%; padding: 4px; text-align: center; vertical-align: top !important;">
+               <div style="margin-bottom: 15px;">PDA/PDC SURAJ FORWARDERS</div>
                <div style="text-transform: uppercase;">STAMP AND SIGNATURE</div>
             </td>
           </tr>
           <tr>
-            <td style="border: 1px solid black; padding: 5px; vertical-align: bottom;">
+            <td valign="bottom" class="valign-bottom" style="border: 1px solid black; padding: 4px; vertical-align: bottom !important;">
                DATE : ${formatDate(new Date())}
             </td>
-            <td style="border: 1px solid black; padding: 5px; text-align: center; vertical-align: bottom;">
+            <td valign="bottom" class="valign-bottom" style="border: 1px solid black; padding: 4px; text-align: center; vertical-align: bottom !important;">
                CWC (NS) PVT. LTD. USE ONLY
             </td>
           </tr>
@@ -756,7 +803,13 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         worksheet.getCell(currentRow, 4).value = pkgsText;
 
         const descText = c.uniqueDescriptions && c.uniqueDescriptions.length > 0 ? c.uniqueDescriptions.join("\n") : (c.descriptionOfGoods || "");
-        worksheet.getCell(currentRow, 5).value = descText;
+        const hsnText = c.uniqueHsnCodes && c.uniqueHsnCodes.length > 0 ? c.uniqueHsnCodes.join(", ") : (c.hsnList || "");
+        worksheet.getCell(currentRow, 5).value = {
+          richText: [
+            { text: descText + "\n", font: { name: "Arial", bold: true, size: 9 } },
+            { text: "HSN: " + hsnText, font: { name: "Arial", size: 8, color: { argb: "FF333333" } } }
+          ]
+        };
 
         const weightText = uniqueSBsListExcel.length > 0 ? uniqueSBsListExcel.map(sb => (Number(sb.weight) / 1000).toFixed(3)).join("\n") : (weightMT || "");
         worksheet.getCell(currentRow, 6).value = weightText;
@@ -905,8 +958,13 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
         y: 15,
         width: 545,
         windowWidth: 900,
-        margin: [20, 15, 30, 15],
+        margin: [15, 15, 15, 15],
         autoPaging: true,
+        html2canvas: {
+          scrollX: -window.scrollX,
+          scrollY: -window.scrollY,
+          useCORS: true
+        }
       });
     } catch (error) {
       console.error("Error generating PDF:", error);

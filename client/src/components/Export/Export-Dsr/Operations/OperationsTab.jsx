@@ -9,36 +9,7 @@ import { SHIPPING_LINES } from "../../../../utils/masterList";
 const toUpper = (str) => (str ? str.toUpperCase() : "");
 
 import { formatDate } from "../../../../utils/dateUtils";
-
-const formatDateForPicker = (dateVal, type = "date") => {
-  if (!dateVal) return "";
-
-  // Handle already formatted dd-mm-yyyy strings
-  if (typeof dateVal === 'string' && /^\d{2}-\d{2}-\d{4}/.test(dateVal)) {
-    const parts = dateVal.split(/[-/]/); // support - or /
-    if (parts.length === 3) {
-      const [d, m, y] = parts;
-      // Return yyyy-MM-dd
-      return `${y}-${m}-${d}`;
-    }
-  }
-
-  try {
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return dateVal;
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    if (type === "datetime-local") {
-      const hours = String(d.getHours()).padStart(2, "0");
-      const minutes = String(d.getMinutes()).padStart(2, "0");
-      return `${year}-${month}-${day}T${hours}:${minutes}`;
-    }
-    return `${year}-${month}-${day}`;
-  } catch (e) {
-    return dateVal;
-  }
-};
+import DateInput from "../../../common/DateInput.js";
 
 const containerTypes = [
   "20 ft",
@@ -1143,15 +1114,30 @@ const TableSection = ({
                               </option>
                             ))}
                           </select>
+                        ) : col.type === "date" || col.type === "datetime-local" ? (
+                          <DateInput
+                            name={`operations.${activeOpIndex}.${section}.${rowIdx}.${col.field}`}
+                            value={
+                              item[col.field] === undefined || item[col.field] === null
+                                ? ""
+                                : item[col.field]
+                            }
+                            withTime={col.type === "datetime-local"}
+                            disabled={!!col.readOnly}
+                            readOnly={!!col.readOnly}
+                            onChange={(e) => {
+                              onUpdate(section, rowIdx, col.field, e.target.value);
+                            }}
+                            placeholder={col.placeholder || "dd-mm-yyyy"}
+                            style={{
+                              ...styles.cellInput,
+                              ...(col.readOnly ? { backgroundColor: "#f1f5f9", color: "#64748b", cursor: "not-allowed" } : {}),
+                            }}
+                          />
                         ) : (
                           <div style={{ position: "relative", width: "100%" }}>
                             <input
-                              type={
-                                col.type === "date" ||
-                                  col.type === "datetime-local"
-                                  ? "text"
-                                  : col.type || "text"
-                              }
+                              type={col.type || "text"}
                               value={
                                 item[col.field] === undefined ||
                                   item[col.field] === null ||
@@ -1163,20 +1149,13 @@ const TableSection = ({
                               placeholder={
                                 col.type === "number"
                                   ? "0.00"
-                                  : col.placeholder ||
-                                  (col.type === "date" ? "dd-mm-yyyy" : "")
+                                  : col.placeholder || ""
                               }
                               readOnly={!!col.readOnly}
                               disabled={!!col.readOnly}
                               maxLength={col.field === "containerNo" ? 11 : undefined}
                               onChange={(e) => {
                                 if (col.readOnly) return;
-                                // Fix: Immediate switch back to text mode to show formatted date
-                                if (col.type === "date" || col.type === "datetime-local") {
-                                  e.target.type = "text";
-                                  // Small timeout ensures the DOM has updated the type before we set the formatted value
-                                  // although React should handle this via the controlled 'value' prop.
-                                }
 
                                 let val = e.target.value;
                                 if (col.field === "containerNo") {
@@ -1195,37 +1174,6 @@ const TableSection = ({
                                     : val,
                                 );
                               }}
-                              onDoubleClick={(e) => {
-                                if (col.readOnly) return;
-                                if (
-                                  col.type === "date" ||
-                                  col.type === "datetime-local"
-                                ) {
-                                  const pickerVal = formatDateForPicker(
-                                    item[col.field],
-                                    col.type,
-                                  );
-                                  if (pickerVal) e.target.value = pickerVal;
-                                  e.target.type = col.type;
-                                  // Use setTimeout to ensure type change is processed before showPicker
-                                  setTimeout(() => {
-                                    if (e.target.showPicker) e.target.showPicker();
-                                  }, 10);
-                                }
-                              }}
-                              onBlur={(e) => {
-                                if (
-                                  col.type === "date" ||
-                                  col.type === "datetime-local"
-                                ) {
-                                  e.target.type = "text";
-                                }
-                              }}
-                              onFocus={(e) => {
-                                if (col.readOnly) return;
-                                // Auto-fill logic from header removed as requested
-                              }}
-                              step={col.type === "datetime-local" ? "60" : undefined}
                               style={{
                                 ...styles.cellInput,
                                 ...(col.readOnly ? { backgroundColor: "#f1f5f9", color: "#64748b", cursor: "not-allowed" } : {}),
@@ -1529,20 +1477,18 @@ const StatusSection = ({
           onChange={(e) => {
             if (e.target.checked) {
               const hasEmptyDates = displayData.some((row) => {
-                const isDispatchActive = row.railRoad === "rail" || row.railRoad === "road";
-                if (isDispatchActive) {
-                  const outDate = row.handoverConcorTharSanganaRailRoadDate;
+                const isDispatchVisible = !(isAir || isLclDock);
+                if (isDispatchVisible) {
                   const reachedDate = row.railOutReachedDate;
-                  const isOutDateEmpty = !outDate || !outDate.toString().trim();
                   const isReachedDateEmpty = !reachedDate || !reachedDate.toString().trim();
-                  return isOutDateEmpty || isReachedDateEmpty;
+                  return isReachedDateEmpty;
                 }
                 return false;
               });
 
               if (hasEmptyDates) {
                 alert(
-                  "Warning: Cannot lock operations. Please ensure both Dispatch Out Date and Reached/Road Reached Date are filled for all active rail/road tracking entries."
+                  "Warning: Cannot lock operations. Please ensure Reached/Road Reached Date is filled for all active rail/road tracking entries."
                 );
                 return;
               }
@@ -1680,21 +1626,10 @@ const StatusSection = ({
             <span style={{ fontSize: "9px", color: "#64748b", fontWeight: 700 }}>
               {item.railRoad === "rail" ? "RAIL OUT:" : "ROAD OUT:"}
             </span>
-            <input
-              type="text"
+            <DateInput
+              name={`operations.${activeOpIndex}.${section}.${rowIdx}.handoverConcorTharSanganaRailRoadDate`}
               value={item.handoverConcorTharSanganaRailRoadDate || ""}
-              onDoubleClick={(e) => {
-                const pickerVal = formatDateForPicker(
-                  item.handoverConcorTharSanganaRailRoadDate,
-                  "date",
-                );
-                if (pickerVal) e.target.value = pickerVal;
-                e.target.type = "date";
-                e.target.showPicker && e.target.showPicker();
-              }}
-              onBlur={(e) => (e.target.type = "text")}
               onChange={(e) => {
-                e.target.type = "text";
                 onUpdate(
                   section,
                   rowIdx,
@@ -1718,21 +1653,10 @@ const StatusSection = ({
             <span style={{ fontSize: "9px", color: "#64748b", fontWeight: 700 }}>
               {item.railRoad === "rail" ? "REACHED:" : "ROAD REACHED:"}
             </span>
-            <input
-              type="text"
+            <DateInput
+              name={`operations.${activeOpIndex}.${section}.${rowIdx}.railOutReachedDate`}
               value={item.railOutReachedDate || ""}
-              onDoubleClick={(e) => {
-                const pickerVal = formatDateForPicker(
-                  item.railOutReachedDate,
-                  "date",
-                );
-                if (pickerVal) e.target.value = pickerVal;
-                e.target.type = "date";
-                e.target.showPicker && e.target.showPicker();
-              }}
-              onBlur={(e) => (e.target.type = "text")}
               onChange={(e) => {
-                e.target.type = "text";
                 onUpdate(
                   section,
                   rowIdx,
@@ -1753,38 +1677,18 @@ const StatusSection = ({
           </div>
         </div>
       </div>
-    ) : (() => {
+    ) : f.type === "date" || f.type === "datetime-local" ? (() => {
       const isFieldDisabled = f.disabledFn ? f.disabledFn(item) : (f.readOnly || false);
       return (
-        <input
-          type={
-            f.type === "date" || f.type === "datetime-local"
-              ? "text"
-              : f.type || "text"
-          }
+        <DateInput
+          name={`operations.${activeOpIndex}.${section}.${rowIdx}.${f.field}`}
           value={item[f.field] || ""}
           disabled={isFieldDisabled}
+          readOnly={isFieldDisabled}
+          withTime={f.type === "datetime-local"}
           onChange={(e) => {
             if (isFieldDisabled) return;
-            // Fix: Immediate switch back to text mode to show formatted date
-            if (f.type === "date" || f.type === "datetime-local") {
-              e.target.type = "text";
-            }
             onUpdate(section, rowIdx, f.field, e.target.value);
-          }}
-          onDoubleClick={(e) => {
-            if (isFieldDisabled) return;
-            if (f.type === "date" || f.type === "datetime-local") {
-              const pickerVal = formatDateForPicker(item[f.field], f.type);
-              if (pickerVal) e.target.value = pickerVal;
-              e.target.type = f.type;
-              e.target.showPicker && e.target.showPicker();
-            }
-          }}
-          onBlur={(e) => {
-            if (f.type === "date" || f.type === "datetime-local") {
-              e.target.type = "text";
-            }
           }}
           style={{
             ...styles.cellInput,
@@ -1792,7 +1696,27 @@ const StatusSection = ({
               ? { backgroundColor: "#f1f5f9", color: "#94a3b8", cursor: "not-allowed" }
               : {}),
           }}
-          placeholder={f.type === "date" ? "dd-mm-yyyy" : ""}
+          placeholder={f.placeholder || "dd-mm-yyyy"}
+          title={isFieldDisabled ? "Upload Bill Doc Copy first to enable this field" : ""}
+        />
+      );
+    })() : (() => {
+      const isFieldDisabled = f.disabledFn ? f.disabledFn(item) : (f.readOnly || false);
+      return (
+        <input
+          type={f.type || "text"}
+          value={item[f.field] || ""}
+          disabled={isFieldDisabled}
+          onChange={(e) => {
+            if (isFieldDisabled) return;
+            onUpdate(section, rowIdx, f.field, e.target.value);
+          }}
+          style={{
+            ...styles.cellInput,
+            ...(isFieldDisabled
+              ? { backgroundColor: "#f1f5f9", color: "#94a3b8", cursor: "not-allowed" }
+              : {}),
+          }}
           title={isFieldDisabled ? "Upload Bill Doc Copy first to enable this field" : ""}
         />
       );

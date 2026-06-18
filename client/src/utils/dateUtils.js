@@ -67,7 +67,7 @@ export const parseDate = (val) => {
 
     if (typeof val === "number") {
       date = new Date(val);
-      return isValid(date) ? date : null;
+      return isValid(date) && date.getFullYear() >= 1000 ? date : null;
     }
 
     if (typeof val === "string") {
@@ -75,10 +75,12 @@ export const parseDate = (val) => {
       // Avoid parsing short strings (like "25") which might be interpreted as year 2500
       if (trimmedVal.length < 5) return null;
 
-      // Try ISO format first
-      date = parseISO(trimmedVal);
+      // Only parse ISO if it starts with 4 digits (e.g. yyyy-MM-dd)
+      if (/^\d{4}/.test(trimmedVal)) {
+        date = parseISO(trimmedVal);
+      }
 
-      if (!isValid(date)) {
+      if (!isValid(date) || date.getFullYear() < 1000) {
         const formats = [
           "dd/MM/yyyy HH:mm",
           "dd-MM-yyyy HH:mm",
@@ -99,20 +101,28 @@ export const parseDate = (val) => {
 
         for (const dateFormat of formats) {
           try {
-            date = parse(trimmedVal, dateFormat, new Date());
-            if (isValid(date)) break;
+            const parsed = parse(trimmedVal, dateFormat, new Date());
+            if (isValid(parsed) && parsed.getFullYear() >= 1000) {
+              date = parsed;
+              break;
+            }
           } catch (e) {
             continue;
           }
         }
       }
 
-      if (!isValid(date)) {
-        date = new Date(trimmedVal);
+      if (!isValid(date) || date.getFullYear() < 1000) {
+        const parsed = new Date(trimmedVal);
+        if (isValid(parsed) && parsed.getFullYear() >= 1000) {
+          date = parsed;
+        } else {
+          date = null;
+        }
       }
     }
 
-    return isValid(date) ? date : null;
+    return date && isValid(date) && date.getFullYear() >= 1000 ? date : null;
   } catch (e) {
     console.warn("Date parsing error:", e, "for value:", val);
     return null;
@@ -142,7 +152,7 @@ export const handleDateInput = (value) => {
 
     const dateStr = `${day}-${month}-${fullYear}`;
     const testDate = parse(dateStr, "dd-MM-yyyy", new Date());
-    if (isValid(testDate)) {
+    if (isValid(testDate) && testDate.getFullYear() >= 1000) {
       return dateStr;
     }
   }
@@ -158,7 +168,7 @@ export const handleDateInput = (value) => {
 
     const dateStr = `${day}-${month}-${fullYear}`;
     const testDate = parse(dateStr, "dd-MM-yyyy", new Date());
-    if (isValid(testDate)) {
+    if (isValid(testDate) && testDate.getFullYear() >= 1000) {
       return dateStr;
     }
   }
@@ -179,6 +189,7 @@ export const handleDateInput = (value) => {
         "d-MMM-yyyy", // 1-dec-2025
         "d MMM yyyy", // 1 dec 2025
         "MMM dd, yyyy", // Dec 31, 2025
+        "MMROTL dd, yyyy", // March fallback
         "MMMM dd, yyyy", // December 31, 2025
       ];
 
@@ -189,7 +200,7 @@ export const handleDateInput = (value) => {
         try {
           const dts = hasTime ? `${dateFormat} HH:mm` : dateFormat;
           const date = parse(trimmedValue, dts, new Date());
-          if (isValid(date)) {
+          if (isValid(date) && date.getFullYear() >= 1000) {
             return format(date, hasTime ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy");
           }
         } catch (e) {
@@ -198,7 +209,7 @@ export const handleDateInput = (value) => {
       }
 
       const nativeDate = new Date(trimmedValue);
-      if (isValid(nativeDate)) {
+      if (isValid(nativeDate) && nativeDate.getFullYear() >= 1000) {
         return format(nativeDate, hasTime ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy");
       }
     } catch (e) {
@@ -215,7 +226,7 @@ export const handleDateInput = (value) => {
 
   const parsedDate = parseDate(cleanValue);
 
-  if (parsedDate && isValid(parsedDate)) {
+  if (parsedDate && isValid(parsedDate) && parsedDate.getFullYear() >= 1000) {
     return format(parsedDate, hasTime ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy");
   }
 
