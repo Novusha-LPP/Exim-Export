@@ -131,7 +131,8 @@ app.use(
       "http://test-ssl-exim.s3-website.ap-south-1.amazonaws.com",
       "http://exim-export.s3-website.ap-south-1.amazonaws.com",
       "https://export.alvision.in",
-      "http://handover-odex.s3-website.ap-south-1.amazonaws.com"
+      "http://handover-odex.s3-website.ap-south-1.amazonaws.com",
+      "http://192.168.1.105:5173/"
     ],
     credentials: true,
     // Allow custom headers for audit trail
