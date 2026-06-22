@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 const freightEnquirySchema = new mongoose.Schema(
   {
     enquiry_no: { type: String, unique: true, required: true },
-    hbl_no: { type: String, default: "" },
     success_no: { type: String, unique: true, sparse: true },
     rejected_no: { type: String, unique: true, sparse: true },
     enquiry_date: { type: String, required: true },

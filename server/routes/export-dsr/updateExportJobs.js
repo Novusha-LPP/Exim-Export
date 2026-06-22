@@ -2356,7 +2356,6 @@ router.get("/:job_no(.*)", async (req, res, next) => {
           total_no_of_pkgs: enquiry.no_packages,
           package_unit: enquiry.package_unit,
           volume_weight: enquiry.volume_weight,
-          hbl_no: enquiry.hbl_no,
         });
         await exportJob.save();
       }
@@ -2385,7 +2384,6 @@ router.get("/:job_no(.*)", async (req, res, next) => {
           total_no_of_pkgs: enquiry.no_packages,
           package_unit: enquiry.package_unit,
           volume_weight: enquiry.volume_weight,
-          hbl_no: enquiry.hbl_no,
         };
 
         for (const [key, val] of Object.entries(fieldsToMap)) {
@@ -2422,7 +2420,6 @@ router.get("/:job_no(.*)", async (req, res, next) => {
         jobData.is_manual_cbm = enquiry.is_manual_cbm;
         jobData.dimensions = enquiry.dimensions || [];
         jobData.bl_details = enquiry.bl_details || {};
-        jobData.hbl_no = enquiry.hbl_no || jobData.hbl_no;
         jobData.remarks = enquiry.remarks || jobData.remarks;
         if (enquiry.containers && enquiry.containers.length > 0) {
           jobData.containers = enquiry.containers.map((c, i) => ({
@@ -2634,7 +2631,6 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
     if (job_no.startsWith("FF")) {
       const enquiryUpdates = {};
       const fieldsToSync = [
-        "hbl_no",
         "shipment_type",
         "container_size",
         "goods_stuffed",
