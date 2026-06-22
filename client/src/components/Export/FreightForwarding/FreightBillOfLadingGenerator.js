@@ -109,7 +109,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
       <div style="font-family: 'Helvetica', 'Arial', sans-serif; color: #000; width: 740px; margin: 0 auto; background-color: #fff; line-height: 1.15;">
         
         <!-- FIRST PAGE (MAIN BL) -->
-        <div style="${b22} box-sizing: border-box; min-height: ${isOriginal ? '950px' : '990px'}; height: ${isOriginal ? '950px' : 'auto'}; overflow: ${isOriginal ? 'hidden' : 'visible'}; page-break-after: always; position: relative;">
+        <div style="${b22} box-sizing: border-box; min-height: 990px; height: auto; overflow: visible; page-break-after: always; position: relative;">
           ${watermark}
           <!-- TOP HEADER BOX -->
           <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
@@ -254,7 +254,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
             </tr>
             <tr>
               <td style="${br18} min-height: 280px; height: 280px; vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px ${isOriginal ? '18px' : '12px'} ${isOriginal ? '0px' : '8px'}; font-size: 11.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
-                 <div style="${isOriginal ? 'position: relative; left: -10px;' : ''}">
+                 <div style="${isOriginal ? 'position: relative; left: -5px;' : ''}">
                     <div style="font-weight: 900; white-space: pre-wrap;">${bl.container_numbers || autoContainerNumbers || "[CONTAINER DETAILS]"}</div> 
                     <div style="font-weight: 700; font-size: 10px; margin-top: 6px; white-space: pre-wrap;">${(bl.seal_numbers || autoSealNumbers) ? 'SEALS: ' + (bl.seal_numbers || autoSealNumbers) : ''}</div>
                  </div>
@@ -323,7 +323,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
         </div>
 
         <!-- SECOND PAGE (ANNEXURE) -->
-        <div style="${b22} padding: 40px 30px; min-height: ${isOriginal ? '950px' : '990px'}; height: ${isOriginal ? '950px' : 'auto'}; overflow: ${isOriginal ? 'hidden' : 'visible'}; box-sizing: border-box; background-color: #fff; position: relative;">
+        <div style="${b22} padding: 40px 30px; min-height: 990px; height: auto; overflow: visible; box-sizing: border-box; background-color: #fff; position: relative;">
           ${watermark}
           <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 25px;">
               <span style="font-size: 19px; font-weight: 900; text-transform: uppercase;">Annexure to the Multimodal Transport Document.</span>
@@ -428,7 +428,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
     const templateMarkup = `
       <div style="font-family: 'Helvetica', 'Arial', sans-serif; color: #000; width: 740px; margin: 0 auto; background-color: #fff; line-height: 1.15;">
         <!-- PAGE 1 -->
-        <div style="${b22} box-sizing: border-box; min-height: ${isOriginal ? '950px' : '990px'}; height: ${isOriginal ? '950px' : 'auto'}; overflow: ${isOriginal ? 'hidden' : 'visible'}; page-break-after: always; position: relative;">
+        <div style="${b22} box-sizing: border-box; min-height: 990px; height: auto; overflow: visible; page-break-after: always; position: relative;">
           ${watermark}
           <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
             <tr>
@@ -617,7 +617,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
           </table>
           </div>
         </div>
-        <div style="${b22} padding: 40px 30px; min-height: ${isOriginal ? '950px' : '990px'}; height: ${isOriginal ? '950px' : 'auto'}; overflow: ${isOriginal ? 'hidden' : 'visible'}; box-sizing: border-box; background-color: #fff; position: relative;">
+        <div style="${b22} padding: 40px 30px; min-height: 990px; height: auto; overflow: visible; box-sizing: border-box; background-color: #fff; position: relative;">
           ${watermark}
           <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 25px;">
               <span style="font-size: 19px; font-weight: 900; text-transform: uppercase;">Annexure to the Multimodal Transport Document.</span>
