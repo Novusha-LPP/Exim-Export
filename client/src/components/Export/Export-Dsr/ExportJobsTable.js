@@ -40,6 +40,8 @@ import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteIcon from "@mui/icons-material/Delete";
+import LaunchIcon from "@mui/icons-material/Launch";
+import DescriptionIcon from "@mui/icons-material/Description";
 import { uploadFileToS3 } from "../../../utils/awsFileUpload";
 import AddExJobs from "./AddExJobs";
 import { formatDate } from "../../../utils/dateUtils";
@@ -3417,7 +3419,7 @@ const ExportJobsTable = () => {
                   <th style={{ ...s.th, width: "16%", minWidth: "170px" }}>Container</th>
                   <th style={{ ...s.th, width: "3%", minWidth: "40px" }}>Handover</th>
                   <th style={{ ...s.th, width: "4%", minWidth: "60px" }}>Docs</th>
-                  <th style={{ ...s.th, width: "5%", minWidth: "65px", textAlign: "center" }}>Status</th>
+                  <th style={{ ...s.th, width: "5%", minWidth: "130px", textAlign: "center" }}>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -4295,7 +4297,7 @@ const ExportJobsTable = () => {
                           </Button>
                         </td>
 
-                        <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#ecfdf5" : "inherit", minWidth: '100px' }}>
+                        <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#ecfdf5" : "inherit", minWidth: '130px' }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                             <button
                               onClick={(e) => handleSignDSC(job, e)}
@@ -4330,18 +4332,27 @@ const ExportJobsTable = () => {
                                 className="copy-btn"
                                 onClick={(e) => handleCopyJob(job, e)}
                                 style={{
-                                  padding: "4px 8px",
-                                  backgroundColor: "#10b981",
+                                  padding: "5px 8px",
+                                  backgroundColor: "#059669",
                                   color: "white",
                                   border: "none",
                                   borderRadius: "4px",
                                   fontSize: "11px",
-                                  fontWeight: "700",
+                                  fontWeight: "600",
                                   cursor: "pointer",
                                   flex: 1,
-                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: "4px",
+                                  whiteSpace: "nowrap",
+                                  transition: "background-color 0.2s ease"
                                 }}
+                                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#047857")}
+                                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#059669")}
                               >
+                                <ContentCopyIcon style={{ fontSize: 10, color: "white" }} />
                                 Copy
                               </button>
                               <button
@@ -4354,19 +4365,27 @@ const ExportJobsTable = () => {
                                   }
                                 }}
                                 style={{
-                                  padding: "4px 8px",
-                                  backgroundColor: "#1d4ed8",
+                                  padding: "5px 8px",
+                                  backgroundColor: "#2563eb",
                                   color: "white",
                                   border: "none",
                                   borderRadius: "4px",
                                   fontSize: "11px",
-                                  fontWeight: "700",
+                                  fontWeight: "600",
                                   cursor: "pointer",
                                   flex: 1,
                                   boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                                  width: "100%"
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: "4px",
+                                  whiteSpace: "nowrap",
+                                  transition: "background-color 0.2s ease"
                                 }}
+                                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#1d4ed8")}
+                                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}
                               >
+                                <LaunchIcon style={{ fontSize: 10, color: "white" }} />
                                 VGM
                               </button>
                             </div>
