@@ -837,22 +837,24 @@ function FreightForwardingModule() {
                             )}
                             
                             {row.shipment_type !== "Import-Air" && row.shipment_type !== "Export-Air" && (
-                              <FreightBillOfLadingGenerator enquiry={row}>
-                                <Tooltip title="Generate BL">
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => e.stopPropagation()}
-                                    sx={{
-                                      border: "1px solid #e2e8f0",
-                                      backgroundColor: "#f8fafc",
-                                      color: "#334155",
-                                      "&:hover": { backgroundColor: "#e2e8f0", color: "#0f172a" }
-                                    }}
-                                  >
-                                    <ReceiptIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </FreightBillOfLadingGenerator>
+                              <Tooltip title="Generate BL">
+                                <span>
+                                  <FreightBillOfLadingGenerator enquiry={row}>
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => e.stopPropagation()}
+                                      sx={{
+                                        border: "1px solid #e2e8f0",
+                                        backgroundColor: "#f8fafc",
+                                        color: "#334155",
+                                        "&:hover": { backgroundColor: "#e2e8f0", color: "#0f172a" }
+                                      }}
+                                    >
+                                      <ReceiptIcon fontSize="small" />
+                                    </IconButton>
+                                  </FreightBillOfLadingGenerator>
+                                </span>
+                              </Tooltip>
                             )}
                           </div>
                         </td>

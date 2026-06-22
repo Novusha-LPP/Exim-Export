@@ -36,6 +36,8 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
     if (e?.preventDefault) e.preventDefault();
 
     const bl = enquiry?.bl_details || {};
+    const isLcl = (enquiry?.consignment_type?.toUpperCase() === 'LCL' || enquiry?.consignmentType?.toUpperCase() === 'LCL');
+    const freightLabel = isLcl ? 'FREIGHT PREPAID<br/>LCL/LCL<br/>CFS/CFS' : 'FREIGHT PREPAID<br/>FCL/FCL<br/>CY/CY';
     const enquiryContainers = enquiry?.containers || [];
     let autoContainerNumbers = "";
     let autoSealNumbers = "";
@@ -92,16 +94,16 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                     <tr>
                       <td style="padding: 2px 10px 0px; ${bb2}; height: 32px; box-sizing: border-box;">
                          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px;">
-                            <span style="font-weight: 900; font-size: 10px; white-space: nowrap;">MTD. No.</span>
-                            <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px; position: relative; top: ${isOriginal ? '-10px' : '0'};">${enquiry?.enquiry_no || ""}</span>
+                            <span style="font-weight: 900; font-size: 10px; white-space: nowrap; color: ${isOriginal ? 'transparent' : '#000'};">MTD. No.</span>
+                            <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px; position: relative; top: ${isOriginal ? '-10px' : '0'};">${bl.shipment_ref_no || ""}</span>
                          </div>
                       </td>
                     </tr>
                     <tr>
                       <td style="padding: 6px 10px; height: 32px; box-sizing: border-box;">
                          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-                            <span style="font-weight: 900; font-size: 10px; white-space: nowrap;">Shipment Ref. No.</span>
-                            <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px;">${bl.shipment_ref_no || ""}</span>
+                            <span style="font-weight: 900; font-size: 10px; white-space: nowrap; color: ${isOriginal ? 'transparent' : '#000'};">Shipment Ref. No.</span>
+                            <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px;">${enquiry?.hbl_no || ""}</span>
                          </div>
                       </td>
                     </tr>
@@ -114,15 +116,15 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
           <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
             <tr>
               <td style="width: 53%; ${br22} vertical-align: top; padding: 0; ${isOriginal ? 'position: relative; height: 255px;' : ''}">
-                 <div style="padding: 8px 10px 8px 0px; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: -25px; left: 0; width: 100%;' : ''}">
+                 <div style="padding: 8px 10px 8px ${isOriginal ? '0px' : '8px'}; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: -25px; left: 0; width: 100%;' : ''}">
                     ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Consignor</div>'}
                     <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; line-height: 1.3; white-space: normal;">${formatAddress(bl.consignor || enquiry?.organization_name || "")}</div>
                  </div>
-                 <div style="padding: 8px 10px 8px 0px; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 105px; left: 0; width: 100%;' : ''}">
+                 <div style="padding: 8px 10px 8px ${isOriginal ? '0px' : '8px'}; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 105px; left: 0; width: 100%;' : ''}">
                     ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Consignee (Or Order)</div>'}
                     <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; line-height: 1.3; white-space: normal;">${formatAddress(bl.consignee || "TO ORDER")}</div>
                  </div>
-                 <div style="padding: 8px 10px 8px 0px; height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 220px; left: 0; width: 100%;' : ''}">
+                 <div style="padding: 8px 10px 8px ${isOriginal ? '0px' : '8px'}; height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 220px; left: 0; width: 100%;' : ''}">
                     ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Notify Address</div>'}
                     <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; line-height: 1.3; white-space: normal;">${formatAddress(bl.notify_party || "SAME AS CONSIGNEE")}</div>
                  </div>
@@ -139,14 +141,10 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                  <div style="font-size: 7px; text-align: justify; margin-bottom: 6px; font-weight: 700; line-height: 1.2; color: ${isOriginal ? 'transparent' : '#000'};">${LEGAL_TEXT_1}</div>
                  <div style="font-size: 7px; text-align: justify; margin-bottom: 12px; font-weight: 700; line-height: 1.2; color: ${isOriginal ? 'transparent' : '#000'};">${LEGAL_TEXT_2}</div>
                  
-                 <div style="border-top: 1.8px solid ${isOriginal ? 'transparent' : '#000'}; padding-top: 8px; text-align: left; position: relative; top: ${isOriginal ? '20px' : '0'};">
-                    <div style="font-weight: 900; border-bottom: 1.2px solid ${isOriginal ? 'transparent' : '#000'}; padding-bottom: 3px; margin-bottom: 6px; font-size: 10px; text-transform: uppercase;">Agent Details</div>
-                    <div style="font-size: 11.5px; line-height: 1.3; font-weight: 700; text-transform: uppercase;">
-                      [OVERSEAS AGENT NAME]<br/>
-                      [OFFICE ADDRESS]<br/>
-                      [CITY / PORT], [COUNTRY]<br/>
-                      TEL: [PHONE]
-                    </div>
+                  <div style="border-top: 1.8px solid ${isOriginal ? 'transparent' : '#000'}; padding-top: 8px; text-align: left; position: relative; top: ${isOriginal ? '20px' : '0'};">
+                     <div style="font-weight: 900; border-bottom: 1.2px solid ${isOriginal ? 'transparent' : '#000'}; padding-bottom: 3px; margin-bottom: 6px; font-size: 10px; text-transform: uppercase; color: ${isOriginal ? 'transparent' : '#000'};">Agent Details</div>
+                     <div style="font-size: 11.5px; line-height: 1.3; font-weight: 700; text-transform: uppercase; white-space: pre-wrap;">${bl.agent_details || `[OVERSEAS AGENT NAME]\n[OFFICE ADDRESS]\n[CITY / PORT], [COUNTRY]\nTEL: [PHONE]`}</div>
+                  </div></div>
                  </div>
               </td>
             </tr>
@@ -158,7 +156,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
           <!-- PORT DATA GRID -->
           <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
             <tr style="${bb18}">
-              <td style="width: 50%; ${br18} padding: 6px 10px 6px 0px; vertical-align: top;">
+              <td style="width: 50%; ${br18} padding: 6px 10px 6px ${isOriginal ? '0px' : '8px'}; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Place of Acceptance</div>
                  <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '-3px' : '0'};">${enquiry?.port_of_loading || ""}</div>
               </td>
@@ -168,7 +166,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
               </td>
             </tr> 
             <tr>
-              <td style="width: 50%; ${br18} padding: 6px 10px 6px 0px; vertical-align: top;">
+              <td style="width: 50%; ${br18} padding: 6px 10px 6px ${isOriginal ? '0px' : '8px'}; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Port of Discharge</div>
                  <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '-3px' : '0'};">${enquiry?.port_of_destination || ""}</div>
               </td>
@@ -185,32 +183,32 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
               <td style="width: 50%; ${br18} padding: 0; vertical-align: top;">
                  <table style="width: 100%; border-collapse: collapse;">
                     <tr>
-                      <td style="width: 75%; ${br12} padding: 6px 10px 6px 0px; font-weight: 900; font-size: 9.5px; height: 31px; line-height: 1;">Vessel & Voyage No.</td>
-                      <td style="width: 25%; padding: 6px 10px; font-weight: 900; height: 31px; line-height: 1; font-size: 9.5px;">&nbsp;</td>
+                       <td style="width: 75%; ${br12} padding: 6px 10px 6px ${isOriginal ? '0px' : '8px'}; font-weight: 900; font-size: 9.5px; height: 31px; line-height: 1;">Vessel & Voyage No.</td>
+                       <td style="width: 25%; padding: 6px 10px; font-weight: 900; height: 31px; line-height: 1; font-size: 9.5px;">&nbsp;</td>
                     </tr>
                     <tr>
-                      <td style="padding: 2px 10px 6px 0px; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.vessel_name || "[MV NAME AND VOY]"}</td>
-                      <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; text-align: center;">&nbsp;</td>
+                       <td style="padding: 2px 10px 6px ${isOriginal ? '0px' : '8px'}; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.vessel_name || "[MV NAME AND VOY]"}</td>
+                       <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; text-align: center;">&nbsp;</td>
                     </tr>
                  </table>
               </td>
               <td style="width: 25%; ${br18} padding: 0; vertical-align: top;">
                  <table style="width: 100%; border-collapse: collapse;">
                     <tr>
-                      <td style="padding: 6px 10px; font-weight: 900; font-size: 9.5px; height: 31px; line-height: 1;">Mode of Transport</td>
+                      <td style="padding: 6px 10px; font-weight: 900; font-size: 9.5px; height: 31px; line-height: 1; color: ${isOriginal ? 'transparent' : '#000'};">Mode of Transport</td>
                     </tr>
                     <tr>
-                      <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.mode_of_transport || (enquiry?.consignment_type?.toUpperCase().includes('SEA') ? 'SEA' : 'AIR')}</td>
+                      <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.mode_of_transport || (enquiry?.shipment_type?.toUpperCase().includes('SEA') ? 'SEA' : 'AIR')}</td>
                     </tr>
                  </table>
               </td>
               <td style="width: 25%; padding: 0; vertical-align: top;">
                  <table style="width: 100%; border-collapse: collapse;">
                     <tr>
-                      <td style="padding: 6px 10px; font-weight: 900; font-size: 9.5px; height: 31px; line-height: 1;">Route / transshipment</td>
+                      <td style="padding: 6px 10px; font-weight: 900; font-size: 9.5px; height: 31px; line-height: 1; color: ${isOriginal ? 'transparent' : '#000'};">Route / transshipment</td>
                     </tr>
                     <tr>
-                      <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.route_transshipment || "VIA PORT"}</td>
+                      <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.route_transshipment || ""}</td>
                     </tr>
                  </table>
               </td>
@@ -220,14 +218,14 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
           <!-- CARGO DETAILS TABLE -->
           <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
             <tr style="${bb18}; background-color: ${isOriginal ? 'transparent' : '#fcfcfc'};">
-              <th style="width: 18%; ${br18} padding: 8px 6px; padding-right: 10px; font-size: 8.5px; font-weight: 900; text-align: left;">Container No (s)</th>
+              <th style="width: 18%; ${br18} padding: 8px 10px 8px ${isOriginal ? '6px' : '8px'}; font-size: 8.5px; font-weight: 900; text-align: left;">Container No (s)</th>
               <th style="width: 15%; ${br18} padding: 8px 6px; font-size: 8.5px; font-weight: 900; text-align: left;">Marks & Numbers</th>
               <th style="width: 37%; ${br18} padding: 8px 6px; font-size: 8.5px; font-weight: 900; text-align: left;">Number and kind of packages, general description of goods</th>
               <th style="width: 15%; ${br18} padding: 8px 6px; font-size: 8.5px; font-weight: 900; text-align: center;">Gross Weight</th>
               <th style="width: 15%; padding: 8px 6px; font-size: 8.5px; font-weight: 900; text-align: center;">Measurement</th>
             </tr>
             <tr>
-              <td style="${br18} min-height: 280px; height: 280px; vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px ${isOriginal ? '18px' : '12px'} 0px; font-size: 11.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
+              <td style="${br18} min-height: 280px; height: 280px; vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px ${isOriginal ? '18px' : '12px'} ${isOriginal ? '0px' : '8px'}; font-size: 11.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
                  <div style="${isOriginal ? 'position: relative; left: -10px;' : ''}">
                     <div style="font-weight: 900; white-space: pre-wrap;">${bl.container_numbers || autoContainerNumbers || "[CONTAINER DETAILS]"}</div> 
                     <div style="font-weight: 700; font-size: 10px; margin-top: 6px; white-space: pre-wrap;">${(bl.seal_numbers || autoSealNumbers) ? 'SEALS: ' + (bl.seal_numbers || autoSealNumbers) : ''}</div>
@@ -250,8 +248,8 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
               </td>
               <td style="vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px; font-size: 12px; font-weight: 900; text-align: right;">
                  ${bl.measurement || "[CBM] CBM"}
-                 <br/><br/><br/><br/><br/>
-                 <div style="font-size: 11.5px; font-weight: 900; text-align: center; border-top: 1px solid ${isOriginal ? 'transparent' : '#eee'}; padding-top: 12px; line-height: 1.35;">FREIGHT PREPAID<br/>FCL/FCL<br/>CY/CY</div>
+                  <br/><br/><br/><br/><br/>
+                  <div style="font-size: 11.5px; font-weight: 900; text-align: center; border-top: 1px solid ${isOriginal ? 'transparent' : '#eee'}; padding-top: 12px; line-height: 1.35; color: #000;">${freightLabel}</div>
               </td>
             </tr>
           </table>
@@ -259,7 +257,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
           <!-- FREIGHT & ORIGINALS INFO -->
           <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
             <tr style="min-height: 45px;">
-              <td style="width: 25%; ${br18} padding: 6px 10px 6px 0px; vertical-align: top;">
+              <td style="width: 25%; ${br18} padding: 6px 10px 6px ${isOriginal ? '0px' : '8px'}; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Freight Amount</div>
                  <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '55px' : '0'};">${bl.freight_amount || "AS AGREED"}</div>
               </td>
@@ -268,12 +266,12 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                  <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '55px' : '0'};">AHMEDABAD</div>
               </td>
               <td style="width: 25%; ${br18} padding: 6px 10px 6px 10px; vertical-align: top;">
-                 <div style="font-weight: 900; margin-bottom: 3px; font-size: 9px;">Number of Original MTD (s)</div>
-                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '55px' : '0'}; left: ${isOriginal ? '10px' : '0'};">3 (THREE)</div>
+                 <div style="font-weight: 900; margin-bottom: 3px; font-size: 9px; color: ${isOriginal ? 'transparent' : '#000'};">Number of Original MTD (s)</div>
+                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '55px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.no_of_originals || "3 (THREE)"}</div>
               </td>
               <td style="width: 25%; padding: 6px 10px 6px 20px; vertical-align: top;">
-                 <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Place and Date of Issue</div>
-                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '55px' : '0'}; left: ${isOriginal ? '10px' : '0'};">AHMEDABAD<br/>${new Date().toLocaleDateString('en-GB')}</div>
+                 <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Place and Date of Issue</div>
+                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '55px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${bl.date_of_issue || new Date().toLocaleDateString('en-GB')}</div>
               </td>
             </tr>
           </table>
@@ -281,7 +279,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
           <!-- OTHER PARTICULARS & SIGNATORY -->
           <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
             <tr>
-              <td style="width: 58%; padding: 10px 12px 10px 0px; vertical-align: top; ${br22}">
+              <td style="width: 58%; padding: 10px 12px 10px ${isOriginal ? '0px' : '8px'}; vertical-align: top; ${br22}">
                  <div style="font-weight: 900; margin-top: 18px; margin-bottom: 6px; font-size: 10px;">Other Particulars (If any)</div>
                  <div style="white-space: pre-wrap; font-size: 11px; font-weight: 700; margin-bottom: 8px; position: relative; top: ${isOriginal ? '30px' : '0'};">${bl.other_particulars || ""}</div>
                  <div style="margin-top: 30px; font-size: 9px; font-weight: 900; text-align: center; letter-spacing: 0.1px;">Weight & Measurement of container not to be Included.</div>
@@ -301,7 +299,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
           ${watermark}
           <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid ${isOriginal ? 'transparent' : '#000'}; padding-bottom: 10px; margin-bottom: 25px;">
               <span style="font-size: 19px; font-weight: 900; text-transform: uppercase;">Annexure to the Multimodal Transport Document.</span>
-              <span style="font-size: 15px; font-weight: 900; letter-spacing: 0.5px;">MTD NO. : ${enquiry?.enquiry_no || ""}</span>
+              <span style="font-size: 15px; font-weight: 900; letter-spacing: 0.5px;">MTD NO. : ${bl.shipment_ref_no || ""}</span>
           </div>
 
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 50px; table-layout: fixed;">
@@ -312,7 +310,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                  <th style="width: 15%; font-size: 10px; font-weight: 900; text-align: center; padding: 10px 10px;">Gross Weight<br/>(Kilos)</th>
               </tr>
               <tr style="border-bottom: 2px solid ${isOriginal ? 'transparent' : '#000'};">
-                 <td style="${br18} min-height: 800px; vertical-align: top; padding: 12px 14px 12px 0px; font-size: 11.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
+                 <td style="${br18} min-height: 800px; vertical-align: top; padding: 12px 14px 12px ${isOriginal ? '0px' : '8px'}; font-size: 11.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
                     <div style="font-weight: 900; white-space: pre-wrap;">${p2_desc ? (bl.container_numbers || autoContainerNumbers || "") : ""}</div> 
                     <div style="font-weight: 700; font-size: 10px; margin-top: 6px; white-space: pre-wrap;">${p2_desc && (bl.seal_numbers || autoSealNumbers) ? 'SEALS: ' + (bl.seal_numbers || autoSealNumbers) : ''}</div>
                  </td>
@@ -367,6 +365,8 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
 
   const triggerDownload = async (mode) => {
     const bl = enquiry?.bl_details || {};
+    const isLcl = (enquiry?.consignment_type?.toUpperCase() === 'LCL' || enquiry?.consignmentType?.toUpperCase() === 'LCL');
+    const freightLabel = isLcl ? 'FREIGHT PREPAID<br/>LCL/LCL<br/>CFS/CFS' : 'FREIGHT PREPAID<br/>FCL/FCL<br/>CY/CY';
     const enquiryContainers = enquiry?.containers || [];
     let autoContainerNumbers = "";
     let autoSealNumbers = "";
@@ -423,7 +423,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                       <td style="padding: 2px 10px 0px; ${bb2}; height: 32px; box-sizing: border-box;">
                          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px;">
                             <span style="font-weight: 900; font-size: 10px; white-space: nowrap; color: ${isOriginal ? 'transparent' : '#000'};">MTD. No.</span>
-                            <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px; position: relative; top: ${isOriginal ? '-10px' : '0'};">${enquiry?.enquiry_no || ""}</span>
+                            <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px; position: relative; top: ${isOriginal ? '-10px' : '0'};">${bl.shipment_ref_no || ""}</span>
                          </div>
                       </td>
                     </tr>
@@ -431,7 +431,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                       <td style="padding: 6px 10px; height: 32px; box-sizing: border-box;">
                          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                             <span style="font-weight: 900; font-size: 10px; white-space: nowrap; color: ${isOriginal ? 'transparent' : '#000'};">Shipment Ref. No.</span>
-                            <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px;">${bl.shipment_ref_no || ""}</span>
+                            <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px;">${enquiry?.hbl_no || ""}</span>
                          </div>
                       </td>
                     </tr>
@@ -442,15 +442,15 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
           <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
             <tr>
               <td style="width: 53%; ${br22} vertical-align: top; padding: 0; ${isOriginal ? 'position: relative; height: 255px;' : ''}">
-                 <div style="padding: 8px 10px 8px 0px; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: -25px; left: 0; width: 100%;' : ''}">
+                 <div style="padding: 8px 10px 8px ${isOriginal ? '0px' : '8px'}; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: -25px; left: 0; width: 100%;' : ''}">
                     ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Consignor</div>'}
                     <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; line-height: 1.3; white-space: normal;">${formatAddress(bl.consignor || enquiry?.organization_name || "")}</div>
                  </div>
-                 <div style="padding: 8px 10px 8px 0px; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 105px; left: 0; width: 100%;' : ''}">
+                 <div style="padding: 8px 10px 8px ${isOriginal ? '0px' : '8px'}; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 105px; left: 0; width: 100%;' : ''}">
                     ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Consignee (Or Order)</div>'}
                     <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; line-height: 1.3; white-space: normal;">${formatAddress(bl.consignee || "TO ORDER")}</div>
                  </div>
-                 <div style="padding: 8px 10px 8px 0px; height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 220px; left: 0; width: 100%;' : ''}">
+                 <div style="padding: 8px 10px 8px ${isOriginal ? '0px' : '8px'}; height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 220px; left: 0; width: 100%;' : ''}">
                     ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Notify Address</div>'}
                     <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; line-height: 1.3; white-space: normal;">${formatAddress(bl.notify_party || "SAME AS CONSIGNEE")}</div>
                  </div>
@@ -468,7 +468,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                  <div style="font-size: 7px; text-align: justify; margin-bottom: 12px; font-weight: 700; line-height: 1.2; color: ${isOriginal ? 'transparent' : '#000'};">${LEGAL_TEXT_2}</div>
                  <div style="border-top: 1.8px solid ${isOriginal ? 'transparent' : '#000'}; padding-top: 8px; text-align: left; position: relative; top: ${isOriginal ? '25px' : '0'};">
                     <div style="font-weight: 900; border-bottom: 1.2px solid ${isOriginal ? 'transparent' : '#000'}; padding-bottom: 3px; margin-bottom: 6px; font-size: 10px; text-transform: uppercase; color: ${isOriginal ? 'transparent' : '#000'};">Agent Details</div>
-                    <div style="font-size: 11.5px; line-height: 1.3; font-weight: 700; text-transform: uppercase;">[OVERSEAS AGENT NAME]<br/>[OFFICE ADDRESS]<br/>[CITY / PORT], [COUNTRY]<br/>TEL: [PHONE]</div>
+                    <div style="font-size: 11.5px; line-height: 1.3; font-weight: 700; text-transform: uppercase; white-space: pre-wrap;">${bl.agent_details || `[OVERSEAS AGENT NAME]\n[OFFICE ADDRESS]\n[CITY / PORT], [COUNTRY]\nTEL: [PHONE]`}</div>
                  </div>
               </td>
             </tr>
@@ -479,7 +479,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
 
           <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
             <tr style="${bb18}">
-              <td style="width: 50%; ${br18} padding: 6px 10px 6px 0px; vertical-align: top;">
+              <td style="width: 50%; ${br18} padding: 6px 10px 6px ${isOriginal ? '0px' : '8px'}; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Place of Acceptance</div>
                  <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '-3px' : '0'};">${enquiry?.port_of_loading || ""}</div>
               </td>
@@ -489,7 +489,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
               </td>
             </tr>
             <tr>
-              <td style="width: 50%; ${br18} padding: 6px 10px 6px 0px; vertical-align: top;">
+              <td style="width: 50%; ${br18} padding: 6px 10px 6px ${isOriginal ? '0px' : '8px'}; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Port of Discharge</div>
                  <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '-3px' : '0'};">${enquiry?.port_of_destination || ""}</div>
               </td>
@@ -504,11 +504,11 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
               <td style="width: 50%; ${br18} padding: 0; vertical-align: top;">
                  <table style="width: 100%; border-collapse: collapse;">
                     <tr>
-                      <td style="width: 75%; ${br12} padding: 6px 10px 6px 0px; font-weight: 900; font-size: 9.5px; height: 31px; line-height: 1; color: ${isOriginal ? 'transparent' : '#000'};">Vessel & Voyage No.</td>
+                      <td style="width: 75%; ${br12} padding: 6px 10px 6px ${isOriginal ? '0px' : '8px'}; font-weight: 900; font-size: 9.5px; height: 31px; line-height: 1; color: ${isOriginal ? 'transparent' : '#000'};">Vessel & Voyage No.</td>
                       <td style="width: 25%; padding: 6px 10px; font-weight: 900; height: 31px; line-height: 1; font-size: 9.5px;">&nbsp;</td>
                     </tr>
                     <tr>
-                      <td style="padding: 2px 10px 6px 0px; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.vessel_name || "[MV NAME AND VOY]"}</td>
+                      <td style="padding: 2px 10px 6px ${isOriginal ? '0px' : '8px'}; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.vessel_name || "[MV NAME AND VOY]"}</td>
                       <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; text-align: center; font-size: 12px;">&nbsp;</td>
                     </tr>
                  </table>
@@ -516,10 +516,10 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
               <td style="width: 25%; ${br18} padding: 0; vertical-align: top;">
                  <table style="width: 100%; border-collapse: collapse;">
                     <tr>
-                      <td style="padding: 6px 10px; font-weight: 900; font-size: 9.5px; height: 31px; line-height: 1; color: ${isOriginal ? 'transparent' : '#000'};">Mode of Transport</td>
+                       <td style="padding: 6px 10px; font-weight: 900; font-size: 9.5px; height: 31px; line-height: 1; color: ${isOriginal ? 'transparent' : '#000'};">Mode of Transport</td>
                     </tr>
                     <tr>
-                      <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.mode_of_transport || (enquiry?.consignment_type?.toUpperCase().includes('SEA') ? 'SEA' : 'AIR')}</td>
+                      <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.mode_of_transport || (enquiry?.shipment_type?.toUpperCase().includes('SEA') ? 'SEA' : 'AIR')}</td>
                     </tr>
                  </table>
               </td>
@@ -529,7 +529,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                       <td style="padding: 6px 10px; font-weight: 900; font-size: 9.5px; height: 31px; line-height: 1; color: ${isOriginal ? 'transparent' : '#000'};">Route / transshipment</td>
                     </tr>
                     <tr>
-                      <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.route_transshipment || "VIA PORT"}</td>
+                      <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.route_transshipment || ""}</td>
                     </tr>
                  </table>
               </td>
@@ -537,14 +537,14 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
           </table>
           <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
             <tr style="${bb18}; background-color: ${isOriginal ? 'transparent' : '#fcfcfc'};">
-              <th style="width: 18%; ${br18} padding: 8px 6px; padding-right: 10px; font-size: 8.5px; font-weight: 900; text-align: left; color: ${isOriginal ? 'transparent' : '#000'};">Container No (s)</th>
+              <th style="width: 18%; ${br18} padding: 8px 10px 8px ${isOriginal ? '6px' : '8px'}; font-size: 8.5px; font-weight: 900; text-align: left; color: ${isOriginal ? 'transparent' : '#000'};">Container No (s)</th>
               <th style="width: 15%; ${br18} padding: 8px 6px; font-size: 8.5px; font-weight: 900; text-align: left; color: ${isOriginal ? 'transparent' : '#000'};">Marks & Numbers</th>
               <th style="width: 37%; ${br18} padding: 8px 6px; font-size: 8.5px; font-weight: 900; text-align: left; color: ${isOriginal ? 'transparent' : '#000'};">Number and kind of packages, general description of goods</th>
               <th style="width: 15%; ${br18} padding: 8px 6px; font-size: 8.5px; font-weight: 900; text-align: center; color: ${isOriginal ? 'transparent' : '#000'};">Gross Weight</th>
               <th style="width: 15%; padding: 8px 6px; font-size: 8.5px; font-weight: 900; text-align: center; color: ${isOriginal ? 'transparent' : '#000'};">Measurement</th>
             </tr>
             <tr>
-              <td style="${br18} min-height: 280px; height: 280px; vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px ${isOriginal ? '18px' : '12px'} 0px; font-size: 11.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
+              <td style="${br18} min-height: 280px; height: 280px; vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px ${isOriginal ? '18px' : '12px'} ${isOriginal ? '0px' : '8px'}; font-size: 11.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
                  <div style="${isOriginal ? 'position: relative; left: -10px;' : ''}">
                     <div style="font-weight: 900; white-space: pre-wrap;">${bl.container_numbers || autoContainerNumbers || "[CONTAINER DETAILS]"}</div> 
                     <div style="font-weight: 700; font-size: 10px; margin-top: 6px; white-space: pre-wrap;">${(bl.seal_numbers || autoSealNumbers) ? 'SEALS: ' + (bl.seal_numbers || autoSealNumbers) : ''}</div>
@@ -560,12 +560,12 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                  </div>
               </td>
               <td style="${br18} vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px; font-size: 12px; font-weight: 900; text-align: right;">${bl.gross_weight || enquiry?.gross_weight || "0.000"} KGS<br/><br/><span style="font-size: 11px; font-weight: 700; color: #333;">NET WEIGHT<br/>${enquiry?.net_weight || "0.000"} KGS</span></td>
-              <td style="vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px; font-size: 12px; font-weight: 900; text-align: right;">${bl.measurement || "[CBM] CBM"}<br/><br/><br/><br/><br/><div style="font-size: 11.5px; font-weight: 900; text-align: center; border-top: 1px solid ${isOriginal ? 'transparent' : '#eee'}; padding-top: 12px; line-height: 1.35; color: ${isOriginal ? 'transparent' : '#000'};">FREIGHT PREPAID<br/>FCL/FCL<br/>CY/CY</div></td>
+              <td style="vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px; font-size: 12px; font-weight: 900; text-align: right;">${bl.measurement || "[CBM] CBM"}<br/><br/><br/><br/><br/>                  <div style="font-size: 11.5px; font-weight: 900; text-align: center; border-top: 1px solid ${isOriginal ? 'transparent' : '#eee'}; padding-top: 12px; line-height: 1.35; color: #000;">${freightLabel}</div></td>
             </tr>
           </table>
           <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
             <tr style="min-height: 45px;">
-              <td style="width: 25%; ${br18} padding: 6px 10px 6px 0px; vertical-align: top;">
+              <td style="width: 25%; ${br18} padding: 6px 10px 6px ${isOriginal ? '0px' : '8px'}; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Freight Amount</div>
                  <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '55px' : '0'};">${bl.freight_amount || "AS AGREED"}</div>
               </td>
@@ -575,17 +575,17 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
               </td>
               <td style="width: 25%; ${br18} padding: 6px 10px 6px 10px; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9px; color: ${isOriginal ? 'transparent' : '#000'};">Number of Original MTD (s)</div>
-                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '55px' : '0'}; left: ${isOriginal ? '10px' : '0'};">3 (THREE)</div>
+                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '55px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.no_of_originals || "3 (THREE)"}</div>
               </td>
               <td style="width: 25%; padding: 6px 10px 6px 20px; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Place and Date of Issue</div>
-                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '55px' : '0'}; left: ${isOriginal ? '10px' : '0'};">AHMEDABAD<br/>${new Date().toLocaleDateString('en-GB')}</div>
+                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '55px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${bl.date_of_issue || new Date().toLocaleDateString('en-GB')}</div>
               </td>
             </tr>
           </table>
           <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
             <tr>
-              <td style="width: 58%; padding: 10px 12px 10px 0px; vertical-align: top; ${br22}">
+              <td style="width: 58%; padding: 10px 12px 10px ${isOriginal ? '0px' : '8px'}; vertical-align: top; ${br22}">
                  <div style="font-weight: 900; margin-top: 18px; margin-bottom: 6px; font-size: 10px; color: ${isOriginal ? 'transparent' : '#000'};">Other Particulars (If any)</div>
                  <div style="white-space: pre-wrap; font-size: 11px; font-weight: 700; margin-bottom: 8px; position: relative; top: ${isOriginal ? '40px' : '0'};">${bl.other_particulars || ""}</div>
                  <div style="margin-top: 30px; font-size: 9px; font-weight: 900; text-align: center; letter-spacing: 0.1px; color: ${isOriginal ? 'transparent' : '#000'};">Weight & Measurement of container not to be Included.</div>
@@ -603,7 +603,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
           ${watermark}
           <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid ${isOriginal ? 'transparent' : '#000'}; padding-bottom: 10px; margin-bottom: 25px;">
               <span style="font-size: 19px; font-weight: 900; text-transform: uppercase; color: ${isOriginal ? 'transparent' : '#000'};">Annexure to the Multimodal Transport Document.</span>
-              <span style="font-size: 15px; font-weight: 900; letter-spacing: 0.5px; color: ${isOriginal ? 'transparent' : '#000'};">MTD NO. : ${enquiry?.enquiry_no || ""}</span>
+              <span style="font-size: 15px; font-weight: 900; letter-spacing: 0.5px; color: ${isOriginal ? 'transparent' : '#000'};">MTD NO. : ${bl.shipment_ref_no || ""}</span>
           </div>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 50px; table-layout: fixed;">
               <tr style="border-bottom: 2px solid ${isOriginal ? 'transparent' : '#000'};">
@@ -613,7 +613,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
                  <th style="width: 15%; font-size: 10px; font-weight: 900; text-align: center; padding: 10px 10px; color: ${isOriginal ? 'transparent' : '#000'};">Gross Weight<br/>(Kilos)</th>
               </tr>
               <tr style="border-bottom: 2px solid ${isOriginal ? 'transparent' : '#000'};">
-                 <td style="${br18} min-height: 800px; vertical-align: top; padding: 12px 14px 12px 0px; font-size: 11.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
+                 <td style="${br18} min-height: 800px; vertical-align: top; padding: 12px 14px 12px ${isOriginal ? '0px' : '8px'}; font-size: 11.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
                     <div style="font-weight: 900; white-space: pre-wrap;">${p2_desc ? (bl.container_numbers || autoContainerNumbers || "") : ""}</div> 
                     <div style="font-weight: 700; font-size: 10px; margin-top: 6px; white-space: pre-wrap;">${p2_desc && (bl.seal_numbers || autoSealNumbers) ? 'SEALS: ' + (bl.seal_numbers || autoSealNumbers) : ''}</div>
                  </td>
@@ -638,7 +638,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
         .from(element)
         .set({
           margin: [10, 10, 0, 10],
-          filename: `${isOriginal ? 'Original' : 'Draft'}_MTD_${enquiry?.enquiry_no || "Freight"}.pdf`,
+          filename: `${isOriginal ? 'Original' : 'Draft'}_MTD_${enquiry?.hbl_no || enquiry?.enquiry_no || "Freight"}.pdf`,
           image: { type: "jpeg", quality: 0.85 },
           html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 740 },
           jsPDF: { unit: "pt", format: "a4", orientation: "portrait", compress: true },
@@ -661,7 +661,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
         .from(element)
         .set({
           margin: [10, 10, 0, 10],
-          filename: `MTD_Draft_${enquiry?.enquiry_no || "Freight"}.pdf`,
+          filename: `MTD_Draft_${enquiry?.hbl_no || enquiry?.enquiry_no || "Freight"}.pdf`,
           image: { type: "jpeg", quality: 0.85 },
           html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 740 },
           jsPDF: { unit: "pt", format: "a4", orientation: "portrait", compress: true },
@@ -739,7 +739,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
         open={editorOpen}
         onClose={() => setEditorOpen(false)}
         initialContent={htmlContent}
-        title={`Freight MTD Draft - ${enquiry?.enquiry_no || ""}`}
+        title={`Freight MTD Draft - ${enquiry?.hbl_no || enquiry?.enquiry_no || ""}`}
         customSave={handleEditSave}
       />
 

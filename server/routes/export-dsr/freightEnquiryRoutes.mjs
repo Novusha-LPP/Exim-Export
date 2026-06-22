@@ -344,7 +344,7 @@ router.put("/freight-enquiries/:id", async (req, res) => {
 router.get("/freight-enquiries/public/:id", async (req, res) => {
   try {
     const enquiry = await FreightEnquiryModel.findById(req.params.id)
-      .select("enquiry_no organization_name port_of_loading port_of_destination shipment_type bl_details")
+      .select("enquiry_no organization_name port_of_loading port_of_destination shipment_type bl_details hbl_no")
       .lean();
     if (!enquiry) return res.status(404).json({ success: false, message: "Link expired or invalid" });
     res.status(200).json({ success: true, data: enquiry });

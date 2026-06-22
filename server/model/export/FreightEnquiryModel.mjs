@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const freightEnquirySchema = new mongoose.Schema(
   {
     enquiry_no: { type: String, unique: true, required: true },
+    hbl_no: { type: String, default: "" },
     success_no: { type: String, unique: true, sparse: true },
     rejected_no: { type: String, unique: true, sparse: true },
     enquiry_date: { type: String, required: true },
@@ -112,6 +113,10 @@ const freightEnquirySchema = new mongoose.Schema(
       measurement: { type: String, default: "" },
       freight_amount: { type: String, default: "" },
       other_particulars: { type: String, default: "" },
+      no_of_originals: { type: String, default: "" },
+      place_of_issue: { type: String, default: "" },
+      date_of_issue: { type: String, default: "" },
+      agent_details: { type: String, default: "" },
     },
   },
   { timestamps: true }

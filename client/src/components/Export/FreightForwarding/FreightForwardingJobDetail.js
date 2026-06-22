@@ -1484,6 +1484,22 @@ function FreightForwardingJobDetail() {
                 {renderInputBox("Freight Amount", "bl_details.freight_amount")}
               </Grid>
             </Grid>
+            <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
+              <Grid item xs={12} md={4}>
+                {renderInputBox("No. of MTD (Originals)", "bl_details.no_of_originals")}
+              </Grid>
+              <Grid item xs={12} md={4}>
+                {renderInputBox("Place of Issue", "bl_details.place_of_issue")}
+              </Grid>
+              <Grid item xs={12} md={4}>
+                {renderInputBox("Date of Issue", "bl_details.date_of_issue")}
+              </Grid>
+            </Grid>
+            <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
+              <Grid item xs={12}>
+                {renderTextAreaBox("Agent Details", "bl_details.agent_details", 3)}
+              </Grid>
+            </Grid>
             <Grid container spacing={0.5}>
               <Grid item xs={12}>
                 {renderTextAreaBox("Other Particulars (If any)", "bl_details.other_particulars", 2)}
