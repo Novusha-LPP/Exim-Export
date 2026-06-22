@@ -121,6 +121,28 @@ router.get("/freight-enquiries", async (req, res) => {
     // Sync missing documents (like LEO copy) from source Export Jobs
     await Promise.all(dataList.map(e => syncEnquiryDocuments(e)));
 
+    // For converted enquiries, merge key fields from the associated ExJob
+    // (e.g. place_of_receipt, hbl_no) so the BL generator has access to them
+    const convertedEnquiries = dataList.filter(e => e.status === "Converted" && (e.success_no || e.enquiry_no));
+    if (convertedEnquiries.length > 0) {
+      const jobNos = convertedEnquiries.map(e => e.success_no || e.enquiry_no);
+      const exJobs = await ExJobModel.find(
+        { job_no: { $in: jobNos } },
+        { job_no: 1, place_of_receipt: 1, hbl_no: 1 }
+      ).lean();
+      const jobMap = {};
+      exJobs.forEach(j => { jobMap[j.job_no] = j; });
+      for (const e of dataList) {
+        if (e.status === "Converted") {
+          const job = jobMap[e.success_no] || jobMap[e.enquiry_no];
+          if (job) {
+            if (job.place_of_receipt) e.place_of_receipt = job.place_of_receipt;
+            if (job.hbl_no) e.hbl_no = job.hbl_no;
+          }
+        }
+      }
+    }
+
     res.status(200).json({ success: true, data: dataList });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

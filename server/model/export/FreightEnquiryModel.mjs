@@ -64,10 +64,10 @@ const freightEnquirySchema = new mongoose.Schema(
           }
         ],
         shipping_line_rates: [
-           {
+          {
             charge_name: String,
             amount: Number,
-           }
+          }
         ],
         total: Number,
         created_at: { type: Date, default: Date.now },
@@ -116,6 +116,7 @@ const freightEnquirySchema = new mongoose.Schema(
       place_of_issue: { type: String, default: "" },
       date_of_issue: { type: String, default: "" },
       agent_details: { type: String, default: "" },
+      place_of_acceptance: { type: String, default: "" },
     },
   },
   { timestamps: true }

@@ -1436,10 +1436,10 @@ function FreightForwardingJobDetail() {
               Transport Details
             </Typography>
             <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 {renderInputBox("Vessel & Voyage No.", "bl_details.vessel_name")}
               </Grid>
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={2}>
                 {renderSelectBox("Mode of Transport", "bl_details.mode_of_transport", [
                   { label: "SEA", value: "SEA" },
                   { label: "AIR", value: "AIR" },
@@ -1448,6 +1448,9 @@ function FreightForwardingJobDetail() {
               </Grid>
               <Grid item xs={12} md={3}>
                 {renderInputBox("Route / Transshipment", "bl_details.route_transshipment")}
+              </Grid>
+              <Grid item xs={12} md={3}>
+                {renderInputBox("Place of Acceptance", "bl_details.place_of_acceptance")}
               </Grid>
             </Grid>
 

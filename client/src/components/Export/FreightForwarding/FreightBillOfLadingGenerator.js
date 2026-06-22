@@ -186,7 +186,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
             <tr style="${bb18}">
               <td style="width: 50%; ${br18} padding: 6px 10px 6px ${isOriginal ? '0px' : '8px'}; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Place of Acceptance</div>
-                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '-3px' : '0'};">${enquiry?.place_of_receipt || ""}</div>
+                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '-3px' : '0'};">${bl.place_of_acceptance || enquiry?.place_of_receipt || ""}</div>
               </td>
               <td style="width: 50%; padding: 6px 10px; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Port of Loading</div>
@@ -499,7 +499,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
             <tr style="${bb18}">
               <td style="width: 50%; ${br18} padding: 6px 10px 6px ${isOriginal ? '0px' : '8px'}; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Place of Acceptance</div>
-                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '-3px' : '0'};">${enquiry?.place_of_receipt || ""}</div>
+                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '-3px' : '0'};">${bl.place_of_acceptance || enquiry?.place_of_receipt || ""}</div>
               </td>
               <td style="width: 50%; padding: 6px 10px; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Port of Loading</div>
