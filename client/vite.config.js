@@ -17,6 +17,9 @@ export default defineConfig({
     react(),
     tailwindcss(),  // Add Tailwind CSS Vite plugin here
   ],
+  server: {
+    host: true,
+  },
   define: {
     global: "window",
   },
