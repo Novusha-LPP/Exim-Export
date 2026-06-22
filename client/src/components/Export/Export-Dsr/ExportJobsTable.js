@@ -4325,24 +4325,51 @@ const ExportJobsTable = () => {
                               {((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? (checkingDsc ? "Checking..." : "Signing...") : "Sign"}
                             </button>
 
-                            <button
-                              className="copy-btn"
-                              onClick={(e) => handleCopyJob(job, e)}
-                              style={{
-                                padding: "4px 8px",
-                                backgroundColor: "#10b981",
-                                color: "white",
-                                border: "none",
-                                borderRadius: "4px",
-                                fontSize: "11px",
-                                fontWeight: "700",
-                                cursor: "pointer",
-                                width: "100%",
-                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                              }}
-                            >
-                              Copy
-                            </button>
+                            <div style={{ display: "flex", gap: "4px", width: "100%" }}>
+                              <button
+                                className="copy-btn"
+                                onClick={(e) => handleCopyJob(job, e)}
+                                style={{
+                                  padding: "4px 8px",
+                                  backgroundColor: "#10b981",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  fontSize: "11px",
+                                  fontWeight: "700",
+                                  cursor: "pointer",
+                                  flex: 1,
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                }}
+                              >
+                                Copy
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (job.job_no) {
+                                    const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/vgm/${encodeURIComponent(job.job_no)}`;
+                                    window.open(url, "_blank");
+                                  }
+                                }}
+                                style={{
+                                  padding: "4px 8px",
+                                  backgroundColor: "#1d4ed8",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  fontSize: "11px",
+                                  fontWeight: "700",
+                                  cursor: "pointer",
+                                  flex: 1,
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                  width: "100%"
+                                }}
+                              >
+                                VGM
+                              </button>
+                            </div>
                             <Button
                               size="small"
                               onClick={(e) => handleGenDocsClick(e, job)}
@@ -5055,6 +5082,7 @@ const ExportJobsTable = () => {
             if (updates.goodsRegistrationDate) newStatus.goodsRegistrationDate = updates.goodsRegistrationDate;
             if (updates.goodsReportDate) newStatus.goodsReportDate = updates.goodsReportDate;
             if (updates.leoDate) newStatus.leoDate = updates.leoDate;
+            if (updates.rms) newStatus.rms = updates.rms;
 
             const newOperations = [...operations];
             newOperations[0] = {
@@ -5081,17 +5109,21 @@ const ExportJobsTable = () => {
             if (updates.drawback_scroll_no || updates.drawback_scroll_date || updates.rosctl_scroll_no || updates.rosctl_scroll_date) {
               if (fullJob.invoices && fullJob.invoices.length > 0) {
                 const firstInv = fullJob.invoices[0];
-                if (firstInv.products && firstInv.products.length > 0) {
-                  const firstProd = firstInv.products[0];
-                  if (!firstProd.drawbackDetails || firstProd.drawbackDetails.length === 0) {
-                    firstProd.drawbackDetails = [{}];
-                  }
-                  const firstDbk = firstProd.drawbackDetails[0];
-                  if (updates.drawback_scroll_no) firstDbk.drawback_scroll_no = updates.drawback_scroll_no;
-                  if (updates.drawback_scroll_date) firstDbk.drawback_scroll_date = updates.drawback_scroll_date;
-                  if (updates.rosctl_scroll_no) firstDbk.rosctl_scroll_no = updates.rosctl_scroll_no;
-                  if (updates.rosctl_scroll_date) firstDbk.rosctl_scroll_date = updates.rosctl_scroll_date;
+                if (!firstInv.products) {
+                  firstInv.products = [];
                 }
+                if (firstInv.products.length === 0) {
+                  firstInv.products.push({});
+                }
+                const firstProd = firstInv.products[0];
+                if (!firstProd.drawbackDetails || firstProd.drawbackDetails.length === 0) {
+                  firstProd.drawbackDetails = [{}];
+                }
+                const firstDbk = firstProd.drawbackDetails[0];
+                if (updates.drawback_scroll_no) firstDbk.drawback_scroll_no = updates.drawback_scroll_no;
+                if (updates.drawback_scroll_date) firstDbk.drawback_scroll_date = updates.drawback_scroll_date;
+                if (updates.rosctl_scroll_no) firstDbk.rosctl_scroll_no = updates.rosctl_scroll_no;
+                if (updates.rosctl_scroll_date) firstDbk.rosctl_scroll_date = updates.rosctl_scroll_date;
               }
             }
 

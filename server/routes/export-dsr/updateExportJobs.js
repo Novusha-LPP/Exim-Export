@@ -680,22 +680,24 @@ router.get("/global-search-jobs", async (req, res) => {
 
     // 3. Search filter
     if (search) {
+      const escapedSearch = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       filter.$and.push({
         $or: [
-          { job_no: { $regex: search, $options: "i" } },
-          { exporter: { $regex: search, $options: "i" } },
-          { ieCode: { $regex: search, $options: "i" } },
-          { "consignees.consignee_name": { $regex: search, $options: "i" } },
-          { sb_no: { $regex: search, $options: "i" } },
-          { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
-          { "containers.containerNo": { $regex: search, $options: "i" } },
-          { port_of_discharge: { $regex: search, $options: "i" } },
-          { exporter_ref_no: { $regex: search, $options: "i" } },
-          { awb_bl_no: { $regex: search, $options: "i" } },
-          { custom_house: { $regex: search, $options: "i" } },
-          { booking_no: { $regex: search, $options: "i" } },
-          { "invoices.invoiceNo": { $regex: search, $options: "i" } },
-          { port_of_loading: { $regex: search, $options: "i" } }
+          { job_no: { $regex: escapedSearch, $options: "i" } },
+          { exporter: { $regex: escapedSearch, $options: "i" } },
+          { ieCode: { $regex: escapedSearch, $options: "i" } },
+          { "consignees.consignee_name": { $regex: escapedSearch, $options: "i" } },
+          { sb_no: { $regex: escapedSearch, $options: "i" } },
+          { "invoices.invoiceNumber": { $regex: escapedSearch, $options: "i" } },
+          { "containers.containerNo": { $regex: escapedSearch, $options: "i" } },
+          { port_of_discharge: { $regex: escapedSearch, $options: "i" } },
+          { exporter_ref_no: { $regex: escapedSearch, $options: "i" } },
+          { awb_bl_no: { $regex: escapedSearch, $options: "i" } },
+          { custom_house: { $regex: escapedSearch, $options: "i" } },
+          { booking_no: { $regex: escapedSearch, $options: "i" } },
+          { "invoices.invoiceNo": { $regex: escapedSearch, $options: "i" } },
+          { port_of_loading: { $regex: escapedSearch, $options: "i" } },
+          { destination_port: { $regex: escapedSearch, $options: "i" } }
         ],
       });
     }
@@ -1232,22 +1234,24 @@ router.get("/exports/:status?", async (req, res) => {
 
     // Search filter
     if (search) {
+      const escapedSearch = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       filter.$and.push({
         $or: [
-          { job_no: { $regex: search, $options: "i" } },
-          { exporter: { $regex: search, $options: "i" } },
-          { ieCode: { $regex: search, $options: "i" } },
-          { exporter_ref_no: { $regex: search, $options: "i" } },
-          { "consignees.consignee_name": { $regex: search, $options: "i" } },
-          { sb_no: { $regex: search, $options: "i" } },
-          { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
-          { "containers.containerNo": { $regex: search, $options: "i" } },
-          { port_of_discharge: { $regex: search, $options: "i" } },
-          { awb_bl_no: { $regex: search, $options: "i" } },
-          { custom_house: { $regex: search, $options: "i" } },
-          { booking_no: { $regex: search, $options: "i" } },
-          { "invoices.invoiceNo": { $regex: search, $options: "i" } },
-          { port_of_loading: { $regex: search, $options: "i" } }
+          { job_no: { $regex: escapedSearch, $options: "i" } },
+          { exporter: { $regex: escapedSearch, $options: "i" } },
+          { ieCode: { $regex: escapedSearch, $options: "i" } },
+          { exporter_ref_no: { $regex: escapedSearch, $options: "i" } },
+          { "consignees.consignee_name": { $regex: escapedSearch, $options: "i" } },
+          { sb_no: { $regex: escapedSearch, $options: "i" } },
+          { "invoices.invoiceNumber": { $regex: escapedSearch, $options: "i" } },
+          { "containers.containerNo": { $regex: escapedSearch, $options: "i" } },
+          { port_of_discharge: { $regex: escapedSearch, $options: "i" } },
+          { awb_bl_no: { $regex: escapedSearch, $options: "i" } },
+          { custom_house: { $regex: escapedSearch, $options: "i" } },
+          { booking_no: { $regex: escapedSearch, $options: "i" } },
+          { "invoices.invoiceNo": { $regex: escapedSearch, $options: "i" } },
+          { port_of_loading: { $regex: escapedSearch, $options: "i" } },
+          { destination_port: { $regex: escapedSearch, $options: "i" } }
         ],
       });
     }
@@ -1853,15 +1857,18 @@ router.get("/filtered-exporters", async (req, res) => {
 
     // 3. Search filter
     if (search) {
+      const escapedSearch = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       filter.$and.push({
         $or: [
-          { job_no: { $regex: search, $options: "i" } },
-          { exporter: { $regex: search, $options: "i" } },
-          { "consignees.consignee_name": { $regex: search, $options: "i" } },
-          { sb_no: { $regex: search, $options: "i" } },
-          { "invoices.invoiceNumber": { $regex: search, $options: "i" } },
-          { "containers.containerNo": { $regex: search, $options: "i" } },
-          { port_of_discharge: { $regex: search, $options: "i" } }
+          { job_no: { $regex: escapedSearch, $options: "i" } },
+          { exporter: { $regex: escapedSearch, $options: "i" } },
+          { "consignees.consignee_name": { $regex: escapedSearch, $options: "i" } },
+          { sb_no: { $regex: escapedSearch, $options: "i" } },
+          { "invoices.invoiceNumber": { $regex: escapedSearch, $options: "i" } },
+          { "containers.containerNo": { $regex: escapedSearch, $options: "i" } },
+          { port_of_discharge: { $regex: escapedSearch, $options: "i" } },
+          { port_of_loading: { $regex: escapedSearch, $options: "i" } },
+          { destination_port: { $regex: escapedSearch, $options: "i" } }
         ],
       });
     }
@@ -2635,7 +2642,10 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
         "remarks",
         "port_of_loading",
         "port_of_destination",
-        "consignment_type"
+        "consignment_type",
+        "eta_date",
+        "arrival_date",
+        "delay_reason"
       ];
       fieldsToSync.forEach(field => {
         if (req.body[field] !== undefined) {

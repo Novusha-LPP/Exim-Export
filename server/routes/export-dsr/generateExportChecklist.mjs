@@ -702,7 +702,7 @@ export const generateExportChecklist = async (jobNumber) => {
         const sc = (p.eximCode || "").split(" ")[0];
         const amount = parseFloat(p.rodtepInfo?.amountINR) || 0;
         if ((sc === "60" || sc === "61") && !codes.includes("RS001")) codes.push("RS001");
-        if ((amount > 0 || p.rodtepInfo?.claim === "Yes" || sc === "03") && !codes.includes("RD001")) codes.push("RD001");
+        if ((amount > 0 || p.rodtepInfo?.claim === "Yes" || sc === "03" || sc === "50") && !codes.includes("RD001")) codes.push("RD001");
       })
     );
 

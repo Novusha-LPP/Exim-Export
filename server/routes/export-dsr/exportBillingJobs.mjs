@@ -257,8 +257,7 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
 
   // Standard tabs logic
   if (tab === "billing-pending") {
-    const isGenOrFF = job.isGeneralJob === true || String(job.job_no || "").toUpperCase().startsWith("FF");
-    return (job.send_for_billing || isGenOrFF) && !hasBillingDone;
+    return job.send_for_billing && !hasBillingDone;
   }
 
   if (tab === "export-completed-billing") {
@@ -429,6 +428,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
           { "containers.containerNo": regex },
           { port_of_discharge: regex },
           { port_of_loading: regex },
+          { destination_port: regex },
           { "charges.chargeHead": regex },
           { "charges.cost.partyName": regex },
           { "charges.invoice_number": regex },

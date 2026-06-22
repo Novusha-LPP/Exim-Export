@@ -13,13 +13,115 @@ const getCurrentFinancialYear = (date = new Date()) => {
   return `${String(startYear).slice(-2)}-${String(endYear).slice(-2)}`;
 };
 
+// Helper function to sync documents (such as LEO Copy, Invoice, Packing List, Bill of Lading)
+// from the source Export Job to the Freight Enquiry document if they are missing.
+async function syncEnquiryDocuments(enquiry) {
+  if (!enquiry.source_job_no) return;
+
+  const currentDocs = enquiry.documents || {};
+  const syncedDocs = { ...currentDocs };
+  let modified = false;
+
+  try {
+    // Find the source export job
+    const sourceJob = await ExJobModel.findOne({
+      job_no: { $regex: `^${String(enquiry.source_job_no).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" }
+    });
+
+    if (sourceJob) {
+      // 1. Check operations statusDetails for LEO copy
+      if (!syncedDocs.leo_copy && sourceJob.operations && sourceJob.operations.length > 0) {
+        for (const op of sourceJob.operations) {
+          if (op.statusDetails && op.statusDetails.length > 0) {
+            for (const sd of op.statusDetails) {
+              if (sd.leoUpload && sd.leoUpload.length > 0 && sd.leoUpload[0]) {
+                syncedDocs.leo_copy = sd.leoUpload[0];
+                modified = true;
+                break;
+              }
+            }
+          }
+          if (syncedDocs.leo_copy) break;
+        }
+      }
+
+      // 2. Check eSanchitDocuments for missing files
+      if (sourceJob.eSanchitDocuments && sourceJob.eSanchitDocuments.length > 0) {
+        sourceJob.eSanchitDocuments.forEach(d => {
+          const docTypeUpper = (d.documentType || "").toUpperCase();
+          const docNameUpper = (d.documentName || "").toUpperCase();
+          const url = d.fileUrl;
+          if (!url) return;
+
+          // Check LEO
+          if (!syncedDocs.leo_copy && (docTypeUpper.includes("LEO") || docNameUpper.includes("LEO"))) {
+            syncedDocs.leo_copy = url;
+            modified = true;
+          }
+          // Check Invoice
+          if (!syncedDocs.invoice && (docTypeUpper.includes("INV") || docNameUpper.includes("INV"))) {
+            syncedDocs.invoice = url;
+            modified = true;
+          }
+          // Check Packing List
+          if (!syncedDocs.packing_list && (docTypeUpper.includes("PACK") || docTypeUpper.includes("PL") || docNameUpper.includes("PACK") || docNameUpper.includes("PL"))) {
+            syncedDocs.packing_list = url;
+            modified = true;
+          }
+          // Check Bill of Lading
+          if (!syncedDocs.bill_of_lading && (docTypeUpper.includes("BILL OF LADING") || docTypeUpper.includes("BL") || docTypeUpper.includes("B/L") || docNameUpper.includes("BILL OF LADING") || docNameUpper.includes("BL") || docNameUpper.includes("B/L"))) {
+            syncedDocs.bill_of_lading = url;
+            modified = true;
+          }
+        });
+      }
+
+      // 3. Check top-level documents on source job
+      if (sourceJob.documents) {
+        if (!syncedDocs.leo_copy && sourceJob.documents.leo_copy) {
+          syncedDocs.leo_copy = sourceJob.documents.leo_copy;
+          modified = true;
+        }
+        if (!syncedDocs.invoice && sourceJob.documents.invoice) {
+          syncedDocs.invoice = sourceJob.documents.invoice;
+          modified = true;
+        }
+        if (!syncedDocs.packing_list && sourceJob.documents.packing_list) {
+          syncedDocs.packing_list = sourceJob.documents.packing_list;
+          modified = true;
+        }
+        if (!syncedDocs.bill_of_lading && sourceJob.documents.bill_of_lading) {
+          syncedDocs.bill_of_lading = sourceJob.documents.bill_of_lading;
+          modified = true;
+        }
+      }
+
+      // If we updated/synced any new documents, save them to the FreightEnquiryModel
+      if (modified) {
+        await FreightEnquiryModel.updateOne(
+          { _id: enquiry._id },
+          { $set: { documents: syncedDocs } }
+        );
+        enquiry.documents = syncedDocs;
+      }
+    }
+  } catch (err) {
+    console.error(`Error syncing documents for enquiry ${enquiry.enquiry_no}:`, err);
+  }
+}
+
 const router = express.Router();
 
 // Get all enquiries
 router.get("/freight-enquiries", async (req, res) => {
   try {
     const enquiries = await FreightEnquiryModel.find().sort({ createdAt: -1 });
-    res.status(200).json({ success: true, data: enquiries });
+    const dataList = enquiries.map(e => e.toObject());
+    
+    // Sync missing documents (like LEO copy) from source Export Jobs
+    await Promise.all(dataList.map(e => syncEnquiryDocuments(e)));
+
+    res.status(200).json({ success: true, data: dataList });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -186,6 +288,10 @@ router.put("/freight-enquiries/:id", async (req, res) => {
       { $set: updates },
       { new: true }
     ).lean();
+
+    if (updated) {
+      await syncEnquiryDocuments(updated);
+    }
 
     // AUTO-CONVERSION: Create an Export Job entry if status is Converted and it's an Export type
     if (req.body.status === "Converted" && (updated.success_no || updated.enquiry_no) && String(updated.shipment_type).startsWith("Export")) {

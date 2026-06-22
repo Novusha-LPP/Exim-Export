@@ -298,24 +298,6 @@ const DateInput = ({
         onDoubleClick={() => {
           if (disabled || readOnly) return;
           setShowCalendar(true);
-          if (!value) {
-            const today = new Date();
-            const dayStr = String(today.getDate()).padStart(2, "0");
-            const monthStr = String(today.getMonth() + 1).padStart(2, "0");
-            const yearStr = today.getFullYear();
-            let formatted = `${dayStr}-${monthStr}-${yearStr}`;
-            if (withTime) {
-              const hours = String(today.getHours()).padStart(2, "0");
-              const minutes = String(today.getMinutes()).padStart(2, "0");
-              formatted = `${dayStr}-${monthStr}-${yearStr} ${hours}:${minutes}`;
-            }
-            onChange({
-              target: {
-                name,
-                value: formatted,
-              }
-            });
-          }
         }}
         onBlur={handleBlurInput}
         placeholder={placeholder}

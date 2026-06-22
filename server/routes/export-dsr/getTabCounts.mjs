@@ -225,8 +225,7 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
   }
 
   if (tab === "billing-pending") {
-    const isGenOrFF = job.isGeneralJob === true || String(job.job_no || "").toUpperCase().startsWith("FF");
-    return (job.send_for_billing || isGenOrFF) && !hasBillingDone;
+    return job.send_for_billing && !hasBillingDone;
   }
 
   if (tab === "export-completed-billing") {
@@ -380,7 +379,8 @@ function applyCommonFilters(filter, query) {
         { custom_house: { $regex: escapedSearch, $options: "i" } },
         { booking_no: { $regex: escapedSearch, $options: "i" } },
         { "invoices.invoiceNo": { $regex: escapedSearch, $options: "i" } },
-        { port_of_loading: { $regex: escapedSearch, $options: "i" } }
+        { port_of_loading: { $regex: escapedSearch, $options: "i" } },
+        { destination_port: { $regex: escapedSearch, $options: "i" } }
       ]
     });
   }
@@ -586,6 +586,7 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
                 { $or: [{ status: { $regex: "^pending$", $options: "i" } }, { status: { $exists: false } }, { status: null }, { status: "" }] },
                 { detailedStatus: { $ne: "Billing Done" } }
               ],
+              "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
               $or: [
                 { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                 { "operations.statusDetails": { $size: 0 } }
@@ -727,6 +728,7 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
               });
             } else if (tabKeyLower === "handover pending") {
               filter.$and.push({
+                "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
                 $or: [
                   { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                   { "operations.statusDetails": { $size: 0 } }

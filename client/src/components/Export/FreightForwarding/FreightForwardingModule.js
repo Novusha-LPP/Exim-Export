@@ -5,12 +5,17 @@ import CloseIcon from "@mui/icons-material/Close";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import GetAppIcon from "@mui/icons-material/GetApp";
 import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add";
+import DownloadIcon from "@mui/icons-material/Download";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
+import ReceiptIcon from "@mui/icons-material/Receipt";
 import { useNavigate } from "react-router-dom";
 import CreateFreightEnquiry from "./CreateFreightEnquiry";
 import ForwarderDirectory from "./ForwarderDirectory";
 import CaptureRates from "./CaptureRates";
 import AddExJobs from "../Export-Dsr/AddExJobs";
 import FreightBillOfLadingGenerator from "./FreightBillOfLadingGenerator";
+import FreightTrackingMap from "./FreightTrackingMap";
 
 const s = {
   wrapper: {
@@ -22,36 +27,31 @@ const s = {
     fontSize: "12px",
   },
   titleCard: {
-    backgroundColor: "#fff",
-    padding: "10px 15px",
-    borderRadius: "3px",
-    marginTop: "5px",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-    border: "1px solid #cbd5e1",
+    backgroundColor: "transparent",
+    padding: "8px 0",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "10px",
+    marginBottom: "12px",
   },
   toolbar: {
     display: "flex",
-    gap: "6px",
+    gap: "8px",
     rowGap: "8px",
     alignItems: "center",
-    marginBottom: "8px",
+    marginBottom: "12px",
     flexWrap: "wrap",
     backgroundColor: "#fff",
-    padding: "6px 10px",
-    borderRadius: "3px",
+    padding: "8px 12px",
+    borderRadius: "6px",
     boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-    border: "1px solid #e5e7eb"
+    border: "1px solid #cbd5e1"
   },
   tabsContainer: {
     display: "flex",
-    gap: "10px",
-    marginBottom: "10px",
+    gap: "5px",
+    marginBottom: "12px",
     borderBottom: "1px solid #cbd5e1",
-    paddingBottom: "2px",
   }
 };
 
@@ -301,6 +301,16 @@ function FreightForwardingModule() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [forwarders, setForwarders] = useState([]);
   const [loadingJob, setLoadingJob] = useState(false);
+  const [trackingEnquiry, setTrackingEnquiry] = useState(null);
+
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [shipmentTypeFocused, setShipmentTypeFocused] = useState(false);
+  const [statusFocused, setStatusFocused] = useState(false);
+
+  const enquiryCount = useMemo(() => rows.filter(r => r.status === "Open").length, [rows]);
+  const successCount = useMemo(() => rows.filter(r => r.status === "Converted").length, [rows]);
+  const rejectedCount = useMemo(() => rows.filter(r => r.status === "Rejected").length, [rows]);
+  const forwarderCount = useMemo(() => forwarders.length, [forwarders]);
 
   useEffect(() => {
     fetchEnquiries();
@@ -391,29 +401,32 @@ function FreightForwardingModule() {
     <div style={s.wrapper}>
       <Box sx={s.titleCard}>
         <div>
-          <Typography sx={{ fontWeight: "700", color: "#111", fontSize: "18px" }}>
+          <Typography sx={{ fontWeight: "700", color: "#111", fontSize: "20px", fontFamily: '"Outfit", sans-serif' }}>
             Freight Forwarding
           </Typography>
         </div>
-        <Box sx={{ display: "flex", gap: "8px" }}>
+        <Box sx={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <Button
             variant="outlined"
             size="small"
+            startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
             onClick={() => {
               setDsrMode("Import");
               setDsrShipmentType("all");
               setOpenDSRDialog(true);
             }}
             sx={{
-              borderColor: "#16408f",
-              color: "#16408f",
-              fontWeight: "600",
+              borderColor: "#cbd5e1",
+              color: "#475569",
+              fontWeight: "700",
               textTransform: "none",
-              borderRadius: "3px",
-              height: 28,
+              borderRadius: "4px",
+              height: 32,
               fontSize: "12px",
-              px: 1.5,
-              "&:hover": { borderColor: "#19448a", backgroundColor: "#eff6ff" }
+              px: 2,
+              backgroundColor: "#ffffff",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+              "&:hover": { borderColor: "#16408f", color: "#16408f", backgroundColor: "#eff6ff" }
             }}
           >
             Import DSR
@@ -421,21 +434,24 @@ function FreightForwardingModule() {
           <Button
             variant="outlined"
             size="small"
+            startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
             onClick={() => {
               setDsrMode("Export");
               setDsrShipmentType("all");
               setOpenDSRDialog(true);
             }}
             sx={{
-              borderColor: "#16408f",
-              color: "#16408f",
-              fontWeight: "600",
+              borderColor: "#cbd5e1",
+              color: "#475569",
+              fontWeight: "700",
               textTransform: "none",
-              borderRadius: "3px",
-              height: 28,
+              borderRadius: "4px",
+              height: 32,
               fontSize: "12px",
-              px: 1.5,
-              "&:hover": { borderColor: "#19448a", backgroundColor: "#eff6ff" }
+              px: 2,
+              backgroundColor: "#ffffff",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+              "&:hover": { borderColor: "#16408f", color: "#16408f", backgroundColor: "#eff6ff" }
             }}
           >
             Export DSR
@@ -443,45 +459,69 @@ function FreightForwardingModule() {
           <Button
             variant="contained"
             size="small"
+            startIcon={<AddIcon sx={{ fontSize: 16 }} />}
             onClick={() => setOpenCreate(true)}
             sx={{
               backgroundColor: "#16408f",
-              fontWeight: "600",
+              color: "#ffffff",
+              fontWeight: "700",
               textTransform: "none",
-              borderRadius: "3px",
-              height: 28,
+              borderRadius: "4px",
+              height: 32,
               fontSize: "12px",
-              px: 1.5,
+              px: 2.5,
+              boxShadow: "0 1px 2px rgba(22, 64, 143, 0.2)",
               "&:hover": { backgroundColor: "#19448a" }
             }}
           >
-            + Create Enquiry
+            Create Enquiry
           </Button>
         </Box>
       </Box>
 
       {/* Tabs */}
       <Box sx={s.tabsContainer}>
-        {["Enquiry", "Success", "Rejected", "Forwarders"].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: "6px 15px",
-              cursor: "pointer",
-              fontSize: "12px",
-              fontWeight: "600",
-              color: activeTab === tab ? "#16408f" : "#6b7280",
-              borderBottom: activeTab === tab ? "3px solid #16408f" : "3px solid transparent",
-              backgroundColor: "transparent",
-              border: "none",
-              outline: "none",
-              marginBottom: "-1px",
-            }}
-          >
-            {tab}
-          </button>
-        ))}
+        {["Enquiry", "Success", "Rejected", "Forwarders"].map((tab) => {
+          const isActive = activeTab === tab;
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: "8px 16px",
+                cursor: "pointer",
+                fontSize: "12.5px",
+                fontWeight: isActive ? "700" : "600",
+                color: isActive ? "#16408f" : "#64748b",
+                borderBottom: isActive ? "3px solid #16408f" : "3px solid transparent",
+                backgroundColor: "transparent",
+                border: "none",
+                outline: "none",
+                marginBottom: "-1px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                transition: "all 0.15s ease"
+              }}
+            >
+              {tab}
+              <span
+                style={{
+                  padding: "2px 8px",
+                  borderRadius: "12px",
+                  fontSize: "10.5px",
+                  fontWeight: "800",
+                  backgroundColor: isActive ? "#16408f" : "#f1f5f9",
+                  color: isActive ? "#ffffff" : "#64748b",
+                  marginLeft: "4px",
+                  transition: "all 0.15s ease"
+                }}
+              >
+                {tab === "Enquiry" ? enquiryCount : tab === "Success" ? successCount : tab === "Rejected" ? rejectedCount : forwarderCount}
+              </span>
+            </button>
+          );
+        })}
       </Box>
 
       {activeTab !== "Forwarders" ? (
@@ -490,32 +530,55 @@ function FreightForwardingModule() {
             <input
               value={filters.search}
               onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
               placeholder="Search by Enquiry No, Org, Port..."
               style={{
-                height: "28px",
-                padding: "0 6px",
+                height: "32px",
+                padding: "0 10px",
                 fontSize: "12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "3px",
+                border: searchFocused 
+                  ? "1px solid #16408f" 
+                  : filters.search 
+                    ? "1px solid #16408f" 
+                    : "1px solid #cbd5e1",
+                borderRadius: "4px",
                 outline: "none",
-                color: "#333",
+                color: filters.search ? "#16408f" : "#333",
+                backgroundColor: filters.search ? "#eff6ff" : "#fff",
+                fontWeight: filters.search ? "600" : "normal",
                 flex: 1,
                 maxWidth: "350px",
+                boxShadow: searchFocused 
+                  ? "0 0 0 3px rgba(22, 64, 143, 0.15)" 
+                  : "inset 0 1px 2px rgba(0,0,0,0.05)",
+                transition: "all 0.15s ease-in-out"
               }}
             />
             <select
               value={filters.shipment_type}
               onChange={(e) => setFilters((prev) => ({ ...prev, shipment_type: e.target.value }))}
+              onFocus={() => setShipmentTypeFocused(true)}
+              onBlur={() => setShipmentTypeFocused(false)}
               style={{
-                height: "28px",
-                padding: "0 4px",
+                height: "32px",
+                padding: "0 8px",
                 fontSize: "12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "3px",
-                backgroundColor: "#fff",
-                color: "#333",
+                border: shipmentTypeFocused 
+                  ? "1px solid #16408f" 
+                  : filters.shipment_type 
+                    ? "1px solid #16408f" 
+                    : "1px solid #cbd5e1",
+                borderRadius: "4px",
+                backgroundColor: filters.shipment_type ? "#eff6ff" : "#fff",
+                color: filters.shipment_type ? "#16408f" : "#333",
                 cursor: "pointer",
                 fontWeight: "600",
+                outline: "none",
+                boxShadow: shipmentTypeFocused 
+                  ? "0 0 0 3px rgba(22, 64, 143, 0.15)" 
+                  : "none",
+                transition: "all 0.15s ease-in-out"
               }}
             >
               <option value="">All Shipment Types</option>
@@ -527,16 +590,27 @@ function FreightForwardingModule() {
             <select
               value={filters.status}
               onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+              onFocus={() => setStatusFocused(true)}
+              onBlur={() => setStatusFocused(false)}
               style={{
-                height: "28px",
-                padding: "0 4px",
+                height: "32px",
+                padding: "0 8px",
                 fontSize: "12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "3px",
-                backgroundColor: "#fff",
-                color: "#333",
+                border: statusFocused 
+                  ? "1px solid #16408f" 
+                  : filters.status 
+                    ? "1px solid #16408f" 
+                    : "1px solid #cbd5e1",
+                borderRadius: "4px",
+                backgroundColor: filters.status ? "#eff6ff" : "#fff",
+                color: filters.status ? "#16408f" : "#333",
                 cursor: "pointer",
                 fontWeight: "600",
+                outline: "none",
+                boxShadow: statusFocused 
+                  ? "0 0 0 3px rgba(22, 64, 143, 0.15)" 
+                  : "none",
+                transition: "all 0.15s ease-in-out"
               }}
             >
               <option value="">All Status</option>
@@ -557,8 +631,15 @@ function FreightForwardingModule() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
                 <thead>
                   <tr style={{ backgroundColor: "#19448aff", color: "#fff" }}>
-                    {[activeTab === "Success" ? "Success No" : activeTab === "Rejected" ? "Rejected No" : "Enquiry No", "Date", "Organization", "Shipment", "Booking Info", "POL", "Destination", "Docs Upload", "Status"].map((h) => (
-                      <th key={h} style={{ textAlign: h === "Docs Upload" ? "center" : "left", padding: "10px 8px", fontWeight: "700", fontSize: "12px", borderRight: "1px solid rgba(255,255,255,0.05)" }}>
+                    {[
+                      activeTab === "Success" ? "Success No" : activeTab === "Rejected" ? "Rejected No" : "Enquiry No",
+                      "Organization Details",
+                      "Port & Routing",
+                      "Container & Cargo Details",
+                      "Tracking & Timeline",
+                      "Actions"
+                    ].map((h) => (
+                      <th key={h} style={{ textAlign: h === "Actions" ? "center" : "left", padding: "10px 8px", fontWeight: "700", fontSize: "12px", borderRight: "1px solid rgba(255,255,255,0.05)" }}>
                         {h}
                       </th>
                     ))}
@@ -579,76 +660,198 @@ function FreightForwardingModule() {
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                         onClick={() => !loadingJob && handleRowClick(row)}
                       >
-                        <td style={{ padding: "10px 8px", fontWeight: "600", color: "#16408f" }}>
-                          {activeTab === "Success" ? (
-                            <span
-                              onClick={(e) => handleSuccessJobClick(e, row)}
-                              style={{ cursor: "pointer", borderBottom: "1px dashed #16408f" }}
-                            >
-                              {row.success_no || row.enquiry_no}
-                            </span>
-                          ) : (
-                            <span
-                              style={{ cursor: "pointer", borderBottom: "1px dashed #16408f" }}
-                            >
-                              {activeTab === "Rejected" ? (row.rejected_no || row.enquiry_no) : row.enquiry_no}
-                            </span>
-                          )}
+                        <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            {activeTab === "Success" ? (
+                              <span
+                                onClick={(e) => handleSuccessJobClick(e, row)}
+                                style={{ cursor: "pointer", fontWeight: "800", color: "#16408f", fontSize: "12px", borderBottom: "1px dashed #16408f", width: "fit-content" }}
+                              >
+                                {row.success_no || row.enquiry_no}
+                              </span>
+                            ) : (
+                              <span
+                                style={{ fontWeight: "800", color: "#16408f", fontSize: "12px", borderBottom: "1px dashed #16408f", width: "fit-content" }}
+                              >
+                                {activeTab === "Rejected" ? (row.rejected_no || row.enquiry_no) : row.enquiry_no}
+                              </span>
+                            )}
+                            <div style={{ color: "#64748b", fontSize: "10px", fontWeight: "500" }}>
+                              Date: {row.enquiry_date}
+                            </div>
+                            {row.source_job_no && (
+                              <div style={{ color: "#334155", fontSize: "10px", fontWeight: "600", backgroundColor: "#f1f5f9", padding: "2px 4px", borderRadius: "3px", width: "fit-content" }}>
+                                Ref Job: {row.source_job_no}
+                              </div>
+                            )}
+                            <div style={{ marginTop: "4px" }}>
+                              <span style={{ fontSize: "9px", fontWeight: "700", padding: "2px 6px", borderRadius: "3px", backgroundColor: "#eff6ff", color: "#1e40af", border: "1px solid #bfdbfe", textTransform: "uppercase", display: "inline-block" }}>
+                                {row.shipment_type}
+                              </span>
+                            </div>
+                          </div>
                         </td>
-                        <td style={{ padding: "10px 8px", color: "#475569" }}>{row.enquiry_date}</td>
-                        <td style={{ padding: "10px 8px", color: "#1e293b", fontWeight: "600" }}>{row.organization_name}</td>
-                        <td style={{ padding: "10px 8px" }}>
-                          <span style={{ fontSize: "10px", fontWeight: "600", padding: "2px 6px", borderRadius: "3px", backgroundColor: "#fff", color: "#4b5563", border: "1px solid #e5e7eb", textTransform: "uppercase", display: "inline-block" }}>
-                            {row.shipment_type}
-                          </span>
+                        <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                            <div style={{ color: "#1e293b", fontWeight: "700", fontSize: "12px" }}>
+                              {row.organization_name}
+                            </div>
+                            {row.email && (
+                              <div style={{ color: "#475569", fontSize: "10px" }}>
+                                <span style={{ fontWeight: "600", color: "#64748b" }}>Email:</span> {row.email}
+                              </div>
+                            )}
+                            {row.contact_no && (
+                              <div style={{ color: "#475569", fontSize: "10px" }}>
+                                <span style={{ fontWeight: "600", color: "#64748b" }}>Contact:</span> {row.contact_no}
+                              </div>
+                            )}
+                            {row.remarks && (
+                              <div style={{ color: "#64748b", fontSize: "10px", fontStyle: "italic", marginTop: "4px", backgroundColor: "#f8fafc", padding: "4px", borderRadius: "3px", borderLeft: "2px solid #cbd5e1", maxWidth: "250px", wordBreak: "break-word" }}>
+                                Remarks: {row.remarks}
+                              </div>
+                            )}
+                          </div>
                         </td>
-                        <td style={{ padding: "10px 8px", color: "#475569" }}>{[row.container_size, row.consignment_type, row.goods_stuffed].filter(Boolean).join(" / ") || "-"}</td>
-                        <td style={{ padding: "10px 8px", color: "#475569" }}>{row.port_of_loading || "-"}</td>
-                        <td style={{ padding: "10px 8px", color: "#475569" }}>{row.port_of_destination || "-"}</td>
-                        <td style={{ padding: "10px 8px", textAlign: "center" }}>
-                          <DocsUploadCell row={row} onUpdate={handleUpdateEnquiry} />
+                        <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                              <span style={{ fontWeight: "800", fontSize: "9px", color: "#64748b", width: "35px" }}>POL:</span>
+                              <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{row.port_of_loading || "-"}</span>
+                            </div>
+                            <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                              <span style={{ fontWeight: "800", fontSize: "9px", color: "#64748b", width: "35px" }}>POD:</span>
+                              <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{row.port_of_destination || "-"}</span>
+                            </div>
+                            {row.bl_details?.vessel_name && (
+                              <div style={{ marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" }}>
+                                <div style={{ fontSize: "9.5px", color: "#475569" }}>
+                                  <span style={{ fontWeight: "700" }}>Vessel:</span> {row.bl_details.vessel_name} {row.bl_details.voyage_no ? `(Voy: ${row.bl_details.voyage_no})` : ""}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </td>
-                        <td style={{ padding: "10px 8px" }}>
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
-                            <span
-                              style={{
-                                display: "inline-block",
-                                padding: "2px 6px",
-                                borderRadius: "3px",
-                                border: row.status === "Converted" ? "1px solid #10b981" : row.status === "Rejected" ? "1px solid #ef4444" : "1px solid #d97706",
-                                backgroundColor: "#fff",
-                                color: row.status === "Converted" ? "#10b981" : row.status === "Rejected" ? "#ef4444" : "#d97706",
-                                fontWeight: "600",
-                                fontSize: "10px",
-                                textTransform: "uppercase"
-                              }}
-                            >
-                              {row.status}
-                            </span>
-                            {row.shipment_type !== "Import-Air" && row.shipment_type !== "Export-Air" && (
-                              <FreightBillOfLadingGenerator enquiry={row}>
-                                <button
-                                  type="button"
-                                  onClick={(e) => e.stopPropagation()}
-                                  style={{
-                                    padding: "3px 8px",
-                                    borderRadius: "3px",
-                                    border: "1px solid #cbd5e1",
-                                    backgroundColor: "#fff",
-                                    color: "#333",
-                                    fontSize: "11px",
-                                    fontWeight: "600",
-                                    cursor: "pointer",
+                        <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                              {row.container_size && (
+                                <span style={{ fontSize: "9px", fontWeight: "700", padding: "1px 5px", borderRadius: "3px", backgroundColor: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1" }}>
+                                  {row.container_size}
+                                </span>
+                              )}
+                              {row.consignment_type && (
+                                <span style={{ fontSize: "9px", fontWeight: "700", padding: "1px 5px", borderRadius: "3px", backgroundColor: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1" }}>
+                                  {row.consignment_type}
+                                </span>
+                              )}
+                              {row.goods_stuffed && (
+                                <span style={{ fontSize: "9px", fontWeight: "700", padding: "1px 5px", borderRadius: "3px", backgroundColor: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1" }}>
+                                  {row.goods_stuffed}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "2px", backgroundColor: "#f8fafc", padding: "4px 6px", borderRadius: "4px", border: "1px solid #e2e8f0", fontSize: "10px", color: "#334155", marginTop: "2px" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                <span style={{ fontWeight: "600", color: "#64748b" }}>Pkgs:</span>
+                                <span style={{ fontWeight: "700" }}>{row.no_packages || "-"} {row.package_unit || ""}</span>
+                              </div>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                <span style={{ fontWeight: "600", color: "#64748b" }}>Gross Wt:</span>
+                                <span style={{ fontWeight: "700" }}>{row.gross_weight || "-"} {row.gross_weight_unit || ""}</span>
+                              </div>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                <span style={{ fontWeight: "600", color: "#64748b" }}>Net Wt:</span>
+                                <span style={{ fontWeight: "700" }}>{row.net_weight || "-"} {row.net_weight_unit || ""}</span>
+                              </div>
+                              {row.volume_cbm && (
+                                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                  <span style={{ fontWeight: "600", color: "#64748b" }}>Volume:</span>
+                                  <span style={{ fontWeight: "700" }}>{row.volume_cbm} {row.volume_unit || "CBM"}</span>
+                                </div>
+                              )}
+                            </div>
+                            {row.containers && row.containers.length > 0 && row.containers.some(c => c.container_number || c.custom_seal || c.line_seal) && (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginTop: "4px" }}>
+                                {row.containers.map((c, cIdx) => (
+                                  <div key={cIdx} style={{ fontSize: "9.5px", backgroundColor: "rgba(22, 64, 143, 0.04)", padding: "3px 6px", borderRadius: "4px", border: "1px solid rgba(22, 64, 143, 0.08)" }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}>
+                                      <span style={{ fontWeight: "800", color: "#16408f" }}>{c.container_number || "No Container #"}</span>
+                                    </div>
+                                    {(c.custom_seal || c.line_seal) && (
+                                      <div style={{ display: "flex", gap: "8px", marginTop: "2px", color: "#475569" }}>
+                                        {c.custom_seal && (
+                                          <span><span style={{ fontWeight: "700", color: "#64748b" }}>Seal:</span> {c.custom_seal}</span>
+                                        )}
+                                        {c.line_seal && (
+                                          <span><span style={{ fontWeight: "700", color: "#64748b" }}>L.Seal:</span> {c.line_seal}</span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10.5px" }}>
+                              <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>E.T.A:</span>
+                              <span style={{ fontWeight: "700", color: "#1e293b" }}>{row.eta_date ? row.eta_date.split("-").reverse().join("/") : "-"}</span>
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10.5px" }}>
+                              <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>ARRIVAL:</span>
+                              <span style={{ fontWeight: "700", color: "#1e293b" }}>{row.arrival_date ? row.arrival_date.split("-").reverse().join("/") : "-"}</span>
+                            </div>
+                            {row.delay_reason && (
+                              <div style={{ marginTop: "4px", backgroundColor: "#fffbeb", border: "1px solid #fef3c7", padding: "4px 6px", borderRadius: "4px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                                <span style={{ fontSize: "8.5px", fontWeight: "800", color: "#d97706", textTransform: "uppercase" }}>Delay Reason:</span>
+                                <span style={{ fontSize: "10px", fontWeight: "600", color: "#b45309", wordBreak: "break-word" }}>{row.delay_reason}</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: "10px 8px", verticalAlign: "middle" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+                            <DocsUploadCell row={row} onUpdate={handleUpdateEnquiry} />
+                            
+                            {row.status === "Converted" && (
+                              <Tooltip title="Track Shipment">
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setTrackingEnquiry(row);
                                   }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = "#f8fafc";
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = "#fff";
+                                  sx={{
+                                    border: "1px solid #e2e8f0",
+                                    backgroundColor: "#f8fafc",
+                                    color: "#fc8019",
+                                    "&:hover": { backgroundColor: "#fff5ec", borderColor: "#fc8019" }
                                   }}
                                 >
-                                  Generate BL
-                                </button>
+                                  <LocalShippingIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            
+                            {row.shipment_type !== "Import-Air" && row.shipment_type !== "Export-Air" && (
+                              <FreightBillOfLadingGenerator enquiry={row}>
+                                <Tooltip title="Generate BL">
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => e.stopPropagation()}
+                                    sx={{
+                                      border: "1px solid #e2e8f0",
+                                      backgroundColor: "#f8fafc",
+                                      color: "#334155",
+                                      "&:hover": { backgroundColor: "#e2e8f0", color: "#0f172a" }
+                                    }}
+                                  >
+                                    <ReceiptIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                               </FreightBillOfLadingGenerator>
                             )}
                           </div>
@@ -657,7 +860,7 @@ function FreightForwardingModule() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={9} style={{ padding: "40px 24px", textAlign: "center", color: "#64748b", fontSize: "13px" }}>
+                      <td colSpan={6} style={{ padding: "40px 24px", textAlign: "center", color: "#64748b", fontSize: "13px" }}>
                         No enquiries found. Click <strong>+ Create Enquiry</strong> to start.
                       </td>
                     </tr>
@@ -874,6 +1077,17 @@ function FreightForwardingModule() {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      {trackingEnquiry && (
+        <FreightTrackingMap
+          enquiry={trackingEnquiry}
+          onUpdate={(updatedRow) => {
+            handleUpdateEnquiry(updatedRow);
+            setTrackingEnquiry(updatedRow);
+          }}
+          onClose={() => setTrackingEnquiry(null)}
+        />
+      )}
     </div>
   );
 }

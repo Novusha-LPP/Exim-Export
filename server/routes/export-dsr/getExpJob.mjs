@@ -130,7 +130,9 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
       }
     }
 
-    if (jobData.is_club_job_parent && Array.isArray(jobData.clubbed_jobs) && jobData.clubbed_jobs.length > 0) {
+    const excludeChildJobs = req.query.excludeChildJobs === "true";
+
+    if (jobData.is_club_job_parent && Array.isArray(jobData.clubbed_jobs) && jobData.clubbed_jobs.length > 0 && !excludeChildJobs) {
       const childJobs = await ExJobModel.find({ job_no: { $in: jobData.clubbed_jobs } }).lean();
       
       jobData.containers = childJobs.flatMap(j => {

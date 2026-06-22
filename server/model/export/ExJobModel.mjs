@@ -1694,6 +1694,8 @@ const exportJobSchema = new mongoose.Schema(
     consol_no: { type: String, trim: true },
     consol_date: { type: String, trim: true },
     eta_date: { type: String, trim: true },
+    arrival_date: { type: String, trim: true },
+    delay_reason: { type: String, trim: true },
     booking_thru: { type: String, trim: true },
     sales_person: { type: String, trim: true },
     freight_type: { type: String, trim: true },

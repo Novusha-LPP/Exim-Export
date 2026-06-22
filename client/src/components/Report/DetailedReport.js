@@ -51,7 +51,7 @@ import 'jspdf-autotable';
 import { UserContext } from "../../contexts/UserContext";
 import { getOptionsForBranch } from "../common/CustomHouseDropdown";
 
-const columns = [
+const clearanceColumns = [
   { label: "Srl No.", key: "srlNo", minWidth: 50 },
   { label: "JOB No", key: "job_no", minWidth: 100 },
   { label: "LOCATION", key: "location", minWidth: 80 },
@@ -68,12 +68,28 @@ const columns = [
   { label: "REMARKS", key: "remarks", minWidth: 100 },
 ];
 
+const adminFreightColumns = [
+  { label: "SR.NO", key: "srlNo", minWidth: 50 },
+  { label: "JOB NO", key: "job_no", minWidth: 100 },
+  { label: "EXPORTER NAME", key: "exporter", minWidth: 150 },
+  { label: "LOCATION", key: "location", minWidth: 80 },
+  { label: "SB NO.", key: "sb_no", minWidth: 100 },
+  { label: "PORTS", key: "ports", minWidth: 150 },
+  { label: "SIZE OF CONTAINER", key: "size", minWidth: 60 },
+  { label: "NO. OF CNTR", key: "totalContainers", minWidth: 70 },
+  { label: "MOVEMENT TYPE", key: "movement_type", minWidth: 80 },
+  { label: "FORWARDER NAME", key: "forwarder_name", minWidth: 120 },
+  { label: "FREIGHT AMOUNT", key: "freight_amount", minWidth: 100 },
+  { label: "CURRENCY", key: "currency", minWidth: 70 },
+];
+
 const DetailedReport = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reportType, setReportType] = useState("clearance"); // 'clearance' | 'adminFreight'
   const [year, setYear] = useState("26-27");
   const [gradeFilter, setGradeFilter] = useState(""); // ✅ New Grade Filter
   const [month, setMonth] = useState(new Date().getMonth() + 1);
@@ -83,6 +99,8 @@ const DetailedReport = () => {
   const open = Boolean(anchorEl);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState("AMD");
+
+  const activeColumns = reportType === 'adminFreight' ? adminFreightColumns : clearanceColumns;
 
   const BRANCH_OPTIONS = [
     { value: "AMD", label: "Ahmedabad" },
@@ -170,9 +188,11 @@ const DetailedReport = () => {
     setError("");
     try {
       const apiBase = import.meta.env.VITE_API_STRING || "";
-      // ✅ Pass grade filter as query param
-      const url = new URL(`${apiBase}/report/export-clearance/${year}/${month}`);
-      console.log("Fetching Export Clearance Data from:", url.toString());
+      const endpoint = reportType === 'adminFreight' 
+        ? `/report/admin-freight/${year}/${month}`
+        : `/report/export-clearance/${year}/${month}`;
+      const url = new URL(`${apiBase}${endpoint}`);
+      console.log("Fetching Data from:", url.toString());
       // Only include grade when user is Sr. Manager
       if (isSrManager && gradeFilter) {
         url.searchParams.append('grade', gradeFilter);
@@ -185,7 +205,7 @@ const DetailedReport = () => {
       const json = await res.json();
       setData(json);
     } catch (err) {
-      setError("Failed to fetch Export clearance data");
+      setError("Failed to fetch data");
     } finally {
       setLoading(false);
     }
@@ -193,7 +213,7 @@ const DetailedReport = () => {
 
   useEffect(() => {
     fetchData();
-  }, [year, month, gradeFilter, selectedBranch]); // ✅ Added gradeFilter dependency
+  }, [year, month, gradeFilter, selectedBranch, reportType]); // ✅ Added reportType dependency
 
   const handlePreviousMonth = () => {
     if (month === "all") return;
@@ -339,6 +359,31 @@ const DetailedReport = () => {
     return noOfContrSize;
   };
 
+  const formatPortsText = (pol, pod, country, isHtml = false) => {
+    const cleanPort = (str) => str ? String(str).replace(/^.*?-\s*/, '').replace(/\(.*?\)\s*/, '').trim() : '';
+    const polClean = cleanPort(pol);
+    const podClean = cleanPort(pod);
+    const countryClean = cleanPort(country);
+    
+    let podWithCountry = podClean;
+    if (countryClean && podClean) podWithCountry += ` (${countryClean})`;
+    else if (countryClean) podWithCountry = countryClean;
+
+    if (!polClean && podWithCountry) {
+      return isHtml ? <Box><b>POD:</b> {podWithCountry}</Box> : `POD: ${podWithCountry}`;
+    } else if (polClean && podWithCountry) {
+      return isHtml ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <Typography variant="caption" sx={{ fontSize: '0.75rem' }}><b>POL:</b> {polClean}</Typography>
+          <Typography variant="caption" sx={{ fontSize: '0.75rem' }}><b>POD:</b> {podWithCountry}</Typography>
+        </Box>
+      ) : `POL: ${polClean}\nPOD: ${podWithCountry}`;
+    } else if (polClean) {
+      return isHtml ? <Box><b>POL:</b> {polClean}</Box> : `POL: ${polClean}`;
+    }
+    return '';
+  };
+
   // Export functionality
   const handleExportReport = async (format) => {
     setExportLoading(true);
@@ -366,7 +411,7 @@ const DetailedReport = () => {
     const monthName = months.find(m => String(m.value) === String(month))?.label || 'Unknown';
 
     // 1. Prepare Columns
-    const visibleCols = columns.filter((col) => !(col.key === 'invoice_value' && !isSrManager));
+    const visibleCols = activeColumns.filter((col) => !(col.key === 'invoice_value' && !isSrManager));
     worksheet.columns = visibleCols.map(col => ({
       header: col.label,
       key: col.key,
@@ -393,6 +438,20 @@ const DetailedReport = () => {
           case 'sb_date': rowData[col.key] = row.sb_date ? new Date(row.sb_date).toLocaleDateString('en-GB') : ''; break;
           case 'leo_date': rowData[col.key] = row.leo_date ? new Date(row.leo_date).toLocaleDateString('en-GB') : ''; break;
           case 'teus': rowData[col.key] = isLclJob(row) ? 'LCL' : (row.teus || ''); break;
+          case 'ports': {
+            rowData[col.key] = formatPortsText(row.pol, row.pod, row.country, false);
+            break;
+          }
+          case 'freight_amount': rowData[col.key] = row.freight_amount || row.rate_total || '—'; break;
+          case 'currency': {
+            let curr = row.currency || "USD";
+            if (!row.currency && row.freight_amount && typeof row.freight_amount === 'string') {
+              const match = row.freight_amount.match(/[A-Za-z]+/);
+              if (match) curr = match[0].toUpperCase();
+            }
+            rowData[col.key] = curr;
+            break;
+          }
           default: rowData[col.key] = row[col.key] || '';
         }
       });
@@ -471,7 +530,7 @@ const DetailedReport = () => {
     doc.text(title, x, 15);
 
     // Main table - build headers/data based on visible columns and role
-    const visibleCols = columns.filter((col) => !(col.key === 'invoice_value' && !isSrManager));
+    const visibleCols = activeColumns.filter((col) => !(col.key === 'invoice_value' && !isSrManager));
     const tableHeaders = visibleCols.map(c => c.label);
     const tableData = detailedRows.map((row, index) => {
       const containerNos = row.containerNumbers ? row.containerNumbers.join('\n') : '';
@@ -513,6 +572,17 @@ const DetailedReport = () => {
             return leoDate;
           case 'remarks':
             return row.remarks || '';
+          case 'ports':
+            return formatPortsText(row.pol, row.pod, row.country, false);
+          case 'freight_amount':
+            return row.freight_amount || row.rate_total || '—';
+          case 'currency':
+            let curr = row.currency || "USD";
+            if (!row.currency && row.freight_amount && typeof row.freight_amount === 'string') {
+              const match = row.freight_amount.match(/[A-Za-z]+/);
+              if (match) curr = match[0].toUpperCase();
+            }
+            return curr;
           default:
             return row[col.key] || '';
         }
@@ -534,7 +604,12 @@ const DetailedReport = () => {
       size: { cellWidth: 15, halign: 'center' },
       teus: { cellWidth: 10, halign: 'center' },
       leo_date: { cellWidth: 20, halign: 'center' },
-      remarks: { cellWidth: 10, halign: 'center' }
+      remarks: { cellWidth: 10, halign: 'center' },
+      ports: { cellWidth: 30, halign: 'center' },
+      movement_type: { cellWidth: 15, halign: 'center' },
+      forwarder_name: { halign: 'left' }, // Auto width
+      freight_amount: { cellWidth: 20, halign: 'center' },
+      currency: { cellWidth: 15, halign: 'center' }
     };
     // Total adjusted to approx 287mm to fill the page without overflow
 
@@ -768,32 +843,34 @@ const DetailedReport = () => {
           </Button>
 
           {/* Summary Button */}
-          <Button
-            variant="outlined"
-            startIcon={<TableViewIcon fontSize="small" sx={{ color: '#1976d2' }} />}
-            onClick={() => setSummaryOpen(true)}
-            disabled={loading || processedData.length === 0}
-            size="small"
-            sx={{
-              fontWeight: 'bold',
-              borderColor: '#1976d2',
-              color: '#1976d2',
-              background: 'linear-gradient(135deg, #e3f2fd 0%, #fdf6f0 100%)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #bbdefb 0%, #ffe0b2 100%)',
+          {reportType === 'clearance' && (
+            <Button
+              variant="outlined"
+              startIcon={<TableViewIcon fontSize="small" sx={{ color: '#1976d2' }} />}
+              onClick={() => setSummaryOpen(true)}
+              disabled={loading || processedData.length === 0}
+              size="small"
+              sx={{
+                fontWeight: 'bold',
                 borderColor: '#1976d2',
-                color: '#1565c0'
-              },
-              '&:disabled': {
-                color: '#bdbdbd',
-                borderColor: '#bdbdbd',
-                background: 'linear-gradient(135deg, #f5f5f5 0%, #eeeeee 100%)'
-              },
-              transition: 'all 0.3s ease'
-            }}
-          >
-            Summary
-          </Button>
+                color: '#1976d2',
+                background: 'linear-gradient(135deg, #e3f2fd 0%, #fdf6f0 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #bbdefb 0%, #ffe0b2 100%)',
+                  borderColor: '#1976d2',
+                  color: '#1565c0'
+                },
+                '&:disabled': {
+                  color: '#bdbdbd',
+                  borderColor: '#bdbdbd',
+                  background: 'linear-gradient(135deg, #f5f5f5 0%, #eeeeee 100%)'
+                },
+                transition: 'all 0.3s ease'
+              }}
+            >
+              Summary
+            </Button>
+          )}
 
           {/* Export Options Menu */}
           <Menu
@@ -911,18 +988,32 @@ const DetailedReport = () => {
           </DialogActions>
         </Dialog>
 
-        <Typography
-          variant="h6"
-          align="center"
-          sx={{
-            fontWeight: 'bold',
-            color: 'white',
-            textShadow: '0 1px 4px rgba(25, 118, 210, 0.15)',
-            fontSize: '1rem'
-          }}
-        >
-          Export Clearance Report
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexDirection: isMobile ? 'column' : 'row' }}>
+          <Typography
+            variant="h6"
+            align="center"
+            sx={{
+              fontWeight: 'bold',
+              color: 'white',
+              textShadow: '0 1px 4px rgba(25, 118, 210, 0.15)',
+              fontSize: '1rem'
+            }}
+          >
+            {reportType === 'adminFreight' ? 'Admin Freight Report' : 'Export Clearance Report'}
+          </Typography>
+          {user && user.role === 'Admin' && (
+            <FormControl size="small" sx={{ minWidth: 150, background: 'white', borderRadius: 1 }}>
+              <Select
+                value={reportType}
+                onChange={(e) => setReportType(e.target.value)}
+                sx={{ fontSize: '0.8rem', height: 30 }}
+              >
+                <MenuItem value="clearance">Clearance Report</MenuItem>
+                <MenuItem value="adminFreight">Freight Report</MenuItem>
+              </Select>
+            </FormControl>
+          )}
+        </Box>
 
 
 
@@ -1044,7 +1135,7 @@ const DetailedReport = () => {
             <Table stickyHeader size="small">
               <TableHead>
                 <TableRow>
-                  {columns
+                  {activeColumns
                     .filter((col) => !(col.key === 'invoice_value' && !isSrManager))
                     .map((col) => (
                       <TableCell
@@ -1070,7 +1161,7 @@ const DetailedReport = () => {
                 {loading
                   ? Array.from({ length: 8 }).map((_, idx) => (
                     <TableRow key={idx}>
-                      {columns
+                      {activeColumns
                         .filter((col) => !(col.key === 'invoice_value' && !isSrManager))
                         .map((col) => (
                           <TableCell
@@ -1099,106 +1190,33 @@ const DetailedReport = () => {
                         }
                       }}
                     >
-                      {/* Srl No. */}
-                      <TableCell align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px", fontWeight: 'bold', color: '#666' }}>
-                        {String(idx + 1).padStart(3, "0")}
-                      </TableCell>
-
-                      {/* JOB No */}
-                      <TableCell align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px", fontWeight: '500' }}>
-                        {row.job_no}
-                      </TableCell>
-
-                      {/* LOCATION */}
-                      <TableCell align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>
-                        {row.location}
-                      </TableCell>
-
-                      {/* IMPORTERS NAME */}
-                      <TableCell align="left" sx={{ fontSize: "0.75rem", padding: "6px 8px", maxWidth: 150, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        <Tooltip title={row.exporter}>
-                          <span>{row.exporter}</span>
-                        </Tooltip>
-                      </TableCell>
-
-                      {/* COMMODITY */}
-                      <TableCell align="left" sx={{ fontSize: "0.58rem", lineHeight: 1.1, padding: "6px 8px", maxWidth: 120, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        <Tooltip title={row.commodity}>
-                          <span>{row.commodity}</span>
-                        </Tooltip>
-                      </TableCell>
-
-                      {/* PRICE (invoice_value) - NEW COLUMN (only for Sr. Manager) */}
-                      {isSrManager && (
-                        <TableCell align="right" sx={{
-                          fontSize: "0.8rem",
-                          padding: "6px 8px",
-                          fontWeight: '500',
-                          color: '#1976d2',
-                          fontFamily: 'monospace',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {row?.invoice_value && row?.inv_currency
-                            ? `${row.inv_currency} ${(parseFloat(row.invoice_value)).toFixed(2)}`
-                            : '—'
+                      {activeColumns
+                        .filter((col) => !(col.key === 'invoice_value' && !isSrManager))
+                        .map((col, cIdx) => {
+                          const val = row[col.key];
+                          if (col.key === 'srlNo') return <TableCell key={cIdx} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px", fontWeight: 'bold', color: '#666' }}>{String(idx + 1).padStart(3, "0")}</TableCell>;
+                          if (col.key === 'invoice_value') return <TableCell key={cIdx} align="right" sx={{ fontSize: "0.8rem", padding: "6px 8px", fontWeight: '500', color: '#1976d2', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{row?.invoice_value && row?.inv_currency ? `${row.inv_currency} ${(parseFloat(row.invoice_value)).toFixed(2)}` : '—'}</TableCell>;
+                          if (col.key === 'sb_date' || col.key === 'leo_date') return <TableCell key={cIdx} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>{val ? new Date(val).toLocaleDateString('en-GB') : ''}</TableCell>;
+                          if (col.key === 'containerNumbers') return <TableCell key={cIdx} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}><Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>{val && val.map((num, i) => (<Typography key={i} variant="caption" sx={{ fontSize: '0.7rem' }}>{num}</Typography>))}</Box></TableCell>;
+                          if (col.key === 'size') return <TableCell key={cIdx} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>{deriveSize(row.noOfContrSize)}</TableCell>;
+                          if (col.key === 'teus') return <TableCell key={cIdx} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px", fontWeight: 'bold', color: '#1976d2' }}>{isLclJob(row) ? "LCL" : row.teus}</TableCell>;
+                          if (col.key === 'remarks') return <TableCell key={cIdx} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>{val ? val.split('\n').map((line, lidx) => (<React.Fragment key={lidx}>{line}{lidx < val.split('\n').length - 1 && <br />}</React.Fragment>)) : ""}</TableCell>;
+                          if (col.key === 'exporter' || col.key === 'commodity' || col.key === 'forwarder_name') return <TableCell key={cIdx} align="left" sx={{ fontSize: col.key === 'commodity' ? "0.58rem" : "0.75rem", lineHeight: 1.1, padding: "6px 8px", maxWidth: col.key === 'commodity' ? 120 : 150, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><Tooltip title={val}><span>{val}</span></Tooltip></TableCell>;
+                          if (col.key === 'ports') {
+                            return <TableCell key={cIdx} align="left" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>{formatPortsText(row.pol, row.pod, row.country, true)}</TableCell>;
                           }
-                        </TableCell>
-                      )}
-
-
-
-                      {/* B/E. NO. */}
-                      <TableCell align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>
-                        {row.sb_no}
-                      </TableCell>
-
-                      {/* DATE */}
-                      <TableCell align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>
-                        {row.sb_date ? new Date(row.sb_date).toLocaleDateString('en-GB') : ''}
-                      </TableCell>
-
-                      {/* CONTAINER NO. */}
-                      <TableCell align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>
-                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
-                          {row.containerNumbers && row.containerNumbers.map((num, i) => (
-                            <Typography key={i} variant="caption" sx={{ fontSize: '0.7rem' }}>
-                              {num}
-                            </Typography>
-                          ))}
-                        </Box>
-                      </TableCell>
-
-                      {/* NO. OF CNTR */}
-                      <TableCell align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px", fontWeight: 'bold' }}>
-                        {row.totalContainers}
-                      </TableCell>
-
-                      {/* SIZE (separate column) */}
-                      <TableCell align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>
-                        {deriveSize(row.noOfContrSize)}
-                      </TableCell>
-
-                      {/* Teus */}
-                      <TableCell align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px", fontWeight: 'bold', color: '#1976d2' }}>
-                        {isLclJob(row) ? "LCL" : row.teus}
-                      </TableCell>
-
-                      {/* CLRG DATE */}
-                      <TableCell align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>
-                        {row.leo_date ? new Date(row.leo_date).toLocaleDateString('en-GB') : ''}
-                      </TableCell>
-
-                      {/* REMARKS */}
-                      <TableCell align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>
-                        {row.remarks
-                          ? row.remarks.split('\n').map((line, idx) => (
-                            <React.Fragment key={idx}>
-                              {line}
-                              {idx < row.remarks.split('\n').length - 1 && <br />}
-                            </React.Fragment>
-                          ))
-                          : ""}
-                      </TableCell>
+                          if (col.key === 'freight_amount') return <TableCell key={cIdx} align="right" sx={{ fontSize: "0.75rem", padding: "6px 8px", fontWeight: 'bold' }}>{val || row.rate_total || '—'}</TableCell>;
+                          if (col.key === 'currency') {
+                            let curr = row.currency || "USD";
+                            if (!row.currency && row.freight_amount && typeof row.freight_amount === 'string') {
+                              const match = row.freight_amount.match(/[A-Za-z]+/);
+                              if (match) curr = match[0].toUpperCase();
+                            }
+                            return <TableCell key={cIdx} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px", fontWeight: 'bold' }}>{curr}</TableCell>;
+                          }
+                          // Default
+                          return <TableCell key={cIdx} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>{val}</TableCell>;
+                        })}
                     </TableRow>
                   ))}
               </TableBody>

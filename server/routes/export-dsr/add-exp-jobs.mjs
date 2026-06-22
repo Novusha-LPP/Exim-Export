@@ -287,6 +287,12 @@ router.post(
       delete sourceData.lockedAt;
       delete sourceData.operational_lock;
 
+      // Do not copy club job details
+      delete sourceData.is_club_job_parent;
+      delete sourceData.clubbed_jobs;
+      delete sourceData.parent_club_job;
+      delete sourceData.tally_club_ref_no;
+
       // Remove branch-specific metadata and custom house configurations to avoid leakage
       delete sourceData.cha_branch_code;
       delete sourceData.exporter_branch_name;

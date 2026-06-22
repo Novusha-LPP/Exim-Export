@@ -23,6 +23,7 @@ import useExportJobDetails from "../../../customHooks/useExportJobDetails.js";
 import axios from "axios";
 import ExportJobFooter from "../Export-Dsr/ExportJobFooter.js";
 import ChargesTab from "../Export-Dsr/Charges/ChargesTab.js";
+import DateInput from "../../common/DateInput.js";
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -211,6 +212,59 @@ function FreightForwardingJobDetail() {
             width: "100%",
             backgroundColor: "transparent",
             fontFamily: "inherit"
+          }}
+        />
+      </Box>
+    );
+  };
+
+  // Helper function to render a custom date picker input cell
+  const renderDateInputBox = (label, name, disabled = false) => {
+    const isNested = name.includes(".");
+    let value = "";
+    if (isNested) {
+      const parts = name.split(".");
+      if (parts.length === 3) {
+        const arrayName = parts[0];
+        const index = parseInt(parts[1]);
+        const key = parts[2];
+        value = formik.values[arrayName]?.[index]?.[key] || "";
+      } else {
+        value = formik.values[parts[0]]?.[parts[1]] || "";
+      }
+    } else {
+      value = formik.values[name] || "";
+    }
+
+    return (
+      <Box sx={{
+        border: "1px solid #cbd5e1",
+        p: "6px 8px",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: disabled || !isEditable ? "#f8fafc" : "#fff",
+        minHeight: "52px",
+        boxSizing: "border-box"
+      }}>
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "9px", textTransform: "uppercase", mb: 0.5, letterSpacing: "0.2px" }}>
+          {label}
+        </Typography>
+        <DateInput
+          name={name}
+          value={value}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+          disabled={disabled || !isEditable}
+          style={{
+            border: "none",
+            outline: "none",
+            fontSize: "11px",
+            fontWeight: "600",
+            color: disabled || !isEditable ? "#64748b" : "#1e293b",
+            width: "100%",
+            backgroundColor: "transparent",
+            fontFamily: "inherit",
+            padding: 0
           }}
         />
       </Box>
@@ -801,7 +855,7 @@ function FreightForwardingJobDetail() {
                 {renderInputBox("Shipment No.", "job_no", true)}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
-                {renderInputBox("dt (Shipment Date)", "job_date")}
+                {renderDateInputBox("dt (Shipment Date)", "job_date")}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
                 {renderCombinedBox("Gross Wt./Unit", "gross_weight_kg", "gross_weight_unit")}
@@ -823,7 +877,7 @@ function FreightForwardingJobDetail() {
                 {renderInputBox("Booking No.", "booking_no")}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
-                {renderInputBox("dt (Booking Date)", "booking_date")}
+                {renderDateInputBox("dt (Booking Date)", "booking_date")}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
                 {renderCombinedBox("Chg. Wt./Unit", "chargeable_weight", "chargeable_weight_unit")}
@@ -841,17 +895,27 @@ function FreightForwardingJobDetail() {
 
             {/* Row 3 */}
             <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
-              <Grid item xs={12} md={3} sm={6}>
+              <Grid item xs={12} md={4} sm={6}>
                 {renderCombinedBox("Volume/Unit", "volume_cbm", "volume_unit")}
               </Grid>
-              <Grid item xs={12} md={3} sm={6}>
+              <Grid item xs={12} md={4} sm={6}>
                 {renderInputBox("Loading Port", "port_of_loading")}
               </Grid>
-              <Grid item xs={12} md={3} sm={6}>
+              <Grid item xs={12} md={4} sm={12}>
                 {renderInputBox("Booking Thru", "booking_thru")}
               </Grid>
+            </Grid>
+
+            {/* Logistics Details */}
+            <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
               <Grid item xs={12} md={3} sm={6}>
-                {renderInputBox("ETA (Dest)", "eta_date")}
+                {renderDateInputBox("ETA (Dest)", "eta_date")}
+              </Grid>
+              <Grid item xs={12} md={3} sm={6}>
+                {renderDateInputBox("Final Arrival Date", "arrival_date")}
+              </Grid>
+              <Grid item xs={12} md={6} sm={12}>
+                {renderInputBox("Reason for Delay", "delay_reason")}
               </Grid>
             </Grid>
 
@@ -861,7 +925,7 @@ function FreightForwardingJobDetail() {
                 {renderInputBox("BL No", "mbl_no")}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
-                {renderInputBox("dt (BL Date)", "mbl_date")}
+                {renderDateInputBox("dt (BL Date)", "mbl_date")}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
                 {renderCombinedBox("No of Pkgs", "total_no_of_pkgs", "package_unit")}
@@ -873,7 +937,7 @@ function FreightForwardingJobDetail() {
                 {renderInputBox("Sales Person", "sales_person")}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
-                {renderInputBox("ETD", "sailing_date")}
+                {renderDateInputBox("ETD", "sailing_date")}
               </Grid>
             </Grid>
 
@@ -883,7 +947,7 @@ function FreightForwardingJobDetail() {
                 {renderInputBox("HBL No", "hbl_no")}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
-                {renderInputBox("dt (HBL Date)", "hbl_date")}
+                {renderDateInputBox("dt (HBL Date)", "hbl_date")}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
                 {renderInputBox("Volume Weight", "volume_weight")}

@@ -105,6 +105,7 @@ import fineReport from "./routes/report/getFineReport.mjs";
 import exporterReport from "./routes/report/getExporterReport.mjs";
 import exportClearanceReport from "./routes/report/exportClearanceMonthly.mjs";
 import tdsPayableRegister from "./routes/report/tdsPayableRegister.mjs";
+import adminFreightReport from "./routes/report/adminFreightReport.mjs";
 
 // REMOVED: Dangerous exception handlers that caused 3.1M log storm
 // Exception handlers are now in ./exceptionHandlers.js with:
@@ -271,6 +272,7 @@ app.use(billingPendingReport);
 app.use(fineReport);
 app.use(exporterReport);
 app.use(exportClearanceReport);
+app.use(adminFreightReport);
 app.use(tdsPayableRegister);
 
 // s3 route

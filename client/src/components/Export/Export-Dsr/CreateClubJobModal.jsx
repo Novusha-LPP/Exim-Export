@@ -45,7 +45,7 @@ const CreateClubJobModal = ({ open, onClose, currentJob, onSuccess }) => {
         const eligibleJobs = res.data.data.jobs.filter(
           (j) =>
             j.job_no !== excludeJobNo &&
-            !j.is_club_job_parent &&
+            (!j.is_club_job_parent || (targetParentJobNo && j.parent_club_job === targetParentJobNo)) &&
             (!j.parent_club_job || (targetParentJobNo && j.parent_club_job === targetParentJobNo))
         );
         setJobs(eligibleJobs);
@@ -78,6 +78,31 @@ const CreateClubJobModal = ({ open, onClose, currentJob, onSuccess }) => {
         ? prev.filter((no) => no !== jobNo)
         : [...prev, jobNo]
     );
+  };
+
+  const handleDissolveClub = async () => {
+    if (!window.confirm("⚠️ Are you sure you want to dissolve this club job? This will un-club all associated jobs.")) return;
+    
+    const targetParentJobNo = currentJob?.is_club_job_parent ? currentJob?.job_no : currentJob?.parent_club_job;
+    const parentJobNo = targetParentJobNo || currentJob?.job_no;
+    
+    try {
+      setLoading(true);
+      const res = await axios.post(`${import.meta.env.VITE_API_STRING}/create-club-job`, {
+        selected_job_nos: [parentJobNo],
+        primary_job_no: parentJobNo
+      });
+
+      if (res.data?.success) {
+        onSuccess(res.data.job_no);
+        onClose();
+      }
+    } catch (error) {
+      console.error("Error dissolving club job:", error);
+      alert("Failed to dissolve club job");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -335,6 +360,23 @@ const CreateClubJobModal = ({ open, onClose, currentJob, onSuccess }) => {
       </DialogContent>
       
       <DialogActions sx={{ padding: "16px 24px", borderTop: "1px solid #f1f5f9" }}>
+        {isExistingClub && (
+          <Button
+            onClick={handleDissolveClub}
+            disabled={loading}
+            color="error"
+            variant="outlined"
+            sx={{ 
+              textTransform: "none", 
+              fontWeight: 600, 
+              fontSize: "13px", 
+              borderRadius: "6px",
+              marginRight: "auto"
+            }}
+          >
+            Dissolve Club
+          </Button>
+        )}
         <Button 
           onClick={onClose} 
           disabled={loading} 

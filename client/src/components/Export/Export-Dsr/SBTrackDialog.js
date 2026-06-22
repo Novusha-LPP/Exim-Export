@@ -125,49 +125,56 @@ function SBTrackDialog({ open, onClose, sbNo, sbDate, customHouse, onUpdateStatu
                 if (onUpdateStatus && fetchedData.currentStatusModel?.[0]) {
                     const status = fetchedData.currentStatusModel[0];
                     const extractDate = (dateStr) => {
-                        if (!dateStr || dateStr === "N.A.") return null;
+                        if (!dateStr) return null;
+                        const cleaned = dateStr.trim().toUpperCase();
+                        if (cleaned === "N.A." || cleaned === "N/A" || cleaned === "NA") return null;
                         try {
-                            // Try parsing "dd MMM yyyy HH:mm" e.g. "09 FEB 2026 15:02"
-                            // Date format in response seems to be "dd MMM yyyy HH:mm" or similar
-                            // Using Date.parse might work if month is English
                             const d = new Date(dateStr);
                             if (!isNaN(d.getTime())) {
                                 return format(d, "yyyy-MM-dd");
                             }
-                            // Fallback using date-fns parse if necessary
-                            // Attempt more robust parsing if needed
                             return null;
                         } catch (e) {
                             return null;
                         }
                     };
 
+                    let rmsVal = null;
+                    if (status.leoDate && !["N.A.", "N/A", "NA"].includes(status.leoDate.trim().toUpperCase())) {
+                        rmsVal = "RMS";
+                    } else if (status.currQueue && status.currQueue.toUpperCase().includes("EXAM")) {
+                        rmsVal = "Assessment";
+                    }
+
                     const updates = {
                         goodsRegistrationDate: extractDate(status.markDate),
-                        goodsReportDate: extractDate(status.examDate), // Verify mapping
-                        leoDate: extractDate(status.leoDate), // Verify mapping
+                        goodsReportDate: extractDate(status.examDate),
+                        leoDate: extractDate(status.leoDate),
 
-                        drawback_scroll_no: status.custScrollNo && status.custScrollNo !== "N.A." ? status.custScrollNo : null,
+                        drawback_scroll_no: status.custScrollNo && !["N.A.", "N/A", "NA"].includes(status.custScrollNo.trim().toUpperCase()) ? status.custScrollNo : null,
                         drawback_scroll_date: extractDate(status.scrollDate),
                     };
+
+                    if (rmsVal) {
+                        updates.rms = rmsVal;
+                    }
 
                     const egmStatusList = fetchedData.egmStatusModel || [];
                     if (egmStatusList.length > 0) {
                         const firstEgm = egmStatusList[0];
-                        if (firstEgm.egmNo && firstEgm.egmNo !== "N.A.") updates.egm_no = firstEgm.egmNo;
+                        if (firstEgm.egmNo && !["N.A.", "N/A", "NA"].includes(firstEgm.egmNo.trim().toUpperCase())) updates.egm_no = firstEgm.egmNo;
                         updates.egm_date = extractDate(firstEgm.egmDate);
 
-                        // If only one container, auto-populate container and seal no
                         if (egmStatusList.length === 1) {
-                            if (firstEgm.containerNo && firstEgm.containerNo !== "N.A.") updates.container_no = firstEgm.containerNo;
-                            if (firstEgm.sealNo && firstEgm.sealNo !== "N.A.") updates.seal_no = firstEgm.sealNo;
+                            if (firstEgm.containerNo && !["N.A.", "N/A", "NA"].includes(firstEgm.containerNo.trim().toUpperCase())) updates.container_no = firstEgm.containerNo;
+                            if (firstEgm.sealNo && !["N.A.", "N/A", "NA"].includes(firstEgm.sealNo.trim().toUpperCase())) updates.seal_no = firstEgm.sealNo;
                         }
                     }
 
                     const roslStatusList = fetchedData.roslStatusModel || [];
                     if (roslStatusList.length > 0) {
                         const rosl = roslStatusList[0];
-                        if (rosl.roslScrollNo && rosl.roslScrollNo !== "N.A.") updates.rosctl_scroll_no = rosl.roslScrollNo;
+                        if (rosl.roslScrollNo && !["N.A.", "N/A", "NA"].includes(rosl.roslScrollNo.trim().toUpperCase())) updates.rosctl_scroll_no = rosl.roslScrollNo;
                         updates.rosctl_scroll_date = extractDate(rosl.roslScrollDate);
                     }
 

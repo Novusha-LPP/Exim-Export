@@ -11,7 +11,7 @@ const freightEnquirySchema = new mongoose.Schema(
     container_size: { type: String },
     consignment_type: { type: String, enum: ["LCL", "FCL", "AIR", ""] },
     goods_stuffed: { type: String, enum: ["FACTORY STUFFED", "DOCK STUFFED", ""] },
-    port_of_loading: { type: String, required: true },
+    port_of_loading: { type: String },
     port_of_destination: { type: String },
     contact_no: { type: String },
     email: { type: String },
@@ -49,6 +49,9 @@ const freightEnquirySchema = new mongoose.Schema(
     ],
     remarks: { type: String },
     source_job_no: { type: String },
+    eta_date: { type: String },
+    arrival_date: { type: String },
+    delay_reason: { type: String },
     status: { type: String, default: "Open" },
     received_rates: [
       {

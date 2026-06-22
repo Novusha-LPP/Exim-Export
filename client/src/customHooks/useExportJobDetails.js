@@ -107,6 +107,8 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
       consol_no: "",
       consol_date: "",
       eta_date: "",
+      arrival_date: "",
+      delay_reason: "",
       booking_thru: "",
       sales_person: "",
       freight_type: "",

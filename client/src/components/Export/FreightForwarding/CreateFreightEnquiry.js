@@ -259,6 +259,9 @@ const emptyForm = {
   volume_unit: "CBM",
   package_unit: "PKGS",
   net_weight_unit: "KG",
+  eta_date: "",
+  arrival_date: "",
+  delay_reason: "",
 };
 
 const seaPortOptions = [
@@ -1435,6 +1438,41 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
                   value={formData.remarks}
                   onChange={(e) => handleChange("remarks", e.target.value)}
                   placeholder="Additional instructions or remarks"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ ...s.card, ...s.borderTeal }}>
+          <div style={s.cardHeader}>Tracking & Delay Information</div>
+          <div style={s.cardBody}>
+            <div style={s.row}>
+              <div style={s.col}>
+                <label style={s.label}>E.T.A. Date</label>
+                <input
+                  style={s.input}
+                  type="date"
+                  value={formData.eta_date || ""}
+                  onChange={(e) => handleChange("eta_date", e.target.value)}
+                />
+              </div>
+              <div style={s.col}>
+                <label style={s.label}>Arrival Date</label>
+                <input
+                  style={s.input}
+                  type="date"
+                  value={formData.arrival_date || ""}
+                  onChange={(e) => handleChange("arrival_date", e.target.value)}
+                />
+              </div>
+              <div style={{ ...s.col, flex: 2 }}>
+                <label style={s.label}>Reason for Delay</label>
+                <input
+                  style={s.input}
+                  value={formData.delay_reason || ""}
+                  onChange={(e) => handleChange("delay_reason", e.target.value)}
+                  placeholder="Enter reason for delay, if any"
                 />
               </div>
             </div>

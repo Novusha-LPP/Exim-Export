@@ -410,7 +410,8 @@ const LogisysEditableHeader = ({
             "isLocked", "lockedBy", "lockedAt", "operational_lock", "charges",
             "eSanchitDocuments", "operations", "financial_lock", "send_for_billing",
             "send_for_billing_date", "ap_invoices", "sb_no", "sb_date",
-            "sb_submitted_date", "sb_status"
+            "sb_submitted_date", "sb_status",
+            "is_club_job_parent", "clubbed_jobs", "parent_club_job", "tally_club_ref_no"
           ];
 
           // Helper to recursively strip IDs and excluded fields

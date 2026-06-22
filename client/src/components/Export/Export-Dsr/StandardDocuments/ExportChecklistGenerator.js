@@ -1494,7 +1494,7 @@ const ExportChecklistGenerator = ({
     try {
       const encodedJobNo = encodeURIComponent(jobNo);
       const response = await axios.get(
-        `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`,
+        `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}?excludeChildJobs=true`,
       );
 
       const exportJob = response.data;
@@ -2343,7 +2343,7 @@ const ExportChecklistGenerator = ({
               const amount = parseFloat(product.rodtepInfo?.amountINR) || 0;
               const isRodtep = amount > 0 || product.rodtepInfo?.claim === "Yes";
               const isRosctl = sc === "60" || sc === "61";
-              const isAdvLic = sc === "03";
+              const isAdvLic = sc === "03" || sc === "50";
 
               const invItemSrNo = `${invIndex + 1}/${product.serialNumber || (prodIndex + 1)}`;
 
@@ -2374,7 +2374,7 @@ const ExportChecklistGenerator = ({
               const sc = (p.eximCode || "").split(" ")[0];
               const amount = parseFloat(p.rodtepInfo?.amountINR) || 0;
               if ((sc === "60" || sc === "61") && !codes.includes("RS001")) codes.push("RS001");
-              if ((amount > 0 || p.rodtepInfo?.claim === "Yes" || sc === "03") && !codes.includes("RD001")) codes.push("RD001");
+              if ((amount > 0 || p.rodtepInfo?.claim === "Yes") && !codes.includes("RD001")) codes.push("RD001");
             })
           );
 

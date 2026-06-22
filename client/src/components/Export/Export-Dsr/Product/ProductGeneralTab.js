@@ -1146,7 +1146,7 @@ function ProductRow({
       if (claim === "No") return;
 
       const eximCode = product.eximCode || "";
-      const useReApi = eximCode.includes("03");
+      const useReApi = eximCode.includes("03") || eximCode.includes("50");
 
       const ritcToSearch = product.ritc.toString();
 

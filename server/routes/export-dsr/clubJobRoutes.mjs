@@ -96,6 +96,7 @@ router.post("/create-club-job", auditMiddleware("Job"), async (req, res) => {
       parentJob.is_club_job_parent = false;
       parentJob.clubbed_jobs = [];
       parentJob.tally_club_ref_no = undefined;
+      parentJob.parent_club_job = undefined;
       await parentJob.save();
       tallyRefNo = undefined;
     } else {
@@ -103,6 +104,7 @@ router.post("/create-club-job", auditMiddleware("Job"), async (req, res) => {
       parentJob.is_club_job_parent = true;
       parentJob.clubbed_jobs = selected_job_nos;
       parentJob.tally_club_ref_no = tallyRefNo;
+      parentJob.parent_club_job = undefined;
       await parentJob.save();
 
       // Update active child jobs

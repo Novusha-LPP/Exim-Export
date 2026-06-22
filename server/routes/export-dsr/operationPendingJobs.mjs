@@ -87,6 +87,14 @@ router.get("/api/operation-pending-jobs", async (req, res) => {
                 return false;
             }
 
+            // REQUIRED CONDITION: LEO Date must exist and be non-empty (Only for Handover Pending)
+            if (gateInTenDays !== "true") {
+                const leoDate = opsDetails.leoDate || job.leoDate || job.leo_date;
+                if (!leoDate || leoDate.trim() === "") {
+                    return false;
+                }
+            }
+
             // If button requested 10 days logic:
             if (gateInTenDays === "true") {
                 const gateInDateString = opsDetails.gateInDate || job.gateInDate;
