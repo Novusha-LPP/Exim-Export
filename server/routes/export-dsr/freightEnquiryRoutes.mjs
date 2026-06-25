@@ -128,7 +128,7 @@ router.get("/freight-enquiries", async (req, res) => {
       const jobNos = convertedEnquiries.map(e => e.success_no || e.enquiry_no);
       const exJobs = await ExJobModel.find(
         { job_no: { $in: jobNos } },
-        { job_no: 1, place_of_receipt: 1, hbl_no: 1 }
+        { job_no: 1, place_of_receipt: 1, hbl_no: 1, consignees: 1, shipper: 1, "bl_details.shipment_ref_no": 1 }
       ).lean();
       const jobMap = {};
       exJobs.forEach(j => { jobMap[j.job_no] = j; });
@@ -138,6 +138,14 @@ router.get("/freight-enquiries", async (req, res) => {
           if (job) {
             if (job.place_of_receipt) e.place_of_receipt = job.place_of_receipt;
             if (job.hbl_no) e.hbl_no = job.hbl_no;
+            // Merge consignee data from ExJob for import shipments
+            if (job.consignees && job.consignees.length > 0 && job.consignees[0].consignee_name) {
+              e.consignee_name = job.consignees[0].consignee_name;
+            }
+            // Merge shipper from ExJob for export shipments
+            if (job.shipper) e.shipper_name = job.shipper;
+            // Merge shipment ref no from ExJob bl_details
+            if (job.bl_details?.shipment_ref_no) e.shipment_ref_no = job.bl_details.shipment_ref_no;
           }
         }
       }
@@ -315,21 +323,33 @@ router.put("/freight-enquiries/:id", async (req, res) => {
       await syncEnquiryDocuments(updated);
     }
 
-    // AUTO-CONVERSION: Create an Export Job entry if status is Converted and it's an Export type
-    if (req.body.status === "Converted" && (updated.success_no || updated.enquiry_no) && String(updated.shipment_type).startsWith("Export")) {
+    // AUTO-CONVERSION: Create a Job entry if status is Converted
+    if (req.body.status === "Converted" && (updated.success_no || updated.enquiry_no)) {
       const jobNo = updated.success_no || updated.enquiry_no;
       const existingJob = await ExJobModel.findOne({ job_no: jobNo });
       if (!existingJob) {
+        const isImport = String(updated.shipment_type).startsWith("Import");
         const newJob = new ExJobModel({
           job_no: jobNo,
           jobNumber: jobNo,
           year: String(new Date().getFullYear()).slice(-2) + "-" + String(new Date().getFullYear() + 1).slice(-2),
           job_date: updated.enquiry_date || new Date().toISOString().split("T")[0],
-          exporter: updated.organization_name,
-          shipper: updated.organization_name,
+          exporter: isImport ? "" : updated.organization_name,
+          shipper: isImport ? "" : updated.organization_name,
+          consignees: isImport ? [{
+            consignee_name: updated.organization_name,
+            consignee_address: "",
+            consignee_country: ""
+          }] : [{
+            consignee_name: "",
+            consignee_address: "",
+            consignee_country: ""
+          }],
           consignmentType: updated.consignment_type,
           port_of_loading: updated.port_of_loading,
           port_of_discharge: updated.port_of_destination,
+          destination_port: updated.port_of_destination,
+          place_of_delivery: updated.port_of_destination,
           isGeneralJob: false,
           status: "Pending",
           detailedStatus: "Created from Freight Enquiry",

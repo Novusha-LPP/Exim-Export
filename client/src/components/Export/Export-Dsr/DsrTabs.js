@@ -3,14 +3,17 @@ import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Box from "@mui/material/Box";
 import Badge from "@mui/material/Badge";
+import CircularProgress from "@mui/material/CircularProgress";
 import axios from "axios";
 import { SelectedYearContext } from "../../../contexts/SelectedYearContext";
 import { useLocation } from "react-router-dom";
 import useTabs from "../../../customHooks/useTabs";
 import { TabValueContext } from "../../../contexts/TabValueContext";
-import ExportDashboard from "./ExportDashboard";
-import ExportJobsTable from "./ExportJobsTable";
 import QueriesPanel from "./Queries/QueriesPanel";
+
+const ExportDashboard = React.lazy(() => import("./ExportDashboard"));
+const ExportJobsTable = React.lazy(() => import("./ExportJobsTable"));
+
 
 function DsrTabs() {
   const { a11yProps, CustomTabPanel } = useTabs();
@@ -77,15 +80,33 @@ function DsrTabs() {
             </Tabs>
           </Box>
           <CustomTabPanel value={tabValue} index={0}>
-            <ExportDashboard />
+            <React.Suspense fallback={
+              <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+                <CircularProgress />
+              </Box>
+            }>
+              <ExportDashboard />
+            </React.Suspense>
           </CustomTabPanel>
           <CustomTabPanel value={tabValue} index={1}>
-            <ExportJobsTable key={location.pathname} />
+            <React.Suspense fallback={
+              <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+                <CircularProgress />
+              </Box>
+            }>
+              <ExportJobsTable key={location.pathname} />
+            </React.Suspense>
           </CustomTabPanel>
 
         </Box>
       ) : (
-        <ExportJobsTable key={location.pathname} />
+        <React.Suspense fallback={
+          <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+            <CircularProgress />
+          </Box>
+        }>
+          <ExportJobsTable key={location.pathname} />
+        </React.Suspense>
       )}
     </SelectedYearContext.Provider>
   );

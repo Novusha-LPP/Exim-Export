@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.57.0-jammy
+FROM node:20-bookworm-slim
 
 WORKDIR /server
 
@@ -7,6 +7,9 @@ COPY package*.json ./
 
 # Install production dependencies
 RUN npm ci --only=production
+
+# Install only Chromium and its system dependencies
+RUN npx playwright install --with-deps chromium
 
 # Copy rest of the code
 COPY . .

@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useRef, useContext } from "react";
+import React, { useState, useEffect, useRef, useContext, lazy, Suspense } from "react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import * as XLSX from "xlsx";
-import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import {
   Dialog,
@@ -46,17 +44,25 @@ import { uploadFileToS3 } from "../../../utils/awsFileUpload";
 import AddExJobs from "./AddExJobs";
 import { formatDate } from "../../../utils/dateUtils";
 import { priorityFilter } from "../../../utils/filterUtils";
-import ExportChecklistGenerator from "./StandardDocuments/ExportChecklistGenerator";
-import ConsignmentNoteGenerator from "./StandardDocuments/ConsignmentNoteGenerator";
-import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
-import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharGenerator";
-import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
-import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
-import VGMAuthorizationGenerator from "./StandardDocuments/VGMAuthorizationGenerator";
-import FreightCertificateGenerator from "./StandardDocuments/FreightCertificateGenerator";
-import BillOfLadingGenerator from "./StandardDocuments/BillOfLadingGenerator";
-import ConcorPltLetterGenerator from "./StandardDocuments/ConcorPltLetterGenerator";
-import AnnexureDGenerator from "./StandardDocuments/AnnexureDGenerator";
+
+// Lazy-loaded standard document generators
+const ExportChecklistGenerator = lazy(() => import("./StandardDocuments/ExportChecklistGenerator"));
+const ConsignmentNoteGenerator = lazy(() => import("./StandardDocuments/ConsignmentNoteGenerator"));
+const FileCoverGenerator = lazy(() => import("./StandardDocuments/FileCoverGenerator"));
+const ForwardingNoteTharGenerator = lazy(() => import("./StandardDocuments/ForwardingNoteTharGenerator"));
+const AnnexureCGenerator = lazy(() => import("./StandardDocuments/AnnexureCGenerator"));
+const ConcorForwardingNoteGenerator = lazy(() => import("./StandardDocuments/ConcorForwardingNoteGenerator.js"));
+const VGMAuthorizationGenerator = lazy(() => import("./StandardDocuments/VGMAuthorizationGenerator"));
+const FreightCertificateGenerator = lazy(() => import("./StandardDocuments/FreightCertificateGenerator"));
+const BillOfLadingGenerator = lazy(() => import("./StandardDocuments/BillOfLadingGenerator"));
+const ConcorPltLetterGenerator = lazy(() => import("./StandardDocuments/ConcorPltLetterGenerator"));
+const AnnexureDGenerator = lazy(() => import("./StandardDocuments/AnnexureDGenerator"));
+const StuffingJobRequestGenerator = lazy(() => import("./StandardDocuments/StuffingJobRequestGenerator"));
+const ImportContainerDeliveryOrderGenerator = lazy(() => import("./StandardDocuments/ImportContainerDeliveryOrderGenerator"));
+const CartingJobRequestGenerator = lazy(() => import("./StandardDocuments/CartingJobRequestGenerator"));
+const MovementJobRequestGenerator = lazy(() => import("./StandardDocuments/MovementJobRequestGenerator"));
+const StorageApplicationGenerator = lazy(() => import("./StandardDocuments/StorageApplicationGenerator"));
+
 import { CUSTOM_HOUSE_OPTIONS, getOptionsForBranch } from "../../common/CustomHouseDropdown";
 import { UserContext } from "../../../contexts/UserContext";
 import SBTrackDialog from "./SBTrackDialog";
@@ -531,7 +537,7 @@ const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSucce
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
-        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,application/pdf,image/jpeg,image/png,video/mp4"
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,.webm,.ogg,.mov,.avi,.mkv,.3gp,application/pdf,image/jpeg,image/png,video/*"
         style={{ display: "none" }}
       />
     </>
@@ -712,7 +718,7 @@ const CustomDocCreatorItem = ({ job, onSuccess }) => {
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
-        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,application/pdf,image/jpeg,image/png,video/mp4"
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,.webm,.ogg,.mov,.avi,.mkv,.3gp,application/pdf,image/jpeg,image/png,video/*"
         style={{ display: "none" }}
       />
     </div>
@@ -982,6 +988,49 @@ const ExportJobsTable = () => {
       return bHasQuery - aHasQuery;
     });
   }, [jobs, jobQueriesStatus]);
+
+  const groupedJobs = React.useMemo(() => {
+    const baseJobs = [...sortedJobs];
+    
+    // Map to find parents by job_no
+    const parentMap = {};
+    baseJobs.forEach(job => {
+      if (job.is_club_job_parent) {
+        parentMap[job.job_no] = { ...job, subRows: job.subRows ? [...job.subRows] : [] };
+      }
+    });
+
+    const topLevelJobs = [];
+    const groupedChildJobNos = new Set();
+
+    // Group child jobs under their parent if the parent is present in the list
+    baseJobs.forEach(job => {
+      if (job.parent_club_job && parentMap[job.parent_club_job]) {
+        const parent = parentMap[job.parent_club_job];
+        if (!parent.subRows.some(s => s.job_no === job.job_no)) {
+          parent.subRows.push(job);
+        }
+        groupedChildJobNos.add(job.job_no);
+      }
+    });
+
+    // Construct final list of top-level jobs
+    baseJobs.forEach(job => {
+      if (groupedChildJobNos.has(job.job_no)) {
+        return; // Skip child jobs that have been grouped
+      }
+      if (job.is_club_job_parent) {
+        // Sort subRows by job_no to ensure consistent ordering of child jobs under parent
+        const parent = parentMap[job.job_no];
+        parent.subRows.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
+        topLevelJobs.push(parent);
+      } else {
+        topLevelJobs.push(job);
+      }
+    });
+
+    return topLevelJobs;
+  }, [sortedJobs]);
 
 
 
@@ -1641,6 +1690,9 @@ const ExportJobsTable = () => {
           const reachedLbl = opDetails.railRoad === "road" ? "Road Rch" : "Rail Rch";
 
           if (opDetails.leoDate) handCol.push(`Leo: ${formatDate(opDetails.leoDate, "dd-MM-yy")}`);
+          if (job.vgm_date) handCol.push(`VGM: ${formatDate(job.vgm_date, "dd-MM-yy")}`);
+          if (job.form13_date) handCol.push(`F-13: ${formatDate(job.form13_date, "dd-MM-yy")}`);
+          if (job.shipping_bill_done_date) handCol.push(`ESB: ${formatDate(job.shipping_bill_done_date, "dd-MM-yy")}`);
           if (opDetails.handoverForwardingNoteDate) handCol.push(`DHo: ${formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}`);
           if (showRailRoad) {
             if (opDetails.handoverConcorTharSanganaRailRoadDate) handCol.push(`${outLbl}: ${formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}`);
@@ -1678,6 +1730,7 @@ const ExportJobsTable = () => {
           return rowData;
         });
         // Use ExcelJS
+        const ExcelJS = (await import("exceljs")).default;
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet("DSR Report");
 
@@ -3436,7 +3489,7 @@ const ExportJobsTable = () => {
                     </td>
                   </tr>
                 ) : (
-                  jobs.reduce((acc, job) => {
+                  groupedJobs.reduce((acc, job) => {
                     acc.push(job);
                     if (job.subRows && job.subRows.length > 0) {
                       acc.push(...job.subRows.map(subJob => ({ ...subJob, isSubRow: true })));
@@ -3489,7 +3542,7 @@ const ExportJobsTable = () => {
                             })(),
                             position: "sticky",
                             cursor: "pointer", // Make the whole cell look clickable
-                            paddingLeft: job.parent_club_job && activeTab === "club-jobs" ? "24px" : "15px"
+                            paddingLeft: job.parent_club_job ? "24px" : "15px"
                           }}
                           onClick={(e) => navigateToJob(job, e)} // Click anywhere in cell navigates
                         >
@@ -3510,7 +3563,7 @@ const ExportJobsTable = () => {
                                 whiteSpace: "nowrap"
                               }}
                             >
-                              {job.parent_club_job && activeTab === "club-jobs" && (
+                              {job.parent_club_job && (
                                 <span style={{ color: "#9ca3af", fontWeight: "bold" }}>↳</span>
                               )}
                               <div
@@ -4218,6 +4271,24 @@ const ExportJobsTable = () => {
                                       <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>LEO</span>
                                       <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.leoDate, "dd-MM-yy")}</span>
                                     </div>
+                                    {job.vgm_date && (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>VGM</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(job.vgm_date, "dd-MM-yy")}</span>
+                                      </div>
+                                    )}
+                                    {job.form13_date && (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>F-13</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(job.form13_date, "dd-MM-yy")}</span>
+                                      </div>
+                                    )}
+                                    {job.shipping_bill_done_date && (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>ESB</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(job.shipping_bill_done_date, "dd-MM-yy")}</span>
+                                      </div>
+                                    )}
                                     <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
                                       <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>DHO</span>
                                       <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}</span>
@@ -4252,22 +4323,6 @@ const ExportJobsTable = () => {
                                         <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}</span>
                                       </div>
                                     ) : null}
-
-                                    {job.vgm_done && (
-                                      <div style={{ marginTop: "4px", backgroundColor: "#ecfdf5", border: "1px solid #10b981", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#065f46" }}>
-                                        <span style={{ fontWeight: "800" }}>VGM:</span> {formatDate(job.vgm_date, "dd-MM-yy")}
-                                      </div>
-                                    )}
-                                    {job.form13_done && (
-                                      <div style={{ marginTop: "2px", backgroundColor: "#f0f9ff", border: "1px solid #0ea5e9", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#0369a1" }}>
-                                        <span style={{ fontWeight: "800" }}>F13:</span> {formatDate(job.form13_date, "dd-MM-yy")}
-                                      </div>
-                                    )}
-                                    {job.shipping_bill_done && (
-                                      <div style={{ marginTop: "2px", backgroundColor: "#fef2f8", border: "1px solid #f43f5e", borderRadius: "4px", padding: "2px 4px", fontSize: "9px", color: "#9f1239" }}>
-                                        <span style={{ fontWeight: "800" }}>SB DONE:</span> {formatDate(job.shipping_bill_done_date, "dd-MM-yy")}
-                                      </div>
-                                    )}
                                   </div>
                                 );
                               })()}
@@ -6076,19 +6131,27 @@ const ExportJobsTable = () => {
           },
         }}
       >
-        {selectedGenDocJob && (() => (
-          <>
-            <ListSubheader style={{
-              lineHeight: '22px',
-              backgroundColor: '#f1f5f9',
-              color: '#1e293b',
-              fontWeight: '800',
-              fontSize: '10px',
-              textTransform: 'uppercase',
-              borderBottom: '1px solid #e2e8f0',
-              letterSpacing: '0.05em'
-            }}>
-            </ListSubheader>
+        {selectedGenDocJob && (() => {
+          const isGandhidham =
+            String(selectedGenDocJob?.branch_code || "").toUpperCase().trim() === "GIM" ||
+            String(selectedGenDocJob?.job_no || "").toUpperCase().startsWith("GIM");
+          return (
+            <Suspense fallback={
+              <MenuItem style={{ fontSize: '12px', minHeight: '30px', padding: '4px 12px', color: '#64748b' }}>
+                <CircularProgress size={16} sx={{ mr: 1 }} /> Loading generators...
+              </MenuItem>
+            }>
+              <ListSubheader style={{
+                lineHeight: '22px',
+                backgroundColor: '#f1f5f9',
+                color: '#1e293b',
+                fontWeight: '800',
+                fontSize: '10px',
+                textTransform: 'uppercase',
+                borderBottom: '1px solid #e2e8f0',
+                letterSpacing: '0.05em'
+              }}>
+              </ListSubheader>
 
             <ExportChecklistGenerator jobNo={selectedGenDocJob?.job_no} renderAsIcon={false} onTrackSuccess={(clicks) => handleTrackDocClick(selectedGenDocJob.job_no, "checklist", clicks)}>
               <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CHECKLIST</MenuItem>
@@ -6169,8 +6232,42 @@ const ExportJobsTable = () => {
             >
               EXPORT SB FLAT FILE (.SB)
             </MenuItem>
-          </>
-        ))()}
+
+            {isGandhidham && (
+              <>
+                <StuffingJobRequestGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                    STUFFING JOB REQUEST
+                  </MenuItem>
+                </StuffingJobRequestGenerator>
+
+                <ImportContainerDeliveryOrderGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                    IMPORT CONTAINER DELIVERY ORDER
+                  </MenuItem>
+                </ImportContainerDeliveryOrderGenerator>
+
+                <CartingJobRequestGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                    CARTING JOB REQUEST
+                  </MenuItem>
+                </CartingJobRequestGenerator>
+
+                <MovementJobRequestGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                    MOVEMENT JOB REQUEST
+                  </MenuItem>
+                </MovementJobRequestGenerator>
+
+                <StorageApplicationGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                    STORAGE YARD APPLICATION
+                  </MenuItem>
+                </StorageApplicationGenerator>
+              </>
+            )}
+          </Suspense>
+        ); })()}
       </Menu>
 
       {/* CREATE GENERAL JOB DIALOG */}

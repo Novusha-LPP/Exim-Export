@@ -511,13 +511,18 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       .sort(sortCriteria)
       .lean();
 
-    if (normalizedTab === "club-jobs" && jobs.length > 0) {
+    if (jobs.length > 0) {
       const parentIds = [...new Set(jobs.map(j => j.is_club_job_parent ? j.job_no : j.parent_club_job))].filter(Boolean);
-      jobs = await ExportJobModel.find({
-        $or: [{ job_no: { $in: parentIds } }, { parent_club_job: { $in: parentIds } }]
-      })
-        .select(projection)
-        .lean();
+      if (parentIds.length > 0) {
+        const existingJobNos = new Set(jobs.map(j => j.job_no));
+        const clubJobs = await ExportJobModel.find({
+          $or: [{ job_no: { $in: parentIds } }, { parent_club_job: { $in: parentIds } }]
+        })
+          .select(projection)
+          .lean();
+        const missingClubJobs = clubJobs.filter(j => !existingJobNos.has(j.job_no));
+        jobs.push(...missingClubJobs);
+      }
     }
 
     const summarizedBase = jobs.map(summarizeJob);
@@ -607,6 +612,42 @@ router.get("/api/export-billing-jobs", async (req, res) => {
         ));
       } else {
         summarized.splice(0, summarized.length, ...sortedClubJobs);
+      }
+    } else {
+      // Group families for other tabs to support nesting child jobs when searched
+      const parentIds = [...new Set(summarized.map(j => j.is_club_job_parent ? j.job_no : j.parent_club_job))].filter(Boolean);
+      if (parentIds.length > 0) {
+        const groups = {};
+        summarizedBase.forEach(job => {
+          const pid = job.is_club_job_parent ? job.job_no : job.parent_club_job;
+          if (pid) {
+            if (!groups[pid]) groups[pid] = { parent: null, children: [] };
+            if (job.is_club_job_parent) groups[pid].parent = job;
+            else groups[pid].children.push(job);
+          }
+        });
+
+        const newJobs = [];
+        const processedParents = new Set();
+        summarized.forEach(job => {
+          const pid = job.is_club_job_parent ? job.job_no : job.parent_club_job;
+          if (pid) {
+            if (!processedParents.has(pid)) {
+              const parentGroup = groups[pid];
+              if (parentGroup && parentGroup.parent) {
+                const parentJob = { ...parentGroup.parent };
+                parentJob.subRows = parentGroup.children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
+                newJobs.push(parentJob);
+              } else {
+                newJobs.push(job);
+              }
+              processedParents.add(pid);
+            }
+          } else {
+            newJobs.push(job);
+          }
+        });
+        summarized.splice(0, summarized.length, ...newJobs);
       }
     }
 

@@ -25,13 +25,23 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
       if (enquiry) {
         console.log(`Creating missing job record for successful enquiry: ${jobNo}`);
         const actualJobNo = enquiry.success_no || enquiry.enquiry_no;
+        const isImport = String(enquiry.shipment_type).startsWith("Import");
         job = new ExJobModel({
           job_no: actualJobNo,
           jobNumber: actualJobNo,
           year: String(new Date().getFullYear()).slice(-2) + "-" + String(new Date().getFullYear() + 1).slice(-2),
           job_date: enquiry.enquiry_date || new Date().toISOString().split("T")[0],
-          exporter: enquiry.organization_name,
-          shipper: enquiry.organization_name,
+          exporter: isImport ? "" : enquiry.organization_name,
+          shipper: isImport ? "" : enquiry.organization_name,
+          consignees: isImport ? [{
+            consignee_name: enquiry.organization_name,
+            consignee_address: "",
+            consignee_country: ""
+          }] : [{
+            consignee_name: "",
+            consignee_address: "",
+            consignee_country: ""
+          }],
           consignmentType: enquiry.consignment_type,
           port_of_loading: enquiry.port_of_loading,
           port_of_discharge: enquiry.port_of_destination,
@@ -64,8 +74,37 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
       });
       if (enquiry) {
         let changed = false;
+        const isImport = String(enquiry.shipment_type).startsWith("Import");
+
+        if (isImport) {
+          if (!job.consignees || job.consignees.length === 0 || !job.consignees[0]?.consignee_name) {
+            job.consignees = [{
+              consignee_name: enquiry.organization_name,
+              consignee_address: "",
+              consignee_country: ""
+            }];
+            changed = true;
+          }
+          if (job.shipper === enquiry.organization_name) {
+            job.shipper = "";
+            changed = true;
+          }
+          if (job.exporter === enquiry.organization_name) {
+            job.exporter = "";
+            changed = true;
+          }
+        } else {
+          if (!job.shipper && enquiry.organization_name) {
+            job.shipper = enquiry.organization_name;
+            changed = true;
+          }
+          if (!job.exporter && enquiry.organization_name) {
+            job.exporter = enquiry.organization_name;
+            changed = true;
+          }
+        }
+
         const fieldsToMap = {
-          shipper: enquiry.organization_name,
           movement_type: enquiry.movement_type,
           gross_weight_kg: enquiry.gross_weight,
           gross_weight_unit: enquiry.gross_weight_unit,

@@ -304,7 +304,7 @@ const QuickUploadButton = ({ row, field, onSuccess }) => {
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
-        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,application/pdf,image/jpeg,image/png,video/mp4"
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,.webm,.ogg,.mov,.avi,.mkv,application/pdf,image/jpeg,image/png,video/*"
         style={{ display: "none" }}
       />
     </>
@@ -616,6 +616,9 @@ function JobNoCell({ row, navigate }) {
   return (
     <Box sx={{ py: 0.5 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        {row.parent_club_job && (
+          <span style={{ color: "#9ca3af", fontWeight: "bold", marginRight: "4px" }}>↳</span>
+        )}
         <Button
           variant="text"
           sx={{ p: 0, minWidth: 0, textTransform: "none", fontWeight: 700, justifyContent: "flex-start", fontSize: '11px' }}
@@ -628,6 +631,9 @@ function JobNoCell({ row, navigate }) {
         >
           {displayNo}
         </Button>
+        {row.is_club_job_parent && (
+          <span style={{ fontSize: "9px", background: "#dbeafe", color: "#1e40af", padding: "1px 4px", borderRadius: "4px", fontWeight: "bold" }}>CLUB</span>
+        )}
         <IconButton
           size="small"
           sx={{ p: 0.2, opacity: 0.6, "&:hover": { opacity: 1 } }}
@@ -731,7 +737,7 @@ function BillingDetailsDialog({ open, onClose, row, requestNo, workMode, activeT
       igst: d["IGST"] || d.igstAmt || d.igst || 0,
       tds: d["TDS"] || d.tdsAmount || d.tds || 0,
       total: d["Total Amount"] || d.netPayable || d.total || d.amount || 0,
-      entryBy: d["Entry By"] || d.entryBy || d.username || "Tally System",
+      entryBy: d["Entry By"] || d.entryBy || d.username || d.requestedBy || "Tally System",
       againstBill: d["Against Bill"] || d.againstBill || d.supplierName || "-",
       gstPercent: d["GST Details"] || d.gstPercent || 18,
     };
@@ -838,6 +844,56 @@ function BillingDetailsDialog({ open, onClose, row, requestNo, workMode, activeT
             <table className="detail-table">
               {(() => {
                 const d = getD(details);
+                if (workMode === "payment") {
+                  return (
+                    <tbody>
+                      <tr>
+                        <td className="label">Request Date</td>
+                        <td className="value">{formatDate(d.entryDate)}</td>
+                      </tr>
+                      <tr>
+                        <td className="label">Job No</td>
+                        <td className="value" style={{ fontWeight: 700 }}>{d.jobNo}</td>
+                      </tr>
+                      <tr>
+                        <td className="label">Beneficiary</td>
+                        <td className="value blue-link">{d.supplierName}</td>
+                      </tr>
+                      <tr>
+                        <td className="label">Bank Name</td>
+                        <td className="value">{details.bankName || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td className="label">Account No</td>
+                        <td className="value">{details.accountNo || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td className="label">IFSC Code</td>
+                        <td className="value">{details.ifscCode || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td className="label">Transaction Type</td>
+                        <td className="value">{details.transactionType || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td className="label">Transfer Mode</td>
+                        <td className="value">{details.transferMode || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td className="label">Amount</td>
+                        <td className="value total-amount">₹ {Number(d.total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      </tr>
+                      <tr>
+                        <td className="label">Requested By</td>
+                        <td className="value">{d.entryBy}</td>
+                      </tr>
+                      <tr>
+                        <td className="label">Against Bill</td>
+                        <td className="value">{d.againstBill}</td>
+                      </tr>
+                    </tbody>
+                  );
+                }
                 return (
                   <tbody>
                     <tr>
@@ -2039,7 +2095,7 @@ function ExportBillingPage() {
         data={rows}
         state={{ showProgressBars: loading, expanded: expandedRows }}
         onExpandedChange={setExpandedRows}
-        enableExpanding={activeTab === "club-jobs"}
+        enableExpanding={true}
         getSubRows={(row) => row.subRows}
         enableColumnActions={false}
         enableColumnFilters={false}

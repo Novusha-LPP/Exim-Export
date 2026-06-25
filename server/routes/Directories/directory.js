@@ -198,9 +198,25 @@ router.get("/api/directory/:id", async (req, res) => {
   }
 });
 
-// POST /api/directory - Create new directory
+// POST /api/directory - Create new directory or update existing if organization name matches case-insensitively
 router.post("/api/directory/", async (req, res) => {
   try {
+    const orgName = (req.body.organization || "").trim();
+    if (orgName) {
+      const existing = await Directory.findOne({
+        organization: { $regex: new RegExp(`^${orgName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") }
+      });
+      if (existing) {
+        existing.set(req.body);
+        const savedDirectory = await existing.save();
+        return res.status(200).json({
+          success: true,
+          message: "Directory updated successfully",
+          data: savedDirectory,
+        });
+      }
+    }
+
     const directory = new Directory(req.body);
     const savedDirectory = await directory.save();
 

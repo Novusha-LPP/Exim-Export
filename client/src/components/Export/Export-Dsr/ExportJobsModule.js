@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Typography, Button, Box, Paper, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Snackbar, Alert } from "@mui/material";
+import { Typography, Button, Box, Paper, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Snackbar, Alert, CircularProgress } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockIcon from "@mui/icons-material/Lock";
 import { UserContext } from "../../../contexts/UserContext";
@@ -9,16 +9,17 @@ import axios from "axios";
 import LogisysEditableHeader from "./LogisysEditableHeader.js";
 import ExportJobFooter from "./ExportJobFooter.js";
 
-// Tabs for this module
-import GeneralTab from "./General/GeneralTab.js";
-import ShipmentTab from "./Shipment/ShipmentTab.js";
-import ContainerTab from "./Container/ContainerTab.js";
-import TrackingCompletedTab from "./Tracking Completed/TrackingCompletedTab.js";
-import InvoiceTab from "./Invoices/InvoiceTab.js";
-import ProductTab from "./Product/ProductTab.js";
-import ESanchitTab from "./E-sanchit/EsanchitTab.js";
-import ChargesTab from "./Charges/ChargesTab.js";
-import OperationsTab from "./Operations/OperationsTab.jsx";
+// Tabs for this module (Lazy Loaded)
+const GeneralTab = React.lazy(() => import("./General/GeneralTab.js"));
+const ShipmentTab = React.lazy(() => import("./Shipment/ShipmentTab.js"));
+const ContainerTab = React.lazy(() => import("./Container/ContainerTab.js"));
+const TrackingCompletedTab = React.lazy(() => import("./Tracking Completed/TrackingCompletedTab.js"));
+const InvoiceTab = React.lazy(() => import("./Invoices/InvoiceTab.js"));
+const ProductTab = React.lazy(() => import("./Product/ProductTab.js"));
+const ESanchitTab = React.lazy(() => import("./E-sanchit/EsanchitTab.js"));
+const ChargesTab = React.lazy(() => import("./Charges/ChargesTab.js"));
+const OperationsTab = React.lazy(() => import("./Operations/OperationsTab.jsx"));
+
 
 const getMilestones = (isAir) => [
   "SB Filed",
@@ -617,7 +618,13 @@ function ExportJobsModule() {
 
           return (
             <Box sx={{ p: 2 }}>
-              {tabs[activeTab] && tabs[activeTab].component}
+              <React.Suspense fallback={
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                  <CircularProgress />
+                </Box>
+              }>
+                {tabs[activeTab] && tabs[activeTab].component}
+              </React.Suspense>
             </Box>
           );
         })()}

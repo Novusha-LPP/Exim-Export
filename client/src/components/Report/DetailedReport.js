@@ -43,11 +43,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import TableViewIcon from '@mui/icons-material/TableView';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import * as XLSX from 'xlsx';
-import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import { UserContext } from "../../contexts/UserContext";
 import { getOptionsForBranch } from "../common/CustomHouseDropdown";
 
@@ -406,6 +402,7 @@ const DetailedReport = () => {
   };
 
   const exportToExcel = async () => {
+    const ExcelJS = (await import('exceljs')).default;
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Export Clearance Report');
     const monthName = months.find(m => String(m.value) === String(month))?.label || 'Unknown';
@@ -518,6 +515,8 @@ const DetailedReport = () => {
 
 
   const exportToPDF = async () => {
+    const jsPDF = (await import('jspdf')).default;
+    await import('jspdf-autotable');
     const doc = new jsPDF('l', 'mm', 'a4');
     // Main report page
     const monthName = months.find(m => String(m.value) === String(month))?.label || 'Unknown';

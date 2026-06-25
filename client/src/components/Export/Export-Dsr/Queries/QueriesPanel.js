@@ -889,7 +889,7 @@ const UploadItem = ({ job, field, title, uploadType, onSuccess }) => {
           type="file"
           ref={fileInputRef}
           onChange={handleUpload}
-          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,application/pdf,image/jpeg,image/png,video/mp4"
+          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,.webm,.ogg,.mov,.avi,.mkv,.3gp,application/pdf,image/jpeg,image/png,video/*"
           style={{ display: "none" }}
         />
       </div>

@@ -887,6 +887,12 @@ router.get("/global-search-jobs", async (req, res) => {
           cha: 1,
           freight_done: 1,
           freight_enquiry_id: 1,
+          vgm_done: 1,
+          vgm_date: 1,
+          form13_done: 1,
+          form13_date: 1,
+          shipping_bill_done: 1,
+          shipping_bill_done_date: 1,
           isLocked: 1,
           branch_code: 1,
           transportMode: 1,
@@ -973,6 +979,9 @@ router.get("/exports/:status?", async (req, res) => {
       startDate = "",
       endDate = "",
     } = { ...req.params, ...req.query };
+
+    const ClientQueryModel = (await import("../../model/export/ClientQueryModel.mjs")).default;
+    const openClientQueryJobs = await ClientQueryModel.find({ status: "open" }).distinct("job_no");
 
     const filter = {};
 
@@ -1532,6 +1541,14 @@ router.get("/exports/:status?", async (req, res) => {
       outstanding_balance: 1,
       cha: 1,
       isLocked: 1,
+      vgm_done: 1,
+      vgm_date: 1,
+      form13_done: 1,
+      form13_date: 1,
+      shipping_bill_done: 1,
+      shipping_bill_done_date: 1,
+      freight_done: 1,
+      freight_enquiry_id: 1,
       branch_code: 1,
       transportMode: 1,
       movement_type: 1,
@@ -1584,6 +1601,7 @@ router.get("/exports/:status?", async (req, res) => {
         { $match: filter },
         {
           $addFields: {
+            hasOpenClientQuery: { $in: ["$job_no", openClientQueryJobs] },
             _searchPriority: {
               $switch: {
                 branches: [
@@ -1597,7 +1615,7 @@ router.get("/exports/:status?", async (req, res) => {
             }
           }
         },
-        { $sort: { _searchPriority: 1, ...sort } },
+        { $sort: { hasOpenClientQuery: -1, _searchPriority: 1, ...sort } },
         { $project: selectProjection },
       ];
       finalTotalCount = await ExportJobModel.countDocuments(filter);
@@ -1607,43 +1625,77 @@ router.get("/exports/:status?", async (req, res) => {
         { $limit: parseInt(limit) },
       ]);
     } else {
+      const aggPipeline = [
+        { $match: filter },
+        {
+          $addFields: {
+            hasOpenClientQuery: { $in: ["$job_no", openClientQueryJobs] }
+          }
+        },
+        { $sort: { hasOpenClientQuery: -1, ...sort } },
+        { $project: selectProjection }
+      ];
       const [jobs, totalCount] = await Promise.all([
-        ExportJobModel.find(filter)
-          .select(selectProjection)
-          .sort(sort)
-          .skip(skip)
-          .limit(parseInt(limit))
-          .lean(),
+        ExportJobModel.aggregate([
+          ...aggPipeline,
+          { $skip: skip },
+          { $limit: parseInt(limit) }
+        ]),
         ExportJobModel.countDocuments(filter),
       ]);
       finalJobs = jobs;
       finalTotalCount = totalCount;
     }
 
-    if (String(status || "").toLowerCase() === "club-jobs" && finalJobs.length > 0) {
+    if (finalJobs.length > 0) {
       const parentIds = [...new Set(finalJobs.map(j => j.is_club_job_parent ? j.job_no : j.parent_club_job))].filter(Boolean);
-      const families = await ExportJobModel.find({
-        $or: [{ job_no: { $in: parentIds } }, { parent_club_job: { $in: parentIds } }]
-      }).select(selectProjection).lean();
+      if (parentIds.length > 0) {
+        const families = await ExportJobModel.find({
+          $or: [{ job_no: { $in: parentIds } }, { parent_club_job: { $in: parentIds } }]
+        }).select(selectProjection).lean();
 
-      const finalParents = [];
-      const groups = {};
-      families.forEach(j => {
-        const pid = j.is_club_job_parent ? j.job_no : j.parent_club_job;
-        if (!groups[pid]) groups[pid] = { parent: null, children: [] };
-        if (j.is_club_job_parent) groups[pid].parent = j;
-        else groups[pid].children.push(j);
-      });
+        const groups = {};
+        families.forEach(j => {
+          const pid = j.is_club_job_parent ? j.job_no : j.parent_club_job;
+          if (!groups[pid]) groups[pid] = { parent: null, children: [] };
+          if (j.is_club_job_parent) groups[pid].parent = j;
+          else groups[pid].children.push(j);
+        });
 
-      Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(pid => {
-        if (groups[pid].parent) {
-          groups[pid].parent.subRows = groups[pid].children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
-          finalParents.push(groups[pid].parent);
+        if (String(status || "").toLowerCase() === "club-jobs") {
+          const finalParents = [];
+          Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(pid => {
+            if (groups[pid].parent) {
+              groups[pid].parent.subRows = groups[pid].children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
+              finalParents.push(groups[pid].parent);
+            }
+          });
+          finalJobs = finalParents;
+          finalTotalCount = finalParents.length;
+        } else {
+          const newJobs = [];
+          const processedParents = new Set();
+          finalJobs.forEach(job => {
+            const pid = job.is_club_job_parent ? job.job_no : job.parent_club_job;
+            if (pid) {
+              if (!processedParents.has(pid)) {
+                const parentGroup = groups[pid];
+                if (parentGroup && parentGroup.parent) {
+                  const parentJob = { ...parentGroup.parent };
+                  parentJob.subRows = parentGroup.children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
+                  newJobs.push(parentJob);
+                } else {
+                  newJobs.push(job);
+                }
+                processedParents.add(pid);
+              }
+            } else {
+              newJobs.push(job);
+            }
+          });
+          finalJobs = newJobs;
         }
-      });
-
-      finalJobs = finalParents;
-      finalTotalCount = finalParents.length;
+      }
     }
 
     res.json({
@@ -2652,7 +2704,16 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
           enquiryUpdates[field] = req.body[field];
         }
       });
-      if (req.body.shipper !== undefined) enquiryUpdates.organization_name = req.body.shipper;
+      const isImport = String(req.body.shipment_type || existingJob?.shipment_type || "").startsWith("Import");
+      if (isImport) {
+        if (req.body.consignees?.[0]?.consignee_name !== undefined) {
+          enquiryUpdates.organization_name = req.body.consignees[0].consignee_name;
+        }
+      } else {
+        if (req.body.shipper !== undefined) {
+          enquiryUpdates.organization_name = req.body.shipper;
+        }
+      }
       if (req.body.movement_type !== undefined) enquiryUpdates.movement_type = req.body.movement_type;
       if (req.body.gross_weight_kg !== undefined) enquiryUpdates.gross_weight = req.body.gross_weight_kg;
       if (req.body.gross_weight_unit !== undefined) enquiryUpdates.gross_weight_unit = req.body.gross_weight_unit;

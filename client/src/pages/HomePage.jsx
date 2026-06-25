@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, lazy, Suspense } from "react";
 import Box from "@mui/material/Box";
 import CssBaseline from "@mui/material/CssBaseline";
 import Toolbar from "@mui/material/Toolbar";
+import CircularProgress from "@mui/material/CircularProgress";
 import { Route, Routes, Outlet } from "react-router-dom";
 import { TabValueContext } from "../contexts/TabValueContext.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
@@ -10,38 +11,37 @@ import Home from "../components/home/Home.js";
 import Assign from "../components/home/Assign.js";
 import ChangePassword from "../components/home/ChangePassword.js";
 
-import Directories from "../components/Export/Directories/Directories.js";
-import DsrTabs from "../components/Export/Export-Dsr/DsrTabs.js";
-import ExportJobsModule from "../components/Export/Export-Dsr/ExportJobsModule.js";
-import ExportDocumentationModule from "../components/Export/Export-Dsr/ExportDocumentationModule.js";
-import ExportEsanchitModule from "../components/Export/Export-Dsr/ExportEsanchitModule.js";
-import EximOperationModule from "../components/Export/Export-Dsr/EximOperationModule.js";
-import ExportChargesModule from "../components/Export/Export-Dsr/ExportChargesModule.js";
-import ExportBillingPage from "../components/Export/Export-Billing/ExportBillingPage.jsx";
-import FreightForwardingModule from "../components/Export/FreightForwarding/FreightForwardingModule.js";
-import FreightForwardingJobDetail from "../components/Export/FreightForwarding/FreightForwardingJobDetail.js";
+// Lazy-loaded routes
+const Directories = lazy(() => import("../components/Export/Directories/Directories.js"));
+const DsrTabs = lazy(() => import("../components/Export/Export-Dsr/DsrTabs.js"));
+const ExportJobsModule = lazy(() => import("../components/Export/Export-Dsr/ExportJobsModule.js"));
+const ExportDocumentationModule = lazy(() => import("../components/Export/Export-Dsr/ExportDocumentationModule.js"));
+const ExportEsanchitModule = lazy(() => import("../components/Export/Export-Dsr/ExportEsanchitModule.js"));
+const EximOperationModule = lazy(() => import("../components/Export/Export-Dsr/EximOperationModule.js"));
+const ExportChargesModule = lazy(() => import("../components/Export/Export-Dsr/ExportChargesModule.js"));
+const ExportBillingPage = lazy(() => import("../components/Export/Export-Billing/ExportBillingPage.jsx"));
+const FreightForwardingModule = lazy(() => import("../components/Export/FreightForwarding/FreightForwardingModule.js"));
+const FreightForwardingJobDetail = lazy(() => import("../components/Export/FreightForwarding/FreightForwardingJobDetail.js"));
+const CombinedDashboard = lazy(() => import("../components/Export/Export-Dsr/analytics/CombinedDashboard.js"));
+const GenericPulseTV = lazy(() => import("../components/Export/Export-Dsr/analytics/GenericPulseTV.js"));
 import { AnalyticsProvider } from "../components/Export/Export-Dsr/analytics/AnalyticsContext.js";
-// import AnalyticsLayout from "../components/Export/Export-Dsr/analytics/AnalyticsLayout.js"; // Removed
-// import OverviewDashboard from "../components/Export/Export-Dsr/analytics/OverviewDashboard.js"; // Removed
-import CombinedDashboard from "../components/Export/Export-Dsr/analytics/CombinedDashboard.js";
-import GenericPulseTV from "../components/Export/Export-Dsr/analytics/GenericPulseTV.js";
 
 // import auditrail
-import AllUsersPage from "./AllUsersPage.js";
-import AuditTrailPage from "./AuditTrailPage.js";
-import ApiKeyManagement from "./ApiKeyManagement.jsx";
+const AllUsersPage = lazy(() => import("./AllUsersPage.js"));
+const AuditTrailPage = lazy(() => import("./AuditTrailPage.js"));
+const ApiKeyManagement = lazy(() => import("./ApiKeyManagement.jsx"));
 
 import AppbarComponent from "../components/home/AppbarComponent.js";
 import DrawerComponent from "../components/home/DrawerComponent.js";
 
-import Feedback from "../components/home/FeedBack.js";
-import ReportTabs from "../components/Report/ReportTabs.js";
-import MonthlyContainers from "../components/Report/monthlyContainers.js";
-import DetailedReport from "../components/Report/DetailedReport.js";
-import BillingReportsUtility from "../components/Report/BillingReportsUtility.js";
-import OpenPointsHome from "../components/open-points/OpenPointsHome.js";
-import ProjectWorkspace from "../components/open-points/ProjectWorkspace.js";
-import AnalyticsDashboard from "../components/open-points/AnalyticsDashboard.js";
+const Feedback = lazy(() => import("../components/home/FeedBack.js"));
+const ReportTabs = lazy(() => import("../components/Report/ReportTabs.js"));
+const MonthlyContainers = lazy(() => import("../components/Report/monthlyContainers.js"));
+const DetailedReport = lazy(() => import("../components/Report/DetailedReport.js"));
+const BillingReportsUtility = lazy(() => import("../components/Report/BillingReportsUtility.js"));
+const OpenPointsHome = lazy(() => import("../components/open-points/OpenPointsHome.js"));
+const ProjectWorkspace = lazy(() => import("../components/open-points/ProjectWorkspace.js"));
+const AnalyticsDashboard = lazy(() => import("../components/open-points/AnalyticsDashboard.js"));
 const drawerWidth = 60;
 
 function HomePage() {
@@ -77,7 +77,12 @@ function HomePage() {
           }}
         >
           <Toolbar sx={{ minHeight: "60px !important" }} />
-          <Routes>
+          <Suspense fallback={
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "80vh" }}>
+              <CircularProgress />
+            </Box>
+          }>
+            <Routes>
             {/* Public Routes - No protection needed */}
             <Route path="/" element={<Home />} />
             <Route path="/change-password" element={<ChangePassword />} />
@@ -319,6 +324,7 @@ function HomePage() {
               }
             />
           </Routes>
+          </Suspense>
         </Box>
       </Box>
     </TabValueContext.Provider>

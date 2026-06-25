@@ -27,6 +27,7 @@ export const viewMasterList = [
   "Transporter",
   "Terminal Code",
   "General Org",
+  "Forwarder",
 ];
 
 export const directoryFields = {

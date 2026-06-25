@@ -67,6 +67,7 @@ function FreightForwardingJobDetail() {
   const hasLockedRef = useRef(false);
 
   const isNewJob = !data?.job_no;
+  const isImport = String(formik.values?.shipment_type || "").startsWith("Import");
 
   // Auto-lock check
   useEffect(() => {
@@ -254,6 +255,101 @@ function FreightForwardingJobDetail() {
           value={value}
           onChange={formik.handleChange}
           onBlur={formik.handleBlur}
+          disabled={disabled || !isEditable}
+          style={{
+            border: "none",
+            outline: "none",
+            fontSize: "11px",
+            fontWeight: "600",
+            color: disabled || !isEditable ? "#64748b" : "#1e293b",
+            width: "100%",
+            backgroundColor: "transparent",
+            fontFamily: "inherit",
+            padding: 0
+          }}
+        />
+      </Box>
+    );
+  };
+
+  // Helper to convert dd-MM-yyyy to DD-MMM-YYYY (e.g., 22-06-2026 → 22-JUN-2026)
+  const MONTH_ABBR = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  const formatToMonthName = (dateStr) => {
+    if (!dateStr) return "";
+    // Already in DD-MMM-YYYY format
+    if (/^\d{2}-[A-Z]{3}-\d{4}$/i.test(dateStr)) return dateStr.toUpperCase();
+    // Parse dd-MM-yyyy or dd/MM/yyyy
+    const parts = dateStr.split(/[-/.]/);
+    if (parts.length === 3) {
+      const day = parts[0].padStart(2, "0");
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      const year = parts[2];
+      if (monthIdx >= 0 && monthIdx < 12 && year.length === 4) {
+        return `${day}-${MONTH_ABBR[monthIdx]}-${year}`;
+      }
+    }
+    return dateStr;
+  };
+
+  const renderBLDateInputBox = (label, name, disabled = false) => {
+    const isNested = name.includes(".");
+    let value = "";
+    if (isNested) {
+      const parts = name.split(".");
+      if (parts.length === 3) {
+        const arrayName = parts[0];
+        const index = parseInt(parts[1]);
+        const key = parts[2];
+        value = formik.values[arrayName]?.[index]?.[key] || "";
+      } else {
+        value = formik.values[parts[0]]?.[parts[1]] || "";
+      }
+    } else {
+      value = formik.values[name] || "";
+    }
+
+    const handleBLDateChange = (e) => {
+      const rawValue = e.target.value;
+      // Convert to DD-MMM-YYYY format
+      const formatted = formatToMonthName(rawValue);
+      formik.handleChange({
+        target: {
+          name: e.target.name,
+          value: formatted,
+        }
+      });
+    };
+
+    return (
+      <Box sx={{
+        border: "1px solid #cbd5e1",
+        p: "6px 8px",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: disabled || !isEditable ? "#f8fafc" : "#fff",
+        minHeight: "52px",
+        boxSizing: "border-box"
+      }}>
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "9px", textTransform: "uppercase", mb: 0.5, letterSpacing: "0.2px" }}>
+          {label}
+        </Typography>
+        <DateInput
+          name={name}
+          value={value}
+          onChange={handleBLDateChange}
+          onBlur={(e) => {
+            // Also format on blur in case user typed manually
+            const formatted = formatToMonthName(e.target.value);
+            if (formatted !== e.target.value) {
+              formik.handleChange({
+                target: {
+                  name,
+                  value: formatted,
+                }
+              });
+            }
+            formik.handleBlur(e);
+          }}
           disabled={disabled || !isEditable}
           style={{
             border: "none",
@@ -793,7 +889,12 @@ function FreightForwardingJobDetail() {
                 {formik.values.job_no || decodedJobNo}
               </Typography>
               <Typography variant="body2" sx={{ color: "#64748b", fontSize: "12px" }}>
-                Importer/Exporter: <strong>{formik.values.exporter || "N/A"}</strong> | Mode: <strong>{formik.values.consignmentType || "N/A"}</strong>
+                Importer/Exporter: <strong>{isImport ? (formik.values.consignees?.[0]?.consignee_name || "N/A") : (formik.values.shipper || formik.values.exporter || "N/A")}</strong> | Mode: <strong>{formik.values.consignmentType || "N/A"}</strong>
+                {formik.values.bl_details?.shipment_ref_no && (
+                  <>
+                    {" | "}Ref No: <strong>{formik.values.bl_details.shipment_ref_no}</strong>
+                  </>
+                )}
               </Typography>
             </Box>
           </Box>
@@ -864,7 +965,7 @@ function FreightForwardingJobDetail() {
                 {renderInputBox("Movement Type", "movement_type")}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
-                {renderInputBox("Shipper Name", "shipper")}
+                {renderInputBox(isImport ? "Shipper Name (Exporter)" : "Shipper Name (Exporter) *", "shipper")}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
                 {renderInputBox("Vessel", "vessel_name")}
@@ -886,7 +987,7 @@ function FreightForwardingJobDetail() {
                 {renderInputBox("Place of Receipt", "place_of_receipt")}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
-                {renderInputBox("Consignee Name", "consignees.0.consignee_name")}
+                {renderInputBox(isImport ? "Consignee Name (Importer) *" : "Consignee Name (Importer)", "consignees.0.consignee_name")}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
                 {renderInputBox("Voyage", "voyage_no")}
@@ -895,14 +996,17 @@ function FreightForwardingJobDetail() {
 
             {/* Row 3 */}
             <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
-              <Grid item xs={12} md={4} sm={6}>
+              <Grid item xs={12} md={3} sm={6}>
                 {renderCombinedBox("Volume/Unit", "volume_cbm", "volume_unit")}
               </Grid>
-              <Grid item xs={12} md={4} sm={6}>
+              <Grid item xs={12} md={3} sm={6}>
                 {renderInputBox("Loading Port", "port_of_loading")}
               </Grid>
-              <Grid item xs={12} md={4} sm={12}>
+              <Grid item xs={12} md={3} sm={6}>
                 {renderInputBox("Booking Thru", "booking_thru")}
+              </Grid>
+              <Grid item xs={12} md={3} sm={6}>
+                {renderInputBox("Shipment Ref. No.", "bl_details.shipment_ref_no")}
               </Grid>
             </Grid>
 
@@ -1414,11 +1518,8 @@ function FreightForwardingJobDetail() {
               Bill of Lading Instructions
             </Typography>
             <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
-              <Grid item xs={12} md={8}>
+              <Grid item xs={12}>
                 {renderTextAreaBox("Consignor (Exporter)", "bl_details.consignor", 3)}
-              </Grid>
-              <Grid item xs={12} md={4}>
-                {renderInputBox("Shipment Ref. No.", "bl_details.shipment_ref_no")}
               </Grid>
             </Grid>
             <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
@@ -1495,7 +1596,7 @@ function FreightForwardingJobDetail() {
                 {renderInputBox("Place of Issue", "bl_details.place_of_issue")}
               </Grid>
               <Grid item xs={12} md={4}>
-                {renderInputBox("Date of Issue", "bl_details.date_of_issue")}
+                {renderBLDateInputBox("Date of Issue", "bl_details.date_of_issue")}
               </Grid>
             </Grid>
             <Grid container spacing={0.5} sx={{ mb: 0.5 }}>

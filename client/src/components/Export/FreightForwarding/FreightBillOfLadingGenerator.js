@@ -22,7 +22,7 @@ const formatAddress = (val) => {
       if (/[,.\-/]$/.test(line)) return line;
       return line + ",";
     })
-    .join(" ");
+    .join("<br/>");
 };
 
 const splitDescription = (desc) => {
@@ -299,7 +299,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
               </td>
               <td style="width: 25%; padding: 6px 10px 6px 20px; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Place and Date of Issue</div>
-                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '55px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${bl.date_of_issue || new Date().toLocaleDateString('en-GB')}</div>
+                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '50px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${bl.date_of_issue || new Date().toLocaleDateString('en-GB')}</div>
               </td>
             </tr>
           </table>
@@ -597,7 +597,7 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
               </td>
               <td style="width: 25%; padding: 6px 10px 6px 20px; vertical-align: top;">
                  <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Place and Date of Issue</div>
-                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '55px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${bl.date_of_issue || new Date().toLocaleDateString('en-GB')}</div>
+                 <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '50px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${bl.date_of_issue || new Date().toLocaleDateString('en-GB')}</div>
               </td>
             </tr>
           </table>

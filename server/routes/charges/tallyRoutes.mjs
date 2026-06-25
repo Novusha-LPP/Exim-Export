@@ -816,27 +816,27 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
 });
 
 const mapPaymentRequestData = (data) => ({
-    requestNo: data["Request No"] || data.requestNo,
-    requestDate: normalizeDate(data["Request Date"] || data.requestDate),
-    bankFrom: data["Bank From"] || data.bankFrom,
-    paymentTo: data["Payment To"] || data.paymentTo,
-    againstBill: data["Against Bill"] || data.againstBill,
-    amount: data["Amount"] || data.amount,
-    transactionType: data["Transaction Type"] || data.transactionType,
-    accountNo: data["Account No"] || data.accountNo,
-    ifscCode: data["IFSC Code"] || data.ifscCode,
-    bankName: data["Bank Name"] || data.bankName,
-    jobNo: data["Job No"] || data.jobNo,
-    chargeRef: data.chargeRef,
-    jobRef: data.jobRef,
-    instrumentNo: data["Instrument No"] || data.instrumentNo,
-    instrumentDate: normalizeDate(data["Instrument Date"] || data.instrumentDate),
-    transferMode: data["Transfer Mode"] || data.transferMode,
-    beneficiaryCode: data["Beneficiary Code"] || data.beneficiaryCode,
-    grossAmount: data["Gross Amount"] || data.grossAmount,
-    tdsAmount: data["TDS Amount"] || data.tdsAmount,
-    tdsCategory: data["TDS Category"] || data.tdsCategory,
-    status: data["Status"] || data.status || ''
+    requestNo: data["Request No"] || data.requestNo || data.request_no || data.requestno,
+    requestDate: normalizeDate(data["Request Date"] || data.requestDate || data.request_date || data.requestdate),
+    bankFrom: data["Bank From"] || data.bankFrom || data.bank_from || data.bankfrom,
+    paymentTo: data["Payment To"] || data.paymentTo || data.payment_to || data.paymentto,
+    againstBill: data["Against Bill"] || data.againstBill || data.against_bill || data.againstbill,
+    amount: data["Amount"] || data.amount || data.amount,
+    transactionType: data["Transaction Type"] || data.transactionType || data.transaction_type || data.transactiontype,
+    accountNo: data["Account No"] || data.accountNo || data.account_no || data.accountno || data.acNo || data.ac_no,
+    ifscCode: data["IFSC Code"] || data.ifscCode || data.ifsc_code || data.ifsccode || data.ifsc || data.ifsCode || data.ifs_code,
+    bankName: data["Bank Name"] || data.bankName || data.bank_name || data.bankname,
+    jobNo: data["Job No"] || data.jobNo || data.job_no || data.jobno,
+    chargeRef: data.chargeRef || data.charge_ref || data.chargeref,
+    jobRef: data.jobRef || data.job_ref || data.jobref,
+    instrumentNo: data["Instrument No"] || data.instrumentNo || data.instrument_no || data.instrumentno,
+    instrumentDate: normalizeDate(data["Instrument Date"] || data.instrumentDate || data.instrument_date || data.instrumentdate),
+    transferMode: data["Transfer Mode"] || data.transferMode || data.transfer_mode || data.transfermode,
+    beneficiaryCode: data["Beneficiary Code"] || data.beneficiaryCode || data.beneficiary_code || data.beneficiarycode,
+    grossAmount: data["Gross Amount"] || data.grossAmount || data.gross_amount || data.grossamount,
+    tdsAmount: data["TDS Amount"] || data.tdsAmount || data.tds_amount || data.tdsamount,
+    tdsCategory: data["TDS Category"] || data.tdsCategory || data.tds_category || data.tdscategory,
+    status: data["Status"] || data.status || data.status || ''
 });
 
 router.post("/payment-request", authApiKey, async (req, res) => {

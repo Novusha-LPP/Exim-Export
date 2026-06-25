@@ -49,7 +49,7 @@ const FileCoverGenerator = ({ jobNo, children, onTrackSuccess }) => {
 
       // ==================== HEADER ====================
       try {
-        doc.addImage(logo, "JPEG", 9, 11, 190, 52);
+        doc.addImage(logo, "JPEG", 9, 4, 190, 38);
       } catch (err) {
         console.warn("Logo add failed", err);
       }
@@ -61,7 +61,7 @@ const FileCoverGenerator = ({ jobNo, children, onTrackSuccess }) => {
       const jobNoWidth = doc.getTextWidth(jobNoText);
       doc.text(jobNoText, (pageWidth - jobNoWidth) / 2, 20);
 
-      let yPos = 60;
+      let yPos = 45;
 
       // ==================== MAIN TABLE ====================
       // Mapping Data

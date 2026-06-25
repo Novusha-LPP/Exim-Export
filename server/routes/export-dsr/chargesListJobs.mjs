@@ -24,6 +24,9 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             pendingQueries = false,
         } = { ...req.params, ...req.query };
 
+        const ClientQueryModel = (await import("../../model/export/ClientQueryModel.mjs")).default;
+        const openClientQueryJobs = await ClientQueryModel.find({ status: "open" }).distinct("job_no");
+
         const normalizedStatus = (status || "all").toLowerCase();
 
         const filter = {};
@@ -137,14 +140,16 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             ]
         });
 
-        // Globally exclude child club jobs from all tabs since they are represented by their parent club job
-        filter.$and.push({
-            $or: [
-                { parent_club_job: { $exists: false } },
-                { parent_club_job: null },
-                { parent_club_job: "" }
-            ]
-        });
+        // Globally exclude child club jobs from all tabs unless a search query is active
+        if (!search) {
+            filter.$and.push({
+                $or: [
+                    { parent_club_job: { $exists: false } },
+                    { parent_club_job: null },
+                    { parent_club_job: "" }
+                ]
+            });
+        }
 
         // Apply Tab specific status filtering if not "all"
         if (normalizedStatus === "general-jobs" || normalizedStatus === "general jobs") {
@@ -360,7 +365,19 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             containers: 1,
             isLocked: 1, lockedBy: 1, lockedAt: 1,
             operational_lock: 1,
-            isGeneralJob: 1
+            isGeneralJob: 1,
+            is_club_job_parent: 1,
+            parent_club_job: 1,
+            clubbed_jobs: 1,
+            tally_club_ref_no: 1,
+            vgm_done: 1,
+            vgm_date: 1,
+            form13_done: 1,
+            form13_date: 1,
+            shipping_bill_done: 1,
+            shipping_bill_done_date: 1,
+            freight_done: 1,
+            freight_enquiry_id: 1
         };
 
         const { sortKey, sortOrder } = req.query;
@@ -371,14 +388,64 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             sort.createdAt = -1;
         }
 
-        const [jobs, totalCount] = await Promise.all([
-            ExportJobModel.find(filter)
-                .select(selectProjection)
-                .sort(sort)
-                .skip(skip)
-                .limit(parseInt(limit)),
+        const aggPipeline = [
+            { $match: filter },
+            {
+                $addFields: {
+                    hasOpenClientQuery: { $in: ["$job_no", openClientQueryJobs] }
+                }
+            },
+            { $sort: { hasOpenClientQuery: -1, ...sort } },
+            { $project: selectProjection }
+        ];
+
+        let [jobs, totalCount] = await Promise.all([
+            ExportJobModel.aggregate([
+                ...aggPipeline,
+                { $skip: skip },
+                { $limit: parseInt(limit) }
+            ]),
             ExportJobModel.countDocuments(filter)
         ]);
+
+        if (jobs.length > 0) {
+            const parentIds = [...new Set(jobs.map(j => j.is_club_job_parent ? j.job_no : j.parent_club_job))].filter(Boolean);
+            if (parentIds.length > 0) {
+                const families = await ExportJobModel.find({
+                    $or: [{ job_no: { $in: parentIds } }, { parent_club_job: { $in: parentIds } }]
+                }).select(selectProjection).lean();
+
+                const groups = {};
+                families.forEach(j => {
+                    const pid = j.is_club_job_parent ? j.job_no : j.parent_club_job;
+                    if (!groups[pid]) groups[pid] = { parent: null, children: [] };
+                    if (j.is_club_job_parent) groups[pid].parent = j;
+                    else groups[pid].children.push(j);
+                });
+
+                const newJobs = [];
+                const processedParents = new Set();
+                jobs.forEach(job => {
+                    const pid = job.is_club_job_parent ? job.job_no : job.parent_club_job;
+                    if (pid) {
+                        if (!processedParents.has(pid)) {
+                            const parentGroup = groups[pid];
+                            if (parentGroup && parentGroup.parent) {
+                                const parentJob = { ...parentGroup.parent };
+                                parentJob.subRows = parentGroup.children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
+                                newJobs.push(parentJob);
+                            } else {
+                                newJobs.push(job);
+                            }
+                            processedParents.add(pid);
+                        }
+                    } else {
+                        newJobs.push(job);
+                    }
+                });
+                jobs = newJobs;
+            }
+        }
 
         return res.status(200).json({
             success: true,

@@ -1336,12 +1336,21 @@ function ShipmentMainTab({ formik, onUpdate, directories, isEditable = true }) {
 
 
   const saveTimeoutRef = useRef(null);
+  const prevContainerCountRef = useRef((formik.values.containers || []).length);
 
-  // Auto-sync No of Containers from Container tab
+  // Auto-sync No of Containers from Container tab when container count changes
   useEffect(() => {
-    if (!isAir && Number(formik.values.no_of_containers)) {
+    if (!isAir) {
       const containerCount = (formik.values.containers || []).length;
-      if (containerCount > 1 && formik.values.no_of_containers !== containerCount) {
+      const oldContainerCount = prevContainerCountRef.current;
+      const currentNo = Number(formik.values.no_of_containers) || 0;
+
+      if (containerCount !== oldContainerCount) {
+        if (currentNo === oldContainerCount || containerCount > currentNo || currentNo === 0) {
+          formik.setFieldValue("no_of_containers", containerCount);
+        }
+        prevContainerCountRef.current = containerCount;
+      } else if (containerCount > 0 && currentNo === 0) {
         formik.setFieldValue("no_of_containers", containerCount);
       }
     }

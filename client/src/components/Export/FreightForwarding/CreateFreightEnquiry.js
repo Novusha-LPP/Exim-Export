@@ -735,18 +735,40 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
     const fetchOrgs = async () => {
       try {
         setLoadingOrgs(true);
-        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/directory`, {
-          params: { limit: 1000 },
-        });
-        if (response.data.success) {
-          const all = response.data.data || [];
-          const needle = (formData.organization_name || "").toUpperCase().trim();
-          const filtered = needle
-            ? all.filter((o) => (o.organization || "").toUpperCase().includes(needle))
-            : all;
-          setOrganizations(filtered);
+        const isImport = formData.shipment_type === "Import-Sea" || formData.shipment_type === "Import-Air";
+
+        let all = [];
+        if (isImport) {
+          let url = "https://eximbot.alvision.in/import/api/view-completed-kyc";
+          if (import.meta.env.VITE_API_STRING) {
+            if (import.meta.env.VITE_API_STRING.includes("/export/api")) {
+              url = import.meta.env.VITE_API_STRING.replace("/export/api", "/import/api/view-completed-kyc");
+            } else if (import.meta.env.VITE_API_STRING.includes("localhost:9002")) {
+              url = import.meta.env.VITE_API_STRING.replace("localhost:9002", "localhost:9006").replace("/api", "/api/view-completed-kyc");
+            }
+          }
+          const response = await axios.get(url);
+          const kycList = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+          all = kycList.map((o) => ({
+            ...o,
+            organization: o.name_of_individual || "",
+          }));
+        } else {
+          const response = await axios.get(`${import.meta.env.VITE_API_STRING}/directory`, {
+            params: { limit: 1000 },
+          });
+          if (response.data.success) {
+            all = response.data.data || [];
+          }
         }
+
+        const needle = (formData.organization_name || "").toUpperCase().trim();
+        const filtered = needle
+          ? all.filter((o) => (o.organization || "").toUpperCase().includes(needle))
+          : all;
+        setOrganizations(filtered);
       } catch (error) {
+        console.error("Error fetching organizations:", error);
         setOrganizations([]);
       } finally {
         setLoadingOrgs(false);
@@ -754,7 +776,7 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
     };
     const timer = setTimeout(fetchOrgs, 200);
     return () => clearTimeout(timer);
-  }, [formData.organization_name]);
+  }, [formData.organization_name, formData.shipment_type]);
 
   // Port fetching logic
   useEffect(() => {
@@ -850,7 +872,7 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
           <div style={s.cardBody}>
             <div style={s.row}>
               <div style={{ ...s.col, flex: 2 }} ref={wrapperRef}>
-                <label style={s.label}>Shipper Name (Organization Name) *</label>
+                <label style={s.label}>Party Name (Organization Name) *</label>
                 <div style={s.comboWrapper}>
                   <input
                     style={s.inputWithIcon}

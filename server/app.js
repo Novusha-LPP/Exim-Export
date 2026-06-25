@@ -105,7 +105,6 @@ import fineReport from "./routes/report/getFineReport.mjs";
 import exporterReport from "./routes/report/getExporterReport.mjs";
 import exportClearanceReport from "./routes/report/exportClearanceMonthly.mjs";
 import tdsPayableRegister from "./routes/report/tdsPayableRegister.mjs";
-import adminFreightReport from "./routes/report/adminFreightReport.mjs";
 
 // REMOVED: Dangerous exception handlers that caused 3.1M log storm
 // Exception handlers are now in ./exceptionHandlers.js with:
@@ -129,11 +128,13 @@ app.use(
       "http://eximdev.s3-website.ap-south-1.amazonaws.com",
       "http://localhost:3000",
       "http://localhost:5173",
+      "http://122.162.239.158:5173",
       "http://test-ssl-exim.s3-website.ap-south-1.amazonaws.com",
       "http://exim-export.s3-website.ap-south-1.amazonaws.com",
       "https://export.alvision.in",
       "http://handover-odex.s3-website.ap-south-1.amazonaws.com",
-      "http://192.168.1.105:5173/"
+      "http://localhost:3002",
+      "http://192.168.2.31:3002"
     ],
     credentials: true,
     // Allow custom headers for audit trail
@@ -273,7 +274,6 @@ app.use(billingPendingReport);
 app.use(fineReport);
 app.use(exporterReport);
 app.use(exportClearanceReport);
-app.use(adminFreightReport);
 app.use(tdsPayableRegister);
 
 // s3 route

@@ -295,7 +295,9 @@ function FreightForwardingModule() {
     };
   });
   const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem("ff_active_tab") || "Enquiry";
+    const saved = localStorage.getItem("ff_active_tab");
+    if (saved === "Forwarders") return "Enquiry";
+    return saved || "Enquiry";
   });
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
@@ -481,7 +483,7 @@ function FreightForwardingModule() {
 
       {/* Tabs */}
       <Box sx={s.tabsContainer}>
-        {["Enquiry", "Success", "Rejected", "Forwarders"].map((tab) => {
+        {["Enquiry", "Rejected", "Success"].map((tab) => {
           const isActive = activeTab === tab;
           return (
             <button
@@ -517,16 +519,14 @@ function FreightForwardingModule() {
                   transition: "all 0.15s ease"
                 }}
               >
-                {tab === "Enquiry" ? enquiryCount : tab === "Success" ? successCount : tab === "Rejected" ? rejectedCount : forwarderCount}
+                {tab === "Enquiry" ? enquiryCount : tab === "Rejected" ? rejectedCount : successCount}
               </span>
             </button>
           );
         })}
       </Box>
 
-      {activeTab !== "Forwarders" ? (
-        <>
-          <Box sx={s.toolbar}>
+      <Box sx={s.toolbar}>
             <input
               value={filters.search}
               onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
@@ -684,6 +684,11 @@ function FreightForwardingModule() {
                                 Ref Job: {row.source_job_no}
                               </div>
                             )}
+                            {(row.shipment_ref_no || row.bl_details?.shipment_ref_no) && (
+                              <div style={{ color: "#0f766e", fontSize: "10px", fontWeight: "600", backgroundColor: "#f0fdfa", padding: "2px 4px", borderRadius: "3px", width: "fit-content", border: "1px solid #99f6e4" }}>
+                                Ref: {row.shipment_ref_no || row.bl_details?.shipment_ref_no}
+                              </div>
+                            )}
                             <div style={{ marginTop: "4px" }}>
                               <span style={{ fontSize: "9px", fontWeight: "700", padding: "2px 6px", borderRadius: "3px", backgroundColor: "#eff6ff", color: "#1e40af", border: "1px solid #bfdbfe", textTransform: "uppercase", display: "inline-block" }}>
                                 {row.shipment_type}
@@ -694,8 +699,16 @@ function FreightForwardingModule() {
                         <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                             <div style={{ color: "#1e293b", fontWeight: "700", fontSize: "12px" }}>
-                              {row.organization_name}
+                              {String(row.shipment_type || "").startsWith("Import") ? "Consignee: " : "Shipper: "}
+                              {String(row.shipment_type || "").startsWith("Import")
+                                ? (row.consignee_name || row.bl_details?.consignee || row.organization_name || "-")
+                                : (row.shipper_name || row.organization_name || "-")}
                             </div>
+                            {String(row.shipment_type || "").startsWith("Import") && row.organization_name && row.organization_name !== (row.consignee_name || row.bl_details?.consignee) && (
+                              <div style={{ color: "#475569", fontSize: "10px" }}>
+                                <span style={{ fontWeight: "600", color: "#64748b" }}>Party:</span> {row.organization_name}
+                              </div>
+                            )}
                             {row.email && (
                               <div style={{ color: "#475569", fontSize: "10px" }}>
                                 <span style={{ fontWeight: "600", color: "#64748b" }}>Email:</span> {row.email}
@@ -706,7 +719,7 @@ function FreightForwardingModule() {
                                 <span style={{ fontWeight: "600", color: "#64748b" }}>Contact:</span> {row.contact_no}
                               </div>
                             )}
-                            {row.remarks && (
+                            {row.remarks && !row.remarks.toLowerCase().includes("created automatically from export job") && (
                               <div style={{ color: "#64748b", fontSize: "10px", fontStyle: "italic", marginTop: "4px", backgroundColor: "#f8fafc", padding: "4px", borderRadius: "3px", borderLeft: "2px solid #cbd5e1", maxWidth: "250px", wordBreak: "break-word" }}>
                                 Remarks: {row.remarks}
                               </div>
@@ -716,11 +729,15 @@ function FreightForwardingModule() {
                         <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                             <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                              <span style={{ fontWeight: "800", fontSize: "9px", color: "#64748b", width: "35px" }}>POL:</span>
+                              <span style={{ fontWeight: "800", fontSize: "9px", color: "#64748b", width: "85px" }}>Place of Receipt:</span>
+                              <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{row.place_of_receipt || row.bl_details?.place_of_acceptance || "-"}</span>
+                            </div>
+                            <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                              <span style={{ fontWeight: "800", fontSize: "9px", color: "#64748b", width: "85px" }}>POL:</span>
                               <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{row.port_of_loading || "-"}</span>
                             </div>
                             <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                              <span style={{ fontWeight: "800", fontSize: "9px", color: "#64748b", width: "35px" }}>POD:</span>
+                              <span style={{ fontWeight: "800", fontSize: "9px", color: "#64748b", width: "85px" }}>POD:</span>
                               <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{row.port_of_destination || "-"}</span>
                             </div>
                             {row.bl_details?.vessel_name && (
@@ -871,10 +888,6 @@ function FreightForwardingModule() {
               </table>
             </div>
           </Box>
-        </>
-      ) : (
-        <ForwarderDirectory />
-      )}
 
       <Dialog
         open={openCreate}

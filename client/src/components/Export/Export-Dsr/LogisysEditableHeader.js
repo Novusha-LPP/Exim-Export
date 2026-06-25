@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useContext, useRef, lazy, Suspense } from "react";
 import axios from "axios";
 import { createPortal } from "react-dom";
 import { UserContext } from "../../../contexts/UserContext";
@@ -10,18 +10,25 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import * as xlsx from "xlsx";
-import ExportChecklistGenerator from "./StandardDocuments/ExportChecklistGenerator";
-import ConsignmentNoteGenerator from "./StandardDocuments/ConsignmentNoteGenerator";
-import FileCoverGenerator from "./StandardDocuments/FileCoverGenerator";
-import ForwardingNoteTharGenerator from "./StandardDocuments/ForwardingNoteTharGenerator";
-import AnnexureCGenerator from "./StandardDocuments/AnnexureCGenerator";
-import ConcorForwardingNoteGenerator from "./StandardDocuments/ConcorForwardingNoteGenerator.js";
-import VGMAuthorizationGenerator from "./StandardDocuments/VGMAuthorizationGenerator";
-import FreightCertificateGenerator from "./StandardDocuments/FreightCertificateGenerator";
-import BillOfLadingGenerator from "./StandardDocuments/BillOfLadingGenerator";
-import ConcorPltLetterGenerator from "./StandardDocuments/ConcorPltLetterGenerator";
-import AnnexureDGenerator from "./StandardDocuments/AnnexureDGenerator";
+
+// Lazy-loaded standard document generators
+const ExportChecklistGenerator = lazy(() => import("./StandardDocuments/ExportChecklistGenerator"));
+const ConsignmentNoteGenerator = lazy(() => import("./StandardDocuments/ConsignmentNoteGenerator"));
+const FileCoverGenerator = lazy(() => import("./StandardDocuments/FileCoverGenerator"));
+const ForwardingNoteTharGenerator = lazy(() => import("./StandardDocuments/ForwardingNoteTharGenerator"));
+const AnnexureCGenerator = lazy(() => import("./StandardDocuments/AnnexureCGenerator"));
+const ConcorForwardingNoteGenerator = lazy(() => import("./StandardDocuments/ConcorForwardingNoteGenerator.js"));
+const VGMAuthorizationGenerator = lazy(() => import("./StandardDocuments/VGMAuthorizationGenerator"));
+const FreightCertificateGenerator = lazy(() => import("./StandardDocuments/FreightCertificateGenerator"));
+const BillOfLadingGenerator = lazy(() => import("./StandardDocuments/BillOfLadingGenerator"));
+const ConcorPltLetterGenerator = lazy(() => import("./StandardDocuments/ConcorPltLetterGenerator"));
+const AnnexureDGenerator = lazy(() => import("./StandardDocuments/AnnexureDGenerator"));
+const StuffingJobRequestGenerator = lazy(() => import("./StandardDocuments/StuffingJobRequestGenerator"));
+const ImportContainerDeliveryOrderGenerator = lazy(() => import("./StandardDocuments/ImportContainerDeliveryOrderGenerator"));
+const CartingJobRequestGenerator = lazy(() => import("./StandardDocuments/CartingJobRequestGenerator"));
+const MovementJobRequestGenerator = lazy(() => import("./StandardDocuments/MovementJobRequestGenerator"));
+const StorageApplicationGenerator = lazy(() => import("./StandardDocuments/StorageApplicationGenerator"));
+
 import CreateClubJobModal from "./CreateClubJobModal.jsx";
 
 // Helper function
@@ -521,6 +528,7 @@ const LogisysEditableHeader = ({
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
+        const xlsx = await import("xlsx");
         const data = event.target.result;
         const workbook = xlsx.read(data, { type: "binary" });
         const sheetName = workbook.SheetNames[0];
@@ -844,6 +852,9 @@ const LogisysEditableHeader = ({
   }));
 
   const isAirType = toUpper(formik.values.consignmentType) === "AIR";
+  const isGandhidham =
+    String(formik.values.branch_code || "").toUpperCase().trim() === "GIM" ||
+    String(formik.values.job_no || "").toUpperCase().startsWith("GIM");
 
   return (
     <div
@@ -1528,7 +1539,7 @@ const LogisysEditableHeader = ({
                           organization_name: formik.values.exporter,
                           shipment_type: toUpper(formik.values.transportMode) === "AIR" ? "Export-Air" : "Export-Sea",
                           port_of_loading: formik.values.port_of_loading,
-                          port_of_destination: formik.values.port_of_discharge || formik.values.final_destination,
+                          port_of_destination: formik.values.destination_port || formik.values.port_of_discharge || formik.values.final_destination,
                           gross_weight: formik.values.gross_weight_kg,
                           net_weight: formik.values.net_weight_kg,
                           no_packages: formik.values.total_no_of_pkgs,
@@ -1536,7 +1547,7 @@ const LogisysEditableHeader = ({
                           goods_stuffed: formik.values.goods_stuffed_at === "DOCK" ? "DOCK STUFFED" : (formik.values.goods_stuffed_at === "FACTORY" ? "FACTORY STUFFED" : ""),
                           container_size: formik.values.containers?.[0]?.type || "",
                           source_job_no: formik.values.job_no,
-                          remarks: `Created automatically from Export Job: ${formik.values.job_no}`,
+                          remarks: "",
                           enquiry_date: new Date().toISOString().split("T")[0],
                           status: "Open"
                         };
@@ -1571,7 +1582,12 @@ const LogisysEditableHeader = ({
             open={Boolean(anchorEl)}
             onClose={() => setAnchorEl(null)}
           >
-            <ExportChecklistGenerator
+            <Suspense fallback={
+              <MenuItem sx={{ fontSize: 12, minWidth: 140, color: '#64748b' }}>
+                <CircularProgress size={16} sx={{ mr: 1 }} /> Loading generators...
+              </MenuItem>
+            }>
+              <ExportChecklistGenerator
               jobNo={formik.values.job_no}
               renderAsIcon={false}
             >
@@ -1689,6 +1705,61 @@ const LogisysEditableHeader = ({
                 DRAFT BILL OF LADING
               </MenuItem>
             </BillOfLadingGenerator>
+
+            {isGandhidham && (
+              <>
+                <StuffingJobRequestGenerator jobNo={formik.values.job_no}>
+                  <MenuItem
+                    disableRipple
+                    onClick={() => setAnchorEl(null)}
+                    sx={{ fontSize: 12, minWidth: 140 }}
+                  >
+                    STUFFING JOB REQUEST
+                  </MenuItem>
+                </StuffingJobRequestGenerator>
+
+                <ImportContainerDeliveryOrderGenerator jobNo={formik.values.job_no}>
+                  <MenuItem
+                    disableRipple
+                    onClick={() => setAnchorEl(null)}
+                    sx={{ fontSize: 12, minWidth: 140 }}
+                  >
+                    IMPORT CONTAINER DELIVERY ORDER
+                  </MenuItem>
+                </ImportContainerDeliveryOrderGenerator>
+
+                <CartingJobRequestGenerator jobNo={formik.values.job_no}>
+                  <MenuItem
+                    disableRipple
+                    onClick={() => setAnchorEl(null)}
+                    sx={{ fontSize: 12, minWidth: 140 }}
+                  >
+                    CARTING JOB REQUEST
+                  </MenuItem>
+                </CartingJobRequestGenerator>
+
+                <MovementJobRequestGenerator jobNo={formik.values.job_no}>
+                  <MenuItem
+                    disableRipple
+                    onClick={() => setAnchorEl(null)}
+                    sx={{ fontSize: 12, minWidth: 140 }}
+                  >
+                    MOVEMENT JOB REQUEST
+                  </MenuItem>
+                </MovementJobRequestGenerator>
+
+                <StorageApplicationGenerator jobNo={formik.values.job_no}>
+                  <MenuItem
+                    disableRipple
+                    onClick={() => setAnchorEl(null)}
+                    sx={{ fontSize: 12, minWidth: 140 }}
+                  >
+                    STORAGE YARD APPLICATION
+                  </MenuItem>
+                </StorageApplicationGenerator>
+              </>
+            )}
+            </Suspense>
           </Menu>
         </div>
       </div>

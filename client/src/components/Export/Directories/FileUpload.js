@@ -37,6 +37,12 @@ const FileUpload = ({
       acceptedFileTypes.map((type) => (typeof type === "string" ? type.trim().toLowerCase() : type)),
     );
     uniqueTypes.add(".mp4");
+    uniqueTypes.add(".webm");
+    uniqueTypes.add(".ogg");
+    uniqueTypes.add(".mov");
+    uniqueTypes.add(".avi");
+    uniqueTypes.add(".mkv");
+    uniqueTypes.add("video/*");
     return Array.from(uniqueTypes);
   }, [acceptedFileTypes]);
 
