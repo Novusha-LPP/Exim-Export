@@ -27,26 +27,8 @@ async function syncToClientDatabase(jobNo, updateObject) {
   }
 }
 
-async function syncClubBillingDetails(jobNo, updateObject) {
+async function syncClubFields(job) {
   try {
-    if (!jobNo || !updateObject || Object.keys(updateObject).length === 0) return;
-
-    // Filter the updates to only include billing details fields
-    const billingUpdates = {};
-    Object.keys(updateObject).forEach(key => {
-      if (
-        key.includes("billing_details") ||
-        key.includes("billingDocsSentDt") ||
-        key.includes("billingDocsSentUpload")
-      ) {
-        billingUpdates[key] = updateObject[key];
-      }
-    });
-
-    if (Object.keys(billingUpdates).length === 0) return;
-
-    // Find the current job to check if it's clubbed
-    const job = await ExJobModel.findOne({ job_no: jobNo }).lean();
     if (!job) return;
 
     const isClubJob = job.is_club_job_parent || !!job.parent_club_job;
@@ -60,36 +42,106 @@ async function syncClubBillingDetails(jobNo, updateObject) {
         { job_no: parentJobNo },
         { parent_club_job: parentJobNo }
       ],
-      job_no: { $ne: jobNo }
-    }).select("job_no").lean();
+      job_no: { $ne: job.job_no }
+    });
 
     if (siblingJobs.length === 0) return;
 
     const siblingJobNos = siblingJobs.map(sj => sj.job_no);
-    console.log(`[Club Billing Sync] Propagating billing updates for ${jobNo} to club siblings:`, siblingJobNos);
+    console.log(`[Club Fields Sync] Propagating club updates for ${job.job_no} to club siblings:`, siblingJobNos);
 
-    // Update the fields directly in the database first
-    await ExJobModel.updateMany(
-      { job_no: { $in: siblingJobNos } },
-      { $set: billingUpdates }
-    );
+    const op0Status = job.operations?.[0]?.statusDetails?.[0] || {};
 
-    // Load each sibling, trigger save (to run pre-save logic for milestones/detailedStatus), and run client database sync
-    for (const siblingNo of siblingJobNos) {
-      const fullSibling = await ExJobModel.findOne({ job_no: siblingNo });
-      if (fullSibling) {
-        fullSibling.markModified("milestones");
-        fullSibling.markModified("detailedStatus");
-        fullSibling.markModified("vgm_done");
-        fullSibling.markModified("form13_done");
-        fullSibling.markModified("shipping_bill_done");
-        fullSibling.markModified("isBuyer");
-        await fullSibling.save();
-        await syncToClientDatabase(siblingNo, billingUpdates);
+    const updates = {
+      send_for_billing: job.send_for_billing,
+      send_for_billing_date: job.send_for_billing_date,
+      vgm_done: job.vgm_done,
+      vgm_date: job.vgm_date,
+      form13_done: job.form13_done,
+      form13_date: job.form13_date,
+    };
+
+    // Update each sibling
+    for (const sibling of siblingJobs) {
+      if (!sibling.operations) {
+        sibling.operations = [{ statusDetails: [{}] }];
       }
+      if (!sibling.operations[0]) {
+        sibling.operations[0] = { statusDetails: [{}] };
+      }
+      if (!sibling.operations[0].statusDetails) {
+        sibling.operations[0].statusDetails = [{}];
+      }
+      if (!sibling.operations[0].statusDetails[0]) {
+        sibling.operations[0].statusDetails[0] = {};
+      }
+
+      const sibOp0 = sibling.operations[0].statusDetails[0];
+
+      // Sync operational dates
+      sibOp0.handoverForwardingNoteDate = op0Status.handoverForwardingNoteDate || "";
+      sibOp0.handoverConcorTharSanganaRailRoadDate = op0Status.handoverConcorTharSanganaRailRoadDate || "";
+      sibOp0.railOutReachedDate = op0Status.railOutReachedDate || "";
+      sibOp0.containerPlacementDate = op0Status.containerPlacementDate || "";
+      sibOp0.gateInDate = op0Status.gateInDate || "";
+
+      // Sync operational uploads
+      sibOp0.handoverImageUpload = op0Status.handoverImageUpload || [];
+      sibOp0.manualVgmUpload = op0Status.manualVgmUpload || [];
+      sibOp0.cmaForwardingNoteUpload = op0Status.cmaForwardingNoteUpload || [];
+
+      // Sync billing details
+      sibOp0.billingDocsSentDt = op0Status.billingDocsSentDt || "";
+      sibOp0.billingDocsSentUpload = op0Status.billingDocsSentUpload || [];
+      sibOp0.billing_details = {
+        agency_bill_date: op0Status.billing_details?.agency_bill_date || "",
+        agency_bill_no: op0Status.billing_details?.agency_bill_no || "",
+        reimbursement_bill_date: op0Status.billing_details?.reimbursement_bill_date || "",
+        reimbursement_bill_no: op0Status.billing_details?.reimbursement_bill_no || "",
+      };
+
+      // Sync top level fields
+      sibling.send_for_billing = updates.send_for_billing;
+      sibling.send_for_billing_date = updates.send_for_billing_date;
+      sibling.vgm_done = updates.vgm_done;
+      sibling.vgm_date = updates.vgm_date;
+      sibling.form13_done = updates.form13_done;
+      sibling.form13_date = updates.form13_date;
+
+      sibling.markModified("operations");
+      sibling.markModified("milestones");
+      sibling.markModified("detailedStatus");
+      sibling.markModified("vgm_done");
+      sibling.markModified("form13_done");
+      sibling.markModified("shipping_bill_done");
+      sibling.markModified("isBuyer");
+
+      await sibling.save();
+
+      const clientUpdate = {
+        send_for_billing: sibling.send_for_billing,
+        send_for_billing_date: sibling.send_for_billing_date,
+        vgm_done: sibling.vgm_done,
+        vgm_date: sibling.vgm_date,
+        form13_done: sibling.form13_done,
+        form13_date: sibling.form13_date,
+        "operations.0.statusDetails.0.handoverForwardingNoteDate": sibOp0.handoverForwardingNoteDate,
+        "operations.0.statusDetails.0.handoverConcorTharSanganaRailRoadDate": sibOp0.handoverConcorTharSanganaRailRoadDate,
+        "operations.0.statusDetails.0.railOutReachedDate": sibOp0.railOutReachedDate,
+        "operations.0.statusDetails.0.containerPlacementDate": sibOp0.containerPlacementDate,
+        "operations.0.statusDetails.0.gateInDate": sibOp0.gateInDate,
+        "operations.0.statusDetails.0.handoverImageUpload": sibOp0.handoverImageUpload,
+        "operations.0.statusDetails.0.manualVgmUpload": sibOp0.manualVgmUpload,
+        "operations.0.statusDetails.0.cmaForwardingNoteUpload": sibOp0.cmaForwardingNoteUpload,
+        "operations.0.statusDetails.0.billingDocsSentDt": sibOp0.billingDocsSentDt,
+        "operations.0.statusDetails.0.billingDocsSentUpload": sibOp0.billingDocsSentUpload,
+        "operations.0.statusDetails.0.billing_details": sibOp0.billing_details,
+      };
+
+      await syncToClientDatabase(sibling.job_no, clientUpdate);
     }
   } catch (err) {
-    console.error("[Club Billing Sync] Error syncing club billing details:", err);
+    console.error("[Club Fields Sync] Error syncing club fields:", err);
   }
 }
 
@@ -2763,6 +2815,7 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
     updatedExportJob.markModified("shipping_bill_done");
     updatedExportJob.markModified("isBuyer");
     await updatedExportJob.save();
+    await syncClubFields(updatedExportJob);
 
     res.json({
       message: "Export job updated successfully",
@@ -2814,7 +2867,7 @@ router.patch(
 
       if (updatedExportJob.job_no) {
         await syncToClientDatabase(updatedExportJob.job_no, updateObject);
-        await syncClubBillingDetails(updatedExportJob.job_no, updateObject);
+        await syncClubFields(updatedExportJob);
       }
 
       res.json({
@@ -2874,7 +2927,7 @@ router.patch(
       await updatedExportJob.save();
 
       await syncToClientDatabase(updatedExportJob.job_no, updateObject);
-      await syncClubBillingDetails(updatedExportJob.job_no, updateObject);
+      await syncClubFields(updatedExportJob);
 
       res.json({
         message: "Fields updated successfully",

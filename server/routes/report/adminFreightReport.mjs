@@ -288,25 +288,25 @@ router.get("/api/report/admin-freight/:year/:month", async (req, res) => {
           freight_amount: { $arrayElemAt: ["$invoices.freightInsuranceCharges.freight.amount", 0] },
           currency: { $arrayElemAt: ["$invoices.freightInsuranceCharges.freight.currency", 0] },
           forwarder_name: {
-             $let: {
-               vars: {
-                 op: { $arrayElemAt: [{ $ifNull: ["$operations", []] }, 0] }
-               },
-               in: {
-                 $let: {
-                   vars: {
-                     status: { $arrayElemAt: [{ $ifNull: ["$$op.statusDetails", []] }, 0] }
-                   },
-                   in: {
-                     $cond: [
-                       { $and: [ { $ne: ["$$status.forwarderName", null] }, { $ne: ["$$status.forwarderName", ""] } ] },
-                       "$$status.forwarderName",
-                       "$forwarder"
-                     ]
-                   }
-                 }
-               }
-             }
+            $let: {
+              vars: {
+                op: { $arrayElemAt: [{ $ifNull: ["$operations", []] }, 0] }
+              },
+              in: {
+                $let: {
+                  vars: {
+                    status: { $arrayElemAt: [{ $ifNull: ["$$op.statusDetails", []] }, 0] }
+                  },
+                  in: {
+                    $cond: [
+                      { $and: [{ $ne: ["$$status.forwarderName", null] }, { $ne: ["$$status.forwarderName", ""] }] },
+                      "$$status.forwarderName",
+                      "$forwarder"
+                    ]
+                  }
+                }
+              }
+            }
           }
         },
       },

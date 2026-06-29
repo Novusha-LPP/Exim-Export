@@ -391,6 +391,34 @@ export function generateSBFlatFile(job) {
     const isNFEI = invs.some(inv =>
         (inv.products || []).some(p => (p.eximCode || "").split(" ")[0] === "99")
     );
+
+    const waiverInfo = (() => {
+        let no = job.rbi_waiver_no || "";
+        let dateStr = job.rbi_waiver_date || "";
+
+        if (!dateStr && no) {
+            const dateRegex = /\b(\d{1,2})[-./](\d{1,2})[-./](\d{4})\b/;
+            const match = no.match(dateRegex);
+            if (match) {
+                const day = match[1].padStart(2, "0");
+                const month = match[2].padStart(2, "0");
+                const year = match[3];
+                dateStr = `${year}-${month}-${day}`;
+                no = no.replace(match[0], "")
+                       .replace(/\b(DT|DATE)\b/gi, "")
+                       .replace(/[\s\-/,.:]+$/, "")
+                       .trim();
+            }
+        }
+        
+        if (isNFEI) {
+            if (!no) no = job.gr_no || "GR WAIVED";
+            if (!dateStr) dateStr = job.job_date || new Date();
+        }
+        
+        return { no, date: dateStr };
+    })();
+
     const validContainers = containers.filter(c => (c.containerNo || "").trim().length > 0);
     const emitContainer = job.transportMode === "SEA" && validContainers.length > 0;
 
@@ -514,8 +542,8 @@ export function generateSBFlatFile(job) {
         cL[4],                                                              // [24]
         cntry(con0.consignee_country || ""),                               // [25] Consignee country
         isNFEI ? "01" : "",                                               // [26] NFEI
-        "",                                                                 // [27] RBI Waiver No
-        "",                                                                 // [28] RBI Waiver Date
+        clean(waiverInfo.no),                                               // [27] RBI Waiver No
+        fmtDate(waiverInfo.date),                                           // [28] RBI Waiver Date
         loc,                                                                // [29] Port of Loading — FIX 15
         podisc,
         cntry(job.discharge_country || ""),                                // [32] Discharge country                                                             // [30] Port of destination

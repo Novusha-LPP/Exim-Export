@@ -206,11 +206,29 @@ function EximOperationModule() {
   };
 
   const handleClose = async () => {
-    await unlockJob();
-    if (window.history.state && window.history.state.idx > 0) {
-      navigate(-1);
-    } else {
-      navigate("/export-operation");
+    try {
+      await unlockJob();
+      window.open("", "_self");
+      window.close();
+      setTimeout(() => {
+        if (window.history.state && window.history.state.idx > 0) {
+          navigate(-1);
+        } else {
+          navigate("/export-operation");
+        }
+      }, 100);
+    } catch (error) {
+      console.error("Error during close:", error);
+      await unlockJob();
+      window.open("", "_self");
+      window.close();
+      setTimeout(() => {
+        if (window.history.state && window.history.state.idx > 0) {
+          navigate(-1);
+        } else {
+          navigate("/export-operation");
+        }
+      }, 100);
     }
   };
 

@@ -8,6 +8,7 @@ import ShippingLine from '../../model/Directorties/ShippingLine.js';
 import Directory from '../../model/Directorties/Directory.js';
 import Transporter from '../../model/Directorties/Transporter.js';
 import TerminalCode from '../../model/Directorties/TerminalCode.js';
+import ForwarderModel from '../../model/export/ForwarderModel.mjs';
 
 const router = express.Router();
 
@@ -220,6 +221,23 @@ router.get('/get-transporters', async (req, res) => {
 router.get('/get-terminal-codes', async (req, res) => {
     try {
         const items = await TerminalCode.find().sort({ name: 1 });
+        const mapped = items.map(i => {
+            const obj = i.toObject();
+            return {
+                ...obj,
+                name: obj.name,
+                branches: obj.branches || []
+            };
+        });
+        res.json(mapped);
+    } catch (error) {
+        res.status(500).json([]);
+    }
+});
+
+router.get('/get-forwarders', async (req, res) => {
+    try {
+        const items = await ForwarderModel.find().sort({ name: 1 });
         const mapped = items.map(i => {
             const obj = i.toObject();
             return {

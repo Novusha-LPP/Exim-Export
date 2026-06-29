@@ -72,13 +72,14 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                 // ALWAYS fetch directories and look up by name to ensure we have complete branch data
                 if (initialData.partyName) {
                     try {
-                        const [slRes, supRes, orgRes, cfsRes, transRes, termRes] = await Promise.all([
+                        const [slRes, supRes, orgRes, cfsRes, transRes, termRes, fwdRes] = await Promise.all([
                             axios.get(`${import.meta.env.VITE_API_STRING}/get-shipping-lines`),
                             axios.get(`${import.meta.env.VITE_API_STRING}/get-suppliers`),
                             axios.get(`${import.meta.env.VITE_API_STRING}/organization`),
                             axios.get(`${import.meta.env.VITE_API_STRING}/get-cfs-list`),
                             axios.get(`${import.meta.env.VITE_API_STRING}/get-transporters`),
-                            axios.get(`${import.meta.env.VITE_API_STRING}/get-terminal-codes`)
+                            axios.get(`${import.meta.env.VITE_API_STRING}/get-terminal-codes`),
+                            axios.get(`${import.meta.env.VITE_API_STRING}/get-forwarders`)
                         ]);
                         const allParties = [
                             ...(slRes.data || []),
@@ -86,7 +87,8 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                             ...(orgRes.data?.organizations || []),
                             ...(cfsRes.data || []),
                             ...(transRes.data || []),
-                            ...(termRes.data || [])
+                            ...(termRes.data || []),
+                            ...(fwdRes.data || [])
                         ];
                         const normalize = (str) => (str || '').toString().replace(/[^a-z0-9]/gi, '').toUpperCase();
                         const targetNorm = normalize(initialData.partyName);

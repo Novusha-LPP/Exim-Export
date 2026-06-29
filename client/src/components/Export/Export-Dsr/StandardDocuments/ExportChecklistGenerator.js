@@ -1804,15 +1804,45 @@ const ExportChecklistGenerator = ({
             })(),
 
             fobValue: (() => {
-              const fob = inv.freightInsuranceCharges?.fobValue;
-              if (!fob || !fob.amount) return "";
-              const currency = fob.currency || inv.currency || "USD";
-              const amount = parseFloat(fob.amount);
-              const rateFromApi = getExportRate(currency);
-              const rate =
-                rateFromApi || parseFloat(exportJob.exchange_rate) || 1;
-              const inrAmount = (amount * rate).toFixed(2);
-              return `${currency} ${amount.toFixed(2)} / INR ${inrAmount}`;
+              // Calculate FOB per-invoice dynamically to avoid all invoices showing the same total FOB
+              const invCurrency = inv.currency || "USD";
+              const invExchRate = getExportRate(invCurrency) || parseFloat(exportJob.exchange_rate) || 1;
+              const grossInvoiceValue = parseFloat(inv.invoiceValue || inv.productValue || 0);
+              
+              if (!grossInvoiceValue) return "";
+              
+              const totalValueInr = grossInvoiceValue * invExchRate;
+              let totalDeductionInr = 0;
+              const charges = inv.freightInsuranceCharges || {};
+              
+              ["freight", "insurance", "commission"].forEach(k => {
+                const row = charges[k] || {};
+                const fallbackRate = (row.currency || invCurrency).toUpperCase() === "INR" ? 1 : invExchRate;
+                const rowRate = parseFloat(row.exchangeRate) || fallbackRate;
+                const ratePercent = parseFloat(row.rate) || 0;
+                let rowAmountInr = 0;
+                
+                if (ratePercent > 0) {
+                  rowAmountInr = totalValueInr * (ratePercent / 100);
+                } else {
+                  const explicitAmount = parseFloat(row.amount) || 0;
+                  rowAmountInr = explicitAmount * rowRate;
+                }
+                
+                if (k === "commission") {
+                  const threshold = 0.125 * totalValueInr;
+                  if (rowAmountInr > threshold) {
+                    totalDeductionInr += (rowAmountInr - threshold);
+                  }
+                } else {
+                  totalDeductionInr += rowAmountInr;
+                }
+              });
+              
+              const fobInr = totalValueInr - totalDeductionInr;
+              const fobInFC = fobInr / invExchRate;
+              
+              return `${invCurrency} ${fobInFC.toFixed(2)} / INR ${fobInr.toFixed(2)}`;
             })(),
 
             insuranceData: (() => {

@@ -874,7 +874,30 @@ const GeneralTab = ({ formik, directories, isEditable = true }) => {
               </label>
               {field("GR No", "gr_no")}
             </div>
-            {field("RBI Waiver No", "rbi_waiver_no")}
+            <div style={{ display: "flex", gap: 10 }}>
+              {field("RBI Waiver No", "rbi_waiver_no")}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: "#666" }}>RBI Waiver Date</div>
+                <DateInput
+                  name="rbi_waiver_date"
+                  value={formik.values["rbi_waiver_date"] || ""}
+                  onChange={(e) => handleFieldChange("rbi_waiver_date", e.target.value)}
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                    fontSize: 11,
+                    padding: "2px 7px",
+                    height: 24,
+                    width: "100%",
+                    marginBottom: 3,
+                    boxSizing: "border-box",
+                    background: "#fafaffff",
+                    outline: "none",
+                    fontWeight: 500,
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
         {/* Consignee - Below both sections in a row */}

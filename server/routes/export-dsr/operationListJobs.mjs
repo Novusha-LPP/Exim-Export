@@ -339,15 +339,6 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 filter.$and.push({ $or: orConditions });
             }
 
-            if (!hasSendForBilling && filteredStatusArray.length > 0) {
-                filter.$and.push({
-                    $or: [
-                        { send_for_billing: { $ne: true } },
-                        { send_for_billing_date: { $exists: false } },
-                        { send_for_billing_date: { $in: [null, ""] } }
-                    ]
-                });
-            }
         }
 
         if (search) {

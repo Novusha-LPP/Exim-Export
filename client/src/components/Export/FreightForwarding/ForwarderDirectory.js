@@ -1,164 +1,158 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import {
+  Container, Paper, Typography, Button, Box, IconButton,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Dialog, DialogContent, TextField, InputAdornment, Chip, Snackbar, Alert,
+  Pagination
+} from "@mui/material";
+import {
+  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
+  Search as SearchIcon, Business as BusinessIcon
+} from "@mui/icons-material";
+import { ForwarderService } from "../Directories/MasterDirectoryService";
+import MasterDirectoryForm from "../Directories/MasterDirectoryForm";
 
-const THEME = {
-  blue: "#16408f",
-  border: "#cbd5e1",
-  text: "#0f172a",
-  textMuted: "#64748b",
-  white: "#ffffff",
-  bg: "#f8fafc",
-};
-
-const s = {
-  wrapper: { padding: "0px" },
-  card: { background: "#fff", border: "1px solid #cbd5e1", borderRadius: 3, padding: "24px", marginBottom: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" },
-  row: { display: "flex", gap: "16px", marginBottom: "15px", alignItems: "flex-end", flexWrap: "wrap" },
-  col: { flex: 1, display: "flex", flexDirection: "column", minWidth: "200px" },
-  label: { fontSize: "11.5px", fontWeight: 600, color: THEME.textMuted, marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" },
-  input: { height: "34px", border: `1px solid ${THEME.border}`, borderRadius: "3px", padding: "0 12px", fontSize: "12.5px", backgroundColor: "#fff", color: "#0f172a", outline: "none", transition: "all 0.15s ease" },
-  btn: { padding: "0 20px", height: "34px", borderRadius: "3px", border: "none", fontWeight: 700, cursor: "pointer", fontSize: "12.5px", transition: "all 0.15s ease" },
-  btnPrimary: { backgroundColor: THEME.blue, color: "#fff" },
-  btnDanger: { backgroundColor: "#ef4444", color: "#fff", padding: "0 12px", height: "28px", borderRadius: "3px", fontSize: "11px", fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s ease" },
-  table: { width: "100%", borderCollapse: "collapse" },
-  th: { textAlign: "left", padding: "14px 16px", backgroundColor: "#19448aff", color: "#fff", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" },
-  td: { padding: "10px 16px", borderBottom: "1px solid #cbd5e1", fontSize: "12px", color: "#1e293b", verticalAlign: "middle" },
-};
-
-function ForwarderDirectory() {
-  const [forwarders, setForwarders] = useState([]);
-  const [formData, setFormData] = useState({ name: "", email: "", contact_person: "", phone: "", mobile_no: "" });
-  const [loading, setLoading] = useState(false);
+const ForwarderDirectory = () => {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
   useEffect(() => {
-    fetchForwarders();
-  }, []);
+    fetchItems();
+  }, [page, searchTerm]);
 
-  const fetchForwarders = async () => {
-    try {
-      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/forwarders`);
-      if (res.data.success) setForwarders(res.data.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleAdd = async (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.email) return;
+  const fetchItems = async () => {
     try {
       setLoading(true);
-      const res = await axios.post(`${import.meta.env.VITE_API_STRING}/forwarders`, formData);
-      if (res.data.success) {
-        setForwarders([...forwarders, res.data.data]);
-        setFormData({ name: "", email: "", contact_person: "", phone: "", mobile_no: "" });
-      }
+      const res = await ForwarderService.getAll({
+        page,
+        limit: 10,
+        search: searchTerm
+      });
+      setData(res.data || []);
+      setTotalPages(res.pagination?.totalPages || 1);
+      setTotalRecords(res.pagination?.totalRecords || 0);
     } catch (err) {
-      alert("Error adding forwarder. Email might be duplicate.");
+      showSnackbar("Error fetching data", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this forwarder?")) return;
+  const showSnackbar = (message, severity = "success") => setSnackbar({ open: true, message, severity });
+
+  const handleSave = async (formData) => {
     try {
-      await axios.delete(`${import.meta.env.VITE_API_STRING}/forwarders/${id}`);
-      setForwarders(forwarders.filter((f) => f._id !== id));
+      if (selectedItem) {
+        await ForwarderService.update(selectedItem._id, formData);
+        showSnackbar("Updated successfully");
+      } else {
+        await ForwarderService.create(formData);
+        showSnackbar("Created successfully");
+      }
+      setOpenDialog(false);
+      fetchItems();
     } catch (err) {
-      console.error(err);
+      showSnackbar("Error saving: " + (err.message || "Unknown error"), "error");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Delete this entry?")) {
+      try {
+        await ForwarderService.delete(id);
+        showSnackbar("Deleted successfully");
+        fetchItems();
+      } catch (err) {
+        showSnackbar("Error deleting", "error");
+      }
     }
   };
 
   return (
-    <div style={s.wrapper}>
-      <div style={s.card}>
-        <h3 style={{ margin: "0 0 15px 0", fontSize: '16px', fontWeight: 800, color: '#1e293b' }}>Add New Forwarder</h3>
-        <form onSubmit={handleAdd} style={s.row}>
-          <div style={s.col}>
-            <label style={s.label}>Forwarder Name *</label>
-            <input
-              style={s.input}
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value.toUpperCase() })}
-              placeholder="e.g. MAERSK"
-            />
-          </div>
-          <div style={s.col}>
-            <label style={s.label}>Email Address *</label>
-            <input
-              style={s.input}
-              type="text"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value.toLowerCase() })}
-              placeholder="e.g. rates@fwd.com, info@fwd.com"
-            />
-          </div>
-          <div style={s.col}>
-            <label style={s.label}>Mobile No</label>
-            <input
-              style={s.input}
-              value={formData.mobile_no}
-              onChange={(e) => setFormData({ ...formData, mobile_no: e.target.value })}
-              placeholder="Mobile No"
-            />
-          </div>
-          <div style={s.col}>
-            <label style={s.label}>Contact Person</label>
-            <input
-              style={s.input}
-              value={formData.contact_person}
-              onChange={(e) => setFormData({ ...formData, contact_person: e.target.value.toUpperCase() })}
-            />
-          </div>
-          <div style={{ ...s.col, flex: 'none', minWidth: 'auto' }}>
-            <button style={{ ...s.btn, ...s.btnPrimary }} disabled={loading}>
-              {loading ? "Adding..." : "+ Add Forwarder"}
-            </button>
-          </div>
-        </form>
-      </div>
+    <Box>
+      <Paper sx={{ p: 2, mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <TextField
+          size="small" placeholder="Search Forwarders..."
+          value={searchTerm} 
+          onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
+          sx={{ width: 300 }}
+          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
+        />
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setSelectedItem(null); setOpenDialog(true); }}>
+          Add Forwarder
+        </Button>
+      </Paper>
 
-      <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '15px 20px', borderBottom: '1px solid #f1f5f9' }}>
-           <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#1e293b' }}>Forwarder List</h3>
-        </div>
-        <table style={s.table}>
-          <thead>
-            <tr>
-              <th style={s.th}>Forwarder Name</th>
-              <th style={s.th}>Email</th>
-              <th style={s.th}>Mobile No</th>
-              <th style={s.th}>Contact Person</th>
-              <th style={s.th}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {forwarders.map((f) => (
-              <tr key={f._id} style={{ transition: "background-color 0.15s ease" }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
-                <td style={s.td}>{f.name}</td>
-                <td style={s.td}>{f.email}</td>
-                <td style={s.td}>{f.mobile_no || "-"}</td>
-                <td style={s.td}>{f.contact_person || "-"}</td>
-                <td style={s.td}>
-                  <button onClick={() => handleDelete(f._id)} style={{ ...s.btn, ...s.btnDanger }}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {!forwarders.length && (
-              <tr>
-                <td colSpan={5} style={{ textAlign: "center", padding: "40px", color: THEME.textMuted, fontSize: '13px' }}>
-                  No forwarders in directory.
-                </td>
-              </tr>
+      <TableContainer component={Paper}>
+        <Table size="small">
+          <TableHead sx={{ bgcolor: '#f8fafc' }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Active</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Branches</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>TDS %</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
+              <TableRow><TableCell colSpan={5} align="center">Loading...</TableCell></TableRow>
+            ) : data.length === 0 ? (
+              <TableRow><TableCell colSpan={5} align="center">No data found</TableCell></TableRow>
+            ) : (
+              data.map((item) => (
+                <TableRow key={item._id} hover>
+                  <TableCell sx={{ fontWeight: 500 }}>{item.name}</TableCell>
+                  <TableCell>
+                    <Chip label={item.active} size="small" color={item.active === "Yes" ? "success" : "default"} />
+                  </TableCell>
+                  <TableCell>{item.branches?.length || 0}</TableCell>
+                  <TableCell>{item.tds_percent}%</TableCell>
+                  <TableCell align="right">
+                    <IconButton size="small" color="primary" onClick={() => { setSelectedItem(item); setOpenDialog(true); }}><EditIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" color="error" onClick={() => handleDelete(item._id)}><DeleteIcon fontSize="small" /></IconButton>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Box display="flex" justifyContent="center" alignItems="center" mt={2} mb={2}>
+        <Pagination
+          count={totalPages}
+          page={page}
+          onChange={(event, value) => setPage(value)}
+          color="primary"
+          showFirstButton
+          showLastButton
+        />
+      </Box>
+
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
+        <DialogContent sx={{ p: 0 }}>
+          <MasterDirectoryForm 
+            title={selectedItem ? "Edit Forwarder" : "Add Forwarder"}
+            data={selectedItem} 
+            onSave={handleSave} 
+            onCancel={() => setOpenDialog(false)} 
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>{snackbar.message}</Alert>
+      </Snackbar>
+    </Box>
   );
-}
+};
 
 export default ForwarderDirectory;

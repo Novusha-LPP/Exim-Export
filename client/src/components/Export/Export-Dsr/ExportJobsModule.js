@@ -402,13 +402,19 @@ function ExportJobsModule() {
   const handleClose = async () => {
     try {
       await unlockJob(); // Unlock before navigating away
+      window.open("", "_self");
       window.close();
-      navigate("/export-dsr");
+      setTimeout(() => {
+        navigate("/export-dsr");
+      }, 100);
     } catch (error) {
       console.error("Error during close:", error);
       await unlockJob(); // Still try to unlock even on error
+      window.open("", "_self");
       window.close();
-      navigate("/export-dsr");
+      setTimeout(() => {
+        navigate("/export-dsr");
+      }, 100);
     }
   };
 
