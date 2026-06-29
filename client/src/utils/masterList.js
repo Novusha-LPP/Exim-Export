@@ -54,6 +54,7 @@ export const natureOfCargo = [
 ];
 
 export const unitCodes = [
+  "BDL",
   "BAG",
   "BGS",
   "BLS",

@@ -2452,6 +2452,10 @@ router.get("/:job_no(.*)", async (req, res, next) => {
       }
     }
 
+    if (!exportJob) {
+      return res.status(404).json({ message: "Export job not found" });
+    }
+
     let jobData = exportJob.toObject();
 
     // Merge FreightEnquiry details if FF job
