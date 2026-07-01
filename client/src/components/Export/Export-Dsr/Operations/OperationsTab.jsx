@@ -702,6 +702,32 @@ const OperationsTab = ({ formik, isEditable = true, isAdmin = false }) => {
     }
   }, [isAir]);
 
+  // Auto-sync Forwarder Name from Shipment tab (with Shipping Line fallback) to Operations statusDetails
+  useEffect(() => {
+    const forwarder = toUpper(formik.values.forwarder || "");
+    const shippingLine = toUpper(formik.values.shipping_line_airline || "");
+    const targetValue = forwarder || shippingLine;
+    if (!targetValue) return;
+
+    let changed = false;
+    const updatedOps = operations.map((op) => {
+      const statusDetails = op.statusDetails || [];
+      const updatedStatus = statusDetails.map((s) => {
+        if (!s.forwarderName) {
+          changed = true;
+          return { ...s, forwarderName: targetValue };
+        }
+        return s;
+      });
+      if (changed) return { ...op, statusDetails: updatedStatus };
+      return op;
+    });
+
+    if (changed) {
+      formik.setFieldValue("operations", updatedOps);
+    }
+  }, [formik.values.forwarder, formik.values.shipping_line_airline, operations.length]);
+
   // Auto-sync Header fields (Shipping Line, Vessel/Flight, Voyage, Booking No/Date) to booking details REMOVED
 
   // --- Actions ---
@@ -1705,7 +1731,11 @@ const StatusSection = ({
       return (
         <input
           type={f.type || "text"}
-          value={item[f.field] || ""}
+          value={
+            f.field === "forwarderName"
+              ? (item[f.field] || toUpper(formik.values.forwarder) || toUpper(formik.values.shipping_line_airline) || "")
+              : (item[f.field] || "")
+          }
           disabled={isFieldDisabled}
           onChange={(e) => {
             if (isFieldDisabled) return;

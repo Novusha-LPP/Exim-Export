@@ -234,10 +234,58 @@ function summarizeJob(job) {
   };
 }
 
-function matchesTab(job, workMode, tab, jobTypeFilter = "") {
+function parseSendForBillingDate(dateStr) {
+  if (!dateStr) return null;
+  if (dateStr instanceof Date) return dateStr;
+  
+  const parts = String(dateStr).trim().split(" ");
+  const dateParts = parts[0].split("-");
+  if (dateParts.length === 3) {
+    const day = parseInt(dateParts[0], 10);
+    const month = parseInt(dateParts[1], 10) - 1;
+    const year = parseInt(dateParts[2], 10);
+    
+    let hours = 0;
+    let minutes = 0;
+    if (parts[1]) {
+      const timeParts = parts[1].split(":");
+      hours = parseInt(timeParts[0] || 0, 10);
+      minutes = parseInt(timeParts[1] || 0, 10);
+    }
+    
+    const parsedDate = new Date(year, month, day, hours, minutes);
+    if (!isNaN(parsedDate.getTime())) return parsedDate;
+  }
+
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) return d;
+  
+  return null;
+}
+
+function matchesTab(job, workMode, tab, jobTypeFilter = "", startDate = "", endDate = "") {
   const hasHandover = Boolean(job.handover_date);
   const hasBillingDone = Boolean(job.billing_date);
   const isCompleted = isCompletedStatus(job.status);
+
+  let isWithinDateRange = false;
+  let hasDateFilter = false;
+  if (startDate && endDate) {
+    hasDateFilter = true;
+    const sDate = new Date(startDate);
+    const eDate = new Date(endDate);
+    sDate.setHours(0, 0, 0, 0);
+    eDate.setHours(23, 59, 59, 999);
+    
+    const billingDateObj = parseSendForBillingDate(job.send_for_billing_date);
+    if (billingDateObj) {
+      isWithinDateRange = billingDateObj >= sDate && billingDateObj <= eDate;
+    }
+  }
+
+  if (hasDateFilter && !isWithinDateRange) {
+    return false;
+  }
 
   // General/Freight Jobs tab
   if (tab === "general-jobs" || tab === "General Jobs") {
@@ -246,7 +294,7 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
     const matchesType = isGenJob || isFreightJob;
 
     if (!matchesType) return false;
-    if (isCompleted) return false;
+    if (!isWithinDateRange && isCompleted) return false;
     if (!job.send_for_billing) return false;
 
     // Apply sub-filter if provided
@@ -257,30 +305,42 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
 
   // Standard tabs logic
   if (tab === "billing-pending") {
+    if (isWithinDateRange) {
+      return true;
+    }
     return job.send_for_billing && !hasBillingDone;
   }
 
   if (tab === "export-completed-billing") {
+    if (isWithinDateRange) {
+      return true;
+    }
     return hasBillingDone;
   }
 
   if (workMode === "payment") {
     if (tab === "payment-requested") return job.hasPendingPr;
     if (tab === "payment") return job.hasApprovedPr;
-    if (tab === "payment-completed") return job.prCompleted;
+    if (tab === "payment-completed") {
+      if (isWithinDateRange) return true;
+      return job.prCompleted;
+    }
   }
 
   if (workMode === "purchase-book") {
     if (tab === "purchase-book-requested") return job.hasPendingPb;
     if (tab === "purchase-book") return job.hasApprovedPb;
-    if (tab === "purchase-book-completed") return job.pbCompleted;
+    if (tab === "purchase-book-completed") {
+      if (isWithinDateRange) return true;
+      return job.pbCompleted;
+    }
   }
 
   if (tab === "club-jobs") {
     const isParent = job.is_club_job_parent === true;
     const isChild = !!job.parent_club_job;
     if (!isParent && !isChild) return false;
-    if (isCompleted) return false;
+    if (!isWithinDateRange && isCompleted) return false;
     if (isParent) {
       return job.send_for_billing === true;
     }
@@ -387,6 +447,8 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       unresolvedOnly = "false",
       branch = "",
       jobTypeFilter = "",
+      startDate = "",
+      endDate = "",
     } = req.query;
 
     const normalizedWorkMode = String(workMode).trim().toLowerCase();
@@ -545,7 +607,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
     }
 
     const jobsWithQueries = summarizedBase
-      .filter((job) => matchesTab(job, normalizedWorkMode, normalizedTab, String(jobTypeFilter).trim().toLowerCase()))
+      .filter((job) => matchesTab(job, normalizedWorkMode, normalizedTab, String(jobTypeFilter).trim().toLowerCase(), startDate, endDate))
       .filter((job) => (unresolvedByJob[job.job_no] || 0) > 0);
     const pendingQueriesCount = jobsWithQueries.length;
 
@@ -554,13 +616,13 @@ router.get("/api/export-billing-jobs", async (req, res) => {
         ...job,
         unresolved_queries: unresolvedByJob[job.job_no] || 0,
       }))
-      .filter((job) => matchesTab(job, normalizedWorkMode, normalizedTab, String(jobTypeFilter).trim().toLowerCase()))
+      .filter((job) => matchesTab(job, normalizedWorkMode, normalizedTab, String(jobTypeFilter).trim().toLowerCase(), startDate, endDate))
       .filter((job) => {
         if (normalizedTab === "club-jobs") return true; // Defer unresolved check for club jobs to preserve parents
         return String(unresolvedOnly).toLowerCase() === "true" ? job.unresolved_queries > 0 : true;
       });
 
-    // If search is active, apply prioritized sort in memory
+    // If search is active, apply prioritized sort in memory, otherwise sort by send_for_billing_date descending
     if (search && normalizedTab !== "club-jobs") {
       const s = String(search).toLowerCase();
       summarized.sort((a, b) => {
@@ -575,7 +637,24 @@ router.get("/api/export-billing-jobs", async (req, res) => {
 
         const priorityDifference = getPriority(a) - getPriority(b);
         if (priorityDifference !== 0) return priorityDifference;
-        return String(a.job_no || "").localeCompare(String(b.job_no || ""));
+        
+        // Secondary sort by send_for_billing_date descending
+        const dateA = parseSendForBillingDate(a.send_for_billing_date);
+        const dateB = parseSendForBillingDate(b.send_for_billing_date);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateB.getTime() - dateA.getTime();
+      });
+    } else {
+      // Sort by send_for_billing_date descending (latest first)
+      summarized.sort((a, b) => {
+        const dateA = parseSendForBillingDate(a.send_for_billing_date);
+        const dateB = parseSendForBillingDate(b.send_for_billing_date);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1; // null dates at the bottom
+        if (!dateB) return -1; // null dates at the bottom
+        return dateB.getTime() - dateA.getTime();
       });
     }
 

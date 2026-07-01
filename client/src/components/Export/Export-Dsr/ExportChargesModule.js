@@ -58,10 +58,15 @@ function ExportChargesModule() {
 
   const isNewJob = !data?.job_no;
 
-  // Auto-lock when SB Date is present (unless manually unlocked)
+  // Auto-lock when SB Date is present or job is sent for billing (unless user is Admin)
   useEffect(() => {
     if (data && !loading && isLocked) {
-      if (formik.values.sb_date && !isNewJob) {
+      const isSentForBilling = formik.values.send_for_billing === true;
+      const isAdmin = user?.role === "Admin";
+
+      if (isSentForBilling && !isAdmin) {
+        setIsEditable(false);
+      } else if (formik.values.sb_date && !isNewJob) {
         setIsEditable(false);
       } else {
         setIsEditable(true);
@@ -69,7 +74,7 @@ function ExportChargesModule() {
     } else {
       setIsEditable(false);
     }
-  }, [formik.values.sb_date, data, loading, isLocked, isNewJob]);
+  }, [formik.values.sb_date, formik.values.send_for_billing, data, loading, isLocked, isNewJob, user?.role]);
 
   // Lock the job when the component mounts
   const lockJob = React.useCallback(async () => {

@@ -52,7 +52,7 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
           invoiceCount={invoiceCount}
           containerCount={containerCount}
           hideTabs={false}
-          isEditable={true}
+          isEditable={isEditable}
           onChargesCountChange={setChargesCount}
           job={jobData}
         />

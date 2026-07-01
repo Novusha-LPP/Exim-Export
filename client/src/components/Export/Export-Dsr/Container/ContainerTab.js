@@ -28,6 +28,38 @@ const containerTypes = [
   "40 Platform"
 ];
 
+const isoCodes = [
+  { value: "2000", label: "2000 - 20FT DRY CTR." },
+  { value: "2054", label: "2054 - 20 Ft ODC Ctr" },
+  { value: "2200", label: "2200 - 20 X 8 6 Gen Closed ctr" },
+  { value: "2210", label: "2210 - 20 X 8 6 Ventilated ctr" },
+  { value: "2220", label: "2220 - 20 hi cube container" },
+  { value: "2230", label: "2230 - 20 X 86 Reffer ctr" },
+  { value: "2250", label: "2250 - 20 X 8 6 Open Top ctr" },
+  { value: "2260", label: "2260 - 20 X 8 6 Open Sides ctr" },
+  { value: "2270", label: "2270 - 20 X 8 6 Tank for Liquids" },
+  { value: "2276", label: "2276 - 20 X 8 6 Tank HAZARDOUS LIQUIDE" },
+  { value: "2263", label: "2263 - 20 X 8 6 HIGH FLAT" },
+  { value: "2510", label: "2510 - 20 X 9 6 Normal Hi_cube ctr" },
+  { value: "2530", label: "2530 - 20 ft Hicube Reefer Container" },
+  { value: "2550", label: "2550 - 20 FT (O/TOP, H/C)" },
+  { value: "4210", label: "4210 - 40 X 8 6 Ventilated Ctr" },
+  { value: "4230", label: "4230 - 40 X 8 6 Refeer Ctr" },
+  { value: "4250", label: "4250 - 40 X 8 6 Open Top Ctr" },
+  { value: "4260", label: "4260 - 40 X 8 6 Open Sided Ctr" },
+  { value: "4270", label: "4270 - 40 X 8 6 Tank for Liquids" },
+  { value: "4310", label: "4310 - 40 X 8 6 general closed container" },
+  { value: "4351", label: "4351 - Open Top Removal from both ends" },
+  { value: "4500", label: "4500 - 40 X 9 6 Dry Gen Closed Ctr" },
+  { value: "4510", label: "4510 - 40 X 9 6 Ventilated H/C Ctr." },
+  { value: "4530", label: "4530 - 40 X 9 6 Reefer Ctr" },
+  { value: "4532", label: "4532 - 40 X 8 6 Reefer Ctr" },
+  { value: "4550", label: "4550 X 40 - High Cube Open Top" },
+  { value: "9500", label: "9500 - 45 X 9 6 Dry Gen Closed Ctr" },
+  { value: "9510", label: "9510 - 45 X 9 6 Ventilated H/C Ctr" },
+  { value: "9530", label: "9530 - 45 X 9 6 Reefer Ctr" },
+];
+
 const isValidContainer = (val) => {
   if (!val) return true;
   const regex = /^[A-Z]{4}\d{7}$/;
@@ -159,6 +191,7 @@ function ContainerTab({ formik, isEditable = true }) {
         sealNo: "",
         sealDate: "",
         type: "",
+        isoCode: "",
         pkgsStuffed: 0,
         grossWeight: 0,
         maxGrossWeightKgs: 0,
@@ -308,6 +341,7 @@ function ContainerTab({ formik, isEditable = true }) {
       sealNo: "",
       sealDate: "",
       type: "",
+      isoCode: "",
       pkgsStuffed: 0,
       grossWeight: 0,
       maxGrossWeightKgs: 0,
@@ -346,6 +380,7 @@ function ContainerTab({ formik, isEditable = true }) {
       Seal: r.sealNo,
       Date: r.sealDate,
       Type: r.type,
+      ISOCode: r.isoCode,
       CargoWt: r.grossWeight,
       TareWt: r.tareWeightKgs,
       VGM: r.vgmWtInvoice
@@ -380,6 +415,7 @@ function ContainerTab({ formik, isEditable = true }) {
                 <th style={{ ...styles.th, width: 100 }}>Seal Date</th>
                 {/* {showSLineSeal && */}<th style={{ ...styles.th, width: 110 }}>S/L Seal</th>
                 <th style={{ ...styles.th, width: 60 }}>Size</th>
+                <th style={{ ...styles.th, width: 150 }}>ISO Code</th>
                 <th style={{ ...styles.th, width: 50 }}>Pkgs</th>
                 <th style={{ ...styles.th, width: 85 }}>Gross Wt</th>
                 <th style={{ ...styles.th, width: 85 }}>Tare Wt</th>
@@ -392,7 +428,7 @@ function ContainerTab({ formik, isEditable = true }) {
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={13} style={{ ...styles.td, textAlign: 'center', color: '#94a3b8', padding: 20 }}>No containers found.</td>
+                  <td colSpan={14} style={{ ...styles.td, textAlign: 'center', color: '#94a3b8', padding: 20 }}>No containers found.</td>
                 </tr>
               )}
               {rows.map((row, idx) => (
@@ -441,6 +477,12 @@ function ContainerTab({ formik, isEditable = true }) {
                     <select style={styles.select} value={row.type || ""} onChange={(e) => handleFieldChange(idx, "type", e.target.value)} disabled={!isEditable}>
                       <option value="">Select</option>
                       {containerTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </td>
+                  <td style={styles.td}>
+                    <select style={styles.select} value={row.isoCode || ""} onChange={(e) => handleFieldChange(idx, "isoCode", e.target.value)} disabled={!isEditable}>
+                      <option value="">Select</option>
+                      {isoCodes.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
                     </select>
                   </td>
                   <td style={styles.td}>

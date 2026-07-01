@@ -132,6 +132,11 @@ const customHouseSchema = new Schema({
   },
 });
 
+const selfSealValiditySchema = new Schema({
+  customHouse: { type: String, trim: true },
+  validityDate: { type: String, trim: true },
+}, { _id: true });
+
 const accountCreditInfoSchema = new Schema(
   {
     creditLimit: { type: Number, default: 0 },
@@ -193,6 +198,9 @@ const directorySchema = new Schema(
 
     // Custom House (Drawback Bank) (Array)
     customHouse: [customHouseSchema],
+
+    // Self Seal Validity (Array)
+    selfSealValidity: [selfSealValiditySchema],
 
     // Account & Credit Information
     accountCreditInfo: { type: accountCreditInfoSchema, default: () => ({}) },

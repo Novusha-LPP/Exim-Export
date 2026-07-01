@@ -5,7 +5,8 @@ import axios from "axios";
 import { Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import DocumentEditorDialog from "./DocumentEditorDialog";
 import logo from "../../../../assets/images/Frieghttablogo.png";
-import { imageToBase64 } from "../../../../utils/imageUtils";
+import signatureImg from "../../../../assets/images/gandhidhamSignature.jpg";
+import { imageToBase64, rotateImage90Deg } from "../../../../utils/imageUtils";
 
 const FreightCertificateGenerator = ({ jobNo, children }) => {
   const [editorOpen, setEditorOpen] = useState(false);
@@ -59,12 +60,24 @@ const FreightCertificateGenerator = ({ jobNo, children }) => {
       const freightAmount = data.invoices?.[0]?.freightInsuranceCharges?.freight?.amount || "";
       const freightDisplay = `${freightAmount} ${freightCurrency}`;
 
+      const isGandhidham =
+        String(data.branchCode || "").toUpperCase().trim() === "GIM" ||
+        String(data.jobNumber || "").toUpperCase().startsWith("GIM") ||
+        String(data.job_no || "").toUpperCase().startsWith("GIM");
+
       // Pre-load logo as base64
       let logoSrc = logo;
       try {
         logoSrc = await imageToBase64(logo);
       } catch (err) {
         console.warn("Failed to convert logo to base64", err);
+      }
+
+      let rotatedSignatureSrc = "";
+      try {
+        rotatedSignatureSrc = await rotateImage90Deg(signatureImg);
+      } catch (err) {
+        console.warn("Failed to rotate and convert signature", err);
       }
 
       // Styles
@@ -137,16 +150,40 @@ const FreightCertificateGenerator = ({ jobNo, children }) => {
             <!-- Footer -->
             <div style="border: ${tableBorder}; padding: 10px; display: flex; flex-direction: column; justify-content: space-between;">
                 
-                <div style="font-weight: bold; margin-bottom: 30px;">For SURAJ FORWARDERS PVT LTD</div>
-                <div style="font-weight: bold; margin-bottom: 15px;">(Authorised Signatory)</div>
+                <div style="margin-bottom: 15px;">
+                  ${isGandhidham ? `
+                  <div style="font-weight: bold; line-height: 1.6; color: #163693;">
+                    FOR, SURAJ FORWARDERS & SHIPPING AGENCIES
+                  </div>
+                  <div style="margin-top: 5px; margin-bottom: 5px;">
+                    <img src="${rotatedSignatureSrc}" style="width: 130px; height: auto; display: block;" />
+                  </div>
+                  <div style="font-weight: bold; line-height: 1.6; color: #163693;">
+                    AUTHORIZED SIGNATURE
+                  </div>
+                  ` : `
+                  <div style="font-weight: bold; margin-bottom: 30px;">For SURAJ FORWARDERS PVT LTD</div>
+                  <div style="font-weight: bold; margin-bottom: 15px;">(Authorised Signatory)</div>
+                  `}
+                </div>
 
                 <!-- Address Box -->
                 <div style="border: ${tableBorder}; padding: 5px; width: 60%; margin: 0 auto 15px auto; text-align: center; font-size: 11px;">
+                    ${isGandhidham ? `
+                    <strong>GANDHIDHAM</strong><br/>
+                    209, 2nd Floor, Madhav Palace, Plot No. 55,<br/>
+                    Sector-8, Near Chamber of Commerce,<br/>
+                    GANDHIDHAM (Kutch) - 370 201<br/>
+                    Phone No. : (02836) 229011 / 12<br/>
+                    E-mail : anurag@surajforwders.com<br/>
+                    PIC : Mr. Anurag Pillai (M) +91 99243 04422
+                    ` : `
                     A/204-205, WALL STREET II, OPP. ORIENT CLUB,<br/>
                     NR. GUJARAT COLLEGE, ELLIS BRIDGE,<br/>
                     AHMEDABAD - 380006,GUJARAT<br/>
                     Tel. No.-9924304005<br/>
                     Email -sojith@surajforwarders.com
+                    `}
                 </div>
 
                 <div style="border-top: ${tableBorder}; padding-top: 10px; font-weight: bold;">

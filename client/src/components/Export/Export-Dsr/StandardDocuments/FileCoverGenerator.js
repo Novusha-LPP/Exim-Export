@@ -43,25 +43,28 @@ const FileCoverGenerator = ({ jobNo, children, onTrackSuccess }) => {
 
       const getContainerSizeLabel = (value) => {
         const raw = (value || "").toString().toUpperCase().trim();
+        if (/^[2]\d{3}$/.test(raw)) return "20";
+        if (/^[4]\d{3}$/.test(raw)) return "40";
+        if (/^[9]\d{3}$/.test(raw)) return "45";
         const sizeMatch = raw.match(/\b(20|40|45)\b/);
         return sizeMatch ? sizeMatch[1] : raw;
       };
-
-      // ==================== HEADER ====================
-      try {
-        doc.addImage(logo, "JPEG", 9, 4, 190, 38);
-      } catch (err) {
-        console.warn("Logo add failed", err);
-      }
 
       // Job No (Top Center)
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
       const jobNoText = `JOB NO. ${data.job_no || ""}`;
       const jobNoWidth = doc.getTextWidth(jobNoText);
-      doc.text(jobNoText, (pageWidth - jobNoWidth) / 2, 20);
+      doc.text(jobNoText, (pageWidth - jobNoWidth) / 2, 8);
 
-      let yPos = 45;
+      // ==================== HEADER ====================
+      try {
+        doc.addImage(logo, "JPEG", 9, 12, 190, 38);
+      } catch (err) {
+        console.warn("Logo add failed", err);
+      }
+
+      let yPos = 55;
 
       // ==================== MAIN TABLE ====================
       // Mapping Data
@@ -221,16 +224,16 @@ const FileCoverGenerator = ({ jobNo, children, onTrackSuccess }) => {
       const containerBody = containerRows.map((c) => (
         hideContainerSizeColumn
           ? [
-              c.containerNo || "",
-              c.sealNo || "", // Customs Seal
-              sLineSealNo || "", // S/Line Seal
-            ]
+            c.containerNo || "",
+            c.sealNo || "", // Customs Seal
+            sLineSealNo || "", // S/Line Seal
+          ]
           : [
-              c.containerNo || "",
-              getContainerSizeLabel(c.containerSize || c.type || c.size || "20"),
-              c.sealNo || "", // Customs Seal
-              sLineSealNo || "", // S/Line Seal
-            ]
+            c.containerNo || "",
+            getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size || "20"),
+            c.sealNo || "", // Customs Seal
+            sLineSealNo || "", // S/Line Seal
+          ]
       ));
 
       const containerHead = hideContainerSizeColumn
@@ -239,16 +242,16 @@ const FileCoverGenerator = ({ jobNo, children, onTrackSuccess }) => {
 
       const containerColumnStyles = hideContainerSizeColumn
         ? {
-            0: { width: 60, fontStyle: "bold" },
-            1: { width: 65, fontStyle: "bold" },
-            2: { width: 65 },
-          }
+          0: { width: 60, fontStyle: "bold" },
+          1: { width: 65, fontStyle: "bold" },
+          2: { width: 65 },
+        }
         : {
-            0: { width: 50, fontStyle: "bold" },
-            1: { width: 20, halign: "center" },
-            2: { width: 60, fontStyle: "bold" },
-            3: { width: 60 },
-          };
+          0: { width: 50, fontStyle: "bold" },
+          1: { width: 20, halign: "center" },
+          2: { width: 60, fontStyle: "bold" },
+          3: { width: 60 },
+        };
 
       // Dynamic scaling logic to fit everything on one A4 page properly
       const containerCount = containerBody.length;

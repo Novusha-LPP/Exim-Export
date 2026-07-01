@@ -1,5 +1,6 @@
 import express from "express";
 import ExJobModel from "../../model/export/ExJobModel.mjs";
+import UserModel from "../../model/userModel.mjs";
 import { auditMiddleware } from "../../middleware/auditTrail.mjs";
 
 const router = express.Router();
@@ -7,6 +8,30 @@ const router = express.Router();
 router.post("/create-club-job", auditMiddleware("Job"), async (req, res) => {
   try {
     const { selected_job_nos, primary_job_no } = req.body;
+
+    const usernameHeader = req.headers["username"] || req.headers["x-username"];
+    const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
+    const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
+    const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
+
+    const jobsInvolved = [...(selected_job_nos || [])];
+    if (primary_job_no && !jobsInvolved.includes(primary_job_no)) {
+      jobsInvolved.push(primary_job_no);
+    }
+
+    if (jobsInvolved.length > 0) {
+      const billingSentJobs = await ExJobModel.find({
+        job_no: { $in: jobsInvolved },
+        send_for_billing: true
+      }).select('job_no').lean();
+
+      if (billingSentJobs.length > 0 && !isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: `Club job updates blocked: The following jobs have been sent for billing: ${billingSentJobs.map(j => j.job_no).join(', ')}. Only Admins can modify them.`
+        });
+      }
+    }
 
     if (!selected_job_nos || !Array.isArray(selected_job_nos) || selected_job_nos.length === 0) {
       return res.status(400).json({ success: false, message: "Please select at least one job to club." });

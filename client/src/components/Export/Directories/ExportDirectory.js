@@ -229,6 +229,18 @@ const DirectoryDetailView = ({ directory }) => (
               <strong>MSME Registered:</strong>{" "}
               {directory.registrationDetails?.msmeRegistered ? "Yes" : "No"}
             </Typography>
+            {directory.selfSealValidity && directory.selfSealValidity.length > 0 && (
+              <Box sx={{ mt: 1.5 }}>
+                <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                  Self Seal Validity:
+                </Typography>
+                {directory.selfSealValidity.map((item, idx) => (
+                  <Typography key={idx} variant="body2" sx={{ mb: 0.25, pl: 1 }}>
+                    • <strong>{item.customHouse}</strong>: {item.validityDate}
+                  </Typography>
+                ))}
+              </Box>
+            )}
           </Box>
         </Paper>
       </Grid>

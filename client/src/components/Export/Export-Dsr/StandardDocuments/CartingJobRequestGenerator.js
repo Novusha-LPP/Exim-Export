@@ -4,6 +4,9 @@ import "jspdf-autotable";
 import axios from "axios";
 import { Button } from "@mui/material";
 import logo from "../../../../assets/images/surajLogo.jpeg";
+import signatureImg from "../../../../assets/images/gandhidhamSignature.jpg";
+import companyLogo from "../../../../assets/images/Frieghttablogo.png";
+import { rotateImage90Deg } from "../../../../utils/imageUtils";
 
 const CartingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
   const generatePDF = async (e) => {
@@ -40,9 +43,42 @@ const CartingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
         }).replace(/\//g, '-');
       };
 
-      // Header logo & address
+      const isGandhidham =
+        String(data.branchCode || "").toUpperCase().trim() === "GIM" ||
+        String(data.jobNumber || "").toUpperCase().startsWith("GIM") ||
+        String(data.job_no || "").toUpperCase().startsWith("GIM");
+
+      let signatureBase64 = "";
+      try {
+        signatureBase64 = await rotateImage90Deg(signatureImg);
+      } catch (err) {
+        console.warn("Failed to load signature image", err);
+      }
+
       try {
         doc.addImage(logo, "JPEG", 9, 4, 190, 38);
+        if (isGandhidham) {
+          // Cover Ahmedabad address
+          doc.setFillColor(255, 255, 255);
+          doc.rect(112, 4, 87, 38, "F");
+
+          // Draw Gandhidham address
+          doc.setTextColor(100, 100, 100); // Grey color
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8.5);
+          doc.text("GANDHIDHAM", 138, 8);
+          
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7.5);
+          doc.text("209, 2nd Floor, Madhav Palace, Plot No. 55,", 138, 12.5);
+          doc.text("Sector-8, Near Chamber of Commerce,", 138, 16.5);
+          doc.text("GANDHIDHAM (Kutch) - 370 201", 138, 20.5);
+          doc.text("Phone No. : (02836) 229011 / 12", 138, 24.5);
+          doc.text("E-mail : anurag@surajforwders.com", 138, 28.5);
+          doc.text("PIC : Mr. Anurag Pillai (M) +91 99243 04422", 138, 32.5);
+          
+          doc.setTextColor(0, 0, 0); // Reset color
+        }
       } catch (err) {
         console.warn("Logo add failed", err);
       }
@@ -60,9 +96,7 @@ const CartingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       doc.text(`Date:  ${formatDate(new Date())}`, pageWidth - 55, yPos);
       yPos = 62;
 
-      const isGandhidham =
-        String(data.branchCode || "").toUpperCase().trim() === "GIM" ||
-        String(data.jobNumber || "").toUpperCase().startsWith("GIM");
+
       const firmName = isGandhidham ? "SURAJ FORWARDERS" : "SURAJ FORWARDERS & SHIPPING AGENCIES";
 
       // A/C
@@ -75,7 +109,7 @@ const CartingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       yPos += 6;
       doc.text(data.warehouseName || "SEABIRD", 15, yPos);
       yPos += 6;
-      
+
       const portOfLoading = data.port_of_loading || "";
       const portCity = portOfLoading.includes("-") ? portOfLoading.split("-")[1].trim() : portOfLoading;
       doc.text(portCity || "Mundra", 15, yPos);
@@ -123,7 +157,7 @@ const CartingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       // Table 2: Details grid
       const transDetails = data.operations?.[0]?.transporterDetails || [];
       const containers = data.containers || [];
-      
+
       const detailsBody = [];
       for (let i = 0; i < 5; i++) {
         const trans = transDetails[i] || {};
@@ -172,7 +206,30 @@ const CartingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       yPos += 6;
       doc.text("Yours Faithfully,", 15, yPos);
       yPos += 12;
-      doc.text(`For ${firmName.toUpperCase()}`, 15, yPos);
+
+      if (isGandhidham) {
+        doc.setTextColor(22, 54, 147); // Blue color
+        doc.setFont("helvetica", "bold");
+        doc.text("FOR, SURAJ FORWARDERS & SHIPPING AGENCIES", 15, yPos);
+        
+        let sigY = yPos + 2;
+        if (signatureBase64) {
+          try {
+            doc.addImage(signatureBase64, "PNG", 15, sigY, 45, 20);
+          } catch (e) {
+            console.warn("Adding signature failed", e);
+          }
+          yPos += 20;
+        }
+
+        yPos += 6;
+        doc.setTextColor(22, 54, 147); // Blue color
+        doc.setFont("helvetica", "bold");
+        doc.text("AUTHORIZED SIGNATURE", 15, yPos);
+        doc.setTextColor(0, 0, 0); // Reset color
+      } else {
+        doc.text(`For ${firmName.toUpperCase()}`, 15, yPos);
+      }
 
       // Preview Blob
       const filename = `CartingJobRequest_${data.job_no || "Job"}.pdf`;

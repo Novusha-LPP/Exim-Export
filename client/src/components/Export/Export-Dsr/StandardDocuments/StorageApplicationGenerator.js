@@ -4,6 +4,9 @@ import "jspdf-autotable";
 import axios from "axios";
 import { Button } from "@mui/material";
 import logo from "../../../../assets/images/surajLogo.jpeg";
+import signatureImg from "../../../../assets/images/gandhidhamSignature.jpg";
+import companyLogo from "../../../../assets/images/Frieghttablogo.png";
+import { rotateImage90Deg } from "../../../../utils/imageUtils";
 
 const StorageApplicationGenerator = ({ jobNo, children, onTrackSuccess }) => {
   const generatePDF = async (e) => {
@@ -42,13 +45,49 @@ const StorageApplicationGenerator = ({ jobNo, children, onTrackSuccess }) => {
 
       const getContainerSizeLabel = (value) => {
         const raw = (value || "").toString().toUpperCase().trim();
+        if (/^[2]\d{3}$/.test(raw)) return "20";
+        if (/^[4]\d{3}$/.test(raw)) return "40";
+        if (/^[9]\d{3}$/.test(raw)) return "45";
         const sizeMatch = raw.match(/\b(20|40|45)\b/);
         return sizeMatch ? sizeMatch[1] : raw;
       };
 
-      // Header logo & address
+      const isGandhidham =
+        String(data.branchCode || "").toUpperCase().trim() === "GIM" ||
+        String(data.jobNumber || "").toUpperCase().startsWith("GIM") ||
+        String(data.job_no || "").toUpperCase().startsWith("GIM");
+
+      let signatureBase64 = "";
+      try {
+        signatureBase64 = await rotateImage90Deg(signatureImg);
+      } catch (err) {
+        console.warn("Failed to load signature image", err);
+      }
+
       try {
         doc.addImage(logo, "JPEG", 9, 4, 190, 38);
+        if (isGandhidham) {
+          // Cover Ahmedabad address
+          doc.setFillColor(255, 255, 255);
+          doc.rect(112, 4, 87, 38, "F");
+
+          // Draw Gandhidham address
+          doc.setTextColor(100, 100, 100); // Grey color
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8.5);
+          doc.text("GANDHIDHAM", 138, 8);
+          
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7.5);
+          doc.text("209, 2nd Floor, Madhav Palace, Plot No. 55,", 138, 12.5);
+          doc.text("Sector-8, Near Chamber of Commerce,", 138, 16.5);
+          doc.text("GANDHIDHAM (Kutch) - 370 201", 138, 20.5);
+          doc.text("Phone No. : (02836) 229011 / 12", 138, 24.5);
+          doc.text("E-mail : anurag@surajforwders.com", 138, 28.5);
+          doc.text("PIC : Mr. Anurag Pillai (M) +91 99243 04422", 138, 32.5);
+          
+          doc.setTextColor(0, 0, 0); // Reset color
+        }
       } catch (err) {
         console.warn("Logo add failed", err);
       }
@@ -69,7 +108,7 @@ const StorageApplicationGenerator = ({ jobNo, children, onTrackSuccess }) => {
       yPos += 5;
       doc.text("Adani Port and SEZ Ltd", 15, yPos);
       yPos += 5;
-      
+
       const portOfLoading = data.port_of_loading || "";
       const portCity = portOfLoading.includes("-") ? portOfLoading.split("-")[1].trim() : portOfLoading;
       doc.text(portCity || "Mundra", 15, yPos);
@@ -77,16 +116,13 @@ const StorageApplicationGenerator = ({ jobNo, children, onTrackSuccess }) => {
 
       // Subject
       const containers = data.containers || [];
-      const count20 = containers.filter(c => getContainerSizeLabel(c.containerSize || c.type || c.size) === "20").length;
-      const count40 = containers.filter(c => getContainerSizeLabel(c.containerSize || c.type || c.size) === "40" || getContainerSizeLabel(c.containerSize || c.type || c.size) === "45").length;
+      const count20 = containers.filter(c => getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size) === "20").length;
+      const count40 = containers.filter(c => getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size) === "40" || getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size) === "45").length;
 
       doc.text(`Subject: - Application for storage of   ${count20}   x 20' +   ${count40}   x 40' factory stuffed containers in Adani Exim Yard.`, 15, yPos);
       yPos += 10;
 
       // Account / CHA / Shipper
-      const isGandhidham =
-        String(data.branchCode || "").toUpperCase().trim() === "GIM" ||
-        String(data.jobNumber || "").toUpperCase().startsWith("GIM");
       const firmName = isGandhidham ? "SURAJ FORWARDERS" : "SURAJ FORWARDERS & SHIPPING AGENCIES";
       const licCode = isGandhidham ? "ABOFS1766LCH006" : "ABOFS1766LCH005";
 
@@ -111,7 +147,7 @@ const StorageApplicationGenerator = ({ jobNo, children, onTrackSuccess }) => {
       const vehicleNo = data.operations?.[0]?.transporterDetails?.[0]?.vehicleNo || "";
       const tableBody = containers.map((c) => [
         c.containerNo || c.container_number || "",
-        getContainerSizeLabel(c.containerSize || c.type || c.size || ""),
+        getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size || ""),
         data.sb_no || "",
         formatDate(data.sb_date) || "",
         c.customSealNo || c.custom_seal || c.sealNo || "",
@@ -153,9 +189,31 @@ const StorageApplicationGenerator = ({ jobNo, children, onTrackSuccess }) => {
       // Footer
       doc.text("Thanking you,", 15, yPos);
       yPos += 8;
-      doc.text(`For ${firmName.toUpperCase()}`, 15, yPos);
-      yPos += 12;
-      doc.text("AUTHORISED SIGN", 15, yPos);
+      if (isGandhidham) {
+        doc.setTextColor(22, 54, 147); // Blue color
+        doc.setFont("helvetica", "bold");
+        doc.text("FOR, SURAJ FORWARDERS & SHIPPING AGENCIES", 15, yPos);
+        
+        let sigY = yPos + 2;
+        if (signatureBase64) {
+          try {
+            doc.addImage(signatureBase64, "PNG", 15, sigY, 45, 20);
+          } catch (e) {
+            console.warn("Adding signature failed", e);
+          }
+          yPos += 20;
+        }
+
+        yPos += 6;
+        doc.setTextColor(22, 54, 147); // Blue color
+        doc.setFont("helvetica", "bold");
+        doc.text("AUTHORIZED SIGNATURE", 15, yPos);
+        doc.setTextColor(0, 0, 0); // Reset color
+      } else {
+        doc.text(`For ${firmName.toUpperCase()}`, 15, yPos);
+        yPos += 12;
+        doc.text("AUTHORISED SIGN", 15, yPos);
+      }
 
       // Preview Blob
       const filename = `StorageYardApplication_${data.job_no || "Job"}.pdf`;

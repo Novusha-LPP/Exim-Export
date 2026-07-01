@@ -18,6 +18,67 @@ export const imageToBase64 = (url) => {
     img.onerror = (error) => {
       reject(error);
     };
-    img.src = url;
+    const separator = url.includes("?") ? "&" : "?";
+    img.src = `${url}${separator}t=${new Date().getTime()}`;
+  });
+};
+
+export const rotateImage90Deg = (url) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.setAttribute("crossOrigin", "anonymous");
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.height;
+      canvas.height = img.width;
+      const ctx = canvas.getContext("2d");
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((-90 * Math.PI) / 180);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+      // Background removal & coloring signature stamp-blue
+      try {
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+
+        // Check if the image already has transparent pixels
+        let hasTransparency = false;
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] < 220) {
+            hasTransparency = true;
+            break;
+          }
+        }
+
+        // Only process background removal if it does not already have transparency
+        if (!hasTransparency) {
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const minVal = Math.min(r, g, b);
+
+            if (minVal > 95) {
+              if (minVal >= 165) {
+                data[i + 3] = 0;
+              } else {
+                data[i + 3] = Math.round(255 * (1 - (minVal - 95) / (165 - 95)));
+              }
+            }
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      } catch (err) {
+        console.warn("Background removal failed", err);
+      }
+
+      const dataURL = canvas.toDataURL("image/png");
+      resolve(dataURL);
+    };
+    img.onerror = (error) => {
+      reject(error);
+    };
+    const separator = url.includes("?") ? "&" : "?";
+    img.src = `${url}${separator}t=${new Date().getTime()}`;
   });
 };

@@ -72,13 +72,20 @@ function FreightForwardingJobDetail() {
   // Auto-lock check
   useEffect(() => {
     if (data && !loading) {
+      const isSentForBilling = formik.values?.send_for_billing === true;
+      const isAdmin = user?.role === "Admin";
+
       if (isLocked) {
-        setIsEditable(true);
+        if (isSentForBilling && !isAdmin) {
+          setIsEditable(false);
+        } else {
+          setIsEditable(true);
+        }
       } else {
         setIsEditable(false);
       }
     }
-  }, [data, loading, isLocked]);
+  }, [data, loading, isLocked, formik.values?.send_for_billing, user?.role]);
 
   // Lock the job on mount
   const lockJob = useCallback(async () => {

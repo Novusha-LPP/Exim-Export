@@ -118,7 +118,7 @@ const BillingReportsUtility = ({ isDialog, onClose }) => {
       link.href = downloadUrl;
 
       const dateSuffix = filters.startDate ? `${filters.startDate}_to_${filters.endDate || 'now'}` : filters.year;
-      const filename = type === 'tds' ? `TDS_Payable_Register_${dateSuffix}.xlsx` : `Report_${type}_${dateSuffix}.xlsx`;
+      const filename = type === 'tds' ? `TDS_Payable_Register_${dateSuffix}.xlsx` : (type === 'gpj' ? `General_Pending_Jobs_${dateSuffix}.xlsx` : `Report_${type}_${dateSuffix}.xlsx`);
 
       link.setAttribute('download', filename);
       document.body.appendChild(link);
@@ -166,6 +166,14 @@ const BillingReportsUtility = ({ isDialog, onClose }) => {
       icon: <PaymentIcon sx={{ fontSize: 40, color: '#34a853' }} />,
       bgColor: '#e6f4ea',
       btnColor: '#34a853'
+    },
+    {
+      id: 'gpj',
+      title: "General Pending Jobs",
+      description: "Comprehensive list of all pending jobs with dates, exporters, S/B headings, and container details.",
+      icon: <SummarizeIcon sx={{ fontSize: 40, color: '#f59e0b' }} />,
+      bgColor: '#fff7ed',
+      btnColor: '#f59e0b'
     }
   ];
 
@@ -220,7 +228,7 @@ const BillingReportsUtility = ({ isDialog, onClose }) => {
 
       <Grid container spacing={4}>
         {reportCards.map((card) => (
-          <Grid item xs={12} md={4} key={card.id}>
+          <Grid item xs={12} sm={6} md={3} key={card.id}>
             <Card elevation={0} sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 4, border: '1px solid #e0e0e0', transition: 'all 0.3s ease', '&:hover': { transform: 'translateY(-8px)', boxShadow: '0 12px 24px rgba(0,0,0,0.1)', borderColor: card.btnColor } }}>
               <CardContent sx={{ flexGrow: 1, p: 3 }}>
                 <Box sx={{ width: 70, height: 70, borderRadius: 3, backgroundColor: card.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>{card.icon}</Box>

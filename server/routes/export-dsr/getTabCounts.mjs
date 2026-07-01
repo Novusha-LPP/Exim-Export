@@ -205,10 +205,58 @@ function summarizeJob(job) {
   };
 }
 
-function matchesTab(job, workMode, tab, jobTypeFilter = "") {
+function parseSendForBillingDate(dateStr) {
+  if (!dateStr) return null;
+  if (dateStr instanceof Date) return dateStr;
+  
+  const parts = String(dateStr).trim().split(" ");
+  const dateParts = parts[0].split("-");
+  if (dateParts.length === 3) {
+    const day = parseInt(dateParts[0], 10);
+    const month = parseInt(dateParts[1], 10) - 1;
+    const year = parseInt(dateParts[2], 10);
+    
+    let hours = 0;
+    let minutes = 0;
+    if (parts[1]) {
+      const timeParts = parts[1].split(":");
+      hours = parseInt(timeParts[0] || 0, 10);
+      minutes = parseInt(timeParts[1] || 0, 10);
+    }
+    
+    const parsedDate = new Date(year, month, day, hours, minutes);
+    if (!isNaN(parsedDate.getTime())) return parsedDate;
+  }
+
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) return d;
+  
+  return null;
+}
+
+function matchesTab(job, workMode, tab, jobTypeFilter = "", startDate = "", endDate = "") {
   const hasHandover = Boolean(job.handover_date);
   const hasBillingDone = Boolean(job.billing_date);
   const isCompleted = isCompletedStatus(job.status);
+
+  let isWithinDateRange = false;
+  let hasDateFilter = false;
+  if (startDate && endDate) {
+    hasDateFilter = true;
+    const sDate = new Date(startDate);
+    const eDate = new Date(endDate);
+    sDate.setHours(0, 0, 0, 0);
+    eDate.setHours(23, 59, 59, 999);
+    
+    const billingDateObj = parseSendForBillingDate(job.send_for_billing_date);
+    if (billingDateObj) {
+      isWithinDateRange = billingDateObj >= sDate && billingDateObj <= eDate;
+    }
+  }
+
+  if (hasDateFilter && !isWithinDateRange) {
+    return false;
+  }
 
   if (tab === "general-jobs" || tab === "General Jobs") {
     const isGenJob = job.isGeneralJob === true;
@@ -216,7 +264,7 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
     const matchesType = isGenJob || isFreightJob;
 
     if (!matchesType) return false;
-    if (isCompleted) return false;
+    if (!isWithinDateRange && isCompleted) return false;
     if (!job.send_for_billing) return false;
 
     if (jobTypeFilter === "gen") return isGenJob && !isFreightJob;
@@ -225,30 +273,42 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "") {
   }
 
   if (tab === "billing-pending") {
+    if (isWithinDateRange) {
+      return true;
+    }
     return job.send_for_billing && !hasBillingDone;
   }
 
   if (tab === "export-completed-billing") {
+    if (isWithinDateRange) {
+      return true;
+    }
     return hasBillingDone;
   }
 
   if (workMode === "payment") {
     if (tab === "payment-requested") return job.hasPendingPr;
     if (tab === "payment") return job.hasApprovedPr;
-    if (tab === "payment-completed") return job.prCompleted;
+    if (tab === "payment-completed") {
+      if (isWithinDateRange) return true;
+      return job.prCompleted;
+    }
   }
 
   if (workMode === "purchase-book") {
     if (tab === "purchase-book-requested") return job.hasPendingPb;
     if (tab === "purchase-book") return job.hasApprovedPb;
-    if (tab === "purchase-book-completed") return job.pbCompleted;
+    if (tab === "purchase-book-completed") {
+      if (isWithinDateRange) return true;
+      return job.pbCompleted;
+    }
   }
 
   if (tab === "club-jobs") {
     const isParent = job.is_club_job_parent === true;
     const isChild = !!job.parent_club_job;
     if (!isParent && !isChild) return false;
-    if (isCompleted) return false;
+    if (!isWithinDateRange && isCompleted) return false;
     if (isParent) {
       return job.send_for_billing === true;
     }
@@ -428,7 +488,7 @@ function applyCommonFilters(filter, query) {
 
 router.get("/api/export-jobs-tab-counts", async (req, res) => {
   try {
-    const { module = "jobs", pendingQueries = false, currentModule = "export-dsr", workMode = "payment", jobTypeFilter = "" } = req.query;
+    const { module = "jobs", pendingQueries = false, currentModule = "export-dsr", workMode = "payment", jobTypeFilter = "", startDate = "", endDate = "" } = req.query;
 
     const baseFilter = await buildUserRestrictionFilter(req);
 
@@ -510,7 +570,7 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
       tabs.forEach((tabKey) => {
         let list = summarizedBase
           .map(job => ({ ...job, unresolved_queries: unresolvedByJob[job.job_no] || 0 }))
-          .filter(job => matchesTab(job, workMode, tabKey, String(jobTypeFilter).trim().toLowerCase()));
+          .filter(job => matchesTab(job, workMode, tabKey, String(jobTypeFilter).trim().toLowerCase(), startDate, endDate));
 
         if (tabKey === "club-jobs") {
           list = list.filter(job => job.is_club_job_parent);

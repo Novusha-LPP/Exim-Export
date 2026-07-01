@@ -1210,6 +1210,7 @@ const containerDetailsSchema = new Schema(
     serialNumber: { type: Number },
     containerNo: { type: String },
     containerSize: { type: String, trim: true },
+    isoCode: { type: String, trim: true },
     sealNo: String,
     customSealNo: { type: String, trim: true },
     shippingLineSealNo: String,

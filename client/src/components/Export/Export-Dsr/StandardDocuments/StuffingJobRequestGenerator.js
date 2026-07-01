@@ -4,6 +4,9 @@ import "jspdf-autotable";
 import axios from "axios";
 import { Button } from "@mui/material";
 import logo from "../../../../assets/images/surajLogo.jpeg";
+import signatureImg from "../../../../assets/images/gandhidhamSignature.jpg";
+import companyLogo from "../../../../assets/images/Frieghttablogo.png";
+import { rotateImage90Deg } from "../../../../utils/imageUtils";
 
 const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
   const generatePDF = async (e) => {
@@ -42,13 +45,49 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
 
       const getContainerSizeLabel = (value) => {
         const raw = (value || "").toString().toUpperCase().trim();
+        if (/^[2]\d{3}$/.test(raw)) return "20";
+        if (/^[4]\d{3}$/.test(raw)) return "40";
+        if (/^[9]\d{3}$/.test(raw)) return "45";
         const sizeMatch = raw.match(/\b(20|40|45)\b/);
         return sizeMatch ? sizeMatch[1] : raw;
       };
 
-      // Header logo & address
+      const isGandhidham =
+        String(data.branchCode || "").toUpperCase().trim() === "GIM" ||
+        String(data.jobNumber || "").toUpperCase().startsWith("GIM") ||
+        String(data.job_no || "").toUpperCase().startsWith("GIM");
+
+      let signatureBase64 = "";
+      try {
+        signatureBase64 = await rotateImage90Deg(signatureImg);
+      } catch (err) {
+        console.warn("Failed to load signature image", err);
+      }
+
       try {
         doc.addImage(logo, "JPEG", 9, 4, 190, 38);
+        if (isGandhidham) {
+          // Cover Ahmedabad address
+          doc.setFillColor(255, 255, 255);
+          doc.rect(112, 4, 87, 38, "F");
+
+          // Draw Gandhidham address
+          doc.setTextColor(100, 100, 100); // Grey color
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8.5);
+          doc.text("GANDHIDHAM", 138, 8);
+          
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7.5);
+          doc.text("209, 2nd Floor, Madhav Palace, Plot No. 55,", 138, 12.5);
+          doc.text("Sector-8, Near Chamber of Commerce,", 138, 16.5);
+          doc.text("GANDHIDHAM (Kutch) - 370 201", 138, 20.5);
+          doc.text("Phone No. : (02836) 229011 / 12", 138, 24.5);
+          doc.text("E-mail : anurag@surajforwders.com", 138, 28.5);
+          doc.text("PIC : Mr. Anurag Pillai (M) +91 99243 04422", 138, 32.5);
+          
+          doc.setTextColor(0, 0, 0); // Reset color
+        }
       } catch (err) {
         console.warn("Logo add failed", err);
       }
@@ -83,8 +122,8 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       yPos += 8;
 
       const containers = data.containers || [];
-      const count20 = containers.filter(c => getContainerSizeLabel(c.containerSize || c.type || c.size) === "20").length;
-      const count40 = containers.filter(c => getContainerSizeLabel(c.containerSize || c.type || c.size) === "40" || getContainerSizeLabel(c.containerSize || c.type || c.size) === "45").length;
+      const count20 = containers.filter(c => getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size) === "20").length;
+      const count40 = containers.filter(c => getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size) === "40" || getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size) === "45").length;
       const totalCount = containers.length;
 
       doc.setFont("helvetica", "bold");
@@ -114,19 +153,39 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       doc.text("Yours faithfully,", 15, yPos);
       yPos += 12;
 
-      const isGandhidham =
-        String(data.branchCode || "").toUpperCase().trim() === "GIM" ||
-        String(data.jobNumber || "").toUpperCase().startsWith("GIM");
       const firmName = isGandhidham ? "SURAJ FORWARDERS" : "SURAJ FORWARDERS & SHIPPING AGENCIES";
       const licCode = isGandhidham ? "ABOFS1766LCH006" : "ABOFS1766LCH005";
 
-      doc.setFont("helvetica", "bold");
-      doc.text(`For ${firmName}`, 15, yPos);
-      yPos += 5;
-      doc.setFont("helvetica", "normal");
-      doc.text("As Agents (Authorised Representative)", 15, yPos + 2);
-      doc.text("(With Seal)", 15, yPos + 7);
-      yPos += 15;
+      if (isGandhidham) {
+        doc.setTextColor(22, 54, 147); // Blue color
+        doc.setFont("helvetica", "bold");
+        doc.text("FOR, SURAJ FORWARDERS & SHIPPING AGENCIES", 15, yPos);
+        
+        let sigY = yPos + 2;
+        if (signatureBase64) {
+          try {
+            doc.addImage(signatureBase64, "PNG", 15, sigY, 45, 20);
+          } catch (e) {
+            console.warn("Adding signature failed", e);
+          }
+          yPos += 20;
+        }
+
+        yPos += 6;
+        doc.setTextColor(22, 54, 147); // Blue color
+        doc.setFont("helvetica", "bold");
+        doc.text("AUTHORIZED SIGNATURE", 15, yPos);
+        doc.setTextColor(0, 0, 0); // Reset color
+        yPos += 12;
+      } else {
+        doc.setFont("helvetica", "bold");
+        doc.text(`For ${firmName}`, 15, yPos);
+        yPos += 5;
+        doc.setFont("helvetica", "normal");
+        doc.text("As Agents (Authorised Representative)", 15, yPos + 2);
+        doc.text("(With Seal)", 15, yPos + 7);
+        yPos += 15;
+      }
 
       // Table 1: Shipper, CHA, SB Details
       doc.autoTable({

@@ -28,6 +28,63 @@ const formatDateToDDMMYYYY = (dateVal) => {
     return str;
 };
 
+const formatDateToDDMMMYYYY = (dateVal) => {
+  if (!dateVal) return "";
+  const str = String(dateVal).trim();
+  let d = null;
+
+  const ymdMatch = str.match(/^(\d{4})[\-\/](\d{2})[\-\/](\d{2})/);
+  if (ymdMatch) {
+    d = new Date(parseInt(ymdMatch[1], 10), parseInt(ymdMatch[2], 10) - 1, parseInt(ymdMatch[3], 10));
+  } else {
+    const dmyMatch = str.match(/^(\d{2})[\-\/](\d{2})[\-\/](\d{4})/);
+    if (dmyMatch) {
+      d = new Date(parseInt(dmyMatch[3], 10), parseInt(dmyMatch[2], 10) - 1, parseInt(dmyMatch[1], 10));
+    } else {
+      d = new Date(str);
+    }
+  }
+
+  if (d && !isNaN(d.getTime())) {
+    const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = MONTH_NAMES[d.getMonth()];
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+  return str;
+};
+
+const getNoOfContainer = (containers) => {
+  if (!containers || containers.length === 0) return "-";
+  const counts = {};
+  for (const c of containers) {
+    let size = String(c.containerSize || c.size || "").trim();
+    let type = String(c.type || "").trim();
+
+    // Extract numbers from size
+    const sizeMatch = size.match(/\d+/);
+    const sizeNorm = sizeMatch ? sizeMatch[0] : size;
+
+    // Extract short type code
+    let typeNorm = type;
+    if (type.toUpperCase().includes("HIGH CUBE") || type.toUpperCase().includes("HC") || type.toUpperCase().includes("HQ")) {
+      typeNorm = "HC";
+    } else if (type.toUpperCase().includes("GENERAL") || type.toUpperCase().includes("GP") || type === "") {
+      typeNorm = "GP";
+    } else {
+      typeNorm = typeNorm.replace(/\d+/g, "").trim().toUpperCase();
+    }
+
+    const key = `${sizeNorm}${typeNorm}`;
+    counts[key] = (counts[key] || 0) + 1;
+  }
+
+  return Object.entries(counts)
+    .map(([key, val]) => `${val} x ${key}`)
+    .join(", ");
+};
+
 router.get("/api/report/tds-payable-register", async (req, res) => {
   const { year, branchId, startDate, endDate } = req.query;
 
@@ -39,19 +96,49 @@ router.get("/api/report/tds-payable-register", async (req, res) => {
 
     // Date filtering logic
     if (startDate && endDate) {
-      query.createdAt = {
-        $gte: new Date(startDate),
-        $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
-      };
+      query.$or = [
+        {
+          supplierInvDate: { $gte: startDate, $lte: endDate }
+        },
+        {
+          $and: [
+            {
+              $or: [
+                { supplierInvDate: { $exists: false } },
+                { supplierInvDate: null },
+                { supplierInvDate: "" }
+              ]
+            },
+            {
+              entryDate: { $gte: startDate, $lte: endDate }
+            }
+          ]
+        }
+      ];
     } else if (year && year !== "all") {
       const parts = year.split("-");
       if (parts.length === 2) {
         const startY = 2000 + parseInt(parts[0], 10);
         const endY = 2000 + parseInt(parts[1], 10);
-        query.createdAt = {
-          $gte: new Date(`${startY}-04-01T00:00:00.000Z`),
-          $lte: new Date(`${endY}-03-31T23:59:59.999Z`),
-        };
+        query.$or = [
+          {
+            supplierInvDate: { $gte: `${startY}-04-01`, $lte: `${endY}-03-31` }
+          },
+          {
+            $and: [
+              {
+                $or: [
+                  { supplierInvDate: { $exists: false } },
+                  { supplierInvDate: null },
+                  { supplierInvDate: "" }
+                ]
+              },
+              {
+                entryDate: { $gte: `${startY}-04-01`, $lte: `${endY}-03-31` }
+              }
+            ]
+          }
+        ];
       }
     }
 
@@ -75,6 +162,7 @@ router.get("/api/report/tds-payable-register", async (req, res) => {
       { header: "TDS Section Code", key: "tdsSection", width: 15 },
       { header: "TDS %", key: "tdsPercent", width: 10 },
       { header: "TDS Amount (INR)", key: "tdsAmount", width: 15 },
+      { header: "Net Amount (INR)", key: "netAmount", width: 15 },
     ];
 
     // Style the header
@@ -96,6 +184,11 @@ router.get("/api/report/tds-payable-register", async (req, res) => {
               ] 
           }).lean()
       ]);
+
+      if (job) {
+          const isLinked = job.charges?.some(c => c.purchase_book_no === entry.entryNo);
+          if (!isLinked) continue;
+      }
 
       if (branchId && branchId !== "all" && job?.branch_code !== branchId) {
           continue; 
@@ -125,12 +218,19 @@ router.get("/api/report/tds-payable-register", async (req, res) => {
       let gstAmount = (entry.cgstAmt || 0) + (entry.sgstAmt || 0) + (entry.igstAmt || 0);
       let taxableValue = entry.taxableValue;
 
-      if (isReimbursement && entry.total) {
-          gstAmount = parseFloat((entry.total * 18 / 118).toFixed(2));
-          taxableValue = parseFloat((entry.total - gstAmount).toFixed(2));
-      }
+      let totalVal = entry.total;
+      let netAmount = entry.netAmount !== undefined && entry.netAmount !== null ? entry.netAmount : (totalVal - (entry.tds || 0));
 
-      const exemptAmount = (entry.total || 0) - (taxableValue || 0) - gstAmount + (entry.tds || 0);
+      if (isReimbursement) {
+          totalVal = entry.taxableValue !== undefined && entry.taxableValue !== null && entry.taxableValue !== 0 ? entry.taxableValue : (entry.total + (entry.tds || 0));
+          netAmount = entry.total !== undefined && entry.total !== null ? entry.total : (totalVal - (entry.tds || 0));
+          
+          gstAmount = parseFloat((netAmount * 18 / 118).toFixed(2));
+          taxableValue = parseFloat((netAmount - gstAmount).toFixed(2));
+      } else {
+          totalVal = (taxableValue || 0) + (gstAmount || 0);
+          netAmount = entry.netAmount !== undefined && entry.netAmount !== null ? entry.netAmount : (totalVal - (entry.tds || 0));
+      }
 
       const panVal = String(entry.pan || "").trim();
       let orgType = "Proprietor";
@@ -146,16 +246,17 @@ router.get("/api/report/tds-payable-register", async (req, res) => {
         pbDate: formatDateToDDMMYYYY(entry.entryDate),
         type: "Purchase",
         transNo: entry.entryNo,
-        partyName: entry.supplierName,
+        partyName: entry.supplierName || party?.organization || party?.name || entry.chargeHeading || '',
         pan: entry.pan,
         vendorRefNo: entry.supplierInvNo,
-        total: entry.total,
-        taxableValue: entry.taxableValue,
+        total: totalVal,
+        taxableValue: taxableValue,
         gstAmount: gstAmount,
         tdsCode: tdsCategory,
         tdsSection: tdsCategory ? tdsCategory.split(' ').pop() : '', // e.g. "94C" -> "94C" or "TDS... 94C" -> "94C"
         tdsPercent: charge?.cost?.tdsPercent || '',
         tdsAmount: entry.tds,
+        netAmount: netAmount,
       });
     }
 
@@ -182,25 +283,74 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
 
   try {
     const query = {};
-    if (startDate && endDate) {
-      query.createdAt = {
-        $gte: new Date(startDate),
-        $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
-      };
-    } else if (year && year !== "all") {
-      const parts = year.split("-");
-      if (parts.length === 2) {
-        const startY = 2000 + parseInt(parts[0], 10);
-        const endY = 2000 + parseInt(parts[1], 10);
+    if (type === 'pb') {
+      if (startDate && endDate) {
+        query.$or = [
+          {
+            supplierInvDate: { $gte: startDate, $lte: endDate }
+          },
+          {
+            $and: [
+              {
+                $or: [
+                  { supplierInvDate: { $exists: false } },
+                  { supplierInvDate: null },
+                  { supplierInvDate: "" }
+                ]
+              },
+              {
+                entryDate: { $gte: startDate, $lte: endDate }
+              }
+            ]
+          }
+        ];
+      } else if (year && year !== "all") {
+        const parts = year.split("-");
+        if (parts.length === 2) {
+          const startY = 2000 + parseInt(parts[0], 10);
+          const endY = 2000 + parseInt(parts[1], 10);
+          query.$or = [
+            {
+              supplierInvDate: { $gte: `${startY}-04-01`, $lte: `${endY}-03-31` }
+            },
+            {
+              $and: [
+                {
+                  $or: [
+                    { supplierInvDate: { $exists: false } },
+                    { supplierInvDate: null },
+                    { supplierInvDate: "" }
+                  ]
+                },
+                {
+                  entryDate: { $gte: `${startY}-04-01`, $lte: `${endY}-03-31` }
+                }
+              ]
+            }
+          ];
+        }
+      }
+    } else {
+      if (startDate && endDate) {
         query.createdAt = {
-          $gte: new Date(`${startY}-04-01T00:00:00.000Z`),
-          $lte: new Date(`${endY}-03-31T23:59:59.999Z`),
+          $gte: new Date(startDate),
+          $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
         };
+      } else if (year && year !== "all") {
+        const parts = year.split("-");
+        if (parts.length === 2) {
+          const startY = 2000 + parseInt(parts[0], 10);
+          const endY = 2000 + parseInt(parts[1], 10);
+          query.createdAt = {
+            $gte: new Date(`${startY}-04-01T00:00:00.000Z`),
+            $lte: new Date(`${endY}-03-31T23:59:59.999Z`),
+          };
+        }
       }
     }
 
     const workbook = new ExcelJS.Workbook();
-    const sheetName = type === 'pb' ? 'Purchase Book' : 'Payment Requests';
+    const sheetName = type === 'pb' ? 'Purchase Book' : (type === 'gpj' ? 'General Pending Jobs' : 'Payment Requests');
     const worksheet = workbook.addWorksheet(sheetName);
 
     if (type === 'pb') {
@@ -224,31 +374,33 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
       const entries = await PurchaseBookEntryModel.find(query).lean();
       for (const entry of entries) {
         let job = null;
+        if (entry.jobRef) {
+            job = await ExJobModel.findById(entry.jobRef).lean();
+        }
+        if (!job && entry.jobNo) {
+            job = await ExJobModel.findOne({ job_no: entry.jobNo }).lean();
+        }
+
+        if (job) {
+            const isLinked = job.charges?.some(c => c.purchase_book_no === entry.entryNo);
+            if (!isLinked) continue;
+        }
+
+        if (branchId && branchId !== 'all' && job?.branch_code !== branchId) continue;
+
         let chargeCategory = entry.chargeHeadCategory;
-        
-        // We need job either for branch filter or missing chargeCategory fallback
-        if (!chargeCategory || (branchId && branchId !== 'all')) {
-            if (entry.jobRef) {
-                job = await ExJobModel.findById(entry.jobRef).lean();
-            }
-            if (!job && entry.jobNo) {
-                job = await ExJobModel.findOne({ job_no: entry.jobNo }).lean();
-            }
             
-            if (branchId && branchId !== 'all' && job?.branch_code !== branchId) continue;
-            
-            if (!chargeCategory && job) {
-                let charge = null;
-                if (entry.chargeRef) {
-                    charge = job.charges?.find(c => c._id?.toString() === entry.chargeRef);
-                }
-                if (!charge && entry.chargeHeading) {
-                    const normHeading = entry.chargeHeading.trim().toLowerCase();
-                    charge = job.charges?.find(c => c.chargeHead?.trim().toLowerCase() === normHeading);
-                }
-                if (charge) {
-                    chargeCategory = charge.chargeType || charge.category || '';
-                }
+        if (!chargeCategory && job) {
+            let charge = null;
+            if (entry.chargeRef) {
+                charge = job.charges?.find(c => c._id?.toString() === entry.chargeRef);
+            }
+            if (!charge && entry.chargeHeading) {
+                const normHeading = entry.chargeHeading.trim().toLowerCase();
+                charge = job.charges?.find(c => c.chargeHead?.trim().toLowerCase() === normHeading);
+            }
+            if (charge) {
+                chargeCategory = charge.chargeType || charge.category || '';
             }
         }
 
@@ -256,25 +408,43 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
         let gst = (entry.cgstAmt || 0) + (entry.sgstAmt || 0) + (entry.igstAmt || 0);
         let taxableValue = entry.taxableValue;
 
-        if (isReimbursement && entry.total) {
-            gst = parseFloat((entry.total * 18 / 118).toFixed(2));
-            taxableValue = parseFloat((entry.total - gst).toFixed(2));
-        }
-
         let totalVal = entry.total;
-        if (!isReimbursement) {
+        let netAmount = entry.netAmount !== undefined && entry.netAmount !== null ? entry.netAmount : (totalVal - (entry.tds || 0));
+
+        if (isReimbursement) {
+            totalVal = entry.taxableValue !== undefined && entry.taxableValue !== null && entry.taxableValue !== 0 ? entry.taxableValue : (entry.total + (entry.tds || 0));
+            netAmount = entry.total !== undefined && entry.total !== null ? entry.total : (totalVal - (entry.tds || 0));
+            
+            gst = parseFloat((netAmount * 18 / 118).toFixed(2));
+            taxableValue = parseFloat((netAmount - gst).toFixed(2));
+        } else {
             totalVal = (taxableValue || 0) + (gst || 0);
+            netAmount = entry.netAmount !== undefined && entry.netAmount !== null ? entry.netAmount : (totalVal - (entry.tds || 0));
         }
 
-        const netAmount = entry.netAmount !== undefined && entry.netAmount !== null
-            ? entry.netAmount
-            : (totalVal - (entry.tds || 0));
+        let supplierName = entry.supplierName;
+        if (!supplierName) {
+            if (entry.gstinNo || entry.pan) {
+                const dir = await Directory.findOne({
+                    $or: [
+                        { "registrationDetails.panNo": entry.pan },
+                        { "branchInfo.gstNo": entry.gstinNo }
+                    ]
+                }).lean();
+                if (dir) {
+                    supplierName = dir.organization || dir.name;
+                }
+            }
+            if (!supplierName) {
+                supplierName = entry.chargeHeading || "";
+            }
+        }
 
         worksheet.addRow({
           entryNo: entry.entryNo,
           entryDate: formatDateToDDMMYYYY(entry.entryDate),
           jobNo: entry.jobNo,
-          supplierName: entry.supplierName,
+          supplierName: supplierName,
           gstinNo: entry.gstinNo,
           supplierInvNo: entry.supplierInvNo,
           supplierInvDate: formatDateToDDMMYYYY(entry.supplierInvDate),
@@ -285,6 +455,66 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
           netAmount: netAmount,
           chargeCategory: chargeCategory || '',
           status: entry.status || 'Finalized',
+        });
+      }
+    } else if (type === 'gpj') {
+      worksheet.columns = [
+        { header: "Job No", key: "jobNo", width: 25 },
+        { header: "Job Date", key: "jobDate", width: 15 },
+        { header: "SB No.", key: "sbNo", width: 15 },
+        { header: "SB Date", key: "sbDate", width: 15 },
+        { header: "Exporter", key: "exporter", width: 30 },
+        { header: "S/B Heading", key: "sbHeading", width: 45 },
+        { header: "Container Count", key: "containerCount", width: 15 },
+        { header: "Container Nos.", key: "containerNos", width: 30 },
+        { header: "No Of Container", key: "noOfContainer", width: 20 },
+      ];
+
+      // Base query matching all pending jobs
+      const matchQuery = {
+        $and: [
+          { status: { $not: { $regex: "^completed", $options: "i" } } },
+          { isCompleted: { $ne: true } },
+          { status: { $not: { $regex: "^cancelled", $options: "i" } } },
+          { isJobCanceled: { $ne: true } }
+        ]
+      };
+
+      // Exclude FF jobs
+      matchQuery.$and.push({ job_no: { $not: /^FF/i } });
+
+      if (branchId && branchId !== 'all') {
+        matchQuery.$and.push({ branch_code: branchId });
+      }
+
+      if (startDate && endDate) {
+        matchQuery.$and.push({
+          createdAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
+          }
+        });
+      } else if (year && year !== "all") {
+        matchQuery.$and.push({ year: year });
+      }
+
+      const jobs = await ExJobModel.find(matchQuery).sort({ createdAt: -1 }).lean();
+      for (const job of jobs) {
+        const sbHeading = job.description || job.invoices?.[0]?.products?.[0]?.description || "";
+        const containerCount = (job.containers || []).length;
+        const containerNos = (job.containers || []).map(c => c.containerNo || c.container_number).filter(Boolean).join(", ") || "";
+        const noOfContainer = getNoOfContainer(job.containers);
+
+        worksheet.addRow({
+          jobNo: job.job_no || "",
+          jobDate: formatDateToDDMMMYYYY(job.job_date),
+          sbNo: job.sb_no || "",
+          sbDate: formatDateToDDMMMYYYY(job.sb_date),
+          exporter: job.exporter || "",
+          sbHeading: sbHeading,
+          containerCount: containerCount,
+          containerNos: containerNos,
+          noOfContainer: noOfContainer,
         });
       }
     } else {

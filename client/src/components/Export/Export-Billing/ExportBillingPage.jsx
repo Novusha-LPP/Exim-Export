@@ -1214,6 +1214,9 @@ function ExportBillingPage() {
   const [selectedBranch, setSelectedBranch] = useState(() => {
     return localStorage.getItem("billing_selectedBranch") || "";
   });
+  const [downloadExcelDialogOpen, setDownloadExcelDialogOpen] = useState(false);
+  const [downloadStartDate, setDownloadStartDate] = useState("");
+  const [downloadEndDate, setDownloadEndDate] = useState("");
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -1288,6 +1291,7 @@ function ExportBillingPage() {
   useEffect(() => {
     localStorage.setItem("billing_showUnresolvedOnly", showUnresolvedOnly);
   }, [showUnresolvedOnly]);
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1444,6 +1448,8 @@ function ExportBillingPage() {
           year: selectedYear || "",
           unresolvedOnly: showUnresolvedOnly,
           jobTypeFilter: activeTab === "general-jobs" ? jobTypeFilter : "",
+          startDate: downloadStartDate,
+          endDate: downloadEndDate,
         },
         headers: {
           username: user?.username || "",
@@ -1463,6 +1469,7 @@ function ExportBillingPage() {
         { header: "Job No", key: "job_no", width: 25 },
         { header: "Exporter Name", key: "exporter", width: 35 },
         { header: "Booking No & Shipping Bill No", key: "booking_and_sb", width: 35 },
+        { header: "Sent for Billing Date", key: "send_for_billing_date", width: 25 },
       ];
 
       worksheet.getRow(1).eachCell((cell) => {
@@ -1494,6 +1501,7 @@ function ExportBillingPage() {
           job_no: job.job_no || "",
           exporter: job.exporter || "",
           booking_and_sb: bookingSbVal,
+          send_for_billing_date: job.send_for_billing_date ? formatDate(job.send_for_billing_date) : "-",
         });
       });
 
@@ -1893,6 +1901,16 @@ function ExportBillingPage() {
           ),
         },
         {
+          accessorKey: "send_for_billing_date",
+          header: "Sent to Billing Date",
+          size: 150,
+          Cell: ({ row }) => (
+            <div style={{ fontWeight: "600", color: "#4b5563" }}>
+              {formatDate(row.original.send_for_billing_date)}
+            </div>
+          ),
+        },
+        {
           accessorKey: "charge_heads",
           header: "Charge Heads",
           size: 220,
@@ -2280,6 +2298,7 @@ function ExportBillingPage() {
               </TextField>
             )}
 
+
             <TextField
               size="small"
               value={searchQuery}
@@ -2312,7 +2331,7 @@ function ExportBillingPage() {
             <Button
               variant="outlined"
               size="small"
-              onClick={handleDownloadExcel}
+              onClick={() => setDownloadExcelDialogOpen(true)}
               disabled={loading}
               sx={{
                 borderRadius: '6px',
@@ -2997,6 +3016,81 @@ function ExportBillingPage() {
         <DialogContent sx={{ p: 0 }}>
           <BillingReportsUtility isDialog={true} onClose={() => setReportsHubOpen(false)} />
         </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={downloadExcelDialogOpen}
+        onClose={() => setDownloadExcelDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: "12px", overflow: "hidden" } }}
+      >
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", py: 1.5, px: 3, background: "#19448aff", color: "#fff" }}>
+          <Typography sx={{ fontWeight: 700, fontSize: "15px" }}>Download Excel Options</Typography>
+          <IconButton onClick={() => setDownloadExcelDialogOpen(false)} size="small" sx={{ color: "#fff" }}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <Typography variant="body2" sx={{ mb: 2, color: "#4b5563", fontSize: "12px", lineHeight: 1.5 }}>
+            Select a <strong>"Sent for Billing"</strong> date range. If a completed job's sent-for-billing date falls within this range, it will be included in the Excel. Leave empty to download all matching jobs.
+          </Typography>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              type="date"
+              label="From Date"
+              size="small"
+              value={downloadStartDate}
+              onChange={(e) => setDownloadStartDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+            <TextField
+              type="date"
+              label="To Date"
+              size="small"
+              value={downloadEndDate}
+              onChange={(e) => setDownloadEndDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, borderTop: "1px solid #e5e7eb", pt: 1.5, justifyContent: "space-between" }}>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => {
+              setDownloadStartDate("");
+              setDownloadEndDate("");
+            }}
+            sx={{ fontWeight: 600 }}
+          >
+            Reset
+          </Button>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setDownloadExcelDialogOpen(false)}
+              sx={{ fontWeight: 600 }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              color="primary"
+              onClick={() => {
+                setDownloadExcelDialogOpen(false);
+                handleDownloadExcel();
+              }}
+              sx={{ fontWeight: 600, background: "#19448aff" }}
+            >
+              Download
+            </Button>
+          </Box>
+        </DialogActions>
       </Dialog>
     </Box>
   );

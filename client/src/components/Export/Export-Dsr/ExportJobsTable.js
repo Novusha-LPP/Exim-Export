@@ -452,6 +452,9 @@ const buildShippingLineUrls = (num, containerFirst = "") => ({
 const getContainerSizeLabel = (value) => {
   const raw = (value || "").toString().toUpperCase().trim();
   if (!raw) return "";
+  if (/^[2]\d{3}$/.test(raw)) return "20";
+  if (/^[4]\d{3}$/.test(raw)) return "40";
+  if (/^[9]\d{3}$/.test(raw)) return "45";
   let label = raw;
   label = label.replace(/HIGH CUBE/g, "HC");
   label = label.replace(/STANDARD/g, "STD");
@@ -980,6 +983,68 @@ const ExportJobsTable = () => {
   const [jobQueriesStatus, setJobQueriesStatus] = useState({});
   const [onlyPendingQueries, setOnlyPendingQueries] = useState(savedFilters.onlyPendingQueries || false);
   const [unresolvedCount, setUnresolvedCount] = useState(0);
+
+  const [directories, setDirectories] = useState([]);
+
+  useEffect(() => {
+    const fetchDirectories = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/directory?limit=1000`);
+        if (response.data.success) {
+          setDirectories(response.data.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch directories for validity checking:", err);
+      }
+    };
+    fetchDirectories();
+  }, []);
+
+  const expiringBanners = React.useMemo(() => {
+    if (!directories || directories.length === 0 || !jobs || jobs.length === 0) return [];
+    
+    // Get unique exporters in the current jobs list
+    const visibleExporters = new Set(jobs.map(j => (j.exporter || "").trim().toUpperCase()));
+    
+    const banners = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    directories.forEach(dir => {
+      const orgName = (dir.organization || "").trim().toUpperCase();
+      // Only show banner if the exporter is visible in the jobs list
+      if (!visibleExporters.has(orgName)) return;
+      
+      const validities = dir.selfSealValidity || [];
+      validities.forEach(v => {
+        if (!v.validityDate || !v.customHouse) return;
+        
+        const validityDate = new Date(v.validityDate);
+        validityDate.setHours(0, 0, 0, 0);
+        
+        const diffTime = validityDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays >= 0 && diffDays <= 1) {
+          // Format date for display as dd-MMM-yyyy
+          const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const day = String(validityDate.getDate()).padStart(2, '0');
+          const month = MONTH_NAMES[validityDate.getMonth()];
+          const year = validityDate.getFullYear();
+          const displayDate = `${day}-${month}-${year}`;
+
+          banners.push({
+            exporter: dir.organization,
+            customHouse: v.customHouse,
+            validityDate: displayDate,
+            diffDays
+          });
+        }
+      });
+    });
+    
+    return banners;
+  }, [directories, jobs]);
 
   const sortedJobs = React.useMemo(() => {
     return [...jobs].sort((a, b) => {
@@ -1673,7 +1738,7 @@ const ExportJobsTable = () => {
           if (job.containers && job.containers.length > 0) {
             job.containers.forEach(c => {
               if (c.containerNo) contCol.push(`Cont: ${c.containerNo}`);
-              if (c.type) contCol.push(`Size: ${getContainerSizeLabel(c.type)}`);
+              if (c.isoCode || c.type) contCol.push(`Size: ${getContainerSizeLabel(c.isoCode || c.type)}`);
             });
           }
           const placeDate = job.operations?.[0]?.statusDetails?.[0]?.containerPlacementDate;
@@ -3044,6 +3109,34 @@ const ExportJobsTable = () => {
             )}
           </div>
 
+          {expiringBanners.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px', marginTop: '10px' }}>
+              {expiringBanners.map((banner, index) => (
+                <div
+                  key={index}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    backgroundColor: '#fffbeb',
+                    border: '1.5px solid #fef3c7',
+                    borderLeft: '5px solid #f59e0b',
+                    borderRadius: '6px',
+                    padding: '10px 16px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                    fontSize: '13px',
+                    color: '#b45309',
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                  }}
+                >
+                  <span style={{ marginRight: '10px', fontSize: '16px', display: 'flex', alignItems: 'center' }}>⚠️</span>
+                  <div style={{ flexGrow: 1 }}>
+                    Exporter <strong>{banner.exporter}</strong>'s self seal validity for custom house <strong>{banner.customHouse}</strong> is going to expire on <strong>{banner.validityDate}</strong>.
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Filters */}
           <div style={s.toolbar} className="toolbar-responsive">
             {/* Year Filter */}
@@ -4184,10 +4277,10 @@ const ExportJobsTable = () => {
                                             </div>
                                           </div>
                                           {/* Container type shown below the container no */}
-                                          {container.type && (
+                                          {(container.isoCode || container.type) && (
                                             <div style={{ marginTop: "2px" }}>
                                               <span style={{ fontSize: '9px', color: '#445566', fontWeight: "900", backgroundColor: "#e2e8f0", padding: "1px 6px", borderRadius: "3px", display: "inline-block" }}>
-                                                {getContainerSizeLabel(container.type)}
+                                                {getContainerSizeLabel(container.isoCode || container.type)}
                                               </span>
                                             </div>
                                           )}

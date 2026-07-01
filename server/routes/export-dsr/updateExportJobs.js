@@ -2696,6 +2696,19 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
     const existingJob = await ExJobModel.findOne({
       job_no: { $regex: `^${job_no}$`, $options: "i" },
     });
+
+    if (existingJob) {
+      const usernameHeader = req.headers["username"] || req.headers["x-username"];
+      const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
+      const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
+      const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
+
+      if (existingJob.send_for_billing && !isAdmin) {
+        return res.status(403).json({
+          message: "This job has been sent for billing. Only Admins can modify it."
+        });
+      }
+    }
     if (
       existingJob &&
       existingJob.lockedBy &&
@@ -2835,6 +2848,20 @@ router.patch(
     try {
       const { id } = req.params;
       const { fieldUpdates } = req.body;
+
+      const existingJob = await ExJobModel.findById(id);
+      if (existingJob) {
+        const usernameHeader = req.headers["username"] || req.headers["x-username"];
+        const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
+        const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
+        const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
+
+        if (existingJob.send_for_billing && !isAdmin) {
+          return res.status(403).json({
+            message: "This job has been sent for billing. Only Admins can modify it."
+          });
+        }
+      }
       const updateObject = {};
       (fieldUpdates || []).forEach(({ field, value }) => {
         updateObject[field] = value;
@@ -2890,6 +2917,20 @@ router.patch(
     try {
       const raw = req.params.job_no || "";
       const job_no = decodeURIComponent(raw);
+
+      const existingJob = await ExJobModel.findOne({ job_no: { $regex: `^${job_no}$`, $options: "i" } });
+      if (existingJob) {
+        const usernameHeader = req.headers["username"] || req.headers["x-username"];
+        const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
+        const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
+        const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
+
+        if (existingJob.send_for_billing && !isAdmin) {
+          return res.status(403).json({
+            message: "This job has been sent for billing. Only Admins can modify it."
+          });
+        }
+      }
 
       const { fieldUpdates } = req.body;
       const updateObject = {};
@@ -2950,6 +2991,20 @@ router.put(
       const raw = req.params.job_no || "";
       const job_no = decodeURIComponent(raw);
 
+      const existingJob = await ExJobModel.findOne({ job_no: { $regex: `^${job_no}$`, $options: "i" } });
+      if (existingJob) {
+        const usernameHeader = req.headers["username"] || req.headers["x-username"];
+        const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
+        const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
+        const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
+
+        if (existingJob.send_for_billing && !isAdmin) {
+          return res.status(403).json({
+            message: "This job has been sent for billing. Only Admins can modify it."
+          });
+        }
+      }
+
       const { export_documents } = req.body;
 
       const updatedExportJob = await ExJobModel.findOneAndUpdate(
@@ -2983,6 +3038,20 @@ router.put(
     try {
       const raw = req.params.job_no || "";
       const job_no = decodeURIComponent(raw);
+
+      const existingJob = await ExJobModel.findOne({ job_no: { $regex: `^${job_no}$`, $options: "i" } });
+      if (existingJob) {
+        const usernameHeader = req.headers["username"] || req.headers["x-username"];
+        const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
+        const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
+        const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
+
+        if (existingJob.send_for_billing && !isAdmin) {
+          return res.status(403).json({
+            message: "This job has been sent for billing. Only Admins can modify it."
+          });
+        }
+      }
 
       const { containers } = req.body;
 

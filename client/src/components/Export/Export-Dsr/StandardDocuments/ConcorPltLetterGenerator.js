@@ -3,8 +3,10 @@ import jsPDF from "jspdf";
 import axios from "axios";
 import { Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import DocumentEditorDialog from "./DocumentEditorDialog";
-import logo from "../../../../assets/images/Frieghttablogo.png";
-import { imageToBase64 } from "../../../../utils/imageUtils";
+import logo from "../../../../assets/images/surajLogo.jpeg";
+import signatureImg from "../../../../assets/images/gandhidhamSignature.jpg";
+import companyLogo from "../../../../assets/images/Frieghttablogo.png";
+import { imageToBase64, rotateImage90Deg } from "../../../../utils/imageUtils";
 
 const ConcorPltLetterGenerator = ({ jobNo, children }) => {
   const [editorOpen, setEditorOpen] = useState(false);
@@ -51,6 +53,11 @@ const ConcorPltLetterGenerator = ({ jobNo, children }) => {
 
       const invoices = data.invoices?.map(inv => inv.invoiceNumber).filter(Boolean).join(", ") || "";
 
+      const isGandhidham =
+        String(data.branchCode || "").toUpperCase().trim() === "GIM" ||
+        String(data.jobNumber || "").toUpperCase().startsWith("GIM") ||
+        String(data.job_no || "").toUpperCase().startsWith("GIM");
+
       // Pre-load logo as base64
       let logoSrc = logo;
       try {
@@ -59,28 +66,51 @@ const ConcorPltLetterGenerator = ({ jobNo, children }) => {
         console.warn("Failed to convert logo to base64", err);
       }
 
+      let rotatedSignatureSrc = "";
+      try {
+        rotatedSignatureSrc = await rotateImage90Deg(signatureImg);
+      } catch (err) {
+        console.warn("Failed to rotate and convert signature", err);
+      }
+
+      let companyLogoSrc = "";
+      try {
+        companyLogoSrc = await imageToBase64(companyLogo);
+      } catch (err) {
+        console.warn("Failed to convert company logo to base64", err);
+      }
+
       // Styles
       const blackColor = "#000000";
       
       const template = `
-        <div style="font-family: Arial, Helvetica, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; color: ${blackColor}; box-sizing: border-box;">
+        <div style="font-family: Arial, Helvetica, sans-serif; padding: 10px 40px 40px 40px; max-width: 800px; margin: 0 auto; color: ${blackColor}; box-sizing: border-box;">
             
-            <!-- Header Table -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
-              <tr>
-                <td style="width: 30%; text-align: left; vertical-align: middle;">
-                  <img src="${logoSrc}" style="width: 170px; height: auto; display: block;" />
-                </td>
-                <td style="width: 70%; text-align: left; vertical-align: middle; padding-left: 15px;">
-                  <div style="font-family: 'Georgia', 'Times New Roman', Times, serif; font-size: 13.5px; font-weight: bold; font-style: italic; line-height: 1.4; color: #000; text-align: left;">
-                    CLEARING, FORWARDING & SHIPPING AGENTS<br/>
-                    CHA LIC No: ABOFS1766LCH005<br/>
-                    A – 306, Wall Street II, Opp. Orient Club, Ellis Bridge, Ahmedabad – 380 006<br/>
-                    Phone: (079) 30082020/21 &nbsp; Fax: (079) 26401929 &nbsp; Email: surajahd@eth.net
-                  </div>
-                </td>
-              </tr>
-            </table>
+            <!-- Header Image -->
+            ${isGandhidham ? `
+             <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
+               <tr>
+                 <td style="width: 35%; text-align: left; vertical-align: middle;">
+                   <img src="${companyLogoSrc}" style="width: 170px; height: auto; display: block;" />
+                 </td>
+                 <td style="width: 65%; vertical-align: middle;">
+                   <div style="font-family: Arial, Helvetica, sans-serif; font-size: 11px; line-height: 1.4; color: #555; text-align: left; margin-left: auto; width: fit-content;">
+                     <strong style="font-size: 12px; color: #000;">GANDHIDHAM</strong><br/>
+                     209, 2nd Floor, Madhav Palace, Plot No. 55,<br/>
+                     Sector-8, Near Chamber of Commerce,<br/>
+                     GANDHIDHAM (Kutch) - 370 201<br/>
+                     Phone No. : (02836) 229011 / 12<br/>
+                     E-mail : anurag@surajforwders.com<br/>
+                     PIC : Mr. Anurag Pillai (M) +91 99243 04422
+                   </div>
+                 </td>
+               </tr>
+             </table>
+            ` : `
+            <div style="width: 100%; text-align: center; margin-bottom: 5px;">
+              <img src="${logoSrc}" style="width: 90%; height: auto; display: block; margin: 0 auto;" />
+            </div>
+            `}
 
             <!-- Divider Line -->
             <div style="border-bottom: 2.5px solid #000; margin-bottom: 25px; width: 100%;"></div>
@@ -123,9 +153,21 @@ const ConcorPltLetterGenerator = ({ jobNo, children }) => {
 
             <!-- Signatory Info -->
             <div style="margin-bottom: 35px; font-size: 13.5px; line-height: 1.6;">
+              ${isGandhidham ? `
+              <div style="color: #163693; font-weight: bold;">
+                FOR, SURAJ FORWARDERS & SHIPPING AGENCIES
+              </div>
+              <div style="margin-top: 5px; margin-bottom: 5px;">
+                <img src="${rotatedSignatureSrc}" style="width: 130px; height: auto; display: block;" />
+              </div>
+              <div style="color: #163693; font-weight: bold;">
+                AUTHORIZED SIGNATURE
+              </div>
+              ` : `
               <strong>Authorized Signatory</strong><br/>
               PDA: SURAJFORWARDERS PVT LIMITED (CODE.SURPV)<br/>
-              INVOICE: <strong>${invoices || exporter}</strong>
+              INVOICE: <strong>${exporter}</strong>
+              `}
             </div>
 
             <!-- CONCOR Box -->
@@ -163,7 +205,7 @@ const ConcorPltLetterGenerator = ({ jobNo, children }) => {
           doc.save(`CONCOR_PLT_Letter_${jobNo}.pdf`);
         },
         x: 10,
-        y: 10,
+        y: 5,
         width: 550, 
         windowWidth: 800,
         margin: [20, 20, 20, 20],
@@ -217,6 +259,7 @@ const ConcorPltLetterGenerator = ({ jobNo, children }) => {
         onClose={() => setEditorOpen(false)}
         initialContent={htmlContent}
         title={`CONCOR PLT Letter - ${jobNo}`}
+        pdfOptions={{ y: 5, x: 10, width: 550, windowWidth: 800, margin: [20, 20, 20, 20] }}
       />
     </>
   );

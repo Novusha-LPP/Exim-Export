@@ -4,6 +4,9 @@ import "jspdf-autotable";
 import axios from "axios";
 import { Button } from "@mui/material";
 import logo from "../../../../assets/images/surajLogo.jpeg";
+import signatureImg from "../../../../assets/images/gandhidhamSignature.jpg";
+import companyLogo from "../../../../assets/images/Frieghttablogo.png";
+import { rotateImage90Deg } from "../../../../utils/imageUtils";
 
 const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess }) => {
   const generatePDF = async (e) => {
@@ -15,6 +18,13 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
         `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`
       );
       const data = response.data;
+
+      let signatureBase64 = "";
+      try {
+        signatureBase64 = await rotateImage90Deg(signatureImg);
+      } catch (err) {
+        console.warn("Failed to load signature image", err);
+      }
 
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -55,9 +65,30 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
           doc.addPage();
         }
 
-        // Header logo & address
         try {
           doc.addImage(logo, "JPEG", 9, 4, 190, 38);
+          if (isGandhidham) {
+            // Cover Ahmedabad address
+            doc.setFillColor(255, 255, 255);
+            doc.rect(112, 4, 87, 38, "F");
+
+            // Draw Gandhidham address
+            doc.setTextColor(100, 100, 100); // Grey color
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8.5);
+            doc.text("GANDHIDHAM", 138, 8);
+            
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(7.5);
+            doc.text("209, 2nd Floor, Madhav Palace, Plot No. 55,", 138, 12.5);
+            doc.text("Sector-8, Near Chamber of Commerce,", 138, 16.5);
+            doc.text("GANDHIDHAM (Kutch) - 370 201", 138, 20.5);
+            doc.text("Phone No. : (02836) 229011 / 12", 138, 24.5);
+            doc.text("E-mail : anurag@surajforwders.com", 138, 28.5);
+            doc.text("PIC : Mr. Anurag Pillai (M) +91 99243 04422", 138, 32.5);
+            
+            doc.setTextColor(0, 0, 0); // Reset color
+          }
         } catch (err) {
           console.warn("Logo add failed", err);
         }
@@ -160,8 +191,32 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
         doc.text(`Date:  ${formatDate(new Date())}`, 14, yPos);
         
         // Sign box
-        doc.rect(pageWidth - 70, yPos - 5, 56, 18);
-        doc.text("Sign ___________________ /Stamp", pageWidth - 67, yPos + 7);
+        if (isGandhidham) {
+          doc.setTextColor(22, 54, 147); // Blue color
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8.5);
+          doc.text("FOR, SURAJ FORWARDERS & SHIPPING AGENCIES", pageWidth - 85, yPos);
+          
+          let sigY = yPos + 2;
+          if (signatureBase64) {
+            try {
+              doc.addImage(signatureBase64, "PNG", pageWidth - 75, sigY, 40, 16);
+            } catch (e) {
+              console.warn("Adding signature failed", e);
+            }
+            yPos += 16;
+          }
+
+          yPos += 5;
+          doc.setTextColor(22, 54, 147); // Blue color
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8.5);
+          doc.text("AUTHORIZED SIGNATURE", pageWidth - 85, yPos);
+          doc.setTextColor(0, 0, 0); // Reset color
+        } else {
+          doc.rect(pageWidth - 70, yPos - 5, 56, 18);
+          doc.text("Sign ___________________ /Stamp", pageWidth - 67, yPos + 7);
+        }
       });
 
       // Preview Blob

@@ -128,6 +128,7 @@ const CustomHouseDropdown = ({
     disabled = false,
     style = {},
     branchCode = "", // Optional: filter by branch
+    inputStyle = {},
 }) => {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState(value || "");
@@ -250,7 +251,10 @@ const CustomHouseDropdown = ({
         <div ref={wrapperRef} style={{ position: "relative", ...style }}>
             <div style={{ position: "relative" }}>
                 <input
-                    style={disabled ? styles.inputDisabled : styles.input}
+                    style={{
+                        ...(disabled ? styles.inputDisabled : styles.input),
+                        ...inputStyle
+                    }}
                     placeholder={placeholder}
                     autoComplete="off"
                     value={query}

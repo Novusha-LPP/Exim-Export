@@ -29,6 +29,7 @@ import {
 } from "@mui/icons-material";
 import FileUpload from "./FileUpload";
 import Snackbar from "@mui/material/Snackbar";
+import CustomHouseDropdown from "../../common/CustomHouseDropdown";
 
 const validationSchema = Yup.object({
   organization: Yup.string()
@@ -161,6 +162,13 @@ const validationSchema = Yup.object({
     creditPeriod: Yup.string().max(50),
   }),
 
+  selfSealValidity: Yup.array().of(
+    Yup.object({
+      customHouse: Yup.string().required("Custom House/Location is required"),
+      validityDate: Yup.string().required("Validity Date is required"),
+    })
+  ),
+
   notes: Yup.string().max(1000),
 });
 
@@ -265,6 +273,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
         isDefault: false,
       },
     ],
+    selfSealValidity: directory?.selfSealValidity || [],
     notes: directory?.notes || "",
   };
 
@@ -1321,6 +1330,172 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                                   "& .MuiFormControlLabel-label": {
                                     fontSize: "0.8rem",
                                   },
+                                }}
+                              />
+                            </Grid>
+                          </Grid>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </FieldArray>
+              </Box>
+
+              {/* Self Seal Validity */}
+              <Box
+                sx={{
+                  mb: 1,
+                  p: 1,
+                  bgcolor: "rgba(0,0,0,0.02)",
+                  borderRadius: 1,
+                }}
+              >
+                <FieldArray name="selfSealValidity">
+                  {({ push, remove }) => (
+                    <Box>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          mb: 1,
+                        }}
+                      >
+                        <Typography
+                          variant="subtitle1"
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            fontSize: "0.85rem",
+                          }}
+                        >
+                          <AssignmentIcon fontSize="small" color="primary" />
+                          Self Seal Validity
+                        </Typography>
+                        {!readOnly && (
+                          <Button
+                            startIcon={<AddIcon />}
+                            onClick={() =>
+                              push({
+                                customHouse: "",
+                                validityDate: "",
+                              })
+                            }
+                            variant="outlined"
+                            size="small"
+                            sx={{ minWidth: "auto", px: 1 }}
+                          >
+                            Add Validity
+                          </Button>
+                        )}
+                      </Box>
+
+                      {values.selfSealValidity?.map((item, index) => (
+                        <Box
+                          key={index}
+                          sx={{
+                            mb: 0.5,
+                            p: 0.75,
+                            bgcolor: "white",
+                            borderRadius: 1,
+                            border: "1px solid",
+                            borderColor: "divider",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              mb: 0.5,
+                            }}
+                          >
+                            <Typography
+                              variant="subtitle2"
+                              sx={{ fontSize: "0.75rem", fontWeight: "bold" }}
+                            >
+                              Validity {index + 1}
+                            </Typography>
+                            {!readOnly && (
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => remove(index)}
+                                sx={{ p: 0 }}
+                              >
+                                <DeleteIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            )}
+                          </Box>
+                          <Grid container spacing={0.5}>
+                            <Grid item xs={12} sm={6}>
+                              <label
+                                style={{
+                                  display: "block",
+                                  fontSize: "0.7rem",
+                                  color: "rgba(0, 0, 0, 0.6)",
+                                  marginBottom: "4px",
+                                }}
+                              >
+                                Custom House / Location *
+                              </label>
+                              <CustomHouseDropdown
+                                name={`selfSealValidity[${index}].customHouse`}
+                                value={item.customHouse}
+                                onChange={(e) => setFieldValue(`selfSealValidity[${index}].customHouse`, e.target.value)}
+                                disabled={readOnly}
+                                placeholder="SELECT CUSTOM HOUSE"
+                                inputStyle={{
+                                  height: 28,
+                                  fontSize: "0.75rem",
+                                  padding: "4px 8px",
+                                  borderRadius: "4px",
+                                  border: "1px solid rgba(0, 0, 0, 0.23)",
+                                  fontFamily: "Roboto, Helvetica, Arial, sans-serif",
+                                  textTransform: "uppercase",
+                                }}
+                                style={{ width: "100%" }}
+                              />
+                              {touched.selfSealValidity?.[index]?.customHouse &&
+                                errors.selfSealValidity?.[index]?.customHouse && (
+                                  <FormHelperText error sx={{ mt: 0.25, fontSize: "0.65rem" }}>
+                                    {errors.selfSealValidity[index].customHouse}
+                                  </FormHelperText>
+                                )}
+                            </Grid>
+
+                            <Grid item xs={12} sm={6}>
+                              <label
+                                style={{
+                                  display: "block",
+                                  fontSize: "0.7rem",
+                                  color: "rgba(0, 0, 0, 0.6)",
+                                  marginBottom: "4px",
+                                }}
+                              >
+                                Validity Date *
+                              </label>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                type="date"
+                                name={`selfSealValidity[${index}].validityDate`}
+                                value={item.validityDate}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                error={
+                                  touched.selfSealValidity?.[index]?.validityDate &&
+                                  Boolean(
+                                    errors.selfSealValidity?.[index]?.validityDate,
+                                  )
+                                }
+                                helperText={
+                                  touched.selfSealValidity?.[index]?.validityDate &&
+                                  errors.selfSealValidity?.[index]?.validityDate
+                                }
+                                sx={{
+                                  "& .MuiInputBase-root": { height: 28, fontSize: "0.75rem" },
                                 }}
                               />
                             </Grid>
