@@ -54,3 +54,4 @@ export const ShippingLineService = createMasterService("shippingLines");
 export const TransporterService = createMasterService("transporters");
 export const TerminalCodeService = createMasterService("terminalCodes");
 export const ForwarderService = createMasterService("forwarders");
+export const DrawbackService = createMasterService("drawbacks");

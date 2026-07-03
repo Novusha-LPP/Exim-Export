@@ -36,6 +36,7 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import GavelIcon from "@mui/icons-material/Gavel"; // Import GavelIcon
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
+import LanguageIcon from "@mui/icons-material/Language";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteIcon from "@mui/icons-material/Delete";
 import LaunchIcon from "@mui/icons-material/Launch";
@@ -1167,6 +1168,13 @@ const ExportJobsTable = () => {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState(savedFilters.searchQuery || "");
+  const [searchAllTabs, setSearchAllTabs] = useState(false);
+
+  // Reset searchAllTabs when changing tabs
+  useEffect(() => {
+    setSearchAllTabs(false);
+  }, [activeTab]);
+
   const [selectedYear, setSelectedYear] = useState(savedFilters.selectedYear || "26-27");
   const [selectedMovementType, setSelectedMovementType] = useState(savedFilters.selectedType || "");
 
@@ -1404,6 +1412,7 @@ const ExportJobsTable = () => {
   const handleClearFilters = () => {
     setActiveTab("Pending");
     setSearchQuery("");
+    setSearchAllTabs(false);
     setSelectedYear("26-27");
     setSelectedMovementType("");
     // Branch filter is NOT cleared per user request
@@ -1931,7 +1940,7 @@ const ExportJobsTable = () => {
         endpoint,
         {
           params: {
-            status: activeTab,
+            status: searchAllTabs ? "all" : activeTab,
             search: searchQuery,
             year: selectedYear === "all" ? "" : selectedYear,
             consignmentType: selectedMovementType,
@@ -2051,6 +2060,7 @@ const ExportJobsTable = () => {
     page,
     sortConfig,
     onlyPendingQueries,
+    searchAllTabs,
   ]);
 
   const handleSort = (key) => {
@@ -3503,6 +3513,27 @@ const ExportJobsTable = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+              <Tooltip title={searchAllTabs ? "Global Search Active: Searching both Pending & Completed jobs" : "Search in Current Tab Only (Click to search all tabs)"}>
+                <IconButton
+                  onClick={() => {
+                    setSearchAllTabs(!searchAllTabs);
+                    setPage(1);
+                  }}
+                  size="small"
+                  sx={{
+                    backgroundColor: searchAllTabs ? "#eff6ff" : "#f3f4f6",
+                    border: "1px solid",
+                    borderColor: searchAllTabs ? "#3b82f6" : "#d1d5db",
+                    color: searchAllTabs ? "#1e40af" : "#4b5563",
+                    "&:hover": { backgroundColor: searchAllTabs ? "#dbeafe" : "#e5e7eb" },
+                    height: "28px",
+                    width: "28px",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <LanguageIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
               <Tooltip title="Clear All Filters">
                 <IconButton
                   onClick={handleClearFilters}

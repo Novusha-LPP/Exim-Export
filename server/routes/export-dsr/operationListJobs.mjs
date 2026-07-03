@@ -130,6 +130,12 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                     }
                 ]
             });
+        } else if (normalizedStatus === "all") {
+            // Exclude cancelled jobs
+            filter.$and.push({
+                status: { $regex: "^(?!cancelled$).*", $options: "i" },
+                isJobCanceled: { $ne: true }
+            });
         } else {
             // Default to pending for 'pending' and 'billing ready'
             filter.$and.push({

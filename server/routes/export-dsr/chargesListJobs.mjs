@@ -157,7 +157,7 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             filter.$and.push({ job_no: { $regex: "^GEN/", $options: "i" } });
         } else if (normalizedStatus === "freight-forwarding" || normalizedStatus === "freight forwarding") {
             filter.$and.push({ job_no: { $regex: "^FF", $options: "i" } });
-        } else {
+        } else if (normalizedStatus !== "all") {
             // Pending/Completed Tabs: Exclude both GEN and FF jobs
             filter.$and.push({ job_no: { $regex: "^(?!GEN|FF).*", $options: "i" } });
             filter.$and.push({ isGeneralJob: { $ne: true } });
@@ -169,7 +169,7 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
                 status: { $regex: "^(?!cancelled$).*", $options: "i" },
                 isJobCanceled: { $ne: true }
             });
-        } else {
+        } else if (normalizedStatus === "cancelled") {
              filter.$and.push({
                 $or: [
                     { status: { $regex: "^cancelled$", $options: "i" } },

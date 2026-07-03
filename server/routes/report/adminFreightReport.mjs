@@ -285,6 +285,8 @@ router.get("/api/report/admin-freight/:year/:month", async (req, res) => {
           pod: "$port_of_discharge",
           country: "$discharge_country",
           movement_type: "$consignmentType", // LCL, FCL, AIR
+          shipping_line: "$shipping_line_airline",
+          term_of_invoice: { $arrayElemAt: ["$invoices.termsOfInvoice", 0] },
           freight_amount: { $arrayElemAt: ["$invoices.freightInsuranceCharges.freight.amount", 0] },
           currency: { $arrayElemAt: ["$invoices.freightInsuranceCharges.freight.currency", 0] },
           forwarder_name: {

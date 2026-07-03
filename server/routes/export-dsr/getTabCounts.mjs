@@ -119,6 +119,66 @@ function summarizeJob(job) {
   const purchaseBookNos = uniqueNonEmpty(pbCharges.map((c) => c.purchase_book_no));
   const purchaseBookStatuses = uniqueNonEmpty(pbCharges.map((c) => c.purchase_book_status));
 
+  const pbGroups = new Map();
+  pbCharges.forEach((charge) => {
+    const no = String(charge.purchase_book_no || "").trim();
+    if (!no) return;
+    const completed = isCompletedStatus(charge.purchase_book_status);
+    const approved = isApprovedRequest(charge.purchase_book_is_approved, charge.purchase_book_status);
+    const status = charge.purchase_book_status || "Pending";
+
+    const current = pbGroups.get(no) || { status, isApproved: false, isCompleted: true };
+    current.isApproved = current.isApproved || approved;
+    current.isCompleted = current.isCompleted && completed;
+    if (approved && !completed) {
+      current.status = "Approved";
+    } else if (completed) {
+      current.status = "Completed";
+    } else {
+      if (current.status === "Pending" || !current.status) {
+        current.status = status;
+      }
+    }
+    pbGroups.set(no, current);
+  });
+
+  const pbDetails = [...pbGroups.entries()].map(([no, val]) => ({
+    no,
+    status: val.status,
+    isApproved: val.isApproved,
+    isCompleted: val.isCompleted,
+  }));
+
+  const prGroups = new Map();
+  prCharges.forEach((charge) => {
+    const no = String(charge.payment_request_no || "").trim();
+    if (!no) return;
+    const completed = isCompletedStatus(charge.payment_request_status);
+    const approved = isApprovedRequest(charge.payment_request_is_approved, charge.payment_request_status);
+    const status = charge.payment_request_status || "Pending";
+
+    const current = prGroups.get(no) || { status, isApproved: false, isCompleted: true };
+    current.isApproved = current.isApproved || approved;
+    current.isCompleted = current.isCompleted && completed;
+    if (approved && !completed) {
+      current.status = "Approved";
+    } else if (completed) {
+      current.status = "Completed";
+    } else {
+      if (current.status === "Pending" || !current.status) {
+        current.status = status;
+      }
+    }
+    prGroups.set(no, current);
+  });
+
+  const prDetails = [...prGroups.entries()].map(([no, val]) => ({
+    no,
+    status: val.status,
+    isApproved: val.isApproved,
+    isCompleted: val.isCompleted,
+  }));
+
   const purchaseBookState = summarizeRequestState(
     pbCharges,
     "purchase_book_no",
@@ -178,6 +238,8 @@ function summarizeJob(job) {
     payment_request_statuses: paymentStatuses,
     purchase_book_nos: purchaseBookNos,
     purchase_book_statuses: purchaseBookStatuses,
+    payment_requests: prDetails,
+    purchase_books: pbDetails,
     supplier_names: supplierNames,
     supplier_invoice_nos: supplierInvoiceNos,
     charge_heads: chargeHeads,

@@ -47,6 +47,7 @@ import districts from "./routes/Directories/districts.js";
 import transporters from "./routes/Directories/transporters.js";
 import terminalCodes from "./routes/Directories/terminalcodes.js";
 import generalOrgs from "./routes/Directories/generalorgs.js";
+import drawback from "./routes/Directories/drawback.js";
 
 import getExportJobsModuleUsers from "./routes/export-dsr/getExportJobsModuleUsers.mjs";
 
@@ -221,6 +222,7 @@ app.use("/api/districts", auditMiddleware("Directory"), districts);
 app.use("/api/transporters", auditMiddleware("Directory"), transporters);
 app.use("/api/terminalCodes", auditMiddleware("Directory"), terminalCodes);
 app.use("/api", auditMiddleware("Directory"), generalOrgs);
+app.use("/api/drawbacks", auditMiddleware("Directory"), drawback);
 
 // app.set("trust proxy", 1); // Trust first proxy (NGINX, AWS ELB, etc.)
 

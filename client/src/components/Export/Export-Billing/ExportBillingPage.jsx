@@ -662,27 +662,50 @@ function PartyCell({ row, workMode }) {
 }
 
 function RefCell({ row, workMode, activeTab, onRefClick }) {
-  const refs = workMode === "purchase-book" ? row.purchase_book_nos : row.payment_request_nos;
-  const statuses =
-    workMode === "purchase-book" ? row.purchase_book_statuses : row.payment_request_statuses;
   const isCompleted =
     activeTab === "payment-completed" ||
     activeTab === "purchase-book-completed" ||
     activeTab === "export-completed-billing";
 
-  if (!refs?.length) return "-";
+  const requests = workMode === "purchase-book" ? row.purchase_books : row.payment_requests;
+
+  let filteredRequests = [];
+  if (Array.isArray(requests) && requests.length > 0) {
+    if (activeTab === "payment-requested" || activeTab === "purchase-book-requested") {
+      filteredRequests = requests.filter(r => !r.isApproved && !r.isCompleted);
+    } else if (activeTab === "payment" || activeTab === "purchase-book") {
+      filteredRequests = requests.filter(r => r.isApproved && !r.isCompleted);
+    } else if (isCompleted) {
+      filteredRequests = requests.filter(r => r.isCompleted);
+    } else {
+      filteredRequests = requests;
+    }
+  }
+
+  let displayRefs = [];
+  let displayStatuses = [];
+
+  if (filteredRequests.length > 0) {
+    displayRefs = filteredRequests.map(r => r.no);
+    displayStatuses = [...new Set(filteredRequests.map(r => r.status).filter(Boolean))];
+  } else if (!requests || requests.length === 0) {
+    displayRefs = workMode === "purchase-book" ? row.purchase_book_nos : row.payment_request_nos;
+    displayStatuses = workMode === "purchase-book" ? row.purchase_book_statuses : row.payment_request_statuses;
+  }
+
+  if (!displayRefs?.length) return "-";
 
   return (
     <Stack spacing={0.5} sx={{ py: 0.5 }}>
       <ExpandableChipList
-        items={refs}
+        items={displayRefs}
         limit={2}
         color={isCompleted ? "success" : "primary"}
         onClick={onRefClick ? (ref) => onRefClick(row, ref) : undefined}
       />
-      {statuses?.length ? (
+      {displayStatuses?.length ? (
         <Typography variant="caption" sx={{ color: isCompleted ? "success.main" : "warning.main", fontWeight: 600 }}>
-          {statuses.join(", ")}
+          {displayStatuses.join(", ")}
         </Typography>
       ) : null}
     </Stack>
@@ -757,9 +780,36 @@ function BillingDetailsDialog({ open, onClose, row, requestNo, workMode, activeT
 
   if (!row) return null;
 
-  const refs = workMode === "purchase-book" ? row.purchase_book_nos : row.payment_request_nos;
-  const statuses =
-    workMode === "purchase-book" ? row.purchase_book_statuses : row.payment_request_statuses;
+  const requests = workMode === "purchase-book" ? row.purchase_books : row.payment_requests;
+  const isCompleted =
+    activeTab === "payment-completed" ||
+    activeTab === "purchase-book-completed" ||
+    activeTab === "export-completed-billing";
+
+  let filteredRequests = [];
+  if (Array.isArray(requests) && requests.length > 0) {
+    if (activeTab === "payment-requested" || activeTab === "purchase-book-requested") {
+      filteredRequests = requests.filter(r => !r.isApproved && !r.isCompleted);
+    } else if (activeTab === "payment" || activeTab === "purchase-book") {
+      filteredRequests = requests.filter(r => r.isApproved && !r.isCompleted);
+    } else if (isCompleted) {
+      filteredRequests = requests.filter(r => r.isCompleted);
+    } else {
+      filteredRequests = requests;
+    }
+  }
+
+  let refs = [];
+  let statuses = [];
+
+  if (filteredRequests.length > 0) {
+    refs = filteredRequests.map(r => r.no);
+    statuses = [...new Set(filteredRequests.map(r => r.status).filter(Boolean))];
+  } else if (!requests || requests.length === 0) {
+    refs = workMode === "purchase-book" ? row.purchase_book_nos : row.payment_request_nos;
+    statuses = workMode === "purchase-book" ? row.purchase_book_statuses : row.payment_request_statuses;
+  }
+
   const refTitle = workMode === "purchase-book" ? "Purchase Book" : "Payment Request";
   const displayTitle = requestNo ? `${refTitle} Details: ${requestNo}` : `${row.job_no} Details`;
 

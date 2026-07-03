@@ -28,6 +28,7 @@ export const viewMasterList = [
   "Terminal Code",
   "General Org",
   "Forwarder",
+  "Drawback",
 ];
 
 export const directoryFields = {

@@ -75,6 +75,8 @@ const adminFreightColumns = [
   { label: "NO. OF CNTR", key: "totalContainers", minWidth: 70 },
   { label: "MOVEMENT TYPE", key: "movement_type", minWidth: 80 },
   { label: "FORWARDER NAME", key: "forwarder_name", minWidth: 120 },
+  { label: "SHIPPING LINE", key: "shipping_line", minWidth: 120 },
+  { label: "TOI", key: "term_of_invoice", minWidth: 70 },
   { label: "FREIGHT AMOUNT", key: "freight_amount", minWidth: 100 },
   { label: "CURRENCY", key: "currency", minWidth: 70 },
 ];
@@ -607,6 +609,8 @@ const DetailedReport = () => {
       ports: { cellWidth: 30, halign: 'center' },
       movement_type: { cellWidth: 15, halign: 'center' },
       forwarder_name: { halign: 'left' }, // Auto width
+      shipping_line: { cellWidth: 25, halign: 'left' },
+      term_of_invoice: { cellWidth: 15, halign: 'center' },
       freight_amount: { cellWidth: 20, halign: 'center' },
       currency: { cellWidth: 15, halign: 'center' }
     };
@@ -1200,7 +1204,7 @@ const DetailedReport = () => {
                           if (col.key === 'size') return <TableCell key={cIdx} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>{deriveSize(row.noOfContrSize)}</TableCell>;
                           if (col.key === 'teus') return <TableCell key={cIdx} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px", fontWeight: 'bold', color: '#1976d2' }}>{isLclJob(row) ? "LCL" : row.teus}</TableCell>;
                           if (col.key === 'remarks') return <TableCell key={cIdx} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>{val ? val.split('\n').map((line, lidx) => (<React.Fragment key={lidx}>{line}{lidx < val.split('\n').length - 1 && <br />}</React.Fragment>)) : ""}</TableCell>;
-                          if (col.key === 'exporter' || col.key === 'commodity' || col.key === 'forwarder_name') return <TableCell key={cIdx} align="left" sx={{ fontSize: col.key === 'commodity' ? "0.58rem" : "0.75rem", lineHeight: 1.1, padding: "6px 8px", maxWidth: col.key === 'commodity' ? 120 : 150, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><Tooltip title={val}><span>{val}</span></Tooltip></TableCell>;
+                          if (col.key === 'exporter' || col.key === 'commodity' || col.key === 'forwarder_name' || col.key === 'shipping_line') return <TableCell key={cIdx} align="left" sx={{ fontSize: col.key === 'commodity' ? "0.58rem" : "0.75rem", lineHeight: 1.1, padding: "6px 8px", maxWidth: col.key === 'commodity' ? 120 : 150, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><Tooltip title={val}><span>{val}</span></Tooltip></TableCell>;
                           if (col.key === 'ports') {
                             return <TableCell key={cIdx} align="left" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>{formatPortsText(row.pol, row.pod, row.country, true)}</TableCell>;
                           }

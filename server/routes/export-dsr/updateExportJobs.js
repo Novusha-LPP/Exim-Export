@@ -1103,16 +1103,17 @@ router.get("/exports/:status?", async (req, res) => {
     }
 
     const isCompletedTab = status && status.toLowerCase() === "completed";
+    const isAllTab = status && status.toLowerCase() === "all";
 
     // Separate General Jobs from Actual Jobs
     if (status && status.toLowerCase() === "general-jobs") {
       filter.$and.push({ isGeneralJob: true });
-    } else if (!isCompletedTab) {
+    } else if (!isCompletedTab && !isAllTab) {
       filter.$and.push({ isGeneralJob: { $ne: true } });
     }
 
     // Exclude Freight Forwarding jobs (FF) from Export module
-    if (!isCompletedTab) {
+    if (!isCompletedTab && !isAllTab) {
       filter.$and.push({ job_no: { $not: /^FF/i } });
     }
 
@@ -1291,6 +1292,11 @@ router.get("/exports/:status?", async (req, res) => {
           status: { $regex: `^${status}$`, $options: "i" },
         });
       }
+    } else if (status && status.toLowerCase() === "all") {
+      filter.$and.push({
+        status: { $regex: "^(?!cancelled$).*", $options: "i" },
+        isJobCanceled: { $ne: true }
+      });
     }
 
     // Search filter
@@ -2553,7 +2559,14 @@ router.get("/:job_no(.*)", async (req, res, next) => {
     }
 
     // If locked by someone else, return localized info
-    if (exportJob.lockedBy && (exportJob.lockedBy || "").toLowerCase() !== (username || "").toLowerCase()) {
+    const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
+    let isAdmin = userRoleHeader === "Admin";
+    if (!isAdmin && username) {
+      const requester = await UserModel.findOne({ username }).lean();
+      isAdmin = requester?.role === "Admin";
+    }
+
+    if (exportJob.lockedBy && (exportJob.lockedBy || "").toLowerCase() !== (username || "").toLowerCase() && !isAdmin) {
       return res.status(423).json({
         message: `Job is currently locked by ${exportJob.lockedBy}`,
         lockedBy: exportJob.lockedBy,
@@ -2590,7 +2603,14 @@ router.put("/:job_no(.*)/lock", async (req, res) => {
     const isStale =
       job.lockedAt && new Date() - new Date(job.lockedAt) > LOCK_TIMEOUT;
 
-    if (job.lockedBy && (job.lockedBy || "").toLowerCase() !== (username || "").toLowerCase() && !isStale) {
+    const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
+    let isAdmin = userRoleHeader === "Admin";
+    if (!isAdmin && username) {
+      const requester = await UserModel.findOne({ username }).lean();
+      isAdmin = requester?.role === "Admin";
+    }
+
+    if (job.lockedBy && (job.lockedBy || "").toLowerCase() !== (username || "").toLowerCase() && !isStale && !isAdmin) {
       return res.status(423).json({
         message: `Already locked by ${job.lockedBy}`,
         lockedBy: job.lockedBy,
@@ -2708,20 +2728,21 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
           message: "This job has been sent for billing. Only Admins can modify it."
         });
       }
-    }
-    if (
-      existingJob &&
-      existingJob.lockedBy &&
-      existingJob.lockedBy !== username
-    ) {
-      const LOCK_TIMEOUT = 30 * 60 * 1000;
+
       if (
-        existingJob.lockedAt &&
-        new Date() - new Date(existingJob.lockedAt) < LOCK_TIMEOUT
+        existingJob.lockedBy &&
+        existingJob.lockedBy !== username &&
+        !isAdmin
       ) {
-        return res.status(403).json({
-          message: `Update blocked: Job is locked by ${existingJob.lockedBy}`,
-        });
+        const LOCK_TIMEOUT = 30 * 60 * 1000;
+        if (
+          existingJob.lockedAt &&
+          new Date() - new Date(existingJob.lockedAt) < LOCK_TIMEOUT
+        ) {
+          return res.status(403).json({
+            message: `Update blocked: Job is locked by ${existingJob.lockedBy}`,
+          });
+        }
       }
     }
 

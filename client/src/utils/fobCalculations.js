@@ -166,8 +166,40 @@ export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
         );
       }
 
+      // Re-calculate PMV if method is percentage
+      let newPmvInfo = product.pmvInfo;
+      if (newPmvInfo && (newPmvInfo.calculationMethod || "percentage") === "percentage") {
+        const pmvCurrency = newPmvInfo.currency || "INR";
+        const percentage = parseFloat(newPmvInfo.percentage) || 110;
+        const quantity = parseFloat(product.quantity) || 1;
+
+        let rate = 1;
+        if (pmvCurrency.toUpperCase() !== "INR") {
+          if (pmvCurrency.toUpperCase() === String(inv.currency || "").toUpperCase()) {
+            rate = parseFloat(exchange_rate) || 1;
+          }
+        }
+
+        const effectiveRate = rate > 0 ? rate : 1;
+
+        // Convert Product FOB to PMV currency, compute unit PMV, then total
+        const fobInPmvCurrency = fobAmountInr / effectiveRate;
+        const unitFobInPmvCurrency = fobInPmvCurrency / quantity;
+        let pmvPerUnit = (unitFobInPmvCurrency * percentage) / 100;
+
+        pmvPerUnit = parseFloat(pmvPerUnit.toFixed(2));
+        let totalPMV = parseFloat((pmvPerUnit * quantity).toFixed(2));
+
+        newPmvInfo = {
+          ...newPmvInfo,
+          pmvPerUnit: String(pmvPerUnit),
+          totalPMV: String(totalPMV)
+        };
+      }
+
       return {
         ...product,
+        pmvInfo: newPmvInfo,
         drawbackDetails: newDbkDetails,
         rosctlInfo: newRosctlInfo,
         rodtepInfo: newRodtepInfo

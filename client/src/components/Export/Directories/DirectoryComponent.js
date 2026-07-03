@@ -12,6 +12,7 @@ import TransporterMaster from "./TransporterMaster.js";
 import TerminalCodeMaster from "./TerminalCodeMaster.js";
 import GeneralOrgDirectory from "./GeneralOrgDirectory.js";
 import ForwarderDirectory from "../FreightForwarding/ForwarderDirectory.js";
+import DrawbackDirectory from "./DrawbackDirectory.js";
 
 function DirectoryComponent({ directoryType }) {
   const renderDirectory = () => {
@@ -42,6 +43,8 @@ function DirectoryComponent({ directoryType }) {
         return <GeneralOrgDirectory />;
       case "Forwarder":
         return <ForwarderDirectory />;
+      case "Drawback":
+        return <DrawbackDirectory />;
       default:
         return null;
     }
