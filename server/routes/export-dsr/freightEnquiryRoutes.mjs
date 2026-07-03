@@ -373,6 +373,54 @@ router.put("/freight-enquiries/:id", async (req, res) => {
           }))
         });
         await newJob.save();
+
+        // AUTO-PUSH CHARGES: Push all rate line items from received_rates into the new job
+        if (updated.received_rates && updated.received_rates.length > 0) {
+          const chargesToPush = [];
+          for (const rate of updated.received_rates) {
+            const forwarder = rate.forwarder_name || "";
+            for (const item of (rate.base_rates || [])) {
+              if (Number(item.amount) > 0) {
+                chargesToPush.push({
+                  chargeHead: item.charge_name,
+                  category: "Local/Agency",
+                  parentId: newJob._id,
+                  parentModule: "Job",
+                  cost: {
+                    amount: Number(item.amount),
+                    basicAmount: Number(item.amount),
+                    total: Number(item.amount),
+                    netPayable: Number(item.amount),
+                    particulars: item.charge_name,
+                    vendorName: forwarder,
+                  }
+                });
+              }
+            }
+            for (const item of (rate.shipping_line_rates || [])) {
+              if (Number(item.amount) > 0) {
+                chargesToPush.push({
+                  chargeHead: item.charge_name,
+                  category: "Shipping Line",
+                  parentId: newJob._id,
+                  parentModule: "Job",
+                  cost: {
+                    amount: Number(item.amount),
+                    basicAmount: Number(item.amount),
+                    total: Number(item.amount),
+                    netPayable: Number(item.amount),
+                    particulars: item.charge_name,
+                    vendorName: forwarder,
+                  }
+                });
+              }
+            }
+          }
+          if (chargesToPush.length > 0) {
+            chargesToPush.forEach(c => newJob.charges.push(c));
+            await newJob.save();
+          }
+        }
       }
     }
 

@@ -76,7 +76,7 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
           doc.setFont("helvetica", "bold");
           doc.setFontSize(8.5);
           doc.text("GANDHIDHAM", 138, 8);
-          
+
           doc.setFont("helvetica", "normal");
           doc.setFontSize(7.5);
           doc.text("209, 2nd Floor, Madhav Palace, Plot No. 55,", 138, 12.5);
@@ -85,7 +85,7 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
           doc.text("Phone No. : (02836) 229011 / 12", 138, 24.5);
           doc.text("E-mail : anurag@surajforwders.com", 138, 28.5);
           doc.text("PIC : Mr. Anurag Pillai (M) +91 99243 04422", 138, 32.5);
-          
+
           doc.setTextColor(0, 0, 0); // Reset color
         }
       } catch (err) {
@@ -111,7 +111,7 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       yPos += 6;
       doc.text("The Documentation,", 15, yPos);
       yPos += 6;
-      
+
       const portOfLoading = data.port_of_loading || "";
       const portCity = portOfLoading.includes("-") ? portOfLoading.split("-")[1].trim() : portOfLoading;
       doc.text(portCity || "Mundra", 15, yPos);
@@ -132,11 +132,11 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
 
       doc.setFont("helvetica", "normal");
       doc.text("For M. V. ____________________ VC No. _____________________ Rotation No. _____________________", 15, yPos);
-      
+
       // Values for M.V. Voyage Rotation
       doc.setFont("helvetica", "bold");
       doc.text(data.vessel_name || "", 32, yPos);
-      doc.text(data.voyage_no || "", 85, yPos);
+      doc.text(data.operations.transporterDetails.transporterName || "", 85, yPos);
       doc.text(data.voyage_no || "", 145, yPos); // Voyage fallback as Rotation
       yPos += 8;
 
@@ -160,7 +160,7 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
         doc.setTextColor(22, 54, 147); // Blue color
         doc.setFont("helvetica", "bold");
         doc.text("FOR, SURAJ FORWARDERS & SHIPPING AGENCIES", 15, yPos);
-        
+
         let sigY = yPos + 2;
         if (signatureBase64) {
           try {

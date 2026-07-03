@@ -76,7 +76,7 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
           doc.setFont("helvetica", "bold");
           doc.setFontSize(8.5);
           doc.text("GANDHIDHAM", 138, 8);
-          
+
           doc.setFont("helvetica", "normal");
           doc.setFontSize(7.5);
           doc.text("209, 2nd Floor, Madhav Palace, Plot No. 55,", 138, 12.5);
@@ -85,7 +85,7 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
           doc.text("Phone No. : (02836) 229011 / 12", 138, 24.5);
           doc.text("E-mail : anurag@surajforwders.com", 138, 28.5);
           doc.text("PIC : Mr. Anurag Pillai (M) +91 99243 04422", 138, 32.5);
-          
+
           doc.setTextColor(0, 0, 0); // Reset color
         }
       } catch (err) {
@@ -130,7 +130,7 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       doc.text(`Sub: Movement of   ${count20}   x 20'/+   ${count40}   x 40' for M.V.   ${data.vessel_name || ""}`, 15, yPos);
       yPos += 8;
 
-      doc.text(`Voyage No.  ${data.voyage_no || ""}  VC No.  ${data.voyage_no || ""}  Rotation No.  ${data.voyage_no || ""}`, 15, yPos);
+      doc.text(`Voyage No.  ${data.operations.transporterDetails.transporterName || ""}  VC No.  ${data.operations.transporterDetails.transporterName || ""}  Rotation No.  ${data.voyage_no || ""}`, 15, yPos);
       yPos += 8;
 
       doc.setFont("helvetica", "normal");
@@ -202,7 +202,7 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
         doc.setTextColor(22, 54, 147); // Blue color
         doc.setFont("helvetica", "bold");
         doc.text("FOR, SURAJ FORWARDERS & SHIPPING AGENCIES", 15, yPos);
-        
+
         let sigY = yPos + 2;
         if (signatureBase64) {
           try {

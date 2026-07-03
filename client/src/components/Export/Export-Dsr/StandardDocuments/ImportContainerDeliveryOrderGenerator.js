@@ -77,7 +77,7 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
             doc.setFont("helvetica", "bold");
             doc.setFontSize(8.5);
             doc.text("GANDHIDHAM", 138, 8);
-            
+
             doc.setFont("helvetica", "normal");
             doc.setFontSize(7.5);
             doc.text("209, 2nd Floor, Madhav Palace, Plot No. 55,", 138, 12.5);
@@ -86,7 +86,7 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
             doc.text("Phone No. : (02836) 229011 / 12", 138, 24.5);
             doc.text("E-mail : anurag@surajforwders.com", 138, 28.5);
             doc.text("PIC : Mr. Anurag Pillai (M) +91 99243 04422", 138, 32.5);
-            
+
             doc.setTextColor(0, 0, 0); // Reset color
           }
         } catch (err) {
@@ -123,7 +123,7 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
           [
             { content: `Agent Name / Code\n\n${firmName}`, styles: { fontStyle: "bold" } },
             { content: `Line Name / Code\n\n${data.shipping_line_airline || ""}`, styles: { fontStyle: "bold" } },
-            { content: `VCN No.\n\n${data.voyage_no || ""}`, styles: { fontStyle: "bold" } }
+            { content: `VCN No.\n\n${data.operations.transporterDetails.transporterName || ""}`, styles: { fontStyle: "bold" } }
           ],
           [
             { content: `Vessel Name / Code\n\n${data.vessel_name || ""}`, styles: { fontStyle: "bold" } },
@@ -133,7 +133,7 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
           [
             { content: `Container No.\n\n${c.containerNo || c.container_number || ""}`, styles: { fontStyle: "bold", fontSize: 10 } },
             { content: `ISO Code\n\n${c.containerSize || c.type || c.size || ""}`, styles: { fontStyle: "bold" } },
-            { content: "Empty / Ldd\n\nLDD", styles: { fontStyle: "bold" } },
+            { content: "Empty / Ldd", styles: { fontStyle: "bold" } },
             { content: `Gr. Wt. & (Containers)\n\n${data.gross_weight_kg || ""} KGS`, styles: { fontStyle: "bold" }, colSpan: 1 }
           ],
           [
@@ -189,14 +189,14 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
 
         // Sign / Date box
         doc.text(`Date:  ${formatDate(new Date())}`, 14, yPos);
-        
+
         // Sign box
         if (isGandhidham) {
           doc.setTextColor(22, 54, 147); // Blue color
           doc.setFont("helvetica", "bold");
           doc.setFontSize(8.5);
           doc.text("FOR, SURAJ FORWARDERS & SHIPPING AGENCIES", pageWidth - 85, yPos);
-          
+
           let sigY = yPos + 2;
           if (signatureBase64) {
             try {
