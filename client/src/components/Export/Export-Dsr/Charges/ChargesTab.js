@@ -5,7 +5,7 @@ import FileUpload from "../../../gallery/FileUpload.js";
 import ImagePreview from "../../../gallery/ImagePreview.js";
 import DateInput from "../../../common/DateInput.js";
 
-const ChargesTab = ({ job, formik, isEditable = true }) => {
+const ChargesTab = ({ job, formik, isEditable = true, isBillingDetailsEditable = true }) => {
   const [chargesCount, setChargesCount] = React.useState(0);
   // Try every known location where the job _id could live
   const parentId =
@@ -57,8 +57,8 @@ const ChargesTab = ({ job, formik, isEditable = true }) => {
           job={jobData}
         />
 
-        {/* Fine Section */}
-        <fieldset disabled={!isEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%' }}>
+        {/* Fine Section + Billing Details — always editable for non-Admin users after send for billing */}
+        <fieldset disabled={!isBillingDetailsEditable} style={{ border: 'none', padding: 0, margin: 0, width: '100%' }}>
           <div className="grid-wrapper" style={{ border: 'none', boxShadow: 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ width: '4px', height: '16px', background: '#e11d48', marginRight: '8px', borderRadius: '2px' }}></span>

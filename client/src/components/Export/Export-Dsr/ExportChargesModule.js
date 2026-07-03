@@ -54,25 +54,33 @@ function ExportChargesModule() {
   const [lockDialogOpen, setLockDialogOpen] = useState(false);
   const [lockedByUser, setLockedByUser] = useState(null);
   const [isEditable, setIsEditable] = useState(false);
+  const [isBillingDetailsEditable, setIsBillingDetailsEditable] = useState(false);
   const hasLockedRef = React.useRef(false);
 
   const isNewJob = !data?.job_no;
 
   // Auto-lock when SB Date is present or job is sent for billing (unless user is Admin)
+  // isEditable controls CHARGES CRUD (add/edit/delete charges)
+  // isBillingDetailsEditable controls Billing Submission Details section (always true for non-admins too)
   useEffect(() => {
     if (data && !loading && isLocked) {
       const isSentForBilling = formik.values.send_for_billing === true;
       const isAdmin = user?.role === "Admin";
 
       if (isSentForBilling && !isAdmin) {
+        // Charges CRUD is locked for non-admins
         setIsEditable(false);
       } else if (formik.values.sb_date && !isNewJob) {
         setIsEditable(false);
       } else {
         setIsEditable(true);
       }
+
+      // Billing details (agency bill, reimbursement, fines) are always editable when locked
+      setIsBillingDetailsEditable(true);
     } else {
       setIsEditable(false);
+      setIsBillingDetailsEditable(false);
     }
   }, [formik.values.sb_date, formik.values.send_for_billing, data, loading, isLocked, isNewJob, user?.role]);
 
@@ -340,7 +348,7 @@ function ExportChargesModule() {
         </Box>
 
         <TabPanel value={activeTab} index={0}>
-          <ChargesTab job={data} formik={formik} isEditable={isEditable} />
+          <ChargesTab job={data} formik={formik} isEditable={isEditable} isBillingDetailsEditable={isBillingDetailsEditable} />
         </TabPanel>
 
         <ExportJobFooter
