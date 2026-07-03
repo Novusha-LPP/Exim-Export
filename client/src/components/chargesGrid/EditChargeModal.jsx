@@ -34,7 +34,8 @@ const EditChargeModal = ({
   jobInvoiceDate = '',
   jobInvoiceValue = '',
   jobCthNo = '',
-  workMode = 'Payment'
+  workMode = 'Payment',
+  viewOnly = false
 }) => {
   const [formData, setFormData] = useState([]);
   const [panelOpen, setPanelOpen] = useState({}); // { rowIndex: 'rev' | 'cost' | null }
@@ -537,8 +538,16 @@ const EditChargeModal = ({
   return createPortal(
     <div className="charge-modal-overlay active" onMouseDown={() => setActiveDropdown({ index: null, section: null })}>
       <div className="edit-charge-modal" ref={modalRef} onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-title">Edit Charge</div>
+        <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {viewOnly ? 'View Charge' : 'Edit Charge'}
+          {viewOnly && (
+            <span style={{ fontSize: '11px', background: '#f59e0b', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, letterSpacing: '0.5px' }}>
+              READ-ONLY
+            </span>
+          )}
+        </div>
         <div className="modal-body">
+          <fieldset disabled={viewOnly} style={{ border: 'none', padding: 0, margin: 0 }}>
           {formData.map((row, i) => (
             <div key={row._id || i} style={{ marginBottom: formData.length > 1 ? '30px' : '0' }}>
               <div className="form-section-new">
@@ -1324,11 +1333,16 @@ const EditChargeModal = ({
               </div>
             </div>
           ))}
+          </fieldset>
         </div>
         <div className="modal-footer">
-          <button type="button" className="btn" onClick={() => handleSave(false)}>Update</button>
-          <button type="button" className="btn" onClick={() => handleSave(true)}>Update & Close</button>
-          <button type="button" className="btn" onClick={onClose} style={{ marginRight: '30px' }}>Cancel</button>
+          {!viewOnly && (
+            <>
+              <button type="button" className="btn" onClick={() => handleSave(false)}>Update</button>
+              <button type="button" className="btn" onClick={() => handleSave(true)}>Update & Close</button>
+            </>
+          )}
+          <button type="button" className="btn" onClick={onClose} style={{ marginRight: '30px' }}>{viewOnly ? 'Close' : 'Cancel'}</button>
         </div>
       </div>
 

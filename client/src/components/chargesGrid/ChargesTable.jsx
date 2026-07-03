@@ -154,7 +154,7 @@ const ChargesTable = ({
                 key={ch._id || idx}
                 className={isSelected ? 'selected' : ''}
                 onClick={() => !readOnly && onSelectCharge(ch._id)}
-                onDoubleClick={() => !readOnly && onEditCharge(ch)}
+                onDoubleClick={() => onEditCharge(ch)}
               >
                 <td className="align-center" onClick={(e) => e.stopPropagation()}>
                   <input type="checkbox" checked={isSelected} onChange={() => onSelectCharge(ch._id)} disabled={readOnly} />
@@ -204,7 +204,19 @@ const ChargesTable = ({
                       {ch.chargeType || ch.category || '-'}
                     </td>
                     <td className="align-left" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ch.cost?.chargeDescription || ch.revenue?.chargeDescription || ''}>
-                      {ch.cost?.chargeDescription || ch.revenue?.chargeDescription || ''}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{ch.cost?.chargeDescription || ch.revenue?.chargeDescription || ''}</span>
+                        {(ch.cost?.chargeDescription || ch.revenue?.chargeDescription) && (
+                          <ContentCopyIcon
+                            style={{ fontSize: '11px', cursor: 'pointer', opacity: 0.55, flexShrink: 0 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(ch.cost?.chargeDescription || ch.revenue?.chargeDescription || '');
+                            }}
+                            title="Copy description"
+                          />
+                        )}
+                      </span>
                     </td>
                     <td className="align-left" style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ch.remark || ''}>
                       {ch.remark || ''}

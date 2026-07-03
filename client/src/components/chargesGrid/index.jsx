@@ -243,6 +243,7 @@ const ChargesGrid = ({
         jobInvoiceCount={invoiceCount}
         jobContainerCount={containerCount}
         jobCthNo={cthNo}
+        viewOnly={finalReadOnly}
       />
 
       {fileModalCharge && (

@@ -9,6 +9,59 @@ import importDbConnection from "../../model/importDB.js";
 
 const router = express.Router();
 
+// Helper function to check if only billing-related fields are being updated
+function isBillingOnlyUpdate(updateObject) {
+  // Billing-allowed field path patterns
+  const billingAllowedPatterns = [
+    "operations.0.statusDetails.0.billing_details.agency_bill_no",
+    "operations.0.statusDetails.0.billing_details.agency_bill_date",
+    "operations.0.statusDetails.0.billing_details.reimbursement_bill_no",
+    "operations.0.statusDetails.0.billing_details.reimbursement_bill_date",
+    "operations.0.statusDetails.0.billingDocsSentDt",
+    "operations.0.statusDetails.0.billingDocsSentUpload",
+    "operations.0.statusDetails.0.billing_details"
+  ];
+
+  for (const key of Object.keys(updateObject)) {
+    if (key === "updatedAt") continue;
+    
+    // If field is a string path (from fieldUpdates array), check against allowed patterns
+    if (typeof key === "string" && key.includes("operations")) {
+      // Normalize the field path for comparison
+      const fieldPath = key;
+      const isAllowed = billingAllowedPatterns.some(pattern => 
+        fieldPath === pattern || fieldPath.startsWith(pattern + ".")
+      );
+      
+      if (!isAllowed) {
+        return false; // Found a non-billing field path
+      }
+      continue;
+    }
+    
+    // Check if this is a nested operations update (direct object structure)
+    if (key === "operations" && Array.isArray(updateObject[key])) {
+      const ops = updateObject[key];
+      if (ops[0]?.statusDetails?.[0]) {
+        const statusDetail = ops[0].statusDetails[0];
+        // Only billing_details and billing-related docs are allowed
+        const allowedBillingKeys = ["billing_details", "billingDocsSentDt", "billingDocsSentUpload"];
+        for (const detailKey of Object.keys(statusDetail)) {
+          if (!allowedBillingKeys.includes(detailKey)) {
+            return false; // Found a non-billing field
+          }
+        }
+      }
+      continue;
+    }
+    
+    // Not a billing field
+    return false;
+  }
+  
+  return true;
+}
+
 async function syncToClientDatabase(jobNo, updateObject) {
   try {
     if (!jobNo || !updateObject || Object.keys(updateObject).length === 0) return;
@@ -2724,9 +2777,12 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
       const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
 
       if (existingJob.send_for_billing && !isAdmin) {
-        return res.status(403).json({
-          message: "This job has been sent for billing. Only Admins can modify it."
-        });
+        // Check if only billing-related fields are being updated
+        if (!isBillingOnlyUpdate(req.body)) {
+          return res.status(403).json({
+            message: "This job has been sent for billing. Only Admins can modify it."
+          });
+        }
       }
 
       if (
@@ -2878,9 +2934,19 @@ router.patch(
         const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
 
         if (existingJob.send_for_billing && !isAdmin) {
-          return res.status(403).json({
-            message: "This job has been sent for billing. Only Admins can modify it."
+          // Check if only billing-related fields are being updated
+          const { fieldUpdates } = req.body;
+          const updateObject = {};
+          (fieldUpdates || []).forEach(({ field, value }) => {
+            updateObject[field] = value;
           });
+          
+          // Allow billing-only updates for non-admins after send_for_billing
+          if (!isBillingOnlyUpdate(updateObject)) {
+            return res.status(403).json({
+              message: "This job has been sent for billing. Only Admins can modify it."
+            });
+          }
         }
       }
       const updateObject = {};
@@ -2947,9 +3013,19 @@ router.patch(
         const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
 
         if (existingJob.send_for_billing && !isAdmin) {
-          return res.status(403).json({
-            message: "This job has been sent for billing. Only Admins can modify it."
+          // Check if only billing-related fields are being updated
+          const { fieldUpdates } = req.body;
+          const updateObject = {};
+          (fieldUpdates || []).forEach(({ field, value }) => {
+            updateObject[field] = value;
           });
+          
+          // Allow billing-only updates for non-admins after send_for_billing
+          if (!isBillingOnlyUpdate(updateObject)) {
+            return res.status(403).json({
+              message: "This job has been sent for billing. Only Admins can modify it."
+            });
+          }
         }
       }
 
