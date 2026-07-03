@@ -123,7 +123,7 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
           [
             { content: `Agent Name / Code\n\n${firmName}`, styles: { fontStyle: "bold" } },
             { content: `Line Name / Code\n\n${data.shipping_line_airline || ""}`, styles: { fontStyle: "bold" } },
-            { content: `VCN No.\n\n${data.operations.transporterDetails.transporterName || ""}`, styles: { fontStyle: "bold" } }
+            { content: `VCN No.\n\n${data.operations?.[0]?.transporterDetails?.[0]?.transporterName || ""}`, styles: { fontStyle: "bold" } }
           ],
           [
             { content: `Vessel Name / Code\n\n${data.vessel_name || ""}`, styles: { fontStyle: "bold" } },

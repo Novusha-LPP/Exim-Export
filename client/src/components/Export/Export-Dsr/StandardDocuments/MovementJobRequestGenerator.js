@@ -130,7 +130,7 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       doc.text(`Sub: Movement of   ${count20}   x 20'/+   ${count40}   x 40' for M.V.   ${data.vessel_name || ""}`, 15, yPos);
       yPos += 8;
 
-      doc.text(`Voyage No.  ${data.operations.transporterDetails.transporterName || ""}  VC No.  ${data.operations.transporterDetails.transporterName || ""}  Rotation No.  ${data.voyage_no || ""}`, 15, yPos);
+      doc.text(`Voyage No.  ${data.operations?.[0]?.transporterDetails?.[0]?.transporterName || ""}  VC No.  ${data.operations?.[0]?.transporterDetails?.[0]?.transporterName || ""}  Rotation No.  ${data.voyage_no || ""}`, 15, yPos);
       yPos += 8;
 
       doc.setFont("helvetica", "normal");
