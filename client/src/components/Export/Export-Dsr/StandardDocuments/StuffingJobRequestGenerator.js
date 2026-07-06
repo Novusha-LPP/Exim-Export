@@ -136,8 +136,8 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       // Values for M.V. Voyage Rotation
       doc.setFont("helvetica", "bold");
       doc.text(data.vessel_name || "", 32, yPos);
-      doc.text(data.operations?.[0]?.transporterDetails?.[0]?.transporterName || "", 85, yPos);
-      doc.text(data.voyage_no || "", 145, yPos); // Voyage fallback as Rotation
+      doc.text(data.voyage_no || "", 85, yPos);
+      doc.text("", 145, yPos); // Voyage fallback as Rotation
       yPos += 8;
 
       doc.setFont("helvetica", "normal");

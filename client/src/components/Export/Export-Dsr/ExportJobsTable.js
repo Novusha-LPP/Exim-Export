@@ -60,6 +60,7 @@ const ConcorPltLetterGenerator = lazy(() => import("./StandardDocuments/ConcorPl
 const AnnexureDGenerator = lazy(() => import("./StandardDocuments/AnnexureDGenerator"));
 const StuffingJobRequestGenerator = lazy(() => import("./StandardDocuments/StuffingJobRequestGenerator"));
 const ImportContainerDeliveryOrderGenerator = lazy(() => import("./StandardDocuments/ImportContainerDeliveryOrderGenerator"));
+const BufferContainerGateInToCfsGenerator = lazy(() => import("./StandardDocuments/BufferContainerGateInToCfsGenerator"));
 const CartingJobRequestGenerator = lazy(() => import("./StandardDocuments/CartingJobRequestGenerator"));
 const MovementJobRequestGenerator = lazy(() => import("./StandardDocuments/MovementJobRequestGenerator"));
 const StorageApplicationGenerator = lazy(() => import("./StandardDocuments/StorageApplicationGenerator"));
@@ -450,17 +451,61 @@ const buildShippingLineUrls = (num, containerFirst = "") => ({
     : "#",
 });
 
+const isoCodeToType = {
+  // 20ft
+  "2000": "20 DRY",
+  "2054": "20 ODC",
+  "2200": "20 GP",
+  "2210": "20 VENT",
+  "2220": "20 HC",
+  "2230": "20 RF",
+  "2250": "20 OT",
+  "2260": "20 OS",
+  "2270": "20 TANK",
+  "2276": "20 TANK",
+  "2263": "20 FLAT",
+  "2510": "20 HC",
+  "2530": "20 HCRF",
+  "2550": "20 OTHC",
+  // 40ft
+  "4210": "40 VENT",
+  "4230": "40 RF",
+  "4250": "40 OT",
+  "4260": "40 OS",
+  "4270": "40 TANK",
+  "4310": "40 GP",
+  "4351": "40 OT",
+  "4500": "40 HC",
+  "4510": "40 VENT HC",
+  "4530": "40 RF HC",
+  "4532": "40 RF",
+  "4550": "40 HC OT",
+  // 45ft
+  "9500": "45 HC",
+  "9510": "45 VENT HC",
+  "9530": "45 RF HC",
+};
+
 const getContainerSizeLabel = (value) => {
   const raw = (value || "").toString().toUpperCase().trim();
   if (!raw) return "";
+  
+  if (isoCodeToType[raw]) {
+    return isoCodeToType[raw];
+  }
+  
   if (/^[2]\d{3}$/.test(raw)) return "20";
   if (/^[4]\d{3}$/.test(raw)) return "40";
   if (/^[9]\d{3}$/.test(raw)) return "45";
+  
   let label = raw;
-  label = label.replace(/HIGH CUBE/g, "HC");
+  label = label.replace(/STANDARD DRY/g, "STD");
   label = label.replace(/STANDARD/g, "STD");
-  label = label.replace(/OPEN TOP/g, "OT");
+  label = label.replace(/COLLAPSIBLE FLAT RACK/g, "CFR");
   label = label.replace(/FLAT RACK/g, "FR");
+  label = label.replace(/HIGH CUBE/g, "HC");
+  label = label.replace(/OPEN TOP/g, "OT");
+  label = label.replace(/HARD TOP/g, "HT");
   label = label.replace(/REEFER/g, "RF");
   return label;
 };
@@ -1003,29 +1048,29 @@ const ExportJobsTable = () => {
 
   const expiringBanners = React.useMemo(() => {
     if (!directories || directories.length === 0 || !jobs || jobs.length === 0) return [];
-    
+
     // Get unique exporters in the current jobs list
     const visibleExporters = new Set(jobs.map(j => (j.exporter || "").trim().toUpperCase()));
-    
+
     const banners = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     directories.forEach(dir => {
       const orgName = (dir.organization || "").trim().toUpperCase();
       // Only show banner if the exporter is visible in the jobs list
       if (!visibleExporters.has(orgName)) return;
-      
+
       const validities = dir.selfSealValidity || [];
       validities.forEach(v => {
         if (!v.validityDate || !v.customHouse) return;
-        
+
         const validityDate = new Date(v.validityDate);
         validityDate.setHours(0, 0, 0, 0);
-        
+
         const diffTime = validityDate.getTime() - today.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays >= 0 && diffDays <= 1) {
           // Format date for display as dd-MMM-yyyy
           const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -1043,7 +1088,7 @@ const ExportJobsTable = () => {
         }
       });
     });
-    
+
     return banners;
   }, [directories, jobs]);
 
@@ -1057,7 +1102,7 @@ const ExportJobsTable = () => {
 
   const groupedJobs = React.useMemo(() => {
     const baseJobs = [...sortedJobs];
-    
+
     // Map to find parents by job_no
     const parentMap = {};
     baseJobs.forEach(job => {
@@ -4010,8 +4055,34 @@ const ExportJobsTable = () => {
                                 </div>
                               );
                             }
-                            return null;
                           })()}
+
+                          {/* Shipping Line section */}
+                          {job.shipping_line_airline && (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                marginTop: "4px",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: "10px",
+                                  fontWeight: "700",
+                                  color: "#4b5563",
+                                }}
+                              >
+                                S/L:
+                              </span>
+                              <span
+                                style={{ fontSize: "10px", color: "#1f2937", fontWeight: "600" }}
+                              >
+                                {job.shipping_line_airline}
+                              </span>
+                            </div>
+                          )}
                         </td>
 
 
@@ -5292,14 +5363,25 @@ const ExportJobsTable = () => {
             if (updates.egm_no) fullJob.egm_no = updates.egm_no;
             if (updates.egm_date) fullJob.egm_date = updates.egm_date;
 
-            // Auto-populate Container and Seal no if exactly one container is present
-            if (updates.container_no || updates.seal_no) {
-              if (!fullJob.containers || fullJob.containers.length === 0) {
-                fullJob.containers = [{}];
-              }
-              if (fullJob.containers.length === 1) {
-                if (updates.container_no) fullJob.containers[0].containerNo = updates.container_no;
-                if (updates.seal_no) fullJob.containers[0].sealNo = updates.seal_no;
+            // Auto-populate Container and Seal no if exactly one container is present.
+            // Skip for club job parents — their containers belong to child jobs, not the parent.
+            const isClubJobParent = Boolean(fullJob.is_club_job_parent);
+            if (!isClubJobParent && (updates.container_no || updates.seal_no)) {
+              const existingContainerNos = (fullJob.containers || []).map(
+                (c) => String(c.containerNo || "").trim().toUpperCase()
+              );
+              const incomingNo = String(updates.container_no || "").trim().toUpperCase();
+
+              // Only auto-populate if the container doesn't already exist
+              const alreadyExists = incomingNo && existingContainerNos.includes(incomingNo);
+              if (!alreadyExists) {
+                if (!fullJob.containers || fullJob.containers.length === 0) {
+                  fullJob.containers = [{}];
+                }
+                if (fullJob.containers.length === 1) {
+                  if (updates.container_no) fullJob.containers[0].containerNo = updates.container_no;
+                  if (updates.seal_no) fullJob.containers[0].sealNo = updates.seal_no;
+                }
               }
             }
 
@@ -6277,121 +6359,128 @@ const ExportJobsTable = () => {
               }}>
               </ListSubheader>
 
-            <ExportChecklistGenerator jobNo={selectedGenDocJob?.job_no} renderAsIcon={false} onTrackSuccess={(clicks) => handleTrackDocClick(selectedGenDocJob.job_no, "checklist", clicks)}>
-              <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CHECKLIST</MenuItem>
-            </ExportChecklistGenerator>
+              <ExportChecklistGenerator jobNo={selectedGenDocJob?.job_no} renderAsIcon={false} onTrackSuccess={(clicks) => handleTrackDocClick(selectedGenDocJob.job_no, "checklist", clicks)}>
+                <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CHECKLIST</MenuItem>
+              </ExportChecklistGenerator>
 
-            <FileCoverGenerator jobNo={selectedGenDocJob?.job_no} onTrackSuccess={(clicks) => handleTrackDocClick(selectedGenDocJob.job_no, "file_cover", clicks)}>
-              <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FILE COVER</MenuItem>
-            </FileCoverGenerator>
+              <FileCoverGenerator jobNo={selectedGenDocJob?.job_no} onTrackSuccess={(clicks) => handleTrackDocClick(selectedGenDocJob.job_no, "file_cover", clicks)}>
+                <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FILE COVER</MenuItem>
+              </FileCoverGenerator>
 
-            {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SACHANA")) && (
-              <ConsignmentNoteGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (SACHANA)</MenuItem>
-              </ConsignmentNoteGenerator>
-            )}
-
-            {(selectedGenDocJob?.custom_house?.toUpperCase().includes("THAR")) && (
-              <ForwardingNoteTharGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (THAR)</MenuItem>
-              </ForwardingNoteTharGenerator>
-            )}
-
-            {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SABARMATI") || selectedGenDocJob?.custom_house?.toUpperCase().includes("CONCOR")) && (
-              <ConcorForwardingNoteGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (CONCOR)</MenuItem>
-              </ConcorForwardingNoteGenerator>
-            )}
-
-            {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SABARMATI")) && (
-              <ConcorPltLetterGenerator jobNo={selectedGenDocJob?.job_no}>
-                <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CONCOR PLT LETTER</MenuItem>
-              </ConcorPltLetterGenerator>
-            )}
-
-            {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SANAND") ||
-              selectedGenDocJob?.custom_house?.toUpperCase().includes("THAR") ||
-              selectedGenDocJob?.custom_house?.toUpperCase().includes("ICD")) && (
-                <AnnexureDGenerator jobNo={selectedGenDocJob?.job_no}>
-                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>ANNEXURE D</MenuItem>
-                </AnnexureDGenerator>
+              {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SACHANA")) && (
+                <ConsignmentNoteGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (SACHANA)</MenuItem>
+                </ConsignmentNoteGenerator>
               )}
 
-            {(!selectedGenDocJob?.custom_house?.toUpperCase().includes("ACC") &&
-              !selectedGenDocJob?.custom_house?.toUpperCase().includes("AIRPORT") &&
-              !selectedGenDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") &&
-              selectedGenDocJob?.transportMode !== "AIR") && (
+              {(selectedGenDocJob?.custom_house?.toUpperCase().includes("THAR")) && (
+                <ForwardingNoteTharGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (THAR)</MenuItem>
+                </ForwardingNoteTharGenerator>
+              )}
+
+              {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SABARMATI") || selectedGenDocJob?.custom_house?.toUpperCase().includes("CONCOR")) && (
+                <ConcorForwardingNoteGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (CONCOR)</MenuItem>
+                </ConcorForwardingNoteGenerator>
+              )}
+
+              {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SABARMATI")) && (
+                <ConcorPltLetterGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CONCOR PLT LETTER</MenuItem>
+                </ConcorPltLetterGenerator>
+              )}
+
+              {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SANAND") ||
+                selectedGenDocJob?.custom_house?.toUpperCase().includes("THAR") ||
+                selectedGenDocJob?.custom_house?.toUpperCase().includes("ICD")) && (
+                  <AnnexureDGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>ANNEXURE D</MenuItem>
+                  </AnnexureDGenerator>
+                )}
+
+              {(!selectedGenDocJob?.custom_house?.toUpperCase().includes("ACC") &&
+                !selectedGenDocJob?.custom_house?.toUpperCase().includes("AIRPORT") &&
+                !selectedGenDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") &&
+                selectedGenDocJob?.transportMode !== "AIR") && (
+                  <>
+                    <AnnexureCGenerator jobNo={selectedGenDocJob?.job_no}>
+                      <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>ANNEXURE C</MenuItem>
+                    </AnnexureCGenerator>
+                    <VGMAuthorizationGenerator jobNo={selectedGenDocJob?.job_no}>
+                      <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>VGM AUTHORIZATION</MenuItem>
+                    </VGMAuthorizationGenerator>
+                    <FreightCertificateGenerator jobNo={selectedGenDocJob?.job_no}>
+                      <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FREIGHT CERTIFICATE</MenuItem>
+                    </FreightCertificateGenerator>
+                    <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
+                      <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>BILL OF LADING</MenuItem>
+                    </BillOfLadingGenerator>
+                  </>
+                )}
+
+              <MenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!selectedGenDocJob) return;
+                  const downloadUrl = `${import.meta.env.VITE_API_STRING}/generate-sb-file/${selectedGenDocJob._id}`;
+                  window.open(downloadUrl, "_blank");
+                }}
+                style={{
+                  fontSize: '12px',
+                  minHeight: '34px',
+                  padding: '4px 12px',
+                  color: '#166534',
+                  fontWeight: 'bold',
+                  backgroundColor: '#f0fdf4',
+                  borderBottom: '2px solid #bbf7d0'
+                }}
+              >
+                EXPORT SB FLAT FILE (.SB)
+              </MenuItem>
+
+              {isGandhidham && (
                 <>
-                  <AnnexureCGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>ANNEXURE C</MenuItem>
-                  </AnnexureCGenerator>
-                  <VGMAuthorizationGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>VGM AUTHORIZATION</MenuItem>
-                  </VGMAuthorizationGenerator>
-                  <FreightCertificateGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FREIGHT CERTIFICATE</MenuItem>
-                  </FreightCertificateGenerator>
-                  <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
-                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>BILL OF LADING</MenuItem>
-                  </BillOfLadingGenerator>
+                  <StuffingJobRequestGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                      STUFFING JOB REQUEST
+                    </MenuItem>
+                  </StuffingJobRequestGenerator>
+
+                  <ImportContainerDeliveryOrderGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                      IMPORT CONTAINER DELIVERY ORDER
+                    </MenuItem>
+                  </ImportContainerDeliveryOrderGenerator>
+
+                  <BufferContainerGateInToCfsGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                      BUFFER CONTAINER GATE IN TO CFS
+                    </MenuItem>
+                  </BufferContainerGateInToCfsGenerator>
+
+                  <CartingJobRequestGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                      CARTING JOB REQUEST
+                    </MenuItem>
+                  </CartingJobRequestGenerator>
+
+                  <MovementJobRequestGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                      MOVEMENT JOB REQUEST
+                    </MenuItem>
+                  </MovementJobRequestGenerator>
+
+                  <StorageApplicationGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                      STORAGE YARD APPLICATION
+                    </MenuItem>
+                  </StorageApplicationGenerator>
                 </>
               )}
-
-            <MenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!selectedGenDocJob) return;
-                const downloadUrl = `${import.meta.env.VITE_API_STRING}/generate-sb-file/${selectedGenDocJob._id}`;
-                window.open(downloadUrl, "_blank");
-              }}
-              style={{
-                fontSize: '12px',
-                minHeight: '34px',
-                padding: '4px 12px',
-                color: '#166534',
-                fontWeight: 'bold',
-                backgroundColor: '#f0fdf4',
-                borderBottom: '2px solid #bbf7d0'
-              }}
-            >
-              EXPORT SB FLAT FILE (.SB)
-            </MenuItem>
-
-            {isGandhidham && (
-              <>
-                <StuffingJobRequestGenerator jobNo={selectedGenDocJob?.job_no}>
-                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
-                    STUFFING JOB REQUEST
-                  </MenuItem>
-                </StuffingJobRequestGenerator>
-
-                <ImportContainerDeliveryOrderGenerator jobNo={selectedGenDocJob?.job_no}>
-                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
-                    IMPORT CONTAINER DELIVERY ORDER
-                  </MenuItem>
-                </ImportContainerDeliveryOrderGenerator>
-
-                <CartingJobRequestGenerator jobNo={selectedGenDocJob?.job_no}>
-                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
-                    CARTING JOB REQUEST
-                  </MenuItem>
-                </CartingJobRequestGenerator>
-
-                <MovementJobRequestGenerator jobNo={selectedGenDocJob?.job_no}>
-                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
-                    MOVEMENT JOB REQUEST
-                  </MenuItem>
-                </MovementJobRequestGenerator>
-
-                <StorageApplicationGenerator jobNo={selectedGenDocJob?.job_no}>
-                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
-                    STORAGE YARD APPLICATION
-                  </MenuItem>
-                </StorageApplicationGenerator>
-              </>
-            )}
-          </Suspense>
-        ); })()}
+            </Suspense>
+          );
+        })()}
       </Menu>
 
       {/* CREATE GENERAL JOB DIALOG */}

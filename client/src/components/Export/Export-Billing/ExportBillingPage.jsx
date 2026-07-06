@@ -611,8 +611,38 @@ const EditableDateCell = ({ row, field, initialValue, onSuccess }) => {
   );
 };
 
-function JobNoCell({ row, navigate }) {
+function JobNoCell({ row, navigate, activeTab, onSuccess }) {
   const displayNo = (row.is_club_job_parent && row.tally_club_ref_no) ? row.tally_club_ref_no : row.job_no;
+  const [rejecting, setRejecting] = useState(false);
+
+  const handleReject = async (e) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to reject job ${row.job_no} from billing?`)) return;
+
+    setRejecting(true);
+    try {
+      const localUser = JSON.parse(localStorage.getItem("exim_user") || "{}");
+      await axios.patch(
+        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(row.job_no)}/fields`,
+        {
+          fieldUpdates: [
+            { field: "send_for_billing", value: false },
+            { field: "send_for_billing_date", value: null }
+          ]
+        },
+        { headers: { username: localUser.username || "" } }
+      );
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      console.error("Reject error:", err);
+      alert(err.response?.data?.message || "Failed to reject job");
+    } finally {
+      setRejecting(false);
+    }
+  };
+
+  const showReject = row.send_for_billing === true && (activeTab === "billing-pending" || activeTab === "club-jobs");
+
   return (
     <Box sx={{ py: 0.5 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -652,6 +682,32 @@ function JobNoCell({ row, navigate }) {
       <Typography variant="caption" sx={{ display: "block", color: "text.secondary" }}>
         {row.branch_code || "-"}
       </Typography>
+      {showReject && (
+        <Button
+          variant="outlined"
+          color="error"
+          size="small"
+          sx={{
+            mt: 0.5,
+            py: 0.1,
+            px: 0.8,
+            fontSize: '9px',
+            textTransform: 'none',
+            minWidth: 0,
+            lineHeight: 1.2,
+            borderColor: '#fca5a5',
+            color: '#dc2626',
+            '&:hover': {
+              backgroundColor: '#fef2f2',
+              borderColor: '#ef4444'
+            }
+          }}
+          onClick={handleReject}
+          disabled={rejecting}
+        >
+          {rejecting ? "Rejecting..." : "Reject"}
+        </Button>
+      )}
     </Box>
   );
 }
@@ -1665,7 +1721,14 @@ function ExportBillingPage() {
         accessorKey: "job_no",
         header: "Job No",
         size: 180,
-        Cell: ({ row }) => <JobNoCell row={row.original} navigate={navigate} />,
+        Cell: ({ row }) => (
+          <JobNoCell
+            row={row.original}
+            navigate={navigate}
+            activeTab={activeTab}
+            onSuccess={() => fetchRows()}
+          />
+        ),
       },
       {
         accessorKey: "exporter",

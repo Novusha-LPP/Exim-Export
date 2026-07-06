@@ -59,6 +59,7 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
 
       const containers = data.containers?.length > 0 ? data.containers : [{ containerNo: "", type: "", customSealNo: "", shippingLineSealNo: "" }];
       const vehicleNo = data.operations?.[0]?.transporterDetails?.[0]?.vehicleNo || "";
+      const transName = data.operations?.[0]?.transporterDetails?.[0]?.transporterName || "";
 
       containers.forEach((c, index) => {
         if (index > 0) {
@@ -117,24 +118,24 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
         const tableBody = [
           [
             { content: `Vehicle\n\n${vehicleNo}`, styles: { fontStyle: "bold" } },
-            { content: "Driver\n\n", styles: { fontStyle: "bold" } },
-            { content: "Hauler/Group Code\n\n", styles: { fontStyle: "bold" } }
+            { content: `Driver/Transportern\n\n${transName}`, styles: { fontStyle: "bold" } },
+            { content: "Hauler/Group Code\n\n", styles: { fontStyle: "bold" }, colSpan: 2 }
           ],
           [
             { content: `Agent Name / Code\n\n${firmName}`, styles: { fontStyle: "bold" } },
             { content: `Line Name / Code\n\n${data.shipping_line_airline || ""}`, styles: { fontStyle: "bold" } },
-            { content: `VCN No.\n\n${data.operations?.[0]?.transporterDetails?.[0]?.transporterName || ""}`, styles: { fontStyle: "bold" } }
+            { content: `VCN No.\n\n${data.voyage_no || ""}`, styles: { fontStyle: "bold" }, colSpan: 2 }
           ],
           [
             { content: `Vessel Name / Code\n\n${data.vessel_name || ""}`, styles: { fontStyle: "bold" } },
             { content: "Import / Export\n\nEXPORT", styles: { fontStyle: "bold" } },
-            { content: `IGM No. / Rot No.\n\n${data.voyage_no || ""}`, styles: { fontStyle: "bold" } }
+            { content: `IGM No. / Rot No.\n\n${""}`, styles: { fontStyle: "bold" }, colSpan: 2 }
           ],
           [
             { content: `Container No.\n\n${c.containerNo || c.container_number || ""}`, styles: { fontStyle: "bold", fontSize: 10 } },
-            { content: `ISO Code\n\n${c.containerSize || c.type || c.size || ""}`, styles: { fontStyle: "bold" } },
-            { content: "Empty / Ldd", styles: { fontStyle: "bold" } },
-            { content: `Gr. Wt. & (Containers)\n\n${data.gross_weight_kg || ""} KGS`, styles: { fontStyle: "bold" }, colSpan: 1 }
+            { content: `ISO Code\n\n${c.isoCode || ""}`, styles: { fontStyle: "bold" } },
+            { content: "Empty / Ldd\n\n", styles: { fontStyle: "bold" } },
+            { content: `Gr. Wt. & (Containers)\n\n${data.gross_weight_kg || ""} KGS`, styles: { fontStyle: "bold" } }
           ],
           [
             { content: "Delivery Order No.\n\n", styles: { fontStyle: "bold" } },
@@ -145,8 +146,11 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
           [
             { content: "Stamp to Maintained\n\n", styles: { fontStyle: "bold" } },
             { content: "Voltage\n\n", styles: { fontStyle: "bold" } },
-            { content: `C.H.A. Name / No.\n\n${firmName} / ${licCode}`, styles: { fontStyle: "bold" } },
-            { content: `S/Bill No. / Date\n\n${data.sb_no || ""} / ${formatDate(data.sb_date)}`, styles: { fontStyle: "bold" } }
+            { content: `C.H.A. Name / No.\n\n${firmName} / ${licCode}`, styles: { fontStyle: "bold" }, colSpan: 2 }
+          ],
+          [
+            { content: `S/Bill No.\n\n${data.sb_no || ""}`, styles: { fontStyle: "bold" }, colSpan: 2 },
+            { content: `S/Bill Date\n\n${formatDate(data.sb_date)}`, styles: { fontStyle: "bold" }, colSpan: 2 }
           ]
         ];
 
@@ -164,10 +168,10 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
           },
           body: tableBody,
           columnStyles: {
-            0: { width: 55 },
-            1: { width: 55 },
-            2: { width: 45 },
-            3: { width: 35 },
+            0: { width: 50 },
+            1: { width: 50 },
+            2: { width: 42 },
+            3: { width: 40 },
           },
         });
 

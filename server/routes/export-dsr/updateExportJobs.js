@@ -24,21 +24,29 @@ function isBillingOnlyUpdate(updateObject) {
 
   for (const key of Object.keys(updateObject)) {
     if (key === "updatedAt") continue;
-    
+
+    // Allow non-admins to reject a job by setting send_for_billing to false and clearing the date
+    if (key === "send_for_billing" && updateObject[key] === false) {
+      continue;
+    }
+    if (key === "send_for_billing_date" && (updateObject[key] === null || updateObject[key] === "" || updateObject[key] === undefined)) {
+      continue;
+    }
+
     // If field is a string path (from fieldUpdates array), check against allowed patterns
     if (typeof key === "string" && key.includes("operations")) {
       // Normalize the field path for comparison
       const fieldPath = key;
-      const isAllowed = billingAllowedPatterns.some(pattern => 
+      const isAllowed = billingAllowedPatterns.some(pattern =>
         fieldPath === pattern || fieldPath.startsWith(pattern + ".")
       );
-      
+
       if (!isAllowed) {
         return false; // Found a non-billing field path
       }
       continue;
     }
-    
+
     // Check if this is a nested operations update (direct object structure)
     if (key === "operations" && Array.isArray(updateObject[key])) {
       const ops = updateObject[key];
@@ -54,11 +62,11 @@ function isBillingOnlyUpdate(updateObject) {
       }
       continue;
     }
-    
+
     // Not a billing field
     return false;
   }
-  
+
   return true;
 }
 
@@ -99,9 +107,6 @@ async function syncClubFields(job) {
     });
 
     if (siblingJobs.length === 0) return;
-
-    const siblingJobNos = siblingJobs.map(sj => sj.job_no);
-    console.log(`[Club Fields Sync] Propagating club updates for ${job.job_no} to club siblings:`, siblingJobNos);
 
     const op0Status = job.operations?.[0]?.statusDetails?.[0] || {};
 
@@ -169,6 +174,7 @@ async function syncClubFields(job) {
       sibling.markModified("shipping_bill_done");
       sibling.markModified("isBuyer");
 
+      sibling._isClubSync = true;
       await sibling.save();
 
       const clientUpdate = {
@@ -2940,7 +2946,7 @@ router.patch(
           (fieldUpdates || []).forEach(({ field, value }) => {
             updateObject[field] = value;
           });
-          
+
           // Allow billing-only updates for non-admins after send_for_billing
           if (!isBillingOnlyUpdate(updateObject)) {
             return res.status(403).json({
@@ -3019,7 +3025,7 @@ router.patch(
           (fieldUpdates || []).forEach(({ field, value }) => {
             updateObject[field] = value;
           });
-          
+
           // Allow billing-only updates for non-admins after send_for_billing
           if (!isBillingOnlyUpdate(updateObject)) {
             return res.status(403).json({

@@ -5,10 +5,9 @@ import axios from "axios";
 import { Button } from "@mui/material";
 import logo from "../../../../assets/images/surajLogo.jpeg";
 import signatureImg from "../../../../assets/images/gandhidhamSignature.jpg";
-import companyLogo from "../../../../assets/images/Frieghttablogo.png";
 import { rotateImage90Deg } from "../../../../utils/imageUtils";
 
-const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
+const BufferContainerGateInToCfsGenerator = ({ jobNo, children, onTrackSuccess }) => {
   const generatePDF = async (e) => {
     if (e) e.stopPropagation();
 
@@ -19,8 +18,16 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       );
       const data = response.data;
 
+      let signatureBase64 = "";
+      try {
+        signatureBase64 = await rotateImage90Deg(signatureImg);
+      } catch (err) {
+        console.warn("Failed to load signature image", err);
+      }
+
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
 
       const parseDateSafe = (dateStr) => {
         if (!dateStr) return null;
@@ -43,26 +50,13 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
         }).replace(/\//g, '-');
       };
 
-      const getContainerSizeLabel = (value) => {
-        const raw = (value || "").toString().toUpperCase().trim();
-        if (/^[2]\d{3}$/.test(raw)) return "20";
-        if (/^[4]\d{3}$/.test(raw)) return "40";
-        if (/^[9]\d{3}$/.test(raw)) return "45";
-        const sizeMatch = raw.match(/\b(20|40|45)\b/);
-        return sizeMatch ? sizeMatch[1] : raw;
-      };
-
       const isGandhidham =
         String(data.branchCode || "").toUpperCase().trim() === "GIM" ||
         String(data.jobNumber || "").toUpperCase().startsWith("GIM") ||
         String(data.job_no || "").toUpperCase().startsWith("GIM");
+      const firmName = isGandhidham ? "SURAJ FORWARDERS" : "SURAJ FORWARDERS & SHIPPING AGENCIES";
 
-      let signatureBase64 = "";
-      try {
-        signatureBase64 = await rotateImage90Deg(signatureImg);
-      } catch (err) {
-        console.warn("Failed to load signature image", err);
-      }
+      const containers = data.containers?.length > 0 ? data.containers : [{ containerNo: "", type: "", pkgsStuffed: 0 }];
 
       try {
         doc.addImage(logo, "JPEG", 9, 4, 190, 38);
@@ -92,80 +86,63 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
         console.warn("Logo add failed", err);
       }
 
-      // Title
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text("MOVEMENT JOB REQUEST", pageWidth / 2, 48, { align: "center" });
-      doc.line(pageWidth / 2 - 30, 49, pageWidth / 2 + 30, 49);
+      let yPos = 48;
 
-      // Date / Time / Sr No
-      doc.setFontSize(9.5);
+      // Dated line
       doc.setFont("helvetica", "bold");
-      doc.text(`Date :  ${formatDate(new Date())}`, pageWidth - 60, 56);
-      doc.text("Time :  ________________", pageWidth - 60, 61);
-      doc.text("Mvmt. Sr. No. __________", pageWidth - 60, 66);
+      doc.setFontSize(10);
+      doc.text(`DATED: ${formatDate(new Date())}`, pageWidth - 55, yPos);
+      yPos += 12;
 
       // To
-      let yPos = 63;
-      doc.setFont("helvetica", "bold");
-      doc.text("To,", 15, yPos);
-      yPos += 6;
-      doc.text("The Manager,", 15, yPos);
-      yPos += 6;
-      doc.text(`${data.warehouseName || "______________"} C.F.S.`, 15, yPos);
-      yPos += 6;
-
-      const portOfLoading = data.port_of_loading || "";
-      const portCity = portOfLoading.includes("-") ? portOfLoading.split("-")[1].trim() : portOfLoading;
-      doc.text(portCity || "Mundra", 15, yPos);
-      yPos += 12;
-
-      doc.text("Sir,", 15, yPos);
-      yPos += 8;
-
-      const containers = data.containers || [];
-      const count20 = containers.filter(c => getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size) === "20").length;
-      const count40 = containers.filter(c => getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size) === "40" || getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size) === "45").length;
-
-      doc.text(`Sub: Movement of   ${count20}   x 20'/+   ${count40}   x 40' for M.V.   ${data.vessel_name || ""}`, 15, yPos);
-      yPos += 8;
-
-      doc.text(`Voyage No.  ${data.voyage_no || ""}  VC No.  ${data.voyage_no || ""}  Rotation No.  ${""}`, 15, yPos);
-      yPos += 8;
-
-      doc.setFont("helvetica", "normal");
-      doc.text("With reference to the above we request you to kindly arrange to move below mentioned containers in port", 15, yPos);
+      doc.text("TO,", 14, yPos);
       yPos += 5;
-      doc.text("for the above captioned vessel. The said containers are cleared from all authorities in all aspects.", 15, yPos);
-      yPos += 12;
-
-      // Fields
-      doc.setFont("helvetica", "bold");
-      doc.text(`Shipping Bill No.  ${data.sb_no || ""}`, 15, yPos);
-      yPos += 6;
-      doc.text(`Type of Cargo  ${data.consignmentType || ""}`, 15, yPos);
-      yPos += 6;
-      doc.text(`Shipping Bill Weight  ${data.gross_weight_kg || ""} ${data.gross_weight_unit || "KGS"}`, 15, yPos);
-      yPos += 8;
-
-      doc.text("Fork Lift [  ]         Labour [  ]         Crane [  ]", 15, yPos);
+      doc.text("THE SUPERINTENDENT OF CUSTOMS (DP)", 14, yPos);
+      yPos += 5;
+      doc.text("MUNDRA PORT CUSTOMS,", 14, yPos);
+      yPos += 5;
+      doc.text("MP&SEZ, MUNDRA PORT.", 14, yPos);
       yPos += 10;
 
-      // Table: Container Details
-      const tableBody = containers.map((c, i) => [
-        String(i + 1),
-        c.containerNo || c.container_number || "",
-        getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size || ""),
-        "", // Net weight of cargo per container (optional)
-        c.tareWeightKgs ? `${c.tareWeightKgs} KGS` : "",
-        c.customSealNo || c.custom_seal || c.sealNo || "",
-        data.port_of_discharge || ""
-      ]);
+      // Subject
+      doc.text("SUB: BUFFAR CONTAINER GATE IN TO CFS", 14, yPos);
+      yPos += 10;
 
-      // If empty, add a blank row
-      if (tableBody.length === 0) {
-        tableBody.push(["", "", "", "", "", "", ""]);
-      }
+      // Salutation
+      doc.text("Respected Sir,", 14, yPos);
+      yPos += 8;
+
+      // Body text
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      const bodyText = "With reference to above subject, we request your good selves to grant us a permission for gate in the below said loaded container gate in. We again request to do the needful, as in this regards your kind co-operation would be highly appreciated.";
+      const splitBody = doc.splitTextToSize(bodyText, pageWidth - 28);
+      doc.text(splitBody, 14, yPos);
+      yPos += (splitBody.length * 5) + 8;
+
+      // Table columns & rows
+      const tableHeaders = [
+        ["SR.\nNO", "EXPORTER NAME", "CARGO", "SB NO DATED", "PKG", "CONT. NO"]
+      ];
+
+      const tableBody = containers.map((c, idx) => {
+        const exporterName = data.exporter || "-";
+        const cargo = data.nature_of_cargo || "-";
+        const sbNoDated = data.sb_no ? `SB NO: ${data.sb_no}\nDT: ${formatDate(data.sb_date)}` : "-";
+        const pkgCount = c.pkgsStuffed ? `${c.pkgsStuffed} PKGS` : (data.total_no_of_pkgs ? `${data.total_no_of_pkgs} PKGS` : "-");
+        const contNo = c.containerNo || c.container_number || "-";
+        const contSize = c.containerSize || c.type || "";
+        const contDisplay = contSize ? `${contNo} (${contSize})` : contNo;
+
+        return [
+          String(idx + 1),
+          exporterName,
+          cargo,
+          sbNoDated,
+          pkgCount,
+          contDisplay
+        ];
+      });
 
       doc.autoTable({
         startY: yPos,
@@ -175,56 +152,70 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
           lineWidth: 0.8,
           textColor: [0, 0, 0],
           font: "helvetica",
-          fontSize: 8.5,
-          cellPadding: 3,
+          fontSize: 9,
+          cellPadding: 4,
+          minCellHeight: 12,
         },
         headStyles: {
           fillColor: [255, 255, 255],
           textColor: [0, 0, 0],
           fontStyle: "bold",
           halign: "center",
+          valign: "middle"
         },
-        head: [["Sr No.", "Container No.", "Size", "Net Weight of Cargo", "Gross Weight of Container", "Seal No.", "POD"]],
+        head: tableHeaders,
         body: tableBody,
+        columnStyles: {
+          0: { width: 15, halign: "center" },
+          1: { width: 45 },
+          2: { width: 35 },
+          3: { width: 35, halign: "center" },
+          4: { width: 25, halign: "center" },
+          5: { width: 35, halign: "center" },
+        }
       });
 
       yPos = doc.lastAutoTable.finalY + 12;
 
+      // Footer
       doc.setFont("helvetica", "normal");
-      doc.text("Thanking you,", 15, yPos);
+      doc.setFontSize(10);
+      doc.text("Thanking you,", 14, yPos);
       yPos += 6;
-      doc.text("Yours faithfully,", 15, yPos);
-      yPos += 12;
+      doc.text("Yours faithfully,", 14, yPos);
+      yPos += 10;
 
-      const firmName = isGandhidham ? "SURAJ FORWARDERS" : "SURAJ FORWARDERS & SHIPPING AGENCIES";
-
+      // Signature/Stamp
       if (isGandhidham) {
         doc.setTextColor(22, 54, 147); // Blue color
         doc.setFont("helvetica", "bold");
-        doc.text("FOR, SURAJ FORWARDERS & SHIPPING AGENCIES", 15, yPos);
+        doc.setFontSize(9);
+        doc.text(`FOR, ${firmName.toUpperCase()}`, 14, yPos);
 
         let sigY = yPos + 2;
         if (signatureBase64) {
           try {
-            doc.addImage(signatureBase64, "PNG", 15, sigY, 45, 20);
+            doc.addImage(signatureBase64, "PNG", 14, sigY, 40, 16);
           } catch (e) {
             console.warn("Adding signature failed", e);
           }
-          yPos += 20;
+          yPos += 16;
         }
 
-        yPos += 6;
+        yPos += 5;
         doc.setTextColor(22, 54, 147); // Blue color
         doc.setFont("helvetica", "bold");
-        doc.text("AUTHORIZED SIGNATURE", 15, yPos);
+        doc.setFontSize(9);
+        doc.text("AUTHORIZED SIGNATURE", 14, yPos);
         doc.setTextColor(0, 0, 0); // Reset color
       } else {
+        doc.rect(14, yPos, 56, 18);
         doc.setFont("helvetica", "bold");
-        doc.text(`For ${firmName.toUpperCase()}`, 15, yPos);
+        doc.text("Sign ___________________ /Stamp", 17, yPos + 10);
       }
 
       // Preview Blob
-      const filename = `MovementJobRequest_${data.job_no || "Job"}.pdf`;
+      const filename = `BufferContainerGateInToCfs_${data.job_no || "Job"}.pdf`;
       const pdfBlob = doc.output("blob");
       const blobUrl = URL.createObjectURL(pdfBlob);
 
@@ -284,7 +275,7 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
         onTrackSuccess();
       }
     } catch (error) {
-      console.error("Error generating Movement Job Request:", error);
+      console.error("Error generating BUFFER CONTAINER GATE IN TO CFS document:", error);
       alert("Failed to generate PDF");
     }
   };
@@ -301,11 +292,11 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
         })
       ) : (
         <Button onClick={generatePDF} variant="contained">
-          Movement Job Request
+          Buffer Container Gate In To CFS
         </Button>
       )}
     </>
   );
 };
 
-export default MovementJobRequestGenerator;
+export default BufferContainerGateInToCfsGenerator;

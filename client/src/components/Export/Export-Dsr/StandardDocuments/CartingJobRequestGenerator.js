@@ -67,7 +67,7 @@ const CartingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
           doc.setFont("helvetica", "bold");
           doc.setFontSize(8.5);
           doc.text("GANDHIDHAM", 138, 8);
-          
+
           doc.setFont("helvetica", "normal");
           doc.setFontSize(7.5);
           doc.text("209, 2nd Floor, Madhav Palace, Plot No. 55,", 138, 12.5);
@@ -76,7 +76,7 @@ const CartingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
           doc.text("Phone No. : (02836) 229011 / 12", 138, 24.5);
           doc.text("E-mail : anurag@surajforwders.com", 138, 28.5);
           doc.text("PIC : Mr. Anurag Pillai (M) +91 99243 04422", 138, 32.5);
-          
+
           doc.setTextColor(0, 0, 0); // Reset color
         }
       } catch (err) {
@@ -107,7 +107,7 @@ const CartingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       // To
       doc.text("The Manager,", 15, yPos);
       yPos += 6;
-      doc.text(data.warehouseName || "SEABIRD", 15, yPos);
+      doc.text("", 15, yPos);
       yPos += 6;
 
       const portOfLoading = data.port_of_loading || "";
@@ -141,7 +141,7 @@ const CartingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
           ],
           [
             `SB:-\n\n${data.sb_no || ""}`,
-            `NO OF PACKAGES\n\n${data.total_no_of_pkgs || ""} pkgs`
+            `NO OF PACKAGES\n\n${data.total_no_of_pkgs || ""}`
           ],
           [
             { content: `EXPORTER: .\n\n${data.exporter || ""}`, colSpan: 2 }
@@ -211,7 +211,7 @@ const CartingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
         doc.setTextColor(22, 54, 147); // Blue color
         doc.setFont("helvetica", "bold");
         doc.text("FOR, SURAJ FORWARDERS & SHIPPING AGENCIES", 15, yPos);
-        
+
         let sigY = yPos + 2;
         if (signatureBase64) {
           try {

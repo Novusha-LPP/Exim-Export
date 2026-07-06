@@ -2298,16 +2298,16 @@ exportJobSchema.pre("save", async function (next) {
   // 4. Sync leo_date and booking_copy with operations[0].statusDetails[0]
   const op0 = this.operations && this.operations[0];
   const stat0 = op0 && op0.statusDetails && op0.statusDetails[0];
-  if (stat0) {
+  if (stat0 && !this._isClubSync) {
     // Sync LEO Date - prioritize the one that was actually modified in the request
-    if (this.isModified("operations")) {
+    if (this.isModified("operations.0.statusDetails.0.leoDate")) {
       this.leo_date = stat0.leoDate || "";
     } else if (this.isModified("leo_date")) {
       stat0.leoDate = this.leo_date || "";
     }
 
     // Sync Booking Copy - prioritize the one that was actually modified in the request
-    if (this.isModified("operations")) {
+    if (this.isModified("operations.0.statusDetails.0.booking_copy")) {
       this.booking_copy = stat0.booking_copy || [];
     } else if (this.isModified("booking_copy")) {
       stat0.booking_copy = this.booking_copy || [];
