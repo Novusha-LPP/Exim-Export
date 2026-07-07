@@ -76,6 +76,22 @@ const ExportChecklistGenerator = ({
     if (!text || typeof text !== "string") return [""];
     return pdf.splitTextToSize(text, width);
   };
+  const getRodtepCapValue = (rodtepInfo = {}) => {
+    const capPerUnit = rodtepInfo.capValuePerUnits;
+    const capValue = rodtepInfo.capValue;
+    const capPerUnitNumber = parseFloat(capPerUnit);
+    const capValueNumber = parseFloat(capValue);
+
+    if (!Number.isNaN(capPerUnitNumber) && capPerUnitNumber > 0) {
+      return capPerUnit;
+    }
+
+    if (!Number.isNaN(capValueNumber) && capValueNumber > 0) {
+      return capValue;
+    }
+
+    return capPerUnit ?? capValue ?? "";
+  };
   const FONT_SIZES = {
     title: 12,
     sectionHeader: 11,
@@ -2354,7 +2370,7 @@ const ExportChecklistGenerator = ({
                     product.rodtepInfo?.claim === "Yes" ? "RODTEPY" : "",
                   quantity: product.rodtepInfo?.quantity || "",
                   rate: product.rodtepInfo?.ratePercent || "",
-                  capValue: product.rodtepInfo?.capValue || "",
+                  capValue: getRodtepCapValue(product.rodtepInfo),
                   noOfUnits: "1",
                   rodtepAmount: product.rodtepInfo?.amountINR || "",
                 });

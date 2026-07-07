@@ -98,14 +98,15 @@ const TerminalCodeMaster = () => {
               <TableCell sx={{ fontWeight: 'bold' }}>Active</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Branches</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>TDS %</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Opening Balance</TableCell>
               <TableCell align="right" sx={{ fontWeight: 'bold' }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={5} align="center">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} align="center">Loading...</TableCell></TableRow>
             ) : data.length === 0 ? (
-              <TableRow><TableCell colSpan={5} align="center">No data found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} align="center">No data found</TableCell></TableRow>
             ) : (
               data.map((item) => (
                 <TableRow key={item._id} hover>
@@ -115,6 +116,7 @@ const TerminalCodeMaster = () => {
                   </TableCell>
                   <TableCell>{item.branches?.length || 0}</TableCell>
                   <TableCell>{item.tds_percent}%</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>₹ {Number(item.openingBalance || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                   <TableCell align="right">
                     <IconButton size="small" color="primary" onClick={() => { setSelectedItem(item); setOpenDialog(true); }}><EditIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="error" onClick={() => handleDelete(item._id)}><DeleteIcon fontSize="small" /></IconButton>

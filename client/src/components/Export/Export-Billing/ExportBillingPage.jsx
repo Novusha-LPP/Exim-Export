@@ -48,6 +48,7 @@ import BillingReportsUtility from "../../Report/BillingReportsUtility";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
+import VirtualBalanceList from "./VirtualBalanceList";
 
 
 const s = {
@@ -2134,33 +2135,35 @@ function ExportBillingPage() {
           pb: 0.5
         }}
       >
-        <Tabs
-          value={tabIndex}
-          onChange={(event, value) => {
-            setTabIndex(value);
-            setPage(1);
-          }}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{
-            minHeight: 40,
-            '& .MuiTabs-indicator': { backgroundColor: '#2563eb', height: 3 },
-            '& .MuiTab-root': {
-              fontSize: '12px',
-              textTransform: 'none',
-              fontWeight: 600,
+        {workMode !== "virtual-balance" && (
+          <Tabs
+            value={tabIndex}
+            onChange={(event, value) => {
+              setTabIndex(value);
+              setPage(1);
+            }}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
               minHeight: 40,
-              color: '#64748b',
-              '&.Mui-selected': { color: '#2563eb' }
-            }
-          }}
-        >
-          {tabs.map((tab) => {
-            const count = tabCounts[tab.key] ?? 0;
-            return <Tab key={tab.key} label={`${tab.label} (${count})`} />;
-          })}
-        </Tabs>
-
+              '& .MuiTabs-indicator': { backgroundColor: '#2563eb', height: 3 },
+              '& .MuiTab-root': {
+                fontSize: '12px',
+                textTransform: 'none',
+                fontWeight: 600,
+                minHeight: 40,
+                color: '#64748b',
+                '&.Mui-selected': { color: '#2563eb' }
+              }
+            }}
+          >
+            {tabs.map((tab) => {
+              const count = tabCounts[tab.key] ?? 0;
+              return <Tab key={tab.key} label={`${tab.label} (${count})`} />;
+            })}
+          </Tabs>
+        )}
+ 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
           <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", fontSize: '11px', letterSpacing: '0.5px' }}>
             WORK MODE:
@@ -2174,6 +2177,7 @@ function ExportBillingPage() {
           >
             <ToggleButton value="payment">PAYMENT</ToggleButton>
             <ToggleButton value="purchase-book">PURCHASE BOOK</ToggleButton>
+            <ToggleButton value="virtual-balance">VIRTUAL BALANCE</ToggleButton>
           </ToggleButtonGroup>
 
           <Button
@@ -2220,8 +2224,12 @@ function ExportBillingPage() {
         </Box>
       </Box>
 
-      <MaterialReactTable
-        key={`${activeTab}-${workMode}`}
+      {workMode === "virtual-balance" ? (
+        <VirtualBalanceList />
+      ) : (
+        <>
+          <MaterialReactTable
+            key={`${activeTab}-${workMode}`}
         columns={columns}
         data={rows}
         state={{ showProgressBars: loading, expanded: expandedRows }}
@@ -2510,16 +2518,18 @@ function ExportBillingPage() {
         )}
       />
 
-      <Box display="flex" justifyContent="center" alignItems="center" mt={2}>
-        <Pagination
-          count={totalPages}
-          page={page}
-          onChange={(event, value) => setPage(value)}
-          color="primary"
-          showFirstButton
-          showLastButton
-        />
-      </Box>
+          <Box display="flex" justifyContent="center" alignItems="center" mt={2}>
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={(event, value) => setPage(value)}
+              color="primary"
+              showFirstButton
+              showLastButton
+            />
+          </Box>
+        </>
+      )}
 
       <BillingDetailsDialog
         open={Boolean(selectedRow)}

@@ -217,13 +217,25 @@ const EditChargeModal = ({
           ...(charge.revenue || {}),
           partyType: charge.revenue?.partyType || 'Customer',
           partyName: charge.revenue?.partyName || (charge.revenue?.partyType === 'Customer' || !charge.revenue?.partyType ? exporterName : ''),
-          isGst: (charge.revenue && charge.revenue.isGst !== undefined) ? charge.revenue.isGst : true
+          isGst: (charge.revenue && charge.revenue.isGst !== undefined) ? charge.revenue.isGst : true,
+          tdsCategory: (() => {
+            const pct = parseFloat(charge.revenue?.tdsPercent) || 0;
+            if (pct === 1) return 'TDS ON CONTRACT 94C - 1023- 1%';
+            if (pct === 2) return 'TDS ON CONTRACT 94C - 1024 -2%';
+            return charge.revenue?.tdsCategory || '';
+          })()
         },
         cost: {
           ...(charge.cost || {}),
           partyType: charge.cost?.partyType || 'Others',
           isGst: (charge.cost && charge.cost.isGst !== undefined) ? charge.cost.isGst : true,
-          tdsAmount: roundWholeAmount(charge.cost?.tdsAmount)
+          tdsAmount: roundWholeAmount(charge.cost?.tdsAmount),
+          tdsCategory: (() => {
+            const pct = parseFloat(charge.cost?.tdsPercent) || 0;
+            if (pct === 1) return 'TDS ON CONTRACT 94C - 1023- 1%';
+            if (pct === 2) return 'TDS ON CONTRACT 94C - 1024 -2%';
+            return charge.cost?.tdsCategory || '';
+          })()
         }
       }));
       setFormData(initialData);
@@ -297,6 +309,29 @@ const EditChargeModal = ({
       updated[index][section] = updated[index][section] || {};
       updated[index][section][field] = value;
 
+      if (field === 'tdsPercent') {
+        const valNum = parseFloat(value) || 0;
+        if (valNum === 1) {
+          updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C - 1023- 1%';
+        } else if (valNum === 2) {
+          updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C - 1024 -2%';
+        }
+      }
+
+      if (field === 'isTds') {
+        if (value === true) {
+          const pct = parseFloat(updated[index][section].tdsPercent) || 0;
+          if (pct === 1) {
+            updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C - 1023- 1%';
+          } else {
+            updated[index][section].tdsPercent = 2;
+            updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C - 1024 -2%';
+          }
+        } else {
+          updated[index][section].tdsCategory = '';
+        }
+      }
+
       // Synchronize 'url' (attachments) between revenue and cost
       if (field === 'url') {
         const otherSection = section === 'revenue' ? 'cost' : 'revenue';
@@ -320,6 +355,11 @@ const EditChargeModal = ({
         if (matchedSL && matchedSL.tds_percent > 0) {
           updated[index][section].isTds = true;
           updated[index][section].tdsPercent = matchedSL.tds_percent;
+          if (matchedSL.tds_percent === 1) {
+            updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C - 1023- 1%';
+          } else if (matchedSL.tds_percent === 2) {
+            updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C - 1024 -2%';
+          }
         }
       }
 
@@ -957,9 +997,6 @@ const EditChargeModal = ({
                                         <option value="">--</option>
                                         <option value="TDS ON CONTRACT 94C - 1023- 1%">TDS ON CONTRACT 94C - 1023- 1%</option>
                                         <option value="TDS ON CONTRACT 94C - 1024 -2%">TDS ON CONTRACT 94C - 1024 -2%</option>
-                                        <option value="TDS ON PROFESSIONAL FEES 94J">TDS ON PROFESSIONAL FEES 94J</option>
-                                        <option value="TDS ON RENT 94I">TDS ON RENT 94I</option>
-                                        <option value="TDS ON COMMISSION 94H">TDS ON COMMISSION 94H</option>
                                       </select>
                                     </div>
                                   )}
@@ -1199,9 +1236,6 @@ const EditChargeModal = ({
                                         <option value="">--</option>
                                         <option value="TDS ON CONTRACT 94C - 1023- 1%">TDS ON CONTRACT 94C - 1023- 1%</option>
                                         <option value="TDS ON CONTRACT 94C - 1024 -2%">TDS ON CONTRACT 94C - 1024 -2%</option>
-                                        <option value="TDS ON PROFESSIONAL FEES 94J">TDS ON PROFESSIONAL FEES 94J</option>
-                                        <option value="TDS ON RENT 94I">TDS ON RENT 94I</option>
-                                        <option value="TDS ON COMMISSION 94H">TDS ON COMMISSION 94H</option>
                                       </select>
                                     </div>
                                   )}

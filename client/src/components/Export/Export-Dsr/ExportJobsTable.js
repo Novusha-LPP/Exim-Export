@@ -43,6 +43,7 @@ import LaunchIcon from "@mui/icons-material/Launch";
 import DescriptionIcon from "@mui/icons-material/Description";
 import { uploadFileToS3 } from "../../../utils/awsFileUpload";
 import AddExJobs from "./AddExJobs";
+import VirtualBalanceList from "../Export-Billing/VirtualBalanceList";
 import { formatDate } from "../../../utils/dateUtils";
 import { priorityFilter } from "../../../utils/filterUtils";
 
@@ -1601,6 +1602,7 @@ const ExportJobsTable = () => {
 
   // Fetch Filtered Exporters based on other criteria
   useEffect(() => {
+    if (activeTab === "Virtual Balance") return;
     const fetchFilteredExporters = async () => {
       try {
         const response = await axios.get(
@@ -1968,6 +1970,12 @@ const ExportJobsTable = () => {
 
   // --- Fetch Jobs ---
   const fetchJobs = async () => {
+    if (activeTab === "Virtual Balance") {
+      setLoading(false);
+      setJobs([]);
+      fetchTabCounts();
+      return;
+    }
     setLoading(true);
     fetchTabCounts();
     try {
@@ -3070,23 +3078,33 @@ const ExportJobsTable = () => {
               </button>
             )}
             {!isOperationModule && !isChargesModule && (
-              <button
-                style={
-                  activeTab === "club-jobs" ? { ...s.tab, ...s.activeTab } : s.tab
-                }
-                onClick={() => setActiveTab("club-jobs")}
-              >
-                Club Jobs{" "}
-                <span
+              <>
+                <button
                   style={
-                    activeTab === "club-jobs"
-                      ? { ...s.badge, ...s.activeBadge }
-                      : s.badge
+                    activeTab === "club-jobs" ? { ...s.tab, ...s.activeTab } : s.tab
                   }
+                  onClick={() => setActiveTab("club-jobs")}
                 >
-                  {tabCounts["club-jobs"] ?? 0}
-                </span>
-              </button>
+                  Club Jobs{" "}
+                  <span
+                    style={
+                      activeTab === "club-jobs"
+                        ? { ...s.badge, ...s.activeBadge }
+                        : s.badge
+                    }
+                  >
+                    {tabCounts["club-jobs"] ?? 0}
+                  </span>
+                </button>
+                <button
+                  style={
+                    activeTab === "Virtual Balance" ? { ...s.tab, ...s.activeTab } : s.tab
+                  }
+                  onClick={() => setActiveTab("Virtual Balance")}
+                >
+                  Virtual Balance
+                </button>
+              </>
             )}
             <button
               style={
@@ -3193,7 +3211,8 @@ const ExportJobsTable = () => {
           )}
 
           {/* Filters */}
-          <div style={s.toolbar} className="toolbar-responsive">
+          {activeTab !== "Virtual Balance" && (
+            <div style={s.toolbar} className="toolbar-responsive">
             {/* Year Filter */}
             <select
               style={getFilterSelectStyle(selectedYear !== "26-27", "80px")}
@@ -3597,9 +3616,16 @@ const ExportJobsTable = () => {
             </div>
 
           </div>
+          )}
 
           {/* Table */}
-          <div style={s.tableContainer} className="table-container-responsive">
+          {activeTab === "Virtual Balance" ? (
+            <div style={{ padding: "20px 0" }}>
+              <VirtualBalanceList />
+            </div>
+          ) : (
+            <>
+              <div style={s.tableContainer} className="table-container-responsive">
             <table style={s.table}>
               <colgroup>
                 <col style={{ minWidth: "175px" }} />
@@ -4873,6 +4899,8 @@ const ExportJobsTable = () => {
               size="small"
             />
           </div>
+        </>
+      )}
         </div>
       </div >
 

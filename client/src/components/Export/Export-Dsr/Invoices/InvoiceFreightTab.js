@@ -333,7 +333,7 @@ const InvoiceFreightTab = ({ formik }) => {
       // We only do this if a rate is present (meaning it's a calculated field)
       const nextRow = { ...row };
       if (row.rate && rowAmount) {
-        nextRow.amount = Number(rowAmount.toFixed(4));
+        nextRow.amount = Number(rowAmount.toFixed(2));
       }
 
       const effectiveCurrency = (row.currency || invoiceCurrency).toUpperCase();
@@ -400,10 +400,10 @@ const InvoiceFreightTab = ({ formik }) => {
       currency: fobCurrency,
       exchangeRate: effectiveFobRate,
       amount: Number.isFinite(fobAmountInSelected)
-        ? Number(fobAmountInSelected.toFixed(4))
+        ? Number(fobAmountInSelected.toFixed(2))
         : 0,
       // keep INR reference for downstream calculations
-      amountINR: Number.isFinite(fobInINR) ? Number(fobInINR.toFixed(4)) : 0,
+      amountINR: Number.isFinite(fobInINR) ? Number(fobInINR.toFixed(2)) : 0,
     };
 
     return nextCharges;
@@ -430,7 +430,7 @@ const InvoiceFreightTab = ({ formik }) => {
     if (!usdRateInINR) return 0;
 
     const fobInUSD = fobAmountINR / usdRateInINR; // INR → USD
-    return Number.isFinite(fobInUSD) ? Number(fobInUSD.toFixed(4)) : 0;
+    return Number.isFinite(fobInUSD) ? Number(fobInUSD.toFixed(2)) : 0;
   };
 
   const effectiveCharges = computeFOBCharges();
@@ -812,7 +812,7 @@ const InvoiceFreightTab = ({ formik }) => {
                       isFOB
                         ? ""
                         : Number.isFinite(baseValue) && baseValue !== 0
-                          ? baseValue.toFixed(4)
+                          ? baseValue.toFixed(2)
                           : ""
                     }
                     placeholder="0.00"
@@ -833,7 +833,7 @@ const InvoiceFreightTab = ({ formik }) => {
                       // which is ALREADY computed by computeFOBCharges!
                       if (isFOB) {
                         if (data.amount !== undefined && data.amount !== null && data.amount !== 0) {
-                          return typeof data.amount === "number" ? data.amount.toFixed(4) : data.amount;
+                          return typeof data.amount === "number" ? data.amount.toFixed(2) : data.amount;
                         }
                         // if computed FOB is exactly 0, show nothing or 0.00
                         return "";
@@ -851,7 +851,7 @@ const InvoiceFreightTab = ({ formik }) => {
                         Number.isFinite(computedAmount) &&
                         computedAmount !== 0
                       ) {
-                        return computedAmount.toFixed(4);
+                        return computedAmount.toFixed(2);
                       }
                       return "";
                     })()}

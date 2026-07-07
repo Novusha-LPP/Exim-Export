@@ -759,7 +759,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "CGST": entry.cgstAmt,
             "SGST": entry.sgstAmt,
             "IGST": entry.igstAmt,
-            "TDS": entry.tds,
+            [tdsKey]: entry.tds,
             "Total": grossTotal,
             "Net Amount": netAmount,
             "Charge Description": entry.chargeDescription || '',

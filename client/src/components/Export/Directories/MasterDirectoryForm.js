@@ -15,6 +15,7 @@ const validationSchema = Yup.object({
   name: Yup.string().required("Name is required"),
   active: Yup.string().required("Status is required"),
   tds_percent: Yup.number().min(0).max(100),
+  openingBalance: Yup.number().min(0),
   branches: Yup.array().of(
     Yup.object({
       branchName: Yup.string().required("Branch Name is required"),
@@ -37,6 +38,7 @@ const MasterDirectoryForm = ({ data, onSave, onCancel, title }) => {
     tds_percent: data?.tds_percent || 0,
     credit_terms: data?.credit_terms || "",
     cin: data?.cin || "",
+    openingBalance: data?.openingBalance || 0,
     branches: data?.branches || [
       {
         branch_no: "",
@@ -90,16 +92,22 @@ const MasterDirectoryForm = ({ data, onSave, onCancel, title }) => {
                   type="number" value={values.tds_percent} onChange={handleChange}
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth size="small" name="cin" label="CIN No"
                   value={values.cin} onChange={e => setFieldValue("cin", e.target.value.toUpperCase())}
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth size="small" name="credit_terms" label="Credit Terms"
                   value={values.credit_terms} onChange={e => setFieldValue("credit_terms", e.target.value.toUpperCase())}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth size="small" name="openingBalance" label="Opening Balance"
+                  type="number" value={values.openingBalance} onChange={handleChange}
                 />
               </Grid>
             </Grid>
