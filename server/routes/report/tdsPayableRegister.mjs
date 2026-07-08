@@ -222,11 +222,11 @@ router.get("/api/report/tds-payable-register", async (req, res) => {
       let netAmount = entry.netAmount !== undefined && entry.netAmount !== null ? entry.netAmount : (totalVal - (entry.tds || 0));
 
       if (isReimbursement) {
-          totalVal = entry.taxableValue !== undefined && entry.taxableValue !== null && entry.taxableValue !== 0 ? entry.taxableValue : (entry.total + (entry.tds || 0));
+          totalVal = entry.total !== undefined && entry.total !== null ? entry.total : (entry.taxableValue || 0);
           netAmount = totalVal - (entry.tds || 0);
           
-          gstAmount = parseFloat((netAmount * 18 / 118).toFixed(2));
-          taxableValue = parseFloat((netAmount - gstAmount).toFixed(2));
+          gstAmount = parseFloat((totalVal * 18 / 118).toFixed(2));
+          taxableValue = parseFloat((totalVal - gstAmount).toFixed(2));
       } else {
           totalVal = (taxableValue || 0) + (gstAmount || 0);
           netAmount = entry.netAmount !== undefined && entry.netAmount !== null ? entry.netAmount : (totalVal - (entry.tds || 0));
@@ -415,11 +415,11 @@ router.get("/api/report/billing-charges-excel", async (req, res) => {
         let netAmount = entry.netAmount !== undefined && entry.netAmount !== null ? entry.netAmount : (totalVal - (entry.tds || 0));
 
         if (isReimbursement) {
-            totalVal = entry.taxableValue !== undefined && entry.taxableValue !== null && entry.taxableValue !== 0 ? entry.taxableValue : (entry.total + (entry.tds || 0));
+            totalVal = entry.total !== undefined && entry.total !== null ? entry.total : (entry.taxableValue || 0);
             netAmount = totalVal - (entry.tds || 0);
             
-            gst = parseFloat((netAmount * 18 / 118).toFixed(2));
-            taxableValue = parseFloat((netAmount - gst).toFixed(2));
+            gst = parseFloat((totalVal * 18 / 118).toFixed(2));
+            taxableValue = parseFloat((totalVal - gst).toFixed(2));
         } else {
             totalVal = (taxableValue || 0) + (gst || 0);
             netAmount = entry.netAmount !== undefined && entry.netAmount !== null ? entry.netAmount : (totalVal - (entry.tds || 0));

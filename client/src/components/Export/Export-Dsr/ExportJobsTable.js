@@ -3621,7 +3621,7 @@ const ExportJobsTable = () => {
           {/* Table */}
           {activeTab === "Virtual Balance" ? (
             <div style={{ padding: "20px 0" }}>
-              <VirtualBalanceList />
+              <VirtualBalanceList isJobs={true} />
             </div>
           ) : (
             <>

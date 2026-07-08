@@ -88,7 +88,7 @@ const s = {
   },
 };
 
-export default function VirtualBalanceList() {
+export default function VirtualBalanceList({ isJobs = false }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -97,7 +97,15 @@ export default function VirtualBalanceList() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [uploadingRowId, setUploadingRowId] = useState(null);
   const limit = 15;
+
+  const [jobsList, setJobsList] = useState([]);
+  const [selectedJobs, setSelectedJobs] = useState([]);
+  const localUser = JSON.parse(localStorage.getItem("exim_user") || "{}");
+  const isBillingTeam = localUser.role === "Billing" || localUser.role === "Admin";
 
   // Dialog states
   const [formOpen, setFormOpen] = useState(false);
@@ -142,6 +150,8 @@ export default function VirtualBalanceList() {
           limit,
           search: debouncedSearch,
           status: statusFilter,
+          startDate,
+          endDate,
         },
       });
       if (res.data.success) {
@@ -154,7 +164,81 @@ export default function VirtualBalanceList() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, statusFilter]);
+  }, [page, debouncedSearch, statusFilter, startDate, endDate]);
+
+  const handleInlineFileUpload = async (e, rowId) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingRowId(rowId);
+    try {
+      const result = await uploadFileToS3(file, "export_docs");
+      const res = await axios.put(`${import.meta.env.VITE_API_STRING}/virtual-balance/${rowId}`, {
+        fileUrl: result.Location,
+      });
+      if (res.data.success) {
+        fetchEntries();
+      }
+    } catch (err) {
+      console.error("Inline file upload error:", err);
+      alert("Failed to upload file");
+    } finally {
+      setUploadingRowId(null);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/virtual-balance`, {
+        params: {
+          page: 1,
+          limit: 1000000,
+          search: debouncedSearch,
+          status: statusFilter,
+          startDate,
+          endDate,
+        },
+      });
+      if (res.data.success && Array.isArray(res.data.data.entries)) {
+        const XLSX = await import("xlsx");
+        
+        const dataToExport = res.data.data.entries.map((row) => ({
+          "Create Date": row.createdAt ? new Date(row.createdAt).toLocaleDateString("en-IN") : "-",
+          "Ref No": row.referenceNo || "",
+          "Terminal Name": row.cfsName || "",
+          "Job No": row.jobNo || "",
+          "Exporter Name": row.partyName || "",
+          "Opening Bal": row.openingBalance || 0,
+          "Amt Paid": row.amountPaid || 0,
+          "Available Bal": row.availableBalance || 0,
+          "Spent Amt": row.spentAmount || 0,
+          "Remaining Bal": row.remainingBalance || 0,
+          "UTR": row.utr || "",
+          "Paid From": row.fromBank || "",
+          "Status": row.status ? row.status.toUpperCase() : "UNPAID",
+          "Payment Date": row.paymentDate ? new Date(row.paymentDate).toLocaleDateString("en-IN") : "-",
+          "Remarks": row.remarks || "",
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Virtual Balance");
+        
+        const maxLen = {};
+        dataToExport.forEach((row) => {
+          Object.keys(row).forEach((key) => {
+            const val = String(row[key]);
+            maxLen[key] = Math.max(maxLen[key] || 10, val.length);
+          });
+        });
+        worksheet["!cols"] = Object.keys(maxLen).map((key) => ({ wch: maxLen[key] + 3 }));
+
+        XLSX.writeFile(workbook, `Virtual_Balance_${new Date().toISOString().split("T")[0]}.xlsx`);
+      }
+    } catch (err) {
+      console.error("Excel export error:", err);
+      alert("Failed to export Excel");
+    }
+  };
 
   useEffect(() => {
     fetchEntries();
@@ -176,6 +260,36 @@ export default function VirtualBalanceList() {
     };
     fetchCfs();
   }, []);
+
+  const [jobSearch, setJobSearch] = useState("");
+  const [jobsLoading, setJobsLoading] = useState(false);
+
+  // Fetch Jobs list - server-side search as user types
+  useEffect(() => {
+    const controller = new AbortController();
+    const fetchJobs = async () => {
+      setJobsLoading(true);
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/virtual-balance/jobs`, {
+          params: { search: jobSearch },
+          signal: controller.signal,
+        });
+        if (res.data.success && Array.isArray(res.data.data)) {
+          setJobsList(res.data.data);
+        }
+      } catch (err) {
+        if (!axios.isCancel(err)) console.error("Error fetching jobs list:", err);
+      } finally {
+        setJobsLoading(false);
+      }
+    };
+    const timer = setTimeout(fetchJobs, 300);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [jobSearch]);
+
 
   // Handle jobNo blur to auto-fill exporter name
   const handleJobNoBlur = async () => {
@@ -238,8 +352,29 @@ export default function VirtualBalanceList() {
     }
   };
 
+  // Helper: fetch party name for a single job number
+  const fetchPartyNameForJob = async (jobNo) => {
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_STRING}/virtual-balance/job-details/${encodeURIComponent(jobNo)}`
+      );
+      if (res.data.success && res.data.partyName) return res.data.partyName;
+    } catch (err) {
+      console.error("Party name lookup error:", err);
+    }
+    return "";
+  };
+
+  // Helper: rebuild partyName display string from selectedJobs array
+  const buildPartyNameString = (jobs) => {
+    const lines = jobs
+      .filter((v) => v.partyName)
+      .map((v) => `${v.jobNo}: ${v.partyName}`);
+    return lines.join("\n");
+  };
+
   // Open form
-  const handleOpenForm = (entry = null) => {
+  const handleOpenForm = async (entry = null) => {
     if (entry) {
       setEditId(entry._id);
       setFormValues({
@@ -253,6 +388,24 @@ export default function VirtualBalanceList() {
         status: entry.status || "unpaid",
         fileUrl: entry.fileUrl || "",
       });
+
+      // Parse jobNo string and fetch partyNames from server for each job
+      const jobString = entry.jobNo || "";
+      const jobNos = jobString.split(",").map((j) => j.trim()).filter(Boolean);
+      const initialSelected = await Promise.all(
+        jobNos.map(async (jobNo) => {
+          const inList = jobsList.find((j) => j.jobNo === jobNo);
+          const partyName = (inList && inList.partyName)
+            ? inList.partyName
+            : await fetchPartyNameForJob(jobNo);
+          return { jobNo, partyName };
+        })
+      );
+      setSelectedJobs(initialSelected);
+      setFormValues((prev) => ({
+        ...prev,
+        partyName: buildPartyNameString(initialSelected),
+      }));
     } else {
       setEditId(null);
       setFormValues({
@@ -266,6 +419,7 @@ export default function VirtualBalanceList() {
         status: "unpaid",
         fileUrl: "",
       });
+      setSelectedJobs([]);
     }
     setFormOpen(true);
   };
@@ -278,11 +432,21 @@ export default function VirtualBalanceList() {
       return;
     }
 
+    const jobNoString = selectedJobs
+      .map((j) => (typeof j === "string" ? j.trim().toUpperCase() : (j.jobNo || "").trim().toUpperCase()))
+      .filter(Boolean)
+      .join(", ");
+
+    const payload = {
+      ...formValues,
+      jobNo: jobNoString,
+    };
+
     try {
       if (editId) {
-        await axios.put(`${import.meta.env.VITE_API_STRING}/virtual-balance/${editId}`, formValues);
+        await axios.put(`${import.meta.env.VITE_API_STRING}/virtual-balance/${editId}`, payload);
       } else {
-        await axios.post(`${import.meta.env.VITE_API_STRING}/virtual-balance`, formValues);
+        await axios.post(`${import.meta.env.VITE_API_STRING}/virtual-balance`, payload);
       }
       setFormOpen(false);
       fetchEntries();
@@ -338,10 +502,10 @@ export default function VirtualBalanceList() {
           InputProps={{
             startAdornment: <SearchIcon sx={{ color: "text.secondary", mr: 1, fontSize: 18 }} />,
           }}
-          sx={{ width: 320, "& .MuiOutlinedInput-root": { borderRadius: "6px" } }}
+          sx={{ width: 220, "& .MuiOutlinedInput-root": { borderRadius: "6px" } }}
         />
 
-        <FormControl size="small" sx={{ width: 180 }}>
+        <FormControl size="small" sx={{ width: 140 }}>
           <InputLabel>Status</InputLabel>
           <Select
             value={statusFilter}
@@ -358,24 +522,69 @@ export default function VirtualBalanceList() {
           </Select>
         </FormControl>
 
-        <Button
-          variant="contained"
-          sx={{
-            ml: "auto !important",
-            background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
-            color: "#fff",
-            fontWeight: 700,
-            textTransform: "none",
-            borderRadius: "6px",
-            boxShadow: "0 4px 10px rgba(30, 58, 138, 0.2)",
-            "&:hover": {
-              background: "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
-            },
+        <TextField
+          size="small"
+          label="From Date"
+          type="date"
+          value={startDate}
+          onChange={(e) => {
+            setStartDate(e.target.value);
+            setPage(1);
           }}
-          onClick={() => handleOpenForm()}
-        >
-          + Add Virtual Balance
-        </Button>
+          InputLabelProps={{ shrink: true }}
+          sx={{ width: 130, "& .MuiOutlinedInput-root": { borderRadius: "6px" } }}
+        />
+
+        <TextField
+          size="small"
+          label="To Date"
+          type="date"
+          value={endDate}
+          onChange={(e) => {
+            setEndDate(e.target.value);
+            setPage(1);
+          }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ width: 130, "& .MuiOutlinedInput-root": { borderRadius: "6px" } }}
+        />
+
+        <Stack direction="row" spacing={1.5} sx={{ ml: "auto !important" }}>
+          <Button
+            variant="outlined"
+            onClick={handleExportExcel}
+            sx={{
+              color: "#1e3a8a",
+              borderColor: "#1e3a8a",
+              fontWeight: 700,
+              textTransform: "none",
+              borderRadius: "6px",
+              "&:hover": {
+                borderColor: "#1d4ed8",
+                backgroundColor: "#eff6ff",
+              },
+            }}
+          >
+            Export Excel
+          </Button>
+
+          <Button
+            variant="contained"
+            sx={{
+              background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
+              color: "#fff",
+              fontWeight: 700,
+              textTransform: "none",
+              borderRadius: "6px",
+              boxShadow: "0 4px 10px rgba(30, 58, 138, 0.2)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
+              },
+            }}
+            onClick={() => handleOpenForm()}
+          >
+            + Add Virtual Balance
+          </Button>
+        </Stack>
       </Stack>
 
       {/* Main Table */}
@@ -391,8 +600,9 @@ export default function VirtualBalanceList() {
         <Table stickyHeader size="small">
           <TableHead>
             <TableRow>
+              <TableCell sx={s.headerCell}>Create Date</TableCell>
               <TableCell sx={s.headerCell}>Ref No</TableCell>
-              <TableCell sx={s.headerCell}>CFS Name</TableCell>
+              <TableCell sx={s.headerCell}>Terminal Name</TableCell>
               <TableCell sx={s.headerCell}>Job No</TableCell>
               <TableCell sx={s.headerCell}>Exporter Name</TableCell>
               <TableCell sx={s.headerCell}>Opening Bal</TableCell>
@@ -412,7 +622,7 @@ export default function VirtualBalanceList() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={12} align="center" sx={{ py: 6 }}>
+                <TableCell colSpan={17} align="center" sx={{ py: 6 }}>
                   <CircularProgress size={28} sx={{ color: "#1e3a8a" }} />
                   <Typography variant="body2" sx={{ mt: 1, color: "text.secondary", fontWeight: 500 }}>
                     Loading virtual balances...
@@ -421,7 +631,7 @@ export default function VirtualBalanceList() {
               </TableRow>
             ) : entries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} align="center" sx={{ py: 6, color: "text.secondary" }}>
+                <TableCell colSpan={17} align="center" sx={{ py: 6, color: "text.secondary" }}>
                   No virtual balance entries found.
                 </TableCell>
               </TableRow>
@@ -435,6 +645,9 @@ export default function VirtualBalanceList() {
                     transition: "background-color 0.2s ease",
                   }}
                 >
+                  <TableCell sx={{ color: "#475569" }}>
+                    {row.createdAt ? new Date(row.createdAt).toLocaleDateString("en-IN") : "-"}
+                  </TableCell>
                   <TableCell>
                     <Button
                       variant="text"
@@ -494,25 +707,68 @@ export default function VirtualBalanceList() {
                     {row.paymentDate ? new Date(row.paymentDate).toLocaleDateString("en-IN") : "-"}
                   </TableCell>
                   <TableCell>
-                    {row.fileUrl ? (
-                      <Tooltip title="View Attachment" arrow>
-                        <IconButton
-                          size="small"
-                          component="a"
-                          href={row.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{
-                            color: "#1e3a8a",
-                            backgroundColor: "#eff6ff",
-                            "&:hover": { backgroundColor: "#dbeafe" },
-                          }}
-                        >
-                          <DescriptionIcon sx={{ fontSize: 15 }} />
-                        </IconButton>
-                      </Tooltip>
+                    {uploadingRowId === row._id ? (
+                      <CircularProgress size={16} />
                     ) : (
-                      "-"
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        {row.fileUrl ? (
+                          <>
+                            <Tooltip title="View Attachment" arrow>
+                              <IconButton
+                                size="small"
+                                component="a"
+                                href={row.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                sx={{
+                                  color: "#1e3a8a",
+                                  backgroundColor: "#eff6ff",
+                                  "&:hover": { backgroundColor: "#dbeafe" },
+                                }}
+                              >
+                                <DescriptionIcon sx={{ fontSize: 15 }} />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Change Attachment" arrow>
+                              <IconButton
+                                size="small"
+                                component="label"
+                                sx={{
+                                  color: "#475569",
+                                  backgroundColor: "#f1f5f9",
+                                  "&:hover": { backgroundColor: "#e2e8f0" },
+                                }}
+                              >
+                                <CloudUploadIcon sx={{ fontSize: 14 }} />
+                                <input
+                                  type="file"
+                                  hidden
+                                  onChange={(e) => handleInlineFileUpload(e, row._id)}
+                                />
+                              </IconButton>
+                            </Tooltip>
+                          </>
+                        ) : (
+                          <Tooltip title="Upload Document" arrow>
+                            <IconButton
+                              size="small"
+                              component="label"
+                              sx={{
+                                color: "#1e3a8a",
+                                backgroundColor: "#eff6ff",
+                                "&:hover": { backgroundColor: "#dbeafe" },
+                              }}
+                            >
+                              <CloudUploadIcon sx={{ fontSize: 15 }} />
+                              <input
+                                type="file"
+                                hidden
+                                onChange={(e) => handleInlineFileUpload(e, row._id)}
+                              />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Stack>
                     )}
                   </TableCell>
                   <TableCell
@@ -535,13 +791,15 @@ export default function VirtualBalanceList() {
                       >
                         <EditIcon sx={{ fontSize: 16 }} />
                       </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDelete(row._id)}
-                        sx={{ color: "#dc2626", "&:hover": { backgroundColor: "#fee2e2" } }}
-                      >
-                        <DeleteIcon sx={{ fontSize: 16 }} />
-                      </IconButton>
+                      {isBillingTeam && (
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDelete(row._id)}
+                          sx={{ color: "#dc2626", "&:hover": { backgroundColor: "#fee2e2" } }}
+                        >
+                          <DeleteIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      )}
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -584,23 +842,96 @@ export default function VirtualBalanceList() {
               />
             </Grid>
 
-            <Grid item xs={6}>
-              <TextField
+            <Grid item xs={12}>
+              <Autocomplete
+                multiple
+                freeSolo
                 size="small"
-                fullWidth
-                label="Job Number"
-                value={formValues.jobNo}
-                onChange={(e) => setFormValues((p) => ({ ...p, jobNo: e.target.value.toUpperCase() }))}
-                onBlur={handleJobNoBlur}
+                loading={jobsLoading}
+                options={jobsList}
+                filterOptions={(x) => x}
+                getOptionLabel={(option) => {
+                  if (typeof option === "string") return option;
+                  return option.jobNo || "";
+                }}
+                renderOption={(props, option) => (
+                  <li {...props} key={typeof option === "string" ? option : option.jobNo}>
+                    <span style={{ fontWeight: 700 }}>{typeof option === "string" ? option : option.jobNo}</span>
+                    {typeof option !== "string" && option.partyName && (
+                      <span style={{ marginLeft: 8, color: "#64748b", fontSize: "11px" }}>— {option.partyName}</span>
+                    )}
+                  </li>
+                )}
+                isOptionEqualToValue={(option, value) => {
+                  const optJobNo = typeof option === "string" ? option : option.jobNo;
+                  const valJobNo = typeof value === "string" ? value : value.jobNo;
+                  return optJobNo === valJobNo;
+                }}
+                value={selectedJobs}
+                onInputChange={(event, inputVal, reason) => {
+                  if (reason === "input") setJobSearch(inputVal);
+                }}
+                onChange={async (event, newValue) => {
+                  const updatedValue = await Promise.all(
+                    newValue.map(async (item) => {
+                      const jobNo = typeof item === "string"
+                        ? item.trim().toUpperCase()
+                        : (item.jobNo || "").trim().toUpperCase();
+
+                      if (!jobNo) return null;
+
+                      // If already has partyName, keep it
+                      const existingPartyName = typeof item !== "string" ? item.partyName : "";
+                      if (existingPartyName) return { jobNo, partyName: existingPartyName };
+
+                      // Try jobsList cache first
+                      const inList = jobsList.find((j) => j.jobNo === jobNo);
+                      if (inList && inList.partyName) return { jobNo, partyName: inList.partyName };
+
+                      // Fallback: fetch from server
+                      const partyName = await fetchPartyNameForJob(jobNo);
+                      const resolved = { jobNo, partyName };
+                      if (partyName) setJobsList((prev) => [...prev, resolved]);
+                      return resolved;
+                    })
+                  );
+                  const filtered = updatedValue.filter(Boolean);
+                  setSelectedJobs(filtered);
+                  setFormValues((prev) => ({
+                    ...prev,
+                    partyName: buildPartyNameString(filtered),
+                  }));
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Job Number(s)"
+                    placeholder="Type to search..."
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {jobsLoading && <CircularProgress size={14} />}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+                ListboxProps={{ style: { maxHeight: "220px" } }}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12}>
               <TextField
                 size="small"
                 fullWidth
                 disabled
-                label="Exporter Name"
+                multiline
+                minRows={1}
+                maxRows={4}
+                label="Exporter Name(s)"
                 value={formValues.partyName}
+                helperText={selectedJobs.length > 1 ? `${selectedJobs.length} jobs selected` : ""}
                 InputProps={{
                   endAdornment: partyLoading && <CircularProgress size={16} />,
                 }}
