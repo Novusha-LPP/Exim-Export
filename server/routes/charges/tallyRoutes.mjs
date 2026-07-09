@@ -671,7 +671,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             tdsRate = 1;
         }
 
-        const tdsKey = tdsRate === 2 ? "TDS ON CONTRACT 94C - 1024 -2%" : "TDS ON CONTRACT 94C - 1023- 1%";
+        const tdsKey = tdsRate === 2 ? "TDS ON CONTRACT 94C 1024" : "TDS ON CONTRACT 94C 1023";
 
         // Get comma-separated supplier invoice numbers & dates if clubbed
         let supplierInvNo = entry.supplierInvNo;

@@ -13,7 +13,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
   const [customHsnCode, setCustomHsnCode] = useState('');
   const [customChargeType, setCustomChargeType] = useState('Margin');
   const [customIsPbMandatory, setCustomIsPbMandatory] = useState(false);
-  const [customTdsCategory, setCustomTdsCategory] = useState('TDS ON CONTRACT 94C - 1023- 1%');
+  const [customTdsCategory, setCustomTdsCategory] = useState('TDS ON CONTRACT 94C 1023');
 
   const [editingChargeId, setEditingChargeId] = useState(null);
   const [editName, setEditName] = useState('');
@@ -21,7 +21,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
   const [editHsnCode, setEditHsnCode] = useState('');
   const [editChargeType, setEditChargeType] = useState('Margin');
   const [editIsPbMandatory, setEditIsPbMandatory] = useState(false);
-  const [editTdsCategory, setEditTdsCategory] = useState('TDS ON CONTRACT 94C - 1023- 1%');
+  const [editTdsCategory, setEditTdsCategory] = useState('TDS ON CONTRACT 94C 1023');
 
   useEffect(() => {
     if (isOpen) {
@@ -32,7 +32,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
       setCustomHsnCode('');
       setCustomChargeType('Margin');
       setCustomIsPbMandatory(false);
-      setCustomTdsCategory('TDS ON CONTRACT 94C - 1023- 1%');
+      setCustomTdsCategory('TDS ON CONTRACT 94C 1023');
       setSelectedNames(new Set());
     }
   }, [isOpen, fetchChargeHeads]);
@@ -66,7 +66,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
       setCustomHsnCode('');
       setCustomChargeType('Margin');
       setCustomIsPbMandatory(false);
-      setCustomTdsCategory('TDS ON CONTRACT 94C - 1023- 1%');
+      setCustomTdsCategory('TDS ON CONTRACT 94C 1023');
       const newSelected = new Set(selectedNames);
       newSelected.add(name);
       setSelectedNames(newSelected);
@@ -89,7 +89,7 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
     setEditHsnCode(ch.hsnCode || '');
     setEditChargeType(ch.chargeType || 'Margin');
     setEditIsPbMandatory(ch.isPbMandatory || false);
-    setEditTdsCategory(ch.tdsCategory || 'TDS ON CONTRACT 94C - 1023- 1%');
+    setEditTdsCategory(ch.tdsCategory || 'TDS ON CONTRACT 94C 1023');
   };
 
   const handleSaveEdit = async (ch, e) => {
@@ -194,8 +194,8 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
                                 <span>TDS:</span>
                                 <select value={editTdsCategory} onChange={e => setEditTdsCategory(e.target.value)} style={{ padding: '2px 4px' }}>
                                     <option value="">None</option>
-                                    <option value="TDS ON CONTRACT 94C - 1023- 1%">TDS ON CONTRACT 94C - 1023- 1%</option>
-                                    <option value="TDS ON CONTRACT 94C - 1024 -2%">TDS ON CONTRACT 94C - 1024 -2%</option>
+                                    <option value="TDS ON CONTRACT 94C 1023">TDS ON CONTRACT 94C 1023</option>
+                                    <option value="TDS ON CONTRACT 94C 1024">TDS ON CONTRACT 94C 1024</option>
                                 </select>
                             </div>
                             <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
@@ -283,8 +283,8 @@ const AddChargeModal = ({ isOpen, onClose, onAddSelected }) => {
                   <span>Default TDS:</span>
                   <select value={customTdsCategory} onChange={e => setCustomTdsCategory(e.target.value)} style={{ padding: '2px 4px' }}>
                     <option value="">None</option>
-                    <option value="TDS ON CONTRACT 94C - 1023- 1%">TDS ON CONTRACT 94C - 1023- 1%</option>
-                    <option value="TDS ON CONTRACT 94C - 1024 -2%">TDS ON CONTRACT 94C - 1024 -2%</option>
+                     <option value="TDS ON CONTRACT 94C 1023">TDS ON CONTRACT 94C 1023</option>
+                     <option value="TDS ON CONTRACT 94C 1024">TDS ON CONTRACT 94C 1024</option>
                   </select>
                </div>
                <button type="button" className="add-custom-btn" onClick={handleAddCustom} style={{ marginLeft: 'auto', background: '#16a34a', color: '#fff', border: 'none' }}>Add to Master</button>

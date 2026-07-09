@@ -310,10 +310,10 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
               <th style="width: 15%; padding: 8px 6px; font-size: 8.5px; font-weight: 900; text-align: center;">Measurement</th>
             </tr>
             <tr>
-              <td style="${br18} min-height: 230px; height: 230px; vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px ${isOriginal ? '18px' : '12px'} ${isOriginal ? '0px' : '8px'}; font-size: 11.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
-                 <div style="${isOriginal ? 'position: relative; left: -5px;' : ''}">
+              <td style="${br18} min-height: 230px; height: 230px; vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px ${isOriginal ? '18px' : '12px'} ${isOriginal ? '6px' : '8px'}; font-size: 10.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
+                 <div style="${isOriginal ? 'position: relative; left: 2px;' : ''}">
                     <div style="font-weight: 900; white-space: pre-wrap;">${bl.container_numbers || autoContainerNumbers || "[CONTAINER DETAILS]"}</div> 
-                    <div style="font-weight: 700; font-size: 10px; margin-top: 6px; white-space: pre-wrap;">${(bl.seal_numbers || autoSealNumbers) ? 'SEALS: ' + (bl.seal_numbers || autoSealNumbers) : ''}</div>
+                    <div style="font-weight: 700; font-size: 9px; margin-top: 6px; white-space: pre-wrap;">${(bl.seal_numbers || autoSealNumbers) ? 'SEALS: ' + (bl.seal_numbers || autoSealNumbers) : ''}</div>
                  </div>
               </td>
               <td style="${br18} vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px; font-size: 11.5px; line-height: 1.45; font-weight: 900; white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word;">${bl.marks_numbers || "[SHIPPING MARKS]"}</td>
@@ -621,10 +621,10 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
               <th style="width: 15%; padding: 8px 6px; font-size: 8.5px; font-weight: 900; text-align: center; color: ${isOriginal ? 'transparent' : '#000'};">Measurement</th>
             </tr>
             <tr>
-              <td style="${br18} min-height: 230px; height: 230px; vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px ${isOriginal ? '18px' : '12px'} ${isOriginal ? '0px' : '8px'}; font-size: 11.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
-                 <div style="${isOriginal ? 'position: relative; left: -10px;' : ''}">
+              <td style="${br18} min-height: 230px; height: 230px; vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px ${isOriginal ? '18px' : '12px'} ${isOriginal ? '6px' : '8px'}; font-size: 10.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
+                 <div style="${isOriginal ? 'position: relative; left: 2px;' : ''}">
                     <div style="font-weight: 900; white-space: pre-wrap;">${bl.container_numbers || autoContainerNumbers || "[CONTAINER DETAILS]"}</div> 
-                    <div style="font-weight: 700; font-size: 10px; margin-top: 6px; white-space: pre-wrap;">${(bl.seal_numbers || autoSealNumbers) ? 'SEALS: ' + (bl.seal_numbers || autoSealNumbers) : ''}</div>
+                    <div style="font-weight: 700; font-size: 9px; margin-top: 6px; white-space: pre-wrap;">${(bl.seal_numbers || autoSealNumbers) ? 'SEALS: ' + (bl.seal_numbers || autoSealNumbers) : ''}</div>
                  </div>
               </td>
               <td style="${br18} vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px; font-size: 11.5px; line-height: 1.45; font-weight: 900; white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word;">${bl.marks_numbers || "[SHIPPING MARKS]"}</td>

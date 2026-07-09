@@ -220,8 +220,8 @@ const EditChargeModal = ({
           isGst: (charge.revenue && charge.revenue.isGst !== undefined) ? charge.revenue.isGst : true,
           tdsCategory: (() => {
             const pct = parseFloat(charge.revenue?.tdsPercent) || 0;
-            if (pct === 1) return 'TDS ON CONTRACT 94C - 1023- 1%';
-            if (pct === 2) return 'TDS ON CONTRACT 94C - 1024 -2%';
+            if (pct === 1) return 'TDS ON CONTRACT 94C 1023';
+            if (pct === 2) return 'TDS ON CONTRACT 94C 1024';
             return charge.revenue?.tdsCategory || '';
           })()
         },
@@ -232,8 +232,8 @@ const EditChargeModal = ({
           tdsAmount: roundWholeAmount(charge.cost?.tdsAmount),
           tdsCategory: (() => {
             const pct = parseFloat(charge.cost?.tdsPercent) || 0;
-            if (pct === 1) return 'TDS ON CONTRACT 94C - 1023- 1%';
-            if (pct === 2) return 'TDS ON CONTRACT 94C - 1024 -2%';
+            if (pct === 1) return 'TDS ON CONTRACT 94C 1023';
+            if (pct === 2) return 'TDS ON CONTRACT 94C 1024';
             return charge.cost?.tdsCategory || '';
           })()
         }
@@ -312,9 +312,9 @@ const EditChargeModal = ({
       if (field === 'tdsPercent') {
         const valNum = parseFloat(value) || 0;
         if (valNum === 1) {
-          updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C - 1023- 1%';
+          updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C 1023';
         } else if (valNum === 2) {
-          updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C - 1024 -2%';
+          updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C 1024';
         }
       }
 
@@ -322,10 +322,10 @@ const EditChargeModal = ({
         if (value === true) {
           const pct = parseFloat(updated[index][section].tdsPercent) || 0;
           if (pct === 1) {
-            updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C - 1023- 1%';
+            updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C 1023';
           } else {
             updated[index][section].tdsPercent = 2;
-            updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C - 1024 -2%';
+            updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C 1024';
           }
         } else {
           updated[index][section].tdsCategory = '';
@@ -356,9 +356,9 @@ const EditChargeModal = ({
           updated[index][section].isTds = true;
           updated[index][section].tdsPercent = matchedSL.tds_percent;
           if (matchedSL.tds_percent === 1) {
-            updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C - 1023- 1%';
+            updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C 1023';
           } else if (matchedSL.tds_percent === 2) {
-            updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C - 1024 -2%';
+            updated[index][section].tdsCategory = 'TDS ON CONTRACT 94C 1024';
           }
         }
       }
@@ -995,8 +995,8 @@ const EditChargeModal = ({
                                       <span style={{ fontSize: '11px' }}>%</span>
                                       <select className="ep-select" style={{ width: '70px', marginLeft: '6px', fontSize: '10px' }} value={row.revenue?.tdsCategory || ''} onChange={e => handleFieldChange(i, 'tdsCategory', e.target.value, 'revenue')}>
                                         <option value="">--</option>
-                                        <option value="TDS ON CONTRACT 94C - 1023- 1%">TDS ON CONTRACT 94C - 1023- 1%</option>
-                                        <option value="TDS ON CONTRACT 94C - 1024 -2%">TDS ON CONTRACT 94C - 1024 -2%</option>
+                                        <option value="TDS ON CONTRACT 94C 1023">TDS ON CONTRACT 94C 1023</option>
+                                        <option value="TDS ON CONTRACT 94C 1024">TDS ON CONTRACT 94C 1024</option>
                                       </select>
                                     </div>
                                   )}
@@ -1234,8 +1234,8 @@ const EditChargeModal = ({
                                       <span style={{ fontSize: '11px' }}>%</span>
                                       <select className="ep-select" style={{ width: '70px', marginLeft: '6px', fontSize: '10px' }} value={row.cost?.tdsCategory || ''} onChange={e => handleFieldChange(i, 'tdsCategory', e.target.value, 'cost')}>
                                         <option value="">--</option>
-                                        <option value="TDS ON CONTRACT 94C - 1023- 1%">TDS ON CONTRACT 94C - 1023- 1%</option>
-                                        <option value="TDS ON CONTRACT 94C - 1024 -2%">TDS ON CONTRACT 94C - 1024 -2%</option>
+                                        <option value="TDS ON CONTRACT 94C 1023">TDS ON CONTRACT 94C 1023</option>
+                                        <option value="TDS ON CONTRACT 94C 1024">TDS ON CONTRACT 94C 1024</option>
                                       </select>
                                     </div>
                                   )}
