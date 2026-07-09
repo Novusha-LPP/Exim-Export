@@ -14,7 +14,8 @@ if (-not (Test-Path "$localJavaDir\bin\java.exe")) {
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         Invoke-WebRequest -Uri $jdkUrl -OutFile $zipFile -UseBasicParsing
-    } catch {
+    }
+    catch {
         Write-Error "Failed to download JDK: $_"
         exit 1
     }
