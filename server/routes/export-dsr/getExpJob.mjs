@@ -158,7 +158,7 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
         jobData.dimensions = enquiry.dimensions || [];
         jobData.bl_details = enquiry.bl_details || {};
         jobData.remarks = enquiry.remarks || jobData.remarks;
-        if (enquiry.containers && enquiry.containers.length > 0) {
+        if (enquiry.containers && enquiry.containers.length > 0 && (!jobData.containers || jobData.containers.length === 0)) {
           jobData.containers = enquiry.containers.map((c, i) => ({
             serialNumber: i + 1,
             containerNo: c.container_number || "",

@@ -159,15 +159,33 @@ const CartingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       const containers = data.containers || [];
 
       const detailsBody = [];
-      for (let i = 0; i < 5; i++) {
-        const trans = transDetails[i] || {};
+      const rowCount = Math.max(5, transDetails.length, containers.length);
+      for (let i = 0; i < rowCount; i++) {
         const c = containers[i] || {};
+
+        // 1. Try clubbed job style: operations[i].transporterDetails[0]
+        let op = data.operations?.[i];
+        let trans = op?.transporterDetails?.[0];
+
+        // 2. Try single job style: operations[0].transporterDetails[i]
+        if (!trans || !trans.vehicleNo) {
+          const mainOp = data.operations?.[0] || {};
+          const t = mainOp.transporterDetails?.[i];
+          if (t && t.vehicleNo) {
+            trans = t;
+          }
+        }
+
+        const vehicle = c.weighmentVehicleNo || trans?.vehicleNo || "";
+        const weight = c.grossWeight ? `${c.grossWeight} KGS` : (trans?.grossWeightKgs ? `${trans.grossWeightKgs} KGS` : "");
+        const packages = c.pkgsStuffed || trans?.noOfPackages || "";
+
         detailsBody.push([
           String(i + 1),
-          trans.vehicleNo || "",
+          vehicle,
           c.containerNo || c.container_number || "",
-          trans.grossWeightKgs ? `${trans.grossWeightKgs} KGS` : "",
-          trans.noOfPackages || ""
+          weight,
+          packages
         ]);
       }
 
