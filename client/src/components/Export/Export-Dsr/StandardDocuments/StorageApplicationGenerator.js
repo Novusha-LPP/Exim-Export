@@ -143,16 +143,31 @@ const StorageApplicationGenerator = ({ jobNo, children, onTrackSuccess }) => {
       doc.text("As VCN of desired vessel not available.", 15, yPos);
       yPos += 8;
 
-      // Table: Containers info
-      const vehicleNo = data.operations?.[0]?.transporterDetails?.[0]?.vehicleNo || "";
-      const tableBody = containers.map((c) => [
-        c.containerNo || c.container_number || "",
-        getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size || ""),
-        data.sb_no || "",
-        formatDate(data.sb_date) || "",
-        c.customSealNo || c.custom_seal || c.sealNo || "",
-        vehicleNo
-      ]);
+      const tableBody = containers.map((c, index) => {
+        // 1. Try clubbed job style: operations[index].transporterDetails[0]
+        let op = data.operations?.[index];
+        let trans = op?.transporterDetails?.[0];
+
+        // 2. Try single job style: operations[0].transporterDetails[index]
+        if (!trans || !trans.vehicleNo) {
+          const mainOp = data.operations?.[0] || {};
+          const t = mainOp.transporterDetails?.[index];
+          if (t && t.vehicleNo) {
+            trans = t;
+          }
+        }
+
+        const vNo = c.weighmentVehicleNo || trans?.vehicleNo || (index === 0 ? data.operations?.[0]?.transporterDetails?.[0]?.vehicleNo : "") || "";
+
+        return [
+          c.containerNo || c.container_number || "",
+          getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size || ""),
+          data.sb_no || "",
+          formatDate(data.sb_date) || "",
+          c.customSealNo || c.custom_seal || c.sealNo || "",
+          vNo
+        ];
+      });
 
       if (tableBody.length === 0) {
         tableBody.push(["", "", "", "", "", ""]);
