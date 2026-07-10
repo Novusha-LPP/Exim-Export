@@ -40,12 +40,12 @@ const splitDescription = (desc, packagesDesc = "", hsnCode = "") => {
   const lineHeight = 11.5 * 1.45; // 16.675 px
 
   // Calculate height occupied by packages description (margin-bottom: 10px = 10px)
-  const packagesLinesCount = estimateLines(packagesDesc, 50);
+  const packagesLinesCount = estimateLines(packagesDesc, 35);
   const packagesHeight = (packagesLinesCount * lineHeight) + 10;
 
   // Calculate height occupied by HSN code (margin-top: 5px = 5px)
   const hsnText = hsnCode ? `HSN: ${hsnCode}` : '';
-  const hsnLinesCount = hsnCode ? estimateLines(hsnText, 50) : 0;
+  const hsnLinesCount = hsnCode ? estimateLines(hsnText, 35) : 0;
   const hsnHeight = hsnCode ? (hsnLinesCount * lineHeight) + 5 : 0;
 
   // Height of "Continued on Annexure" label (margin-top: 5px)
@@ -64,7 +64,7 @@ const splitDescription = (desc, packagesDesc = "", hsnCode = "") => {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const lineLinesCount = estimateLines(line, 50);
+    const lineLinesCount = estimateLines(line, 35);
     const lineHeightTotal = lineLinesCount * lineHeight;
 
     if (currentHeight + lineHeightTotal <= availableHeight) {
@@ -91,7 +91,7 @@ const splitDescription = (desc, packagesDesc = "", hsnCode = "") => {
   currentHeight = 0;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const lineLinesCount = estimateLines(line, 50);
+    const lineLinesCount = estimateLines(line, 35);
     const lineHeightTotal = lineLinesCount * lineHeight;
 
     if (currentHeight + lineHeightTotal <= availableHeight) {
