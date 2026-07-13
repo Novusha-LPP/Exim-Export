@@ -41,7 +41,11 @@ export const userSchema = new Schema({
   password: {
     type: String,
   },
-  role: { type: String },
+  role: {
+    type: String,
+    get: v => v ? (v.toLowerCase() === 'admin' ? 'Admin' : v) : v,
+    set: v => v ? (v.toLowerCase() === 'admin' ? 'Admin' : v) : v
+  },
 
   modules: [
     {
@@ -250,6 +254,25 @@ export const userSchema = new Schema({
   },
 });
 
+userSchema.set('toJSON', { getters: true });
+userSchema.set('toObject', { getters: true });
+
 // Use the dedicated user database connection for the User model
 const UserModel = userDbConnection.model("User", userSchema);
+
+// Run role normalization query once connection is established
+userDbConnection.on("connected", async () => {
+  try {
+    const result = await UserModel.updateMany(
+      { role: { $regex: /^admin$/i, $ne: "Admin" } },
+      { $set: { role: "Admin" } }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`🟢 Normalized ${result.modifiedCount} user roles from 'admin' to 'Admin' in MongoDB.`);
+    }
+  } catch (err) {
+    console.warn("⚠️ Failed to normalize user roles on startup:", err);
+  }
+});
+
 export default UserModel;

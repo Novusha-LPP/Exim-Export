@@ -109,7 +109,7 @@ export const isAdminUser = async (username) => {
 
     try {
         const user = await UserModel.findOne({ username }).select("role");
-        return user?.role === "Admin";
+        return user?.role?.toLowerCase() === "admin";
     } catch (error) {
         console.error("Admin check error:", error);
         return false;

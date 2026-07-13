@@ -23,6 +23,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             detailedStatus = "",
             month = "",
             pendingQueries = false,
+            goods_stuffed_at = "",
         } = { ...req.params, ...req.query };
 
         const ClientQueryModel = (await import("../../model/export/ClientQueryModel.mjs")).default;
@@ -389,6 +390,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         }
         if (year && year !== "all") filter.$and.push({ year: year });
         if (customHouse) filter.$and.push({ custom_house: { $regex: customHouse, $options: "i" } });
+        if (goods_stuffed_at) filter.$and.push({ goods_stuffed_at: goods_stuffed_at });
 
         if (month) {
             if (month === "today") {
@@ -671,6 +673,114 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             success: false,
             message: "Error fetching operation jobs",
             error: error.message,
+        });
+    }
+});
+
+// GET /api/operation-jobs-filters - Get dynamic filter values based on assigned exporters
+router.get("/api/operation-jobs-filters", async (req, res) => {
+    try {
+        const { ieCode = "" } = req.query;
+
+        const filter = {};
+        if (!filter.$and) filter.$and = [];
+
+        filter.$and.push({ isGeneralJob: { $ne: true } });
+        filter.$and.push({ job_no: { $not: /^FF/i } });
+
+        if (ieCode) {
+            const ieCodeArray = ieCode.split(",").map(c => c.trim()).filter(Boolean);
+            if (ieCodeArray.length > 0) {
+                filter.$and.push({ ieCode: { $in: ieCodeArray } });
+            }
+        }
+
+        // Run aggregation to get distinct values
+        const result = await ExportJobModel.aggregate([
+            { $match: filter },
+            {
+                $facet: {
+                    branches: [
+                        { $match: { branch_code: { $ne: null, $ne: "" } } },
+                        { $group: { _id: "$branch_code" } }
+                    ],
+                    customHouses: [
+                        { $match: { custom_house: { $ne: null, $ne: "" } } },
+                        { $group: { _id: "$custom_house" } }
+                    ],
+                    consignmentTypes: [
+                        { $match: { consignmentType: { $ne: null, $ne: "" } } },
+                        { $group: { _id: "$consignmentType" } }
+                    ],
+                    goodsStuffedAt: [
+                        { $match: { goods_stuffed_at: { $ne: null, $ne: "" } } },
+                        { $group: { _id: "$goods_stuffed_at" } }
+                    ],
+                    years: [
+                        { $match: { year: { $ne: null, $ne: "" } } },
+                        { $group: { _id: "$year" } }
+                    ],
+                    exporters: [
+                        { $match: { ieCode: { $ne: null, $ne: "" } } },
+                        { $group: { _id: "$ieCode", name: { $first: "$exporter" } } }
+                    ],
+                    detailedStatuses: [
+                        { $unwind: { path: "$detailedStatus", preserveNullAndEmptyArrays: true } },
+                        { $match: { detailedStatus: { $ne: null, $ne: "" } } },
+                        { $group: { _id: "$detailedStatus" } }
+                    ],
+                    months: [
+                        {
+                            $project: {
+                                monthVal: {
+                                    $cond: {
+                                        if: {
+                                            $and: [
+                                                { $ne: ["$job_date", null] },
+                                                { $ne: ["$job_date", ""] },
+                                                { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } }
+                                            ]
+                                        },
+                                        then: {
+                                            $month: {
+                                                $dateFromString: {
+                                                    dateString: "$job_date",
+                                                    format: "%d-%m-%Y"
+                                                }
+                                            }
+                                        },
+                                        else: { $month: "$createdAt" }
+                                    }
+                                }
+                            }
+                        },
+                        { $match: { monthVal: { $ne: null } } },
+                        { $group: { _id: "$monthVal" } }
+                    ]
+                }
+            }
+        ]);
+
+        const facets = result[0] || {};
+        res.json({
+            success: true,
+            data: {
+                branches: (facets.branches || []).map(b => b._id).filter(Boolean),
+                customHouses: (facets.customHouses || []).map(ch => ch._id).filter(Boolean),
+                consignmentTypes: (facets.consignmentTypes || []).map(ct => ct._id).filter(Boolean),
+                goodsStuffedAt: (facets.goodsStuffedAt || []).map(gs => gs._id).filter(Boolean),
+                years: (facets.years || []).map(y => y._id).filter(Boolean),
+                exporters: (facets.exporters || []).map(exp => ({ ieCode: exp._id, name: exp.name })).filter(e => e.ieCode),
+                detailedStatuses: (facets.detailedStatuses || []).map(ds => ds._id).filter(Boolean),
+                months: (facets.months || []).map(m => m._id).filter(Boolean)
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching operation jobs filter options:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error fetching filter options",
+            error: error.message
         });
     }
 });

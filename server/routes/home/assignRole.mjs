@@ -43,8 +43,9 @@ router.get("/api/users-by-role", async (req, res) => {
   }
 
   try {
+    const queryRole = role.toLowerCase() === 'admin' ? 'Admin' : role;
     const users = await UserModel.find(
-      { role },
+      { role: queryRole },
       "username role employee_photo  assigned_importer_name"
     );
 
