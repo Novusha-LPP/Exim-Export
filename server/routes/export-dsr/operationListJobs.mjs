@@ -490,6 +490,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             "invoices.invoiceNumber": 1, "invoices.invoiceDate": 1, "invoices.termsOfInvoice": 1,
             "invoices.currency": 1, "invoices.invoiceValue": 1, "invoices.consigneeName": 1,
             "invoices.invoice_no": 1, "invoices.invoice_date": 1, "invoices.invValue": 1,
+            "invoices.products": 1,
             sb_no: 1, sb_date: 1, destination_port: 1, destination_country: 1, port_of_discharge: 1,
             discharge_country: 1, total_no_of_pkgs: 1,
             package_unit: 1, gross_weight_kg: 1, net_weight_kg: 1, shipping_line_airline: 1,
@@ -543,7 +544,9 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             shipping_bill_done: 1,
             shipping_bill_done_date: 1,
             freight_done: 1,
-            freight_enquiry_id: 1
+            freight_enquiry_id: 1,
+            booking_no: 1,
+            esanchit_completed_date_time: 1
         };
 
         let finalJobs = [];
