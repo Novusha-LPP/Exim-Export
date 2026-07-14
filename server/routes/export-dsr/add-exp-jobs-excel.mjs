@@ -2,6 +2,7 @@ import express from "express";
 import ExportJobModel from "../../model/export/ExJobModel.mjs";
 import ExLastJobsDate from "../../model/export/ExLastJobDate.mjs";
 import { updateJobSequenceIfHigher } from "../../utils/jobNumberGenerator.mjs";
+import { detectSbOrSealChange } from "../../utils/sbSealChangeDetector.mjs";
 
 const router = express.Router();
 
@@ -1159,6 +1160,14 @@ router.post("/api/jobs/add-job", async (req, res) => {
 
             // Include in main updateData
             updateData.operations = operationsToUpdate;
+
+            if (existingJob) {
+                const changeNotif = detectSbOrSealChange(existingJob, updateData, "Excel Import");
+                if (changeNotif) {
+                    updateData.sb_or_seal_changed_notif = changeNotif.sb_or_seal_changed_notif;
+                    updateData.sb_or_seal_changed_details = changeNotif.sb_or_seal_changed_details;
+                }
+            }
 
             const update = {
                 $set: updateData,

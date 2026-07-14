@@ -1047,6 +1047,50 @@ const ExportJobsTable = () => {
     fetchDirectories();
   }, []);
 
+  const changedJobs = React.useMemo(() => {
+    const list = [];
+    (jobs || []).forEach(job => {
+      if (job.sb_or_seal_changed_notif) {
+        list.push(job);
+      }
+      if (job.subRows && Array.isArray(job.subRows)) {
+        job.subRows.forEach(sub => {
+          if (sub.sb_or_seal_changed_notif) {
+            list.push(sub);
+          }
+        });
+      }
+    });
+    return list;
+  }, [jobs]);
+
+  const handleClearSbSealNotif = async (jobNo) => {
+    try {
+      const response = await axios.put(
+        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(jobNo)}/clear-sb-seal-notif`
+      );
+      if (response.data.success) {
+        setJobs(prevJobs => prevJobs.map(job => {
+          if (job.job_no === jobNo) {
+            return { ...job, sb_or_seal_changed_notif: false };
+          }
+          if (job.subRows && Array.isArray(job.subRows)) {
+            const updatedSubRows = job.subRows.map(sub => {
+              if (sub.job_no === jobNo) {
+                return { ...sub, sb_or_seal_changed_notif: false };
+              }
+              return sub;
+            });
+            return { ...job, subRows: updatedSubRows };
+          }
+          return job;
+        }));
+      }
+    } catch (err) {
+      console.error("Error clearing notification:", err);
+    }
+  };
+
   const expiringBanners = React.useMemo(() => {
     if (!directories || directories.length === 0 || !jobs || jobs.length === 0) return [];
 
@@ -3328,6 +3372,59 @@ const ExportJobsTable = () => {
             </div>
           )}
 
+          {changedJobs.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px', marginTop: '10px' }}>
+              {changedJobs.map((job) => (
+                <div
+                  key={job.job_no}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    backgroundColor: '#fff7ed',
+                    border: '1.5px solid #ffedd5',
+                    borderLeft: '5px solid #f97316',
+                    borderRadius: '6px',
+                    padding: '10px 16px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                    fontSize: '13px',
+                    color: '#9a3412',
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                  }}
+                >
+                  <span style={{ marginRight: '10px', fontSize: '16px', display: 'flex', alignItems: 'center' }}>🔔</span>
+                  <div style={{ flexGrow: 1 }}>
+                    Job <strong>{job.job_no}</strong>: {job.sb_or_seal_changed_details?.message || "Shipping Bill or Seal No was changed"} by <strong>{job.sb_or_seal_changed_details?.changedBy || "System"}</strong> on {job.sb_or_seal_changed_details?.changedAt ? new Date(job.sb_or_seal_changed_details.changedAt).toLocaleString('en-IN') : ""}.
+                  </div>
+                  <button
+                    onClick={() => handleClearSbSealNotif(job.job_no)}
+                    style={{
+                      marginLeft: '15px',
+                      backgroundColor: 'transparent',
+                      border: '1px solid #ea580c',
+                      borderRadius: '4px',
+                      color: '#ea580c',
+                      padding: '4px 10px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      transition: 'all 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#ea580c';
+                      e.target.style.color = '#ffffff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'transparent';
+                      e.target.style.color = '#ea580c';
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Filters */}
           {activeTab !== "Virtual Balance" && (
             <div style={s.toolbar} className="toolbar-responsive">
@@ -3849,6 +3946,7 @@ const ExportJobsTable = () => {
                                     checklistUser === fileCoverUser && checklistUser === esanchitUser;
 
                                   if (hasCustomFileGenerated) return "#e6f4ea";
+                                  if (job.sb_or_seal_changed_notif) return "#ffedd5";
                                   if (jobQueriesStatus[job.job_no]?.hasOpenClientQueries) return "#fee2e2";
                                   if (job.operational_lock) return "#f7f6d3cc";
                                   return "inherit";
@@ -3885,10 +3983,18 @@ const ExportJobsTable = () => {
                                       color: "#1e40af",
                                       fontSize: "12px",
                                       letterSpacing: "0.2px",
-                                      whiteSpace: "nowrap"
+                                      whiteSpace: "nowrap",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "4px"
                                     }}
                                   >
                                     {job.job_no}
+                                    {job.sb_or_seal_changed_notif && (
+                                      <Tooltip title={`Changed: ${job.sb_or_seal_changed_details?.message || ''} by ${job.sb_or_seal_changed_details?.changedBy || ''}`}>
+                                        <span style={{ fontSize: "14px" }}>🔔</span>
+                                      </Tooltip>
+                                    )}
                                   </div>
                                   {job.is_club_job_parent && (
                                     <span style={{ fontSize: "9px", background: "#dbeafe", color: "#1e40af", padding: "1px 4px", borderRadius: "4px", fontWeight: "bold" }}>CLUB</span>

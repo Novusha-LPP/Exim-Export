@@ -495,6 +495,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             discharge_country: 1, total_no_of_pkgs: 1,
             package_unit: 1, gross_weight_kg: 1, net_weight_kg: 1, shipping_line_airline: 1,
             detailedStatus: 1, status: 1, statusDetails: 1,
+            sb_or_seal_changed_notif: 1, sb_or_seal_changed_details: 1,
             "eSanchitDocuments.fileUrl": 1, "eSanchitDocuments.documentType": 1, "eSanchitDocuments.icegateFilename": 1,
             isLocked: 1, operational_lock: 1, branch_code: 1, transportMode: 1, movement_type: 1, port_of_loading: 1,
             "operations.statusDetails.containerPlacementDate": 1, "operations.statusDetails.handoverForwardingNoteDate": 1,

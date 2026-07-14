@@ -329,6 +329,7 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             sb_no: 1, sb_date: 1, destination_port: 1, destination_country: 1,
             port_of_discharge: 1, discharge_country: 1, port_of_loading: 1,
             detailedStatus: 1, status: 1, booking_no: 1,
+            sb_or_seal_changed_notif: 1, sb_or_seal_changed_details: 1,
             total_no_of_pkgs: 1, package_unit: 1, gross_weight_kg: 1, net_weight_kg: 1,
             "operations.statusDetails.handoverForwardingNoteDate": 1,
             "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": 1,

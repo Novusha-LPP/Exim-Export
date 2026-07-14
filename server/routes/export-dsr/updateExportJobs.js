@@ -6,6 +6,7 @@ import FreightEnquiryModel from "../../model/export/FreightEnquiryModel.mjs";
 import auditMiddleware from "../../middleware/auditTrail.mjs";
 import UserModel from "../../model/userModel.mjs";
 import importDbConnection from "../../model/importDB.js";
+import { detectSbOrSealChange } from "../../utils/sbSealChangeDetector.mjs";
 
 const router = express.Router();
 
@@ -1658,6 +1659,8 @@ router.get("/exports/:status?", async (req, res) => {
       outstanding_balance: 1,
       cha: 1,
       isLocked: 1,
+      sb_or_seal_changed_notif: 1,
+      sb_or_seal_changed_details: 1,
       vgm_done: 1,
       vgm_date: 1,
       form13_done: 1,
@@ -2811,6 +2814,14 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
     const updateData = { ...req.body, updatedAt: new Date() };
     delete updateData._id;
 
+    if (existingJob) {
+      const changeNotif = detectSbOrSealChange(existingJob, updateData, username);
+      if (changeNotif) {
+        updateData.sb_or_seal_changed_notif = changeNotif.sb_or_seal_changed_notif;
+        updateData.sb_or_seal_changed_details = changeNotif.sb_or_seal_changed_details;
+      }
+    }
+
     // Gracefully handle if detailedStatus arrives as an array from the frontend
     if (Array.isArray(updateData.detailedStatus)) {
       updateData.detailedStatus = updateData.detailedStatus.length > 0
@@ -2961,6 +2972,14 @@ router.patch(
       });
       updateObject.updatedAt = new Date();
 
+      if (existingJob) {
+        const changeNotif = detectSbOrSealChange(existingJob, updateObject, username);
+        if (changeNotif) {
+          updateObject.sb_or_seal_changed_notif = changeNotif.sb_or_seal_changed_notif;
+          updateObject.sb_or_seal_changed_details = changeNotif.sb_or_seal_changed_details;
+        }
+      }
+
       if (Array.isArray(updateObject.detailedStatus)) {
         updateObject.detailedStatus = updateObject.detailedStatus.length > 0
           ? String(updateObject.detailedStatus[updateObject.detailedStatus.length - 1])
@@ -3041,6 +3060,14 @@ router.patch(
         updateObject[field] = value;
       });
       updateObject.updatedAt = new Date();
+
+      if (existingJob) {
+        const changeNotif = detectSbOrSealChange(existingJob, updateObject, username);
+        if (changeNotif) {
+          updateObject.sb_or_seal_changed_notif = changeNotif.sb_or_seal_changed_notif;
+          updateObject.sb_or_seal_changed_details = changeNotif.sb_or_seal_changed_details;
+        }
+      }
 
       // Gracefully handle if detailedStatus arrives as an array from the frontend
       if (Array.isArray(updateObject.detailedStatus)) {
@@ -3157,10 +3184,20 @@ router.put(
       }
 
       const { containers } = req.body;
+      const username = req.headers["username"] || "System";
+      const updateFields = { containers, updatedAt: new Date() };
+
+      if (existingJob) {
+        const changeNotif = detectSbOrSealChange(existingJob, { containers }, username);
+        if (changeNotif) {
+          updateFields.sb_or_seal_changed_notif = changeNotif.sb_or_seal_changed_notif;
+          updateFields.sb_or_seal_changed_details = changeNotif.sb_or_seal_changed_details;
+        }
+      }
 
       const updatedExportJob = await ExJobModel.findOneAndUpdate(
         { job_no: { $regex: `^${job_no}$`, $options: "i" } },
-        { $set: { containers, updatedAt: new Date() } },
+        { $set: updateFields },
         { new: true }
       );
 
@@ -3180,5 +3217,28 @@ router.put(
     }
   }
 );
+
+// PUT /api/exports/:job_no/clear-sb-seal-notif - Clear SB or Seal change notification
+router.put("/:job_no(.*)/clear-sb-seal-notif", async (req, res) => {
+  try {
+    const raw = req.params.job_no || "";
+    const job_no = decodeURIComponent(raw);
+
+    const updatedJob = await ExJobModel.findOneAndUpdate(
+      { job_no: { $regex: `^${job_no}$`, $options: "i" } },
+      { $set: { sb_or_seal_changed_notif: false } },
+      { new: true }
+    );
+
+    if (!updatedJob) {
+      return res.status(404).json({ success: false, message: "Job not found" });
+    }
+
+    res.json({ success: true, message: "Notification cleared successfully", data: updatedJob });
+  } catch (error) {
+    console.error("Error clearing notification:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
 
 export default router;

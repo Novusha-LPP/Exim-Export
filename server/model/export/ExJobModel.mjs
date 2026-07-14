@@ -1723,6 +1723,8 @@ const exportJobSchema = new mongoose.Schema(
     signedFilePath: { type: String, trim: true }, // Path to .sb file or .sig file in S3/Local
     signedDate: { type: Date },
     detailedStatus: { type: String, default: "" },
+    sb_or_seal_changed_notif: { type: Boolean, default: false },
+    sb_or_seal_changed_details: { type: mongoose.Schema.Types.Mixed, default: {} },
     vgm_done: { type: Boolean, default: false },
     vgm_date: { type: String, trim: true },
     form13_done: { type: Boolean, default: false },
